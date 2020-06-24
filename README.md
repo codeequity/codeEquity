@@ -1,1 +1,3 @@
 # codeEquity
+
+.. on the way
