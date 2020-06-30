@@ -1,0 +1,7 @@
+.python-version
+dontBuild
+__pycache__
+*~
+*Pack.yaml
+node_modules
+ceFlutter/build
