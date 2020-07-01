@@ -3,6 +3,7 @@ var router  = express.Router();
 var utils   = require('../utils');
 const auth = require( "../auth");
 
+// XXX  proof of concept
 const OWNER = "codeEquity";
 const REPO  = "testbed";
 
@@ -48,6 +49,15 @@ router.post('/:location?', async function (req, res) {
 	.status(200)
 	.json({ action: action
 	      });
+
+    /*
+      return {
+      weather: {
+         location: location || 'londonon',
+         temperature: `${currentSeconds / 2}\u2103`,
+         weatherDescription: currentSeconds % 2 == 0 ? 'partly snowy' : 'haily'
+      }}
+     */
     
 });
 

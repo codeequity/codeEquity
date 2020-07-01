@@ -17,12 +17,10 @@ ceServer.use(cors());
 ceServer.use(express.static(path.join(__dirname, 'public')));
 ceServer.use(express.static(path.join(__dirname, 'public-flutter')));
 
-var githubIssueHandler = require('./routes/githubIssueHandler');
-var githubCardHandler  = require('./routes/githubCardHandler');
-var githubMergeHandler = require('./routes/githubMergeHandler');
-ceServer.use('/archive/github/issue', githubIssueHandler);
-ceServer.use('/archive/github/card', githubCardHandler);
-ceServer.use('/archive/github/merge', githubMergeHandler);
+var githubRouter = require('./routes/githubRouter');
+ceServer.use('/archive/github/issue', githubRouter);
+ceServer.use('/archive/github/card', githubRouter);
+ceServer.use('/archive/github/merge', githubRouter);
 
 var flutterRouter      = require('./routes/flutterRouter');
 ceServer.use('/update/github', flutterRouter);
