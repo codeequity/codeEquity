@@ -14,5 +14,10 @@ async function getRemotePackageJSONObject(owner, repo, installationAccessToken) 
 };
 
 
-exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
+async function recordPEQ( title, peqAmount ) {
+    console.log( "Recording", peqAmount, "PEQs for", title );
+}
 
+
+exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
+exports.recordPEQ = recordPEQ;
