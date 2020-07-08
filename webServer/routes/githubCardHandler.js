@@ -2,6 +2,7 @@ var testAuth = require('../testAuth');
 var utils   = require('../utils');
 var config  = require('../config');
 var ghUtils = require('../ghUtils');
+var assert = require('assert');
 const auth = require( "../auth");
 
 var gh = ghUtils.githubUtils;
@@ -18,6 +19,7 @@ const PROJ_ID = 4788718; // code equity web server front end
 //              Don't double-process, watch for bot
 
 // XXX Looking slow - should probably get much of this up front, once, and cache it
+//     Doing a lot of waiting on GH.. not much work.  Hard to cache given access model
 
 async function handler( action, repo, owner, reqBody, res ) {
 
@@ -49,7 +51,6 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    .then( issue => {
 		cardContent.push( issue['title'] );
 		
-		// XXX will save entire issue, plus pull out specific metadata (title, name, date, peq)
 		await( utils.recordPEQ( cardContent[0], gh.getPEQLabel( issue['labels'] ) ));
 	    });
 	
@@ -61,11 +62,44 @@ async function handler( action, repo, owner, reqBody, res ) {
 
 	let peqValue = gh.parsePEQ( cardContent );
 
+	// XXX make nicer names
 	if( peqValue > 0 ) {
-	    // XXX check label exists, if not, create it
-	    // create issue if doesn't already exist
+	    await( utils.recordPEQ( cardContent[0], peqValue ));
+
+	    // check label exists, 
+	    let peqHumanLabelName = peqValue.toString() + " PEQ";
+	    let peqLabel = "";
+	    let status = 200;
+	    await( installClient.issues.getLabel( { owner: owner, repo: repo, name: peqHumanLabelName }))
+		.then( label => {
+		    peqLabel = label['data'];
+		    console.log( "Found", peqHumanLabelName );
+		})
+		.catch( e => {
+		    status = e['status'];
+		});
+
+	    // if not, create
+	    if( status == 404 ) {
+		console.log( "Not found, creating.." );
+		let descr = "PEQ value: " + peqValue.toString();
+		await( installClient.issues.createLabel( { owner: owner, repo: repo,
+							   name: peqHumanLabelName, color: config.PEQ_COLOR,
+							   description: descr }))
+		    .then( label => {
+			peqLabel = label['data'];
+		    });
+	    }
+
+	    console.log( peqLabel );
+	    assert.notStrictEqual( peqLabel, undefined, "Did not manage to find or create the PEQ label" );
+	    
+	    // XXX Issue with same title may already exist, in which case,
+	    //     check for label, then point to that issue.
+
+	    // else, create new issue
 	    let issueID = 0;
-	    await( installClient.issues.create( { owner: owner, repo: repo, title: cardContent[0], labels: ['1k PEQ'] } ))
+	    await( installClient.issues.create( { owner: owner, repo: repo, title: cardContent[0], labels: [peqHumanLabelName] } ))
 		.then( issue => {
 		    issueID = issue['data']['id'];
 		});
@@ -74,6 +108,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    // NOTE!  Create finishes, but several notifications are pending( issue:open, issue:labelled ) .. no prob
 	    console.log( "Adding ", columnID, issueID );
 	    await( installClient.projects.createCard( { column_id: columnID, content_id: issueID, content_type: 'Issue' } ));
+
 	    // remove orig card
 	    // XXX check if above succeeded first
 	    let origCardID = reqBody['project_card']['id'];
