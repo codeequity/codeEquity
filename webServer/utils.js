@@ -14,6 +14,7 @@ async function getRemotePackageJSONObject(owner, repo, installationAccessToken) 
 };
 
 
+// XXX will save entire issue, plus pull out specific metadata (title, name, date, peq)
 async function recordPEQ( title, peqAmount ) {
     console.log( "Recording", peqAmount, "PEQs for", title );
 }
