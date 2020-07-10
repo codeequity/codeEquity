@@ -13,142 +13,89 @@ https://octokit.github.io/rest.js/v18#projects-delete-card
 https://developer.github.com/v3/issues/#create-an-issue
 */
 
-const PROJ_ID = 4788718; // code equity web server front end
+// XXX Looking slow - lots of waiting on GH.. not much work.  Hard to cache given access model
 
-// XXX BEWARE!  mulitiple notifications per user-level action are common.  Labeled.  Opened.  Assigned.
-//              Don't double-process, watch for bot
+// Card operations: no PEQ label:  --
 
-// XXX Looking slow - should probably get much of this up front, once, and cache it
-//     Doing a lot of waiting on GH.. not much work.  Hard to cache given access model
+// Card operations: with PEQ label: 
+// * <bot> <action> card:    just record
+// * remove/archive card:    record
+// * move card:              record   (close issue moves related card, or human can move it)
+
+// * create card:            <user> create card, <bot> create issue, <bot> create new card, <bot> delete old card, record
+//   issue title exists:     --
+// * create card:            <user> adds issue to project, <bot> <create/convert> card, record
+
+// * convert card:           <user> --
+
+// * delete issue with card: <bot> <delete> card  record
+//          deletes card, then issue
+//          will not delete other cards that share title.. only linked issue cards
+
+// * update issue with card: <bot>  issues:assigned      record
+//   issue modify milestone, notification/assignee  does not reach cards, just part of issue.  
+//   pull request (check this carefully)
 
 async function handler( action, repo, owner, reqBody, res ) {
 
-    // gh.zoink();
-
     // Actions: created, deleted, moved, edited, converted
-    // XXX handle when issue is closed, move related card
 
     let creator = reqBody['project_card']['creator']['login'];
-
-    console.log( "Got Card" );
-    console.log( "creator", creator );
+    console.log( "Got Card.  Creator:", creator );
     console.log( "note", reqBody['project_card']['note'] );
     
-    let columnID = reqBody['project_card']['column_id'];
-    let installClient = await auth.getInstallationClient( owner, repo );
-    let cardContent = [];
-
     if( creator == config.CE_BOT ) {
 	console.log( "Bot card, skipping." );
+	return;
     }
-    else if( action == 'deleted' ) {
-	console.log( "Card deleted, no action" );
-    }
-    else if( action == "created" && reqBody['project_card']['content_url'] != null ) {
-	// case: collab adds peq-issue to project
-	console.log( "new card from issue" );
-	await( installClient.issues.get( { owner: owner, repo: repo, issue_number: 3 } ))
-	    .then( issue => {
-		cardContent.push( issue['title'] );
-		
-		await( utils.recordPEQ( cardContent[0], gh.getPEQLabel( issue['labels'] ) ));
-	    });
-	
-    }
-    else {
-	// case: card was added in project.  If PEQ, make it an issue, record it, and convert card.
-	cardContent = reqBody['project_card']['note'].split('\n');
-	console.log( "New card in projects:", cardContent[0] );
 
+    let cardContent = [];
+    let installClient = await auth.getInstallationClient( owner, repo );
+
+    // create card notification driven from issues, or directly in project_cards?
+    if( action == "created" && reqBody['project_card']['content_url'] != null ) {
+	// handled in issueHandler
+	console.log( "new card created from issue" );
+    }
+    else if( action == "created" ) {
+	console.log( "New card created in projects" );
+	cardContent = reqBody['project_card']['note'].split('\n');
+
+	if( await gh.checkIssueExists( installClient, owner, repo, cardContent[0] ) ) {
+	    console.log( "Issue with same title already exists.  Do nothing." );
+	    return;
+	}
+	
 	let peqValue = gh.parsePEQ( cardContent );
 
-	// XXX make nicer names
 	if( peqValue > 0 ) {
+
+	    let peqHumanLabelName = peqValue.toString() + " PEQ";
+	    let peqLabel = await gh.findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
+
+	    // create new issue
+	    let issueID = await gh.createIssue( installClient, owner, repo, cardContent[0], [peqHumanLabelName] );
+	    assert.notEqual( issueID, -1, "Unable to create issue linked to this card." );
+
+	    // create issue-linked project_card
+	    let newCardID = await gh.createIssueCard( installClient, reqBody['project_card']['column_id'], issueID );
+	    assert.notEqual( newCardID, -1, "Unable to create new issue-linked card." );	    
+	    
 	    await( utils.recordPEQ( cardContent[0], peqValue ));
 
-	    // check label exists, 
-	    let peqHumanLabelName = peqValue.toString() + " PEQ";
-	    let peqLabel = "";
-	    let status = 200;
-	    await( installClient.issues.getLabel( { owner: owner, repo: repo, name: peqHumanLabelName }))
-		.then( label => {
-		    peqLabel = label['data'];
-		    console.log( "Found", peqHumanLabelName );
-		})
-		.catch( e => {
-		    status = e['status'];
-		});
-
-	    // if not, create
-	    if( status == 404 ) {
-		console.log( "Not found, creating.." );
-		let descr = "PEQ value: " + peqValue.toString();
-		await( installClient.issues.createLabel( { owner: owner, repo: repo,
-							   name: peqHumanLabelName, color: config.PEQ_COLOR,
-							   description: descr }))
-		    .then( label => {
-			peqLabel = label['data'];
-		    });
-	    }
-
-	    console.log( peqLabel );
-	    assert.notStrictEqual( peqLabel, undefined, "Did not manage to find or create the PEQ label" );
-	    
-	    // XXX Issue with same title may already exist, in which case,
-	    //     check for label, then point to that issue.
-
-	    // else, create new issue
-	    let issueID = 0;
-	    await( installClient.issues.create( { owner: owner, repo: repo, title: cardContent[0], labels: [peqHumanLabelName] } ))
-		.then( issue => {
-		    issueID = issue['data']['id'];
-		});
-	    
-	    // add back as card by setting project/col
-	    // NOTE!  Create finishes, but several notifications are pending( issue:open, issue:labelled ) .. no prob
-	    console.log( "Adding ", columnID, issueID );
-	    await( installClient.projects.createCard( { column_id: columnID, content_id: issueID, content_type: 'Issue' } ));
-
 	    // remove orig card
-	    // XXX check if above succeeded first
 	    let origCardID = reqBody['project_card']['id'];
 	    await( installClient.projects.deleteCard( { card_id: origCardID } ));	    
 	}
     }
-
-    /*
-    console.log( "GET PROJECT ID" );
-    await installClient.paginate( installClient.projects.listForRepo, { owner: owner, repo: repo } )
-	.then( project => {
-	    // console.log( project );
-	});
-    
-    console.log( "GET COL ID" );
-    await installClient.paginate( installClient.projects.listColumns, { project_id: PROJ_ID } )
-	.then( column => {
-	    console.log( column );
-	});
-    
-    console.log( "GET ISSUES" );
-    let foundIssue = false;
-    await installClient.paginate( installClient.issues.listForRepo, { owner: owner, repo: repo } )
-	.then( issue => {
-	    if( cardContent[0] == issue['title'] ) {
-		console.log( "Issue already exists, will not convert" );
-		console.log( issue );
-		foundIssue = true;
-	    }
-	});
-    
-    if( !foundIssue ) {
-	console.log( "Issue not found.  Converting." );
-	// XXX too limited
-	if( cardContent[1].includes( "<PEQ:" ) ) {
-	    console.log( "Found PEQ value for label", cardContent[1] );
-	}
+    else if( action == "converted" ) {
+	console.log( "Non-PEQ card converted to issue.  No action." );
     }
-    */
-    
+    else if( action == "moved" || action == "deleted" || action == "edited" ) {
+	console.log( "Card", action, "Recorded." )
+	await( utils.recordPEQ( "XXX TBD. Content may be from issue, or card." , -1 ));	
+    }
+
     return res.json({
 	status: 200,
     });
