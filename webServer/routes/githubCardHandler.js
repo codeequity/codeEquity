@@ -15,26 +15,9 @@ https://developer.github.com/v3/issues/#create-an-issue
 
 // XXX Looking slow - lots of waiting on GH.. not much work.  Hard to cache given access model
 
-// Card operations: no PEQ label:  --
-
-// Card operations: with PEQ label: 
-// * <bot> <action> card:    just record
-// * remove/archive card:    record
-// * move card:              record   (close issue moves related card, or human can move it)
-
-// * create card:            <user> create card, <bot> create issue, <bot> create new card, <bot> delete old card, record
-//   issue title exists:     --
-// * create card:            <user> adds issue to project, <bot> <create/convert> card, record
-
-// * convert card:           <user> --
-
-// * delete issue with card: <bot> <delete> card  record
-//          deletes card, then issue
-//          will not delete other cards that share title.. only linked issue cards
-
-// * update issue with card: <bot>  issues:assigned      record
-//   issue modify milestone, notification/assignee  does not reach cards, just part of issue.  
-//   pull request (check this carefully)
+// Card operations: no PEQ label, not related to CodeEquity.  No action.
+// Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
+// Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
 async function handler( action, repo, owner, reqBody, res ) {
 
@@ -81,17 +64,18 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    let newCardID = await gh.createIssueCard( installClient, reqBody['project_card']['column_id'], issueID );
 	    assert.notEqual( newCardID, -1, "Unable to create new issue-linked card." );	    
 	    
-	    await( utils.recordPEQ( cardContent[0], peqValue ));
-
 	    // remove orig card
 	    let origCardID = reqBody['project_card']['id'];
 	    await( installClient.projects.deleteCard( { card_id: origCardID } ));	    
+
+	    await( utils.recordPEQ( cardContent[0], peqValue ));
 	}
     }
     else if( action == "converted" ) {
 	console.log( "Non-PEQ card converted to issue.  No action." );
     }
     else if( action == "moved" || action == "deleted" || action == "edited" ) {
+	// Note, if action source is issue-delete, linked card is deleted first.  Watch recording.
 	console.log( "Card", action, "Recorded." )
 	await( utils.recordPEQ( "XXX TBD. Content may be from issue, or card." , -1 ));	
     }

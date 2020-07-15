@@ -4,6 +4,7 @@ const CE_BOT = 'codeequity[bot]';
 // XXX Hmm better as two enums?
 const PEQ_COLOR = 'ffcc80';
 
+const _PEQ     = ' PEQ';
 const PEQ_     = '<PEQ: ';
 const PEQ_1K   = '<PEQ: 1000>';
 const PEQ_1Kc  = '<PEQ: 1,000>';
@@ -17,6 +18,7 @@ const PEQ_50Kc = '<PEQ: 50,000>';
 
 exports.CE_BOT   = CE_BOT;
 exports.PEQ_COLOR = PEQ_COLOR;
+exports._PEQ     = _PEQ;
 exports.PEQ_     = PEQ_;
 exports.PEQ_1K   = PEQ_1K;
 exports.PEQ_1Kc  = PEQ_1Kc;

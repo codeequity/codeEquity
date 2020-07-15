@@ -15,6 +15,9 @@ async function getRemotePackageJSONObject(owner, repo, installationAccessToken) 
 
 
 // XXX will save entire issue, plus pull out specific metadata (title, name, date, peq)
+// action( add, remove, update )  verb( propose, confirm, reject)  assignees   sender(login)  date  raw_reqBody
+// also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
+// Assignees split evenly
 async function recordPEQ( title, peqAmount ) {
     console.log( "Recording", peqAmount, "PEQs for", title );
 }
