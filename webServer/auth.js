@@ -7,7 +7,7 @@ const dotenv = require("dotenv");
 
 // XXX CONFIG FILE
 // XXX army of one until fixed server?
-dotenv.config({ path: '../../ops/github/auth/ghAppCredentials' })
+dotenv.config({ path: '../ops/github/auth/ghAppCredentials' })
 //const result = dotenv.config({ encoding: 'utf8' });
 
 
