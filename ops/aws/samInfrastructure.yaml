@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: 
+  Construct serverless infrastructure for CodeEquity
+
+Resources:
+
+  CECognitoUserPool:
+    Type: 'AWS::Cognito::UserPool'
+    Properties:
+      UserPoolName: CodeEquityCognitoUserPool
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      Schema:
+        - AttributeDataType: String
+          Name: email
+          Required: true
+  
+  CECognitoUserPoolClient:
+    Type: 'AWS::Cognito::UserPoolClient'
+    Properties:
+      UserPoolId: !Ref CECognitoUserPool
+      ClientName: CodeEquityApp
+      GenerateSecret: false
+
+  PersonTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: People
+      PrimaryKey:
+        Name: PersonId
+        Type: String
+
+  ProjectTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: Projects
+      PrimaryKey:
+        Name: ProjectId
+        Type: String
+
+  AgreementTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: Agreements
+      PrimaryKey:
+        Name: AgreementId
+        Type: String
+
+  PEQTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: PEQs
+      PrimaryKey:
+        Name: PEQId
+        Type: String
+
+
+# SAM implicit API does not handle edge, cors properly. Explicit is
+  #     required, meaning swagger def is required as well.
+  CEAPI:
+    Type: 'AWS::Serverless::Api'
+    Properties:
+      EndpointConfiguration: EDGE
+      #SAM is not fully expanding this as below, leading to mysterious auth failures.
+      #Cors: "'*'"
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'*'"
+      StageName: prod
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          title: CodeEquity API
+        schemes:
+          - https
+        paths:
+            /find:
+              post:
+                produces:
+                - "application/json"
+                responses:
+                  "200":
+                    description: "200 response"
+                    schema:
+                      $ref: "#/definitions/Empty"
+                security:
+                - CodeEquitySec: []
+                x-amazon-apigateway-integration:
+                  httpMethod: POST
+                  contentHandling: "CONVERT_TO_TEXT"
+                  type: aws_proxy
+                  uri:
+                    Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CELambda.Arn}/invocations
+                  responses:
+                    default:
+                      statusCode: "200"
+        securityDefinitions:
+          CodeEquitySec:
+            type: "apiKey"
+            name: "Authorization"
+            in: "header"
+            x-amazon-apigateway-authtype: "cognito_user_pools"
+            x-amazon-apigateway-authorizer:
+              providerARNs:
+              - Fn::Sub: ${CECognitoUserPool.Arn}
+              type: "cognito_user_pools"
+        definitions:
+          Empty:
+            type: "object"
+            title: "Empty Schema"
+
+  CELambda:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      CodeUri: ./lambdaHandlers/
+      Handler: codeEquity.handler
+      Runtime: nodejs10.x
+      Description: AWS Handler
+      Events:
+        FindAPI:
+          Type: Api 
+          Properties:
+            RestApiId: !Ref CEAPI
+            Path: /find
+            Method: post
+            Auth:
+              Authorizer: CodeEquitySec
+      Policies:
+       - DynamoDBCrudPolicy:
+          TableName: !Ref ProjectTable 
+       - DynamoDBCrudPolicy:
+          TableName: !Ref PersonTable
+       - DynamoDBCrudPolicy:
+          TableName: !Ref AgreementTable 
+       - DynamoDBCrudPolicy:
+          TableName: !Ref PEQTable 
+
+
+
+Outputs:
+  WebsiteURL:
+    Description: "API Gateway endpoint URL for Prod stage for Find function"
+    Value: !ImportValue "codeEquityS3-CES3URL"
+  UserPoolID:
+    Value: !Ref CECognitoUserPool
+    Description: Cognito user pool id
+  UserPoolClientId:
+    Value: !Ref CECognitoUserPoolClient
+    Description: codeequity app id for cognito user pool
+  CodeEquityApiExecution:
+    Description: "API Gateway endpoint URL for Prod stage for CodeEquity function"
+    Value: !Sub "https://${CEAPI}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  CodeEquityLambdadFunction:
+    Description: "CodeEquity Lambda Function ARN"
+    Value: !GetAtt CELambda.Arn
+  CELambdaFunctionIamRole:
+    Description: "Implicit IAM Role created for Hello World function"
+    Value: !GetAtt CELambdaRole.Arn
