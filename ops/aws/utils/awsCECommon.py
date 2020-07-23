@@ -49,16 +49,16 @@ def init():
     ceAuthPath      = os.environ['CEPATH']+"/ops/aws/auth/"
     ceSharedPem     = ceAuthPath+"awsKey.pem"
     ceProvPath      = os.environ['CEPATH']+"/ops/aws/utils/"
-    ceAppPath       = os.environ['CEPATH']+"/webServer/"
+    ceAppPath       = os.environ['CEPATH']+"/ceFlutter/"
     ceNodeJSVersion = "8.0.0"
-    ceAppConfigPath = ceAppPath + "ceFlutter/android/app/src/main/res/raw/"
+    ceAppConfigPath = ceAppPath + "android/app/src/main/res/raw/"
     ceAppConfigName = "awsconfiguration.json"
     ceAppAssetPath  = ceAppPath + "ceFlutter/files/"
     
     samDeployBucket        = "codeequity.sam.deploy"
     samStaticWebBucket     = "codeequity.codeequity.net"   # note this has to be consistent with yaml
-    samStaticWebYAML       = os.environ['CEPATH']+"/samStaticWeb.yaml"
-    samInfrastructureYAML  = os.environ['CEPATH']+"/samInfrastructure.yaml"
+    samStaticWebYAML       = os.environ['CEPATH']+"/ops/aws/samStaticWeb.yaml"
+    samInfrastructureYAML  = os.environ['CEPATH']+"/ops/aws/samInfrastructure.yaml"
 
     samStaticWebStackName       = "codeEquityS3"
     samCodeEquityAppStackName    = "codeEquityApp"

@@ -33,7 +33,7 @@ Resources:
   PersonTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
-      TableName: People
+      TableName: CEPeople
       PrimaryKey:
         Name: PersonId
         Type: String
@@ -41,7 +41,7 @@ Resources:
   ProjectTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
-      TableName: Projects
+      TableName: CEProjects
       PrimaryKey:
         Name: ProjectId
         Type: String
@@ -49,7 +49,7 @@ Resources:
   AgreementTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
-      TableName: Agreements
+      TableName: CEAgreements
       PrimaryKey:
         Name: AgreementId
         Type: String
@@ -57,7 +57,7 @@ Resources:
   PEQTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
-      TableName: PEQs
+      TableName: CEPEQs
       PrimaryKey:
         Name: PEQId
         Type: String
