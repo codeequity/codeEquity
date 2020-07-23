@@ -1,0 +1,8 @@
+{
+  "name": "CodeEquity",
+  "version": "0.0.1",
+  "main": "awsDynamo.js",
+  "dependencies": {
+    "aws-sdk": "latest"
+  }
+}
