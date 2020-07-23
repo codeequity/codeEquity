@@ -182,7 +182,8 @@ def makeCEResources( sam ) :
     # XXX Until we have dynamic resource configuration, create local CE config files
     createConfigFiles( sam )
     createTestAccounts( sam )
-    createTestDDBEntries( sam )
+    # XXX    
+    #createTestDDBEntries( sam )
 
     
 def createTestAccounts( sam ) :
@@ -218,9 +219,10 @@ def createTestAccounts( sam ) :
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
+    # XXX
     # Create corresponding entries in library and person tables.
-    cmd = "aws dynamodb batch-write-item --request-items file://testData/testDataPeople.json"
-    if( call(cmd, shell=True) != 0 ) : logging.warning( "Failed to write test data: People " )
+    # cmd = "aws dynamodb batch-write-item --request-items file://testData/testDataPeople.json"
+    # if( call(cmd, shell=True) != 0 ) : logging.warning( "Failed to write test data: People " )
     
 
 

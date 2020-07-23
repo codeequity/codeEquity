@@ -121,7 +121,7 @@ Resources:
     Type: 'AWS::Serverless::Function'
     Properties:
       CodeUri: ./lambdaHandlers/
-      Handler: codeEquity.handler
+      Handler: awsDynamo.handler
       Runtime: nodejs10.x
       Description: AWS Handler
       Events:

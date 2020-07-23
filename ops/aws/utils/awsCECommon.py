@@ -53,7 +53,7 @@ def init():
     ceNodeJSVersion = "8.0.0"
     ceAppConfigPath = ceAppPath + "android/app/src/main/res/raw/"
     ceAppConfigName = "awsconfiguration.json"
-    ceAppAssetPath  = ceAppPath + "ceFlutter/files/"
+    ceAppAssetPath  = ceAppPath + "files/"
     
     samDeployBucket        = "codeequity.sam.deploy"
     samStaticWebBucket     = "codeequity.codeequity.net"   # note this has to be consistent with yaml
