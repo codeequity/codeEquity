@@ -23,8 +23,6 @@ exports.handler = (event, context, callback) => {
 	return;
     }
 
-    // This includes auth, etc
-    // console.log('Received event: ', event);
     console.log('Received event: ', event.body);
 
     const username = event.requestContext.authorizer.claims['cognito:username'];
@@ -33,7 +31,9 @@ exports.handler = (event, context, callback) => {
     var endPoint = rb.Endpoint;
     var resultPromise;
 
+    console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetPeople")      { resultPromise = getPeople( username ); }
+    else if( endPoint == "RecordPEQ")      { resultPromise = reqPeq( username, rb.Title, rb.PeqAmount ); }
     else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood", context.awsRequestId));
@@ -58,40 +58,85 @@ function success( result ) {
     };
 }
 
+function getPersonId( username ) {
+    // Params to get PersonID from UserName
+    console.log( "getPID, checking ", username );
+    const paramsP = {
+        TableName: 'CEPeople',
+        FilterExpression: 'UserName = :uname',
+        ExpressionAttributeValues: { ":uname": username }
+    };
 
-// XXX PLACEHOLDER
-async function getPeople( username ) {
-
-    const uname = username + "_";
-
-    const paramsGL = {
-	TableName: 'People',
-	FilterExpression: 'begins_with(UserName, :username ) AND Locked = :false',
-	ExpressionAttributeValues: { ":username": uname, ":false": "false" }};
-    
-    let lockPromise = bsdb.scan( paramsGL ).promise();
-    return lockPromise.then((persons) => {
-	console.log( "Pass", persons.Items );
-	if( persons.Items.length > 0 ) { return success( persons.Items[0].UserName ); }
-	else                           { return success( "" ); }
+    let personPromise = bsdb.scan( paramsP ).promise();
+    return personPromise.then((persons) => {
+	// console.log( "Persons: ", persons );
+	assert(persons.Count == 1 );
+	console.log( "Found person ", persons.Items[0] );
+	return persons.Items[0].PersonId;
     });
 }
 
-// XXX PLACEHOLDER
+function randAlpha(length) {
+   var result           = '';
+   var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+   var charactersLength = characters.length;
+   for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+   }
+   return result;
+}
+
+async function getPeople( username ) {
+    const paramsP = {
+        TableName: 'CEPeople',
+        FilterExpression: 'UserName = :uname',
+        ExpressionAttributeValues: { ":uname": username }
+    };
+
+    let personPromise = bsdb.scan( paramsP ).promise();
+    return personPromise.then((persons) => {
+	// console.log( "Persons: ", persons );
+	assert(persons.Count == 1 );
+	console.log( "Found person ", persons.Items[0] );
+	console.log( "Found PersonId ", persons.Items[0].PersonId );
+	return success( persons.Items[0].PersonId );
+    });
+}
+
+async function reqPeq( username, title, peqAmount ) {
+    const personId  = await getPersonId( username );
+
+    const params = {
+        TableName: 'CEPEQs',
+	Item: {
+	    "PEQId":     randAlpha(10),
+	    "UserId":    personId,
+	    "Title":     title,
+	    "PeqAmount": peqAmount
+	}
+    };
+
+    let recPromise = bsdb.put( params ).promise();
+    return recPromise.then(() =>success( true ));
+
+}
+
+
+// XXX Placeholder
 async function getAgreements( username ) {
+    const paramsP = {
+        TableName: 'CEAgreements',
+        FilterExpression: 'UserName = :uname',
+        ExpressionAttributeValues: { ":uname": username }
+    };
 
-    const uname = username + "_";
-
-    const paramsGL = {
-	TableName: 'People',
-	FilterExpression: 'begins_with(UserName, :username ) AND Locked = :false',
-	ExpressionAttributeValues: { ":username": uname, ":false": "false" }};
-    
-    let lockPromise = bsdb.scan( paramsGL ).promise();
-    return lockPromise.then((persons) => {
-	console.log( "Pass", persons.Items );
-	if( persons.Items.length > 0 ) { return success( persons.Items[0].UserName ); }
-	else                           { return success( "" ); }
+    let personPromise = bsdb.scan( paramsP ).promise();
+    return personPromise.then((persons) => {
+	// console.log( "Persons: ", persons );
+	assert(persons.Count == 1 );
+	console.log( "Found person ", persons.Items[0] );
+	console.log( "Found PersonId ", persons.Items[0].PersonId );
+	return success( persons.Items[0].PersonId );
     });
 }
 

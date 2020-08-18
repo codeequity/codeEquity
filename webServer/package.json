@@ -9,6 +9,7 @@
     "dependencies": {
         "@octokit/app": "^4.2.0",
         "@octokit/rest": "^17.9.2",
+        "amazon-cognito-identity-js": "^4.3.3",
         "cookie-parser": "^1.4.5",
         "cors": "^2.8.5",
         "debug": "^2.6.9",
