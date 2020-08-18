@@ -199,7 +199,7 @@ async function findCardInColumn( installClient, owner, repo, target, colID ) {
 	.then( cards => {
 	    for( card of cards['data'] ) {
 		if( card['content_url'] ) {
-		    console.log( "Adding card", card['content_url'] );
+		    console.log( "Checking card", card['content_url'] );
 		    let issuePath = card['content_url'].split('/');
 		    issueNums.push( issuePath[ issuePath.length - 1 ] );
 		    cardIDs.push( card['id'] );

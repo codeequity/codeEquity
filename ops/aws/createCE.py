@@ -219,6 +219,12 @@ def createTestAccounts( sam ) :
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
+    # Finally, add ceServer account.  XXX
+    tbase  = cmdBase + "ceServer --user-attributes Name=email,Value=rmusick+ceServer@codeequity.net Name=email_verified,Value=true"
+    tpBase = pwdBase + "ceServer --password passWD123 --permanent"
+    if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
+    if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
+
     # XXX
     # Create corresponding entries in library and person tables.
     # cmd = "aws dynamodb batch-write-item --request-items file://testData/testDataPeople.json"
