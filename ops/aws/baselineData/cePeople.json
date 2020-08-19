@@ -1,0 +1,22 @@
+{
+  "CEPeople": [
+    {
+      "PutRequest": {
+        "Item": {
+          "PersonId": {
+            "S": "CkUvxNtFWb"
+          },
+          "First": {
+            "S": "C.E."
+          },
+          "Last": {
+            "S": "Server"
+          },
+          "UserName": {
+            "S": "ceServer"
+          }
+        }
+      }
+    }
+  ]
+}

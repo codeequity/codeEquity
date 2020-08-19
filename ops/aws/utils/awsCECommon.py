@@ -10,6 +10,7 @@ def init():
     global ceAppConfigPath  # android assets for cognito plugin
     global ceAppConfigName
     global ceAppAssetPath   # more typical pubspec.yaml assets
+    global ceServerConfig
     global access_key_id
     global secret_access_key
     
