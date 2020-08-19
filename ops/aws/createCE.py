@@ -219,9 +219,13 @@ def createTestAccounts( sam ) :
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
-    # Finally, add ceServer account.  XXX
-    tbase  = cmdBase + "ceServer --user-attributes Name=email,Value=rmusick+ceServer@codeequity.net Name=email_verified,Value=true"
-    tpBase = pwdBase + "ceServer --password passWD123 --permanent"
+    # Finally, add ceServer account.
+    ceConfigData = ""
+    with open(awsCECommon.ceServerConfig, "r") as read_file:
+        ceConfigData = json.load(read_file)
+        
+    tbase  = cmdBase + ceConfigData['Username'] + " --user-attributes Name=email,Value=" + ceConfigData['Email'] + " Name=email_verified,Value=true"
+    tpBase = pwdBase + ceConfigData['Username'] + " --password " + ceConfigData['Password'] + " --permanent"
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 

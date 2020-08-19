@@ -19,12 +19,11 @@ function asyncAuthenticateUser(cognitoUser, authenticationDetails) {
   });
 }
 
-// XXX passwd belongs in auth
 // XXX need to add ceServer login to cognito during stack creation
-// XXX fix github notifications email!!
 async function getCogIDToken() {
     let poolData = utils.getCognito();
-    let authData = { Username : 'ceServer', Password : 'passWD123' };
+    let authData = utils.getCEServer();
+    // let authData = { Username : 'ceServer', Password : 'passWD123' };
 
     let userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
     let userData = { Username: authData.Username, Pool: userPool };
