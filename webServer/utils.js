@@ -1,15 +1,15 @@
-const auth = require( "./auth" );
+var config    = require('./config');
+const auth    = require( "./auth" );
 const awsAuth = require( "./awsAuth" );
-var fetch = require('node-fetch');
+var fetch     = require('node-fetch');
 
 // read apiBasePath
-// XXX server-wide const.
 // XXX combine
 var fs = require('fs'), json;
 
 
 function getAPIPath() {
-    let fname = "./public-flutter/assets/files/api_base_path.txt";
+    let fname = config.APIPATH_CONFIG_LOC;
     try {
 	var data = fs.readFileSync(fname, 'utf8');
 	console.log(data);
@@ -19,7 +19,7 @@ function getAPIPath() {
     }
 }
 function getCognito() {
-    let fname = "./public-flutter/assets/files/awsconfiguration.json";
+    let fname = config.COGNITO_CONFIG_LOC;
     try {
 	let data = fs.readFileSync(fname, 'utf8');
 	let jdata = JSON.parse( data );
@@ -27,8 +27,23 @@ function getCognito() {
 
 	let rdata = { 'UserPoolId': jdata['CognitoUserPool']['Default']['PoolId'], 
 		      'ClientId': jdata['CognitoUserPool']['Default']['AppClientId'],
-		      'Region': jdata['CognitoUserPool']['Default']['Region'] }
+		      'Region': jdata['CognitoUserPool']['Default']['Region'] };
 	
+	return rdata;
+    } catch(e) {
+	console.log('Error:', e.stack);
+    }
+}
+function getCEServer() {
+    let fname = config.CESERVER_CONFIG_LOC;
+    try {
+	let data = fs.readFileSync(fname, 'utf8');
+	let jdata = JSON.parse( data );
+	console.log(jdata);
+
+	let rdata = { 'Username': jdata['Username'],
+		      'Password': jdata['Password'] };
+
 	return rdata;
     } catch(e) {
 	console.log('Error:', e.stack);
@@ -97,5 +112,6 @@ async function recordPEQ( title, peqAmount ) {
 }
 
 exports.getCognito = getCognito;
+exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
 exports.recordPEQ = recordPEQ;

@@ -54,6 +54,7 @@ def init():
     ceAppConfigPath = ceAppPath + "android/app/src/main/res/raw/"
     ceAppConfigName = "awsconfiguration.json"
     ceAppAssetPath  = ceAppPath + "files/"
+    ceServerConfig  = ceAuthPath+"ceServerConfig.json"
     
     samDeployBucket        = "codeequity.sam.deploy"
     samStaticWebBucket     = "codeequity.codeequity.net"   # note this has to be consistent with yaml

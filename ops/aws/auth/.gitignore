@@ -1,3 +1,4 @@
 *.pem
 rootkey.csv
 credentials
+ceServerConfig.json
