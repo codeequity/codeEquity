@@ -229,10 +229,9 @@ def createTestAccounts( sam ) :
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
-    # XXX
-    # Create corresponding entries in library and person tables.
-    # cmd = "aws dynamodb batch-write-item --request-items file://testData/testDataPeople.json"
-    # if( call(cmd, shell=True) != 0 ) : logging.warning( "Failed to write test data: People " )
+    # Create corresponding baseline entries in CE tables.
+    cmd = "aws dynamodb batch-write-item --request-items file://baselineData/cePeople.json"
+    if( call(cmd, shell=True) != 0 ) : logging.warning( "Failed to write baseline data: CEPeople " )
     
 
 
