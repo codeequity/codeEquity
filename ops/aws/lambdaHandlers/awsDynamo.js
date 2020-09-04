@@ -33,7 +33,8 @@ exports.handler = (event, context, callback) => {
 
     console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetPeople")      { resultPromise = getPeople( username ); }
-    else if( endPoint == "RecordPEQ")      { resultPromise = reqPeq( username, rb.Title, rb.PeqAmount ); }
+    else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( username, rb.Title, rb.PeqAmount ); }
+    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( username ); }
     else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood", context.awsRequestId));
@@ -49,6 +50,37 @@ exports.handler = (event, context, callback) => {
     });
 
 };
+
+
+
+function paginatedScan( params ) {
+
+    return new Promise((resolve, reject) => {
+	var result = [];
+	
+	// adding 1 extra items due to a corner case bug in DynamoDB
+	params.Limit = params.Limit + 1;
+	bsdb.scan( params, onScan );
+
+	function onScan(err, data) {
+	    if (err) {
+		return reject(err);
+	    }
+	    result = result.concat(data.Items);
+	    //console.log( "on scan.." );
+	    //data.Items.forEach(function(book) { console.log( book.Title ); });	    
+	    if (typeof data.LastEvaluatedKey === "undefined") {
+		return resolve(result);
+	    } else {
+		params.ExclusiveStartKey = data.LastEvaluatedKey;
+		//console.log( "scan more, last: ", data.LastEvaluatedKey );
+		bsdb.scan( params, onScan );
+	    }
+
+	}
+    });
+}
+
 
 function success( result ) {
     return {
@@ -103,7 +135,7 @@ async function getPeople( username ) {
     });
 }
 
-async function reqPeq( username, title, peqAmount ) {
+async function recPeq( username, title, peqAmount ) {
     const personId  = await getPersonId( username );
 
     const params = {
@@ -119,6 +151,20 @@ async function reqPeq( username, title, peqAmount ) {
     let recPromise = bsdb.put( params ).promise();
     return recPromise.then(() =>success( true ));
 
+}
+
+async function getPeq( username ) {
+    const paramsP = {
+        TableName: 'CEPEQs',
+	Limit: 99,
+    };
+
+    console.log( "Looking for all peqs");
+    let peqPromise = paginatedScan( paramsP );
+    return peqPromise.then((peqs) => {
+	console.log( "Found peqs ", peqs );
+	return success( peqs );
+    });
 }
 
 
