@@ -1,105 +1,118 @@
-import 'dart:convert';  // json encode/decode
-import 'dart:io';       // httpheaders (not in http...!!)
+import 'dart:async';
 import 'package:flutter/material.dart';
+//import 'package:flutter_cognito_plugin/flutter_cognito_plugin.dart';
+import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 
-// import 'package:ceFlutter/githubShots.dart';
+import 'package:ceFlutter/utils.dart';
+import 'package:ceFlutter/screens/launch_page.dart';
+import 'package:ceFlutter/screens/home_page.dart';
 
-import 'package:http/http.dart' as http;
+import 'package:ceFlutter/models/app_state.dart';
 
-void main() {
-  runApp(MyApp());
-}
+import 'package:ceFlutter/app_state_container.dart';
 
-Future<http.Response> postIt( String shortName, postData ) async {
-     print( shortName );
-     // https://stackoverflow.com/questions/43871637/no-access-control-allow-origin-header-is-present-on-the-requested-resource-whe
-     // https://medium.com/@alexishevia/using-cors-in-express-cac7e29b005b
-     final gatewayURL = new Uri.http("127.0.0.1:3000", "/update/github");
 
-     // need httpheaders app/json else body is empty
-     final response =
-        await http.post(
-           gatewayURL,
-           headers: {HttpHeaders.contentTypeHeader: 'application/json' },
-           body: postData
-           );
-     
-     return response;
-  }
+void main() => runApp(
+   new AppStateContainer( child: new CEApp() )
+   );
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+
+class CEApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
-    );
+     // note: primarySwatch takes a set of colors (color + shade value), not an individual color.
+     return MaterialApp(
+        title: 'CodeEquity',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+           primarySwatch: Colors.green,
+           appBarTheme: AppBarTheme(
+              color: Colors.grey[200],
+              // title is deprecated 1.13, but as of 2/20 headline6 has not yet made it to the stable release
+              //textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
+              textTheme: TextTheme( title: TextStyle( color: Colors.black )),
+              iconTheme: IconThemeData( color: Colors.black ) ),
+           bottomAppBarColor: Colors.grey[200] ),
+        home:  CESplashPage( title: 'CodeEquity'),
+        );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
 
-  final String title;
+class CESplashPage extends StatefulWidget {
+   CESplashPage({Key key, this.title}) : super(key: key);
 
+   final String title;
+   
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _CESplashPageState createState() => _CESplashPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
 
+class _CESplashPageState extends State<CESplashPage> {
 
-  
-  Future<bool> pingGH(name) async {
-     String postData = '{"Endpoint": "$name", "All": "false" }';
-     var response = await postIt( "pingGH", postData );
+   AppState appState;    // Declaration.  Definition is in build, can be used below
+   
+   @override
+   void initState() {
+      print( "... Main init state" );
+      super.initState();  
+      _startTimer( 0 );
+   }
 
-     print( response.body );
-     
-     if (response.statusCode != 200) {
-        print( "RESPONSE Single: " + response.statusCode.toString() + " " + json.decode(utf8.decode(response.bodyBytes)).toString());
-        throw Exception('Failed to load books');
+  @override
+  void dispose() {
+     super.dispose();
+  }
+
+  void _startTimer( attempts ) {
+     int duration = attempts == 0 ? 3 : 1; 
+     print( "In timer, attempt " + attempts.toString() + " next duration " + duration.toString() );
+
+     if( attempts > 15 ) {
+        showToast( context, "AWS token initialization is slow.  Is your wifi on?" );
+        navigateUser(); 
+     } else { 
+        Timer(Duration(seconds: duration), () {
+              print("after duration, checking cogDone" );
+              if( !appState.cogInitDone ) {
+                 _startTimer( attempts + 1 );
+              } else {
+                 navigateUser();
+              }
+           });
      }
-     
-     print( "There are " );
-     return true;
   }
+
   
-  Widget _makeButton( name ) {
-     return FloatingActionButton(
-        onPressed: () async
-        {
-           // myUtils.zoink();
-           await pingGH(name);
-           setState(() {  _counter++;  });
-        },
-        child: Icon(Icons.add));
+  void navigateUser() async{
+     print( "Weh do i go?" );
+     if( appState.cogUser.confirmed ) {
+        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
+        Navigator.pushReplacement(context, newPage );
+     } else {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => CELaunchPage()));
+     }
   }
+
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text( 'You have pushed a button this many times:' ),
-            Text( '$_counter', style: Theme.of(context).textTheme.headline4 ),
-            Row(
-               children: <Widget> [
-                  _makeButton("Left"),
-                  _makeButton("Right"),
-                  ])
-             ])),
-       );
-  }
+
+     var container = AppStateContainer.of(context);
+     appState = container.state;
+     
+     final devWidth  = MediaQuery.of(context).size.width;
+     final devHeight = MediaQuery.of(context).size.height;
+     appState.screenHeight = devHeight;
+     appState.screenWidth = devWidth;
+
+       return Scaffold(
+          body: Center(
+             child: Stack(
+                children: <Widget>[
+                   Container( child: Image.asset( 'images/ceFlutter.jpeg', width: devWidth - 50, fit: BoxFit.fitWidth)), 
+                   Positioned( bottom: 60 , left: 10, child: Text("CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 54.0))),
+                   ]))
+          );}
 }
