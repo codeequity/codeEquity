@@ -6,12 +6,16 @@ import 'package:fluttertoast/fluttertoast.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/screens/home_page.dart';
+import 'package:ceFlutter/screens/profile_page.dart';
+import 'package:ceFlutter/customIcons.dart';
 
 
+// XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {
    Fluttertoast.showToast(
       msg: "Future feature",
       toastLength: Toast.LENGTH_SHORT,
+      // toastLength: Toast.LENGTH_LONG,
       gravity: ToastGravity.CENTER,
       backgroundColor: Colors.pinkAccent,
       textColor: Colors.white,
@@ -19,14 +23,21 @@ void notYetImplemented(BuildContext context) {
       );
 }
 
+
+// This package is growing - positioning will improve over time
 void showToast(BuildContext context, msg) {
    Fluttertoast.showToast(
       msg: msg,
-      toastLength: Toast.LENGTH_LONG,
-      gravity: ToastGravity.CENTER,
+      toastLength: Toast.LENGTH_LONG,    
       backgroundColor: Colors.pinkAccent,
+      gravity: ToastGravity.CENTER,
       textColor: Colors.white,
-      fontSize: 18.0
+      fontSize: 18.0,
+      // For web
+      webShowClose: true,
+      webBgColor: "#eb59e6",
+      webPosition: "center",
+      timeInSecForIosWeb: 5,
       );
 }
 
@@ -127,7 +138,7 @@ Widget makeInputField( BuildContext context, hintText, obscure, controller ) {
 }
 
 
-// XXX Placeholder
+// XXX Partial
 Widget makeTopAppBar( BuildContext context, currentPage ) {
    final container   = AppStateContainer.of(context);
    final appState    = container.state;
@@ -136,10 +147,13 @@ Widget makeTopAppBar( BuildContext context, currentPage ) {
       preferredSize: Size.fromHeight( appState.screenHeight*.054 ),
       child: AppBar(
          leading: IconButton(
-            icon: Icon(Icons.camera),
-            key:  Key( "myLibraryIcon" ),
+            icon: currentPage == "Home" ? Icon(customIcons.home_here) : Icon(customIcons.home),
+            key:  currentPage == "Home" ? Key( "homeHereIcon" ) : Key( "homeIcon" ),
             onPressed: ()
             {
+               if( currentPage == "Home" ) { return; }
+               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
+               Navigator.push( context, newPage );
             },
             iconSize: iconSize,
             padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 2.0)
@@ -147,18 +161,24 @@ Widget makeTopAppBar( BuildContext context, currentPage ) {
          title: Text( "CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 16 )),
          actions: <Widget>[
             IconButton(
-               icon: Icon(Icons.camera),
-               key:  Key( "loanIcon" ),
+               icon: currentPage == "Loan" ? Icon(customIcons.loan_here) : Icon(customIcons.loan),
+               key:  currentPage == "Loan" ? Key( "loanHereIcon" ) : Key( "loanIcon" ),
                onPressed: ()
                {
+                  if( currentPage == "Loan" ) { return; }
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
+                  Navigator.push( context, newPage);
                },
                iconSize: iconSize,
                ),
             IconButton(
-               icon: Icon(Icons.camera),
-               key:  Key( "searchIcon" ),
+               icon: currentPage == "Profile" ? Icon(customIcons.profile_here) : Icon(customIcons.profile),
+               key:  currentPage == "Profile" ? Key( "profileHereIcon" ) : Key( "profileIcon" ),
                onPressed: ()
                {
+                  if( currentPage == "Profile" ) { return; }
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage());
+                  Navigator.push( context, newPage );
                },
                iconSize: iconSize,
                padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 1.0)
@@ -166,7 +186,9 @@ Widget makeTopAppBar( BuildContext context, currentPage ) {
             ]));
 }
 
-// XXX Placeholder
+
+
+// XXX Placeholder.. maybe not?
 Widget makeBotAppBar( BuildContext context, currentPage ) {
    final container   = AppStateContainer.of(context);
    final appState    = container.state;

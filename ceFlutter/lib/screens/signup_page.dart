@@ -127,7 +127,17 @@ class _CESignupState extends State<CESignupPage> {
                   showToast( context, "Signin failed.  Incorrect confirmation code?" );
                   return;
                }
-               await container.newUserBasics();
+               bool success = await container.finalizeUser( true );
+
+               if( success ) {
+                  // XXX do stuff
+                  await initMyProjects( context, container );
+                  appState.newUser = false;
+                  appState.loaded = true;
+                  
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
+                  Navigator.push( context, newPage );
+               }
 
                // XXX
                // Person and private lib must exist before signin
@@ -162,14 +172,6 @@ class _CESignupState extends State<CESignupPage> {
                MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
                Navigator.push( context, newPage );
                */
-
-               await initMyProjects( context, container );
-               appState.newUser = false;
-               appState.loaded = true;
-               
-               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
-               Navigator.push( context, newPage );
-
             }));      
 
       return Scaffold(

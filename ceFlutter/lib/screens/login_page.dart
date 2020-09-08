@@ -35,8 +35,11 @@ class _CELoginState extends State<CELoginPage> {
   void _signin( userName, userPassword, container, appState ) async {
      try{
         appState.cogUser = await appState.cogUserService.login( userName, userPassword );
-        MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
-        Navigator.push( context, newPage );
+        bool success = await container.finalizeUser( false );
+        if( success ) {
+           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
+           Navigator.push( context, newPage );
+        }
      } catch(e) {
         bool validConfig = await checkValidConfig( context );
         if( !validConfig ) {

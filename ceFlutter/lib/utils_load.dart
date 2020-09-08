@@ -13,9 +13,9 @@ import 'package:ceFlutter/screens/launch_page.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
 
-void logout( context, container, appState ) {
-   final wrapper = container.onPressWrapper((){
-         //Cognito.signOut();
+void logout( context, container, appState ) async {
+   final wrapper = (() async {
+         appState.cogUser = await appState.cogUserService.signOut();
          
          // Rebuilding page below, don't need to setState (which isn't available here). 
          appState.usernameController.clear();

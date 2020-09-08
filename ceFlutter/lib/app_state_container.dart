@@ -43,42 +43,36 @@ class _AppStateContainerState extends State<AppStateContainer> {
 
         state.cogUserService = UserService( state.cogUserPool );
         state.cogUser = User();
-        print("... ... have cog user service, init-ing" );
+        print("... ... have cog user service" );
 
         await state.cogUserService.init();
-        print("... ... done.  check auth" );
+        print("... user service init done." );
+
+        // XXX When is the rest of this successfull?  never?
         bool isAuthenticated = await state.cogUserService.checkAuthenticated();
-        print( "... ... done." + isAuthenticated.toString() );
+        print( "... auth done." + isAuthenticated.toString() );
         if( isAuthenticated ) {
            state.cogUser = await state.cogUserService.getCurrentUser();
            print( "Got User." );
-
-           state.idToken = await state.cogUserService.getCredentials();
-           print( "Got token: " + state.idToken.toString() );
         }
 
+        // XXX When is the rest of this successfull?  never?
         // XXX old callback
+        // XXX flutter_cognito callback mechanism caused a lot of headaches with multiple uncontrolled calls - 
+        //     lots of state.loading etc to control for it.  May be able to get rid of most of all of that state.
         // always false at state, until signup
-        if( ! state.newUser ) { 
-           if( state.cogUser.confirmed )
-           {
-              print( "Cog callback signed in user " + state.loading.toString() + " " + state.loaded.toString() );
-              
-              await getAPIBasePath();
-              await initMyProjects( context, this );
-              
+        if( ! state.newUser ) {
+           bool success = await finalizeUser( state.newUser );
+           if( success ) {
               state.loading = false;
               print ("CALLBACK, loaded TRUE" );
            }
         }
 
-        // XXX gatOverride will fail, no that there's no callback
-        
         setState(() {
               state.loaded = ! state.loading;   // XXX should now be able to pare down to 1
               state.authRetryCount += 1;
               if( state.loading ) {
-                 state.accessToken = "";
                  state.idToken = null;
                  state.initAppData();
               }
@@ -105,16 +99,15 @@ class _AppStateContainerState extends State<AppStateContainer> {
         });
   }
 
-  // XXX should be able to kill gatOverride in state
+  // XXX gatOverride depended on callback.  may need to setstate on override
+  // XXX may be able to kill gatOverride in state
   Future<void> getAuthTokens( override ) async {
      print( "GAT, with " + state.idToken );
      state.gatOverride = override;
      if( state.accessToken == "" || state.idToken == "" || override == true) {
 
         // May not need accessToken, or refreshToken
-        print( "awaiting getCred" );
         String credentials = await state.cogUserService.getCredentials( );
-        print( "GAT, with new token " + credentials );
         setState(() {
               // state.accessToken = accessToken;   
               // state.refreshToken = refreshToken;
@@ -148,11 +141,24 @@ class _AppStateContainerState extends State<AppStateContainer> {
      }
   }
 
-  Future<void> newUserBasics() async {
-     assert( state.newUser );
-     await getAuthTokens( false );
-     await getAPIBasePath();
+  Future<bool> finalizeUser( newUser ) async {
+     assert( state.newUser == newUser );
+     
+     if( state.cogUser.confirmed ) {
+        print( "Finalizing user token and project setup" );
+        await getAPIBasePath();
+        await getAuthTokens( false );
+        if( !newUser ) {
+           await initMyProjects( context, this );        
+        }
+        return true;
+     }
+     else {
+        print( "User is not confirmed - can not finalize cognito and project setup." );
+        return false;
+     }
   }
+
   
   @override
   void initState() {

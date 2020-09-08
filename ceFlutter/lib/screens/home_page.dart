@@ -94,6 +94,8 @@ class _CEHomeState extends State<CEHomePage> {
 
       final getStuffButton = makeActionButton( appState, "Get Stuff", (() async {
                print( "Git some!" );
+               showToast( context, "Gitting some!" );               
+               // XXX bad name.. reload is better
                await initMyProjects( context, container );
                setState(() {
                      appState.peqUpdated = true;
@@ -126,7 +128,7 @@ class _CEHomeState extends State<CEHomePage> {
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
-         bottomNavigationBar: makeBotAppBar( context, "Home" ),
+         //bottomNavigationBar: makeBotAppBar( context, "Home" ),
          body: _makeBody()
          );
    }
