@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/utils_load.dart';
 import 'package:ceFlutter/app_state_container.dart';
+import 'package:ceFlutter/cognitoUserService.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 
 
@@ -31,36 +32,27 @@ class _CELoginState extends State<CELoginPage> {
     super.dispose();
   }
 
-  // XXX check valid config makes less sense for web..
+
   void _signin( userName, userPassword, container, appState ) async {
-     try{
-        appState.cogUser = await appState.cogUserService.login( userName, userPassword );
-        bool success = await container.finalizeUser( false );
-        if( success ) {
-           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
-           Navigator.push( context, newPage );
-        }
-     } catch(e) {
-        bool validConfig = await checkValidConfig( context );
-        if( !validConfig ) {
-           showToast( context, "Your app is out of date.  Please update CodeEquity and try again." );
-        }
-        else if( e.toString().contains("User does not exist") ) {
-           showToast( context, "Username or password is incorrect." );
-        } else if( e.toString().contains( "NotAuthorizedExcept" ) ) {
-           showToast( context, "Username or password is incorrect." );                    
-        } else {
-           showToast( context, e.toString() );
-        }
-     }
+     final wrapper = cognitoSignupWrapper(context, () async {
+           appState.cogUser = await appState.cogUserService.login( userName, userPassword );
+           bool success = await container.finalizeUser( false );
+           if( success ) {
+              appState.loaded = true;
+              MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
+              Navigator.push( context, newPage );
+           }
+        });
+     wrapper();
   }
 
+  
   void _logoutLogin( freeName, freePass, attempts, container, appState ) {
      int duration = attempts == 0 ? 1 : 1; 
      // print( "In LL timer, attempt " + attempts.toString() + " next duration " + duration.toString() );
      
      if( attempts > 15 ) {
-        showToast( context, "AWS token initialization is slow.  Is your wifi on?" );
+        showToast( "AWS token initialization is slow.  Is your wifi on?" );
         _signin( freeName, freePass, container, appState );
      }
      else {
@@ -81,7 +73,7 @@ class _CELoginState extends State<CELoginPage> {
      String freeName = await getFree( context, container, postData );
      
      if(freeName == "" ) {
-        showToast( context, "All testers currently in use, please try again later." );
+        showToast( "All testers currently in use, please try again later." );
      }
      else
      {
@@ -104,10 +96,11 @@ class _CELoginState extends State<CELoginPage> {
      print( "In logInOutIn timer, attempt " + attempts.toString() + " next duration " + duration.toString() );
      
      if( attempts > 15 ) {
-        showToast( context, "AWS token initialization is slow.  Is your wifi on?" );
+        showToast( "AWS token initialization is slow.  Is your wifi on?" );
         _switchToUnusedTester( container, appState );
      }
      else {
+        // XXX unneeded now?
         // Wait for Cognito signin callback to finish executing
         Timer(Duration(seconds: duration), () {
               if( !appState.cogInitDone ) { _loginLogoutLogin( attempts + 1, container, appState ); }
@@ -126,7 +119,7 @@ class _CELoginState extends State<CELoginPage> {
 
      final usernameField = makeInputField( context, "username", false, appState.usernameController );
      final passwordField = makeInputField( context, "password", true, appState.passwordController );
-     final loginButton = makeActionButton( appState, 'Login', container.onPressWrapper(() async {
+     final loginButton = makeActionButton( appState, 'Login', (() async {
               String userName = appState.usernameController.text;
               String userPassword = appState.passwordController.text;
 
@@ -135,6 +128,7 @@ class _CELoginState extends State<CELoginPage> {
               // _1664 is auth account.  _1664_{0..9} are integration testing accounts.
               if( userName == "_ce_tester_1664" ) {
 
+                 // XXX can simplify now that cognito is not callback-based?
                  // await Cognito.signIn( userName, userPassword );
                  // cognito signin initiates a separate callback not attached to the signin process.
                  // Need to wait for that to finish.  This is ugly - may be able to rewrite app_state_container callback

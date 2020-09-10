@@ -9,9 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ceFlutter/utils.dart';
+import 'package:ceFlutter/utils_load.dart';
 
-/// Extend CognitoStorage with Shared Preferences to persist account
-/// login sessions
+
+// Extend CognitoStorage with Shared Preferences to persist account
+// login sessions
 class Storage extends CognitoStorage {
    SharedPreferences _prefs;
    Storage(this._prefs);
@@ -58,7 +61,7 @@ class User {
    
    User({this.email, this.name});
    
-   /// Decode user from Cognito User Attributes
+   // Decode user from Cognito User Attributes
    factory User.fromUserAttributes(List<CognitoUserAttribute> attributes) {
       final user = User();
       attributes.forEach((attribute) {
@@ -79,7 +82,7 @@ class UserService {
    UserService(this._userPool);
    CognitoCredentials credentials;
    
-   /// Initiate user session from local storage if present
+   // Initiate user session from local storage if present
    Future<bool> init() async {
       final prefs = await SharedPreferences.getInstance();
       final storage = Storage(prefs);
@@ -93,7 +96,7 @@ class UserService {
       return _session.isValid();
    }
    
-   /// Get existing user from session with his/her attributes
+   // Get existing user from session with his/her attributes
    Future<User> getCurrentUser() async {
       if (_cognitoUser == null || _session == null) {
          return null;
@@ -110,37 +113,24 @@ class UserService {
       return user;
    }
    
-   /*
-   // identity pool id != user pool id.   maybe good for signing requests?
-   /// Retrieve user credentials -- for use with other AWS services
-   Future<CognitoCredentials> getCredentials( identityPoolId ) async {
-   if (_cognitoUser == null || _session == null) {
-   return null;
-   }
-   print( "Cog User Service, getCreds" );
-   credentials = CognitoCredentials( identityPoolId, _userPool);
-   await credentials.getAwsCredentials(_session.getIdToken().getJwtToken());
-   return credentials;
-   }
-   */
-   
-   /// Retrieve user credentials -- for use with other AWS services
+   // Retrieve user credentials -- for use with other AWS services
    Future<String> getCredentials() async {
       if (_cognitoUser == null || _session == null) {
          print( "Uh oh.. null doodies" );
          return null;
       }
-      
-      // getAccessToken().getJwtToken())
+
+      // identity pool id != user pool id.   maybe good for signing requests?
+      // credentials = CognitoCredentials( identityPoolId, _userPool);
+      // await credentials.getAwsCredentials(_session.getIdToken().getJwtToken());
       // await _session.getAwsCredentials(_session.getIdToken().getJwtToken());
       return _session.getIdToken().getJwtToken();
    }
    
-   // XXX
-   /// Login user
+   // Login user
    Future<User> login(String name, String password) async {
       _cognitoUser = CognitoUser(name, _userPool, storage: _userPool.storage);
-      
+
       final authDetails = AuthenticationDetails(
          username: name,
          password: password,
@@ -148,6 +138,7 @@ class UserService {
       
       bool isConfirmed;
       try {
+         showToast( "Authenticating.. can take a few seconds." );
          _session = await _cognitoUser.authenticateUser(authDetails);
          isConfirmed = true;
       } on CognitoClientException catch (e) {
@@ -170,20 +161,19 @@ class UserService {
       return user;
    }
    
-   /// Confirm user's account with confirmation code sent to email
+   // Confirm user's account with confirmation code sent to email
    Future<bool> confirmAccount(String name, String confirmationCode) async {
       _cognitoUser = CognitoUser(name, _userPool, storage: _userPool.storage);
-      
       return await _cognitoUser.confirmRegistration(confirmationCode);
    }
    
-   /// Resend confirmation code to user's email
+   // Resend confirmation code to user's email
    Future<void> resendConfirmationCode(String name) async {
       _cognitoUser = CognitoUser(name, _userPool, storage: _userPool.storage);
       await _cognitoUser.resendConfirmationCode();
    }
    
-   /// Check if user's current session is valid
+   // Check if user's current session is valid
    Future<bool> checkAuthenticated() async {
       if (_cognitoUser == null || _session == null) {
          return false;
@@ -191,12 +181,8 @@ class UserService {
       return _session.isValid();
    }
    
-   // XXX NOTE this original code decided email was username... bah.
-   // Sign upuser
    Future<User> signUp(String email, String password, String name) async {
       CognitoUserPoolData data;
-      // final userAttributes = [ AttributeArg(name: 'name', value: name) ];
-      // data = await _userPool.signUp(email, password, userAttributes: userAttributes);
       final userAttributes = [ AttributeArg(name: 'email', value: email )];
       data = await _userPool.signUp(name, password, userAttributes: userAttributes);
       
@@ -220,3 +206,66 @@ class UserService {
       return user;
    }
 }
+
+// XXX Note - several of these need more client-friendly toasts
+// XXX App out of date.. sensible here?
+cognitoSignupWrapper(context, fn) {
+   wrapper() async {
+      try {
+         await fn();
+      } on CognitoClientException catch (e) {
+         bool validConfig = await checkValidConfig( context );
+         if( !validConfig ) {
+            showToast( "Your app is out of date.  Please update CodeEquity and try again." );
+         }
+         String toasty = "";
+         switch( e.code ) {
+         case 'UsernameExistsException' :  { toasty = "Username already exists, please choose another."; }
+            break;
+         case 'InvalidPasswordException': { toasty = "Password needs 8 chars, some Caps, and some not in the alphabet."; }
+            break;
+         case 'InvalidParameterException':
+            {
+               toasty = "Invalid parameter.";
+               if( e.toString().contains("\'password\' failed") )
+               {
+                  toasty = "Password needs 8 chars, some Caps, and some not in the alphabet."; 
+               }
+               else if(e.toString().contains("Invalid email address") )
+               {
+                  toasty = "Email address is broken.";
+               }
+               else if( e.toString().contains("User does not exist") )
+               {
+                  toasty = "Username or password is incorrect";
+               }
+            }
+            break;
+         case 'CodeMismatchException': { toasty = "Code mismatch exception."; }
+            break;
+         case 'NotAuthorizedException': { toasty = "Username or password is incorrect."; }
+            break;
+         case 'UserNotFoundException': { toasty = "User not found."; }
+            break;
+         case 'ResourceNotFoundException': { toasty = "Resource not found."; }
+            break;
+         default:                          { toasty = "Uh oh, brain fart!"; }
+            break;
+         }
+         showToast( toasty );
+         print( e.code.toString() );
+         print( e.message );
+      } catch(e, stacktrace) {
+         bool validConfig = await checkValidConfig( context );
+         if( !validConfig ) {
+            showToast( "Your app is out of date.  Please update CodeEquity and try again." );
+         }
+         print(e);
+         print(stacktrace);
+         showToast( e.toString() );
+      }           
+      // finally {}
+   }
+   return wrapper;
+}
+

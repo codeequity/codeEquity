@@ -37,6 +37,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
   Future<void> doCogInit() async {
      print( "... Cognito doload in init state" );
      try {
+        bool loaded = false;
         await getCognitoPoolDetails();
         state.cogUserPool = CognitoUserPool( state.cogPoolId, state.cogAppClientId);
         print("... ... have user pool" );
@@ -48,7 +49,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
         await state.cogUserService.init();
         print("... user service init done." );
 
-        // XXX When is the rest of this successfull?  never?
+        // XXX Inactive.  Useful for cookies?
         bool isAuthenticated = await state.cogUserService.checkAuthenticated();
         print( "... auth done." + isAuthenticated.toString() );
         if( isAuthenticated ) {
@@ -56,26 +57,15 @@ class _AppStateContainerState extends State<AppStateContainer> {
            print( "Got User." );
         }
 
-        // XXX When is the rest of this successfull?  never?
-        // XXX old callback
-        // XXX flutter_cognito callback mechanism caused a lot of headaches with multiple uncontrolled calls - 
-        //     lots of state.loading etc to control for it.  May be able to get rid of most of all of that state.
+        // XXX Inactive.  Useful for cookies?
         // always false at state, until signup
         if( ! state.newUser ) {
-           bool success = await finalizeUser( state.newUser );
-           if( success ) {
-              state.loading = false;
-              print ("CALLBACK, loaded TRUE" );
-           }
+           loaded = await finalizeUser( state.newUser );
         }
 
         setState(() {
-              state.loaded = ! state.loading;   // XXX should now be able to pare down to 1
+              state.loaded = loaded;
               state.authRetryCount += 1;
-              if( state.loading ) {
-                 state.idToken = null;
-                 state.initAppData();
-              }
               print( "container callback setstate done, retries " + state.authRetryCount.toString() );
            });
         
@@ -84,9 +74,6 @@ class _AppStateContainerState extends State<AppStateContainer> {
         print(trace);
         
         if (!mounted) return;
-        setState(() {
-              state.returnValue = e;
-           });
         
         return;
      }
@@ -99,11 +86,8 @@ class _AppStateContainerState extends State<AppStateContainer> {
         });
   }
 
-  // XXX gatOverride depended on callback.  may need to setstate on override
-  // XXX may be able to kill gatOverride in state
   Future<void> getAuthTokens( override ) async {
      print( "GAT, with " + state.idToken );
-     state.gatOverride = override;
      if( state.accessToken == "" || state.idToken == "" || override == true) {
 
         // May not need accessToken, or refreshToken
@@ -149,7 +133,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
         await getAPIBasePath();
         await getAuthTokens( false );
         if( !newUser ) {
-           await initMyProjects( context, this );        
+           await reloadMyProjects( context, this );        
         }
         return true;
      }
@@ -186,26 +170,6 @@ class _AppStateContainerState extends State<AppStateContainer> {
      state.attributeController.dispose();
      state.confirmationCodeController.dispose();
      super.dispose();
-  }
-
-  // XXX Cog errors will look like this
-  // Cognito button-press wrapper
-  onPressWrapper(fn) {
-     wrapper() async {
-        String value;
-        try {
-           value = (await fn()).toString();
-        } catch (e, stacktrace) {
-           print(e);
-           print(stacktrace);
-           setState(() => value = e.toString());
-        }
-        // finally { }
-        
-        setState(() => state.returnValue = value);
-     }
-     
-     return wrapper;
   }
 
   
