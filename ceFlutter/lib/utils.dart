@@ -25,7 +25,8 @@ void notYetImplemented(BuildContext context) {
 
 
 // This package is growing - positioning will improve over time
-void showToast(BuildContext context, msg) {
+void showToast(String msg) {
+   print( "Toasting.." );
    Fluttertoast.showToast(
       msg: msg,
       toastLength: Toast.LENGTH_LONG,    

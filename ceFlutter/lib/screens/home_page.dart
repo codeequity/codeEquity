@@ -94,9 +94,8 @@ class _CEHomeState extends State<CEHomePage> {
 
       final getStuffButton = makeActionButton( appState, "Get Stuff", (() async {
                print( "Git some!" );
-               showToast( context, "Gitting some!" );               
-               // XXX bad name.. reload is better
-               await initMyProjects( context, container );
+               showToast( "Gitting some!" );               
+               await reloadMyProjects( context, container );
                setState(() {
                      appState.peqUpdated = true;
                   });

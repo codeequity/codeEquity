@@ -10,14 +10,12 @@ import 'package:ceFlutter/models/PEQ.dart';
 
 
 class AppState {
-   bool isLoading;
 
    // Credentials
    String accessToken;
    String idToken;
    String refreshToken;
    int authRetryCount;
-   var returnValue;       // catch callback return values from buttonpress calls to cognito funcs
    bool cogInitDone;      // main: cog init is async.  Timer refires until this is true
    String cogPoolId;
    String cogAppClientId;
@@ -29,7 +27,6 @@ class AppState {
    User cogUser;
 
    bool newUser;          // signup: newuser creating a login has some special requirements during setup
-   bool gatOverride;      // prevent cognito callback from double-firing
    
    String apiBasePath;                         // where to find lambda interface to aws
    TextEditingController usernameController;   
@@ -41,7 +38,6 @@ class AppState {
 
    // App logic   
    bool loaded;                           // control expensive aspects of state initialization
-   bool loading;                    
    String userId;
 
    List<PEQ> myPEQs;
@@ -49,7 +45,6 @@ class AppState {
 
    initAppData() {
       loaded = false;
-      loading = false;
 
       userId = "";
       myPEQs = null;
@@ -57,7 +52,6 @@ class AppState {
    }
 
    init() {
-      isLoading = true;
       screenHeight = -1;
       screenWidth = -1;
       
@@ -74,7 +68,6 @@ class AppState {
       cogUserPool = null;
       cogUserService = null;
       cogUser = null;
-      gatOverride = false;
       newUser = false;
       
       apiBasePath = "";
@@ -96,6 +89,6 @@ class AppState {
 
   @override
   String toString() {
-     return 'AppState{isLoading: $isLoading}';
+     return 'AppState';
   }
 }

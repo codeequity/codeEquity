@@ -70,7 +70,7 @@ class _CESplashPageState extends State<CESplashPage> {
      print( "In timer, attempt " + attempts.toString() + " next duration " + duration.toString() );
 
      if( attempts > 15 ) {
-        showToast( context, "AWS token initialization is slow.  Is your wifi on?" );
+        showToast( "AWS token initialization is slow.  Is your wifi on?" );
         navigateUser(); 
      } else { 
         Timer(Duration(seconds: duration), () {

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-// import 'package:flutter_cognito_plugin/flutter_cognito_plugin.dart';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:http/http.dart' as http;
 
@@ -13,33 +12,38 @@ import 'package:ceFlutter/screens/launch_page.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
 
+
+Future<void> logoutWait( context, container, appState ) async {
+   final wrapper = (() async {
+         try {
+            appState.cogUser = await appState.cogUserService.signOut();
+            
+            // Rebuilding page below, don't need to setState (which isn't available here). 
+            appState.usernameController.clear();
+            appState.passwordController.clear();
+            appState.attributeController.clear();
+            appState.confirmationCodeController.clear();
+         } catch(e, stacktrace) {
+            print(e);
+            print(stacktrace);
+            showToast( e.toString() );
+         }           
+
+      });
+   wrapper();
+}      
+
+
 void logout( context, container, appState ) async {
    final wrapper = (() async {
-         appState.cogUser = await appState.cogUserService.signOut();
-         
-         // Rebuilding page below, don't need to setState (which isn't available here). 
-         appState.usernameController.clear();
-         appState.passwordController.clear();
-         appState.attributeController.clear();
-         appState.confirmationCodeController.clear();
+
+         await logoutWait(context, container, appState );
+            
          Navigator.pushAndRemoveUntil(
             context, 
             MaterialPageRoute(builder: (context) => CELaunchPage()),
             ModalRoute.withName("CESplashPage")
             );
-      });
-   wrapper();
-}      
-
-Future<void> logoutWait( context, container, appState ) async {
-   final wrapper = container.onPressWrapper(() async {
-         //await Cognito.signOut();
-         
-         // Rebuilding page below, don't need to setState (which isn't available here). 
-         appState.usernameController.clear();
-         appState.passwordController.clear();
-         appState.attributeController.clear();
-         appState.confirmationCodeController.clear();
       });
    wrapper();
 }      
@@ -60,13 +64,13 @@ bool checkReauth( context, container ) {
    print( "" );
    print( "" );
    print( "" );
-   showToast( context, "Cloud tokens expired, reauthorizing.." );
+   showToast( "Cloud tokens expired, reauthorizing.." );
    
    appState.authRetryCount += 1; 
    if( appState.authRetryCount > 100 ) {
       print( "Too many reauthorizations, please sign in again" );
       logout( context, container, appState );
-      showToast( context, "Reauthorizing failed - your cloud authorization has expired.  Please re-login." ); 
+      showToast( "Reauthorizing failed - your cloud authorization has expired.  Please re-login." ); 
       return false;
    }
    else { return true; }
@@ -132,9 +136,8 @@ Future<bool> checkFailure( response, shortName, context, container ) async {
 
 
 
-// XXX placeholder
 // Called on signin
-Future<void> initMyProjects( context, container ) async {
+Future<void> reloadMyProjects( context, container ) async {
    print( "initMyProjects" );
    final appState  = container.state;
 

@@ -49,56 +49,19 @@ class _CESignupState extends State<CESignupPage> {
 
       String message = "";  
 
-      // XXX move these exceptions out!
-      // XXX onPressWrapper?  nahhh
-      final signupButton = makeActionButton( appState, "Send confirmation code", (() async {
-               // final email = {'email' : appState.attributeController.text };
+
+      final signupButton = makeActionButton( appState, "Send confirmation code", cognitoSignupWrapper(context, () async {
                final email = appState.attributeController.text;
-               try{
-                  // await Cognito.signUp( appState.usernameController.text, appState.passwordController.text, email );
-                  await appState.cogUserService.signUp( email, appState.passwordController.text, appState.usernameController.text );
-                  showToast( context, "Code sent to your email");
-                  print( "Code sent to email" );
-                  setState(() { showCC = true; });
-               }  on CognitoClientException catch (e) {
-                  if (e.code == 'UsernameExistsException' ||
-                      e.code == 'InvalidParameterException' ||
-                      e.code == 'ResourceNotFoundException') {
-                     message = e.message;
-                  } else {
-                     message = 'Unknown client error occurred';
-                  }
-               } catch(e) {  // XXX DUPS
-                  if( e.toString().contains("\'password\' failed") ) {
-                     showToast( context, "Password needs 8 chars, some Caps, and some not in the alphabet." );
-                  } else if(e.toString().contains("Invalid email address") ) {
-                     showToast( context, "Email address is broken." );
-                  } else {
-                     showToast( context, e.toString() );
-                  }}
-               print( message );
+               await appState.cogUserService.signUp( email, appState.passwordController.text, appState.usernameController.text );
+               showToast( "Code sent to your email");
+               print( "Code sent to email" );
+               setState(() { showCC = true; });
             }));
 
-      final confirmSignupButton = makeActionButton( appState, "Confirm signup, and Log in", (() async {
+      final confirmSignupButton = makeActionButton( appState, "Confirm signup, and Log in", cognitoSignupWrapper(context, () async {
                bool acctConfirmed = false;
-               try {
-                  acctConfirmed = await appState.cogUserService.confirmAccount( appState.usernameController.text,
+               acctConfirmed = await appState.cogUserService.confirmAccount( appState.usernameController.text,
                                                                                appState.confirmationCodeController.text );
-               } on CognitoClientException catch (e) {
-                  if (e.code == 'InvalidParameterException' ||
-                      e.code == 'CodeMismatchException' ||
-                      e.code == 'NotAuthorizedException' ||
-                      e.code == 'UserNotFoundException' ||
-                      e.code == 'ResourceNotFoundException') {
-                     message = e.message;
-                  } else {
-                     message = 'Unknown client error occurred';
-                  }
-               } catch (e) {
-                  message =  'Unknown error occurred';
-               }
-               print( message );
-
                if( acctConfirmed ) { print( "Account confirmed." ); }
                else {
                   print( "Account confirmation failure.  Bad confirmation code?" );
@@ -106,32 +69,17 @@ class _CESignupState extends State<CESignupPage> {
                }
 
                appState.newUser = true;
-               try {
-                  appState.cogUser = await appState.cogUserService.login( appState.usernameController.text, appState.passwordController.text );
-               } on CognitoClientException catch (e) {
-                  if (e.code == 'InvalidParameterException' ||
-                      e.code == 'NotAuthorizedException' ||
-                      e.code == 'UserNotFoundException' ||
-                      e.code == 'ResourceNotFoundException') {
-                     message = e.message;
-                  } else {
-                     message = 'An unknown client error occured';
-                  }
-               } catch (e) {
-                  message = 'An unknown error occurred';
-               }
-               print(message);
+               appState.cogUser = await appState.cogUserService.login( appState.usernameController.text, appState.passwordController.text );
                print( "Login complete." );
 
                if( !appState.cogUser.confirmed ) {
-                  showToast( context, "Signin failed.  Incorrect confirmation code?" );
+                  showToast( "Signin failed.  Incorrect confirmation code?" );
                   return;
                }
                bool success = await container.finalizeUser( true );
 
                if( success ) {
-                  // XXX do stuff
-                  await initMyProjects( context, container );
+                  await reloadMyProjects( context, container );
                   appState.newUser = false;
                   appState.loaded = true;
                   
