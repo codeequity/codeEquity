@@ -38,6 +38,14 @@ Resources:
         Name: PersonId
         Type: String
 
+  GithubTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: CEGithub
+      PrimaryKey:
+        Name: GithubId
+        Type: String
+
   ProjectTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
@@ -138,6 +146,8 @@ Resources:
           TableName: !Ref ProjectTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PersonTable
+       - DynamoDBCrudPolicy:
+          TableName: !Ref GithubTable
        - DynamoDBCrudPolicy:
           TableName: !Ref AgreementTable 
        - DynamoDBCrudPolicy:

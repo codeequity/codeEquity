@@ -11,6 +11,7 @@ import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/screens/launch_page.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
+import 'package:ceFlutter/models/person.dart';
 
 
 Future<void> logoutWait( context, container, appState ) async {
@@ -76,7 +77,7 @@ bool checkReauth( context, container ) {
    else { return true; }
 }
 
-// XXX Dup now?
+// XXX useful?
 Future<bool> checkValidConfig( context ) async {
    print( "Validating configuration" );
 
@@ -136,16 +137,6 @@ Future<bool> checkFailure( response, shortName, context, container ) async {
 
 
 
-// Called on signin
-Future<void> reloadMyProjects( context, container ) async {
-   print( "initMyProjects" );
-   final appState  = container.state;
-
-   // NOTE personID not yet set
-   appState.myPEQs = await fetchPEQs(  context, container, '{ "Endpoint": "GetPEQ" }' );
-
-}
-
 Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    String shortName = "fetchPEQ";
    final response = await postIt( shortName, postData, container );
@@ -158,4 +149,33 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPEQs( context, container, postData ); }
    }
+}
+
+Future<bool> putPerson( context, container, postData ) async {
+   String shortName = "putPerson";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      // print( response.body.toString() );         
+      return true;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await putPerson( context, container, postData ); }
+   }
+}
+
+
+
+// Called on signin
+Future<void> reloadMyProjects( context, container ) async {
+   print( "reloadMyProjects" );
+   final appState  = container.state;
+
+   assert( appState.userId != "" );
+
+   String uid   = appState.userId;
+   appState.myRepos = await fetchGHRepos( context, container, '{ "Endpoint": "GetGHR", "PersonId":, "$uid"  }' );
+   
+   appState.myPEQs = await fetchPEQs(  context, container, '{ "Endpoint": "GetPEQ" }' );
+
 }
