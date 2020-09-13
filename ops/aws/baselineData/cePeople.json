@@ -15,6 +15,9 @@
           "UserName": {
             "S": "ceServer"
           }
+          "Email": {
+            "S": "rmusick+ceServer@codeequity.net"
+          }
         }
       }
     }

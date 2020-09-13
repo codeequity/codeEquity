@@ -7,8 +7,11 @@ import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/utils_load.dart';
 import 'package:ceFlutter/app_state_container.dart';
-import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/cognitoUserService.dart';
+
+import 'package:ceFlutter/screens/home_page.dart';
+
+import 'package:ceFlutter/models/person.dart';
 
 class CESignupPage extends StatefulWidget {
   CESignupPage({Key key}) : super(key: key);
@@ -79,47 +82,25 @@ class _CESignupState extends State<CESignupPage> {
                bool success = await container.finalizeUser( true );
 
                if( success ) {
-                  await reloadMyProjects( context, container );
+
+                  String pid = randomAlpha(10);
+                  appState.userId = pid;
+                  
+                  Person user = new Person( id: pid, firstName: "Marion", lastName: "Star", userName: appState.usernameController.text,
+                                            email: appState.attributeController.text, locked: false, imagePng: null, image: null );
+                  
+                  String newUser = json.encode( user );
+                  String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $newUser }';
+                  await putPerson( context, container, ppostData );
+                  
                   appState.newUser = false;
+                  await reloadMyProjects( context, container );
                   appState.loaded = true;
                   
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
                   Navigator.push( context, newPage );
                }
 
-               // XXX
-               // Person and private lib must exist before signin
-               /*
-               String pid = randomAlpha(10);
-               String editLibId = randomAlpha(10);
-               appState.userId = pid;
-
-               List<String> meme = new List<String>();
-               meme.add( appState.userId );
-               Library editLibrary = new Library( id: editLibId, name: "My Books", private: true, members: meme, imagePng: null, image: null,
-                                                  prospect: false );
-
-               String newLib = json.encode( editLibrary );
-               String lpostData = '{ "Endpoint": "PutLib", "NewLib": "$newLib" }';
-               await putLib( context, container, lpostData );
-
-               
-               Person user = new Person( id: pid, firstName: "Marion", lastName: "Star", userName: appState.usernameController.text,
-                                         email: appState.attributeController.text, locked: false, imagePng: null, image: null );
-
-               String newUser = json.encode( user );
-               String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": "$newUser" }';
-               await putPerson( context, container, ppostData );
-
-               appState.newUser = false;
-               appState.loading = true;
-               await initMyLibraries( context, container );
-               appState.loading = false;
-               appState.loaded = true;
-               
-               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
-               Navigator.push( context, newPage );
-               */
             }));      
 
       return Scaffold(

@@ -33,6 +33,7 @@ exports.handler = (event, context, callback) => {
 
     console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetPeople")      { resultPromise = getPeople( username ); }
+    else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( username, rb.Title, rb.PeqAmount ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( username ); }
     else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
@@ -133,6 +134,26 @@ async function getPeople( username ) {
 	console.log( "Found PersonId ", persons.Items[0].PersonId );
 	return success( persons.Items[0].PersonId );
     });
+}
+
+async function putPerson( newPerson ) {
+    // console.log('Put Person!', newPerson.firstName );
+
+    const paramsPP = {
+	TableName: 'CEPeople',
+	Item: {
+	    "PersonId": newPerson.id,
+	    "First":    newPerson.firstName,
+	    "Last":     newPerson.lastName,
+	    "UserName": newPerson.userName,
+	    "Email":    newPerson.email,
+	    "Locked":   newPerson.locked,
+	    "ImagePng": newPerson.imagePng            
+	}
+    };
+    
+    let personPromise = bsdb.put( paramsPP ).promise();
+    return personPromise.then(() => success( true ));
 }
 
 async function recPeq( username, title, peqAmount ) {
