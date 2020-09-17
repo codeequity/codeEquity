@@ -43,7 +43,7 @@ Resources:
     Properties:
       TableName: CEGithub
       PrimaryKey:
-        Name: GithubId
+        Name: GHAccountId
         Type: String
 
   ProjectTable:

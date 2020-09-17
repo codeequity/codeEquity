@@ -20,11 +20,14 @@ class _CEHomeState extends State<CEHomePage> {
 
    var container;
    AppState appState;
+   bool addGHAcct;
    
    @override
    void initState() {
       print( "HOMEPAGE INIT" );
       super.initState();
+
+      addGHAcct = false;
    }
 
    @override
@@ -47,11 +50,16 @@ class _CEHomeState extends State<CEHomePage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
 
+      TextEditingController pat = TextEditingController();
+
+      final ghPersonalAccessToken = makeInputField( context, "Github Personal Access Token", false, pat );
+
       // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.
       SystemChrome.setPreferredOrientations([ DeviceOrientation.portraitUp, DeviceOrientation.portraitDown ]);
 
 
 
+      // WIP
       Widget _makeStuffList( stuff ) {
          final textWidth = appState.screenWidth * .2;
          
@@ -59,22 +67,22 @@ class _CEHomeState extends State<CEHomePage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
-               makeTitleText( stuff.title, textWidth, false, 1 ),
-               makeTitleText( stuff.amount, textWidth, false, 1 ),
-               makeTitleText( stuff.userId, textWidth, false, 1 ),
+               makeTitleText( stuff.ghUserName, textWidth, false, 1 ),
+               makeTitleText( stuff.repos[0], textWidth, false, 1 ),
+               makeTitleText( "mo mo mo", textWidth, false, 1 ),
                ]);
       }
       
-      Widget _listView( ) {
-         List<Widget> peqList = [];
+      Widget _showGHAccts( ) {
+         List<Widget> acctList = [];
 
-         if( appState.myPEQs != null || appState.peqUpdated ) {
-            for( final stuff in appState.myPEQs ) {
-               peqList.add( _makeStuffList( stuff ));
-               peqList.add( _makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));
+         if( appState.myGHAccounts != null || appState.ghUpdated ) {
+            for( final stuff in appState.myGHAccounts ) {
+               acctList.add( _makeStuffList( stuff ));
+               acctList.add( _makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));
             }
 
-            appState.peqUpdated = false;
+            appState.ghUpdated = false;
             
             return ConstrainedBox( 
                constraints: new BoxConstraints(
@@ -83,52 +91,109 @@ class _CEHomeState extends State<CEHomePage> {
                   ),
                child: ListView(
                   scrollDirection: Axis.vertical,
-                  children: peqList
+                  children: acctList
                   ));
          }
-         else {
-            return CircularProgressIndicator();
-         }
-      }
-      
-
-      final getStuffButton = makeActionButton( appState, "Get Stuff", (() async {
-               print( "Git some!" );
-               showToast( "Gitting some!" );               
-               await reloadMyProjects( context, container );
-               setState(() {
-                     appState.peqUpdated = true;
-                  });
-               
-            }));
-
-
-      Widget _makeBody() {
-         if( appState.loaded ) {
-            
-            return Center(
-               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,    // required for listView child
-                  children: <Widget>[
-                     SizedBox( height: 5.0),
-                     getStuffButton,
-                     SizedBox( height: 5.0),
-                     _listView()
-                     ]));
-         } else {
-            print( "AppState not ? Loaded" );
+         else { // XXX just a container
             return CircularProgressIndicator();
          }
       }
 
-      print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
       
-      return Scaffold(
-         appBar: makeTopAppBar( context, "Home" ),
-         //bottomNavigationBar: makeBotAppBar( context, "Home" ),
-         body: _makeBody()
-         );
+     Widget _ghAssociateButton() {
+        return makeActionButtonSmall(
+           appState,
+           "Enable Github access",
+           () async
+           {
+              // String uname = appState.usernameController.text;
+              // String pword = appState.passwordController.text;
+              // associateGithub( context, container, '{ "Endpoint": "assocGH", "uname": "$uname", "pword": "$pword" }' );
+              associateGithub( container, pat.text );
+           });
+     }
+
+     Widget _addGHAcct() {
+        return makeActionButtonSmall(
+           appState,
+           "Add Github account",
+           () async
+           {
+              setState(() {addGHAcct = true; });
+           });
+     }
+
+     Widget _makeGHZone() {
+        final textWidth = appState.screenWidth * .6;
+        String ghExplain = "CodeEquity will authenticate your account with Github one time only.";
+        ghExplain       += "  You can undo this association at any time.  Click here to generate PAT.";
+
+        if( addGHAcct ) {
+           return Center(
+              child: Row(
+                 crossAxisAlignment: CrossAxisAlignment.center,
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: <Widget>[
+                    makeTitleText( ghExplain, textWidth, true, 3 ),
+                    Expanded( 
+                       child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                             ghPersonalAccessToken,
+                             _ghAssociateButton()
+                             ])
+                       )
+                    ])
+              );
+        }
+        else {
+           return Center(
+              child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 mainAxisAlignment: MainAxisAlignment.start,
+                 mainAxisSize: MainAxisSize.min,    // required for listView child
+                 children: <Widget>[
+                    _showGHAccts(),
+                    Row(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       mainAxisAlignment: MainAxisAlignment.start,
+                       mainAxisSize: MainAxisSize.min, 
+                       children: <Widget>[
+                          makeTitleText( "Add your githubness here", textWidth, false, 1 ),
+                          _addGHAcct()
+                          ])
+                    ])
+              );
+        }
+
+     }
+     
+
+     Widget _makeBody() {
+        if( appState.loaded ) {
+           
+           return Center(
+              child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 mainAxisAlignment: MainAxisAlignment.start,
+                 mainAxisSize: MainAxisSize.min,    // required for listView child
+                 children: <Widget>[
+                    SizedBox( height: 5.0),
+                    _makeGHZone()
+                    ]));
+        } else {
+           print( "AppState not ? Loaded" );
+           return CircularProgressIndicator();
+        }
+     }
+     
+     print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
+     
+     return Scaffold(
+        appBar: makeTopAppBar( context, "Home" ),
+        //bottomNavigationBar: makeBotAppBar( context, "Home" ),
+        body: _makeBody()
+        );
    }
 }
