@@ -2,31 +2,34 @@ import 'package:flutter/material.dart';
 
 class GHAccount {
    final String id;
-   String       ghUserName;
    String       ceOwnerId;
-   List<String> repos;       // note repos may be ghUserName/repo or <someOtherUser>/repo
+   String       ghLogin;
+   List<String> repos;       // note repos may be ghLogin/repo or <someOtherUser>/repo
 
-   GHAccount({this.id, this.ghUserName, this.ceOwnerId, this.repos});
+   GHAccount({this.id, this.ceOwnerId, this.ghLogin, this.repos});
    
    dynamic toJson() {
-      return { 'id': id, 'ghUserName': ghUserName, 'ceOwnerId': ceOwnerId, 'repos': repos };
+      return { 'id': id, 'ceOwnerId': ceOwnerId, 'ghLogin': ghLogin, 'repos': repos };
    }
 
    factory GHAccount.fromJson(Map<String, dynamic> json) {
 
+      print( "in fromJson" );
+      var dynamicRepos = json['Repos'];
+      
       return GHAccount(
-         id:          json['GHAccountId'],   // XXX redundant fix here, utils, saminfras
-         ghUserName:  json['GHUserName'],
+         id:          json['GHAccountId'], 
          ceOwnerId:   json['CEOwnerId'],
-         repos:       json['Repos']
+         ghLogin:     json['GHLogin'],
+         repos:       new List<String>.from(dynamicRepos)
          );
    }
 
    String toString() {
-      ghUserName = ghUserName ?? "";
+      ghLogin = ghLogin ?? "";
       repos      = repos ?? [];
 
-      String res = "\nGH user : " + ghUserName + " CE owner id: " + ceOwnerId + " repos: ";
+      String res = "\nGH user : " + ghLogin + " CE owner id: " + ceOwnerId + " repos: ";
       repos.forEach((repo) => res += " " + repo );
 
       return res;

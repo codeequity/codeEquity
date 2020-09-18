@@ -36,8 +36,8 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( username, rb.Title, rb.PeqAmount ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( username ); }
-    else if( endPoint == "GetGHR")         { resultPromise = getGHR( rb.PersonId ); }
-    else if( endPoint == "PutGHR")         { resultPromise = putGHR( rb.newGHAcct ); }
+    else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
+    else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
     else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood", context.awsRequestId));
@@ -56,6 +56,7 @@ exports.handler = (event, context, callback) => {
 
 
 
+// Note: .Count and .Items do not show up here, as they do in bsdb.scan
 function paginatedScan( params ) {
 
     return new Promise((resolve, reject) => {
@@ -170,8 +171,7 @@ async function getPeq( username ) {
     });
 }
 
-// GHAccountId, GHUserName, CEOwnerId, Repos
-async function getGHR( uid ) {
+async function getGHA( uid ) {
     const paramsP = {
         TableName: 'CEGithub',
         FilterExpression: 'CEOwnerId = :ceid',
@@ -184,8 +184,8 @@ async function getGHR( uid ) {
     return ghaPromise.then((ghas) => {
 	console.log( "Found GH account ", ghas );
 
-	if( ghas.Count >= 1 ) {
-	    return success( ghas.Items );
+	if( Array.isArray(ghas) && ghas.length ) {
+	    return success( ghas );
 	} else
 	{
 	    return {
@@ -197,15 +197,13 @@ async function getGHR( uid ) {
     });
 }
 
-// XXX check for 2+ gh per ce case
-// GHAccountId, GHUserName, CEOwnerId, Repos
-async function putGHR( newGHAcct ) {
+async function putGHA( newGHAcct ) {
     const paramsP = {
         TableName: 'CEGithub',
 	Item: {
 	    "GHAccountId": newGHAcct.id, 
-	    "GHUserName":  newGHAcct.ghUserName,
 	    "CEOwnerId":   newGHAcct.ceOwnerId,
+	    "GHLogin":     newGHAcct.ghLogin,
 	    "Repos":       newGHAcct.repos
 	}
     };

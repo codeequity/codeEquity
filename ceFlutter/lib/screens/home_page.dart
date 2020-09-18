@@ -67,7 +67,7 @@ class _CEHomeState extends State<CEHomePage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
-               makeTitleText( stuff.ghUserName, textWidth, false, 1 ),
+               makeTitleText( stuff.ghLogin, textWidth, false, 1 ),
                makeTitleText( stuff.repos[0], textWidth, false, 1 ),
                makeTitleText( "mo mo mo", textWidth, false, 1 ),
                ]);
@@ -106,10 +106,11 @@ class _CEHomeState extends State<CEHomePage> {
            "Enable Github access",
            () async
            {
-              // String uname = appState.usernameController.text;
-              // String pword = appState.passwordController.text;
-              // associateGithub( context, container, '{ "Endpoint": "assocGH", "uname": "$uname", "pword": "$pword" }' );
-              associateGithub( container, pat.text );
+              bool associated = await associateGithub( context, container, pat.text );
+              if( associated ) {
+                 setState(() { addGHAcct = false; });                 
+              }
+              
            });
      }
 

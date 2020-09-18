@@ -3,8 +3,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:random_string/random_string.dart';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:http/http.dart' as http;
+
+// This package is currently used only for authorization.  Github has deprecated username/passwd auth, so
+// authentication is done by personal access token.  The user model and repo service in this package are too
+// narrowly limited - not allowing access to user subscriptions, just user-owned repos.  So, auth-only.
+// https://github.com/SpinlockLabs/github.dart/blob/master/lib/src/common/repos_service.dart
 import 'package:github/github.dart';
 
 import 'package:ceFlutter/utils.dart';
@@ -120,7 +126,18 @@ Future<http.Response> localPost( String shortName, postData ) async {
    return response;
 }
 
+Future<http.Response> ghGet( url ) async {
 
+   final response =
+      await http.get(
+         url,
+         headers: {HttpHeaders.contentTypeHeader: 'application/json' },
+         );
+
+   return response;
+}
+
+// XXX awsPost
 Future<http.Response> postIt( String shortName, postData, container ) async {
    print( shortName );
    final appState  = container.state;
@@ -186,29 +203,29 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    }
 }
 
-Future<List<GHAccount>> fetchGHRepos( context, container, postData ) async {
-   String shortName = "GetGHR";
+Future<List<GHAccount>> fetchGHAcct( context, container, postData ) async {
+   String shortName = "GetGHA";
    final response = await postIt( shortName, postData, container );
    
    if (response.statusCode == 201) {
-      print( "FetchGHRepos: " );
+      print( "FetchGHAcct: " );
       Iterable gha = json.decode(utf8.decode(response.bodyBytes));
       List<GHAccount> ghAccounts = gha.map((acct) => GHAccount.fromJson(acct)).toList();
       assert( ghAccounts.length > 0);
-      print( ghAccounts[0].toString() );
       return ghAccounts;
    } else if( response.statusCode == 204) {
       print( "Fetch: no associated accounts found" );
-      return null;
+      // Dangerous!  overwrites object type of receiver
+      // return null;
+      return [];
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchGHRepos( context, container, postData ); }
+      if( didReauth ) { return await fetchGHAcct( context, container, postData ); }
    }
 }
 
-// XXX allow more than 1 gh account per user
-Future<bool> putGHRepos( context, container, postData ) async {
-   String shortName = "PutGHR";
+Future<bool> putGHAcct( context, container, postData ) async {
+   String shortName = "PutGHA";
    final response = await postIt( shortName, postData, container );
    
    if (response.statusCode == 201) {
@@ -216,7 +233,7 @@ Future<bool> putGHRepos( context, container, postData ) async {
       return true;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await putGHRepos( context, container, postData ); }
+      if( didReauth ) { return await putGHAcct( context, container, postData ); }
    }
 }
 
@@ -247,48 +264,71 @@ Future<void> reloadMyProjects( context, container ) async {
    assert( appState.userId != "" );
    String uid   = appState.userId;
 
-   appState.myGHAccounts = await fetchGHRepos( context, container, '{ "Endpoint": "GetGHR", "PersonId": "$uid"  }' );
+   appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "$uid"  }' );
 
-   
    appState.myPEQs = await fetchPEQs(  context, container, '{ "Endpoint": "GetPEQ" }' );
-
 }
 
 
-// Attempt to limit access patterns as:  dyanmo from dart/user, and github from js/ceServer
-// 1 crossover for authorization
+
+// XXX Consider splitting utils_load to utils_async and githubUtils
+//     Attempt to limit access patterns as:  dyanmo from dart/user, and github from js/ceServer
+//     1 crossover for authorization
+
+Future<List<String>> getSubscriptions( container, subUrl ) async {
+   print( "Getting subs at " + subUrl );
+   final response = await ghGet( subUrl );
+   Iterable subs = json.decode(utf8.decode(response.bodyBytes));
+   List<String> fullNames = [];
+   subs.forEach((sub) => fullNames.add( sub['full_name'] ) );
+   
+   return fullNames;
+}
+
 
 // XXX NOTE: PAT  create a token with a scope specific to codeEquity.
 //     https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token
 //     github has deprecated login/passwd auth.  So, pat.  just need top 4 scopes under repo.
 
-Future<bool> associateGithub( container, personalAccessToken ) async {
+Future<bool> associateGithub( context, container, personalAccessToken ) async {
 
-   // Deprecated!!  Bah.
-   // var github = await GitHub(auth: Authentication.basic( uname, pword));
-
+   final appState  = container.state;
    var github = await GitHub(auth: Authentication.withToken( personalAccessToken ));   
 
-   bool validAuth = false;
+   // NOTE id, node_id are available if needed
+   String patLogin = "";
+   List<String> repos = null;
    await github.users.getCurrentUser().then((final CurrentUser user) {
-         print( "Should be good?" );
-         validAuth = true;
+         patLogin = user.login;
       }).catchError((e) {
             print( "Could not validate github acct." + e.toString() );
             showToast( "Github validation failed.  Please try again." );
          });
 
-   if( validAuth ) {
-      print( "Goot, Got Auth'd" );
-      // get username, repos
-      // write to dynamo
-      // get flutterRouter github repos
+   bool newAssoc = false;
+   if( patLogin != "" ) {
+      print( "Goot, Got Auth'd.  " + patLogin );
+      
+      bool newLogin = true;
+      appState.myGHAccounts.forEach((acct) => newLogin = newLogin && ( acct.ghLogin != patLogin ) );
 
-      // XXX nope, nope
-      // Inform API that there's stuff to print out
-      // setState(() { addGHAcct = false; });
+      if( newLogin ) {
+         newAssoc = true;
+         String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
+         repos = await getSubscriptions( container, subUrl );
+
+         String pid = randomAlpha(10);
+         GHAccount myGHAcct = new GHAccount( id: pid, ceOwnerId: appState.userId, ghLogin: patLogin, repos: repos );
+         
+         appState.myGHAccounts.add( myGHAcct );
+         
+         String newGHA = json.encode( myGHAcct );
+         String postData = '{ "Endpoint": "PutGHA", "NewGHA": $newGHA }';
+         await putGHAcct( context, container, postData );
+
+      }
    }
-   return validAuth;
+   return newAssoc;
 }
 
 

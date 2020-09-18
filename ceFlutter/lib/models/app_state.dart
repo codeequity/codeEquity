@@ -51,10 +51,10 @@ class AppState {
       loaded = false;
 
       userId = "";
-      myPEQs = null;
+      myPEQs = [];
       peqUpdated = false;
 
-      myGHAccounts = null;
+      myGHAccounts = [];
       ghUpdated = false;
    }
 
