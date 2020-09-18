@@ -22,14 +22,10 @@ router.post('/:location?', async function (req, res) {
     // console.log( req.headers );
 
     var action = "";
-    if( req.body['Endpoint'] == "Left" ) {
-	action = "Baba";
+    if( req.body['Endpoint'] == "assocGH" ) {
 
-	installClient.projects.moveCard({
-	    card_id: CARD_ID,
-	    position: "top",
-	    column_id: COL_ID_1
-	});
+	// Authenticate uname, pword
+	// call lambda.......
 	
     }
     else if( req.body['Endpoint'] == "Right" ) {

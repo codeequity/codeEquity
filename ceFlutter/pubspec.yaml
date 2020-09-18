@@ -30,6 +30,7 @@ dependencies:
   http: ^0.12.0+2
   fluttertoast: ^7.0.4
   random_string: ^1.1.0
+  github: ^6.0.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

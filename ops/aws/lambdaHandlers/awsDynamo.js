@@ -32,10 +32,12 @@ exports.handler = (event, context, callback) => {
     var resultPromise;
 
     console.log( "User:", username, "Endpoint:", endPoint );
-    if(      endPoint == "GetPeople")      { resultPromise = getPeople( username ); }
+    if(      endPoint == "GetID")          { resultPromise = getPersonId( username ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( username, rb.Title, rb.PeqAmount ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( username ); }
+    else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
+    else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
     else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood", context.awsRequestId));
@@ -54,6 +56,7 @@ exports.handler = (event, context, callback) => {
 
 
 
+// Note: .Count and .Items do not show up here, as they do in bsdb.scan
 function paginatedScan( params ) {
 
     return new Promise((resolve, reject) => {
@@ -91,24 +94,6 @@ function success( result ) {
     };
 }
 
-function getPersonId( username ) {
-    // Params to get PersonID from UserName
-    console.log( "getPID, checking ", username );
-    const paramsP = {
-        TableName: 'CEPeople',
-        FilterExpression: 'UserName = :uname',
-        ExpressionAttributeValues: { ":uname": username }
-    };
-
-    let personPromise = bsdb.scan( paramsP ).promise();
-    return personPromise.then((persons) => {
-	// console.log( "Persons: ", persons );
-	assert(persons.Count == 1 );
-	console.log( "Found person ", persons.Items[0] );
-	return persons.Items[0].PersonId;
-    });
-}
-
 function randAlpha(length) {
    var result           = '';
    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -119,7 +104,7 @@ function randAlpha(length) {
    return result;
 }
 
-async function getPeople( username ) {
+async function getPersonId( username ) {
     const paramsP = {
         TableName: 'CEPeople',
         FilterExpression: 'UserName = :uname',
@@ -128,9 +113,7 @@ async function getPeople( username ) {
 
     let personPromise = bsdb.scan( paramsP ).promise();
     return personPromise.then((persons) => {
-	// console.log( "Persons: ", persons );
 	assert(persons.Count == 1 );
-	console.log( "Found person ", persons.Items[0] );
 	console.log( "Found PersonId ", persons.Items[0].PersonId );
 	return success( persons.Items[0].PersonId );
     });
@@ -186,6 +169,48 @@ async function getPeq( username ) {
 	console.log( "Found peqs ", peqs );
 	return success( peqs );
     });
+}
+
+async function getGHA( uid ) {
+    const paramsP = {
+        TableName: 'CEGithub',
+        FilterExpression: 'CEOwnerId = :ceid',
+        ExpressionAttributeValues: { ":ceid": uid },
+	Limit: 99,
+    };
+
+    console.log( "GH Account repos");
+    let ghaPromise = paginatedScan( paramsP );
+    return ghaPromise.then((ghas) => {
+	console.log( "Found GH account ", ghas );
+
+	if( Array.isArray(ghas) && ghas.length ) {
+	    return success( ghas );
+	} else
+	{
+	    return {
+		statusCode: 204,
+		body: JSON.stringify( "---" ),
+		headers: { 'Access-Control-Allow-Origin': '*' }
+	    };
+	}
+    });
+}
+
+async function putGHA( newGHAcct ) {
+    const paramsP = {
+        TableName: 'CEGithub',
+	Item: {
+	    "GHAccountId": newGHAcct.id, 
+	    "CEOwnerId":   newGHAcct.ceOwnerId,
+	    "GHLogin":     newGHAcct.ghLogin,
+	    "Repos":       newGHAcct.repos
+	}
+    };
+
+    console.log( "GHAcct put repos");
+    let ghaPromise = bsdb.put( paramsP ).promise();
+    return ghaPromise.then(() => success( true ));
 }
 
 
