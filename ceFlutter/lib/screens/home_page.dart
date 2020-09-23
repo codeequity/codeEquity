@@ -59,17 +59,51 @@ class _CEHomeState extends State<CEHomePage> {
 
 
 
-      // WIP
-      Widget _makeStuffList( stuff ) {
-         final textWidth = appState.screenWidth * .2;
-         
+      _showPeq( String repoName ) {
+         showToast( "Activate wondertwin powers!" );
+      }
+
+      Widget _makeRepoName( String repoName ) {
+         final textWidth = appState.screenWidth * .4;         
          return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
-               makeTitleText( stuff.ghLogin, textWidth, false, 1 ),
-               makeTitleText( stuff.repos[0], textWidth, false, 1 ),
-               makeTitleText( "mo mo mo", textWidth, false, 1 ),
+               makeTitleText( repoName, textWidth, false, 1 ),
+               ]);
+      }
+      
+      Widget _makeRepoChunk( String repoName ) {
+         return GestureDetector(
+            onTap: () => _showPeq( repoName ),
+            child: _makeRepoName( repoName )
+            );
+      }
+      
+
+      // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
+      // Having a second listview allows limits on num repos per acct.
+      Widget _makeRepos( gha ) {
+         final textWidth = appState.screenWidth * .2;
+         List<Widget> repoChunks = [];
+         gha.repos.forEach((repo) => repoChunks.add( _makeRepoChunk( repo ) ) );
+         
+         return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: <Widget>[
+               makeTitleText( gha.ghUserName, textWidth, false, 1 ),
+               ConstrainedBox( 
+                  constraints: new BoxConstraints(
+                     minWidth: 20.0,
+                     minHeight: 20.0,
+                     maxHeight: appState.screenHeight * .3,
+                     maxWidth:  appState.screenWidth * .8
+                     ),
+                  child: ListView(
+                     scrollDirection: Axis.vertical,
+                     children: repoChunks
+                     ))               
                ]);
       }
       
@@ -77,8 +111,8 @@ class _CEHomeState extends State<CEHomePage> {
          List<Widget> acctList = [];
 
          if( appState.myGHAccounts != null || appState.ghUpdated ) {
-            for( final stuff in appState.myGHAccounts ) {
-               acctList.add( _makeStuffList( stuff ));
+            for( final gha in appState.myGHAccounts ) {
+               acctList.add( _makeRepos( gha ));
                acctList.add( _makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));
             }
 
@@ -87,7 +121,9 @@ class _CEHomeState extends State<CEHomePage> {
             return ConstrainedBox( 
                constraints: new BoxConstraints(
                   minHeight: 20.0,
-                  maxHeight: appState.screenHeight * .85
+                  minWidth: 20.0,
+                  maxHeight: appState.screenHeight * .85,
+                  maxWidth:  appState.screenWidth * .8
                   ),
                child: ListView(
                   scrollDirection: Axis.vertical,

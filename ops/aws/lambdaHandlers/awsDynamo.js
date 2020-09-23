@@ -35,7 +35,9 @@ exports.handler = (event, context, callback) => {
     if(      endPoint == "GetID")          { resultPromise = getPersonId( username ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( username, rb.Title, rb.PeqAmount ); }
-    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( username ); }
+    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHRepo ); }
+    else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
+    else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
     else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
     else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
@@ -139,16 +141,25 @@ async function putPerson( newPerson ) {
     return personPromise.then(() => success( true ));
 }
 
+// XXX JS testing func - going away
 async function recPeq( username, title, peqAmount ) {
     const personId  = await getPersonId( username );
-
+    const notyet = "---";
+    const notyets = ["---"];
+    
     const params = {
-        TableName: 'CEPEQs',
+        TableName: 'CEPEQActions',
 	Item: {
-	    "PEQId":     randAlpha(10),
-	    "UserId":    personId,
-	    "Title":     title,
-	    "PeqAmount": peqAmount
+	    "PEQActionId":  randAlpha(10),
+	    "CEUID":        personId,
+	    "GHUserName":   notyet,
+	    "GHRepo":       notyet,
+	    "Verb":         notyet,
+	    "Action":       notyet,
+	    "Subject":      notyets,
+	    "Note":         notyet,
+	    "EntryDate":    notyet,
+	    "RawRecBody":   notyet
 	}
     };
 
@@ -157,17 +168,63 @@ async function recPeq( username, title, peqAmount ) {
 
 }
 
-async function getPeq( username ) {
+
+// Get all for uid, app can figure out whether or not to sort by associated ghUser
+async function getPeq( uid, ghRepo ) {
     const paramsP = {
         TableName: 'CEPEQs',
+        FilterExpression: 'CEHolderId = :ceid AND GHRepo = :ghrepo',
+        ExpressionAttributeValues: { ":ceid": uid, ":ghrepo": ghRepo },
 	Limit: 99,
     };
 
-    console.log( "Looking for all peqs");
+    console.log( "Looking for peqs");
     let peqPromise = paginatedScan( paramsP );
     return peqPromise.then((peqs) => {
 	console.log( "Found peqs ", peqs );
 	return success( peqs );
+    });
+}
+
+// Get all for uid, app can figure out whether or not to sort by associated ghUser
+async function getPeqActions( uid, ghRepo ) {
+    const paramsP = {
+        TableName: 'CEPEQActions',
+        FilterExpression: 'CEUID = :ceid AND GHRepo = :ghrepo',
+        ExpressionAttributeValues: { ":ceid": uid, ":ghrepo": ghRepo },
+	Limit: 99,
+    };
+
+    console.log( "Looking for peqActions");
+    let peqPromise = paginatedScan( paramsP );
+    return peqPromise.then((peqs) => {
+	console.log( "Found peqActions ", peqs );
+	return success( peqs );
+    });
+}
+
+async function getPeqSummary( ghRepo ) {
+    const paramsP = {
+        TableName: 'CEPEQSummary',
+        FilterExpression: 'GHRepo = :ghrepo AND MostRecent = :true',
+        ExpressionAttributeValues: { ":ghrepo": ghRepo, ":true": true }
+    };
+
+    console.log( "Looking for peqSummary");
+    let peqPromise = bsdb.scan( paramsP );
+    return peqPromise.then((peqs) => {
+	assert( peqs.Count <= 1 );
+	console.log( "Found peqSummary ", peqs );
+	if( peqs.Count == 1 ) {
+	    return success( peqs.Items[0] );
+	}
+	else {
+	    return {
+		statusCode: 204,
+		body: JSON.stringify( "---" ),
+		headers: { 'Access-Control-Allow-Origin': '*' }
+	    };
+	}
     });
 }
 
@@ -203,7 +260,7 @@ async function putGHA( newGHAcct ) {
 	Item: {
 	    "GHAccountId": newGHAcct.id, 
 	    "CEOwnerId":   newGHAcct.ceOwnerId,
-	    "GHLogin":     newGHAcct.ghLogin,
+	    "GHUserName":  newGHAcct.ghUserName,
 	    "Repos":       newGHAcct.repos
 	}
     };
@@ -212,6 +269,10 @@ async function putGHA( newGHAcct ) {
     let ghaPromise = bsdb.put( paramsP ).promise();
     return ghaPromise.then(() => success( true ));
 }
+
+// putPEQSummary
+// Note, on update be sure to set mostRecent to false for previous mostRecent
+// Consider keeping only 2 records, max, at least initially
 
 
 // XXX Placeholder

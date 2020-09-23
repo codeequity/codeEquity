@@ -1,34 +1,54 @@
 import 'package:random_string/random_string.dart';
 
 class PEQ {
-   String        id;
-   final String  amount;
-   final String  title;
-   final String  userId;
+   final String  id;
+   final String  ceHolderId;
+   final String  ceGrantorId;
 
-   PEQ({this.id, this.amount, this.title, this.userId});
+   final String  type;           // type is grant/swCont/busOp
+   final String  amount;     
+   final String  accrualDate;    // when accrued
+   final String  vestedPercent;  // as of accrual date
 
+   final String  ghRepo;   
+   final String  ghProject;      // sub for plannedAlloc
+   final String  ghIssueId;   
+   final String  ghIssueTitle; 
 
-   dynamic toJson() => {'id': id, 'amount': amount, 'title': title, 'userId': userId  };
+   PEQ({this.id, this.ceHolderId, this.ceGrantorId,
+            this.type, this.amount, this.accrualDate, this.vestedPercent,
+            this.ghRepo, this.ghProject, this.ghIssueId, this.ghIssueTitle});
+
+   dynamic toJson() => {'id': id, 'ceHolderId': ceHolderId, 'ceGrantorId': ceGrantorId,
+                           'type': type, 'amount': amount, 'accrualDate': accrualDate, 'vestedPercent': vestedPercent,
+                           'ghRepo': ghRepo, 'ghProject': ghProject, 'ghIssueId': ghIssueId, 'ghIssueTitle': ghIssueTitle }; 
    
    factory PEQ.fromJson(Map<String, dynamic> json) {
 
       // DynamoDB is not camelCase
-      // All fields here have values, else something is broken in load
       return PEQ(
          id:            json['PEQId'],
-         amount:        json['PeqAmount'],
-         title:         json['Title'],
-         userId:        json['UserId']
+         ceHolderId:    json['CEHolderId'],
+         ceGrantorId:   json['CEGrantorId'],
+
+         type:          json['Type'],
+         amount:        json['Amount'],
+         accrualDate:   json['AccrualDate'],
+         vestedPercent: json['VestedPercent'],
+
+         ghRepo:        json['GHRepo'],
+         ghProject:     json['GHProject'],
+         ghIssueId:     json['GHIssueId'],
+         ghIssueTitle:  json['GHIssueTitle'],
          );
    }
    
    String toString() {
-      print( "PEQ: " + title + amount );
-      print( "user: " + userId );
-
-      String res = "\nPEQ : " + title + " "  + amount;
-      res += "\n   user: " + userId;
+      String res = "\n" + ghRepo + " PEQs";
+      res += "\n   " + amount + " PEQ, for: " + ghIssueTitle;
+      res += "\n    holder: " + ceHolderId + ", grantor: " + ceGrantorId;
+      res += "\n    type: " + type + ", accrued: " + accrualDate + ", vested %: " + vestedPercent;
+      res += "\n    project: " + ghProject + ", issue: " + ghIssueId;
       return res;
    }
 

@@ -70,6 +70,22 @@ Resources:
         Name: PEQId
         Type: String
 
+  PEQActionTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: CEPEQActions
+      PrimaryKey:
+        Name: PEQActionId
+        Type: String
+
+  PEQSummaryTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: CEPEQSummary
+      PrimaryKey:
+        Name: PEQSummaryId
+        Type: String
+
 
 # SAM implicit API does not handle edge, cors properly. Explicit is
   #     required, meaning swagger def is required as well.
@@ -152,6 +168,10 @@ Resources:
           TableName: !Ref AgreementTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PEQTable 
+       - DynamoDBCrudPolicy:
+          TableName: !Ref PEQActionTable 
+       - DynamoDBCrudPolicy:
+          TableName: !Ref PEQSummaryTable 
 
 
 
