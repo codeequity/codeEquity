@@ -18,6 +18,8 @@ import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/screens/launch_page.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
+import 'package:ceFlutter/models/PEQAction.dart';
+import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
 
@@ -203,6 +205,37 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    }
 }
 
+Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
+   String shortName = "fetchPEQAction";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      List<PEQAction> peqActions = l.map((sketch)=> PEQAction.fromJson(sketch)).toList();
+      return peqActions;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchPEQActions( context, container, postData ); }
+   }
+}
+
+Future<PEQSummary> fetchPEQSummary( context, container, postData ) async {
+   String shortName = "fetchPEQSummary";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      final ps = json.decode(utf8.decode(response.bodyBytes));
+      PEQSummary peqSummary = PEQSummary.fromJson(ps);
+      return peqSummary;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no previous PEQ Summary found" );
+      return null;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchPEQSummary( context, container, postData ); }
+   }
+}
+
 Future<List<GHAccount>> fetchGHAcct( context, container, postData ) async {
    String shortName = "GetGHA";
    final response = await postIt( shortName, postData, container );
@@ -266,7 +299,21 @@ Future<void> reloadMyProjects( context, container ) async {
 
    appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "$uid"  }' );
 
-   appState.myPEQs = await fetchPEQs(  context, container, '{ "Endpoint": "GetPEQ" }' );
+   // NOTE PEQ holder can only be CE user.  Otherwise, no agreements.
+   // XXX could store 'lastViewed' with ghAccount.  For now, default is first.
+   // XXX breaks if no repo yet
+   if( appState.myGHAccounts.length > 0 ) {
+      String ghUser = appState.myGHAccounts[0].ghUserName;
+      String ghRepo = appState.myGHAccounts[0].repos[0];
+
+      // Get all PEQ data related to the selected repo.  
+      appState.myPEQs       = await fetchPEQs( context, container,
+                                                      '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHRepo": "$ghRepo" }' );
+      appState.myPEQActions = await fetchPEQActions( context, container,
+                                                      '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "GHRepo": "$ghRepo" }' );
+      appState.myPEQSummary = await fetchPEQSummary( context, container,
+                                                      '{ "Endpoint": "GetPEQSummary", "GHRepo": "$ghRepo" }' );
+   }
 }
 
 
@@ -310,7 +357,7 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
       print( "Goot, Got Auth'd.  " + patLogin );
       
       bool newLogin = true;
-      appState.myGHAccounts.forEach((acct) => newLogin = newLogin && ( acct.ghLogin != patLogin ) );
+      appState.myGHAccounts.forEach((acct) => newLogin = newLogin && ( acct.ghUserName != patLogin ) );
 
       if( newLogin ) {
          newAssoc = true;
@@ -318,7 +365,7 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          repos = await getSubscriptions( container, subUrl );
 
          String pid = randomAlpha(10);
-         GHAccount myGHAcct = new GHAccount( id: pid, ceOwnerId: appState.userId, ghLogin: patLogin, repos: repos );
+         GHAccount myGHAcct = new GHAccount( id: pid, ceOwnerId: appState.userId, ghUserName: patLogin, repos: repos );
          
          appState.myGHAccounts.add( myGHAcct );
          

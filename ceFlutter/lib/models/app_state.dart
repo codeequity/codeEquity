@@ -7,6 +7,8 @@ import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:ceFlutter/cognitoUserService.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
+import 'package:ceFlutter/models/PEQAction.dart';
+import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
 
 
@@ -41,7 +43,9 @@ class AppState {
    bool loaded;                              // control expensive aspects of state initialization
    String userId;
 
-   List<PEQ> myPEQs;
+   List<PEQ>        myPEQs;
+   List<PEQAction> myPEQActions;
+   PEQSummary myPEQSummary;
    bool peqUpdated;
 
    List<GHAccount> myGHAccounts;   
@@ -52,6 +56,8 @@ class AppState {
 
       userId = "";
       myPEQs = [];
+      myPEQActions = [];
+      myPEQSummary = null;
       peqUpdated = false;
 
       myGHAccounts = [];
