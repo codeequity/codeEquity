@@ -55,20 +55,48 @@ async function handler( action, repo, owner, reqBody, res ) {
 
 	    let peqHumanLabelName = peqValue.toString() + " PEQ";
 	    let peqLabel = await gh.findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
+	    let colId = reqBody['project_card']['column_id'];
+	    let fullName = reqBody['repository']['full_name'];
 
 	    // create new issue
 	    let issueID = await gh.createIssue( installClient, owner, repo, cardContent[0], [peqHumanLabelName] );
 	    assert.notEqual( issueID, -1, "Unable to create issue linked to this card." );
 
 	    // create issue-linked project_card
-	    let newCardID = await gh.createIssueCard( installClient, reqBody['project_card']['column_id'], issueID );
+	    let newCardID = await gh.createIssueCard( installClient, colId, issueID );
 	    assert.notEqual( newCardID, -1, "Unable to create new issue-linked card." );	    
 	    
 	    // remove orig card
 	    let origCardID = reqBody['project_card']['id'];
 	    await( installClient.projects.deleteCard( { card_id: origCardID } ));	    
 
-	    await( utils.recordPEQ( cardContent[0], peqValue ));
+	    console.log( "Adding card/issue to dynamo" );
+	    await( utils.addIssueCard( fullName, issueID, reqBody['project_card']['project_url'], colId, newCardID ));
+
+	    console.log( "Record PEQ" );
+	    let newPEQId = await( utils.recordPEQPlanned(
+		peqValue,                                  // amount
+		fullName,                                  // gh repo
+		reqBody['project_card']['project_url'],    // gh project url
+		issueID,                                   // gh issue id
+		cardContent[0]                             // gh issue title
+	    ));
+
+	    if( newPEQId != -1 ) {
+		let subject = [ newPEQId ];
+		console.log( "Record PEQ action" );
+		await( utils.recordPEQAction(
+		    "---",            // CE UID
+		    creator,          // gh user name
+		    fullName,         // gh repo
+		    "confirm",        // verb
+		    "add",            // action
+		    subject,          // subject
+		    "",               // note
+		    utils.getToday(), // entryDate
+		    reqBody.toString()  // raw
+		));
+	    }
 	}
     }
     else if( action == "converted" ) {

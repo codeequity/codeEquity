@@ -70,12 +70,13 @@ async function handler( action, repo, owner, reqBody, res ) {
 	}
 
 	// Get array: [proj_id, col_idx4]
-	let ceProjectLayout = await gh.validateCEProjectLayout( installClient, title );
+	let issueId = reqBody['issue']['id'];
+	let ceProjectLayout = await gh.validateCEProjectLayout( installClient, issueId );
 	if( ceProjectLayout[0] == -1 ) {
 	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	}
 	else {
-	    await gh.moveIssueCard( installClient, owner, repo, title, action, ceProjectLayout ); 
+	    await gh.moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
 	}
 	await( utils.recordPEQ( title, peqValue ));
 	break;

@@ -34,7 +34,11 @@ exports.handler = (event, context, callback) => {
     console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetID")          { resultPromise = getPersonId( username ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
-    else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( username, rb.Title, rb.PeqAmount ); }
+    else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( rb.newPEQ ); }
+    else if( endPoint == "RecordPEQAction"){ resultPromise = recPAct( rb.newPAction ); }
+    else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.GHRepo, rb.GHIssueId, rb.GHProjectId, rb.GHColumnId, rb.GHCardId ); }
+    else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.GHIssueId, rb.GHColumnId ); }
+    else if( endPoint == "GetGHCard")      { resultPromise = getGHC( rb.GHIssueId ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHRepo ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
     else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
@@ -121,6 +125,23 @@ async function getPersonId( username ) {
     });
 }
 
+// XXX it is likely that CEProjects:ProjectId is good simply as issueId.
+//     Buuut, keep the split a little longer to be sure.
+async function getGHId( issueId ) {
+    const paramsP = {
+        TableName: 'CEProjects',
+        FilterExpression: 'GHIssueId = :iid',
+        ExpressionAttributeValues: { ":iid": issueId }
+    };
+
+    let ghPromise = bsdb.scan( paramsP ).promise();
+    return ghPromise.then((ghc) => {
+	assert(ghc.Count == 1 );
+	console.log( "Found Id ", ghc.Items[0].ProjectId );
+	return ghc.Items[0].ProjectId;
+    });
+}
+
 async function putPerson( newPerson ) {
     // console.log('Put Person!', newPerson.firstName );
 
@@ -141,31 +162,109 @@ async function putPerson( newPerson ) {
     return personPromise.then(() => success( true ));
 }
 
-// XXX JS testing func - going away
-async function recPeq( username, title, peqAmount ) {
-    const personId  = await getPersonId( username );
-    const notyet = "---";
-    const notyets = ["---"];
-    
+// GitHub card/issue association
+async function getGHC( issueId ) {
+    const paramsP = {
+        TableName: 'CEProjects',
+        FilterExpression: 'GHIssueId = :iid',
+        ExpressionAttributeValues: { ":iid": issueId }
+    };
+
+    console.log( "GH card - issue");
+    let ghcPromise = bsdb.scan( paramsP ).promise();
+    return ghcPromise.then((ghc) => {
+	if( ghc.Count == 1 ) {
+	    return success( ghc.Items[0] );
+	}
+	else {
+	    return {
+		statusCode: 204,
+		body: JSON.stringify( "---" ),
+		headers: { 'Access-Control-Allow-Origin': '*' }
+	    };
+	}
+    });
+}
+
+async function putGHC( repo, issueId, projectId, columnId, cardId ) {
+
     const params = {
-        TableName: 'CEPEQActions',
+        TableName: 'CEProjects',
 	Item: {
-	    "PEQActionId":  randAlpha(10),
-	    "CEUID":        personId,
-	    "GHUserName":   notyet,
-	    "GHRepo":       notyet,
-	    "Verb":         notyet,
-	    "Action":       notyet,
-	    "Subject":      notyets,
-	    "Note":         notyet,
-	    "EntryDate":    notyet,
-	    "RawRecBody":   notyet
+	    "ProjectId":   randAlpha(10),
+	    "GHRepo":      repo,
+	    "GHIssueId":   issueId,
+	    "GHProjectId": projectId,
+	    "GHColumnId":  columnId,
+	    "GHCardId":    cardId,
 	}
     };
 
     let recPromise = bsdb.put( params ).promise();
     return recPromise.then(() =>success( true ));
+}
 
+async function updateGHC( issueId, columnId ) {
+
+    const projId  = await getGHId( issueId );
+    console.log( "Updating by key", projId, columnId );
+
+    const params = {
+	TableName: 'CEProjects',
+	Key: {"ProjectId": projId },
+	UpdateExpression: 'set GHColumnId = :colId',
+	ExpressionAttributeValues: { ':colId': columnId }};
+    
+    let uPromise = bsdb.update( params ).promise();
+    return uPromise.then(() => success( true ));
+}
+
+
+async function recPeq( newPEQ ) {
+
+    let newId = randAlpha(10);
+    const params = {
+        TableName: 'CEPEQs',
+	Item: {
+	    "PEQId":        newId,
+	    "CEHolderId":   newPEQ.CEHolderId,
+	    "CEGrantorId":  newPEQ.CEGrantorId,
+	    "Type":         newPEQ.Type,
+	    "Amount":       newPEQ.Amount,
+	    "AccrualDate":  newPEQ.AccrualDate,
+	    "VestedPerc":   newPEQ.VestedPerc,
+	    "GHRepo":       newPEQ.GHRepo,
+	    "GHProject":    newPEQ.GHProject,
+	    "GHIssueId":    newPEQ.GHIssueId,
+	    "Title":        newPEQ.Title
+	}
+    };
+
+    let recPromise = bsdb.put( params ).promise();
+    return recPromise.then(() =>success( newId ));
+}
+
+async function recPAct( newPAction ) {
+
+    let newId = randAlpha(10);
+    const params = {
+        TableName: 'CEPEQActions',
+	Item: {
+	    "PEQActionId":  newId,
+	    "CEUID":        newPAction.CEUID,
+	    "GHUserName":   newPAction.GHUserName,
+	    "GHRepo":       newPAction.GHRepo,
+	    "Verb":         newPAction.Verb,
+	    "Action":       newPAction.Action,
+	    "Subject":      newPAction.Subject,
+	    "Note":         newPAction.Note,
+	    "EntryDate":    newPAction.Date,
+	    "RawBody":      newPAction.RawBody
+	}
+    };
+
+    let recPromise = bsdb.put( params ).promise();
+    return recPromise.then(() =>success( newId ));
 }
 
 
@@ -211,7 +310,7 @@ async function getPeqSummary( ghRepo ) {
     };
 
     console.log( "Looking for peqSummary");
-    let peqPromise = bsdb.scan( paramsP );
+    let peqPromise = bsdb.scan( paramsP ).promise();
     return peqPromise.then((peqs) => {
 	assert( peqs.Count <= 1 );
 	console.log( "Found peqSummary ", peqs );
