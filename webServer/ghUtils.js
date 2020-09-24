@@ -1,4 +1,5 @@
 var config  = require('./config');
+var utils = require('./utils');
 var assert = require('assert');
 
 var githubUtils = {
@@ -35,12 +36,12 @@ var githubUtils = {
 	return createIssueCard( installClient, columnID, issueID );
     },
 
-    validateCEProjectLayout: function( installClient, issueTitle ) {
-	return validateCEProjectLayout( installClient, issueTitle );
+    validateCEProjectLayout: function( installClient, issueId ) {
+	return validateCEProjectLayout( installClient, issueId );
     },
 
-    moveIssueCard: function( installClient, owner, repo, title, action, ceProjectLayout ) {
-	return moveIssueCard( installClient, owner, repo, title, action, ceProjectLayout ); 
+    moveIssueCard: function( installClient, owner, repo, issueId, action, ceProjectLayout ) {
+	return moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
     },
 };
 
@@ -146,7 +147,7 @@ async function createIssueCard( installClient, columnID, issueID )
 // validating the project column layout (worker threads).
 // Alternatively, we could solve part of the problem by moving to graphQL and requiring a project label for every PEQ-issue.
 // But that is an extra layer of requirement on the client, and the result will most likely be slower.
-async function validateCEProjectLayout( installClient, issueTitle )
+async function validateCEProjectLayout( installClient, issueId )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
@@ -155,15 +156,17 @@ async function validateCEProjectLayout( installClient, issueTitle )
     // XXX card move, need new id/col/proj id
     // ??? how long will IDs last within project?  at a minimum, should get edit notification
 
-    
-    // XXX Will be AWS lookup.  In the meantime, don't bother getting this the right way.
-    let PROJ_ID = 4788718;   // code equity web server front end
-
     // XXX Push these to config?
     let reqCols = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];
-    let foundReqCol = [PROJ_ID, -1, -1, -1, -1];
 
-    await( installClient.projects.listColumns({ project_id: PROJ_ID, per_page: 100 }))
+    let card = await( utils.getFromIssue( issueId ));
+    let projId = card == -1 ? card : parseInt( card['GHProjectId'] );
+    
+    console.log( "Found project id: ", projId );
+    let foundReqCol = [projId, -1, -1, -1, -1];
+    if( projId == -1 ) { return foundReqCol; }
+
+    await( installClient.projects.listColumns({ project_id: projId, per_page: 100 }))
 	.then( columns => {
 	    let foundCount = 0;
 	    for( column of columns['data'] ) {
@@ -190,9 +193,15 @@ async function validateCEProjectLayout( installClient, issueTitle )
     return foundReqCol;
 }
 
-// XXX THIS WILL NOT SCALE .. must be stored in AWS
-async function findCardInColumn( installClient, owner, repo, target, colID ) {
-    let cardID   = -1;
+async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
+
+    let cardId = -1;
+    let card = await( utils.getFromIssue( issueId ));
+    if( card != -1 && parseInt( card['GHColumnId'] ) == colId ) { cardId = parseInt( card['GHCardId'] ); }
+
+    /*
+    // pre-AWS
+    // THIS WILL NOT SCALE
     let issueNums = [];
     let cardIDs   = [];
     await( installClient.projects.listCards({ column_id: colID, per_page: 100 }))
@@ -223,15 +232,19 @@ async function findCardInColumn( installClient, owner, repo, target, colID ) {
 		console.log( "Find issue from card url failed.", e );
 	    });
 	if( cardID != -1 ) { break; }
-    }
+	}
+    */
     
-    console.log( "find card in col", target, colID, "found?", cardID );
-    return cardID;
+    console.log( "find card in col", issueId, colId, "found?", cardId );
+    return cardId;
 }
 
-async function moveIssueCard( installClient, owner, repo, title, action, ceProjectLayout )
+
+// XXX UPDATE Dynamo after move (!)
+async function moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout )
 {
     let success = false;
+    let newColId = -1;
     // XXX should have cardID stored as well, aws
     assert.notEqual( ceProjectLayout[0], -1 );
     let cardID = -1;
@@ -240,14 +253,15 @@ async function moveIssueCard( installClient, owner, repo, title, action, ceProje
 
 	// verify card is currently in column "Planned" or "In Progress"
 	for( let i = 0; i < 2; i++ ) {
-	    cardID = await findCardInColumn( installClient, owner, repo, title, ceProjectLayout[i+1] );
+	    cardID = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[i+1] );
 	    if( cardID != -1 ) { break; }
 	}
 
 	// XXX ENUM, pls
 	// move card to "Pending PEQ Approval"
 	if( cardID != -1 ) {
-	    success = await( installClient.projects.moveCard({ card_id: cardID, position: "top", column_id: ceProjectLayout[3] }))
+	    newColId = ceProjectLayout[3]
+	    success = await( installClient.projects.moveCard({ card_id: cardID, position: "top", column_id: newColId }))
 		.catch( e => {
 		    console.log( "Move card failed.", e );
 		});
@@ -258,18 +272,25 @@ async function moveIssueCard( installClient, owner, repo, title, action, ceProje
 
 	// verify card is currently in column ""Pending PEQ Approval", "Accrued"
 	for( let i = 0; i < 2; i++ ) {
-	    cardID = await findCardInColumn( installClient, owner, repo, title, ceProjectLayout[i+3] );
+	    cardID = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[i+3] );
 	    if( cardID != -1 ) { break; }
 	}
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardID != -1 ) {
-	    success = await( installClient.projects.moveCard({ card_id: cardID, position: "top", column_id: ceProjectLayout[2] }))
+	    newColId = ceProjectLayout[2]
+	    success = await( installClient.projects.moveCard({ card_id: cardID, position: "top", column_id: newColId }))
 		.catch( e => {
 		    console.log( "Move card failed.", e );
 		});
 	}
     }
+
+    if( success ) {
+	success = await( utils.updateCardFromIssue( issueId, newColId ))
+	    .catch( e => { console.log( "update card failed.", e ); });
+    }
+
     
     return success;
 }
