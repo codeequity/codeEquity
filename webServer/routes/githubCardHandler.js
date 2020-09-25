@@ -56,6 +56,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    let peqHumanLabelName = peqValue.toString() + " PEQ";
 	    let peqLabel = await gh.findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
 	    let colId = reqBody['project_card']['column_id'];
+	    let colName = await gh.getColumnName( installClient, colId );
 	    let fullName = reqBody['repository']['full_name'];
 
 	    // create new issue
@@ -70,14 +71,20 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    let origCardID = reqBody['project_card']['id'];
 	    await( installClient.projects.deleteCard( { card_id: origCardID } ));	    
 
+	    // Add card issue linkage
 	    console.log( "Adding card/issue to dynamo" );
-	    await( utils.addIssueCard( fullName, issueID, reqBody['project_card']['project_url'], colId, newCardID ));
+	    let projId = reqBody['project_card']['project_url'].split('/').pop(); 
+	    let projName = await gh.getProjectName( installClient, projId );
+	    await( utils.addIssueCard( fullName, issueID, projId, projName, colId, colName, newCardID, cardContent[0] ));
+
+	    let projSub = await gh.getProjectSubs( installClient, fullName, projName, colId );
 
 	    console.log( "Record PEQ" );
 	    let newPEQId = await( utils.recordPEQPlanned(
 		peqValue,                                  // amount
 		fullName,                                  // gh repo
-		reqBody['project_card']['project_url'],    // gh project url
+		projSub,                                   // gh project subs
+		projId,                                    // gh project id
 		issueID,                                   // gh issue id
 		cardContent[0]                             // gh issue title
 	    ));

@@ -64,6 +64,24 @@ async function getRemotePackageJSONObject(owner, repo, installationAccessToken) 
 };
 
 
+// XXX unused, untested as of yet.
+// XXX naming convention
+async function getGH( url ) {
+
+    const params = {
+        url: url,
+	method: "GET",
+        headers: {'contentTypeHeader': 'application/json' }
+    };
+    
+    return fetch( url, params )
+	.then((res) => {
+	    console.log( res );
+	    return res;
+	})
+	.catch(err => console.log(err));
+}
+
 async function postIt( shortName, postData ) {
     let apiPath = getAPIPath() + "/find";
     let idToken = await awsAuth.getCogIDToken();
@@ -108,16 +126,47 @@ async function getFromIssue( issueId ) {
     }
 }
 
-// XXX Dup boilerplate
-async function addIssueCard( repo, issueId, projURL, colId, newCardId ) {
-    console.log( "Adding issue / card linkage" );
-    console.log( repo, issueId, projURL, projURL.split('/').pop(), colId, newCardId );
+// XXX dup boilerplate
+async function getFromCardName( repoName, projName, cardTitle ) {
+    console.log( "Get linkage from repo, card info", repoName, projName, cardTitle );
 
-    let shortName = "RecordGHCard";
-    let projId   = projURL.split('/').pop();
-    let postData = `{ "Endpoint": "${shortName}", "GHRepo": "${repo}", "GHIssueId": "${issueId}", "GHProjectId": "${projId}", "GHColumnId": "${colId}", "GHCardId": "${newCardId}"  }`;
+    let shortName = "GetGHCFromCard";
+    let postData = `{ "Endpoint": "${shortName}", "GHRepo": "${repoName}", "GHProjName": "${projName}", "GHCardTitle": "${cardTitle}" }`;
 
     let response = await postIt( shortName, postData )
+    if( typeof response === 'undefined' ) return null;
+    
+    if (response['status'] == 201) {
+	let body = await response.json();
+	// console.log("Good status.  Body:", body);
+	return body;
+    }
+    else if (response['status'] == 204) {
+	console.log("Card data not found.", response['status'] );
+	return -1;
+    }
+    else {
+	console.log("Unhandled status code:", response['status'] );
+	return -1;
+    }
+}
+
+// XXX Dup boilerplate
+async function addIssueCard( repo, issueId, projId, projName, colId, colName, newCardId, cardTitle ) {
+    console.log( "Adding issue / card linkage", repo, issueId, projName, colId );
+
+    let shortName = "RecordGHCard";
+    let cardTitleStrip = cardTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
+    
+    let postData = { "GHRepo": repo, "GHIssueId": issueId, "GHProjectId": projId }
+    postData.GHProjectName = projName;
+    postData.GHColumnId    = colId;
+    postData.GHColumnName  = colName;
+    postData.GHCardId      = newCardId;
+    postData.GHCardTitle   = cardTitleStrip;
+
+    let pd = { "Endpoint": shortName, "icLink": postData };
+    let response = await postIt( shortName, JSON.stringify( pd ))
     if( typeof response === 'undefined' ) return null;
     
     if (response['status'] == 201) {
@@ -128,11 +177,12 @@ async function addIssueCard( repo, issueId, projURL, colId, newCardId ) {
     else {
 	console.log("Unhandled status code:", response['status'] );
 	let body = await response.json();
-	console.log("Body:", body);
+	// console.log("Body:", body);
 	return body;
     }
 }
 
+// XXX handle move to new project?
 async function updateCardFromIssue( issueId, newColId ) {
     console.log( "Updating issue / card linkage" );
 
@@ -188,19 +238,23 @@ async function recordPEQAction( ceUID, ghUserName, ghRepo, verb, action, subject
     
 }
 
-async function recordPEQPlanned( amount, repo, projURL, issueId, title ) {
+
+async function recordPEQPlanned( amount, repo, projSub, projId, issueId, title ) {
     console.log( "Recording PEQ Planned", amount, "PEQs for", title );
 
     // Erm.. model is defined in .dart.  Could jump through hoops to access it via public_flutter, buuuuut this is simpler?
-
+    
     let nyet = "---";
     let shortName = "RecordPEQ";
-    let postData         = { "CEHolderId": nyet, "CEGrantorId": nyet, "Type": nyet };
+
+    let postData         = { "CEHolderId": nyet, "CEGrantorId": nyet };
+    postData.Type        = "Plan";
     postData.Amount      = amount;
     postData.AccrualDate = nyet;
     postData.VestedPerc  = nyet;
     postData.GHRepo      = repo;
-    postData.GHProject   = projURL;    // XXX break into url, need name and master.   can already get id from aws
+    postData.GHProjectSub  = projSub;
+    postData.GHProjectId = projId;
     postData.GHIssueId   = issueId;
     postData.Title       = title;
 
@@ -220,7 +274,10 @@ async function recordPEQPlanned( amount, repo, projURL, issueId, title ) {
 	// console.log("Body:", body);
 	return -1;
     }
-    
+}
+
+async function recordPEQ( blit, blot ) {
+    console.log( "Musta hava sum tingy here" );
 }
 
 function getToday() {
@@ -240,7 +297,9 @@ exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
 exports.recordPEQAction = recordPEQAction;
 exports.recordPEQPlanned = recordPEQPlanned;
+exports.recordPEQ = recordPEQ;
 exports.addIssueCard = addIssueCard;
 exports.getFromIssue = getFromIssue;
+exports.getFromCardName = getFromCardName;
 exports.updateCardFromIssue = updateCardFromIssue;
 exports.getToday = getToday;

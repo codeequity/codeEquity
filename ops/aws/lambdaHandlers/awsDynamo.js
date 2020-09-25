@@ -36,9 +36,10 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = recPAct( rb.newPAction ); }
-    else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.GHRepo, rb.GHIssueId, rb.GHProjectId, rb.GHColumnId, rb.GHCardId ); }
+    else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.icLink ); }
     else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.GHIssueId, rb.GHColumnId ); }
     else if( endPoint == "GetGHCard")      { resultPromise = getGHC( rb.GHIssueId ); }
+    else if( endPoint == "GetGHCFromCard") { resultPromise = getGHCFromCard( rb.GHRepo, rb.GHProjName, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHRepo ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
     else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
@@ -186,17 +187,44 @@ async function getGHC( issueId ) {
     });
 }
 
-async function putGHC( repo, issueId, projectId, columnId, cardId ) {
+// GitHub card/issue association
+async function getGHCFromCard( repo, projName, cardTitle) {
+    const paramsP = {
+        TableName: 'CEProjects',
+        FilterExpression: 'GHRepo = :repo AND GHProjectName = :pname AND GHCardTitle = :ctitle',
+        ExpressionAttributeValues: { ":repo": repo, ":pname": projName, ":ctitle": cardTitle }
+    };
+
+    console.log( "GH card - issue from card");
+    let ghcPromise = bsdb.scan( paramsP ).promise();
+    return ghcPromise.then((ghc) => {
+	if( ghc.Count == 1 ) {
+	    return success( ghc.Items[0] );
+	}
+	else {
+	    return {
+		statusCode: 204,
+		body: JSON.stringify( "---" ),
+		headers: { 'Access-Control-Allow-Origin': '*' }
+	    };
+	}
+    });
+}
+
+async function putGHC( icLink ) {
 
     const params = {
         TableName: 'CEProjects',
 	Item: {
 	    "ProjectId":   randAlpha(10),
-	    "GHRepo":      repo,
-	    "GHIssueId":   issueId,
-	    "GHProjectId": projectId,
-	    "GHColumnId":  columnId,
-	    "GHCardId":    cardId,
+	    "GHRepo":      icLink.GHRepo,
+	    "GHIssueId":   icLink.GHIssueId,
+	    "GHProjectId": icLink.GHProjectId,
+	    "GHProjectName": icLink.GHProjectName,
+	    "GHColumnId":  icLink.GHColumnId,
+	    "GHColumnName": icLink.GHColumnName,
+	    "GHCardId":    icLink.GHCardId,
+	    "GHCardTitle": icLink.GHCardTitle,
 	}
     };
 
@@ -234,7 +262,8 @@ async function recPeq( newPEQ ) {
 	    "AccrualDate":  newPEQ.AccrualDate,
 	    "VestedPerc":   newPEQ.VestedPerc,
 	    "GHRepo":       newPEQ.GHRepo,
-	    "GHProject":    newPEQ.GHProject,
+	    "GHProjectSub": newPEQ.GHProjectSub,
+	    "GHProjectId":  newPEQ.GHProjectId,
 	    "GHIssueId":    newPEQ.GHIssueId,
 	    "Title":        newPEQ.Title
 	}
