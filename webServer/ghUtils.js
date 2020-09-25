@@ -43,6 +43,18 @@ var githubUtils = {
     moveIssueCard: function( installClient, owner, repo, issueId, action, ceProjectLayout ) {
 	return moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
     },
+
+    getProjectName: function( installClient, projId ) {
+	return getProjectName( installClient, projId ); 
+    },
+
+    getColumnName: function( installClient, colId ) {
+	return getColumnName( installClient, colId ); 
+    },
+
+    getProjectSubs: function( installClient, repoName, projName, colId ) {
+	return getProjectSubs( installClient, repoName, projName, colId ); 
+    },
 };
 
 
@@ -240,12 +252,10 @@ async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 }
 
 
-// XXX UPDATE Dynamo after move (!)
 async function moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout )
 {
     let success = false;
     let newColId = -1;
-    // XXX should have cardID stored as well, aws
     assert.notEqual( ceProjectLayout[0], -1 );
     let cardID = -1;
 
@@ -295,8 +305,52 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
     return success;
 }
 
+async function getProjectName( installClient, projId ) {
 
-// XXX ==>  utils
+    let project = await( installClient.projects.get({ project_id: projId }))
+	.catch( e => {
+	    console.log( "Get Project failed.", e );
+	    return "";
+	});
+
+    return project['data']['name'];
+}
+
+async function getColumnName( installClient, colId ) {
+
+    let column = await( installClient.projects.getColumn({ column_id: colId }))
+	.catch( e => {
+	    console.log( "Get Column failed.", e );
+	    return "";
+	});
+    
+    return column['data']['name'];
+}
+
+// XXX app will need to allow moving unallocated around - will be lots of misses.
+// If Master has already been created, with sub projects, then aws lookup will work.
+// If not, then neither aws nor GH lookup will work, since project layout will probably not be valid
+// Safer from aws as well - known if need to be unallocated
+async function getProjectSubs( installClient, repoName, projName, colId ) {
+
+    let projSub = [ "Unallocated" ];
+
+    if( projName == "Master" ) {
+	let column = getColumnName( installClient, colId );
+	if( column == "" ) { return projSub; }
+	projSub = [ column ];
+    }
+    else {
+	let subName = "Sub: " + projName;
+	let card = await( utils.getFromCardName( repoName, "Master", subName ));    // xxx config const
+	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
+    }
+    
+    return projSub;
+}
+
+
+
 function parsePEQ( content ) {
     let peqValue = 0;
     // content must be at least 2 lines...  XXX title <PEQ: 1000> will fail here .. will be 1 char at a time
