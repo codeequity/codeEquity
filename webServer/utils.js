@@ -218,7 +218,7 @@ async function recordPEQAction( ceUID, ghUserName, ghRepo, verb, action, subject
     postData.Subject  = subject; 
     postData.Note     = note;
     postData.Date     = entryDate;
-    postData.RawBody  = rawBody;
+    postData.RawBody  = JSON.stringify( rawBody );
 
     let pd = { "Endpoint": shortName, "newPAction": postData };
     let response = await postIt( shortName, JSON.stringify( pd ))

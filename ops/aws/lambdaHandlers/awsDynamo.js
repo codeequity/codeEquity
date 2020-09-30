@@ -314,7 +314,6 @@ async function getPeq( uid, ghRepo ) {
     });
 }
 
-// Get all for uid, app can figure out whether or not to sort by associated ghUser
 async function getPeqActions( uid, ghRepo ) {
     const paramsP = {
         TableName: 'CEPEQActions',
@@ -382,6 +381,40 @@ async function getGHA( uid ) {
     });
 }
 
+
+
+async function getPEQActionsFromGH( ghUserName, ceUID ) {
+    const params = {
+        TableName: 'CEPEQActions',
+        FilterExpression: 'GHUserName = :ghun',
+        ExpressionAttributeValues: { ":ghun": ghUserName },
+	Limit: 99,
+    };
+
+    console.log( "PEQActions needing update");
+    let gPromise = paginatedScan( params );
+    return gPromise.then((peqas) => peqas );
+}
+
+// Conditional update would have been nice as an extra check, but dynamo has issues with expressoinAttrVal vs. conditionalExpression
+// Is OK without it, since all peqa have already matched the condition.
+async function updatePEQActions( peqa, ceUID ) {
+    
+    const paramsU = {
+	TableName: 'CEPEQActions',
+	Key: { "PEQActionId": peqa.PEQActionId },
+	UpdateExpression: 'set CEUID = :ceuid',
+        ExpressionAttributeValues: {
+            ':ceuid':  ceUID,
+        }
+    };
+    console.log( "update peqa where gh is", peqa.GHUserName, peqa.PEQActionId, ceUID);
+    assert( peqa.CEUID == "---" );
+
+    let uPromise = bsdb.update( paramsU ).promise();
+    return uPromise.then(() => true );
+}
+
 async function putGHA( newGHAcct ) {
     const paramsP = {
         TableName: 'CEGithub',
@@ -394,9 +427,21 @@ async function putGHA( newGHAcct ) {
     };
 
     console.log( "GHAcct put repos");
+
     let ghaPromise = bsdb.put( paramsP ).promise();
-    return ghaPromise.then(() => success( true ));
+    await ghaPromise;
+
+    // Must update any PEQActions created before ghUser had ceUID
+    // Suure would be nice to have a real 'update where'.   bah
+    // Majority of cases will be 0 or just a few PEQActions without a CE UID, 
+    // especially since a PEQAction requires a PEQ label.
+    let updated = true;
+    const ghPEQA = await getPEQActionsFromGH( newGHAcct.ghUserName, newGHAcct.ceOwnerId );
+    await ghPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newGHAcct.ceOwnerId ));
+    console.log( "putGHA returning", updated );
+    return success( updated );
 }
+
 
 // putPEQSummary
 // Note, on update be sure to set mostRecent to false for previous mostRecent

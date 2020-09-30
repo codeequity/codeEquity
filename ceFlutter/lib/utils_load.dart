@@ -206,6 +206,7 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    }
 }
 
+
 Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
    String shortName = "fetchPEQAction";
    final response = await postIt( shortName, postData, container );
@@ -305,13 +306,17 @@ Future<void> reloadMyProjects( context, container ) async {
    // XXX breaks if no repo yet
    if( appState.myGHAccounts.length > 0 ) {
       String ghUser = appState.myGHAccounts[0].ghUserName;
-      String ghRepo = appState.myGHAccounts[0].repos[0];
+      String ghRepo = appState.myGHAccounts[0].repos[2];
 
       // Get all PEQ data related to the selected repo.  
       appState.myPEQs       = await fetchPEQs( context, container,
                                                       '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHRepo": "$ghRepo" }' );
+
+      // To get here, user has both a CEUID and an association with ghUserLogin
+      // Any PEQActions recorded from github before the user had a CELogin will have been updated as soon as the linkage was created.
       appState.myPEQActions = await fetchPEQActions( context, container,
                                                       '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "GHRepo": "$ghRepo" }' );
+
       appState.myPEQSummary = await fetchPEQSummary( context, container,
                                                       '{ "Endpoint": "GetPEQSummary", "GHRepo": "$ghRepo" }' );
    }

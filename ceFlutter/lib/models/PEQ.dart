@@ -54,7 +54,7 @@ class PEQ {
       res += "\n   " + amount + " PEQ, for: " + ghIssueTitle;
       res += "\n    holder: " + ceHolderId + ", grantor: " + ceGrantorId;
       res += "\n    type: " + type + ", accrued: " + accrualDate + ", vested %: " + vestedPercent;
-      res += "\n    projectSub: " + ghProjectSub + " projId: " + ghProjectId + ", issue: " + ghIssueId;
+      res += "\n    projectSub: " + ghProjectSub.toString() + " projId: " + ghProjectId + ", issue: " + ghIssueId;
       return res;
    }
 
