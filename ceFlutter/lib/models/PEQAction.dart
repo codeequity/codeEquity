@@ -24,7 +24,8 @@ class PEQAction {
    
    final String  note;             // i.e. 'issue reopened, not full ce project layout, no related card moved"
    final String  entryDate;        // today  grant: today == PEQ:accrued.   planning: PEQaccrued = ""
-   final String  rawReqBody;  
+   final String  rawReqBody;       // example use: final m = json.decode( rawReqBody ); print( m.keys ); print( m['project_card']['creator'] )
+
 
    PEQAction({this.id, this.ceUID, this.ghUserName, this.ghRepo,
             this.verb, this.action, this.subject,
@@ -51,7 +52,7 @@ class PEQAction {
 
          note:       json['Note'],
          entryDate:  json['EntryDate'],
-         rawReqBody: json['RawReqBody'],
+         rawReqBody: json['RawBody']         // start as string - rawBody can have many different types.  decode at runtime
          );
    }
    

@@ -101,7 +101,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 		    subject,          // subject
 		    "",               // note
 		    utils.getToday(), // entryDate
-		    reqBody.toString()  // raw
+		    reqBody           // raw
 		));
 	    }
 	}
