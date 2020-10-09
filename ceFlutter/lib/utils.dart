@@ -10,6 +10,20 @@ import 'package:ceFlutter/screens/profile_page.dart';
 import 'package:ceFlutter/customIcons.dart';
 
 
+String getToday() {
+   final now = new DateTime.now();
+   String date = "";
+
+   if( now.month < 10 ) { date += "0"; }
+   date = now.month.toString() + "/";
+
+   if( now.day < 10 ) { date += "0"; }
+   date += now.day.toString() + "/";
+   
+   date += now.year.toString();
+   return date;
+}
+
 // XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {
    Fluttertoast.showToast(
@@ -43,19 +57,21 @@ void showToast(String msg) {
 }
 
 void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {
+   print( "Popping dialog" );
    showDialog(
       context: context,
       builder: (BuildContext context) {
+                 print( "building alert dialog" );
                  return AlertDialog(
                     title: new Text( confirmHeader ),
                     content: new Text( confirmBody ),
                     actions: <Widget>[
                        new FlatButton(
-                          key: Key( 'confirmDelete' ),
+                          key: Key( 'confirmContinue' ),
                           child: new Text("Continue"),
                           onPressed: okFunc ),
                        new FlatButton(
-                          key: Key( 'cancelDelete' ),
+                          key: Key( 'cancelContinue' ),
                           child: new Text("Cancel"),
                           onPressed: cancelFunc )
                        ]);

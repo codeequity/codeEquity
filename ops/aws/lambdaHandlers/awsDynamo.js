@@ -4,7 +4,7 @@ const AWS = require('aws-sdk');
 const bsdb = new AWS.DynamoDB.DocumentClient();
 var assert = require('assert');
 
-// sigh.  thanks dynamodb.  
+// NOTE, as of 5/20 dynamo supports empty strings.  yay.  Save this for sets & etc.
 const EMPTY = "---EMPTY---";  
 
 // Because we're using a Cognito User Pools authorizer, all of the claims
@@ -34,15 +34,19 @@ exports.handler = (event, context, callback) => {
     console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetID")          { resultPromise = getPersonId( username ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
-    else if( endPoint == "RecordPEQ")      { resultPromise = recPeq( rb.newPEQ ); }
-    else if( endPoint == "RecordPEQAction"){ resultPromise = recPAct( rb.newPAction ); }
+    else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
+    else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.icLink ); }
     else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.GHIssueId, rb.GHColumnId ); }
     else if( endPoint == "GetGHCard")      { resultPromise = getGHC( rb.GHIssueId ); }
     else if( endPoint == "GetGHCFromCard") { resultPromise = getGHCFromCard( rb.GHRepo, rb.GHProjName, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHRepo ); }
+    else if( endPoint == "GetaPEQ")        { resultPromise = getaPeq( rb.Id ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
+    else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
+    else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
     else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
+    else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
     else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
     else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
@@ -110,6 +114,20 @@ function randAlpha(length) {
    }
    return result;
 }
+
+async function setLock( pactId, lockVal ) {
+    console.log( "Locking", pactId, lockVal );
+
+    const paramsSL = {
+	TableName: 'CEPEQActions',
+	Key: {"PEQActionId": pactId },
+	UpdateExpression: 'set Locked = :lockVal',
+	ExpressionAttributeValues: { ':lockVal': lockVal }};
+    
+    let lockPromise = bsdb.update( paramsSL ).promise();
+    return lockPromise.then(() => success( true ));
+}
+
 
 async function getPersonId( username ) {
     const paramsP = {
@@ -248,7 +266,7 @@ async function updateGHC( issueId, columnId ) {
 }
 
 
-async function recPeq( newPEQ ) {
+async function putPeq( newPEQ ) {
 
     let newId = randAlpha(10);
     const params = {
@@ -273,7 +291,8 @@ async function recPeq( newPEQ ) {
     return recPromise.then(() =>success( newId ));
 }
 
-async function recPAct( newPAction ) {
+
+async function putPAct( newPAction ) {
 
     let newId = randAlpha(10);
     const params = {
@@ -288,7 +307,10 @@ async function recPAct( newPAction ) {
 	    "Subject":      newPAction.Subject,
 	    "Note":         newPAction.Note,
 	    "EntryDate":    newPAction.Date,
-	    "RawBody":      newPAction.RawBody
+	    "RawBody":      newPAction.RawBody,
+	    "Ingested":     newPAction.Ingested,
+	    "Locked":       newPAction.Locked,
+	    "TimeStamp":    newPAction.TimeStamp
 	}
     };
 
@@ -314,6 +336,21 @@ async function getPeq( uid, ghRepo ) {
     });
 }
 
+async function getaPeq( peqid ) {
+    const paramsP = {
+        TableName: 'CEPEQs',
+        FilterExpression: 'PEQId = :peqid',
+        ExpressionAttributeValues: { ":peqid": peqid }
+    };
+
+    let peqPromise = bsdb.scan( paramsP ).promise();
+    return peqPromise.then((peq) => {
+	assert(peq.Count == 1 );
+	console.log( "Found Peq ", peq.Items[0] );
+	return success( peq.Items[0] );
+    });
+}
+
 async function getPeqActions( uid, ghRepo ) {
     const paramsP = {
         TableName: 'CEPEQActions',
@@ -330,11 +367,83 @@ async function getPeqActions( uid, ghRepo ) {
     });
 }
 
+// Lock.  Then get uningested PEQActions
+async function getUnPActions( ghRepo ) {
+    const paramsP = {
+        TableName: 'CEPEQActions',
+        FilterExpression: 'GHRepo = :ghrepo AND Ingested = :false',
+        ExpressionAttributeValues: { ":ghrepo": ghRepo, ":false": "false" },
+	Limit: 99,
+    };
+
+    // Find uningested
+    let unprocPromise = paginatedScan( paramsP );
+    return unprocPromise
+	.then((pacts) => {
+	    console.log( "Found uningested, locking", pacts.length );
+	    
+	    // XXX Fire these off, consider waiting, with Promises.all
+	    //     would be expensive for multiple uningested.  where oh where is updateWhere
+	    pacts.forEach( function(pact) { setLock( pact.PEQActionId, "true" );   });
+	    return pacts;
+	})
+	.then(( pacts ) => {
+	    console.log( "Returning uningested pacts" );
+	    if( pacts.length > 0 ) { return success( pacts ); }
+	    else {
+		return {
+		    statusCode: 204,
+		    body: JSON.stringify( "---" ),
+		    headers: { 'Access-Control-Allow-Origin': '*' }
+		};
+	    }
+		
+	});
+}
+
+// Unlock.  set PEQActions ingested to true
+// XXX no update where.  this will be too slow
+async function updatePActions( pactIds ) {
+
+    console.log( "Updating pactions to unlocked and ingested" );
+
+    let promises = [];
+    pactIds.forEach(function (pactId) {
+	console.log( "update", pactId );
+
+	const params = {
+	    TableName: 'CEPEQActions',
+	    Key: {"PEQActionId": pactId },
+	    UpdateExpression: 'set Locked = :false, Ingested = :true',
+	    ExpressionAttributeValues: { ':false': "false", ':true': "true" }};
+	
+	promises.push( bsdb.update( params ).promise() );
+    });
+
+    let res = true;
+    // Promises execute in parallel, collect in order
+    return await Promise.all( promises )
+	.then((results) => {
+	    console.log( '...promises done', results.toString() );
+	    //results.forEach(function(result) { res = res && result; });
+	    //console.log( "Returning from update,", res.toString() );
+
+	    if( res ) { return success( res ); }
+	    else {
+		return {
+		    statusCode: 500,
+		    body: JSON.stringify( "---" ),
+		    headers: { 'Access-Control-Allow-Origin': '*' }
+		};
+	    }
+	});
+}
+
 async function getPeqSummary( ghRepo ) {
     const paramsP = {
         TableName: 'CEPEQSummary',
-        FilterExpression: 'GHRepo = :ghrepo AND MostRecent = :true',
-        ExpressionAttributeValues: { ":ghrepo": ghRepo, ":true": true }
+        FilterExpression: 'GHRepo = :ghrepo',
+        ExpressionAttributeValues: { ":ghrepo": ghRepo }
     };
 
     console.log( "Looking for peqSummary");
@@ -355,6 +464,25 @@ async function getPeqSummary( ghRepo ) {
     });
 }
 
+// Overwrites any existing record
+async function putPSum( psum ) {
+    const params = {
+        TableName: 'CEPEQSummary',
+	Item: {
+	    "PEQSummaryId": psum.id, 
+	    "GHRepo":       psum.ghRepo,
+	    "TargetType":   psum.targetType,
+	    "TargetId":     psum.targetId,
+	    "Allocations":  psum.allocations
+	}
+    };
+
+    console.log( "PEQSummary put");
+
+    let promise = bsdb.put( params ).promise();
+    return promise.then(() => success( true ));
+}
+
 async function getGHA( uid ) {
     const paramsP = {
         TableName: 'CEGithub',
@@ -370,8 +498,8 @@ async function getGHA( uid ) {
 
 	if( Array.isArray(ghas) && ghas.length ) {
 	    return success( ghas );
-	} else
-	{
+	}
+	else {
 	    return {
 		statusCode: 204,
 		body: JSON.stringify( "---" ),
@@ -380,8 +508,6 @@ async function getGHA( uid ) {
 	}
     });
 }
-
-
 
 async function getPEQActionsFromGH( ghUserName, ceUID ) {
     const params = {
@@ -409,7 +535,7 @@ async function updatePEQActions( peqa, ceUID ) {
         }
     };
     console.log( "update peqa where gh is", peqa.GHUserName, peqa.PEQActionId, ceUID);
-    assert( peqa.CEUID == "---" );
+    assert( peqa.CEUID == "" );
 
     let uPromise = bsdb.update( paramsU ).promise();
     return uPromise.then(() => true );

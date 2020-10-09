@@ -12,8 +12,12 @@ var githubUtils = {
 	return columnInfo( ownerId, repoId );
     },
 
-    parsePEQ: function( cardContent ) {
-	return parsePEQ( cardContent );
+    getAllocated: function( cardContent ) {
+	return getAllocated( cardContent );
+    },
+
+    parsePEQ: function( cardContent, allocation ) {
+	return parsePEQ( cardContent, allocation );
     },
 
     parseHumanPEQ: function( labels ) {
@@ -332,11 +336,10 @@ async function getColumnName( installClient, colId ) {
 // If not, then neither aws nor GH lookup will work, since project layout will probably not be valid
 // Safer from aws as well - known if need to be unallocated
 async function getProjectSubs( installClient, repoName, projName, colId ) {
-
     let projSub = [ "Unallocated" ];
 
     if( projName == "Master" ) {
-	let column = getColumnName( installClient, colId );
+	let column = await( getColumnName( installClient, colId ) );
 	if( column == "" ) { return projSub; }
 	projSub = [ column ];
     }
@@ -351,29 +354,65 @@ async function getProjectSubs( installClient, repoName, projName, colId ) {
 
 
 
-function parsePEQ( content ) {
+function getAllocated( content ) {
+    let res = false;
+    for( const line of content ) {
+	let s =  line.indexOf( config.PALLOC );
+
+	if( s > -1 ){
+	    res = true;
+	    break;
+	}
+    }
+    return res;
+}
+
+
+// Allow:
+//  <allocated, PEQ: 1000>
+//  <allocated, PEQ: 1,000>
+//  <PEQ: 1000>
+//  <PEQ: 1,000>
+function parsePEQ( content, allocation ) {
     let peqValue = 0;
     // content must be at least 2 lines...  XXX title <PEQ: 1000> will fail here .. will be 1 char at a time
     for( const line of content ) {
-	let s =  line.indexOf( config.PEQ_ );
+	let s = -1;
+	let c = -1;
+	if( allocation ) {
+	    console.log( "In alloc" );
+	    s = line.indexOf( config.PALLOC );
+	    if( s > -1 ) {
+		s = line.indexOf( config.PEQ );   // both conds true for one line only in content
+		c = config.PEQ.length;
+	    }
+	}
+	else {
+	    console.log( "In plan" );
+	    s = line.indexOf( config.PPLAN );
+	    c = config.PPLAN.length;
+	}
 
 	if( s > -1 ){
 	    let lineVal = line.substring( s );
+	    console.log( "Looking for peq in", s, c, lineVal );
 	    let e = lineVal.indexOf( ">" );
 	    if( e == -1 ) {
 		console.log( "Malformed peq" );
 		break;
 	    }
-	    let numStart = config.PEQ_.length;
-	    console.log( "Found peq val in ", s, e, lineVal.substring(numStart, e) );
-	    peqValue = parseInt( lineVal.substring( numStart, e ) );
+	    console.log( "Found peq val in ", s, e, lineVal.substring(c, e) );
+	    // js parseint doesn't like commmas
+	    peqValue = parseInt( lineVal.substring( c, e ).split(",").join("") );
 	    console.log( peqValue );
 	    break;
 	}
+	else {  console.log( "PEQ value not found" ); }
     }
     return peqValue;
 }
 
+// XXX remove in favor of above
 function parseHumanPEQ( labels ) {
     let peqValue = 0;
 

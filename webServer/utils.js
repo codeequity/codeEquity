@@ -85,7 +85,8 @@ async function getGH( url ) {
 async function postIt( shortName, postData ) {
     let apiPath = getAPIPath() + "/find";
     let idToken = await awsAuth.getCogIDToken();
-    console.log( "postIt:", shortName, postData );
+    // console.log( "postIt:", shortName, postData );
+    console.log( "postIt:", shortName );
     
     const params = {
         url: apiPath,
@@ -219,6 +220,9 @@ async function recordPEQAction( ceUID, ghUserName, ghRepo, verb, action, subject
     postData.Note     = note;
     postData.Date     = entryDate;
     postData.RawBody  = JSON.stringify( rawBody );
+    postData.Ingested  = "false";
+    postData.Locked    = "false";
+    postData.TimeStamp = JSON.stringify( Date.now() );
 
     let pd = { "Endpoint": shortName, "newPAction": postData };
     let response = await postIt( shortName, JSON.stringify( pd ))
@@ -239,16 +243,17 @@ async function recordPEQAction( ceUID, ghUserName, ghRepo, verb, action, subject
 }
 
 
-async function recordPEQPlanned( amount, repo, projSub, projId, issueId, title ) {
-    console.log( "Recording PEQ Planned", amount, "PEQs for", title );
+// XXX Name should be just recordPEQ.. gotta fix other calls first
+async function recordPEQPlanned( amount, peqType, repo, projSub, projId, issueId, title ) {
+    console.log( "Recording PEQ", peqType, amount, "PEQs for", title );
 
     // Erm.. model is defined in .dart.  Could jump through hoops to access it via public_flutter, buuuuut this is simpler?
     
-    let nyet = "---";
+    let nyet = "";
     let shortName = "RecordPEQ";
 
     let postData         = { "CEHolderId": nyet, "CEGrantorId": nyet };
-    postData.Type        = "Plan";
+    postData.Type        = peqType;
     postData.Amount      = amount;
     postData.AccrualDate = nyet;
     postData.VestedPerc  = nyet;

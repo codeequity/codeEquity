@@ -4,14 +4,18 @@ const CE_BOT = 'codeequity[bot]';
 // XXX Hmm better as two enums?
 const PEQ_COLOR = 'ffcc80';
 
+const PEQSTART = '<';
+const PEQ      = 'PEQ: ';
 const _PEQ     = ' PEQ';
-const PEQ_     = '<PEQ: ';
-const PEQ_1K   = '<PEQ: 1000>';
-const PEQ_1Kc  = '<PEQ: 1,000>';
 
+const PPLAN    = PEQSTART + PEQ;
+const PALLOC   = PEQSTART +'allocation';
+
+// XXX kill these?
+const PEQ_1K   = PEQSTART +'PEQ: 1000>';
+const PEQ_1Kc  = PEQSTART +'PEQ: 1,000>';
 const PEQ_10K  = '<PEQ: 10000>';
 const PEQ_10Kc = '<PEQ: 10,000>';
-
 const PEQ_50K  = '<PEQ: 50000>';
 const PEQ_50Kc = '<PEQ: 50,000>';
 
@@ -25,8 +29,13 @@ const CESERVER_CONFIG_LOC = '../ops/aws/auth/ceServerConfig.json';
 
 exports.CE_BOT   = CE_BOT;
 exports.PEQ_COLOR = PEQ_COLOR;
+
+exports.PEQSTART = PEQSTART;
+exports.PEQ      = PEQ;
 exports._PEQ     = _PEQ;
-exports.PEQ_     = PEQ_;
+exports.PPLAN    = PPLAN;
+exports.PALLOC   = PALLOC;
+
 exports.PEQ_1K   = PEQ_1K;
 exports.PEQ_1Kc  = PEQ_1Kc;
 exports.PEQ_10K  = PEQ_10K;

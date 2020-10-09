@@ -7,7 +7,7 @@ class PEQ {
    final String  ceGrantorId;
 
    final String  type;           // type is Allocation.  Plan.  Grant.  usually from Master, sub created/inprogress, sub pending/accrued
-   final String  amount;     
+   final int     amount;     
    final String  accrualDate;    // when accrued
    final String  vestedPercent;  // as of accrual date
 
@@ -51,7 +51,7 @@ class PEQ {
    
    String toString() {
       String res = "\n" + ghRepo + " PEQs";
-      res += "\n   " + amount + " PEQ, for: " + ghIssueTitle;
+      res += "\n   " + amount.toString() + " PEQ, for: " + ghIssueTitle;
       res += "\n    holder: " + ceHolderId + ", grantor: " + ceGrantorId;
       res += "\n    type: " + type + ", accrued: " + accrualDate + ", vested %: " + vestedPercent;
       res += "\n    projectSub: " + ghProjectSub.toString() + " projId: " + ghProjectId + ", issue: " + ghIssueId;

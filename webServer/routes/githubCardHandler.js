@@ -49,7 +49,8 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    return;
 	}
 	
-	let peqValue = gh.parsePEQ( cardContent );
+	let allocation = gh.getAllocated( cardContent );
+	let peqValue = gh.parsePEQ( cardContent, allocation );
 
 	if( peqValue > 0 ) {
 
@@ -78,14 +79,16 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    await( utils.addIssueCard( fullName, issueID, projId, projName, colId, colName, newCardID, cardContent[0] ));
 
 	    let projSub = await gh.getProjectSubs( installClient, fullName, projName, colId );
-
+	    let peqType = allocation ? "Allocation" : "Plan";
+	    
 	    console.log( "Record PEQ" );
 	    let newPEQId = await( utils.recordPEQPlanned(
 		peqValue,                                  // amount
+		peqType,                                   // type of peq
 		fullName,                                  // gh repo
 		projSub,                                   // gh project subs
 		projId,                                    // gh project id
-		issueID,                                   // gh issue id
+		issueID.toString(),                        // gh issue id
 		cardContent[0]                             // gh issue title
 	    ));
 
