@@ -22,6 +22,7 @@ import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
+import 'package:ceFlutter/models/allocation.dart';
 
 
 Future<void> logoutWait( context, container, appState ) async {
@@ -206,6 +207,20 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    }
 }
 
+Future<PEQ> fetchaPEQ( context, container, postData ) async {
+   String shortName = "fetchaPEQ";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      final js = json.decode(utf8.decode(response.bodyBytes));
+      PEQ peq = PEQ.fromJson( js );
+      return peq;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchaPEQ( context, container, postData ); }
+   }
+}
+
 
 Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
    String shortName = "fetchPEQAction";
@@ -259,6 +274,52 @@ Future<List<GHAccount>> fetchGHAcct( context, container, postData ) async {
    }
 }
 
+// Lock uningested PEQActions, then return for processing.
+Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async {
+   String shortName = "lockFetchPAction";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      print( shortName + " 201 return" );
+      Iterable pacts = json.decode(utf8.decode(response.bodyBytes));
+      List<PEQAction> pactions = pacts.map((pact) => PEQAction.fromJson(pact)).toList();
+      return pactions;
+   } else if( response.statusCode == 204) {
+      print( "LockFetch: no unprocessed PActions found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await lockFetchPActions( context, container, postData ); }
+   }
+   
+}
+
+Future<bool> unlockPActions( context, container, postData ) async {
+   String shortName = "unlockPactions";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      // print( response.body.toString() );         
+      return true;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await putGHAcct( context, container, postData ); }
+   }
+}
+
+Future<bool> putPEQSummary( context, container, postData ) async {
+   String shortName = "PutPEQSummary";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      // print( response.body.toString() );         
+      return true;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await putPEQSummary( context, container, postData ); }
+   }
+}
+
 Future<bool> putGHAcct( context, container, postData ) async {
    String shortName = "PutGHA";
    final response = await postIt( shortName, postData, container );
@@ -308,10 +369,13 @@ Future<void> reloadMyProjects( context, container ) async {
       String ghUser = appState.myGHAccounts[0].ghUserName;
       String ghRepo = appState.myGHAccounts[0].repos[2];
 
+      // XXX could be thousands... too much.  Just get uningested, most recent, etc.
       // Get all PEQ data related to the selected repo.  
       appState.myPEQs       = await fetchPEQs( context, container,
                                                       '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHRepo": "$ghRepo" }' );
 
+      // XXX could be thousands... too much.   Just get uningested, most recent, etc.
+      // XXX Really just want mine?  Hmmmmmmmm.......
       // To get here, user has both a CEUID and an association with ghUserLogin
       // Any PEQActions recorded from github before the user had a CELogin will have been updated as soon as the linkage was created.
       appState.myPEQActions = await fetchPEQActions( context, container,
@@ -322,6 +386,97 @@ Future<void> reloadMyProjects( context, container ) async {
    }
 }
 
+
+// XXX not adding.
+// XXX not writing back to dynamo
+// XXX repo vs contributor
+// XXX lots more work left to do in here.
+// XXX category not quite there.
+// XXX committed undone
+void processPEQAction( PEQAction pact, PEQ peq, context, container ) {
+   print( "processing " + pact.verb + " " + pact.action + " " + peq.type + " for " + peq.amount.toString() );
+   final appState  = container.state;
+
+   if( pact.verb == "confirm" && pact.action == "add" ) {
+
+      if( peq.type == "Allocation" ) {
+
+         // Create, if need to
+         if( appState.myPEQSummary == null ) {
+            print( "Create new appstate PSum" );
+            String pid = randomAlpha(10);
+            appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: peq.ghRepo,
+                                                    targetType: "repo", targetId: peq.ghProjectId, lastModified: getToday(), allocations: [] );
+         }
+         
+         var updated = false;
+         // Update, if already in place
+         for( var alloc in appState.myPEQSummary.allocations ) {
+            print( "Checking for match: " + peq.ghProjectSub.toString() + " " + alloc.category.toString() );
+            if( peq.ghProjectSub.toString() == alloc.category.toString() ) {
+               updated = true;
+               print( "Matched category!" );
+               alloc.amount = alloc.amount + peq.amount;
+               break;
+            }
+         }
+
+         // Create alloc, if not already updated
+         if( !updated ) {
+            print( "Adding new allocation" );
+            Allocation alloc = new Allocation( category: peq.ghProjectSub, amount: peq.amount, committed: 0, notes: "" );
+            appState.myPEQSummary.allocations.add( alloc );
+         }
+
+      }
+      else { notYetImplemented( context ); }
+   }
+   else { notYetImplemented( context ); }
+
+}
+
+
+// XXX need to update peqsummary when hit repo button
+// XXX sort by timestamp
+Future<void> updatePEQAllocations( repoName, context, container ) async {
+   print( "Updating allocations for ghRepo" );
+
+   final appState  = container.state;
+   final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "GHRepo": "$repoName" }' ); 
+
+   List<String> pactIds = [];
+   for( var pact in todoPActions ) {
+      print( "1. Working on todo " );
+      print( pact.toString() );
+      // XXX can't do this unless wait in lambda handler
+      // assert( pact.locked );
+      assert( !pact.ingested );
+      
+      pactIds.add( pact.id );
+      // XXX enum
+      if( pact.action != "relocate" && pact.action != "change" ) {
+         assert( pact.subject.length == 1 );
+         String peqId = pact.subject[0];
+         print( "2. Should see fetcha, then process, interleaved." );
+         PEQ peq = await fetchaPEQ( context, container, '{ "Endpoint": "GetaPEQ", "Id": "$peqId" }' ); 
+         await processPEQAction( pact, peq, context, container );
+      }
+      else { notYetImplemented( context ); }
+   }
+
+   if( appState.myPEQSummary != null ) {
+      print( "3. Writing psum back to dynamo" );
+      String psum = json.encode( appState.myPEQSummary );
+      String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
+      await putPEQSummary( context, container, postData );
+   }
+   
+   if( pactIds.length > 0 ) {
+      print( "4. unlocking." );
+      String newPIDs = json.encode( pactIds );
+      final status = await unlockPActions( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }' );
+   }
+}
 
 
 // XXX Consider splitting utils_load to utils_async and githubUtils

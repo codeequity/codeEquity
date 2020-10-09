@@ -6,6 +6,7 @@ import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/utils_load.dart';
 import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/allocation.dart';
 
 
 
@@ -18,9 +19,11 @@ class CEHomePage extends StatefulWidget {
 
 class _CEHomeState extends State<CEHomePage> {
 
-   var container;
+   var      container;
    AppState appState;
-   bool addGHAcct;
+   bool     addGHAcct;
+   var      ghPersonalAccessToken;
+   TextEditingController pat;
    
    @override
    void initState() {
@@ -44,67 +47,85 @@ class _CEHomeState extends State<CEHomePage> {
    }
       
 
-   @override
-   Widget build(BuildContext context) {
-
-      container   = AppStateContainer.of(context);
-      appState    = container.state;
-
-      TextEditingController pat = TextEditingController();
-
-      final ghPersonalAccessToken = makeInputField( context, "Github Personal Access Token", false, pat );
-
-      // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.
-      SystemChrome.setPreferredOrientations([ DeviceOrientation.portraitUp, DeviceOrientation.portraitDown ]);
-
-
-
-      _showPeq( String repoName ) {
-         showToast( "Activate wondertwin powers!" );
-      }
-
-      Widget _makeRepoName( String repoName ) {
-         final textWidth = appState.screenWidth * .4;         
-         return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: <Widget>[
-               makeTitleText( repoName, textWidth, false, 1 ),
-               ]);
-      }
-      
-      Widget _makeRepoChunk( String repoName ) {
+      // Repo-wide, not individual
+      // This GD might drill down and back up an allocation
+      Widget _makeAllocation( allocation ) {
+         final textWidth = appState.screenWidth * .2;
+         
          return GestureDetector(
-            onTap: () => _showPeq( repoName ),
-            child: _makeRepoName( repoName )
+            onTap:  ()
+            {
+               showToast( "Activate wondertwin powers!" );
+            },
+            child: Row(
+               crossAxisAlignment: CrossAxisAlignment.center,
+               mainAxisAlignment: MainAxisAlignment.spaceAround,
+               children: <Widget>[
+                  makeTitleText( allocation.category.toString(), textWidth * 2, false, 1 ),
+                  makeTitleText( allocation.amount.toString(), textWidth / 2, false, 1 ),
+                  makeTitleText( allocation.committed.toString(), textWidth / 2, false, 1 ),
+                  ])
             );
       }
+
+      // XXX consider adding 'currentRepo' to appState.  Or, making peqSummary a list in appState
+      List<Widget> _showPAlloc( repo ) {
+         List<Widget> allocList = [];
+         List<Allocation> allocs = [];
+         
+         if( appState.peqUpdated || appState.myPEQSummary != null )
+         {
+            if( appState.myPEQSummary.ghRepo == repo ) {
+               allocs = appState.myPEQSummary.allocations;
+            }
+         }
+         else { return []; }
+         if( allocs == [] ) { return []; }
+         
+         allocs.forEach((alloc) {
+               allocList.add( _makeAllocation( alloc ));
+               allocList.add( _makeHDivider( appState.screenWidth * .4, 0.0, appState.screenWidth * .1 ));
+            });
+         
+         return allocList;
+      }
+
+
+      void _updateConfirmed( String repoName ) async {
+         appState.peqUpdated = false;
+
+         print( "XXX XXX XXX" );
+         print( "Why am I getting here before a confirm dialog? " + repoName );
+         await updatePEQAllocations( repoName, context, container );
+
+         // XXX local, or app-wide?  app for now
+         setState(() => appState.peqUpdated = true );
+      }
       
 
+      // This GD opens and closes peqSummary.
+      Widget _makeRepoChunk( String repoName ) {
+         final textWidth = appState.screenWidth * .4;
+         return GestureDetector(
+            onTap: ()
+            {
+               // confirm( context, "Update Summary?", "Press Continue to proceed.", _updateConfirmed( repoName ), () => print( "not updated" ));
+               _updateConfirmed( repoName );
+            },
+            child: makeTitleText( repoName, textWidth, false, 1 )
+            );
+      }
+
       // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-      // Having a second listview allows limits on num repos per acct.
-      Widget _makeRepos( gha ) {
+      List<Widget> _makeRepos( gha ) {
          final textWidth = appState.screenWidth * .2;
          List<Widget> repoChunks = [];
-         gha.repos.forEach((repo) => repoChunks.add( _makeRepoChunk( repo ) ) );
-         
-         return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: <Widget>[
-               makeTitleText( gha.ghUserName, textWidth, false, 1 ),
-               ConstrainedBox( 
-                  constraints: new BoxConstraints(
-                     minWidth: 20.0,
-                     minHeight: 20.0,
-                     maxHeight: appState.screenHeight * .3,
-                     maxWidth:  appState.screenWidth * .8
-                     ),
-                  child: ListView(
-                     scrollDirection: Axis.vertical,
-                     children: repoChunks
-                     ))               
-               ]);
+         repoChunks.add( makeTitleText( gha.ghUserName, textWidth, false, 1 ) );
+         gha.repos.forEach((repo) {
+               repoChunks.add( _makeRepoChunk( repo ));
+               repoChunks.addAll( _showPAlloc(repo ) );
+            });
+         return repoChunks;
       }
       
       Widget _showGHAccts( ) {
@@ -112,7 +133,7 @@ class _CEHomeState extends State<CEHomePage> {
 
          if( appState.myGHAccounts != null || appState.ghUpdated ) {
             for( final gha in appState.myGHAccounts ) {
-               acctList.add( _makeRepos( gha ));
+               acctList.addAll( _makeRepos( gha ));
                acctList.add( _makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));
             }
 
@@ -191,7 +212,10 @@ class _CEHomeState extends State<CEHomePage> {
                  mainAxisAlignment: MainAxisAlignment.start,
                  mainAxisSize: MainAxisSize.min,    // required for listView child
                  children: <Widget>[
+
+                    // HERE
                     _showGHAccts(),
+
                     Row(
                        crossAxisAlignment: CrossAxisAlignment.start,
                        mainAxisAlignment: MainAxisAlignment.start,
@@ -224,6 +248,23 @@ class _CEHomeState extends State<CEHomePage> {
            return CircularProgressIndicator();
         }
      }
+
+
+   
+   @override
+   Widget build(BuildContext context) {
+
+      container   = AppStateContainer.of(context);
+      appState    = container.state;
+
+      pat = TextEditingController();
+
+      ghPersonalAccessToken = makeInputField( context, "Github Personal Access Token", false, pat );
+
+      // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.
+      SystemChrome.setPreferredOrientations([ DeviceOrientation.portraitUp, DeviceOrientation.portraitDown ]);
+
+
      
      print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
      

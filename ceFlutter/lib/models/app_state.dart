@@ -45,7 +45,7 @@ class AppState {
 
    List<PEQ>        myPEQs;
    List<PEQAction> myPEQActions;
-   PEQSummary myPEQSummary;
+   PEQSummary myPEQSummary;               // XXX need 1 proj, one my per repo
    bool peqUpdated;
 
    List<GHAccount> myGHAccounts;   
