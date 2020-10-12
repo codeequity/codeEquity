@@ -91,15 +91,20 @@ class _CEHomeState extends State<CEHomePage> {
       }
 
 
-      void _updateConfirmed( String repoName ) async {
+      Future<void> _updateConfirmed( String repoName ) async {
          appState.peqUpdated = false;
-
-         print( "XXX XXX XXX" );
-         print( "Why am I getting here before a confirm dialog? " + repoName );
+         
          await updatePEQAllocations( repoName, context, container );
-
+         
          // XXX local, or app-wide?  app for now
-         setState(() => appState.peqUpdated = true );
+         setState(() { appState.peqUpdated = true; });
+
+         Navigator.of( context ).pop(); 
+      }
+
+      void _updateRejected() {
+         print( "not updated" );
+         Navigator.of( context ).pop(); 
       }
       
 
@@ -109,8 +114,8 @@ class _CEHomeState extends State<CEHomePage> {
          return GestureDetector(
             onTap: ()
             {
-               // confirm( context, "Update Summary?", "Press Continue to proceed.", _updateConfirmed( repoName ), () => print( "not updated" ));
-               _updateConfirmed( repoName );
+               confirm( context, "Update Summary?", "Press Continue to proceed.", () => _updateConfirmed( repoName ), () => _updateRejected() );
+               //_updateConfirmed( repoName );
             },
             child: makeTitleText( repoName, textWidth, false, 1 )
             );
@@ -151,7 +156,7 @@ class _CEHomeState extends State<CEHomePage> {
                   children: acctList
                   ));
          }
-         else { // XXX just a container
+         else { 
             return CircularProgressIndicator();
          }
       }
@@ -267,6 +272,7 @@ class _CEHomeState extends State<CEHomePage> {
 
      
      print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
+     print( getToday() );
      
      return Scaffold(
         appBar: makeTopAppBar( context, "Home" ),

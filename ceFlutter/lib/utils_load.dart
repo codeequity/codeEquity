@@ -307,6 +307,18 @@ Future<bool> unlockPActions( context, container, postData ) async {
    }
 }
 
+Future<bool> updatePActId( context, container, postData ) async {
+   String shortName = "unlockPactions";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      return true;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await putGHAcct( context, container, postData ); }
+   }
+}
+
 Future<bool> putPEQSummary( context, container, postData ) async {
    String shortName = "PutPEQSummary";
    final response = await postIt( shortName, postData, container );
@@ -386,17 +398,20 @@ Future<void> reloadMyProjects( context, container ) async {
    }
 }
 
-
-// XXX not adding.
-// XXX not writing back to dynamo
-// XXX repo vs contributor
-// XXX lots more work left to do in here.
-// XXX category not quite there.
-// XXX committed undone
 void processPEQAction( PEQAction pact, PEQ peq, context, container ) {
    print( "processing " + pact.verb + " " + pact.action + " " + peq.type + " for " + peq.amount.toString() );
    final appState  = container.state;
 
+   // XXX config
+   // XXX this may need updating if allow 1:many ce/gh association.  maybe limit ce login to 1:1 - pick before see stuff.
+   // Update CEUID by matching my peqAction;ghUserName to cegithub:ghUsername, then writing that CEOwnerId
+   // No need to wait..
+   if( pact.ceUID == "---" ) {
+      String ghu = pact.ghUserName;
+      String pactId = pact.id; 
+      updatePActId( context, container, '{ "Endpoint": "putPActCEUID", "GHUserName": "$ghu", "PEQActionId": "$pactId" }' );
+   }
+   
    if( pact.verb == "confirm" && pact.action == "add" ) {
 
       if( peq.type == "Allocation" ) {
@@ -406,7 +421,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) {
             print( "Create new appstate PSum" );
             String pid = randomAlpha(10);
             appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: peq.ghRepo,
-                                                    targetType: "repo", targetId: peq.ghProjectId, lastModified: getToday(), allocations: [] );
+                                                    targetType: "repo", targetId: peq.ghProjectId, lastMod: getToday(), allocations: [] );
          }
          
          var updated = false;
@@ -424,7 +439,12 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) {
          // Create alloc, if not already updated
          if( !updated ) {
             print( "Adding new allocation" );
-            Allocation alloc = new Allocation( category: peq.ghProjectSub, amount: peq.amount, committed: 0, notes: "" );
+            List<String> sub = peq.ghProjectSub;
+            String pt = peq.ghIssueTitle;
+            assert( pt.length >= 5 );
+            if( pt.substring( 0,4 ) == "Sub: " ) { pt = pt.substring( 5 ); }
+            sub.add( pt );
+            Allocation alloc = new Allocation( category: sub, amount: peq.amount, committed: 0, notes: "" );
             appState.myPEQSummary.allocations.add( alloc );
          }
 
@@ -436,7 +456,6 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) {
 }
 
 
-// XXX need to update peqsummary when hit repo button
 // XXX sort by timestamp
 Future<void> updatePEQAllocations( repoName, context, container ) async {
    print( "Updating allocations for ghRepo" );
@@ -448,7 +467,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    for( var pact in todoPActions ) {
       print( "1. Working on todo " );
       print( pact.toString() );
-      // XXX can't do this unless wait in lambda handler
+      // can't do this unless wait in lambda handler
       // assert( pact.locked );
       assert( !pact.ingested );
       
@@ -458,7 +477,8 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
          assert( pact.subject.length == 1 );
          String peqId = pact.subject[0];
          print( "2. Should see fetcha, then process, interleaved." );
-         PEQ peq = await fetchaPEQ( context, container, '{ "Endpoint": "GetaPEQ", "Id": "$peqId" }' ); 
+         PEQ peq = await fetchaPEQ( context, container, '{ "Endpoint": "GetaPEQ", "Id": "$peqId" }' );
+         // XXX no await needed just yet
          await processPEQAction( pact, peq, context, container );
       }
       else { notYetImplemented( context ); }
@@ -493,10 +513,6 @@ Future<List<String>> getSubscriptions( container, subUrl ) async {
    return fullNames;
 }
 
-
-// XXX NOTE: PAT  create a token with a scope specific to codeEquity.
-//     https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token
-//     github has deprecated login/passwd auth.  So, pat.  just need top 4 scopes under repo.
 
 Future<bool> associateGithub( context, container, personalAccessToken ) async {
 

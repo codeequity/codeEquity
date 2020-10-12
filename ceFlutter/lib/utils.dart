@@ -12,15 +12,20 @@ import 'package:ceFlutter/customIcons.dart';
 
 String getToday() {
    final now = new DateTime.now();
+   print( "YYYYYYYYYYYY" );
+   print( now.toString() );
    String date = "";
 
    if( now.month < 10 ) { date += "0"; }
    date = now.month.toString() + "/";
+   print( date );
 
    if( now.day < 10 ) { date += "0"; }
    date += now.day.toString() + "/";
+   print( date );
    
    date += now.year.toString();
+   print( "returning: " + date );
    return date;
 }
 

@@ -15,7 +15,7 @@ class PEQ {
    final List<String>  ghProjectSub;      // project subs, i.e. ["Master", "codeEquity web front end"]
    final String        ghProjectId;    
    final String        ghIssueId;   
-   final String        ghIssueTitle; 
+   final String        ghIssueTitle;      // actually, issue-or-card title.
 
    PEQ({this.id, this.ceHolderId, this.ceGrantorId,
             this.type, this.amount, this.accrualDate, this.vestedPercent,

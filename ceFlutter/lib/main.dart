@@ -101,7 +101,7 @@ class _CESplashPageState extends State<CESplashPage> {
 
      var container = AppStateContainer.of(context);
      appState = container.state;
-     
+
      final devWidth  = MediaQuery.of(context).size.width;
      final devHeight = MediaQuery.of(context).size.height;
      appState.screenHeight = devHeight;
