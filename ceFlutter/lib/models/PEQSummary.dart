@@ -11,13 +11,13 @@ class PEQSummary {
    final String           ghRepo;        // reponame is form /owner/repo, so is unique
    final String           targetType;    // "repo", "contributor"
    final String           targetId;      // ceProject:ghProjectId, PEQAction:ceUID
-   final String           lastModified;
+   final String           lastMod;
    final List<Allocation> allocations;   
 
-   PEQSummary({ this.id, this.ghRepo, this.targetType, this.targetId, this.lastModified, this.allocations });
+   PEQSummary({ this.id, this.ghRepo, this.targetType, this.targetId, this.lastMod, this.allocations });
             
    dynamic toJson() => { 'id': id, 'ghRepo': ghRepo, 'targetType': targetType, 'targetId': targetId,
-                            'lastModified': lastModified, 'allocations': allocations };
+                            'lastMod': lastMod, 'allocations': allocations };
    
    factory PEQSummary.fromJson(Map<String, dynamic> json) {
 
@@ -31,13 +31,13 @@ class PEQSummary {
          ghRepo:        json['GHRepo'],
          targetType:    json['TargetType'],
          targetId:      json['TargetId'],
-         lastModified:  json['LastModified'],
+         lastMod:       json['LastMod'],
          allocations:   allocs
          );
    }
    
    String toString() {
-      String res = "\n" + ghRepo + " last modified: " + lastModified;
+      String res = "\n" + ghRepo + " last modified: " + lastMod;
       res += "\n     Summary for " + targetType + ": " + targetId;
       allocations.forEach((alloc) => res += "\n     " + alloc.toString() );
       return res;

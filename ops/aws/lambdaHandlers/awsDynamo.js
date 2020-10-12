@@ -45,6 +45,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
+    else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.GHUserName, rb.PEQActionId); }
     else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
@@ -141,6 +142,21 @@ async function getPersonId( username ) {
 	assert(persons.Count == 1 );
 	console.log( "Found PersonId ", persons.Items[0].PersonId );
 	return success( persons.Items[0].PersonId );
+    });
+}
+
+async function getCEUID( ghUser ) {
+    const params = {
+        TableName: 'CEGithub',
+        FilterExpression: 'GHUserName = :uname',
+        ExpressionAttributeValues: { ":uname": ghUser }
+    };
+
+    let promise = bsdb.scan( params ).promise();
+    return promise.then((gh) => {
+	assert(gh.Count == 1 );
+	console.log( "Found ceOwnerId ", gh.Items[0].CEOwnerId );
+	return gh.Items[0].CEOwnerId;
     });
 }
 
@@ -283,7 +299,7 @@ async function putPeq( newPEQ ) {
 	    "GHProjectSub": newPEQ.GHProjectSub,
 	    "GHProjectId":  newPEQ.GHProjectId,
 	    "GHIssueId":    newPEQ.GHIssueId,
-	    "Title":        newPEQ.Title
+	    "GHIssueTitle": newPEQ.GHIssueTitle
 	}
     };
 
@@ -439,6 +455,23 @@ async function updatePActions( pactIds ) {
 	});
 }
 
+async function updatePActCE( ghUser, pactId ) {
+
+    const ceUID  = await getCEUID( ghUser );
+    console.log( "Updating CEUID for", ghUser, pactId );
+
+    const params = {
+	TableName: 'CEPEQActions',
+	Key: {"PEQActionId": pactId },
+	UpdateExpression: 'set CEUID = :ceuid',
+	ExpressionAttributeValues: { ':ceuid': ceUID }};
+    
+    let promise = bsdb.update( params ).promise();
+    return promise.then(() => success( true ));
+}
+
+
+
 async function getPeqSummary( ghRepo ) {
     const paramsP = {
         TableName: 'CEPEQSummary',
@@ -473,6 +506,7 @@ async function putPSum( psum ) {
 	    "GHRepo":       psum.ghRepo,
 	    "TargetType":   psum.targetType,
 	    "TargetId":     psum.targetId,
+	    "LastMod":      psum.lastMod,
 	    "Allocations":  psum.allocations
 	}
     };
@@ -568,28 +602,9 @@ async function putGHA( newGHAcct ) {
     return success( updated );
 }
 
-
-// putPEQSummary
-// Note, on update be sure to set mostRecent to false for previous mostRecent
-// Consider keeping only 2 records, max, at least initially
-
-
 // XXX Placeholder
 async function getAgreements( username ) {
-    const paramsP = {
-        TableName: 'CEAgreements',
-        FilterExpression: 'UserName = :uname',
-        ExpressionAttributeValues: { ":uname": username }
-    };
-
-    let personPromise = bsdb.scan( paramsP ).promise();
-    return personPromise.then((persons) => {
-	// console.log( "Persons: ", persons );
-	assert(persons.Count == 1 );
-	console.log( "Found person ", persons.Items[0] );
-	console.log( "Found PersonId ", persons.Items[0].PersonId );
-	return success( persons.Items[0].PersonId );
-    });
+    return success( true );
 }
 
 

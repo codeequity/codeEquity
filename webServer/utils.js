@@ -251,6 +251,7 @@ async function recordPEQPlanned( amount, peqType, repo, projSub, projId, issueId
     
     let nyet = "";
     let shortName = "RecordPEQ";
+    let titleStrip = title.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
 
     let postData         = { "CEHolderId": nyet, "CEGrantorId": nyet };
     postData.Type        = peqType;
@@ -261,7 +262,7 @@ async function recordPEQPlanned( amount, peqType, repo, projSub, projId, issueId
     postData.GHProjectSub  = projSub;
     postData.GHProjectId = projId;
     postData.GHIssueId   = issueId;
-    postData.Title       = title;
+    postData.GHIssueTitle = titleStrip;
 
     let pd = { "Endpoint": shortName, "newPEQ": postData };
 
