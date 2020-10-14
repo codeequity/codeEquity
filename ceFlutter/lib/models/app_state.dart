@@ -11,6 +11,8 @@ import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
 
+import 'package:ceFlutter/components/node.dart';
+
 
 class AppState {
 
@@ -51,6 +53,8 @@ class AppState {
    List<GHAccount> myGHAccounts;   
    bool ghUpdated;
 
+   Node allocTree;
+
    initAppData() {
       loaded = false;
 
@@ -62,6 +66,8 @@ class AppState {
 
       myGHAccounts = [];
       ghUpdated = false;
+
+      allocTree = null;
    }
 
    init() {

@@ -51,35 +51,38 @@ async function handler( action, repo, owner, reqBody, res ) {
 	
 	let allocation = gh.getAllocated( cardContent );
 	let peqValue = gh.parsePEQ( cardContent, allocation );
+	let peqType = allocation ? "Allocation" : "Plan";
 
 	if( peqValue > 0 ) {
 
 	    let peqHumanLabelName = peqValue.toString() + " PEQ";
 	    let peqLabel = await gh.findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
-	    let colId = reqBody['project_card']['column_id'];
-	    let colName = await gh.getColumnName( installClient, colId );
+	    let colId    = reqBody['project_card']['column_id'];
 	    let fullName = reqBody['repository']['full_name'];
-
-	    // create new issue
-	    let issueID = await gh.createIssue( installClient, owner, repo, cardContent[0], [peqHumanLabelName] );
-	    assert.notEqual( issueID, -1, "Unable to create issue linked to this card." );
-
-	    // create issue-linked project_card
-	    let newCardID = await gh.createIssueCard( installClient, colId, issueID );
-	    assert.notEqual( newCardID, -1, "Unable to create new issue-linked card." );	    
-	    
-	    // remove orig card
-	    let origCardID = reqBody['project_card']['id'];
-	    await( installClient.projects.deleteCard( { card_id: origCardID } ));	    
-
-	    // Add card issue linkage
-	    console.log( "Adding card/issue to dynamo" );
-	    let projId = reqBody['project_card']['project_url'].split('/').pop(); 
+	    let projId   = reqBody['project_card']['project_url'].split('/').pop(); 
+	    let colName  = await gh.getColumnName( installClient, colId );
 	    let projName = await gh.getProjectName( installClient, projId );
-	    await( utils.addIssueCard( fullName, issueID, projId, projName, colId, colName, newCardID, cardContent[0] ));
+	    let projSub  = await gh.getProjectSubs( installClient, fullName, projName, colId );
+	    let issueID  = "---";
+	    
+	    // No linked issues with allocations.
+	    if( peqType == "Plan" ) {
+		// create new issue
+		issueID = await gh.createIssue( installClient, owner, repo, cardContent[0], [peqHumanLabelName] );
+		assert.notEqual( issueID, -1, "Unable to create issue linked to this card." );
 
-	    let projSub = await gh.getProjectSubs( installClient, fullName, projName, colId );
-	    let peqType = allocation ? "Allocation" : "Plan";
+		// create issue-linked project_card
+		let newCardID = await gh.createIssueCard( installClient, colId, issueID );
+		assert.notEqual( newCardID, -1, "Unable to create new issue-linked card." );	    
+
+		// remove orig card
+		let origCardID = reqBody['project_card']['id'];
+		await( installClient.projects.deleteCard( { card_id: origCardID } ));	    
+
+		// Add card issue linkage
+		console.log( "Adding card/issue to dynamo" );
+		await( utils.addIssueCard( fullName, issueID, projId, projName, colId, colName, newCardID, cardContent[0] ));
+	    }
 	    
 	    console.log( "Record PEQ" );
 	    let newPEQId = await( utils.recordPEQPlanned(

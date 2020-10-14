@@ -24,6 +24,8 @@ import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
 import 'package:ceFlutter/models/allocation.dart';
 
+import 'package:ceFlutter/components/leaf.dart';
+import 'package:ceFlutter/components/node.dart';
 
 Future<void> logoutWait( context, container, appState ) async {
    final wrapper = (() async {
@@ -358,6 +360,30 @@ Future<bool> putPerson( context, container, postData ) async {
    }
 }
 
+// XXX Split this into services dir, break utils into widgets and appstate.  This update doesn't belong here.
+updateAllocationTree( context, container ) {
+   print( "Update allocation tree" );
+   final appState  = container.state;
+   final width = appState.screenWidth * .6;
+
+   appState.allocTree = Node( "Allocations", width, null, true );
+
+   for( var alloc in appState.myPEQSummary.allocations ) {
+
+      // Currently, allocation categories are, exactly, column + title
+      assert( alloc.category.length == 2 );
+
+      int catIdx = appState.allocTree.findNode( alloc.category[0] );
+      if( catIdx == -1 ) {
+         appState.allocTree.addLeaf( Node( alloc.category[0], width, null ) );
+         catIdx = appState.allocTree.findNode( alloc.category[0] );
+      }
+
+      // category[0] must always appear in Allocations node
+      appState.allocTree.addLeafAt( Leaf( alloc.category[1], alloc.amount, width, null ), catIdx );
+   }
+   // print( appState.allocTree.toStr() );
+}
 
 
 // Called on signin
@@ -395,6 +421,8 @@ Future<void> reloadMyProjects( context, container ) async {
 
       appState.myPEQSummary = await fetchPEQSummary( context, container,
                                                       '{ "Endpoint": "GetPEQSummary", "GHRepo": "$ghRepo" }' );
+
+      updateAllocationTree( context, container );
    }
 }
 
@@ -441,8 +469,8 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) {
             print( "Adding new allocation" );
             List<String> sub = peq.ghProjectSub;
             String pt = peq.ghIssueTitle;
-            assert( pt.length >= 5 );
-            if( pt.substring( 0,4 ) == "Sub: " ) { pt = pt.substring( 5 ); }
+            assert( pt.length >= 6 );
+            if( pt.substring( 0,5 ) == "Sub: " ) { pt = pt.substring( 5 ); }
             sub.add( pt );
             Allocation alloc = new Allocation( category: sub, amount: peq.amount, committed: 0, notes: "" );
             appState.myPEQSummary.allocations.add( alloc );
