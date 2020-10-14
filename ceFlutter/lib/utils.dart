@@ -12,20 +12,15 @@ import 'package:ceFlutter/customIcons.dart';
 
 String getToday() {
    final now = new DateTime.now();
-   print( "YYYYYYYYYYYY" );
-   print( now.toString() );
    String date = "";
 
    if( now.month < 10 ) { date += "0"; }
    date = now.month.toString() + "/";
-   print( date );
 
    if( now.day < 10 ) { date += "0"; }
    date += now.day.toString() + "/";
-   print( date );
    
    date += now.year.toString();
-   print( "returning: " + date );
    return date;
 }
 
@@ -89,6 +84,18 @@ Widget paddedLTRB( child, double L, double T, double R, double B ) {
       child: child );
 }
 
+String addCommas( int amount ) {
+   String res = "";
+   String t = amount.toString();
+
+   while( t.length > 3 ) {
+      res = "," + t.substring( t.length - 3 ) + res;
+      t = t.substring( 0, t.length - 3 );
+   }
+   res = t + res;
+   return res;
+}
+
 Widget makeActionButton( appState, buttonText, fn ) {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 14.0);
    return Material(
@@ -134,6 +141,15 @@ Widget makeTitleText( title, width, wrap, lines ) {
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold))));
+}
+
+Widget makeBodyText( title, width, wrap, lines ) {
+   return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 6, 6, 0),
+      child: Container( width: width,
+                        key: Key( title ),
+                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(height: 2, fontSize: 14))));
 }
 
 Widget makeAuthorText( author, width, wrap, lines ) {
