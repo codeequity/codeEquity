@@ -9,6 +9,20 @@ import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
 import 'package:ceFlutter/customIcons.dart';
 
+// XXX service?
+// app-wide constants.  Break this out if more than, say, 3
+const EMPTY = "---";
+
+
+// enum accessibility funcs
+// https://medium.com/@amir.n3t/advanced-enums-in-flutter-a8f2e2702ffd
+String enumToStr(Object o) => o.toString().split('.').last;
+
+T enumFromStr<T>(String key,
+                 List<T> values) => values.firstWhere((v) => key == enumToStr(v),
+                                                      orElse: (() { print( "Warning " + key + " not found"); return null; }));
+
+
 
 String getToday() {
    final now = new DateTime.now();

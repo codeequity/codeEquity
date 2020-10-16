@@ -33,6 +33,7 @@ exports.handler = (event, context, callback) => {
 
     console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetID")          { resultPromise = getPersonId( username ); }
+    else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.GHUserName ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
@@ -45,7 +46,8 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
-    else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.GHUserName, rb.PEQActionId); }
+    else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.PEQId, rb.CEHolderId ); }
+    else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
@@ -154,9 +156,14 @@ async function getCEUID( ghUser ) {
 
     let promise = bsdb.scan( params ).promise();
     return promise.then((gh) => {
-	assert(gh.Count == 1 );
-	console.log( "Found ceOwnerId ", gh.Items[0].CEOwnerId );
-	return gh.Items[0].CEOwnerId;
+	if( gh.Count == 1 ) {
+	    console.log( "Found ceOwnerId ", gh.Items[0].CEOwnerId );
+	    return success( gh.Items[0].CEOwnerId );
+	}
+	else {
+	    // may not be one yet
+	    return success( "" );
+	}
     });
 }
 
@@ -290,8 +297,9 @@ async function putPeq( newPEQ ) {
 	Item: {
 	    "PEQId":        newId,
 	    "CEHolderId":   newPEQ.CEHolderId,
+	    "GHHolderId":   newPEQ.GHHolderId,
 	    "CEGrantorId":  newPEQ.CEGrantorId,
-	    "Type":         newPEQ.Type,
+	    "PeqType":      newPEQ.PeqType,
 	    "Amount":       newPEQ.Amount,
 	    "AccrualDate":  newPEQ.AccrualDate,
 	    "VestedPerc":   newPEQ.VestedPerc,
@@ -455,10 +463,23 @@ async function updatePActions( pactIds ) {
 	});
 }
 
-async function updatePActCE( ghUser, pactId ) {
+async function updatePEQ( peqId, ceHolderIds ) {
 
-    const ceUID  = await getCEUID( ghUser );
-    console.log( "Updating CEUID for", ghUser, pactId );
+    console.log( "Updating assignees for", peqId );
+
+    const params = {
+	TableName: 'CEPEQs',
+	Key: {"PEQId": peqId },
+	UpdateExpression: 'set CEHolderId = :cehold',
+	ExpressionAttributeValues: { ':cehold': ceHolderIds }};
+    
+    let promise = bsdb.update( params ).promise();
+    return promise.then(() => success( true ));
+}
+
+async function updatePActCE( ceUID, pactId ) {
+
+    console.log( "Updating CEUID for", pactId );
 
     const params = {
 	TableName: 'CEPEQActions',

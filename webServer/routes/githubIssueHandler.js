@@ -53,11 +53,11 @@ async function handler( action, repo, owner, reqBody, res ) {
 	}
 	// Would like to speculatively add project_card to planned col of project, pre-triage.
 	// unfortunately, can't see project info pre-triage
-	await( utils.recordPEQ( title, peqValue ));
+	await( utils.recordPEQTodo( title, peqValue ));
 	break;
     case 'edited': 
     case 'deleted':
-	await( utils.recordPEQ( title, peqValue ));
+	await( utils.recordPEQTodo( title, peqValue ));
 	break;
     case 'closed':
     case 'reopened':
@@ -78,12 +78,12 @@ async function handler( action, repo, owner, reqBody, res ) {
 	else {
 	    await gh.moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
 	}
-	await( utils.recordPEQ( title, peqValue ));
+	await( utils.recordPEQTodo( title, peqValue ));
 	break;
     case 'transferred':
 	// XXX Initially, report transfer out of project.
 	//     Optionally, revisit and try to handle xfer automatically if between PEQ projects.
-	await( utils.recordPEQ( title, peqValue ));
+	await( utils.recordPEQTodo( title, peqValue ));
 	break;
     case 'opened':       // not PEQ until labeled action
     case 'pinned': 

@@ -91,7 +91,7 @@ class _CESignupState extends State<CESignupPage> {
                   
                   String newUser = json.encode( user );
                   String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $newUser }';
-                  await putPerson( context, container, ppostData );
+                  await updateDynamo( context, container, ppostData, "PutPerson" );
                   
                   appState.newUser = false;
                   await reloadMyProjects( context, container );

@@ -181,8 +181,7 @@ Future<bool> checkFailure( response, shortName, context, container ) async {
 }
 
 
-Future<String> fetchUID( context, container, postData ) async {
-   String shortName = "fetchUID";
+Future<String> fetchString( context, container, postData, shortName ) async {
    final response = await postIt( shortName, postData, container );
    
    if (response.statusCode == 201) {
@@ -190,10 +189,21 @@ Future<String> fetchUID( context, container, postData ) async {
       return s;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchUID( context, container, postData ); }
+      if( didReauth ) { return await fetchString( context, container, postData, shortName ); }
    }
 }
 
+Future<bool> updateDynamo( context, container, postData, shortName ) async {
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      // print( response.body.toString() );         
+      return true;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await updateDynamo( context, container, postData, shortName ); }
+   }
+}
 
 Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    String shortName = "fetchPEQ";
@@ -296,69 +306,6 @@ Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async 
    
 }
 
-Future<bool> unlockPActions( context, container, postData ) async {
-   String shortName = "unlockPactions";
-   final response = await postIt( shortName, postData, container );
-   
-   if (response.statusCode == 201) {
-      // print( response.body.toString() );         
-      return true;
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await putGHAcct( context, container, postData ); }
-   }
-}
-
-Future<bool> updatePActId( context, container, postData ) async {
-   String shortName = "unlockPactions";
-   final response = await postIt( shortName, postData, container );
-   
-   if (response.statusCode == 201) {
-      return true;
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await putGHAcct( context, container, postData ); }
-   }
-}
-
-Future<bool> putPEQSummary( context, container, postData ) async {
-   String shortName = "PutPEQSummary";
-   final response = await postIt( shortName, postData, container );
-   
-   if (response.statusCode == 201) {
-      // print( response.body.toString() );         
-      return true;
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await putPEQSummary( context, container, postData ); }
-   }
-}
-
-Future<bool> putGHAcct( context, container, postData ) async {
-   String shortName = "PutGHA";
-   final response = await postIt( shortName, postData, container );
-   
-   if (response.statusCode == 201) {
-      // print( response.body.toString() );         
-      return true;
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await putGHAcct( context, container, postData ); }
-   }
-}
-
-Future<bool> putPerson( context, container, postData ) async {
-   String shortName = "putPerson";
-   final response = await postIt( shortName, postData, container );
-   
-   if (response.statusCode == 201) {
-      // print( response.body.toString() );         
-      return true;
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await putPerson( context, container, postData ); }
-   }
-}
 
 // XXX Split this into services dir, break utils into widgets and appstate.  This update doesn't belong here.
 updateAllocationTree( context, container ) {
@@ -366,7 +313,7 @@ updateAllocationTree( context, container ) {
    final appState  = container.state;
    final width = appState.screenWidth * .6;
 
-   appState.allocTree = Node( "Allocations", width, null, true );
+   appState.allocTree = Node( "Category    Alloc / Plan / Accr", width, null, true );
 
    for( var alloc in appState.myPEQSummary.allocations ) {
 
@@ -392,7 +339,7 @@ Future<void> reloadMyProjects( context, container ) async {
    final appState  = container.state;
 
    if( appState.userId == "" ) {
-      appState.userId = await fetchUID( context, container, '{ "Endpoint": "GetID" }' );
+      appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
    }
    print( "UID: " + appState.userId );
    assert( appState.userId != "" );
@@ -422,36 +369,56 @@ Future<void> reloadMyProjects( context, container ) async {
       appState.myPEQSummary = await fetchPEQSummary( context, container,
                                                       '{ "Endpoint": "GetPEQSummary", "GHRepo": "$ghRepo" }' );
 
-      updateAllocationTree( context, container );
+      if( appState.myPEQSummary != null ) { updateAllocationTree( context, container ); }
    }
 }
 
-void processPEQAction( PEQAction pact, PEQ peq, context, container ) {
-   print( "processing " + pact.verb + " " + pact.action + " " + peq.type + " for " + peq.amount.toString() );
-   final appState  = container.state;
 
-   // XXX config
-   // XXX this may need updating if allow 1:many ce/gh association.  maybe limit ce login to 1:1 - pick before see stuff.
-   // Update CEUID by matching my peqAction;ghUserName to cegithub:ghUsername, then writing that CEOwnerId
-   // No need to wait..
-   if( pact.ceUID == "---" ) {
-      String ghu = pact.ghUserName;
-      String pactId = pact.id; 
-      updatePActId( context, container, '{ "Endpoint": "putPActCEUID", "GHUserName": "$ghu", "PEQActionId": "$pactId" }' );
+// XXX strip context, container where not needed
+// XXX consider keeping a map in appstate, to reduce aws calls
+// PActions, PEQs are added by webServer, which does not have nor require ceUID.
+// set CEUID by matching my peqAction:ghUserName  or peq:ghUserNames to cegithub:ghUsername, then writing that CEOwnerId
+// if there is not yet a corresponding ceUID, use "GHUSER: $ghUserName" in it's place, to be fixed later by associateGitub
+Future<void> updateCEUID( PEQAction pact, PEQ peq, context, container ) async {
+   assert( pact.ceUID == EMPTY );
+   String ghu  = pact.ghUserName;
+   String ceu  = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu" }', "GetCEUID" );   
+   await updateDynamo( context, container, '{ "Endpoint": "putPActCEUID", "CEUID": "$ceu", "PEQActionId": "${pact.id}" }', "putPActCEUID" );
+
+   // XXX untested until gitHubIssueHandler recordPeq set up
+   assert( peq.ceHolderId.length == 0 );
+   for( var peqGHUser in peq.ghHolderId ) {
+      String ceUID = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu" }', "GetCEUID" );
+      if( ceUID == "" ) { ceUID = "GHUSER: " + peqGHUser; }
+      peq.ceHolderId.add( ceUID );
+   }
+   if( peq.ceHolderId.length > 0 ) {
+      String peqId = peq.id;
+      await updateDynamo( context, container, '{ "Endpoint": "updatePEQ", "PEQId": "$peqId", "CEHolderId": "${peq.ceHolderId}" }', "updatePEQ" );
    }
    
-   if( pact.verb == "confirm" && pact.action == "add" ) {
+}
 
-      if( peq.type == "Allocation" ) {
+// XXX this may need updating if allow 1:many ce/gh association.  maybe limit ce login to 1:1 - pick before see stuff.
+void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
+   print( "processing " + enumToStr(pact.verb) + " act " + enumToStr(pact.action) + " type " + enumToStr(peq.peqType) + " for " + peq.amount.toString() );
+   final appState  = container.state;
 
-         // Create, if need to
-         if( appState.myPEQSummary == null ) {
-            print( "Create new appstate PSum" );
-            String pid = randomAlpha(10);
-            appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: peq.ghRepo,
-                                                    targetType: "repo", targetId: peq.ghProjectId, lastMod: getToday(), allocations: [] );
-         }
+   // Wait here, else summary may be inaccurate
+   await updateCEUID( pact, peq, context, container );
+
+   if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
+
+      // Create, if need to
+      if( appState.myPEQSummary == null ) {
+         print( "Create new appstate PSum" );
+         String pid = randomAlpha(10);
+         appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: peq.ghRepo,
+                                                 targetType: "repo", targetId: peq.ghProjectId, lastMod: getToday(), allocations: [] );
+      }
          
+      if( peq.peqType == PeqType.allocation ) {
+
          var updated = false;
          // Update, if already in place
          for( var alloc in appState.myPEQSummary.allocations ) {
@@ -472,10 +439,14 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) {
             assert( pt.length >= 6 );
             if( pt.substring( 0,5 ) == "Sub: " ) { pt = pt.substring( 5 ); }
             sub.add( pt );
-            Allocation alloc = new Allocation( category: sub, amount: peq.amount, committed: 0, notes: "" );
+            Allocation alloc = new Allocation( category: sub, amount: peq.amount, allocType: PeqType.allocation,
+                                               ceUID: EMPTY, ghUserName: EMPTY, vestedPerc: 0.0, notes: "" );
             appState.myPEQSummary.allocations.add( alloc );
          }
 
+      }
+      else if( peq.peqType == PeqType.plan ) {
+         print( "Plan PEQ" );
       }
       else { notYetImplemented( context ); }
    }
@@ -500,8 +471,8 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       assert( !pact.ingested );
       
       pactIds.add( pact.id );
-      // XXX enum
-      if( pact.action != "relocate" && pact.action != "change" ) {
+
+      if( pact.action != PActAction.relocate && pact.action != PActAction.change ) {
          assert( pact.subject.length == 1 );
          String peqId = pact.subject[0];
          print( "2. Should see fetcha, then process, interleaved." );
@@ -516,13 +487,13 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       print( "3. Writing psum back to dynamo" );
       String psum = json.encode( appState.myPEQSummary );
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
-      await putPEQSummary( context, container, postData );
+      await updateDynamo( context, container, postData, "PutPSum" );
    }
    
    if( pactIds.length > 0 ) {
       print( "4. unlocking." );
       String newPIDs = json.encode( pactIds );
-      final status = await unlockPActions( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }' );
+      final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
    }
 }
 
@@ -541,7 +512,7 @@ Future<List<String>> getSubscriptions( container, subUrl ) async {
    return fullNames;
 }
 
-
+// XXX rewrite any ceUID or ceHolderId in PEQ, PEQAction that look like: "GHUSER: $ghUserName"
 Future<bool> associateGithub( context, container, personalAccessToken ) async {
 
    final appState  = container.state;
@@ -576,7 +547,7 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          
          String newGHA = json.encode( myGHAcct );
          String postData = '{ "Endpoint": "PutGHA", "NewGHA": $newGHA }';
-         await putGHAcct( context, container, postData );
+         await updateDynamo( context, container, postData, "PutGHA" );
 
       }
    }

@@ -1,11 +1,13 @@
 import 'package:random_string/random_string.dart';
+
 import 'package:ceFlutter/models/allocation.dart';
+
+
+// ceFlutter use only
 
 // No source here - only project owner / founder has perms to do this, and
 // each individual grant is stored with full metadata
-
 // Summaries stored for each project, and separately herein each contributor
-
 class PEQSummary {
    final String           id;
    final String           ghRepo;        // reponame is form /owner/repo, so is unique
