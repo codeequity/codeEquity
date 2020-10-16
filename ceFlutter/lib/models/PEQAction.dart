@@ -1,6 +1,6 @@
 import 'package:random_string/random_string.dart';
 
-// peqSummary built from peqactions
+import 'package:ceFlutter/utils.dart';
 
 // Assignees split evenly
 
@@ -18,14 +18,18 @@ import 'package:random_string/random_string.dart';
 // action may occur with 'close', or project card move, or ceFlutter.
 // result in ce must be identical either way.  1 function - does, say, confirm close, confirm relocate
 
+
+enum PActVerb   { confirm, propose, reject }
+enum PActAction { add, delete, accrue, relocate, change }        // (add, delete, update), (grant, accrue), relocate, change
+
 class PEQAction {
    final String  id;
    final String  ceUID;            // ??? just .. metadata here?
    final String  ghUserName;       // actor.  i.e. grantor, proposer, confirmer, etc.
    final String  ghRepo;
 
-   final String  verb;             // propose, confirm, reject
-   final String  action;           // (add, delete, update), (grant, accrue), relocate, change
+   final PActVerb   verb;      
+   final PActAction action;           
    final List<String> subject;     // update:  <assignee(s)> or
                                    // relocate:  <oldproj, oldcol, oldissue, newproj, newcol, newissue> or
                                    // allocate, accrue, grant:  <PEQId>
@@ -44,7 +48,7 @@ class PEQAction {
             this.ingested, this.locked, this.timeStamp });
             
    dynamic toJson() => {'id': id, 'ceUID': ceUID, 'ghUserName': ghUserName, 'ghRepo': ghRepo,
-                           'verb': verb, 'action': action, 'subject': subject,
+                           'verb': enumToStr(verb), 'action': enumToStr(action), 'subject': subject,
                            'note': note, 'entryDate': entryDate, 'rawReqBody': rawReqBody,
                            'ingested': ingested, 'locked': locked, 'timeStamp': timeStamp };
    
@@ -61,8 +65,8 @@ class PEQAction {
          ghUserName: json['GHUserName'],
          ghRepo:     json['GHRepo'],
 
-         verb:       json['Verb'],
-         action:     json['Action'],
+         verb:       enumFromStr<PActVerb>(   json['Verb'], PActVerb.values ),
+         action:     enumFromStr<PActAction>( json['Action'], PActAction.values ),
          subject:    new List<String>.from(dynamicSubs),
 
          note:       json['Note'],
@@ -78,7 +82,7 @@ class PEQAction {
    String toString() {
       String res = "\nPEQAction for ceUserId: " + ceUID;
       res += "\n    ghUser: " + ghUserName + ", repo: " + ghRepo;
-      res += "\n    " + verb + ", " + action + " " + subject.toString();
+      res += "\n    " + enumToStr(verb) + ", " + enumToStr(action) + " " + subject.toString();
       res += "\n    entry made: " + entryDate;
       res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();
       res += "\n    " + note;

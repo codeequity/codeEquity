@@ -27,6 +27,10 @@ var githubUtils = {
     checkIssueExists: function( installClient, owner, repo, title ) {
 	return checkIssueExists( installClient, owner, repo, title );
     },
+
+    getAssignees: function( installClient, owner, repo, issueId ) {
+	return getAssignees( installClient, owner, repo, issueId );
+    },
     
     findOrCreateLabel: function( installClient, owner, repo, peqHumanLabelName, peqValue ) {
 	return findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
@@ -78,6 +82,23 @@ async function checkIssueExists( installClient, owner, repo, title )
 	})
 	.catch( e => {
 	    console.log( "Problem in checkIssueExists", e );
+	});
+    return retVal;
+}
+
+async function getAssignees( installClient, owner, repo, issueId )
+{
+    let retVal = [];
+
+    await( installClient.issues.get( { owner: owner, repo: repo, issue_number: issueId }))
+	.then( issue => {
+	    console.log( issue['data'] );
+	    for( assignee of issue['data']['assignees'] ) {
+		retVal.push( assignee['login'] );
+	    }
+	})
+	.catch( e => {
+	    console.log( "Problem in getAssignees", e );
 	});
     return retVal;
 }

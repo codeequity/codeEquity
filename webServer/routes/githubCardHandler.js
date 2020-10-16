@@ -48,10 +48,13 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    console.log( "Issue with same title already exists.  Do nothing." );
 	    return;
 	}
-	
+
+	// look for allocation in label
 	let allocation = gh.getAllocated( cardContent );
 	let peqValue = gh.parsePEQ( cardContent, allocation );
-	let peqType = allocation ? "Allocation" : "Plan";
+
+	// should not be able to create a 'grant' or 'accrued' card.  check is below
+	let peqType = allocation ? "allocation" : "plan";
 
 	if( peqValue > 0 ) {
 
@@ -63,10 +66,11 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    let colName  = await gh.getColumnName( installClient, colId );
 	    let projName = await gh.getProjectName( installClient, projId );
 	    let projSub  = await gh.getProjectSubs( installClient, fullName, projName, colId );
-	    let issueID  = "---";
-	    
+	    let issueID  = config.EMPTY;
+
 	    // No linked issues with allocations.
-	    if( peqType == "Plan" ) {
+	    assert( colName != 'Accrued' );
+	    if( peqType == "plan" ) {
 		// create new issue
 		issueID = await gh.createIssue( installClient, owner, repo, cardContent[0], [peqHumanLabelName] );
 		assert.notEqual( issueID, -1, "Unable to create issue linked to this card." );
@@ -83,33 +87,37 @@ async function handler( action, repo, owner, reqBody, res ) {
 		console.log( "Adding card/issue to dynamo" );
 		await( utils.addIssueCard( fullName, issueID, projId, projName, colId, colName, newCardID, cardContent[0] ));
 	    }
+
+	    // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
+	    // there are no assignees for card-created issues.. they are added, or created directly from issues.
+	    let assignees = [];
 	    
 	    console.log( "Record PEQ" );
-	    let newPEQId = await( utils.recordPEQPlanned(
+	    let newPEQId = await( utils.recordPEQ(
 		peqValue,                                  // amount
 		peqType,                                   // type of peq
+		assignees,                                 // list of ghUserLogins assigned
 		fullName,                                  // gh repo
 		projSub,                                   // gh project subs
 		projId,                                    // gh project id
 		issueID.toString(),                        // gh issue id
 		cardContent[0]                             // gh issue title
 	    ));
+	    assert( newPEQId != -1 );
 
-	    if( newPEQId != -1 ) {
-		let subject = [ newPEQId ];
-		console.log( "Record PEQ action" );
-		await( utils.recordPEQAction(
-		    "---",            // CE UID
-		    creator,          // gh user name
-		    fullName,         // gh repo
-		    "confirm",        // verb
-		    "add",            // action
-		    subject,          // subject
-		    "",               // note
-		    utils.getToday(), // entryDate
-		    reqBody           // raw
-		));
-	    }
+	    console.log( "Record PEQ action" );
+	    let subject = [ newPEQId ];
+	    await( utils.recordPEQAction(
+		config.EMPTY,     // CE UID
+		creator,          // gh user name
+		fullName,         // gh repo
+		"confirm",        // verb
+		"add",            // action
+		subject,          // subject
+		"",               // note
+		utils.getToday(), // entryDate
+		reqBody           // raw
+	    ));
 	}
     }
     else if( action == "converted" ) {
@@ -118,7 +126,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     else if( action == "moved" || action == "deleted" || action == "edited" ) {
 	// Note, if action source is issue-delete, linked card is deleted first.  Watch recording.
 	console.log( "Card", action, "Recorded." )
-	await( utils.recordPEQ( "XXX TBD. Content may be from issue, or card." , -1 ));	
+	await( utils.recordPEQTodo( "XXX TBD. Content may be from issue, or card." , -1 ));	
     }
 
     return res.json({

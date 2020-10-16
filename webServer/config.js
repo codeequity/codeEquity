@@ -19,6 +19,7 @@ const PEQ_10Kc = '<PEQ: 10,000>';
 const PEQ_50K  = '<PEQ: 50000>';
 const PEQ_50Kc = '<PEQ: 50,000>';
 
+const EMPTY    = '---';
 
 
 // Default path locations
@@ -42,6 +43,8 @@ exports.PEQ_10K  = PEQ_10K;
 exports.PEQ_10Kc = PEQ_10Kc;
 exports.PEQ_50K  = PEQ_50K;
 exports.PEQ_50Kc = PEQ_50Kc;
+
+exports.EMPTY    = EMPTY;
 
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
 exports.COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;

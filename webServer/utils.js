@@ -243,25 +243,34 @@ async function recordPEQAction( ceUID, ghUserName, ghRepo, verb, action, subject
 }
 
 
-// XXX Name should be just recordPEQ.. gotta fix other calls first
-async function recordPEQPlanned( amount, peqType, repo, projSub, projId, issueId, title ) {
+async function recordPEQ( amount, peqType, assignees, repo, projSub, projId, issueId, title ) {
     console.log( "Recording PEQ", peqType, amount, "PEQs for", title );
 
     // Erm.. model is defined in .dart.  Could jump through hoops to access it via public_flutter, buuuuut this is simpler?
     
-    let nyet = "";
     let shortName = "RecordPEQ";
     let titleStrip = title.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
 
-    let postData         = { "CEHolderId": nyet, "CEGrantorId": nyet };
-    postData.Type        = peqType;
-    postData.Amount      = amount;
-    postData.AccrualDate = nyet;
-    postData.VestedPerc  = nyet;
-    postData.GHRepo      = repo;
-    postData.GHProjectSub  = projSub;
-    postData.GHProjectId = projId;
-    postData.GHIssueId   = issueId;
+    let postData = {}
+
+    if( peqType == "allocation" || peqType == "plan" ) {
+	postData.CEGrantorId = config.EMPTY;
+	postData.AccrualDate = config.EMPTY;
+	postData.VestedPerc  = 0.0;
+    }
+    else
+    {
+	// XXX accrued - todo
+    }
+
+    postData.CEHolderId   = [];            // no access to this, yet
+    postData.GHHolderId   = assignees;     
+    postData.PeqType      = peqType;
+    postData.Amount       = amount;
+    postData.GHRepo       = repo;
+    postData.GHProjectSub = projSub;
+    postData.GHProjectId  = projId;
+    postData.GHIssueId    = issueId;
     postData.GHIssueTitle = titleStrip;
 
     let pd = { "Endpoint": shortName, "newPEQ": postData };
@@ -282,7 +291,7 @@ async function recordPEQPlanned( amount, peqType, repo, projSub, projId, issueId
     }
 }
 
-async function recordPEQ( blit, blot ) {
+async function recordPEQTodo( blit, blot ) {
     console.log( "Musta hava sum tingy here" );
 }
 
@@ -302,8 +311,8 @@ exports.getCognito = getCognito;
 exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
 exports.recordPEQAction = recordPEQAction;
-exports.recordPEQPlanned = recordPEQPlanned;
 exports.recordPEQ = recordPEQ;
+exports.recordPEQTodo = recordPEQTodo;
 exports.addIssueCard = addIssueCard;
 exports.getFromIssue = getFromIssue;
 exports.getFromCardName = getFromCardName;
