@@ -51,6 +51,12 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    return;
 	}
+	else {
+	    // XXX add this to Master:unallocated, handle peqSummary if/when moved to new proj/col.
+	    // We know this is PEQ now.  Also know this is issue only, ATM.
+	    // If or when this issue is added to proj/col, cardHandler takes over.
+	    console.log( "Issue labeled with PEQ value." );
+	}
 	// Would like to speculatively add project_card to planned col of project, pre-triage.
 	// unfortunately, can't see project info pre-triage
 	await( utils.recordPEQTodo( title, peqValue ));

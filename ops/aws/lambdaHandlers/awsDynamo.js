@@ -260,6 +260,7 @@ async function putGHC( icLink ) {
 	    "ProjectId":   randAlpha(10),
 	    "GHRepo":      icLink.GHRepo,
 	    "GHIssueId":   icLink.GHIssueId,
+	    "GHIssueNum":  icLink.GHIssueNum,
 	    "GHProjectId": icLink.GHProjectId,
 	    "GHProjectName": icLink.GHProjectName,
 	    "GHColumnId":  icLink.GHColumnId,

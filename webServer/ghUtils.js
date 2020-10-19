@@ -4,10 +4,6 @@ var assert = require('assert');
 
 var githubUtils = {
 
-    zoink: function() {
-	return poink();
-    },
-
     getColumns: function( ownerId, repoId ) {
 	return columnInfo( ownerId, repoId );
     },
@@ -20,6 +16,10 @@ var githubUtils = {
 	return parsePEQ( cardContent, allocation );
     },
 
+    parseLabelDescr: function( labelDescr ) {
+	return parseLabelDescr( labelDescr );
+    },
+	
     parseHumanPEQ: function( labels ) {
 	return parseHumanPEQ( labels );
     },
@@ -28,8 +28,12 @@ var githubUtils = {
 	return checkIssueExists( installClient, owner, repo, title );
     },
 
-    getAssignees: function( installClient, owner, repo, issueId ) {
-	return getAssignees( installClient, owner, repo, issueId );
+    getAssignees: function( installClient, owner, repo, issueNum ) {
+	return getAssignees( installClient, owner, repo, issueNum );
+    },
+
+    getIssueContent: function( installClient, owner, repo, issueNum ) {
+	return getIssueContent( installClient, owner, repo, issueNum );
     },
     
     findOrCreateLabel: function( installClient, owner, repo, peqHumanLabelName, peqValue ) {
@@ -86,19 +90,44 @@ async function checkIssueExists( installClient, owner, repo, title )
     return retVal;
 }
 
-async function getAssignees( installClient, owner, repo, issueId )
+async function getAssignees( installClient, owner, repo, issueNum )
 {
     let retVal = [];
+    if( issueNum == -1 ) { return retVal; }
 
-    await( installClient.issues.get( { owner: owner, repo: repo, issue_number: issueId }))
+    console.log( "Getting assignees for", owner, repo, issueNum );
+    await( installClient.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => {
-	    console.log( issue['data'] );
-	    for( assignee of issue['data']['assignees'] ) {
-		retVal.push( assignee['login'] );
+	    // console.log( issue['data'] );
+	    if( issue['data']['assignees'].length > 0 ) { 
+		for( assignee of issue['data']['assignees'] ) {
+		    retVal.push( assignee['login'] );
+		}
 	    }
 	})
 	.catch( e => {
 	    console.log( "Problem in getAssignees", e );
+	});
+    return retVal;
+}
+
+async function getIssueContent( installClient, owner, repo, issueNum )
+{
+    let retVal = [];
+    if( issueNum == -1 ) { return retVal; }
+
+    await( installClient.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+	.then( issue => {
+	    // console.log( issue['data'] );
+	    retVal.push( issue['data']['title'] );
+	    if( issue['data']['labels'].length > 0 ) {
+		for( label of issue['data']['labels'] ) {
+		    retVal.push( label['description'] );
+		}
+	    }
+	})
+	.catch( e => {
+	    console.log( "Problem in getIssueContent", e );
 	});
     return retVal;
 }
@@ -123,7 +152,7 @@ async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName,
     // if not, create
     if( status == 404 ) {
 	console.log( "Not found, creating.." );
-	let descr = "PEQ value: " + peqValue.toString();
+	let descr = config.PDESC + peqValue.toString();
 	await( installClient.issues.createLabel( { owner: owner, repo: repo,
 						   name: peqHumanLabelName, color: config.PEQ_COLOR,
 						   description: descr }))
@@ -142,18 +171,19 @@ async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName,
 
 async function createIssue( installClient, owner, repo, title, labels )
 {
-    let issueID = -1;
+    let issueData = [-1,-1];  // issue id, num
     
     // NOTE: will see several notifications are pending here, like issue:open, issue:labelled
     await( installClient.issues.create( { owner: owner, repo: repo, title: title, labels: labels } ))
 	.then( issue => {
-	    issueID = issue['data']['id'];
+	    issueData[0] = issue['data']['id'];
+	    issueData[1] = issue['data']['number'];
 	})
 	.catch( e => {
 	    console.log( "Create issue failed.", e );
 	});
     
-    return issueID;
+    return issueData;
 }
 
 async function createIssueCard( installClient, columnID, issueID )
@@ -428,12 +458,27 @@ function parsePEQ( content, allocation ) {
 	    console.log( peqValue );
 	    break;
 	}
-	else {  console.log( "PEQ value not found" ); }
     }
     return peqValue;
 }
 
-// XXX remove in favor of above
+// XXX combine with parseHuman?
+// no commas, no shorthand, just like this:  'PEQ value: 500'
+function parseLabelDescr( labelDescr ) {
+    let peqValue = 0;
+    let descLen = config.PDESC.length;
+    
+    for( const line of labelDescr ) {
+	if( line.indexOf( config.PDESC ) == 0 ) {
+	    console.log( "Found peq val in", line.substring( descLen ) );
+	    peqValue = parseInt( line.substring( descLen ) );
+	    break;
+	}
+    }
+
+    return peqValue;
+}
+
 function parseHumanPEQ( labels ) {
     let peqValue = 0;
 
@@ -460,16 +505,6 @@ function columnInfo( ownerId, repoId ) {
     console.log( "Cols et. al.", ownerId, repoId );
     
 }
-
-function poink() {
-    console.log( "ZOINK your PEQ!" );
-}
-
-
-
-
-
-
 
 
 // XXX 

@@ -10,6 +10,7 @@ const _PEQ     = ' PEQ';
 
 const PPLAN    = PEQSTART + PEQ;
 const PALLOC   = PEQSTART +'allocation';
+const PDESC    = 'PEQ value: '; 
 
 // XXX kill these?
 const PEQ_1K   = PEQSTART +'PEQ: 1000>';
@@ -36,6 +37,7 @@ exports.PEQ      = PEQ;
 exports._PEQ     = _PEQ;
 exports.PPLAN    = PPLAN;
 exports.PALLOC   = PALLOC;
+exports.PDESC    = PDESC;
 
 exports.PEQ_1K   = PEQ_1K;
 exports.PEQ_1Kc  = PEQ_1Kc;

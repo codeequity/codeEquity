@@ -153,13 +153,14 @@ async function getFromCardName( repoName, projName, cardTitle ) {
 }
 
 // XXX Dup boilerplate
-async function addIssueCard( repo, issueId, projId, projName, colId, colName, newCardId, cardTitle ) {
+async function addIssueCard( repo, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ) {
     console.log( "Adding issue / card linkage", repo, issueId, projName, colId );
 
     let shortName = "RecordGHCard";
     let cardTitleStrip = cardTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
     
     let postData = { "GHRepo": repo, "GHIssueId": issueId, "GHProjectId": projId }
+    postData.GHIssueNum    = issueNum;
     postData.GHProjectName = projName;
     postData.GHColumnId    = colId;
     postData.GHColumnName  = colName;

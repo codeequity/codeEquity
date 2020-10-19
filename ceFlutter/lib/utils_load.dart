@@ -292,12 +292,10 @@ Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async 
    final response = await postIt( shortName, postData, container );
    
    if (response.statusCode == 201) {
-      print( shortName + " 201 return" );
       Iterable pacts = json.decode(utf8.decode(response.bodyBytes));
       List<PEQAction> pactions = pacts.map((pact) => PEQAction.fromJson(pact)).toList();
       return pactions;
    } else if( response.statusCode == 204) {
-      print( "LockFetch: no unprocessed PActions found" );
       return [];
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
@@ -446,6 +444,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
 
       }
       else if( peq.peqType == PeqType.plan ) {
+         // XXX XXX HERE.  projectSub is wrong for my first 'add plan' PEQ
          print( "Plan PEQ" );
       }
       else { notYetImplemented( context ); }
@@ -464,7 +463,6 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
    List<String> pactIds = [];
    for( var pact in todoPActions ) {
-      print( "1. Working on todo " );
       print( pact.toString() );
       // can't do this unless wait in lambda handler
       // assert( pact.locked );
