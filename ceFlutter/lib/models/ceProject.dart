@@ -7,7 +7,8 @@ import 'package:random_string/random_string.dart';
 class CEProject {
    final String       id;
    final String       ghRepo;        // reponame is form /owner/repo, so is unique
-   final String       ghIssueId;
+   final String       ghIssueId;     // this is unique, but not often used by octokit (!!)
+   final String       ghIssueNum;    // oddly, octokit usually wants an issueNum, unique only within repo.
 
    final String       ghProjectId;
    final String       ghProjectName;
@@ -19,10 +20,10 @@ class CEProject {
    final String       ghCardTitle;
 
 
-   CEProject({this.id, this.ghRepo, this.ghIssueId, this.ghProjectId, this.ghProjectName,
+   CEProject({this.id, this.ghRepo, this.ghIssueId, this.ghIssueNum, this.ghProjectId, this.ghProjectName,
             this.ghColumnId, this.ghColumnName, this.ghCardId, this.ghCardTitle });
             
-   dynamic toJson() => {'id': id, 'ghRepo': ghRepo, 'ghIssueId': ghIssueId,
+   dynamic toJson() => {'id': id, 'ghRepo': ghRepo, 'ghIssueId': ghIssueId, 'ghIssueNum': ghIssueNum, 
                            'ghProjectId': ghProjectId, 'ghProjectName': ghProjectName,
                            'ghColumnId': ghColumnId, 'ghColumnName': ghColumnName,
                            'ghCardId': ghCardId, 'ghCardTitle': ghCardTitle };
@@ -33,6 +34,7 @@ class CEProject {
          id:            json['ProjectId'],
          ghRepo:        json['GHRepo'],
          ghIssueId:     json['GHIssueId'],
+         ghIssueNum:    json['GHIssueNum'],
 
          ghProjectId:   json['GHProjectId'],
          ghProjectName: json['GHProjectName'],
@@ -46,7 +48,7 @@ class CEProject {
    }
    
    String toString() {
-      String res = "\n" + ghRepo + " issueId: " + ghIssueId;
+      String res = "\n" + ghRepo + " issueId: " + ghIssueId + " issueNum " + ghIssueNum;
       res += "\n    GH ProjectId, name, ColumnID, CardID: " + ghProjectId + " " + ghProjectName + " " + ghColumnId + " " + ghCardId;
       res += "\n    columnName, cardTitle: " + ghColumnName + " " ghCardTitle
       return res;
