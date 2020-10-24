@@ -8,7 +8,7 @@ enum PeqType   { allocation, plan, grant }
 
 class PEQ {
    final String        id;
-   final List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
+         List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
    final List<String>  ghHolderId;   // assignees evenly splitting this PEQ, ghUserNames
    final String        ceGrantorId;
 

@@ -74,7 +74,7 @@ class _CEHomeState extends State<CEHomePage> {
       appState.peqUpdated = false;
       
       await updatePEQAllocations( repoName, context, container );
-      updateAllocationTree( context, container );
+      buildAllocationTree( context, container );
       
       // XXX local, or app-wide?  app for now
       setState(() { appState.peqUpdated = true; });

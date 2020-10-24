@@ -20,6 +20,8 @@ const PEQ_10Kc = '<PEQ: 10,000>';
 const PEQ_50K  = '<PEQ: 50000>';
 const PEQ_50Kc = '<PEQ: 50,000>';
 
+const MAIN_PROJ = 'Master';
+
 const EMPTY    = '---';
 
 
@@ -46,6 +48,7 @@ exports.PEQ_10Kc = PEQ_10Kc;
 exports.PEQ_50K  = PEQ_50K;
 exports.PEQ_50Kc = PEQ_50Kc;
 
+exports.MAIN_PROJ = MAIN_PROJ;
 exports.EMPTY    = EMPTY;
 
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;

@@ -42,6 +42,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetGHCard")      { resultPromise = getGHC( rb.GHIssueId ); }
     else if( endPoint == "GetGHCFromCard") { resultPromise = getGHCFromCard( rb.GHRepo, rb.GHProjName, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHRepo ); }
+    else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetaPEQ")        { resultPromise = getaPeq( rb.Id ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
@@ -454,6 +455,44 @@ async function updatePActions( pactIds ) {
 	    //console.log( "Returning from update,", res.toString() );
 
 	    if( res ) { return success( res ); }
+	    else {
+		return {
+		    statusCode: 500,
+		    body: JSON.stringify( "---" ),
+		    headers: { 'Access-Control-Allow-Origin': '*' }
+		};
+	    }
+	});
+}
+
+// Dynamo - to have a filterExpression that is, say, x in <a list>,
+// you must construct the expression and the expressionAttrVals piece by piece, explicitly.  Then ordering is in question.
+// For now, use promises.all to ensure ordering and skip explicit construction.  more aws calls, buuuuttt....
+async function getPeqsById( peqIds ) {
+
+    console.log( "Get peqs by id, mamasita", peqIds );
+
+    let promises = [];
+    peqIds.forEach(function (peqId) {
+	const params = {
+	    TableName: 'CEPEQs',
+	    FilterExpression: 'PEQId = :peqId',
+	    ExpressionAttributeValues: { ":peqId": peqId }};
+	
+	promises.push( bsdb.scan( params ).promise() );
+    });
+
+    // Promises execute in parallel, collect in order
+    return await Promise.all( promises )
+	.then((results) => {
+	    console.log( '...promises done' );
+	    let res = [];
+	    results.forEach( function ( peq ) {
+		assert( peq.Count == 1 );
+		res.push( peq.Items[0] );
+	    });
+	    
+	    if( res.length > 0 ) { return success( res ); }
 	    else {
 		return {
 		    statusCode: 500,

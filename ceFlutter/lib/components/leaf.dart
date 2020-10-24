@@ -6,39 +6,48 @@ import 'package:ceFlutter/components/tree.dart';
 // Leave room for icons for later - may help to clarify equity tables
 class Leaf extends StatelessWidget implements Tree {
   final String title;
-  final int amount;
-  final double width; 
+  final int    allocAmount;
+  final int    planAmount;
+  final int    accrueAmount;
+     
   final IconData icon;
+  final double width; 
 
-  const Leaf(this.title, this.amount, this.width, this.icon);
+  const Leaf(this.title, this.allocAmount, this.planAmount, this.accrueAmount, this.icon, this.width);
 
   @override
   String getTitle() { return title; }
 
   @override
-  int getAmount() { return amount; }
+  int getAllocAmount()  { return allocAmount; }
+  @override
+  int getPlanAmount()   { return planAmount; }
+  @override
+  int getAccrueAmount() { return accrueAmount; }
 
   @override
-  Tree findNode( String target ) {
-     return null;   
-  }
+  Tree findNode( String target ) { return null; }
+  
 
   @override
   String toStr() {
      String res = "";
      res += "\n   LEAF: " + title;
-     res += "\n   with amount: " + addCommas( amount ) + " PEQ";
+     res += "\n   with alloc amount: " + addCommas( allocAmount ) + " PEQ";
+     res += "\n   with plan amount: " + addCommas( planAmount ) + " PEQ";
+     res += "\n   with accrue amount: " + addCommas( accrueAmount ) + " PEQ";
      return res;
   }
   
   @override
   Widget render(BuildContext context) {
+     String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( accrueAmount );
      return Padding(
        padding: const EdgeInsets.only(left: 15.0),  // XXX
        child: ListTile(
           //leading: icon == null ? Container() : Icon(icon),
           title: makeBodyText( title, width, false, 1 ),
-          trailing: Text( addCommas( amount ), style: TextStyle(fontSize: 12) ),
+          trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
           dense: true
           ));
   }
