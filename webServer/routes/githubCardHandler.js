@@ -16,7 +16,7 @@ https://developer.github.com/v3/issues/#create-an-issue
 // XXX Looking slow - lots of waiting on GH.. not much work.  Hard to cache given access model
 
 
-async function processNewPEQ( installClient, repo, owner, reqBody, issueCardContent, creator, issueNum ) {
+async function processNewPEQ( installClient, repo, owner, reqBody, issueCardContent, creator, issueNum, issueId ) {
 
     // normal for card -> issue.  odd but legal for issue -> card
     let allocation = gh.getAllocated( issueCardContent );
@@ -41,22 +41,26 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
 	let projId   = reqBody['project_card']['project_url'].split('/').pop(); 
 	let colName  = await gh.getColumnName( installClient, colId );
 	let projName = await gh.getProjectName( installClient, projId );
-	let projSub  = await gh.getProjectSubs( installClient, fullName, projName, colId );
-	let issueId  = -1;
+	let projSub  = await gh.getProjectSubs( installClient, fullName, projName, colName );
+	let origCardId = reqBody['project_card']['id'];
 
-	// XXX XXX XXX
-	// If this is issue becoming card, issueId should be in the system already.
+	// issue->card:  issueId is available, but linkage has not yet been added
 	if( issueNum > -1 ) {
-	    // Add card issue linkage
-	    console.log( "Adding card/issue to dynamo" );
-	    // XXX get id from issueNum full name repo
-	    // XXX fix this
-	    await( utils.addIssueCard( fullName, issueId, issueNum, projId, projName, colId, colName, newCardId, issueCardContent[0] ));
-	    
+	    await( utils.addIssueCard( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, issueCardContent[0] ));
 	}
-	
-	// No linked issues with allocations.
+
+	// OR, allocation, which still wants linkage for other lookups like projSub.. need to clean up title in this case
+	if( peqType == "allocation" && projName == config.MAIN_PROJ ) {
+	    let cardTitle = issueCardContent[0];
+	    // some (not all) are full projects themselves.  Will have "Sub:" in front
+	    if( cardTitle.length > 6 && cardTitle.substring( 0, 5 ) == "Sub: " ) {      // XXX config
+		cardTitle = cardTitle.substring( 5 );
+	    }
+	    await( utils.addIssueCard( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, cardTitle ));
+	}
+    
 	assert( colName != 'Accrued' );
+	// card -> issue
 	if( peqType == "plan" && issueNum == -1 ) {
 	    // create new issue
 	    let issueData = await gh.createIssue( installClient, owner, repo, issueCardContent[0], [peqHumanLabelName] );
@@ -70,11 +74,9 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
 	    assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
 	    
 	    // remove orig card
-	    let origCardId = reqBody['project_card']['id'];
 	    await( installClient.projects.deleteCard( { card_id: origCardId } ));	    
 	    
 	    // Add card issue linkage
-	    console.log( "Adding card/issue to dynamo" );
 	    await( utils.addIssueCard( fullName, issueId, issueNum, projId, projName, colId, colName, newCardId, issueCardContent[0] ));
 	}
 
@@ -130,6 +132,9 @@ async function handler( action, repo, owner, reqBody, res ) {
 
     let installClient = await auth.getInstallationClient( owner, repo );
 
+    console.log( "Card: rate limit" );
+    await gh.checkRateLimit(installClient);
+
     if( action == "created" && reqBody['project_card']['content_url'] != null ) {
 
 	// Coming from issueHandler - can't attach to summary object until we see it here, in project cards.
@@ -139,10 +144,10 @@ async function handler( action, repo, owner, reqBody, res ) {
 	let issueURL = reqBody['project_card']['content_url'].split('/');
 	assert( issueURL.length > 0 );
 	let issueNum = parseInt( issueURL[issueURL.length - 1] );
-	let issueContent = await gh.getIssueContent( installClient, owner, repo, issueNum );
+	let issue = await gh.getIssue( installClient, owner, repo, issueNum );   // [ id, [content] ]
 
-	console.log( "Found issue:", issueNum.toString(), issueContent );
-	await processNewPEQ( installClient, repo, owner, reqBody, issueContent, creator, issueNum ); 
+	console.log( "Found issue:", issueNum.toString(), issue[1] );
+	await processNewPEQ( installClient, repo, owner, reqBody, issue[1], creator, issueNum, issue[0] ); 
     }
     else if( action == "created" ) {
 	console.log( "New card created in projects" );
@@ -153,7 +158,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    return;
 	}
 
-	await processNewPEQ( installClient, repo, owner, reqBody, cardContent, creator, -1 );
+	await processNewPEQ( installClient, repo, owner, reqBody, cardContent, creator, -1, -1 );
     }
     else if( action == "converted" ) {
 	console.log( "Non-PEQ card converted to issue.  No action." );

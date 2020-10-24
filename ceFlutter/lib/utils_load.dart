@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:random_string/random_string.dart';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:http/http.dart' as http;
+import 'package:tuple/tuple.dart';
 
 // This package is currently used only for authorization.  Github has deprecated username/passwd auth, so
 // authentication is done by personal access token.  The user model and repo service in this package are too
@@ -24,8 +25,12 @@ import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
 import 'package:ceFlutter/models/allocation.dart';
 
+import 'package:ceFlutter/components/tree.dart';
 import 'package:ceFlutter/components/leaf.dart';
 import 'package:ceFlutter/components/node.dart';
+
+// XXX strip context, container where not needed
+
 
 Future<void> logoutWait( context, container, appState ) async {
    final wrapper = (() async {
@@ -206,7 +211,7 @@ Future<bool> updateDynamo( context, container, postData, shortName ) async {
 }
 
 Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
-   String shortName = "fetchPEQ";
+   String shortName = "fetchPEQs";
    final response = await postIt( shortName, postData, container );
    
    if (response.statusCode == 201) {
@@ -301,31 +306,74 @@ Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async 
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await lockFetchPActions( context, container, postData ); }
    }
-   
 }
 
 
 // XXX Split this into services dir, break utils into widgets and appstate.  This update doesn't belong here.
-updateAllocationTree( context, container ) {
-   print( "Update allocation tree" );
+// XXX this could easily be made iterative
+
+// Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
+// header      alloc                   sub alloc                 plan
+buildAllocationTree( context, container ) {
+   print( "Build allocation tree" );
    final appState  = container.state;
    final width = appState.screenWidth * .6;
 
-   appState.allocTree = Node( "Category    Alloc / Plan / Accr", width, null, true );
+   appState.allocTree = Node( "Category    Alloc / Plan / Accr", 0, null, width, true );
 
    for( var alloc in appState.myPEQSummary.allocations ) {
 
-      // Currently, allocation categories are, exactly, column + title
-      assert( alloc.category.length == 2 );
+      Tree curNode = appState.allocTree;
 
-      int catIdx = appState.allocTree.findNode( alloc.category[0] );
-      if( catIdx == -1 ) {
-         appState.allocTree.addLeaf( Node( alloc.category[0], width, null ) );
-         catIdx = appState.allocTree.findNode( alloc.category[0] );
+      // when allocs are created, they are leaves.
+      // down the road, they become nodes
+      for( int i = 0; i < alloc.category.length; i++ ) {
+
+         print( "working on " + alloc.category.toString() + " : " + alloc.category[i] );
+
+         bool lastCat = false;
+         if( i == alloc.category.length - 1 ) { lastCat = true; }
+         Tree childNode = curNode.findNode( alloc.category[i] );
+
+         if( childNode is Leaf && !lastCat ) {
+            // allocation leaf, convert to a node to accomodate plan/accrue
+            print( "... leaf in middle - convert" );
+            curNode = (curNode as Node).convertToNode( childNode );
+         }
+         else if( childNode == null ) {
+            if( !lastCat ) {
+               print( "... nothing - add node" );
+               Node tmpNode = Node( alloc.category[i], 0, null, width );
+               (curNode as Node).addLeaf( tmpNode );
+               curNode = tmpNode;
+            }
+            else {
+               print( "... nothing found, last cat, add leaf" );
+               // leaf.  amounts stay at leaves
+               int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount : 0 );
+               int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
+               int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
+               Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, accrueAmount, null, width ); 
+               (curNode as Node).addLeaf( tmpLeaf );
+            }
+         }
+         else if( childNode is Node ) {
+            if( !lastCat ) {
+               print( "... found - move on" );
+               curNode = childNode;
+            }
+            else {
+               print( "... alloc adding into existing chain" );
+               assert( alloc.allocType == PeqType.allocation );
+               (childNode as Node).addAlloc( alloc.amount );
+            }
+         }
+         else {
+            print( "XXXXXXXXXXXXXXXX BAD" );
+            print( "XXXXXXXXXXXXXXXX BOOBOO" );
+            print( "XXXXXXXXXXXXXXXX BABY" );
+         }
       }
-
-      // category[0] must always appear in Allocations node
-      appState.allocTree.addLeafAt( Leaf( alloc.category[1], alloc.amount, width, null ), catIdx );
    }
    // print( appState.allocTree.toStr() );
 }
@@ -367,12 +415,10 @@ Future<void> reloadMyProjects( context, container ) async {
       appState.myPEQSummary = await fetchPEQSummary( context, container,
                                                       '{ "Endpoint": "GetPEQSummary", "GHRepo": "$ghRepo" }' );
 
-      if( appState.myPEQSummary != null ) { updateAllocationTree( context, container ); }
+      if( appState.myPEQSummary != null ) { buildAllocationTree( context, container ); }
    }
 }
 
-
-// XXX strip context, container where not needed
 // XXX consider keeping a map in appstate, to reduce aws calls
 // PActions, PEQs are added by webServer, which does not have nor require ceUID.
 // set CEUID by matching my peqAction:ghUserName  or peq:ghUserNames to cegithub:ghUsername, then writing that CEOwnerId
@@ -383,16 +429,16 @@ Future<void> updateCEUID( PEQAction pact, PEQ peq, context, container ) async {
    String ceu  = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu" }', "GetCEUID" );   
    await updateDynamo( context, container, '{ "Endpoint": "putPActCEUID", "CEUID": "$ceu", "PEQActionId": "${pact.id}" }', "putPActCEUID" );
 
-   // XXX untested until gitHubIssueHandler recordPeq set up
    assert( peq.ceHolderId.length == 0 );
    for( var peqGHUser in peq.ghHolderId ) {
-      String ceUID = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu" }', "GetCEUID" );
+      String ceUID = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$peqGHUser" }', "GetCEUID" );
       if( ceUID == "" ) { ceUID = "GHUSER: " + peqGHUser; }
       peq.ceHolderId.add( ceUID );
    }
+
    if( peq.ceHolderId.length > 0 ) {
-      String peqId = peq.id;
-      await updateDynamo( context, container, '{ "Endpoint": "updatePEQ", "PEQId": "$peqId", "CEHolderId": "${peq.ceHolderId}" }', "updatePEQ" );
+      String ceHolders = json.encode( peq.ceHolderId );
+      await updateDynamo( context, container, '{ "Endpoint": "UpdatePEQ", "PEQId": "${peq.id}", "CEHolderId": $ceHolders }', "updatePEQ" );
    }
    
 }
@@ -432,10 +478,10 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
          // Create alloc, if not already updated
          if( !updated ) {
             print( "Adding new allocation" );
-            List<String> sub = peq.ghProjectSub;
+            List<String> sub = new List<String>.from( peq.ghProjectSub );
             String pt = peq.ghIssueTitle;
-            assert( pt.length >= 6 );
-            if( pt.substring( 0,5 ) == "Sub: " ) { pt = pt.substring( 5 ); }
+            // some (not all) allocations are tied to full projects
+            if( pt.length > 6 && pt.substring( 0,5 ) == "Sub: " ) { pt = pt.substring( 5 ); }
             sub.add( pt );
             Allocation alloc = new Allocation( category: sub, amount: peq.amount, allocType: PeqType.allocation,
                                                ceUID: EMPTY, ghUserName: EMPTY, vestedPerc: 0.0, notes: "" );
@@ -444,8 +490,45 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
 
       }
       else if( peq.peqType == PeqType.plan ) {
-         // XXX XXX HERE.  projectSub is wrong for my first 'add plan' PEQ
          print( "Plan PEQ" );
+
+         List<String> sub = new List<String>.from( peq.ghProjectSub );
+         sub.add( "Planned" );
+         
+         // Use gh names instead of ce ids - user comfort
+         List<String> assignees = peq.ghHolderId;
+         if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }
+         int splitAmount = (peq.amount / assignees.length).floor();
+
+         // iterate over assignees
+         for( var assignee in assignees ) {
+            var updated = false;
+            print( "\n Assignee: " + assignee );
+            List<String> suba = new List<String>.from( sub );
+            suba.add( assignee );
+
+            print( "..... sub: " +  sub.toString() );
+            print( "..... suba: " + suba.toString() );
+            
+            // Update, if already in place
+            for( var alloc in appState.myPEQSummary.allocations ) {
+               print( "Checking for match: " + suba.toString() + " " + alloc.category.toString() );
+               if( suba.toString() == alloc.category.toString() ) {
+                  updated = true;
+                  print( "Matched category!" );
+                  alloc.amount = alloc.amount + splitAmount;
+                  break;
+               }
+            }
+            
+            // Create allocs, if not already updated.. 1 per assignee
+            if( !updated ) {
+               print( "Adding new allocation" );
+               Allocation alloc = new Allocation( category: suba, amount: splitAmount, allocType: PeqType.plan,
+                                                  ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "" );
+               appState.myPEQSummary.allocations.add( alloc );
+            }
+         }
       }
       else { notYetImplemented( context ); }
    }
@@ -462,34 +545,46 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "GHRepo": "$repoName" }' ); 
 
    List<String> pactIds = [];
+   List<String> peqIds = [];
+
    for( var pact in todoPActions ) {
       print( pact.toString() );
-      // can't do this unless wait in lambda handler
-      // assert( pact.locked );
       assert( !pact.ingested );
       
-      pactIds.add( pact.id );
-
       if( pact.action != PActAction.relocate && pact.action != PActAction.change ) {
          assert( pact.subject.length == 1 );
-         String peqId = pact.subject[0];
-         print( "2. Should see fetcha, then process, interleaved." );
-         PEQ peq = await fetchaPEQ( context, container, '{ "Endpoint": "GetaPEQ", "Id": "$peqId" }' );
-         // XXX no await needed just yet
-         await processPEQAction( pact, peq, context, container );
+         pactIds.add( pact.id );
+         peqIds.add( pact.subject[0] );
       }
       else { notYetImplemented( context ); }
    }
 
+   // This returns in order of request.
+   String PeqIds = json.encode( peqIds );
+   List<PEQ> todoPeqs = await fetchPEQs( context, container,'{ "Endpoint": "GetPEQsById", "PeqIds": $PeqIds }' );
+   assert( pactIds.length == todoPActions.length );
+   assert( peqIds.length  == todoPeqs.length );
+
+   // sort by peq category length before processing.
+   List<Tuple2<PEQAction, PEQ>> todos = new List<Tuple2<PEQAction, PEQ>>();
+   for( var i = 0; i < todoPActions.length; i++ ) {
+      assert( pactIds[i] == todoPActions[i].id );
+      assert( peqIds[i]  == todoPeqs[i].id );
+      todos.add( new Tuple2<PEQAction, PEQ>( todoPActions[i], todoPeqs[i] ) );
+   }
+
+   todos.sort((a, b) => a.item2.ghProjectSub.length.compareTo(b.item2.ghProjectSub.length));
+   for( var tup in todos ) {
+      await processPEQAction( tup.item1, tup.item2, context, container );
+   }
+   
    if( appState.myPEQSummary != null ) {
-      print( "3. Writing psum back to dynamo" );
       String psum = json.encode( appState.myPEQSummary );
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
       await updateDynamo( context, container, postData, "PutPSum" );
    }
    
    if( pactIds.length > 0 ) {
-      print( "4. unlocking." );
       String newPIDs = json.encode( pactIds );
       final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
    }

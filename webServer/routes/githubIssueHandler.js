@@ -25,14 +25,14 @@ async function handler( action, repo, owner, reqBody, res ) {
     let sender   = reqBody['sender']['login'];
     let userName = reqBody['issue']['user']['login'];
     let title    = reqBody['issue']['title']; 
-    
+
     if( sender == config.CE_BOT ) {
 	console.log( "Bot issue.. taking no action" );
 	return;
     }
 
-    console.log( "Got issue, sender:", sender );
-    console.log( "title", title );
+    console.log( "Got issue, sender:", sender, "action", action );
+    console.log( "title:", title );
     
     if( sender == config.CE_BOT ) {
 	console.log( "Bot card, skipping." );
@@ -41,6 +41,9 @@ async function handler( action, repo, owner, reqBody, res ) {
 
     let installClient = await auth.getInstallationClient( owner, repo );
     let peqValue = -1;
+
+    console.log( "Issues: rate limit" );
+    await gh.checkRateLimit(installClient);
     
     // action:open  not relevant until issue: labeled
     switch( action ) {

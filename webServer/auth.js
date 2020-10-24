@@ -41,7 +41,12 @@ function getInstallationClientFromToken(installationAccessToken) {
 }
 
 async function getInstallationClient(owner, repo) {
-    installationAccessToken = await getInstallationAccessToken( owner, repo );
+    installationAccessToken = await getInstallationAccessToken( owner, repo )
+        .catch( e => {
+	    console.log( "Get Install Client failed.", e );
+	    return "";
+	});
+
     return getInstallationClientFromToken(installationAccessToken);
 }
 

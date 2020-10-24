@@ -24,6 +24,10 @@ var githubUtils = {
 	return parseHumanPEQ( labels );
     },
 
+    checkRateLimit: function( installClient ) {
+	return checkRateLimit( installClient );
+    },
+
     checkIssueExists: function( installClient, owner, repo, title ) {
 	return checkIssueExists( installClient, owner, repo, title );
     },
@@ -32,8 +36,8 @@ var githubUtils = {
 	return getAssignees( installClient, owner, repo, issueNum );
     },
 
-    getIssueContent: function( installClient, owner, repo, issueNum ) {
-	return getIssueContent( installClient, owner, repo, issueNum );
+    getIssue: function( installClient, owner, repo, issueNum ) {
+	return getIssue( installClient, owner, repo, issueNum );
     },
     
     findOrCreateLabel: function( installClient, owner, repo, peqHumanLabelName, peqValue ) {
@@ -69,6 +73,17 @@ var githubUtils = {
     },
 };
 
+
+async function checkRateLimit( installClient ) {
+    await( installClient.rateLimit.get())
+	.then( rl => {
+	    console.log( "Core:", rl['data']['resources']['core']['limit'], rl['data']['resources']['core']['remaining'] );
+	    console.log( "Search:", rl['data']['resources']['search']['limit'], rl['data']['resources']['search']['remaining'] );
+	    console.log( "Graphql:", rl['data']['resources']['graphql']['limit'], rl['data']['resources']['graphql']['remaining'] );
+	    console.log( "Integration:", rl['data']['resources']['integration_manifest']['limit'], rl['data']['resources']['integration_manifest']['remaining'] );
+	})
+	.catch( e => { console.log( "Problem in checkIssueExists", e );   });
+}
 
 async function checkIssueExists( installClient, owner, repo, title )
 {
@@ -111,14 +126,16 @@ async function getAssignees( installClient, owner, repo, issueNum )
     return retVal;
 }
 
-async function getIssueContent( installClient, owner, repo, issueNum )
+async function getIssue( installClient, owner, repo, issueNum )
 {
+    let retIssue = [];
     let retVal = [];
     if( issueNum == -1 ) { return retVal; }
 
     await( installClient.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => {
 	    // console.log( issue['data'] );
+	    retIssue.push( issue['data']['id'] );
 	    retVal.push( issue['data']['title'] );
 	    if( issue['data']['labels'].length > 0 ) {
 		for( label of issue['data']['labels'] ) {
@@ -129,7 +146,8 @@ async function getIssueContent( installClient, owner, repo, issueNum )
 	.catch( e => {
 	    console.log( "Problem in getIssueContent", e );
 	});
-    return retVal;
+    retIssue.push( retVal );
+    return retIssue;
 }
 
 
@@ -386,20 +404,23 @@ async function getColumnName( installClient, colId ) {
 // If Master has already been created, with sub projects, then aws lookup will work.
 // If not, then neither aws nor GH lookup will work, since project layout will probably not be valid
 // Safer from aws as well - known if need to be unallocated
-async function getProjectSubs( installClient, repoName, projName, colId ) {
+async function getProjectSubs( installClient, repoName, projName, colName ) {
     let projSub = [ "Unallocated" ];
 
-    if( projName == "Master" ) {
-	let column = await( getColumnName( installClient, colId ) );
-	if( column == "" ) { return projSub; }
-	projSub = [ column ];
+    console.log( "Set up proj subs", repoName, projName, colName );
+    
+    if( projName == config.MAIN_PROJ ) {
+	if( colName == "" ) { return projSub; }
+	projSub = [ colName ];
     }
     else {
-	let subName = "Sub: " + projName;
-	let card = await( utils.getFromCardName( repoName, "Master", subName ));    // xxx config const
-	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
+	// e.g. projName = 'codeEquity web front end', which should be found in Master as a card
+	// Note - Sub: card names are stored without "Sub: "
+	console.log( "Find card", projName );
+	let card = await( utils.getFromCardName( repoName, config.MAIN_PROJ, projName ));   
+	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; console.log( "XXX YES" ); }
     }
-    
+    console.log( "... returning", projSub.toString() );
     return projSub;
 }
 

@@ -307,7 +307,7 @@ function getToday() {
     return today.toString();
 }
 
-
+exports.getGH = getGH;
 exports.getCognito = getCognito;
 exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
