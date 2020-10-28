@@ -23,9 +23,10 @@ async function handler( action, repo, owner, reqBody, res ) {
 
     // Sender is the event generator.  Issue:user is ... the original creator of the issue?
     let sender   = reqBody['sender']['login'];
-    let userName = reqBody['issue']['user']['login'];
+    let creator  = reqBody['issue']['user']['login'];
     let title    = reqBody['issue']['title']; 
-
+    let fullName = reqBody['repository']['full_name'];
+    
     if( sender == config.CE_BOT ) {
 	console.log( "Bot issue.. taking no action" );
 	return;
@@ -78,6 +79,8 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    return;
 	}
 
+	// XXX validateCE and moveIssue both call getGHCard
+	
 	// Get array: [proj_id, col_idx4]
 	let issueId = reqBody['issue']['id'];
 	let ceProjectLayout = await gh.validateCEProjectLayout( installClient, issueId );
@@ -85,9 +88,34 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	}
 	else {
-	    await gh.moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
+	    let success = await gh.moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
+	    if( success ) {
+		console.log( "owner, repo, fullname", owner, repo, fullName );
+		console.log( "Find & validate PEQ" );
+		let peqId = await( gh.validatePEQ( issueId, fullName, "plan", title ));
+		if( peqId == -1 ) {
+		    console.log( "Could not find or verify associated PEQ.  Trouble in paradise." );
+		}
+		else {
+		    console.log( "Record PEQ action" );
+		    let notice = action + ", moved to column: ";
+		    notice += ( action == 'reopened' ? "2" : "3" );  // XXX enum
+		    let subject = [ peqId.toString(), notice ];
+		    await( utils.recordPEQAction(
+			config.EMPTY,     // CE UID
+			sender,           // gh user name
+			fullName,         // gh repo
+			"confirm",        // verb
+			"notice",         // action   
+			subject,          // subject
+			"",               // note
+			utils.getToday(), // entryDate
+			reqBody           // raw
+		    ));
+		}
+	    }
+	    else { console.log( "Unable to complete move of issue card.  No action taken" ); }
 	}
-	await( utils.recordPEQTodo( title, peqValue ));
 	break;
     case 'transferred':
 	// XXX Initially, report transfer out of project.

@@ -127,6 +127,31 @@ async function getFromIssue( issueId ) {
     }
 }
 
+// Note - this returns flat, json-style uninterpreted dynamo results 
+async function getPeq( issueId ) {
+    console.log( "Get PEQ from issueId:", issueId );
+
+    let shortName = "GetPEQByIssue";
+    let postData = `{ "Endpoint": "${shortName}", "GHIssueId": "${issueId}" }`;
+
+    let response = await postIt( shortName, postData )
+    if( typeof response === 'undefined' ) return null;
+    
+    if (response['status'] == 201) {
+	let body = await response.json();
+	// console.log("Good status.  Body:", body);
+	return body;
+    }
+    else if (response['status'] == 204) {
+	console.log("Issue not found.", response['status'] );
+	return -1;
+    }
+    else {
+	console.log("Unhandled status code:", response['status'] );
+	return -1;
+    }
+}
+
 // XXX dup boilerplate
 async function getFromCardName( repoName, projName, cardTitle ) {
     console.log( "Get linkage from repo, card info", repoName, projName, cardTitle );
@@ -159,12 +184,14 @@ async function addIssueCard( repo, issueId, issueNum, projId, projName, colId, c
     let shortName = "RecordGHCard";
     let cardTitleStrip = cardTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
     
-    let postData = { "GHRepo": repo, "GHIssueId": issueId, "GHProjectId": projId }
-    postData.GHIssueNum    = issueNum;
+    let postData = { "GHRepo": repo };
+    postData.GHIssueId     = issueId.toString();          // all headed into dynamo is String, future flexibility
+    postData.GHProjectId   = projId.toString();
+    postData.GHIssueNum    = issueNum.toString();
     postData.GHProjectName = projName;
-    postData.GHColumnId    = colId;
+    postData.GHColumnId    = colId.toString();
     postData.GHColumnName  = colName;
-    postData.GHCardId      = newCardId;
+    postData.GHCardId      = newCardId.toString();
     postData.GHCardTitle   = cardTitleStrip;
 
     let pd = { "Endpoint": shortName, "icLink": postData };
@@ -316,6 +343,7 @@ exports.recordPEQ = recordPEQ;
 exports.recordPEQTodo = recordPEQTodo;
 exports.addIssueCard = addIssueCard;
 exports.getFromIssue = getFromIssue;
+exports.getPeq = getPeq;
 exports.getFromCardName = getFromCardName;
 exports.updateCardFromIssue = updateCardFromIssue;
 exports.getToday = getToday;

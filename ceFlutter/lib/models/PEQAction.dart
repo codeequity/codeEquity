@@ -5,7 +5,8 @@ import 'package:ceFlutter/utils.dart';
 // Assignees split evenly
 
 // Patterns: 
-//    confirm:{add,delete}     for adding planned, in progress, pending peqID, or master allocation
+//    confirm:{add,delete}     for adding or deleting planned, in progress, pending peqID, or master allocation
+//    confirm:{notice}         for moving a plan peq between in progress and pending
 //    {confirm,reject}:accrue  founder-authorized individuals
 //    confirm:         grant   down the road, could see rejecting this as well - voting support
 //    {prop,conf,rej}:update   peq or allocated peq amounts
@@ -20,7 +21,7 @@ import 'package:ceFlutter/utils.dart';
 
 
 enum PActVerb   { confirm, propose, reject }
-enum PActAction { add, delete, accrue, relocate, change }        // (add, delete, update), (grant, accrue), relocate, change
+enum PActAction { add, delete, notice, accrue, relocate, change }        // (add, delete, update), (grant, accrue), relocate, change
 
 class PEQAction {
    final String  id;
@@ -33,6 +34,7 @@ class PEQAction {
    final List<String> subject;     // update:  <assignee(s)> or
                                    // relocate:  <oldproj, oldcol, oldissue, newproj, newcol, newissue> or
                                    // allocate, accrue, grant:  <PEQId>
+                                   // notice: <PEQId, "{reopen,close}, moved to column y">
    
    final String  note;             // i.e. 'issue reopened, not full ce project layout, no related card moved"
    final String  entryDate;        // today  grant: today == PEQ:accrued.   planning: PEQaccrued = ""
