@@ -12,16 +12,16 @@ class PEQ {
    final List<String>  ghHolderId;   // assignees evenly splitting this PEQ, ghUserNames
    final String        ceGrantorId;
 
-   final PeqType peqType;           // usually from Master, sub created/inprogress, sub pending/accrued
-   final int     amount;     
-   final String  accrualDate;    // when accrued
-   final double  vestedPerc;  // as of accrual date
+   final PeqType       peqType;      // usually from Master, sub created/inprogress, sub pending/accrued
+   final int           amount;     
+   final String        accrualDate;  // when accrued
+   final double        vestedPerc;   // as of accrual date
 
    final String        ghRepo;   
-   final List<String>  ghProjectSub;      // project subs, i.e. ["Master", "codeEquity web front end"]
+   final List<String>  ghProjectSub; // project subs, i.e. ["Master", "codeEquity web front end"]
    final String        ghProjectId;    
    final String        ghIssueId;   
-   final String        ghIssueTitle;      // actually, issue-or-card title.
+   final String        ghIssueTitle; // actually, issue-or-card title.
 
    PEQ({this.id, this.ceHolderId, this.ghHolderId, this.ceGrantorId,
             this.peqType, this.amount, this.accrualDate, this.vestedPerc,

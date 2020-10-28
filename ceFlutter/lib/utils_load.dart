@@ -451,7 +451,11 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    // Wait here, else summary may be inaccurate
    await updateCEUID( pact, peq, context, container );
 
-   if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
+   if( pact.action == PActAction.notice ) {
+      print( "Peq Action is a notice event: " + pact.subject.toString() );
+      print( "updated CEUID if available - no other action needed." );
+   }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
 
       // Create, if need to
       if( appState.myPEQSummary == null ) {
@@ -550,8 +554,13 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    for( var pact in todoPActions ) {
       print( pact.toString() );
       assert( !pact.ingested );
-      
-      if( pact.action != PActAction.relocate && pact.action != PActAction.change ) {
+
+      if( pact.action == PActAction.notice ) {
+         assert( pact.subject.length == 2 );
+         print( "PAct notice.  No updating peqAllocations." );
+         return;
+      }
+      else if( pact.action != PActAction.relocate && pact.action != PActAction.change ) {
          assert( pact.subject.length == 1 );
          pactIds.add( pact.id );
          peqIds.add( pact.subject[0] );

@@ -42,6 +42,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetGHCard")      { resultPromise = getGHC( rb.GHIssueId ); }
     else if( endPoint == "GetGHCFromCard") { resultPromise = getGHCFromCard( rb.GHRepo, rb.GHProjName, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHRepo ); }
+    else if( endPoint == "GetPEQByIssue")  { resultPromise = getPeqByIssue( rb.GHIssueId ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetaPEQ")        { resultPromise = getaPeq( rb.Id ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
@@ -367,6 +368,21 @@ async function getaPeq( peqid ) {
         TableName: 'CEPEQs',
         FilterExpression: 'PEQId = :peqid',
         ExpressionAttributeValues: { ":peqid": peqid }
+    };
+
+    let peqPromise = bsdb.scan( paramsP ).promise();
+    return peqPromise.then((peq) => {
+	assert(peq.Count == 1 );
+	console.log( "Found Peq ", peq.Items[0] );
+	return success( peq.Items[0] );
+    });
+}
+
+async function getPeqByIssue( issueId ) {
+    const paramsP = {
+        TableName: 'CEPEQs',
+        FilterExpression: 'GHIssueId = :id',
+        ExpressionAttributeValues: { ":id": issueId }
     };
 
     let peqPromise = bsdb.scan( paramsP ).promise();

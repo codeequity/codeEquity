@@ -55,6 +55,10 @@ var githubUtils = {
     validateCEProjectLayout: function( installClient, issueId ) {
 	return validateCEProjectLayout( installClient, issueId );
     },
+    
+    validatePEQ: function( issueId, repo, peqType, title ) {
+	return validatePEQ( issueId, repo, peqType, title );
+    },
 
     moveIssueCard: function( installClient, owner, repo, issueId, action, ceProjectLayout ) {
 	return moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
@@ -278,6 +282,18 @@ async function validateCEProjectLayout( installClient, issueId )
     return foundReqCol;
 }
 
+async function validatePEQ( issueId, repo, peqType, title ) {
+    let peqId = -1;
+
+    let flatPeq = await( utils.getPeq( issueId ));
+
+    if( flatPeq != -1 && flatPeq['GHIssueTitle'] == title && flatPeq['PeqType'] == "plan" && flatPeq['GHRepo'] == repo)  {
+	peqId = flatPeq['PEQId'];
+    }
+	
+    return peqId;
+}
+
 async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 
     let cardId = -1;
@@ -418,7 +434,7 @@ async function getProjectSubs( installClient, repoName, projName, colName ) {
 	// Note - Sub: card names are stored without "Sub: "
 	console.log( "Find card", projName );
 	let card = await( utils.getFromCardName( repoName, config.MAIN_PROJ, projName ));   
-	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; console.log( "XXX YES" ); }
+	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
     }
     console.log( "... returning", projSub.toString() );
     return projSub;
