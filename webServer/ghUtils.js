@@ -39,6 +39,10 @@ var githubUtils = {
     getIssue: function( installClient, owner, repo, issueNum ) {
 	return getIssue( installClient, owner, repo, issueNum );
     },
+
+    updateIssue: function( installClient, owner, repo, issueNum, newState ) {
+	return updateIssue( installClient, owner, repo, issueNum, newState );
+    },
     
     findOrCreateLabel: function( installClient, owner, repo, peqHumanLabelName, peqValue ) {
 	return findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
@@ -56,8 +60,8 @@ var githubUtils = {
 	return validateCEProjectLayout( installClient, issueId );
     },
     
-    validatePEQ: function( issueId, repo, peqType, title ) {
-	return validatePEQ( issueId, repo, peqType, title );
+    validatePEQ: function( installClient, repo, issueId, title, projId ) {
+	return validatePEQ( installClient, repo, issueId, title, projId );
     },
 
     moveIssueCard: function( installClient, owner, repo, issueId, action, ceProjectLayout ) {
@@ -79,14 +83,18 @@ var githubUtils = {
 
 
 async function checkRateLimit( installClient ) {
-    await( installClient.rateLimit.get())
+
+    console.log( "Rate limit check currently off" );
+    return;
+    
+    await( installClient[0].rateLimit.get())
 	.then( rl => {
 	    console.log( "Core:", rl['data']['resources']['core']['limit'], rl['data']['resources']['core']['remaining'] );
 	    console.log( "Search:", rl['data']['resources']['search']['limit'], rl['data']['resources']['search']['remaining'] );
 	    console.log( "Graphql:", rl['data']['resources']['graphql']['limit'], rl['data']['resources']['graphql']['remaining'] );
 	    console.log( "Integration:", rl['data']['resources']['integration_manifest']['limit'], rl['data']['resources']['integration_manifest']['remaining'] );
 	})
-	.catch( e => { console.log( "Problem in checkIssueExists", e );   });
+	.catch( e => { console.log( installClient[1], "Problem in check Rate Limit", e );   });
 }
 
 async function checkIssueExists( installClient, owner, repo, title )
@@ -94,7 +102,7 @@ async function checkIssueExists( installClient, owner, repo, title )
     let retVal = false;
 
     // Issue with same title may already exist, in which case, check for label, then point to that issue.
-    await( installClient.issues.listForRepo( { owner: owner, repo: repo }))
+    await( installClient[0].issues.listForRepo( { owner: owner, repo: repo }))
 	.then( issues => {
 	    for( issue of issues['data'] ) {
 		if( issue['title'] == title ) {
@@ -104,7 +112,7 @@ async function checkIssueExists( installClient, owner, repo, title )
 	    }
 	})
 	.catch( e => {
-	    console.log( "Problem in checkIssueExists", e );
+	    console.log( installClient[1], "Problem in checkIssueExists", e );
 	});
     return retVal;
 }
@@ -114,8 +122,8 @@ async function getAssignees( installClient, owner, repo, issueNum )
     let retVal = [];
     if( issueNum == -1 ) { return retVal; }
 
-    console.log( "Getting assignees for", owner, repo, issueNum );
-    await( installClient.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+    console.log( installClient[1], "Getting assignees for", owner, repo, issueNum );
+    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => {
 	    // console.log( issue['data'] );
 	    if( issue['data']['assignees'].length > 0 ) { 
@@ -125,7 +133,7 @@ async function getAssignees( installClient, owner, repo, issueNum )
 	    }
 	})
 	.catch( e => {
-	    console.log( "Problem in getAssignees", e );
+	    console.log( installClient[1], "Problem in getAssignees", e );
 	});
     return retVal;
 }
@@ -136,7 +144,7 @@ async function getIssue( installClient, owner, repo, issueNum )
     let retVal = [];
     if( issueNum == -1 ) { return retVal; }
 
-    await( installClient.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => {
 	    // console.log( issue['data'] );
 	    retIssue.push( issue['data']['id'] );
@@ -148,10 +156,25 @@ async function getIssue( installClient, owner, repo, issueNum )
 	    }
 	})
 	.catch( e => {
-	    console.log( "Problem in getIssueContent", e );
+	    console.log( installClient[1], "Problem in getIssueContent", e );
 	});
     retIssue.push( retVal );
     return retIssue;
+}
+
+async function updateIssue( installClient, owner, repo, issueNum, newState ) {
+    let retVal = false;
+    if( issueNum == -1 ) { return retVal; }
+
+    await( installClient[0].issues.update( { owner: owner, repo: repo, issue_number: issueNum, state: newState }))
+	.then( update => {
+	    console.log( installClient[1], "updateIssue done" );
+	    retVal = true;
+	})
+	.catch( e => {
+	    console.log( installClient[1], "Problem in updateIssue", e );
+	});
+    return retVal;
 }
 
 
@@ -160,29 +183,29 @@ async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName,
     // does label exist 
     let peqLabel = "";
     let status = 200;
-    await( installClient.issues.getLabel( { owner: owner, repo: repo, name: peqHumanLabelName }))
+    await( installClient[0].issues.getLabel( { owner: owner, repo: repo, name: peqHumanLabelName }))
 	.then( label => {
 	    peqLabel = label['data'];
 	})
 	.catch( e => {
 	    status = e['status'];
 	    if( status != 404 ) {
-		console.log( "Get label failed.", e );
+		console.log( installClient[1], "Get label failed.", e );
 	    }
 	});
     
     // if not, create
     if( status == 404 ) {
-	console.log( "Not found, creating.." );
+	console.log( installClient[1], "Not found, creating.." );
 	let descr = config.PDESC + peqValue.toString();
-	await( installClient.issues.createLabel( { owner: owner, repo: repo,
+	await( installClient[0].issues.createLabel( { owner: owner, repo: repo,
 						   name: peqHumanLabelName, color: config.PEQ_COLOR,
 						   description: descr }))
 	    .then( label => {
 		peqLabel = label['data'];
 	    })
 	    .catch( e => {
-		console.log( "Create label failed.", e );
+		console.log( installClient[1], "Create label failed.", e );
 	    });
     }
 
@@ -196,13 +219,13 @@ async function createIssue( installClient, owner, repo, title, labels )
     let issueData = [-1,-1];  // issue id, num
     
     // NOTE: will see several notifications are pending here, like issue:open, issue:labelled
-    await( installClient.issues.create( { owner: owner, repo: repo, title: title, labels: labels } ))
+    await( installClient[0].issues.create( { owner: owner, repo: repo, title: title, labels: labels } ))
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
 	})
 	.catch( e => {
-	    console.log( "Create issue failed.", e );
+	    console.log( installClient[1], "Create issue failed.", e );
 	});
     
     return issueData;
@@ -212,12 +235,12 @@ async function createIssueCard( installClient, columnID, issueID )
 {
     let newCardID = -1;
 
-    await( installClient.projects.createCard({ column_id: columnID, content_id: issueID, content_type: 'Issue' }))
+    await( installClient[0].projects.createCard({ column_id: columnID, content_id: issueID, content_type: 'Issue' }))
 	.then( card => {
 	    newCardID = card['data']['id'];
 	})
 	.catch( e => {
-	    console.log( "Create issue-linked card failed.", e );
+	    console.log( installClient[1], "Create issue-linked card failed.", e );
 	});
     
     return newCardID;
@@ -245,26 +268,23 @@ async function validateCEProjectLayout( installClient, issueId )
     // XXX card move, need new id/col/proj id
     // ??? how long will IDs last within project?  at a minimum, should get edit notification
 
-    // XXX Push these to config?
-    let reqCols = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];
-
-    let card = await( utils.getFromIssue( issueId ));
+    let card = await( utils.getFromIssue( installClient[1], issueId ));
     let projId = card == -1 ? card : parseInt( card['GHProjectId'] );
     
-    console.log( "Found project id: ", projId );
+    console.log( installClient[1], "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
 
-    await( installClient.projects.listColumns({ project_id: projId, per_page: 100 }))
+    await( installClient[0].projects.listColumns({ project_id: projId, per_page: 100 }))
 	.then( columns => {
 	    let foundCount = 0;
 	    for( column of columns['data'] ) {
 		// console.log( "checking", column );
 		let colName = column['name'];
 		for( let i = 0; i < 4; i++ ) {
-		    if( colName == reqCols[i] ) {
+		    if( colName == config.PROJ_COLS[i] ) {
 			if( foundReqCol[i+1] == -1 ) { foundCount++; }
-			else                         { console.log( "Validate CE Project Layout found column repeat: ", reqCols[i] ); }
+			else                         { console.log( "Validate CE Project Layout found column repeat: ", config.PROJ_COLS[i] ); }
 			foundReqCol[i+1] = column['id'];
 			break;
 		    }
@@ -276,118 +296,97 @@ async function validateCEProjectLayout( installClient, issueId )
 	    if( foundCount != 4 ) { foundReqCol[0] = -1; }
 	})
 	.catch( e => {
-	    console.log( "Validate CE Project Layout failed.", e );
+	    console.log( installClient[1], "Validate CE Project Layout failed.", e );
 	});
     
     return foundReqCol;
 }
 
-async function validatePEQ( issueId, repo, peqType, title ) {
-    let peqId = -1;
+// issueId?  then verify "plan".  no issueId?  then verify "allocation".  No legal move of accrue.
+async function validatePEQ( installClient, repo, issueId, title, projId ) {
+    let peq = -1;
 
-    let flatPeq = await( utils.getPeq( issueId ));
-
-    if( flatPeq != -1 && flatPeq['GHIssueTitle'] == title && flatPeq['PeqType'] == "plan" && flatPeq['GHRepo'] == repo)  {
-	peqId = flatPeq['PEQId'];
+    let peqType = "";
+    if( issueId == -1 ) {
+	peqType = "allocation";
+	peq = await( utils.getPeqFromTitle( installClient[1], repo, projId, title ));
     }
-	
-    return peqId;
+    else {
+	peqType = "plan";
+	peq = await( utils.getPeq( installClient[1], issueId ));
+    }
+
+    if( peq != -1 && peq['GHIssueTitle'] == title && peq['PeqType'] == peqType && peq['GHRepo'] == repo)  {
+	console.log( installClient[1], "validatePeq success" );
+    }
+    else {
+	console.log( "... oops", peq['GHIssueTitle'], title, peq['PeqType'], "plan", peq['GHRepo'], repo );
+    }
+    return peq;
 }
 
 async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 
     let cardId = -1;
-    let card = await( utils.getFromIssue( issueId ));
+    let card = await( utils.getFromIssue( installClient[1], issueId ));
     if( card != -1 && parseInt( card['GHColumnId'] ) == colId ) { cardId = parseInt( card['GHCardId'] ); }
 
-    /*
-    // pre-AWS
-    // THIS WILL NOT SCALE
-    let issueNums = [];
-    let cardIDs   = [];
-    await( installClient.projects.listCards({ column_id: colID, per_page: 100 }))
-	.then( cards => {
-	    for( card of cards['data'] ) {
-		if( card['content_url'] ) {
-		    console.log( "Checking card", card['content_url'] );
-		    let issuePath = card['content_url'].split('/');
-		    issueNums.push( issuePath[ issuePath.length - 1 ] );
-		    cardIDs.push( card['id'] );
-		}
-	    }
-	})
-	.catch( e => {
-	    console.log( "Find card in column failed.", e );
-	});
-
-    for( let i = 0; i < issueNums.length; i++ ) {
-	let issueNum = issueNums[i];
-	await( installClient.issues.get({ owner: owner, repo: repo, issue_number: issueNum } ))
-	    .then( issue => {
-		console.log( "Checking", issue['data']['title'] );
-		if( target == issue['data']['title'] ) {
-		    cardID = cardIDs[i];
-		}
-	    })
-	    .catch( e => {
-		console.log( "Find issue from card url failed.", e );
-	    });
-	if( cardID != -1 ) { break; }
-	}
-    */
-    
-    console.log( "find card in col", issueId, colId, "found?", cardId );
+    console.log( installClient[1], "find card in col", issueId, colId, "found?", cardId );
     return cardId;
 }
 
 
 async function moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout )
 {
-    let success = false;
-    let newColId = -1;
+    let success    = false;
+    let newColId   = -1;
+    let newColName = "";
     assert.notEqual( ceProjectLayout[0], -1 );
     let cardID = -1;
-
+    let pip = [ config.PROJ_PLAN, config.PROJ_PROG ];  
+    let pac = [ config.PROJ_PEND, config.PROJ_ACCR ];  
+    
     if( action == "closed" ) {
 
-	// verify card is currently in column "Planned" or "In Progress"
+	// verify card is in the right place
 	for( let i = 0; i < 2; i++ ) {
-	    cardID = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[i+1] );
+	    cardID = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[ pip[i]+1 ] );
 	    if( cardID != -1 ) { break; }
 	}
 
-	// XXX ENUM, pls
 	// move card to "Pending PEQ Approval"
 	if( cardID != -1 ) {
-	    newColId = ceProjectLayout[3]
-	    success = await( installClient.projects.moveCard({ card_id: cardID, position: "top", column_id: newColId }))
+	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
+	    newColName = config.PROJ_COLS[ config.PROJ_PEND ]; 
+	    success = await( installClient[0].projects.moveCard({ card_id: cardID, position: "top", column_id: newColId }))
 		.catch( e => {
-		    console.log( "Move card failed.", e );
+		    console.log( installClient[1], "Move card failed.", e );
 		});
 	}
 	
     }
     else if( action == "reopened" ) {
 
-	// verify card is currently in column ""Pending PEQ Approval", "Accrued"
+	// verify card is currently in the right place
 	for( let i = 0; i < 2; i++ ) {
-	    cardID = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[i+3] );
+	    cardID = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[ pac[i]+1 ] );
 	    if( cardID != -1 ) { break; }
 	}
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardID != -1 ) {
-	    newColId = ceProjectLayout[2]
-	    success = await( installClient.projects.moveCard({ card_id: cardID, position: "top", column_id: newColId }))
+	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
+	    newColName = config.PROJ_COLS[ config.PROJ_PROG ]; 	    
+	    success = await( installClient[0].projects.moveCard({ card_id: cardID, position: "top", column_id: newColId }))
 		.catch( e => {
-		    console.log( "Move card failed.", e );
+		    console.log( installClient[1], "Move card failed.", e );
 		});
 	}
     }
 
     if( success ) {
-	success = await( utils.updateCardFromIssue( issueId, newColId ))
-	    .catch( e => { console.log( "update card failed.", e ); });
+	success = await( utils.updateCardFromIssue( installClient[1], issueId, newColId, newColName ))
+	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
     }
 
     
@@ -396,9 +395,9 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
 
 async function getProjectName( installClient, projId ) {
 
-    let project = await( installClient.projects.get({ project_id: projId }))
+    let project = await( installClient[0].projects.get({ project_id: projId }))
 	.catch( e => {
-	    console.log( "Get Project failed.", e );
+	    console.log( installClient[1], "Get Project failed.", e );
 	    return "";
 	});
 
@@ -407,9 +406,9 @@ async function getProjectName( installClient, projId ) {
 
 async function getColumnName( installClient, colId ) {
 
-    let column = await( installClient.projects.getColumn({ column_id: colId }))
+    let column = await( installClient[0].projects.getColumn({ column_id: colId }))
 	.catch( e => {
-	    console.log( "Get Column failed.", e );
+	    console.log( installClient[1], "Get Column failed.", e );
 	    return "";
 	});
     
@@ -423,7 +422,7 @@ async function getColumnName( installClient, colId ) {
 async function getProjectSubs( installClient, repoName, projName, colName ) {
     let projSub = [ "Unallocated" ];
 
-    console.log( "Set up proj subs", repoName, projName, colName );
+    console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
     
     if( projName == config.MAIN_PROJ ) {
 	if( colName == "" ) { return projSub; }
@@ -432,8 +431,8 @@ async function getProjectSubs( installClient, repoName, projName, colName ) {
     else {
 	// e.g. projName = 'codeEquity web front end', which should be found in Master as a card
 	// Note - Sub: card names are stored without "Sub: "
-	console.log( "Find card", projName );
-	let card = await( utils.getFromCardName( repoName, config.MAIN_PROJ, projName ));   
+	console.log( installClient[1], "Find card", projName );
+	let card = await( utils.getFromCardName( installClient[1], repoName, config.MAIN_PROJ, projName ));   
 	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
     }
     console.log( "... returning", projSub.toString() );

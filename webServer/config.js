@@ -1,5 +1,11 @@
 const CE_BOT = 'codeequity[bot]';
 
+// oi, no strongly-typed enums.  Can rename, not reorder, and retain CE functionality
+const PROJ_COLS = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];
+const PROJ_PLAN = 0;   // Only real utility is code maintainability
+const PROJ_PROG = 1;  
+const PROJ_PEND = 2;
+const PROJ_ACCR = 3;
 
 // XXX Hmm better as two enums?
 const PEQ_COLOR = 'ffcc80';
@@ -31,7 +37,13 @@ const COGNITO_CONFIG_LOC  = './public-flutter/assets/files/awsconfiguration.json
 const CESERVER_CONFIG_LOC = '../ops/aws/auth/ceServerConfig.json';
 
 
-exports.CE_BOT   = CE_BOT;
+exports.CE_BOT    = CE_BOT;
+exports.PROJ_COLS = PROJ_COLS;
+exports.PROJ_PLAN = PROJ_PLAN;
+exports.PROJ_PROG = PROJ_PROG;
+exports.PROJ_PEND = PROJ_PEND;
+exports.PROJ_ACCR = PROJ_ACCR;
+
 exports.PEQ_COLOR = PEQ_COLOR;
 
 exports.PEQSTART = PEQSTART;

@@ -38,11 +38,14 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.icLink ); }
-    else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.GHIssueId, rb.GHColumnId ); }
+    else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.GHIssueId, rb.GHColumnId, rb.GHColumnName ); }
+    else if( endPoint == "UpdateGHCardFID") { resultPromise = updateGHCid( rb.GHRepo, rb.GHCardId, rb.GHColumnId, rb.GHColumnName ); }
     else if( endPoint == "GetGHCard")      { resultPromise = getGHC( rb.GHIssueId ); }
+    else if( endPoint == "GetGHCardFID")   { resultPromise = getGHCFid( rb.GHRepo, rb.GHCardId ); }
     else if( endPoint == "GetGHCFromCard") { resultPromise = getGHCFromCard( rb.GHRepo, rb.GHProjName, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHRepo ); }
     else if( endPoint == "GetPEQByIssue")  { resultPromise = getPeqByIssue( rb.GHIssueId ); }
+    else if( endPoint == "GetPEQByTitle")  { resultPromise = getPeqByTitle( rb.GHRepo, rb.GHProjectId, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetaPEQ")        { resultPromise = getaPeq( rb.Id ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
@@ -186,6 +189,21 @@ async function getGHId( issueId ) {
     });
 }
 
+async function getGHIdFromCard( repo, cardId ) {
+    const paramsP = {
+        TableName: 'CEProjects',
+        FilterExpression: 'GHCardId = :cid AND GHRepo = :repo',
+        ExpressionAttributeValues: { ":cid": cardId, ":repo": repo }
+    };
+
+    let ghPromise = bsdb.scan( paramsP ).promise();
+    return ghPromise.then((ghc) => {
+	assert(ghc.Count == 1 );
+	console.log( "Found Id ", ghc.Items[0].ProjectId );
+	return ghc.Items[0].ProjectId;
+    });
+}
+
 async function putPerson( newPerson ) {
     // console.log('Put Person!', newPerson.firstName );
 
@@ -215,6 +233,30 @@ async function getGHC( issueId ) {
     };
 
     console.log( "GH card - issue");
+    let ghcPromise = bsdb.scan( paramsP ).promise();
+    return ghcPromise.then((ghc) => {
+	if( ghc.Count == 1 ) {
+	    return success( ghc.Items[0] );
+	}
+	else {
+	    return {
+		statusCode: 204,
+		body: JSON.stringify( "---" ),
+		headers: { 'Access-Control-Allow-Origin': '*' }
+	    };
+	}
+    });
+}
+
+// GitHub card/issue association
+async function getGHCFid( repo, cardId ) {
+    const paramsP = {
+        TableName: 'CEProjects',
+        FilterExpression: 'GHCardId = :cid AND GHRepo = :repo',
+        ExpressionAttributeValues: { ":repo": repo, ":cid": cardId }
+    };
+
+    console.log( "GH card - card id");
     let ghcPromise = bsdb.scan( paramsP ).promise();
     return ghcPromise.then((ghc) => {
 	if( ghc.Count == 1 ) {
@@ -276,7 +318,7 @@ async function putGHC( icLink ) {
     return recPromise.then(() =>success( true ));
 }
 
-async function updateGHC( issueId, columnId ) {
+async function updateGHC( issueId, columnId, columnName ) {
 
     const projId  = await getGHId( issueId );
     console.log( "Updating by key", projId, columnId );
@@ -284,8 +326,23 @@ async function updateGHC( issueId, columnId ) {
     const params = {
 	TableName: 'CEProjects',
 	Key: {"ProjectId": projId },
-	UpdateExpression: 'set GHColumnId = :colId',
-	ExpressionAttributeValues: { ':colId': columnId }};
+	UpdateExpression: 'set GHColumnId = :colId, GHColumnName = :colName',
+	ExpressionAttributeValues: { ':colId': columnId, ':colName': columnName }};
+    
+    let uPromise = bsdb.update( params ).promise();
+    return uPromise.then(() => success( true ));
+}
+
+async function updateGHCid( repo, cardId, columnId, columnName ) {
+
+    const projId  = await getGHIdFromCard( repo, cardId );
+    console.log( "Updating by key", projId, columnId );
+
+    const params = {
+	TableName: 'CEProjects',
+	Key: {"ProjectId": projId },
+	UpdateExpression: 'set GHColumnId = :colId, GHColumnName = :colName',
+	ExpressionAttributeValues: { ':colId': columnId, ':colName': columnName }};
     
     let uPromise = bsdb.update( params ).promise();
     return uPromise.then(() => success( true ));
@@ -383,6 +440,21 @@ async function getPeqByIssue( issueId ) {
         TableName: 'CEPEQs',
         FilterExpression: 'GHIssueId = :id',
         ExpressionAttributeValues: { ":id": issueId }
+    };
+
+    let peqPromise = bsdb.scan( paramsP ).promise();
+    return peqPromise.then((peq) => {
+	assert(peq.Count == 1 );
+	console.log( "Found Peq ", peq.Items[0] );
+	return success( peq.Items[0] );
+    });
+}
+
+async function getPeqByTitle( repo, projId, title ) {
+    const paramsP = {
+        TableName: 'CEPEQs',
+        FilterExpression: 'GHRepo = :repo AND GHProjectId = :pid AND GHIssueTitle = :title',
+        ExpressionAttributeValues: { ":repo": repo, ":pid": projId, ":title": title }
     };
 
     let peqPromise = bsdb.scan( paramsP ).promise();

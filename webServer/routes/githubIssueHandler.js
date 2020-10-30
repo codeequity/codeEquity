@@ -22,28 +22,26 @@ async function handler( action, repo, owner, reqBody, res ) {
     //       project_card:created notification after submit, then projects:triage to pick column.
 
     // Sender is the event generator.  Issue:user is ... the original creator of the issue?
+    // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
     let sender   = reqBody['sender']['login'];
     let creator  = reqBody['issue']['user']['login'];
-    let title    = reqBody['issue']['title']; 
+    let title    = (reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
     let fullName = reqBody['repository']['full_name'];
     
+    console.log( "Got issue, sender:", sender, "action", action );
+    console.log( "title:", title );
+
     if( sender == config.CE_BOT ) {
 	console.log( "Bot issue.. taking no action" );
 	return;
     }
 
-    console.log( "Got issue, sender:", sender, "action", action );
-    console.log( "title:", title );
-    
-    if( sender == config.CE_BOT ) {
-	console.log( "Bot card, skipping." );
-	return;
-    }
+    // installClient is pair [installationAccessToken, creationSource]
+    let token = await auth.getInstallationClient( owner, repo );
+    let source = "<ISS:"+action+"> ";
+    let installClient = [token, source];
 
-    let installClient = await auth.getInstallationClient( owner, repo );
     let peqValue = -1;
-
-    console.log( "Issues: rate limit" );
     await gh.checkRateLimit(installClient);
     
     // action:open  not relevant until issue: labeled
@@ -90,23 +88,26 @@ async function handler( action, repo, owner, reqBody, res ) {
 	else {
 	    let success = await gh.moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
 	    if( success ) {
-		console.log( "owner, repo, fullname", owner, repo, fullName );
-		console.log( "Find & validate PEQ" );
-		let peqId = await( gh.validatePEQ( issueId, fullName, "plan", title ));
+		console.log( source, "Find & validate PEQ" );
+		let peqId = ( await( gh.validatePEQ( installClient, fullName, issueId, title, ceProjectLayout[0] )) )['PEQId'];
 		if( peqId == -1 ) {
-		    console.log( "Could not find or verify associated PEQ.  Trouble in paradise." );
+		    console.log( source, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		}
 		else {
-		    console.log( "Record PEQ action" );
-		    let notice = action + ", moved to column: ";
-		    notice += ( action == 'reopened' ? "2" : "3" );  // XXX enum
-		    let subject = [ peqId.toString(), notice ];
+		    // githubCardHandler:recordMove must handle many more options.  Choices here are limited.
+		    // Closed: 
+		    let verb = "propose";
+		    let action = "accrue";
+		    if( action == "reopened" ) { verb = "reject"; }
+		    
+		    let subject = [ peqId.toString() ];
 		    await( utils.recordPEQAction(
+			source,
 			config.EMPTY,     // CE UID
 			sender,           // gh user name
 			fullName,         // gh repo
-			"confirm",        // verb
-			"notice",         // action   
+			verb,
+			action,
 			subject,          // subject
 			"",               // note
 			utils.getToday(), // entryDate

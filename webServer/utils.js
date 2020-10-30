@@ -82,11 +82,12 @@ async function getGH( url ) {
 	.catch(err => console.log(err));
 }
 
-async function postIt( shortName, postData ) {
+// XXX This is called many times during one create/move.  Should keep where possible.
+async function postIt( source, shortName, postData ) {
     let apiPath = getAPIPath() + "/find";
     let idToken = await awsAuth.getCogIDToken();
     // console.log( "postIt:", shortName, postData );
-    console.log( "postIt:", shortName );
+    console.log( source, "postIt:", shortName );
     
     const params = {
         url: apiPath,
@@ -103,13 +104,38 @@ async function postIt( shortName, postData ) {
 };
 
 
-async function getFromIssue( issueId ) {
-    console.log( "Get card data from issue:", issueId );
+async function getFromIssue( source, issueId ) {
+    console.log( source, "Get card data from issue:", issueId );
 
     let shortName = "GetGHCard";
     let postData = `{ "Endpoint": "${shortName}", "GHIssueId": "${issueId}" }`;
 
-    let response = await postIt( shortName, postData )
+    let response = await postIt( source, shortName, postData )
+    if( typeof response === 'undefined' ) return null;
+    
+    if (response['status'] == 201) {
+	let body = await response.json();
+	// console.log("Good status.  Body:", body);
+	return body;
+    }
+    else if (response['status'] == 204) {
+	console.log(source, "Issue not found.", response['status'] );
+	return -1;
+    }
+    else {
+	console.log(source, "Unhandled status code:", response['status'] );
+	return -1;
+    }
+}
+
+// Note - this returns flat, json-style uninterpreted dynamo results 
+async function getPeq( source, issueId ) {
+    console.log( "Get PEQ from issueId:", issueId );
+
+    let shortName = "GetPEQByIssue";
+    let postData = `{ "Endpoint": "${shortName}", "GHIssueId": "${issueId}" }`;
+
+    let response = await postIt( source, shortName, postData )
     if( typeof response === 'undefined' ) return null;
     
     if (response['status'] == 201) {
@@ -127,14 +153,13 @@ async function getFromIssue( issueId ) {
     }
 }
 
-// Note - this returns flat, json-style uninterpreted dynamo results 
-async function getPeq( issueId ) {
-    console.log( "Get PEQ from issueId:", issueId );
+async function getPeqFromTitle( source, repo, projId, title ) {
+    console.log( source, "Get PEQ from title:", title, projId );
 
-    let shortName = "GetPEQByIssue";
-    let postData = `{ "Endpoint": "${shortName}", "GHIssueId": "${issueId}" }`;
+    let shortName = "GetPEQByTitle";
+    let postData = `{ "Endpoint": "${shortName}", "GHRepo": "${repo}", "GHProjectId": "${projId}", "GHCardTitle": "${title}" }`;
 
-    let response = await postIt( shortName, postData )
+    let response = await postIt( source, shortName, postData )
     if( typeof response === 'undefined' ) return null;
     
     if (response['status'] == 201) {
@@ -153,13 +178,13 @@ async function getPeq( issueId ) {
 }
 
 // XXX dup boilerplate
-async function getFromCardName( repoName, projName, cardTitle ) {
-    console.log( "Get linkage from repo, card info", repoName, projName, cardTitle );
+async function getFromCardName( source, repoName, projName, cardTitle ) {
+    console.log( source, "Get linkage from repo, card info", repoName, projName, cardTitle );
 
     let shortName = "GetGHCFromCard";
     let postData = `{ "Endpoint": "${shortName}", "GHRepo": "${repoName}", "GHProjName": "${projName}", "GHCardTitle": "${cardTitle}" }`;
 
-    let response = await postIt( shortName, postData )
+    let response = await postIt( source, shortName, postData )
     if( typeof response === 'undefined' ) return null;
     
     if (response['status'] == 201) {
@@ -168,11 +193,36 @@ async function getFromCardName( repoName, projName, cardTitle ) {
 	return body;
     }
     else if (response['status'] == 204) {
-	console.log("Card data not found.", response['status'] );
+	console.log(source, "Card data not found.", response['status'] );
 	return -1;
     }
     else {
-	console.log("Unhandled status code:", response['status'] );
+	console.log(source, "Unhandled status code:", response['status'] );
+	return -1;
+    }
+}
+
+// XXX dup boilerplate
+async function getFromCardId( source, repo, cardId ) {
+    console.log( source, "Get linkage from repo, card Id", repo, cardId );
+
+    let shortName = "GetGHCardFID";
+    let postData = `{ "Endpoint": "${shortName}", "GHRepo": "${repo}", "GHCardId": "${cardId}" }`;
+
+    let response = await postIt( source, shortName, postData )
+    if( typeof response === 'undefined' ) return null;
+    
+    if (response['status'] == 201) {
+	let body = await response.json();
+	// console.log("Good status.  Body:", body);
+	return body;
+    }
+    else if (response['status'] == 204) {
+	console.log(source, "Card data not found.", response['status'] );
+	return -1;
+    }
+    else {
+	console.log(source, "Unhandled status code:", response['status'] );
 	return -1;
     }
 }
@@ -195,7 +245,7 @@ async function addIssueCard( repo, issueId, issueNum, projId, projName, colId, c
     postData.GHCardTitle   = cardTitleStrip;
 
     let pd = { "Endpoint": shortName, "icLink": postData };
-    let response = await postIt( shortName, JSON.stringify( pd ))
+    let response = await postIt( "", shortName, JSON.stringify( pd ))
     if( typeof response === 'undefined' ) return null;
     
     if (response['status'] == 201) {
@@ -212,13 +262,13 @@ async function addIssueCard( repo, issueId, issueNum, projId, projName, colId, c
 }
 
 // XXX handle move to new project?
-async function updateCardFromIssue( issueId, newColId ) {
-    console.log( "Updating issue / card linkage" );
+async function updateCardFromIssue( source, issueId, newColId, newColName ) {
+    console.log( source, "Updating issue / card linkage" );
 
     let shortName = "UpdateGHCard";
-    let postData = `{ "Endpoint": "${shortName}", "GHIssueId": "${issueId}", "GHColumnId": "${newColId}" }`;
+    let postData = `{ "Endpoint": "${shortName}", "GHIssueId": "${issueId}", "GHColumnId": "${newColId}", "GHColumnName": "${newColName}" }`;
 
-    let response = await postIt( shortName, postData )
+    let response = await postIt( source, shortName, postData )
     if( typeof response === 'undefined' ) return null;
     
     if (response['status'] == 201) {
@@ -229,15 +279,37 @@ async function updateCardFromIssue( issueId, newColId ) {
     else {
 	console.log("Unhandled status code:", response['status'] );
 	let body = await response.json();
-	console.log("Body:", body);
+	console.log(source, "Body:", body);
+	return false;
+    }
+}
+
+async function updateCardFromCardId( source, repo, cardId, colId, colName ) {
+    console.log( source, "Updating issue / card linkage from cardId" );
+
+    let shortName = "UpdateGHCardFID";
+    let postData = `{ "Endpoint": "${shortName}", "GHRepo": "${repo}", "GHCardId": "${cardId}", "GHColumnId": "${colId}", "GHColumnName": "${colName}" }`;
+
+    let response = await postIt( source, shortName, postData )
+    if( typeof response === 'undefined' ) return null;
+    
+    if (response['status'] == 201) {
+	let body = await response.json();
+	// console.log("Good status.  Body:", body);
+	return body;
+    }
+    else {
+	console.log("Unhandled status code:", response['status'] );
+	let body = await response.json();
+	console.log(source, "Body:", body);
 	return false;
     }
 }
 
 
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
-async function recordPEQAction( ceUID, ghUserName, ghRepo, verb, action, subject, note, entryDate, rawBody ) {
-    console.log( "Recording PEQAction: ", verb, action );
+async function recordPEQAction( source, ceUID, ghUserName, ghRepo, verb, action, subject, note, entryDate, rawBody ) {
+    console.log( source, "Recording PEQAction: ", verb, action );
 
     let shortName = "RecordPEQAction";
 
@@ -253,26 +325,26 @@ async function recordPEQAction( ceUID, ghUserName, ghRepo, verb, action, subject
     postData.TimeStamp = JSON.stringify( Date.now() );
 
     let pd = { "Endpoint": shortName, "newPAction": postData };
-    let response = await postIt( shortName, JSON.stringify( pd ))
+    let response = await postIt( source, shortName, JSON.stringify( pd ))
     if( typeof response === 'undefined' ) return null;
     
     if (response['status'] == 201) {
 	let body = await response.json();
- 	console.log("Good status.  Body:", body);
+ 	console.log(source, "Good status.  Body:", body);
 	return body;
     }
     else {
 	console.log("Unhandled status code:", response['status'] );
 	let body = await response.json();
-	console.log("Body:", body);
+	console.log(source, "Body:", body);
 	return body;
     }
     
 }
 
 
-async function recordPEQ( amount, peqType, assignees, repo, projSub, projId, issueId, title ) {
-    console.log( "Recording PEQ", peqType, amount, "PEQs for", title );
+async function recordPEQ( source, amount, peqType, assignees, repo, projSub, projId, issueId, title ) {
+    console.log( source, "Recording PEQ", peqType, amount, "PEQs for", title );
 
     // Erm.. model is defined in .dart.  Could jump through hoops to access it via public_flutter, buuuuut this is simpler?
     
@@ -303,7 +375,7 @@ async function recordPEQ( amount, peqType, assignees, repo, projSub, projId, iss
 
     let pd = { "Endpoint": shortName, "newPEQ": postData };
 
-    let response = await postIt( shortName, JSON.stringify( pd ))
+    let response = await postIt( source, shortName, JSON.stringify( pd ))
     if( typeof response === 'undefined' ) return null;
     
     if (response['status'] == 201) {
@@ -343,7 +415,10 @@ exports.recordPEQ = recordPEQ;
 exports.recordPEQTodo = recordPEQTodo;
 exports.addIssueCard = addIssueCard;
 exports.getFromIssue = getFromIssue;
-exports.getPeq = getPeq;
 exports.getFromCardName = getFromCardName;
+exports.getFromCardId = getFromCardId;
+exports.getPeq = getPeq;
+exports.getPeqFromTitle = getPeqFromTitle;
 exports.updateCardFromIssue = updateCardFromIssue;
+exports.updateCardFromCardId = updateCardFromCardId;
 exports.getToday = getToday;
