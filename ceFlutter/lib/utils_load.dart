@@ -423,24 +423,24 @@ Future<void> reloadMyProjects( context, container ) async {
 // PActions, PEQs are added by webServer, which does not have nor require ceUID.
 // set CEUID by matching my peqAction:ghUserName  or peq:ghUserNames to cegithub:ghUsername, then writing that CEOwnerId
 // if there is not yet a corresponding ceUID, use "GHUSER: $ghUserName" in it's place, to be fixed later by associateGitub
+// NOTE: Expect multiple PActs for each PEQ.  For example, open, close, and accrue
 Future<void> updateCEUID( PEQAction pact, PEQ peq, context, container ) async {
    assert( pact.ceUID == EMPTY );
    String ghu  = pact.ghUserName;
    String ceu  = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu" }', "GetCEUID" );   
    await updateDynamo( context, container, '{ "Endpoint": "putPActCEUID", "CEUID": "$ceu", "PEQActionId": "${pact.id}" }', "putPActCEUID" );
 
-   assert( peq.ceHolderId.length == 0 );
+   // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
+   peq.ceHolderId = new List<String>();
    for( var peqGHUser in peq.ghHolderId ) {
       String ceUID = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$peqGHUser" }', "GetCEUID" );
       if( ceUID == "" ) { ceUID = "GHUSER: " + peqGHUser; }
       peq.ceHolderId.add( ceUID );
    }
 
-   if( peq.ceHolderId.length > 0 ) {
-      String ceHolders = json.encode( peq.ceHolderId );
-      await updateDynamo( context, container, '{ "Endpoint": "UpdatePEQ", "PEQId": "${peq.id}", "CEHolderId": $ceHolders }', "updatePEQ" );
-   }
-   
+   // 0 length is ok, when unassigned.
+   String ceHolders = json.encode( peq.ceHolderId );
+   await updateDynamo( context, container, '{ "Endpoint": "UpdatePEQ", "PEQId": "${peq.id}", "CEHolderId": $ceHolders }', "updatePEQ" );
 }
 
 // XXX this may need updating if allow 1:many ce/gh association.  maybe limit ce login to 1:1 - pick before see stuff.
@@ -546,7 +546,9 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    print( "Updating allocations for ghRepo" );
 
    final appState  = container.state;
-   final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "GHRepo": "$repoName" }' ); 
+   final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "GHRepo": "$repoName" }' );
+
+   if( todoPActions.length == 0 ) { return; }
 
    List<String> pactIds = [];
    List<String> peqIds = [];
@@ -555,20 +557,21 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       print( pact.toString() );
       assert( !pact.ingested );
 
-      if( pact.action == PActAction.notice ) {
-         assert( pact.subject.length == 2 );
-         print( "PAct notice.  No updating peqAllocations." );
-         return;
-      }
-      else if( pact.action != PActAction.relocate && pact.action != PActAction.change ) {
-         assert( pact.subject.length == 1 );
+      if( pact.action != PActAction.relocate && pact.action != PActAction.change ) {
+         if( pact.action == PActAction.notice ) {
+            assert( pact.subject.length == 2 );
+         }
+         else {
+            assert( pact.subject.length == 1 );
+         }
          pactIds.add( pact.id );
          peqIds.add( pact.subject[0] );
+         
       }
       else { notYetImplemented( context ); }
    }
 
-   // This returns in order of request.
+   // This returns in order of request, including duplicates
    String PeqIds = json.encode( peqIds );
    List<PEQ> todoPeqs = await fetchPEQs( context, container,'{ "Endpoint": "GetPEQsById", "PeqIds": $PeqIds }' );
    assert( pactIds.length == todoPActions.length );
@@ -581,18 +584,20 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       assert( peqIds[i]  == todoPeqs[i].id );
       todos.add( new Tuple2<PEQAction, PEQ>( todoPActions[i], todoPeqs[i] ) );
    }
-
    todos.sort((a, b) => a.item2.ghProjectSub.length.compareTo(b.item2.ghProjectSub.length));
+
    for( var tup in todos ) {
       await processPEQAction( tup.item1, tup.item2, context, container );
    }
-   
+
+   // XXX Skip this is no change (say, on a series of notices).
    if( appState.myPEQSummary != null ) {
       String psum = json.encode( appState.myPEQSummary );
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
       await updateDynamo( context, container, postData, "PutPSum" );
    }
-   
+
+   // unlock, set ingested
    if( pactIds.length > 0 ) {
       String newPIDs = json.encode( pactIds );
       final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );

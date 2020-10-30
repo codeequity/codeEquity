@@ -36,7 +36,7 @@ async function getCogIDToken() {
 	let result = await asyncAuthenticateUser(cognitoUser, authenticationDetails);
 	
 	if ('idToken' in result) {
-	    console.log( "User", authData.Username, "authenticated");
+	    // console.log( "User", authData.Username, "authenticated");
 	    // note result.idToken.jwtToken == result.getIdToken().getJwtToken()
 	    idToken = result.idToken.jwtToken;
 	}
