@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 abstract class Tree {
    int getAllocAmount();
    int getPlanAmount();
+   int getPendingAmount();
    int getAccrueAmount();
 
    Tree findNode( String target ); 

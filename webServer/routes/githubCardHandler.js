@@ -256,10 +256,18 @@ async function handler( action, repo, owner, reqBody, res ) {
 	assert( issueId == -1 || oldNameIndex != -1 );                // likely allocation, or known project layout
 	assert( newProjId     == card['GHProjectId'] );               // not yet supporting moves between projects
 
-	// reflect card move in dynamo
+	// reflect card move in dynamo, if move is legal
 	let newColName = await gh.getColumnName( installClient, newColId );
 	let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	assert( issueId == -1 || newNameIndex != -1 );
+	if( newNameIndex > config.PROJ_PLAN ) { 
+	    let assignees = await gh.getAssignees( installClient, owner, repo, card['GHIssueNum'] );
+	    if( assignees.length == 0  ) {
+		console.log( "Update card failed - no assignees" );   // can't propose grant without a grantee
+		console.log( "XXX move card back by hand with ceServer off" );
+		return;
+	    }
+	}
 	let success = await( utils.updateCardFromCardId( installClient[1], fullName, cardId, newColId, newColName )) 
 	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
 	

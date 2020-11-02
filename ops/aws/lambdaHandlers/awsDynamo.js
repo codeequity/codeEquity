@@ -52,6 +52,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
     else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.PEQId, rb.CEHolderId ); }
+    else if( endPoint == "UpdatePEQType")  { resultPromise = updatePEQType( rb.PEQId, rb.PeqType ); }
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
@@ -367,7 +368,8 @@ async function putPeq( newPEQ ) {
 	    "GHProjectSub": newPEQ.GHProjectSub,
 	    "GHProjectId":  newPEQ.GHProjectId,
 	    "GHIssueId":    newPEQ.GHIssueId,
-	    "GHIssueTitle": newPEQ.GHIssueTitle
+	    "GHIssueTitle": newPEQ.GHIssueTitle,
+	    "Active":       newPEQ.Active
 	}
     };
 
@@ -600,6 +602,20 @@ async function updatePEQ( peqId, ceHolderIds ) {
 	Key: {"PEQId": peqId },
 	UpdateExpression: 'set CEHolderId = :cehold',
 	ExpressionAttributeValues: { ':cehold': ceHolderIds }};
+    
+    let promise = bsdb.update( params ).promise();
+    return promise.then(() => success( true ));
+}
+
+async function updatePEQType( peqId, newType ) {
+
+    console.log( "Updating peqType for", peqId );
+
+    const params = {
+	TableName: 'CEPEQs',
+	Key: {"PEQId": peqId },
+	UpdateExpression: 'set PeqType = :nt',
+	ExpressionAttributeValues: { ':nt': newType }};
     
     let promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));

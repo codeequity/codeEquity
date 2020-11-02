@@ -372,6 +372,7 @@ async function recordPEQ( source, amount, peqType, assignees, repo, projSub, pro
     postData.GHProjectId  = projId;
     postData.GHIssueId    = issueId;
     postData.GHIssueTitle = titleStrip;
+    postData.Active       = "true";
 
     let pd = { "Endpoint": shortName, "newPEQ": postData };
 

@@ -2,7 +2,7 @@ import 'package:random_string/random_string.dart';
 
 import 'package:ceFlutter/utils.dart';
 
-enum PeqType   { allocation, plan, grant }
+enum PeqType   { allocation, plan, pending, grant, end }
 
 // Legally, only CEUIDs have signed agreements.  ceHolderId is binding.  ghHolderId is just a helpful comment.
 
@@ -23,14 +23,17 @@ class PEQ {
    final String        ghIssueId;   
    final String        ghIssueTitle; // actually, issue-or-card title.
 
+   final bool          active;       // has this PEQ been deliberately deleted or otherwise removed from project?
+
    PEQ({this.id, this.ceHolderId, this.ghHolderId, this.ceGrantorId,
             this.peqType, this.amount, this.accrualDate, this.vestedPerc,
-            this.ghRepo, this.ghProjectSub, this.ghProjectId, this.ghIssueId, this.ghIssueTitle});
+            this.ghRepo, this.ghProjectSub, this.ghProjectId, this.ghIssueId, this.ghIssueTitle,
+            this.active});
 
    dynamic toJson() => {'PEQId': id, 'CEHolderId': ceHolderId, 'GHHolderId': ghHolderId, 'CEGrantorId': ceGrantorId,
                            'PeqType': enumToStr(peqType), 'Amount': amount, 'AccrualDate': accrualDate, 'VestedPerc': vestedPerc,
                            'GHRepo': ghRepo, 'GHProjectSub': ghProjectSub, 'GHProjectId': ghProjectId, 'GHIssueId': ghIssueId,
-                           'GHIssueTitle': ghIssueTitle }; 
+                           'GHIssueTitle': ghIssueTitle, 'Active': active }; 
    
    factory PEQ.fromJson(Map<String, dynamic> json) {
 
@@ -55,11 +58,14 @@ class PEQ {
          ghProjectId:   json['GHProjectId'],
          ghIssueId:     json['GHIssueId'],
          ghIssueTitle:  json['GHIssueTitle'],
+
+         active:        json['Active'] == "true" ? true : false,         
          );
    }
    
    String toString() {
       String res = "\n" + ghRepo + " PEQs";
+      res += "\n    active? " + active.toString();
       res += "\n   " + amount.toString() + " PEQ, for: " + ghIssueTitle;
       res += "\n    grantor: " + ceGrantorId;
       res += "\n    type: " + enumToStr(peqType) + ", accrued: " + accrualDate + ", vested %: " + vestedPerc.toString();
