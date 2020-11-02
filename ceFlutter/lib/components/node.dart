@@ -71,6 +71,12 @@ class Node extends StatelessWidget implements Tree {
     return sum;
   }
   @override
+  int getPendingAmount() {
+    var sum = 0;
+    leaves.forEach((Tree leaf) => sum += leaf.getPendingAmount());
+    return sum;
+  }
+  @override
   int getAccrueAmount() {
     var sum = 0;
     leaves.forEach((Tree leaf) => sum += leaf.getAccrueAmount());
@@ -84,6 +90,7 @@ class Node extends StatelessWidget implements Tree {
      res += "\n   has " + leaves.length.toString() + " leaves";
      res += "\n   with alloc amount: " + addCommas( getAllocAmount() ) + " PEQ";
      res += "\n   with plan amount: " + addCommas( getPlanAmount() ) + " PEQ";
+     res += "\n   with pending amount: " + addCommas( getPendingAmount() ) + " PEQ";
      res += "\n   with accrue amount: " + addCommas( getAccrueAmount() ) + " PEQ";
 
      leaves.forEach((Tree leaf ) => res += leaf.toStr() );
@@ -96,6 +103,7 @@ class Node extends StatelessWidget implements Tree {
 
      String alloc  = addCommas( getAllocAmount() );
      String plan   = addCommas( getPlanAmount() );
+     String pending = addCommas( getPendingAmount() );
      String accrue = addCommas( getAccrueAmount() );
 
      // XXX consider using font for clickability?
@@ -103,7 +111,7 @@ class Node extends StatelessWidget implements Tree {
         padding: const EdgeInsets.only(left: 15.0),  // XXX
         child: ExpansionTile(
            // leading: icon == null ? Container() : Icon(icon),
-           title: makeBodyText( "$title (${ alloc + " " + plan + " " + accrue })", width, false, 1 ),
+           title: makeBodyText( "$title (${ alloc + " " + plan + " " + pending + " " + accrue })", width, false, 1 ),
            children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
            // trailing: Text( addCommas( getAmount() ), style: TextStyle(fontSize: 12) ),
            initiallyExpanded: isInitiallyExpanded,
