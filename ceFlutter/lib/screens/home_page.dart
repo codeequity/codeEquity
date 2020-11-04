@@ -2,15 +2,20 @@ import 'dart:convert';  // json encode/decode
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
+import 'package:ceFlutter/app_state_container.dart';
+
 import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/utils_load.dart';
-import 'package:ceFlutter/app_state_container.dart';
+
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/allocation.dart';
+import 'package:ceFlutter/models/PEQ.dart';
 
+import 'package:ceFlutter/components/tree.dart';
 import 'package:ceFlutter/components/node.dart';
 import 'package:ceFlutter/components/leaf.dart';
 
+import 'package:ceFlutter/screens/detail_page.dart';
 
 
 class CEHomePage extends StatefulWidget {
@@ -41,7 +46,99 @@ class _CEHomeState extends State<CEHomePage> {
       super.dispose();
    }
 
-  
+
+   // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
+   //     detail page..?  
+   _pactDetail( ghUserLogin, width, context, container ) {
+      final appState = container.state;
+      return GestureDetector(
+         onTap: () async 
+         {
+            print( "pactDetail fired for: " + ghUserLogin );
+            appState.selectedUser = ghUserLogin;
+            // Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
+            
+            // XXX For now, force update each time click here.
+            await updateUserPActions( container, context ); 
+            setState(() { appState.userPActUpdated = true; });
+            Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
+         },
+         child: makeTitleText( ghUserLogin, width, false, 1 )
+         );
+   }
+
+   // XXX this could easily be made iterative
+   // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
+   // header      alloc                   sub alloc                 plan
+   buildAllocationTree( ) {
+      print( "Build allocation tree" );
+      final appState  = container.state;
+      final width = appState.screenWidth * .6;
+      
+      appState.allocTree = Node( "Category    Alloc / Plan / Accr", 0, null, width, true );
+      
+      for( var alloc in appState.myPEQSummary.allocations ) {
+         
+         Tree curNode = appState.allocTree;
+         
+         // when allocs are created, they are leaves.
+         // down the road, they become nodes
+         for( int i = 0; i < alloc.category.length; i++ ) {
+            
+            print( "working on " + alloc.category.toString() + " : " + alloc.category[i] );
+            
+            bool lastCat = false;
+            if( i == alloc.category.length - 1 ) { lastCat = true; }
+            Tree childNode = curNode.findNode( alloc.category[i] );
+            
+            if( childNode is Leaf && !lastCat ) {
+               // allocation leaf, convert to a node to accomodate plan/accrue
+               print( "... leaf in middle - convert" );
+               curNode = (curNode as Node).convertToNode( childNode );
+            }
+            else if( childNode == null ) {
+               if( !lastCat ) {
+                  print( "... nothing - add node" );
+                  Node tmpNode = Node( alloc.category[i], 0, null, width );
+                  (curNode as Node).addLeaf( tmpNode );
+                  curNode = tmpNode;
+               }
+               else {
+                  print( "... nothing found, last cat, add leaf" );
+                  // leaf.  amounts stay at leaves
+
+                  int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount : 0 );
+                  int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
+                  int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount : 0 );
+                  int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
+                  Widget details = _pactDetail( alloc.category[i], width, context, container );
+                  Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
+                  (curNode as Node).addLeaf( tmpLeaf );
+               }
+            }
+            else if( childNode is Node ) {
+               if( !lastCat ) {
+                  print( "... found - move on" );
+                  curNode = childNode;
+               }
+               else {
+                  print( "... alloc adding into existing chain" );
+                  assert( alloc.allocType == PeqType.allocation );
+                  (childNode as Node).addAlloc( alloc.amount );
+               }
+            }
+            else {
+               print( "XXXXXXXXXXXXXXXX BAD" );
+               print( "XXXXXXXXXXXXXXXX BOOBOO" );
+               print( "XXXXXXXXXXXXXXXX BABY" );
+            }
+         }
+      }
+      appState.updateAllocTree = false;
+      // print( appState.allocTree.toStr() );
+   }
+
+   
    // No border padding
    Widget _makeHDivider( width, lgap, rgap) {
       return Padding(
@@ -49,22 +146,23 @@ class _CEHomeState extends State<CEHomePage> {
          child: Container( width: width, height: 2, color: Colors.grey[200] ));
    }
    
-   
-   // XXX consider adding 'currentRepo' to appState.  Or, making peqSummary a list in appState
+
+   // XXX consider making peqSummary a list in appState
    List<Widget> _showPAlloc( repo ) {
+
       List<Widget> allocList = [];
-      List<Allocation> allocs = [];
+
+      if( appState.updateAllocTree ) { buildAllocationTree(); }
       
       if( appState.peqUpdated || appState.myPEQSummary != null )
       {
          if( appState.myPEQSummary.ghRepo == repo ) {
-            allocs = appState.myPEQSummary.allocations;
+            if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
+            print( "_showPalloc Update alloc" );
+            allocList.add( appState.allocTree );
          }
       }
       else { return []; }
-      if( allocs.length == 0 ) { return []; }
-      
-      allocList.add( appState.allocTree );
       
       return allocList;
    }
@@ -74,7 +172,7 @@ class _CEHomeState extends State<CEHomePage> {
       appState.peqUpdated = false;
       
       await updatePEQAllocations( repoName, context, container );
-      buildAllocationTree( context, container );
+      buildAllocationTree();
       
       // XXX local, or app-wide?  app for now
       setState(() { appState.peqUpdated = true; });
@@ -94,8 +192,8 @@ class _CEHomeState extends State<CEHomePage> {
       return GestureDetector(
          onTap: ()
          {
+            appState.selectedRepo = repoName;
             confirm( context, "Update Summary?", "Press Continue to proceed.", () => _updateConfirmed( repoName ), () => _updateRejected() );
-            //_updateConfirmed( repoName );
          },
          child: makeTitleText( repoName, textWidth, false, 1 )
          );

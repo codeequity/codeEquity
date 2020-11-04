@@ -515,6 +515,7 @@ function parseLabelDescr( labelDescr ) {
     return peqValue;
 }
 
+// XXX currently used as bool.. peq or not?  value is not correct.
 function parseHumanPEQ( labels ) {
     let peqValue = 0;
 

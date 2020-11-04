@@ -48,7 +48,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetPEQByTitle")  { resultPromise = getPeqByTitle( rb.GHRepo, rb.GHProjectId, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetaPEQ")        { resultPromise = getaPeq( rb.Id ); }
-    else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHRepo ); }
+    else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
     else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.PEQId, rb.CEHolderId ); }
@@ -467,16 +467,20 @@ async function getPeqByTitle( repo, projId, title ) {
     });
 }
 
-async function getPeqActions( uid, ghRepo ) {
-    const paramsP = {
-        TableName: 'CEPEQActions',
-        FilterExpression: 'CEUID = :ceid AND GHRepo = :ghrepo',
-        ExpressionAttributeValues: { ":ceid": uid, ":ghrepo": ghRepo },
-	Limit: 99,
-    };
+async function getPeqActions( uid, ghUser, ghRepo ) {
+    let params = { TableName: 'CEPEQActions', Limit: 99, };
 
+    if( uid != "" ) {
+	params.FilterExpression = 'CEUID = :ceid AND GHRepo = :ghrepo';
+        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo };
+    }
+    else {
+	params.FilterExpression = 'GHUserName = :id AND GHRepo = :ghrepo';
+        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo };
+    }
+    
     console.log( "Looking for peqActions");
-    let peqPromise = paginatedScan( paramsP );
+    let peqPromise = paginatedScan( params );
     return peqPromise.then((peqs) => {
 	console.log( "Found peqActions ", peqs );
 	return success( peqs );
@@ -708,7 +712,9 @@ async function getGHA( uid ) {
     });
 }
 
-async function getPEQActionsFromGH( ghUserName, ceUID ) {
+// XXX this gets all, not just needing update
+// XXX as it is, replace with getPeqActions
+async function getPEQActionsFromGH( ghUserName ) {
     const params = {
         TableName: 'CEPEQActions',
         FilterExpression: 'GHUserName = :ghun',
@@ -761,7 +767,7 @@ async function putGHA( newGHAcct ) {
     // Majority of cases will be 0 or just a few PEQActions without a CE UID, 
     // especially since a PEQAction requires a PEQ label.
     let updated = true;
-    const ghPEQA = await getPEQActionsFromGH( newGHAcct.ghUserName, newGHAcct.ceOwnerId );
+    const ghPEQA = await getPEQActionsFromGH( newGHAcct.ghUserName );
     await ghPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newGHAcct.ceOwnerId ));
     console.log( "putGHA returning", updated );
     return success( updated );

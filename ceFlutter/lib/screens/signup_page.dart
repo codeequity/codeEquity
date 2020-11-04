@@ -95,6 +95,7 @@ class _CESignupState extends State<CESignupPage> {
                   
                   appState.newUser = false;
                   await reloadMyProjects( context, container );
+                  appState.updateAllocTree = true; // forces buildAllocationTree
                   appState.loaded = true;
                   
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());

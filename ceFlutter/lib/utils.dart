@@ -5,8 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
+import 'package:ceFlutter/utils_load.dart';
+
 import 'package:ceFlutter/screens/home_page.dart';
+import 'package:ceFlutter/screens/detail_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
+
 import 'package:ceFlutter/customIcons.dart';
 
 // XXX service?
@@ -69,6 +73,8 @@ void showToast(String msg) {
       timeInSecForIosWeb: 5,
       );
 }
+
+
 
 void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {
    print( "Popping dialog" );
@@ -213,12 +219,12 @@ Widget makeTopAppBar( BuildContext context, currentPage ) {
          title: Text( "CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 16 )),
          actions: <Widget>[
             IconButton(
-               icon: currentPage == "Loan" ? Icon(customIcons.loan_here) : Icon(customIcons.loan),
-               key:  currentPage == "Loan" ? Key( "loanHereIcon" ) : Key( "loanIcon" ),
+               icon: currentPage == "Detail" ? Icon(customIcons.loan_here) : Icon(customIcons.loan),
+               key:  currentPage == "Detail" ? Key( "loanHereIcon" ) : Key( "loanIcon" ),
                onPressed: ()
                {
-                  if( currentPage == "Loan" ) { return; }
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
+                  if( currentPage == "Detail" ) { return; }
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage());
                   Navigator.push( context, newPage);
                },
                iconSize: iconSize,

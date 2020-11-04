@@ -17,6 +17,7 @@ import 'package:github/github.dart';
 import 'package:ceFlutter/utils.dart';
 
 import 'package:ceFlutter/screens/launch_page.dart';
+import 'package:ceFlutter/screens/home_page.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
@@ -24,10 +25,6 @@ import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
 import 'package:ceFlutter/models/allocation.dart';
-
-import 'package:ceFlutter/components/tree.dart';
-import 'package:ceFlutter/components/leaf.dart';
-import 'package:ceFlutter/components/node.dart';
 
 // XXX strip context, container where not needed
 
@@ -309,77 +306,6 @@ Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async 
 }
 
 
-// XXX Split this into services dir, break utils into widgets and appstate.  This update doesn't belong here.
-// XXX this could easily be made iterative
-
-// Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
-// header      alloc                   sub alloc                 plan
-buildAllocationTree( context, container ) {
-   print( "Build allocation tree" );
-   final appState  = container.state;
-   final width = appState.screenWidth * .6;
-
-   appState.allocTree = Node( "Category    Alloc / Plan / Accr", 0, null, width, true );
-
-   for( var alloc in appState.myPEQSummary.allocations ) {
-
-      Tree curNode = appState.allocTree;
-
-      // when allocs are created, they are leaves.
-      // down the road, they become nodes
-      for( int i = 0; i < alloc.category.length; i++ ) {
-
-         print( "working on " + alloc.category.toString() + " : " + alloc.category[i] );
-
-         bool lastCat = false;
-         if( i == alloc.category.length - 1 ) { lastCat = true; }
-         Tree childNode = curNode.findNode( alloc.category[i] );
-
-         if( childNode is Leaf && !lastCat ) {
-            // allocation leaf, convert to a node to accomodate plan/accrue
-            print( "... leaf in middle - convert" );
-            curNode = (curNode as Node).convertToNode( childNode );
-         }
-         else if( childNode == null ) {
-            if( !lastCat ) {
-               print( "... nothing - add node" );
-               Node tmpNode = Node( alloc.category[i], 0, null, width );
-               (curNode as Node).addLeaf( tmpNode );
-               curNode = tmpNode;
-            }
-            else {
-               print( "... nothing found, last cat, add leaf" );
-               // leaf.  amounts stay at leaves
-               int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount : 0 );
-               int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
-               int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount : 0 );
-               int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
-               Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width ); 
-               (curNode as Node).addLeaf( tmpLeaf );
-            }
-         }
-         else if( childNode is Node ) {
-            if( !lastCat ) {
-               print( "... found - move on" );
-               curNode = childNode;
-            }
-            else {
-               print( "... alloc adding into existing chain" );
-               assert( alloc.allocType == PeqType.allocation );
-               (childNode as Node).addAlloc( alloc.amount );
-            }
-         }
-         else {
-            print( "XXXXXXXXXXXXXXXX BAD" );
-            print( "XXXXXXXXXXXXXXXX BOOBOO" );
-            print( "XXXXXXXXXXXXXXXX BABY" );
-         }
-      }
-   }
-   // print( appState.allocTree.toStr() );
-}
-
-
 // Called on signin
 Future<void> reloadMyProjects( context, container ) async {
    print( "reloadMyProjects" );
@@ -400,6 +326,7 @@ Future<void> reloadMyProjects( context, container ) async {
    if( appState.myGHAccounts.length > 0 ) {
       String ghUser = appState.myGHAccounts[0].ghUserName;
       String ghRepo = appState.myGHAccounts[0].repos[2];
+      appState.selectedRepo = ghRepo;
 
       // XXX could be thousands... too much.  Just get uningested, most recent, etc.
       // Get all PEQ data related to the selected repo.  
@@ -411,12 +338,13 @@ Future<void> reloadMyProjects( context, container ) async {
       // To get here, user has both a CEUID and an association with ghUserLogin
       // Any PEQActions recorded from github before the user had a CELogin will have been updated as soon as the linkage was created.
       appState.myPEQActions = await fetchPEQActions( context, container,
-                                                      '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "GHRepo": "$ghRepo" }' );
+                                                      '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
 
       appState.myPEQSummary = await fetchPEQSummary( context, container,
                                                       '{ "Endpoint": "GetPEQSummary", "GHRepo": "$ghRepo" }' );
 
-      if( appState.myPEQSummary != null ) { buildAllocationTree( context, container ); }
+      // if( appState.myPEQSummary != null ) { buildAllocationTree( invokeDetail( context, container ), context, container ); }
+      
    }
 }
 
@@ -638,6 +566,14 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       String newPIDs = json.encode( pactIds );
       final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
    }
+}
+
+Future<void> updateUserPActions( container, context ) async {
+   final appState  = container.state;
+   String uname = appState.selectedUser;
+   String rname = appState.selectedRepo;
+   appState.userPActs[uname] = await fetchPEQActions( context, container,
+                                                      '{ "Endpoint": "GetPEQActions", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname" }' );
 }
 
 

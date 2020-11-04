@@ -45,8 +45,8 @@ class AppState {
    bool loaded;                              // control expensive aspects of state initialization
    String userId;
 
-   List<PEQ>        myPEQs;
-   List<PEQAction> myPEQActions;
+   List<PEQ>       myPEQs;                // ??? 
+   List<PEQAction> myPEQActions;          // ???
    PEQSummary myPEQSummary;               // XXX need 1 proj, one my per repo
    bool peqUpdated;
 
@@ -54,6 +54,13 @@ class AppState {
    bool ghUpdated;
 
    Node allocTree;
+   bool updateAllocTree;
+
+   String                          selectedRepo;
+   String                          selectedUser;    // Looking at stuff for this user, currently
+   Map< String, List<PEQAction> >  userPActs;       // users : sorted pactions
+   Map< String, String >           pactPeqs;        // mapping from PActs to Peqs
+   bool                            userPActUpdated;
 
    initAppData() {
       loaded = false;
@@ -68,6 +75,13 @@ class AppState {
       ghUpdated = false;
 
       allocTree = null;
+      updateAllocTree = false;
+
+      selectedRepo = "";
+      selectedUser = "";
+      userPActs = new Map<String, List<PEQAction>>();
+      pactPeqs = new Map<String,String>();
+      userPActUpdated = false;
    }
 
    init() {
