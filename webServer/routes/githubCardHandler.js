@@ -87,7 +87,7 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
     if( issueNum == -1 ) { peqValue = gh.parsePEQ( issueCardContent, allocation ); }
     else                 { peqValue = gh.parseLabelDescr( issueCardContent ); }   
     
-    // should not be able to create a 'grant' or 'accrued' card.  check is below
+    // should not be able to create a 'pending' or 'grant' card.  check is below
     let peqType = allocation ? "allocation" : "plan";
 
     console.log( "processing", peqValue.toString(), peqType );
@@ -119,7 +119,8 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
 	    await( utils.addIssueCard( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, cardTitle ));
 	}
     
-	assert( colName != 'Accrued' );
+	assert( colName != config.PROJ_COLS[ config.PROJ_PEND ] );
+	assert( colName != config.PROJ_COLS[ config.PROJ_ACCR ] );
 	// card -> issue
 	if( peqType == "plan" && issueNum == -1 ) {
 	    // create new issue

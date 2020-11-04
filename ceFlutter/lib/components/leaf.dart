@@ -12,9 +12,10 @@ class Leaf extends StatelessWidget implements Tree {
   final int    accrueAmount;
      
   final IconData icon;
-  final double width; 
+  final double width;
+  final Widget details;
 
-  const Leaf(this.title, this.allocAmount, this.planAmount, this.pendingAmount, this.accrueAmount, this.icon, this.width);
+  const Leaf(this.title, this.allocAmount, this.planAmount, this.pendingAmount, this.accrueAmount, this.icon, this.width, this.details);
 
   @override
   String getTitle() { return title; }
@@ -50,7 +51,8 @@ class Leaf extends StatelessWidget implements Tree {
        padding: const EdgeInsets.only(left: 15.0),  // XXX
        child: ListTile(
           //leading: icon == null ? Container() : Icon(icon),
-          title: makeBodyText( title, width, false, 1 ),
+          // title: makeBodyText( title, width, false, 1 ),
+          title: details,
           trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
           dense: true
           ));

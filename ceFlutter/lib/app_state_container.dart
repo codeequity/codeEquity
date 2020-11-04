@@ -133,7 +133,8 @@ class _AppStateContainerState extends State<AppStateContainer> {
         await getAPIBasePath();
         await getAuthTokens( false );
         if( !newUser ) {
-           await reloadMyProjects( context, this );        
+           await reloadMyProjects( context, this );
+           state.updateAllocTree = true;                 // forces buildAllocationTree
         }
         return true;
      }
@@ -143,7 +144,6 @@ class _AppStateContainerState extends State<AppStateContainer> {
      }
   }
 
-  
   @override
   void initState() {
      super.initState();
