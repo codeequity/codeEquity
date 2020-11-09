@@ -98,6 +98,14 @@ void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFu
               });
 }
 
+// No border padding
+Widget makeHDivider( width, lgap, rgap) {
+   return Padding(
+      padding: EdgeInsets.fromLTRB(lgap, 0, rgap, 0),
+      child: Container( width: width, height: 2, color: Colors.grey[200] ));
+}
+   
+
 Widget paddedLTRB( child, double L, double T, double R, double B ) {
    return Padding(
       padding: EdgeInsets.fromLTRB(L,T,R,B),

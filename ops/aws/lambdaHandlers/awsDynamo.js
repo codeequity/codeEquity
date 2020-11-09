@@ -43,7 +43,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetGHCard")      { resultPromise = getGHC( rb.GHIssueId ); }
     else if( endPoint == "GetGHCardFID")   { resultPromise = getGHCFid( rb.GHRepo, rb.GHCardId ); }
     else if( endPoint == "GetGHCFromCard") { resultPromise = getGHCFromCard( rb.GHRepo, rb.GHProjName, rb.GHCardTitle ); }
-    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHRepo ); }
+    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetPEQByIssue")  { resultPromise = getPeqByIssue( rb.GHIssueId ); }
     else if( endPoint == "GetPEQByTitle")  { resultPromise = getPeqByTitle( rb.GHRepo, rb.GHProjectId, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
@@ -393,29 +393,46 @@ async function putPAct( newPAction ) {
 	    "Subject":      newPAction.Subject,
 	    "Note":         newPAction.Note,
 	    "EntryDate":    newPAction.Date,
-	    "RawBody":      newPAction.RawBody,
 	    "Ingested":     newPAction.Ingested,
 	    "Locked":       newPAction.Locked,
 	    "TimeStamp":    newPAction.TimeStamp
 	}
     };
 
-    let recPromise = bsdb.put( params ).promise();
-    return recPromise.then(() =>success( newId ));
+    const paramsR = {
+        TableName: 'CEPEQRaw',
+	Item: {
+	    "PEQRawId":  newId,
+	    "RawBody":   newPAction.RawBody,
+	}
+    };
+
+    let promise = bsdb.transactWrite({
+	TransactItems: [
+	    { Put: params }, 
+	    { Put: paramsR }, 
+	]}).promise();
+    
+    return promise.then(() =>success( newId ));
 }
 
 
+// XXX Slow
 // Get all for uid, app can figure out whether or not to sort by associated ghUser
-async function getPeq( uid, ghRepo ) {
-    const paramsP = {
-        TableName: 'CEPEQs',
-        FilterExpression: 'CEHolderId = :ceid AND GHRepo = :ghrepo',
-        ExpressionAttributeValues: { ":ceid": uid, ":ghrepo": ghRepo },
-	Limit: 99,
-    };
+async function getPeq( uid, ghUser, ghRepo ) {
+    const params = { TableName: 'CEPEQs', Limit: 99, };
+
+    if( uid != "" ) {
+        params.FilterExpression = 'contains( CEHolderId, :ceid) AND GHRepo = :ghrepo';
+        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo };
+    }
+    else {
+        params.FilterExpression = 'contains( GHHolderId, :id) AND GHRepo = :ghrepo';
+        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo };
+    }
 
     console.log( "Looking for peqs");
-    let peqPromise = paginatedScan( paramsP );
+    let peqPromise = paginatedScan( params );
     return peqPromise.then((peqs) => {
 	console.log( "Found peqs ", peqs );
 	return success( peqs );

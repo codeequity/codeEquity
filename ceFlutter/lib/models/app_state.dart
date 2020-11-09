@@ -58,8 +58,8 @@ class AppState {
 
    String                          selectedRepo;
    String                          selectedUser;    // Looking at stuff for this user, currently
-   Map< String, List<PEQAction> >  userPActs;       // users : sorted pactions
-   Map< String, String >           pactPeqs;        // mapping from PActs to Peqs
+   Map< String, List<PEQAction> >  userPActs;       // ghUsers : pactions
+   Map< String, List<PEQ> >        userPeqs;        // ghUsers : peqs where user was pact actor
    bool                            userPActUpdated;
 
    initAppData() {
@@ -80,7 +80,7 @@ class AppState {
       selectedRepo = "";
       selectedUser = "";
       userPActs = new Map<String, List<PEQAction>>();
-      pactPeqs = new Map<String,String>();
+      userPeqs = new Map<String, List<PEQ>>();
       userPActUpdated = false;
    }
 

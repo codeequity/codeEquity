@@ -331,7 +331,7 @@ Future<void> reloadMyProjects( context, container ) async {
       // XXX could be thousands... too much.  Just get uningested, most recent, etc.
       // Get all PEQ data related to the selected repo.  
       appState.myPEQs       = await fetchPEQs( context, container,
-                                                      '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHRepo": "$ghRepo" }' );
+                                                      '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
 
       // XXX could be thousands... too much.   Just get uningested, most recent, etc.
       // XXX Really just want mine?  Hmmmmmmmm.......
@@ -574,6 +574,14 @@ Future<void> updateUserPActions( container, context ) async {
    String rname = appState.selectedRepo;
    appState.userPActs[uname] = await fetchPEQActions( context, container,
                                                       '{ "Endpoint": "GetPEQActions", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname" }' );
+}
+
+Future<void> updateUserPeqs( Set<String> peqSet, container, context ) async {
+   final appState  = container.state;
+   List<String> peqIds = new List<String>.from( peqSet );
+   String PeqIds = json.encode( peqIds );
+   String uname = appState.selectedUser;
+   appState.userPeqs[uname] = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQsById", "PeqIds": $PeqIds }' );
 }
 
 
