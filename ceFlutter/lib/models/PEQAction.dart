@@ -35,10 +35,10 @@ class PEQAction {
                                    // relocate:  <oldproj, oldcol, oldissue, newproj, newcol, newissue> or
                                    // allocate, accrue, grant:  <PEQId>
                                    // notice: <PEQId, "{reopen,close}, moved to column y">
+                                   // NOTE: 0th arg is ALWAYS peqId
    
    final String  note;             // i.e. 'issue reopened, not full ce project layout, no related card moved"
    final String  entryDate;        // today  grant: today == PEQ:accrued.   planning: PEQaccrued = ""
-   final String  rawReqBody;       // example use: final m = json.decode( rawReqBody ); print( m.keys ); print( m['project_card']['creator'] )
 
    final bool    ingested;         // has this action been ingested yet to push info to summary?
    final bool    locked;           // is this action currently being ingested
@@ -46,12 +46,12 @@ class PEQAction {
 
    PEQAction({this.id, this.ceUID, this.ghUserName, this.ghRepo,
             this.verb, this.action, this.subject,
-            this.note, this.entryDate, this.rawReqBody,
+            this.note, this.entryDate,
             this.ingested, this.locked, this.timeStamp });
             
    dynamic toJson() => {'id': id, 'ceUID': ceUID, 'ghUserName': ghUserName, 'ghRepo': ghRepo,
                            'verb': enumToStr(verb), 'action': enumToStr(action), 'subject': subject,
-                           'note': note, 'entryDate': entryDate, 'rawReqBody': rawReqBody,
+                           'note': note, 'entryDate': entryDate, 
                            'ingested': ingested, 'locked': locked, 'timeStamp': timeStamp };
    
    factory PEQAction.fromJson(Map<String, dynamic> json) {
@@ -73,7 +73,6 @@ class PEQAction {
 
          note:       json['Note'],
          entryDate:  json['EntryDate'],
-         rawReqBody: json['RawBody'],         // start as string - rawBody can have many different types.  decode at runtime
 
          ingested:   json['Ingested'] == "true" ? true : false,
          locked:     json['Locked']   == "true" ? true : false,
@@ -88,7 +87,6 @@ class PEQAction {
       res += "\n    entry made: " + entryDate;
       res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();
       res += "\n    " + note;
-      res += "\n    " + rawReqBody.substring(0,10) + "..."; 
       return res;
    }
 

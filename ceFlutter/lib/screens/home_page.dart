@@ -56,11 +56,6 @@ class _CEHomeState extends State<CEHomePage> {
          {
             print( "pactDetail fired for: " + ghUserLogin );
             appState.selectedUser = ghUserLogin;
-            // Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
-            
-            // XXX For now, force update each time click here.
-            await updateUserPActions( container, context ); 
-            setState(() { appState.userPActUpdated = true; });
             Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
          },
          child: makeTitleText( ghUserLogin, width, false, 1 )
@@ -76,6 +71,11 @@ class _CEHomeState extends State<CEHomePage> {
       final width = appState.screenWidth * .6;
       
       appState.allocTree = Node( "Category    Alloc / Plan / Accr", 0, null, width, true );
+
+      if( appState.myPEQSummary == null ) {
+               appState.updateAllocTree = false;
+               return;
+      }
       
       for( var alloc in appState.myPEQSummary.allocations ) {
          
@@ -139,14 +139,6 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    
-   // No border padding
-   Widget _makeHDivider( width, lgap, rgap) {
-      return Padding(
-         padding: EdgeInsets.fromLTRB(lgap, 0, rgap, 0),
-         child: Container( width: width, height: 2, color: Colors.grey[200] ));
-   }
-   
-
    // XXX consider making peqSummary a list in appState
    List<Widget> _showPAlloc( repo ) {
 
@@ -154,7 +146,7 @@ class _CEHomeState extends State<CEHomePage> {
 
       if( appState.updateAllocTree ) { buildAllocationTree(); }
       
-      if( appState.peqUpdated || appState.myPEQSummary != null )
+      if( appState.peqUpdated && appState.myPEQSummary != null )
       {
          if( appState.myPEQSummary.ghRepo == repo ) {
             if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
@@ -217,7 +209,7 @@ class _CEHomeState extends State<CEHomePage> {
       if( appState.myGHAccounts != null || appState.ghUpdated ) {
          for( final gha in appState.myGHAccounts ) {
             acctList.addAll( _makeRepos( gha ));
-            acctList.add( _makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));
+            acctList.add( makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));
          }
          
          appState.ghUpdated = false;
@@ -263,9 +255,10 @@ class _CEHomeState extends State<CEHomePage> {
             setState(() {addGHAcct = true; });
          });
    }
-   
+
+   // XXX Col inside col?
    Widget _makeGHZone() {
-      final textWidth = appState.screenWidth * .6;
+      final textWidth = appState.screenWidth * .5;
       String ghExplain = "CodeEquity will authenticate your account with Github one time only.";
       ghExplain       += "  You can undo this association at any time.  Click here to generate PAT.";
       
@@ -313,7 +306,6 @@ class _CEHomeState extends State<CEHomePage> {
       
    }
    
-   
    Widget _makeBody() {
       if( appState.loaded ) {
          
@@ -331,7 +323,6 @@ class _CEHomeState extends State<CEHomePage> {
          return CircularProgressIndicator();
       }
    }
-   
    
    
    @override

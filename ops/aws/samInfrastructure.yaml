@@ -78,6 +78,14 @@ Resources:
         Name: PEQActionId
         Type: String
 
+  PEQRawTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: CEPEQRaw
+      PrimaryKey:
+        Name: PEQRawId
+        Type: String
+
   PEQSummaryTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
@@ -170,6 +178,8 @@ Resources:
           TableName: !Ref PEQTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PEQActionTable 
+       - DynamoDBCrudPolicy:
+          TableName: !Ref PEQRawTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PEQSummaryTable 
 
