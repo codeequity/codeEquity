@@ -7,6 +7,12 @@ var assert = require('assert');
 // NOTE, as of 5/20 dynamo supports empty strings.  yay.  Save this for sets & etc.
 const EMPTY = "---EMPTY---";  
 
+const NO_CONTENT = {
+		statusCode: 204,
+		body: JSON.stringify( "---" ),
+		headers: { 'Access-Control-Allow-Origin': '*' }
+	    };
+
 // Because we're using a Cognito User Pools authorizer, all of the claims
 // included in the authentication token are provided in the request context.
 // This includes the username as well as other attributes.
@@ -239,13 +245,7 @@ async function getGHC( issueId ) {
 	if( ghc.Count == 1 ) {
 	    return success( ghc.Items[0] );
 	}
-	else {
-	    return {
-		statusCode: 204,
-		body: JSON.stringify( "---" ),
-		headers: { 'Access-Control-Allow-Origin': '*' }
-	    };
-	}
+	else { return NO_CONTENT; }
     });
 }
 
@@ -263,13 +263,7 @@ async function getGHCFid( repo, cardId ) {
 	if( ghc.Count == 1 ) {
 	    return success( ghc.Items[0] );
 	}
-	else {
-	    return {
-		statusCode: 204,
-		body: JSON.stringify( "---" ),
-		headers: { 'Access-Control-Allow-Origin': '*' }
-	    };
-	}
+	else { return NO_CONTENT; }
     });
 }
 
@@ -287,13 +281,7 @@ async function getGHCFromCard( repo, projName, cardTitle) {
 	if( ghc.Count == 1 ) {
 	    return success( ghc.Items[0] );
 	}
-	else {
-	    return {
-		statusCode: 204,
-		body: JSON.stringify( "---" ),
-		headers: { 'Access-Control-Allow-Origin': '*' }
-	    };
-	}
+	else { return NO_CONTENT; }
     });
 }
 
@@ -527,13 +515,7 @@ async function getUnPActions( ghRepo ) {
 	.then(( pacts ) => {
 	    console.log( "Returning uningested pacts" );
 	    if( pacts.length > 0 ) { return success( pacts ); }
-	    else {
-		return {
-		    statusCode: 204,
-		    body: JSON.stringify( "---" ),
-		    headers: { 'Access-Control-Allow-Origin': '*' }
-		};
-	    }
+	    else                   { return NO_CONTENT;       }
 		
 	});
 }
@@ -604,13 +586,7 @@ async function getPeqsById( peqIds ) {
 	    });
 	    
 	    if( res.length > 0 ) { return success( res ); }
-	    else {
-		return {
-		    statusCode: 500,
-		    body: JSON.stringify( "---" ),
-		    headers: { 'Access-Control-Allow-Origin': '*' }
-		};
-	    }
+	    else                 { return NO_CONTENT; }
 	});
 }
 
@@ -673,13 +649,7 @@ async function getPeqSummary( ghRepo ) {
 	if( peqs.Count == 1 ) {
 	    return success( peqs.Items[0] );
 	}
-	else {
-	    return {
-		statusCode: 204,
-		body: JSON.stringify( "---" ),
-		headers: { 'Access-Control-Allow-Origin': '*' }
-	    };
-	}
+	else { return NO_CONTENT; }
     });
 }
 
@@ -719,13 +689,7 @@ async function getGHA( uid ) {
 	if( Array.isArray(ghas) && ghas.length ) {
 	    return success( ghas );
 	}
-	else {
-	    return {
-		statusCode: 204,
-		body: JSON.stringify( "---" ),
-		headers: { 'Access-Control-Allow-Origin': '*' }
-	    };
-	}
+	else { return NO_CONTENT; }
     });
 }
 

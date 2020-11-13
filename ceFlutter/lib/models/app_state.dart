@@ -57,10 +57,10 @@ class AppState {
    bool updateAllocTree;
 
    String                          selectedRepo;
-   String                          selectedUser;    // Looking at stuff for this user, currently
+   String                          selectedUser;    // Looking at details for this user, currently
    Map< String, List<PEQAction> >  userPActs;       // ghUsers : pactions
    Map< String, List<PEQ> >        userPeqs;        // ghUsers : peqs where user was pact actor
-   bool                            userPActUpdated;
+   bool                            userPActUpdate;  // need to upate pact list
 
    initAppData() {
       loaded = false;
@@ -81,7 +81,7 @@ class AppState {
       selectedUser = "";
       userPActs = new Map<String, List<PEQAction>>();
       userPeqs = new Map<String, List<PEQ>>();
-      userPActUpdated = false;
+      userPActUpdate = false;
    }
 
    init() {

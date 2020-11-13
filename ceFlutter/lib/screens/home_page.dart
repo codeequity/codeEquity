@@ -56,6 +56,7 @@ class _CEHomeState extends State<CEHomePage> {
          {
             print( "pactDetail fired for: " + ghUserLogin );
             appState.selectedUser = ghUserLogin;
+            appState.userPActUpdate = true;            
             Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
          },
          child: makeTitleText( ghUserLogin, width, false, 1 )
