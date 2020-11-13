@@ -215,6 +215,9 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
       List<PEQ> peqs = l.map((sketch)=> PEQ.fromJson(sketch)).toList();
       return peqs;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no PEQs found" );
+      return [];
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPEQs( context, container, postData ); }
@@ -244,6 +247,9 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
       List<PEQAction> peqActions = l.map((sketch)=> PEQAction.fromJson(sketch)).toList();
       return peqActions;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no PEQ Actions found" );
+      return [];
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPEQActions( context, container, postData ); }

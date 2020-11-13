@@ -27,12 +27,17 @@ class _CEDetailState extends State<CEDetailPage> {
    var      container;
    AppState appState;
 
+   bool userPActUpdated;
    Map<String, List<PEQAction>> peqPAct;
+   List<Widget> pactList;
    
    @override
    void initState() {
       print( "DetailPage INIT" );
-      peqPAct = new Map<String, List<PEQAction>>();      
+      peqPAct = new Map<String, List<PEQAction>>();
+      userPActUpdated = false;
+      pactList = new List<Widget>();
+      
       super.initState();
    }
 
@@ -53,15 +58,13 @@ class _CEDetailState extends State<CEDetailPage> {
       return makeBodyText( apact, textWidth, false, 1 );
    }
 
-   // XXX pactDetail GD can set bit, nav push, there here check bit & update in builder, setstate.
+   // XXX don't circle if empty.  buuuut, for now, OK.
    Widget _showPActList() {
-      List<Widget> pactList = [];
-      
-      // XXX too much recalc here
-      if( appState.userPActUpdated && appState.userPActs != null && appState.userPActs[ appState.selectedUser ] != null ) {
+
+      if( userPActUpdated && appState.userPActs != null && appState.userPActs[ appState.selectedUser ] != null ) {
          print( "looking for pacts " + appState.selectedUser );
 
-
+         pactList.clear();
          // XXX save anything here?  
          for( final peq in  appState.userPeqs[ appState.selectedUser ] ) {
             pactList.add( _makePeq( peq ) );
@@ -72,8 +75,11 @@ class _CEDetailState extends State<CEDetailPage> {
 
             pactList.add( makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));            
          }
-         
-         appState.userPActUpdated = false;
+
+         userPActUpdated = false;
+      }
+
+      if( pactList.length > 0 ) {
          
          return ConstrainedBox( 
             constraints: new BoxConstraints(
@@ -126,7 +132,8 @@ class _CEDetailState extends State<CEDetailPage> {
       }
       await updateUserPeqs( peqs, container, context );
       
-      setState(() => appState.userPActUpdated = true );
+      appState.userPActUpdate = false;
+      setState(() => userPActUpdated = true );
    }
    
    @override
@@ -135,12 +142,9 @@ class _CEDetailState extends State<CEDetailPage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
 
-      print( "\nBuild Detail page " + appState.userPActUpdated.toString() );
+      print( "\nBuild Detail page " + appState.userPActUpdate.toString() );
 
-      // XXX skip rebuild unless list has changed ... this list is not updating
-      if( appState.userPActs == null || appState.userPActs[ appState.selectedUser ] == null ) {
-         rebuildPActions( container, context );
-      }
+      if( appState.userPActUpdate ) { rebuildPActions( container, context );  }
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Detail" ),
