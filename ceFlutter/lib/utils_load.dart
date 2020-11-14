@@ -22,6 +22,7 @@ import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
+import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
 import 'package:ceFlutter/models/allocation.dart';
@@ -270,6 +271,23 @@ Future<PEQSummary> fetchPEQSummary( context, container, postData ) async {
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPEQSummary( context, container, postData ); }
+   }
+}
+
+Future<PEQRaw> fetchPEQRaw( context, container, postData ) async {
+   String shortName = "fetchPEQRaw";
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      final ps = json.decode(utf8.decode(response.bodyBytes));
+      PEQRaw peqRaw = PEQRaw.fromJson(ps);
+      return peqRaw;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no PEQ Raw found" );
+      return null;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchPEQRaw( context, container, postData ); }
    }
 }
 

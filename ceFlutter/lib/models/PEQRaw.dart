@@ -12,9 +12,6 @@ class PEQRaw {
    
    factory PEQRaw.fromJson(Map<String, dynamic> json) {
 
-      var dynamicSubs = json['Subject'];
-      
-      
       // DynamoDB is not camelCase
       return PEQRaw(
          id:         json['PEQRawId'],

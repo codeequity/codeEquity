@@ -53,6 +53,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetPEQByIssue")  { resultPromise = getPeqByIssue( rb.GHIssueId ); }
     else if( endPoint == "GetPEQByTitle")  { resultPromise = getPeqByTitle( rb.GHRepo, rb.GHProjectId, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
+    else if( endPoint == "GetPEQRaw")      { resultPromise = getPeqRaw( rb.PEQRawId ); }
     else if( endPoint == "GetaPEQ")        { resultPromise = getaPeq( rb.Id ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
@@ -469,6 +470,21 @@ async function getPeqByTitle( repo, projId, title ) {
 	assert(peq.Count == 1 );
 	console.log( "Found Peq ", peq.Items[0] );
 	return success( peq.Items[0] );
+    });
+}
+
+async function getPeqRaw( pid ) {
+    const params = {
+        TableName: 'CEPEQRaw',
+        FilterExpression: 'PEQRawId = :id',
+        ExpressionAttributeValues: { ":id": pid }
+    };
+
+    let promise = bsdb.scan( params ).promise();
+    return promise.then((rawp) => {
+	assert(rawp.Count == 1 );
+	console.log( "Found Rawp ", rawp.Items[0] );
+	return success( rawp.Items[0] );
     });
 }
 
