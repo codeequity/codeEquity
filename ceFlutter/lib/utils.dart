@@ -75,13 +75,50 @@ void showToast(String msg) {
 }
 
 
-
-void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {
-   print( "Popping dialog" );
+// XXX would like a listview - longstanding issue with listview in alertDialog.
+// https://github.com/flutter/flutter/issues/18108
+/*
+void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
    showDialog(
       context: context,
       builder: (BuildContext context) {
-                 print( "building alert dialog" );
+                 return AlertDialog(
+                    scrollable: true,
+                    title: new Text( scrollHeader ),
+                    content: Column(
+                       mainAxisSize: MainAxisSize.min,
+                       children: scrollBody
+                       ),
+                    actions: <Widget>[
+                       new FlatButton(
+                          key: Key( 'dismiss' ),
+                          child: new Text("Dismiss"),
+                          onPressed: dismissFunc )
+                       ]);
+              });
+}
+*/
+void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
+   showDialog(
+      context: context,
+      builder: (BuildContext context) {
+                 return AlertDialog(
+                    scrollable: true,
+                    title: new Text( scrollHeader ),
+                    content: scrollBody,
+                    actions: <Widget>[
+                       new FlatButton(
+                          key: Key( 'dismiss' ),
+                          child: new Text("Dismiss"),
+                          onPressed: dismissFunc )
+                       ]);
+              });
+}
+
+void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {
+   showDialog(
+      context: context,
+      builder: (BuildContext context) {
                  return AlertDialog(
                     title: new Text( confirmHeader ),
                     content: new Text( confirmBody ),

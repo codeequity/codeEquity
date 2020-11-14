@@ -9,6 +9,7 @@ import 'package:ceFlutter/models/app_state.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
+import 'package:ceFlutter/models/PEQRaw.dart';
 
 import 'package:ceFlutter/components/node.dart';
 import 'package:ceFlutter/components/leaf.dart';
@@ -46,16 +47,41 @@ class _CEDetailState extends State<CEDetailPage> {
       super.dispose();
    }
 
+
+   void _closeRaw() {
+      print( "closeRaw" );
+      Navigator.of( context ).pop(); 
+   }
+   
    Widget _makePeq( peq ) {
       final textWidth = appState.screenWidth * .6;
       String apeq =  peq.ghIssueTitle + " " + enumToStr( peq.peqType ) + " " + peq.amount.toString();
       return makeTitleText( apeq, textWidth, false, 1 );
    }
 
+   // XXX rawbody -> prettier list of string
    Widget _makePAct( pact ) {
       final textWidth = appState.screenWidth * .6;
       String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.entryDate;
-      return makeBodyText( apact, textWidth, false, 1 );
+      // return makeBodyText( apact, textWidth, false, 1 );
+      print( ".. GD for " + pact.id );
+      return GestureDetector(
+         onTap: () async
+         {
+            String pid = pact.id;
+            PEQRaw pr = await fetchPEQRaw( context, container, '{ "Endpoint": "GetPEQRaw", "PEQRawId": "$pid" }' );
+            var encoder = new JsonEncoder.withIndent("  ");
+            var prj = json.decode( pr.rawReqBody );
+            String prettyRaw = encoder.convert(prj);
+
+            // Let makeBody handle the json
+            Widget prw = makeBodyText(prettyRaw, textWidth, true, 1000);
+            popScroll( context, "Raw Github Action:", prw, () => _closeRaw() );            
+         },
+         child: makeBodyText( apact, textWidth, false, 1 )
+         );
+
+      
    }
 
    // XXX don't circle if empty.  buuuut, for now, OK.
@@ -70,6 +96,7 @@ class _CEDetailState extends State<CEDetailPage> {
             pactList.add( _makePeq( peq ) );
 
             for( final pact in peqPAct[peq.id] ) {
+               print( "PL added " + pact.id );
                pactList.add( _makePAct( pact ) );
             }
 
