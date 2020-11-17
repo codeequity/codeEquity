@@ -261,7 +261,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	let newColName = await gh.getColumnName( installClient, newColId );
 	let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	assert( issueId == -1 || newNameIndex != -1 );
-	if( newNameIndex > config.PROJ_PLAN ) { 
+	if( newNameIndex > config.PROJ_PROG ) { 
 	    let assignees = await gh.getAssignees( installClient, owner, repo, card['GHIssueNum'] );
 	    if( assignees.length == 0  ) {
 		console.log( "Update card failed - no assignees" );   // can't propose grant without a grantee

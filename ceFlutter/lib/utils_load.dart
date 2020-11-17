@@ -372,6 +372,8 @@ Future<void> reloadMyProjects( context, container ) async {
    }
 }
 
+
+
 // XXX consider keeping a map in appstate, to reduce aws calls
 // PActions, PEQs are added by webServer, which does not have nor require ceUID.
 // set CEUID by matching my peqAction:ghUserName  or peq:ghUserNames to cegithub:ghUsername, then writing that CEOwnerId
@@ -393,7 +395,12 @@ Future<void> updateCEUID( PEQAction pact, PEQ peq, context, container ) async {
 
    // 0 length is ok, when unassigned.
    String ceHolders = json.encode( peq.ceHolderId );
-   await updateDynamo( context, container, '{ "Endpoint": "UpdatePEQ", "PEQId": "${peq.id}", "CEHolderId": $ceHolders }', "updatePEQ" );
+   String ceGrantor = EMPTY;
+   // XXX ??? should grantor be CE or GH id?  Maybe depends on ability to permission prot a project column
+   if( pact.action == PActAction.accrue && pact.verb == PActVerb.confirm ) {  ceGrantor = ghu;   }
+
+   await updateDynamo( context, container,
+                       '{ "Endpoint": "UpdatePEQ", "PEQId": "${peq.id}", "CEHolderId": $ceHolders, "CEGrantorId": "$ceGrantor" }', "updatePEQ" );
 }
 
 
@@ -486,6 +493,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
             adjustSummaryAlloc( appState, subPlan, "", splitAmount, PeqType.plan, assignee );
             newType = enumToStr( PeqType.plan );
          }
+         // XXX  HERE
          else if( pact.verb == PActVerb.confirm ) {
             // rem propose, add accrue
             adjustSummaryAlloc( appState, subProp, "", -1 * splitAmount, PeqType.pending, assignee );
