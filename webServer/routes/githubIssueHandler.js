@@ -126,7 +126,9 @@ async function handler( action, repo, owner, reqBody, res ) {
     case 'opened':       // not PEQ until labeled action
     case 'pinned': 
     case 'unpinned': 
-    case 'assigned': 
+    case 'assigned':
+	// XXX
+	console.log( "Check if peq, then assign" );
     case 'unassigned': 
     case 'locked': 
     case 'unlocked': 

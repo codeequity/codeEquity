@@ -58,7 +58,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
-    else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.PEQId, rb.CEHolderId ); }
+    else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.PEQId, rb.CEHolderId, rb.CEGrantorId ); }
     else if( endPoint == "UpdatePEQType")  { resultPromise = updatePEQType( rb.PEQId, rb.PeqType ); }
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
@@ -606,15 +606,15 @@ async function getPeqsById( peqIds ) {
 	});
 }
 
-async function updatePEQ( peqId, ceHolderIds ) {
+async function updatePEQ( peqId, ceHolderIds, ceGrantorId ) {
 
     console.log( "Updating assignees for", peqId );
 
     const params = {
 	TableName: 'CEPEQs',
 	Key: {"PEQId": peqId },
-	UpdateExpression: 'set CEHolderId = :cehold',
-	ExpressionAttributeValues: { ':cehold': ceHolderIds }};
+	UpdateExpression: 'set CEHolderId = :cehold, CEGrantorId = :cegrant',
+	ExpressionAttributeValues: { ':cehold': ceHolderIds, ':cegrant': ceGrantorId }};
     
     let promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));

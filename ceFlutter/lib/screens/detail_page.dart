@@ -55,7 +55,16 @@ class _CEDetailState extends State<CEDetailPage> {
    
    Widget _makePeq( peq ) {
       final textWidth = appState.screenWidth * .6;
-      String apeq =  peq.ghIssueTitle + " " + enumToStr( peq.peqType ) + " " + peq.amount.toString();
+      String proj = "";
+      for( var p in peq.ghProjectSub ) {
+         if( p == "Software Contributions" ) { p = "Software"; }  // XXX TEMP
+         proj += p + "::";
+      }
+      if( proj.length > 2 ) { proj = proj.substring( 0,proj.length - 2 ); }
+      
+      String apeq =  peq.ghIssueTitle + " (" + proj + ") status: " + enumToStr( peq.peqType ) + " " + peq.amount.toString() + " PEQs";
+      if( peq.ghHolderId.length > 0 ) { apeq += "  Holder(s): " + peq.ghHolderId.toString(); }
+      if( peq.ceGrantorId != EMPTY ) { apeq += "  Grantor: " + peq.ceGrantorId; }
       return makeTitleText( apeq, textWidth, false, 1 );
    }
 
@@ -95,11 +104,13 @@ class _CEDetailState extends State<CEDetailPage> {
          for( final peq in  appState.userPeqs[ appState.selectedUser ] ) {
             pactList.add( _makePeq( peq ) );
 
+            peqPAct[peq.id].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
+               
             for( final pact in peqPAct[peq.id] ) {
                print( "PL added " + pact.id );
                pactList.add( _makePAct( pact ) );
             }
-
+            
             pactList.add( makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));            
          }
 
