@@ -16,13 +16,13 @@ https://developer.github.com/v3/issues/#create-an-issue
 // XXX Looking slow - lots of waiting on GH.. not much work.  Hard to cache given access model
 
 
-// XXX push through ceFlutter
 // The implied action of an underlying move out of a column depends on the originating PEQType.
 // PeqType:GRANT  Illegal       There are no 'takebacks' when it comes to provisional equity grants
 //                              This type only exists for cards/issues in the 'Accrued' column... can not move out 
 // PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
+// PeqType:LIMB  do nothing
 async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghCard ) { 
 
     // XXX inform all contributors of this failure
@@ -76,103 +76,6 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
     ));
 }
 
-async function processNewPEQ( installClient, repo, owner, reqBody, issueCardContent, creator, issueNum, issueId ) {
-
-    // normal for card -> issue.  odd but legal for issue -> card
-    let allocation = gh.getAllocated( issueCardContent );
-
-    // XXX add label can occur before submit issue, after submit issue, or after add to card.  test all
-    // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
-    let peqValue = 0;
-    if( issueNum == -1 ) { peqValue = gh.parsePEQ( issueCardContent, allocation ); }
-    else                 { peqValue = gh.parseLabelDescr( issueCardContent ); }   
-    
-    // should not be able to create a 'pending' or 'grant' card.  check is below
-    let peqType = allocation ? "allocation" : "plan";
-
-    console.log( "processing", peqValue.toString(), peqType );
-    
-    if( peqValue > 0 ) {
-	
-	let peqHumanLabelName = peqValue.toString() + " PEQ";
-	let peqLabel = await gh.findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
-	let colId    = reqBody['project_card']['column_id'];
-	let fullName = reqBody['repository']['full_name'];
-	let projId   = reqBody['project_card']['project_url'].split('/').pop(); 
-	let colName  = await gh.getColumnName( installClient, colId );
-	let projName = await gh.getProjectName( installClient, projId );
-	let projSub  = await gh.getProjectSubs( installClient, fullName, projName, colName );
-	let origCardId = reqBody['project_card']['id'];
-
-	// issue->card:  issueId is available, but linkage has not yet been added
-	if( issueNum > -1 ) {
-	    await( utils.addIssueCard( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, issueCardContent[0] ));
-	}
-
-	// OR, allocation, which still wants linkage for other lookups like projSub.. need to clean up title in this case
-	if( peqType == "allocation" && projName == config.MAIN_PROJ ) {
-	    let cardTitle = issueCardContent[0];
-	    // some (not all) are full projects themselves.  Will have "Sub:" in front
-	    if( cardTitle.length > 6 && cardTitle.substring( 0, 5 ) == "Sub: " ) {      // XXX config
-		cardTitle = cardTitle.substring( 5 );
-	    }
-	    await( utils.addIssueCard( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, cardTitle ));
-	}
-    
-	assert( colName != config.PROJ_COLS[ config.PROJ_PEND ] );
-	assert( colName != config.PROJ_COLS[ config.PROJ_ACCR ] );
-	// card -> issue
-	if( peqType == "plan" && issueNum == -1 ) {
-	    // create new issue
-	    let issueData = await gh.createIssue( installClient, owner, repo, issueCardContent[0], [peqHumanLabelName] );
-	    assert( issueData.length == 2 );
-	    issueId  = issueData[0];
-	    issueNum = issueData[1];
-	    assert.notEqual( issueId, -1, "Unable to create issue linked to this card." );
-	    
-	    // create issue-linked project_card, requires id not num
-	    let newCardId = await gh.createIssueCard( installClient, colId, issueId );
-	    assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
-	    
-	    // remove orig card
-	    await( installClient[0].projects.deleteCard( { card_id: origCardId } ));	    
-	    
-	    // Add card issue linkage
-	    await( utils.addIssueCard( fullName, issueId, issueNum, projId, projName, colId, colName, newCardId, issueCardContent[0] ));
-	}
-
-	// Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
-	// there are no assignees for card-created issues.. they are added, or created directly from issues.
-	let assignees = await gh.getAssignees( installClient, owner, repo, issueNum );
-	
-	let newPEQId = await( utils.recordPEQ(
-	    installClient[1],
-	    peqValue,                                  // amount
-	    peqType,                                   // type of peq
-	    assignees,                                 // list of ghUserLogins assigned
-	    fullName,                                  // gh repo
-	    projSub,                                   // gh project subs
-	    projId,                                    // gh project id
-	    issueId.toString(),                        // gh issue id
-	    issueCardContent[0]                        // gh issue title
-	));
-	assert( newPEQId != -1 );
-	
-	let subject = [ newPEQId ];
-	await( utils.recordPEQAction(
-	    installClient[1],
-	    config.EMPTY,     // CE UID
-	    creator,          // gh user name
-	    fullName,         // gh repo
-	    "confirm",        // verb
-	    "add",            // action
-	    subject,          // subject
-	    "",               // note
-	    utils.getToday(), // entryDate
-	    reqBody           // raw
-	));
-    }
-}
 
 // Card operations: no PEQ label, not related to CodeEquity.  No action.
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
@@ -211,10 +114,11 @@ async function handler( action, repo, owner, reqBody, res ) {
 	let issue = await gh.getIssue( installClient, owner, repo, issueNum );   // [ id, [content] ]
 
 	console.log( "Found issue:", issueNum.toString(), issue[1] );
-	await processNewPEQ( installClient, repo, owner, reqBody, issue[1], creator, issueNum, issue[0] ); 
+	await utils.processNewPEQ( installClient, repo, owner, reqBody, issue[1], creator, issueNum, issue[0], -1 ); 
     }
     else if( action == "created" ) {
-	console.log( "New card created in projects" );
+	// In projects, creating a card.  If detect a PEQ label in content, will create corresponding issue.
+	console.log( "New card created, unattached" );
 	let cardContent = reqBody['project_card']['note'].split('\n');
 
 	if( await gh.checkIssueExists( installClient, owner, repo, cardContent[0] ) ) {
@@ -222,12 +126,15 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    return;
 	}
 
-	await processNewPEQ( installClient, repo, owner, reqBody, cardContent, creator, -1, -1 );
+	await utils.processNewPEQ( installClient, repo, owner, reqBody, cardContent, creator, -1, -1, -1 );
     }
     else if( action == "converted" ) {
+	// Can only be non-PEQ.  Otherwise, would see created/content_url
 	console.log( "Non-PEQ card converted to issue.  No action." );
     }
     else if( action == "moved" ) {
+	// Note: Unclaimed card - try to uncheck it directly from column bar gives: cardHander move within same column.  Check stays.
+	//       Need to click on projects, then on repo, then can check/uncheck successfully.  Get cardHandler:card deleted
 	// within gh project, move card from 1 col to another.  
 	console.log( installClient[1], "Card", action, "Sender:", sender )
 
@@ -249,6 +156,8 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    console.log( "Moved card not processed, could not find the card id", cardId );
 	    return;
 	}
+	// XXX could have limbo card/issue, in which case do not perform actions below
+	
 	let issueId = card['GHIssueId'];
 	let oldNameIndex = config.PROJ_COLS.indexOf( card['GHColumnName'] );
 	assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.
@@ -286,6 +195,8 @@ async function handler( action, repo, owner, reqBody, res ) {
     }
     else if( action == "deleted" || action == "edited" ) {
 	// Note, if action source is issue-delete, linked card is deleted first.  Watch recording.
+	// Note: Unclaimed card - try to uncheck it directly from column bar gives: cardHander move within same column.  Check stays.
+	//       Need to click on projects, then on repo, then can check/uncheck successfully.  Get cardHandler:card deleted
 	console.log( "Card", action, "Recorded." )
 	await( utils.recordPEQTodo( "XXX TBD. Content may be from issue, or card." , -1 ));	
     }

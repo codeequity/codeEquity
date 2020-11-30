@@ -2,7 +2,7 @@ const CE_BOT = 'codeequity[bot]';
 
 // oi, no strongly-typed enums.  Can rename, not reorder, and retain CE functionality
 const PROJ_COLS = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];
-const PROJ_PLAN = 0;   // Only real utility is code maintainability
+const PROJ_PLAN = 0;  // for code maintainability - no type checking 
 const PROJ_PROG = 1;  
 const PROJ_PEND = 2;
 const PROJ_ACCR = 3;

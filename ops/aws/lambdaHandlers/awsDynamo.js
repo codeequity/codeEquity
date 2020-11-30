@@ -38,33 +38,28 @@ exports.handler = (event, context, callback) => {
     var resultPromise;
 
     console.log( "User:", username, "Endpoint:", endPoint );
-    if(      endPoint == "GetID")          { resultPromise = getPersonId( username ); }
-    else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.GHUserName ); }
-    else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
+    if(      endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
+    else if( endPoint == "GetID")          { resultPromise = getPersonId( username ); }             // username is local
+    else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.GHUserName ); }           // return varies on no_content
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.icLink ); }
-    else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.GHIssueId, rb.GHColumnId, rb.GHColumnName ); }
+    else if( endPoint == "RecordBaseGH")   { resultPromise = putBaseGHC( rb.icLinks ); }
+    else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.icLink ); }
     else if( endPoint == "UpdateGHCardFID") { resultPromise = updateGHCid( rb.GHRepo, rb.GHCardId, rb.GHColumnId, rb.GHColumnName ); }
-    else if( endPoint == "GetGHCard")      { resultPromise = getGHC( rb.GHIssueId ); }
-    else if( endPoint == "GetGHCardFID")   { resultPromise = getGHCFid( rb.GHRepo, rb.GHCardId ); }
-    else if( endPoint == "GetGHCFromCard") { resultPromise = getGHCFromCard( rb.GHRepo, rb.GHProjName, rb.GHCardTitle ); }
+    else if( endPoint == "CheckSetGHPop")  { resultPromise = checkSetGHPop( rb.GHRepo, rb.Set ); }
+    else if( endPoint == "GetExistCardIds") { resultPromise = getExistGHC( rb.GHRepo, rb.GHCardIds ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
-    else if( endPoint == "GetPEQByIssue")  { resultPromise = getPeqByIssue( rb.GHIssueId ); }
-    else if( endPoint == "GetPEQByTitle")  { resultPromise = getPeqByTitle( rb.GHRepo, rb.GHProjectId, rb.GHCardTitle ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
-    else if( endPoint == "GetPEQRaw")      { resultPromise = getPeqRaw( rb.PEQRawId ); }
-    else if( endPoint == "GetaPEQ")        { resultPromise = getaPeq( rb.Id ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
-    else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.PEQId, rb.CEHolderId, rb.CEGrantorId ); }
-    else if( endPoint == "UpdatePEQType")  { resultPromise = updatePEQType( rb.PEQId, rb.PeqType ); }
+    else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.pLink ); }
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
-    else if( endPoint == "GetPEQSummary")  { resultPromise = getPeqSummary( rb.GHRepo ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
     else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
+    else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood", context.awsRequestId));
@@ -131,6 +126,52 @@ function randAlpha(length) {
    return result;
 }
 
+function buildUpdateParams( obj, props ) {
+    let first = true;
+
+    let updateExpr = "";
+    let attrVals = {};
+    
+    for( const prop of props ) {
+	if( prop in obj ) {
+	    if( first ) { updateExpr  = 'set '; }
+	    else        { updateExpr += ', '; }
+	    let pval = ":" + prop;
+	    updateExpr += ( prop + " = " + pval );
+
+	    attrVals[pval] = obj[prop];
+	    first = false;
+	}
+    }
+
+    assert( updateExpr.length >= 5 );
+    return [updateExpr, attrVals];
+}
+
+// Simple conjunctive params for a scan, not intended for pagination
+function buildConjScanParams( obj, props ) {
+    let first = true;
+
+    let filterExpr = "";
+    let attrVals = {};
+    
+    for( const prop of props ) {
+	if( prop in obj ) {
+	    if( !first ) { filterExpr += ' AND '; }
+	    let pval = ":" + prop;
+	    filterExpr += ( prop + " = " + pval );
+
+	    attrVals[pval] = obj[prop];
+	    first = false;
+	}
+    }
+
+    assert( filterExpr.length >= 5 );
+    return [filterExpr, attrVals];
+}
+
+
+
 async function setLock( pactId, lockVal ) {
     console.log( "Locking", pactId, lockVal );
 
@@ -144,6 +185,51 @@ async function setLock( pactId, lockVal ) {
     return lockPromise.then(() => success( true ));
 }
 
+async function getEntry( tableName, query ) {
+    console.log( "Get from", tableName, ":", query );
+
+    let props = [];
+    // Possibilities for non-paginated (Count 0 or 1) returns
+    switch( tableName ) {
+    case "CEPeople":
+	props = ["PersonId", "UserName", "Email", "First", "Last"];
+	break;
+    case "CEProjects":
+	props = [ "GHIssueId", "GHRepo", "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
+	break;
+    case "CEPEQs":
+	props = [ "PEQId", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
+	break;
+    case "CEPEQActions":
+	props = [ "PEQActionId", "CEUID", "GHUserName", "GHRepo", "Verb", "Action"];
+	break;
+    case "CEPEQRaw":
+	props = [ "PEQRawId" ];
+	break;
+    default:
+	assert( false );
+    }
+    
+    let scanVals = buildConjScanParams( query, props );
+    assert( scanVals.length == 2 );
+
+    let params = {};
+    params.TableName                  = tableName;
+    params.FilterExpression           = scanVals[0];
+    params.ExpressionAttributeValues  = scanVals[1];
+
+    // console.log( params );
+	
+    let daPromise = bsdb.scan( params ).promise();
+    return daPromise.then((entry) => {
+	// if this is false, consider pagination for this specific query
+	assert( entry.Count < 2 );
+	if( entry.Count == 1 ) {
+	    return success( entry.Items[0] );
+	}
+	else { return NO_CONTENT; }
+    });
+}
 
 async function getPersonId( username ) {
     const paramsP = {
@@ -180,23 +266,6 @@ async function getCEUID( ghUser ) {
     });
 }
 
-// XXX it is likely that CEProjects:ProjectId is good simply as issueId.
-//     Buuut, keep the split a little longer to be sure.
-async function getGHId( issueId ) {
-    const paramsP = {
-        TableName: 'CEProjects',
-        FilterExpression: 'GHIssueId = :iid',
-        ExpressionAttributeValues: { ":iid": issueId }
-    };
-
-    let ghPromise = bsdb.scan( paramsP ).promise();
-    return ghPromise.then((ghc) => {
-	assert(ghc.Count == 1 );
-	console.log( "Found Id ", ghc.Items[0].ProjectId );
-	return ghc.Items[0].ProjectId;
-    });
-}
-
 async function getGHIdFromCard( repo, cardId ) {
     const paramsP = {
         TableName: 'CEProjects',
@@ -207,8 +276,8 @@ async function getGHIdFromCard( repo, cardId ) {
     let ghPromise = bsdb.scan( paramsP ).promise();
     return ghPromise.then((ghc) => {
 	assert(ghc.Count == 1 );
-	console.log( "Found Id ", ghc.Items[0].ProjectId );
-	return ghc.Items[0].ProjectId;
+	console.log( "Found Id ", ghc.Items[0].GHIssueId );
+	return ghc.Items[0].GHIssueId;
     });
 }
 
@@ -232,58 +301,52 @@ async function putPerson( newPerson ) {
     return personPromise.then(() => success( true ));
 }
 
-// GitHub card/issue association
-async function getGHC( issueId ) {
-    const paramsP = {
-        TableName: 'CEProjects',
-        FilterExpression: 'GHIssueId = :iid',
-        ExpressionAttributeValues: { ":iid": issueId }
-    };
+async function checkSetGHPop( repo, setVal ) {
 
-    console.log( "GH card - issue");
-    let ghcPromise = bsdb.scan( paramsP ).promise();
-    return ghcPromise.then((ghc) => {
-	if( ghc.Count == 1 ) {
-	    return success( ghc.Items[0] );
-	}
-	else { return NO_CONTENT; }
-    });
+    let params = { TableName: 'CERepoStatus' };
+    let promise = null;
+
+    if( setVal == "true" ) {
+	params.Key                       = { "GHRepo": repo };
+	params.UpdateExpression          = 'set Populated = :lockVal';
+	params.ExpressionAttributeValues = { ':lockVal': setVal };
+
+	promise = bsdb.update( params ).promise();
+	return promise.then(() => success( true ));
+    }
+    else {
+	params.FilterExpression          = 'GHRepo = :repo';
+	params.ExpressionAttributeValues = { ':repo': repo };
+
+	promise = bsdb.scan( params ).promise();
+	return promise.then((res) => {
+	    if( res && res.Count > 0 ) { return success( res.Items[0].Populated ); }
+	    else      { return success( false ); }
+	});
+    }
 }
 
-// GitHub card/issue association
-async function getGHCFid( repo, cardId ) {
-    const paramsP = {
-        TableName: 'CEProjects',
-        FilterExpression: 'GHCardId = :cid AND GHRepo = :repo',
-        ExpressionAttributeValues: { ":repo": repo, ":cid": cardId }
-    };
 
-    console.log( "GH card - card id");
-    let ghcPromise = bsdb.scan( paramsP ).promise();
-    return ghcPromise.then((ghc) => {
-	if( ghc.Count == 1 ) {
-	    return success( ghc.Items[0] );
-	}
-	else { return NO_CONTENT; }
+async function getExistGHC( repo, cardIds ) {
+    let promises = [];
+    cardIds.forEach( function (cardId) {
+	const params = {
+            TableName: 'CEProjects',
+            FilterExpression: 'GHCardId = :cid AND GHRepo = :repo',
+            ExpressionAttributeValues: { ":repo": repo, ":cid": cardId.toString() }
+	};
+	promises.push( bsdb.scan( params ).promise() );
     });
-}
 
-// GitHub card/issue association
-async function getGHCFromCard( repo, projName, cardTitle) {
-    const paramsP = {
-        TableName: 'CEProjects',
-        FilterExpression: 'GHRepo = :repo AND GHProjectName = :pname AND GHCardTitle = :ctitle',
-        ExpressionAttributeValues: { ":repo": repo, ":pname": projName, ":ctitle": cardTitle }
-    };
-
-    console.log( "GH card - issue from card");
-    let ghcPromise = bsdb.scan( paramsP ).promise();
-    return ghcPromise.then((ghc) => {
-	if( ghc.Count == 1 ) {
-	    return success( ghc.Items[0] );
-	}
-	else { return NO_CONTENT; }
-    });
+    return await Promise.all( promises )
+	.then((results) => {
+	    let res = [];
+	    results.forEach( function (card) {
+		if(  card.Count == 1 ) { res.push( card.Items[0].GHCardId ); }
+	    });
+	    if( res.length > 0 ) { return success( res ); }
+	    else                 { return NO_CONTENT; }
+	});
 }
 
 async function putGHC( icLink ) {
@@ -291,9 +354,8 @@ async function putGHC( icLink ) {
     const params = {
         TableName: 'CEProjects',
 	Item: {
-	    "ProjectId":   randAlpha(10),
-	    "GHRepo":      icLink.GHRepo,
 	    "GHIssueId":   icLink.GHIssueId,
+	    "GHRepo":      icLink.GHRepo,
 	    "GHIssueNum":  icLink.GHIssueNum,
 	    "GHProjectId": icLink.GHProjectId,
 	    "GHProjectName": icLink.GHProjectName,
@@ -308,29 +370,67 @@ async function putGHC( icLink ) {
     return recPromise.then(() =>success( true ));
 }
 
-async function updateGHC( issueId, columnId, columnName ) {
 
-    const projId  = await getGHId( issueId );
-    console.log( "Updating by key", projId, columnId );
+// XXX this should not be called any longer - pkey is dead
+async function putBaseGHC( icLinks ) {
+    const empty = "-1";
+    const emptyName = "---";
+    let promises = [];
 
-    const params = {
-	TableName: 'CEProjects',
-	Key: {"ProjectId": projId },
-	UpdateExpression: 'set GHColumnId = :colId, GHColumnName = :colName',
-	ExpressionAttributeValues: { ':colId': columnId, ':colName': columnName }};
-    
+    icLinks.forEach( function (icLink) {
+	const params = {
+            TableName: 'CEProjects',
+	    Item: {
+		"GHIssueId":     icLink.GHIssueId,
+		"GHRepo":        icLink.GHRepo,
+		"GHIssueNum":    icLink.GHIssueNum,
+		"GHProjectId":   icLink.GHProjectId,
+		"GHProjectName": emptyName,
+		"GHColumnId":    empty,
+		"GHColumnName":  emptyName,
+		"GHCardId":      icLink.GHCardId,
+		"GHCardTitle":   emptyName,
+	    }
+	};
+	promises.push( bsdb.put( params ).promise() );
+    });
+
+    return await Promise.all( promises )
+	.then((results) => {
+	    console.log( '...promises done' );
+	    return success( true );
+	});
+}
+
+async function updateGHC( icLink ) {
+
+    console.log( "Updating linkage", icLink.GHRepo, icLink.GHIssueId );
+
+    let props = [ "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
+    let updateVals = buildUpdateParams( icLink, props );
+    assert( updateVals.length == 2 );
+
+    let params = {};
+    params.TableName                  = 'CEProjects';
+    params.Key                        = {"GHIssueId": icLink.GHIssueId, "GHRepo": icLink.GHRepo };
+    params.UpdateExpression           = updateVals[0];
+    params.ExpressionAttributeValues  = updateVals[1];
+
+    // console.log( params );
+	
     let uPromise = bsdb.update( params ).promise();
     return uPromise.then(() => success( true ));
 }
 
+
 async function updateGHCid( repo, cardId, columnId, columnName ) {
 
-    const projId  = await getGHIdFromCard( repo, cardId );
-    console.log( "Updating by key", projId, columnId );
+    const issueId  = await getGHIdFromCard( repo, cardId );
+    console.log( "Updating by key", issueId, columnId );
 
     const params = {
 	TableName: 'CEProjects',
-	Key: {"ProjectId": projId },
+	Key: {"GHIssueId": issueId, "GHRepo": repo },
 	UpdateExpression: 'set GHColumnId = :colId, GHColumnName = :colName',
 	ExpressionAttributeValues: { ':colId': columnId, ':colName': columnName }};
     
@@ -425,66 +525,6 @@ async function getPeq( uid, ghUser, ghRepo ) {
     return peqPromise.then((peqs) => {
 	console.log( "Found peqs ", peqs );
 	return success( peqs );
-    });
-}
-
-async function getaPeq( peqid ) {
-    const paramsP = {
-        TableName: 'CEPEQs',
-        FilterExpression: 'PEQId = :peqid',
-        ExpressionAttributeValues: { ":peqid": peqid }
-    };
-
-    let peqPromise = bsdb.scan( paramsP ).promise();
-    return peqPromise.then((peq) => {
-	assert(peq.Count == 1 );
-	console.log( "Found Peq ", peq.Items[0] );
-	return success( peq.Items[0] );
-    });
-}
-
-async function getPeqByIssue( issueId ) {
-    const paramsP = {
-        TableName: 'CEPEQs',
-        FilterExpression: 'GHIssueId = :id',
-        ExpressionAttributeValues: { ":id": issueId }
-    };
-
-    let peqPromise = bsdb.scan( paramsP ).promise();
-    return peqPromise.then((peq) => {
-	assert(peq.Count == 1 );
-	console.log( "Found Peq ", peq.Items[0] );
-	return success( peq.Items[0] );
-    });
-}
-
-async function getPeqByTitle( repo, projId, title ) {
-    const paramsP = {
-        TableName: 'CEPEQs',
-        FilterExpression: 'GHRepo = :repo AND GHProjectId = :pid AND GHIssueTitle = :title',
-        ExpressionAttributeValues: { ":repo": repo, ":pid": projId, ":title": title }
-    };
-
-    let peqPromise = bsdb.scan( paramsP ).promise();
-    return peqPromise.then((peq) => {
-	assert(peq.Count == 1 );
-	console.log( "Found Peq ", peq.Items[0] );
-	return success( peq.Items[0] );
-    });
-}
-
-async function getPeqRaw( pid ) {
-    const params = {
-        TableName: 'CEPEQRaw',
-        FilterExpression: 'PEQRawId = :id',
-        ExpressionAttributeValues: { ":id": pid }
-    };
-
-    let promise = bsdb.scan( params ).promise();
-    return promise.then((rawp) => {
-	assert(rawp.Count == 1 );
-	console.log( "Found Rawp ", rawp.Items[0] );
-	return success( rawp.Items[0] );
     });
 }
 
@@ -606,30 +646,21 @@ async function getPeqsById( peqIds ) {
 	});
 }
 
-async function updatePEQ( peqId, ceHolderIds, ceGrantorId ) {
+async function updatePEQ( pLink ) {
 
-    console.log( "Updating assignees for", peqId );
+    console.log( "Updating PEQ", pLink.PEQId );
 
-    const params = {
-	TableName: 'CEPEQs',
-	Key: {"PEQId": peqId },
-	UpdateExpression: 'set CEHolderId = :cehold, CEGrantorId = :cegrant',
-	ExpressionAttributeValues: { ':cehold': ceHolderIds, ':cegrant': ceGrantorId }};
-    
-    let promise = bsdb.update( params ).promise();
-    return promise.then(() => success( true ));
-}
+    // Only props that get updated
+    let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "GHIssueTitle", "GHProjectSub", "PeqType", "VestedPerc" ];
+    let updateVals = buildUpdateParams( pLink, props );
+    assert( updateVals.length == 2 );
 
-async function updatePEQType( peqId, newType ) {
+    let params = {};
+    params.TableName                  = 'CEPEQs';
+    params.Key                        = {"PEQId": pLink.PEQId };
+    params.UpdateExpression           = updateVals[0];
+    params.ExpressionAttributeValues  = updateVals[1];
 
-    console.log( "Updating peqType for", peqId );
-
-    const params = {
-	TableName: 'CEPEQs',
-	Key: {"PEQId": peqId },
-	UpdateExpression: 'set PeqType = :nt',
-	ExpressionAttributeValues: { ':nt': newType }};
-    
     let promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));
 }
@@ -646,27 +677,6 @@ async function updatePActCE( ceUID, pactId ) {
     
     let promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));
-}
-
-
-
-async function getPeqSummary( ghRepo ) {
-    const paramsP = {
-        TableName: 'CEPEQSummary',
-        FilterExpression: 'GHRepo = :ghrepo',
-        ExpressionAttributeValues: { ":ghrepo": ghRepo }
-    };
-
-    console.log( "Looking for peqSummary");
-    let peqPromise = bsdb.scan( paramsP ).promise();
-    return peqPromise.then((peqs) => {
-	assert( peqs.Count <= 1 );
-	console.log( "Found peqSummary ", peqs );
-	if( peqs.Count == 1 ) {
-	    return success( peqs.Items[0] );
-	}
-	else { return NO_CONTENT; }
-    });
 }
 
 // Overwrites any existing record

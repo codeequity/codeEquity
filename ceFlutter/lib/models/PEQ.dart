@@ -2,7 +2,7 @@ import 'package:random_string/random_string.dart';
 
 import 'package:ceFlutter/utils.dart';
 
-enum PeqType   { allocation, plan, pending, grant, end }
+enum PeqType   { allocation, plan, pending, grant, end } 
 
 // Legally, only CEUIDs have signed agreements.  ceHolderId is binding.  ghHolderId is just a helpful comment.
 
@@ -23,7 +23,7 @@ class PEQ {
    final String        ghIssueId;   
    final String        ghIssueTitle; // actually, issue-or-card title.
 
-   final bool          active;       // has this PEQ been deliberately deleted or otherwise removed from project?
+   final bool          active;       // has this PEQ been deliberately deleted, unlabeled or otherwise removed from project?
 
    PEQ({this.id, this.ceHolderId, this.ghHolderId, this.ceGrantorId,
             this.peqType, this.amount, this.accrualDate, this.vestedPerc,

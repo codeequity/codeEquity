@@ -77,8 +77,10 @@ class _CEDetailState extends State<CEDetailPage> {
       return GestureDetector(
          onTap: () async
          {
-            String pid = pact.id;
-            PEQRaw pr = await fetchPEQRaw( context, container, '{ "Endpoint": "GetPEQRaw", "PEQRawId": "$pid" }' );
+            var postData = {};
+            postData.PEQRawId = pact.id;
+            var pd = { "Endpoint": "GetEntry", "tableName": CEPEQRaw", "query": query }; 
+            PEQRaw pr = await fetchPEQRaw( context, container, pd );
             var encoder = new JsonEncoder.withIndent("  ");
             var prj = json.decode( pr.rawReqBody );
             String prettyRaw = encoder.convert(prj);

@@ -5,9 +5,8 @@ import 'package:random_string/random_string.dart';
 // Makes webServer:issueHandler:close/reopen feasible without a gazillion rest calls to GH
 
 class CEProject {
-   final String       id;
-   final String       ghRepo;        // reponame is form /owner/repo, so is unique
    final String       ghIssueId;     // this is unique, but not often used by octokit (!!)
+   final String       ghRepo;        // reponame is form /owner/repo, so is unique
    final String       ghIssueNum;    // oddly, octokit usually wants an issueNum, unique only within repo.
 
    final String       ghProjectId;
@@ -20,10 +19,10 @@ class CEProject {
    final String       ghCardTitle;
 
 
-   CEProject({this.id, this.ghRepo, this.ghIssueId, this.ghIssueNum, this.ghProjectId, this.ghProjectName,
+   CEProject({this.ghIssueId, this.ghRepo, this.ghIssueNum, this.ghProjectId, this.ghProjectName,
             this.ghColumnId, this.ghColumnName, this.ghCardId, this.ghCardTitle });
             
-   dynamic toJson() => {'id': id, 'ghRepo': ghRepo, 'ghIssueId': ghIssueId, 'ghIssueNum': ghIssueNum, 
+   dynamic toJson() => {'ghIssueId': ghIssueId, 'ghRepo': ghRepo, 'ghIssueNum': ghIssueNum, 
                            'ghProjectId': ghProjectId, 'ghProjectName': ghProjectName,
                            'ghColumnId': ghColumnId, 'ghColumnName': ghColumnName,
                            'ghCardId': ghCardId, 'ghCardTitle': ghCardTitle };
@@ -31,9 +30,9 @@ class CEProject {
    factory CEProject.fromJson(Map<String, dynamic> json) {
 
       return CEProject(
-         id:            json['ProjectId'],
-         ghRepo:        json['GHRepo'],
+
          ghIssueId:     json['GHIssueId'],
+         ghRepo:        json['GHRepo'],
          ghIssueNum:    json['GHIssueNum'],
 
          ghProjectId:   json['GHProjectId'],

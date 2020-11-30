@@ -6,7 +6,7 @@ import 'package:ceFlutter/utils.dart';
 
 // Patterns: 
 //    confirm:{add,delete}     for adding or deleting planned, in progress, pending peqID, or master allocation
-//    confirm:{notice}         for moving a plan peq between in progress and pending
+//    confirm:{notice}         for moving a plan peq between plan & in progress
 //    {confirm,reject}:accrue  founder-authorized individuals
 //    confirm:         grant   down the road, could see rejecting this as well - voting support
 //    {prop,conf,rej}:update   peq or allocated peq amounts
