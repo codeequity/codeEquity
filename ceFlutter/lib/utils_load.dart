@@ -531,9 +531,6 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       if( peq.peqType == PeqType.allocation ) {
 
          String pt = peq.ghIssueTitle;
-         // some (not all) allocations are tied to full projects
-         if( pt.length > 6 && pt.substring( 0,5 ) == "Sub: " ) { pt = pt.substring( 5 ); }
-
          adjustSummaryAlloc( appState, peq.ghProjectSub, pt, peq.amount, PeqType.allocation, EMPTY );
       }
       else if( peq.peqType == PeqType.plan ) {

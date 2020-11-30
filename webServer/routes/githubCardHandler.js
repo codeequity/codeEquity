@@ -121,6 +121,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	console.log( "New card created, unattached" );
 	let cardContent = reqBody['project_card']['note'].split('\n');
 
+	// XXX This may be overly restrictive..?
 	if( await gh.checkIssueExists( installClient, owner, repo, cardContent[0] ) ) {
 	    console.log( "Issue with same title already exists.  Do nothing." );
 	    return;

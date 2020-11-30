@@ -393,6 +393,7 @@ function getToday() {
 
 // XXX do not validateCE.  Basic info is plan/pend/accr project ghuser tracking.
 // XXX cut down arg count
+// XXX this function can be sped up, especially when animating an unclaimed
 async function processNewPEQ( installClient, repo, owner, reqBody, issueCardContent, creator, issueNum, issueId, card ) {
 
     // normal for card -> issue.  odd but legal for issue -> card
@@ -403,6 +404,7 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
     let peqValue = 0;
     if( issueNum == -1 ) { peqValue = gh.parsePEQ( issueCardContent, allocation ); }
     else                 { peqValue = gh.parseLabelDescr( issueCardContent ); }   
+    if( peqValue <= 0 ) { return; }
 
     // XXX allow PROJ_PEND
     // should not be able to create PROJ_ACCR card.  check is below
@@ -410,107 +412,93 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
 
     console.log( "processing", peqValue.toString(), peqType );
 
-
-    // XXX this function can be sped up, especially when animating an unclaimed
-    if( peqValue > 0 ) {
-	
-	let projId     = card == -1 ? reqBody['project_card']['project_url'].split('/').pop() : card['project_url'].split('/').pop()
-	let colId      = card == -1 ? reqBody['project_card']['column_id'] : card['column_url'].split('/').pop();
-	let origCardId = card == -1 ? reqBody['project_card']['id'] : card['id'];
-	// console.log( "Trio:", projId, colId, origCardId );
-	
-	let fullName   = reqBody['repository']['full_name'];
-	let peqHumanLabelName = peqValue.toString() + " PEQ";
-	let peqLabel = await gh.findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
-	let colName  = await gh.getColumnName( installClient, colId );
-	let projName = await gh.getProjectName( installClient, projId );
-
-	// issue->card:  issueId is available, but linkage has not yet been added
-	if( issueNum > -1 ) {
-	    await( addLinkage( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, issueCardContent[0] ));
-	}
-
-	// OR, allocation, which still wants linkage for other lookups like projSub.. need to clean up title in this case
-	if( peqType == "allocation" && projName == config.MAIN_PROJ ) {
-	    let cardTitle = issueCardContent[0];
-	    // some (not all) are full projects themselves.  Will have "Sub:" in front
-	    if( cardTitle.length > 6 && cardTitle.substring( 0, 5 ) == "Sub: " ) {      // XXX config
-		cardTitle = cardTitle.substring( 5 );
-	    }
-	    await( addLinkage( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, cardTitle ));
-	}
+    let projId     = card == -1 ? reqBody['project_card']['project_url'].split('/').pop() : card['project_url'].split('/').pop()
+    let colId      = card == -1 ? reqBody['project_card']['column_id'] : card['column_url'].split('/').pop();
+    let origCardId = card == -1 ? reqBody['project_card']['id'] : card['id'];
     
-	assert( colName != config.PROJ_COLS[ config.PROJ_PEND ] );
-	assert( colName != config.PROJ_COLS[ config.PROJ_ACCR ] );
-	// card -> issue
-	if( peqType == "plan" && issueNum == -1 ) {
-	    // create new issue
-	    let issueData = await gh.createIssue( installClient, owner, repo, issueCardContent[0], [peqHumanLabelName] );
-	    assert( issueData.length == 2 );
-	    issueId  = issueData[0];
-	    issueNum = issueData[1];
-	    assert.notEqual( issueId, -1, "Unable to create issue linked to this card." );
+    let fullName   = reqBody['repository']['full_name'];
+    let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
+    let peqLabel = await gh.findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue );
+    let colName  = await gh.getColumnName( installClient, colId );
+    let projName = await gh.getProjectName( installClient, projId );
 
-	    // create issue-linked project_card, requires id not num
-	    let newCardId = await gh.createProjectCard( installClient, colId, issueId, true );
-	    assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
-	    
-	    // remove orig card
-	    await( installClient[0].projects.deleteCard( { card_id: origCardId } ));	    
-	    
-	    // Add card issue linkage
-	    await( addLinkage( fullName, issueId, issueNum, projId, projName, colId, colName, newCardId, issueCardContent[0] ));
-	}
-
-	// Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
-	// there are no assignees for card-created issues.. they are added, or created directly from issues.
-	let assignees = await gh.getAssignees( installClient, owner, repo, issueNum );
-	// This needs to occur after linkage is overwritten.
-	let projSub   = await gh.getProjectSubs( installClient, fullName, projName, colName );
-
-	// Only 1 peq per issueId. Might be moving a card here
-	// XXX This check could be done in lambda handler and save a rest roundtrip.
-	let newPEQ = await getPeq( installClient[1], issueId );	
-	if( newPEQ != -1 ) {
-	    console.log( "Peq", newPEQId, "already exists - using it instead of creating a new one" );
-	    newPEQId = newPEQ.PEQId;
-	    // XXX Handle move from unallocated to within-CE.  But how about between CE projects?
-	    //     restriction here may be too onery
-	    if( newPEQ.GHProjectSub.length == 1 && newPEQ.GHProjectSub[0] == "Unallocated" ) {
-		// no need to wait
-		updatePEQPSub( installClient[1], newPEQId, projSub );
-	    }
-	}
-	else {
-	    newPEQId = await( recordPEQ(
-		installClient[1],
-		peqValue,                                  // amount
-		peqType,                                   // type of peq
-		assignees,                                 // list of ghUserLogins assigned
-		fullName,                                  // gh repo
-		projSub,                                   // gh project subs
-		projId,                                    // gh project id
-		issueId.toString(),                        // gh issue id
-		issueCardContent[0]                        // gh issue title
-	    ));
-	    assert( newPEQId != -1 );
-	}
-
-	// no need to wait
-	let subject = [ newPEQId ];
-	recordPEQAction(
-	    installClient[1],
-	    config.EMPTY,     // CE UID
-	    creator,          // gh user name
-	    fullName,         // gh repo
-	    "confirm",        // verb
-	    "add",            // action
-	    subject,          // subject
-	    "",               // note
-	    getToday(),       // entryDate
-	    reqBody           // raw
-	);
+    assert( colName != config.PROJ_COLS[ config.PROJ_PEND ] );
+    assert( colName != config.PROJ_COLS[ config.PROJ_ACCR ] );
+    
+    // issue->card:  issueId is available, but linkage has not yet been added
+    if( issueNum > -1 ) {
+	await( addLinkage( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, issueCardContent[0] ));
     }
+    // card -> issue
+    else {
+	let cardTitle = issueCardContent[0];
+
+	// create new issue
+	let issueData = await gh.createIssue( installClient, owner, repo, cardTitle, [peqHumanLabelName], allocation );
+	assert( issueData.length == 2 );
+	issueId  = issueData[0];
+	issueNum = issueData[1];
+	assert.notEqual( issueId, -1, "Unable to create issue linked to this card." );
+	
+	// create issue-linked project_card, requires id not num
+	let newCardId = await gh.createProjectCard( installClient, colId, issueId, true );
+	assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
+	
+	// remove orig card
+	await( installClient[0].projects.deleteCard( { card_id: origCardId } ));	    
+	
+	// Add card issue linkage
+	await( addLinkage( fullName, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ));
+    }
+    
+    // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
+    // there are no assignees for card-created issues.. they are added, or created directly from issues.
+    let assignees = await gh.getAssignees( installClient, owner, repo, issueNum );
+    // This needs to occur after linkage is overwritten.
+    let projSub   = await gh.getProjectSubs( installClient, fullName, projName, colName );
+    
+    // Only 1 peq per issueId. Might be moving a card here
+    // XXX This check could be done in lambda handler and save a rest roundtrip.
+    let newPEQ = await getPeq( installClient[1], issueId );	
+    if( newPEQ != -1 ) {
+	console.log( "Peq", newPEQId, "already exists - using it instead of creating a new one" );
+	newPEQId = newPEQ.PEQId;
+	// XXX Handle move from unallocated to within-CE.  But how about between CE projects?
+	//     restriction here may be too onery
+	if( newPEQ.GHProjectSub.length == 1 && newPEQ.GHProjectSub[0] == "Unallocated" ) {
+	    // no need to wait
+	    updatePEQPSub( installClient[1], newPEQId, projSub );
+	}
+    }
+    else {
+	newPEQId = await( recordPEQ(
+	    installClient[1],
+	    peqValue,                                  // amount
+	    peqType,                                   // type of peq
+	    assignees,                                 // list of ghUserLogins assigned
+	    fullName,                                  // gh repo
+	    projSub,                                   // gh project subs
+	    projId,                                    // gh project id
+	    issueId.toString(),                        // gh issue id
+	    issueCardContent[0]                        // gh issue title
+	));
+	assert( newPEQId != -1 );
+    }
+    
+    // no need to wait
+    let subject = [ newPEQId ];
+    recordPEQAction(
+	installClient[1],
+	config.EMPTY,     // CE UID
+	creator,          // gh user name
+	fullName,         // gh repo
+	"confirm",        // verb
+	"add",            // action
+	subject,          // subject
+	"",               // note
+	getToday(),       // entryDate
+	reqBody           // raw
+    );
 }
 
 exports.getGH = getGH;

@@ -40,12 +40,12 @@ var githubUtils = {
 	return updateIssue( installClient, owner, repo, issueNum, newState );
     },
     
-    findOrCreateLabel: function( installClient, owner, repo, peqHumanLabelName, peqValue ) {
-	return findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
+    findOrCreateLabel: function( installClient, owner, repo, allocation, peqHumanLabelName, peqValue ) {
+	return findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue );
     },
 
-    createIssue: function( installClient, owner, repo, title, labels ) {
-	return createIssue( installClient, owner, repo, title, labels );
+    createIssue: function( installClient, owner, repo, title, labels, allocation ) {
+	return createIssue( installClient, owner, repo, title, labels, allocation );
     },
 
     createProjectCard: function( installClient, columnID, issueID, justId ) {
@@ -181,7 +181,7 @@ async function updateIssue( installClient, owner, repo, issueNum, newState ) {
 }
 
 
-async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue )
+async function findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue )
 {
     // does label exist 
     let peqLabel = "";
@@ -200,10 +200,9 @@ async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName,
     // if not, create
     if( status == 404 ) {
 	console.log( installClient[1], "Not found, creating.." );
-	let descr = config.PDESC + peqValue.toString();
-	await( installClient[0].issues.createLabel( { owner: owner, repo: repo,
-						   name: peqHumanLabelName, color: config.PEQ_COLOR,
-						   description: descr }))
+	let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
+	let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
+	await( installClient[0].issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
 	    .then( label => {
 		peqLabel = label['data'];
 	    })
@@ -217,12 +216,20 @@ async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName,
 }
 
 
-async function createIssue( installClient, owner, repo, title, labels )
+async function createIssue( installClient, owner, repo, title, labels, allocation )
 {
     let issueData = [-1,-1];  // issue id, num
+
+    let body = "";
+    if( allocation ) {
+	body  = "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
+	body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"
+	body += "It is safe to filter this out of your issues list.\n\n";
+	body += "It is NOT safe to close, reopen, or edit this issue.";
+    }
     
     // NOTE: will see several notifications are pending here, like issue:open, issue:labelled
-    await( installClient[0].issues.create( { owner: owner, repo: repo, title: title, labels: labels } ))
+    await( installClient[0].issues.create( { owner: owner, repo: repo, title: title, labels: labels, body: body } ))
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
@@ -600,7 +607,6 @@ async function getProjectSubs( installClient, repoName, projName, colName ) {
     }
     else {
 	// e.g. projName = 'codeEquity web front end', which should be found in Master as a card
-	// Note - Sub: card names are stored without "Sub: "
 	console.log( installClient[1], "Find card", projName );
 	let card = await( utils.getFromCardName( installClient[1], repoName, config.MAIN_PROJ, projName ));   
 	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
@@ -626,8 +632,8 @@ function getAllocated( content ) {
 
 
 // Allow:
-//  <allocated, PEQ: 1000>
-//  <allocated, PEQ: 1,000>
+//  <allocation, PEQ: 1000>
+//  <allocation, PEQ: 1,000>
 //  <PEQ: 1000>
 //  <PEQ: 1,000>
 function parsePEQ( content, allocation ) {
@@ -666,15 +672,21 @@ function parsePEQ( content, allocation ) {
     return peqValue;
 }
 
-// no commas, no shorthand, just like this:  'PEQ value: 500'
+// no commas, no shorthand, just like this:  'PEQ value: 500'  or 'Allocation PEQ value: 30000'
 function parseLabelDescr( labelDescr ) {
     let peqValue = 0;
-    let descLen = config.PDESC.length;
+    let pDescLen = config.PDESC.length;
+    let aDescLen = config.ADESC.length;
 
     for( const line of labelDescr ) {
 	if( line.indexOf( config.PDESC ) == 0 ) {
-	    console.log( "Found peq val in", line.substring( descLen ) );
-	    peqValue = parseInt( line.substring( descLen ) );
+	    console.log( "Found peq val in", line.substring( pDescLen ) );
+	    peqValue = parseInt( line.substring( pDescLen ) );
+	    break;
+	}
+	else if( line.indexOf( config.ADESC ) == 0 ) {
+	    console.log( "Found peq val in", line.substring( aDescLen ) );
+	    peqValue = parseInt( line.substring( aDescLen ) );
 	    break;
 	}
     }
