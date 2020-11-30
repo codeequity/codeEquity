@@ -364,8 +364,10 @@ Future<void> reloadMyProjects( context, container ) async {
       appState.myPEQActions = await fetchPEQActions( context, container,
                                                       '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
 
-      appState.myPEQSummary = await fetchPEQSummary( context, container,
-                                                      '{ "Endpoint": "GetPEQSummary", "GHRepo": "$ghRepo" }' );
+      var postData = {};
+      postData.GHRepo = ghRepo;
+      var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postData };
+      appState.myPEQSummary = await fetchPEQSummary( context, container, pd );
 
       // if( appState.myPEQSummary != null ) { buildAllocationTree( invokeDetail( context, container ), context, container ); }
       
@@ -399,8 +401,18 @@ Future<void> updateCEUID( PEQAction pact, PEQ peq, context, container ) async {
    // XXX ??? should grantor be CE or GH id?  Maybe depends on ability to permission prot a project column
    if( pact.action == PActAction.accrue && pact.verb == PActVerb.confirm ) {  ceGrantor = ghu;   }
 
+   var postData = {};
+   postData.PEQId       = peq.id;
+   postData.CEHolderId  = ceHolders;
+   postData.CEGrantorId = ceGrantor;
+   var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
+      
+   await updateDynamo( context, container, pd, "UpdatePEQ" );
+
+   /*
    await updateDynamo( context, container,
                        '{ "Endpoint": "UpdatePEQ", "PEQId": "${peq.id}", "CEHolderId": $ceHolders, "CEGrantorId": "$ceGrantor" }', "updatePEQ" );
+   */
 }
 
 
@@ -504,7 +516,14 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
             print( "Unrecognized verb " + enumToStr( pact.verb ) );
             assert( false );
          }
-         await updateDynamo( context, container, '{ "Endpoint": "UpdatePEQType", "PEQId": "${peq.id}", "PeqType": "$newType" }', "UpdatePEQType" );
+
+         var postData = {};
+         postData.PEQId    = peq.id;
+         postData.PeqType  = newType;
+         var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
+         
+         await updateDynamo( context, container, pd, "UpdatePEQ" );
+         // await updateDynamo( context, container, '{ "Endpoint": "UpdatePEQType", "PEQId": "${peq.id}", "PeqType": "$newType" }', "UpdatePEQType" );
       }
    }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {

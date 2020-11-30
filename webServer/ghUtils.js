@@ -4,10 +4,6 @@ var assert = require('assert');
 
 var githubUtils = {
 
-    getColumns: function( ownerId, repoId ) {
-	return columnInfo( ownerId, repoId );
-    },
-
     getAllocated: function( cardContent ) {
 	return getAllocated( cardContent );
     },
@@ -20,8 +16,8 @@ var githubUtils = {
 	return parseLabelDescr( labelDescr );
     },
 	
-    parseHumanPEQ: function( labels ) {
-	return parseHumanPEQ( labels );
+    theOnePEQ: function( labels ) {
+	return theOnePEQ( labels );
     },
 
     checkRateLimit: function( installClient ) {
@@ -52,8 +48,16 @@ var githubUtils = {
 	return createIssue( installClient, owner, repo, title, labels );
     },
 
-    createIssueCard: function( installClient, columnID, issueID ) {
-	return createIssueCard( installClient, columnID, issueID );
+    createProjectCard: function( installClient, columnID, issueID, justId ) {
+	return createProjectCard( installClient, columnID, issueID, justId );
+    },
+
+    createUnClaimedCard: function( installClient, owner, repo, issueId ) {
+	return createUnClaimedCard( installClient, owner, repo, issueId );
+    },
+
+    populateCEProjects: function( installClient, owner, repo, fullName ) {
+	return populateCEProjects( installClient, owner, repo, fullName );
     },
 
     validateCEProjectLayout: function( installClient, issueId ) {
@@ -64,8 +68,8 @@ var githubUtils = {
 	return validatePEQ( installClient, repo, issueId, title, projId );
     },
 
-    moveIssueCard: function( installClient, owner, repo, issueId, action, ceProjectLayout ) {
-	return moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
+    moveIssueCard: function( installClient, owner, repo, fullName, issueId, action, ceProjectLayout ) {
+	return moveIssueCard( installClient, owner, repo, fullName, issueId, action, ceProjectLayout ); 
     },
 
     getProjectName: function( installClient, projId ) {
@@ -146,7 +150,6 @@ async function getIssue( installClient, owner, repo, issueNum )
 
     await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => {
-	    // console.log( issue['data'] );
 	    retIssue.push( issue['data']['id'] );
 	    retVal.push( issue['data']['title'] );
 	    if( issue['data']['labels'].length > 0 ) {
@@ -231,21 +234,188 @@ async function createIssue( installClient, owner, repo, title, labels )
     return issueData;
 }
 
-async function createIssueCard( installClient, columnID, issueID )
+// Add linkage data for all carded issues in a project.
+// 
+// As soon as 1 situated (or carded) issue is labeled, all this work must be done to find it if not already in dynamo.
+// May as well just do this once.
+//
+// This occurs once only per repo, preferably when CE usage starts.
+// Afterwards, if a newborn issue adds a card, githubCardHandler will pick it up.
+// Afterwards, if a newborn issue adds peqlabel, create card, githubCardHandler will pick it up.
+// Afterwards, if a newborn card converts to issue, pick it up in githubIssueHandler
+//
+// Would be soooo much better if Octokit/Github had reverse link from issue to card.
+// newborn issues not populated.  newborn cards not populated.  Just linkages.
+// XXX something like this really needs graphQL
+async function populateCEProjects( installClient, owner, repo, fullName )
 {
-    let newCardID = -1;
-
-    await( installClient[0].projects.createCard({ column_id: columnID, content_id: issueID, content_type: 'Issue' }))
-	.then( card => {
-	    newCardID = card['data']['id'];
-	})
-	.catch( e => {
-	    console.log( installClient[1], "Create issue-linked card failed.", e );
-	});
+    let alreadyDone = await utils.checkPopulated( installClient[1], fullName );
+    if( alreadyDone ) { return false; }
     
-    return newCardID;
+    // Get project IDs
+    let projIds = [];
+    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
+	.then((projects) => {
+	    projIds = projects.map((project) => project.id );
+	});
+    // console.log( "Project ids", projIds );
+
+    // Get column Ids per project
+    let colIds = [];         // list [ [projId, [col ids]], ...]
+    let colPromises = [];
+    for( const projId of projIds ) {
+	colPromises.push(
+	    installClient[0].paginate( installClient[0].projects.listColumns, { project_id: projId } )
+		.then((columns) => {
+		    let tcol = columns.map((column)=> column.id );
+		    return [projId, tcol];
+		})
+	);
+    }
+    await Promise.all( colPromises )
+	.then((pairs) => {
+	    colIds = colIds.concat( pairs );
+	});
+    // console.log( "Column ids", colIds );
+
+    // Get card Ids per column Id
+    let cardIds = [];         // list [ [projId, colId, [cardIds], [issueNums]], ... ]
+    let cardPromises = [];
+    for( const projCols of colIds ) {  
+	for( const colId of projCols[1] ) {
+	    cardPromises.push(
+		installClient[0].paginate( installClient[0].projects.listCards, { column_id: colId, archived_state: "not_archived" } )
+		    .then((cards) => {
+			let tcards  = cards.map((card)=> card.id );
+			let issNums = cards.map((card) => {
+			    if( card['content_url'] == null ) { return ""; }
+			    let parts = card['content_url'].split('/');
+			    return parts[ parts.length - 1] ; 
+			});
+			
+			return [projCols[0], colId, tcards, issNums];
+		    })
+	    );
+	}
+    }
+    await Promise.all( cardPromises )
+	.then((quads) => {
+	    cardIds = cardIds.concat( quads );
+	});
+    // console.log( "Card ids", cardIds );
+
+    // list of trips [projid, cardid, issuenum].. all "" are stripped.
+    // Clean this list up before pushing to populate.
+    let trips = [];
+    for( const column of cardIds ) {
+	assert( column.length == 4 );
+	assert( column[2].length == column[3].length );
+	for( let i = 0; i < column[2].length; i++ ) {
+	    if( column[2][i] != "" && column[3][i] != "" ) {
+		trips.push( [ column[0], column[2][i], column[3][i] ] ); 
+	    }
+	}
+    }
+    // console.log( "Trips", trips );
+
+    // Eliminate trips where cardId already exists
+    // Note: this is largely overkill, since 99% of the time this will be done before serious use of CE starts.
+    let idsOnly = trips.map((trip) => trip[1] );
+    let existingIds = await utils.getExistCardIds( installClient[1], fullName, idsOnly );
+    if( existingIds != -1 ) {
+	for( const id of existingIds ) {
+	    let index = -1;
+	    for( let i = 0; i < trips.length; i++ ) {
+		if( trips[i][1].toString() == id ) {
+		    index = i;
+		    break;
+		}
+	    }
+	    if( index > -1 ) { trips.splice( index, 1 ); }
+	}
+    }
+    console.log( "Clean trips", trips );
+    
+    // Add issueId to each trip, to complete linkage pkey and enable typical usage pattern
+    let lPromises = [];
+    for( const trip of trips ) {
+	let newLink = trip;
+	lPromises.push( getIssue( installClient, owner, repo, trip[2] )
+			.then((issue) => [ trip[0], trip[1], trip[2], issue[0] ] ));
+    }
+    let linkage = await Promise.all( lPromises );
+    // await Promise.all( lPromises )
+    // 	.then((newLink) => linkage = newLink );
+    console.log( "linkages", linkage );
+		      
+    await utils.populateIssueCards( fullName, linkage );
+    await utils.setPopulated( installClient[1], fullName );
+    return true;
 }
 
+
+
+async function createProjectCard( installClient, columnID, issueID, justId )
+{
+    let newCard = -1;
+
+    await( installClient[0].projects.createCard({ column_id: columnID, content_id: issueID, content_type: 'Issue' }))
+	.then( card => { newCard = card['data']; })
+	.catch( e => { console.log( installClient[1], "Create issue-linked project card failed.", e ); });
+
+    if( justId ) { return newCard['id']; }
+    else         { return newCard; }
+}
+
+
+// XXX could look in linkage for unclaimed proj / col ids .. ?
+async function createUnClaimedCard( installClient, owner, repo, issueId )
+{
+    let unClaimedProjId = -1;
+    const unClaimed = "UnClaimed";   // XXX config 
+
+    // Get, or create, unclaimed project id
+    console.log( "List proj for repo", repo, issueId );
+    // Note.  pagination removes .headers, .data and etc.
+    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
+	.then((projects) => {
+	    for( project of projects ) {
+		if( project.name == unClaimed ) { unClaimedProjId = project.id; }
+	    }})
+	.catch( e => { console.log( installClient[1], "List projects failed.", e ); });
+    if( unClaimedProjId == -1 ) {
+	console.log( "Creating UnClaimed project" );
+	let body = "Temporary storage for issues with cards that have not yet been assigned to a column (triage)";
+	await installClient[0].projects.createForRepo({ owner: owner, repo: repo, name: unClaimed, body: body })
+	    .then((project) => { unClaimedProjId = project.data.id; })
+	    .catch( e => { console.log( installClient[1], "Create unclaimed project failed.", e ); });
+    }
+
+
+    // Get, or create, unclaimed column id
+    let unClaimedColId = -1;
+    console.log( "List col for proj", unClaimedProjId );
+    await installClient[0].paginate( installClient[0].projects.listColumns, { project_id: unClaimedProjId, per_page: 100 } )
+	.then((columns) => {
+	    for( column of columns ) {
+		if( column.name == unClaimed ) { unClaimedColId = column.id; }
+	    }})
+    	.catch( e => { console.log( installClient[1], "List Columns failed.", e ); });
+    if( unClaimedColId == -1 ) {
+	console.log( "Creating UnClaimed column" );
+	await installClient[0].projects.createColumn({ project_id: unClaimedProjId, name: unClaimed })
+	    .then((column) => { unClaimedColId = column.data.id; })
+	    .catch( e => { console.log( installClient[1], "Create unclaimed column failed.", e ); });
+    }
+
+    assert( unClaimedProjId != -1 );
+    assert( unClaimedColId != -1  );
+    // console.log( "unclaimed p,c", unClaimedProjId, unClaimedColId );
+    
+    // create card in unclaimed:unclaimed
+    let card = await createProjectCard( installClient, unClaimedColId, issueId, false );
+    return card;
+}
 
 
 
@@ -336,7 +506,7 @@ async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 }
 
 
-async function moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout )
+async function moveIssueCard( installClient, owner, repo, fullName, issueId, action, ceProjectLayout )
 {
     let success    = false;
     let newColId   = -1;
@@ -385,7 +555,7 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
     }
 
     if( success ) {
-	success = await( utils.updateCardFromIssue( installClient[1], issueId, newColId, newColName ))
+	success = await( utils.updateCardFromIssue( installClient[1], issueId, fullName, newColId, newColName ))
 	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
     }
 
@@ -420,7 +590,7 @@ async function getColumnName( installClient, colId ) {
 // If not, then neither aws nor GH lookup will work, since project layout will probably not be valid
 // Safer from aws as well - known if need to be unallocated
 async function getProjectSubs( installClient, repoName, projName, colName ) {
-    let projSub = [ "Unallocated" ];
+    let projSub = [ "Unallocated" ];  // XXX config
 
     console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
     
@@ -475,14 +645,13 @@ function parsePEQ( content, allocation ) {
 	    }
 	}
 	else {
-	    console.log( "In plan" );
 	    s = line.indexOf( config.PPLAN );
 	    c = config.PPLAN.length;
 	}
 
 	if( s > -1 ){
 	    let lineVal = line.substring( s );
-	    console.log( "Looking for peq in", s, c, lineVal );
+	    // console.log( "Looking for peq in", s, c, lineVal );
 	    let e = lineVal.indexOf( ">" );
 	    if( e == -1 ) {
 		console.log( "Malformed peq" );
@@ -491,19 +660,17 @@ function parsePEQ( content, allocation ) {
 	    console.log( "Found peq val in ", s, e, lineVal.substring(c, e) );
 	    // js parseint doesn't like commmas
 	    peqValue = parseInt( lineVal.substring( c, e ).split(",").join("") );
-	    console.log( peqValue );
 	    break;
 	}
     }
     return peqValue;
 }
 
-// XXX combine with parseHuman?
 // no commas, no shorthand, just like this:  'PEQ value: 500'
 function parseLabelDescr( labelDescr ) {
     let peqValue = 0;
     let descLen = config.PDESC.length;
-    
+
     for( const line of labelDescr ) {
 	if( line.indexOf( config.PDESC ) == 0 ) {
 	    console.log( "Found peq val in", line.substring( descLen ) );
@@ -515,33 +682,26 @@ function parseLabelDescr( labelDescr ) {
     return peqValue;
 }
 
-// XXX currently used as bool.. peq or not?  value is not correct.
-function parseHumanPEQ( labels ) {
+function theOnePEQ( labels ) {
     let peqValue = 0;
 
     for( label of labels ) {
-	let content = label['name'];
-	let e =  content.indexOf( config._PEQ );
-	console.log( "PEQ?", content, e, config._PEQ );
+	let content = label['description'];
+	let tval = parseLabelDescr( [content] );
 
-	if( e > -1 ){
-	    let lineVal = content.substring( 0, e );
-	    
-	    // XXX
-	    // Find number formatted as one of { '1000', '1,000', '1k' }
-	    peqValue = 100;
-	    console.log( peqValue );
+	if( tval > 0 ) {
+	    if( peqValue > 0 ) {
+		console.log( "Two PEQ labels detected for this issue!!" );
+		peqValue = 0;
+		break;
+	    }
+	    else { peqValue = tval; }
 	}
-	if( peqValue > 0 ) { break; }
     }
 
     return peqValue;
 }
 
-function columnInfo( ownerId, repoId ) {
-    console.log( "Cols et. al.", ownerId, repoId );
-    
-}
 
 
 // XXX 

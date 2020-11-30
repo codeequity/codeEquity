@@ -46,13 +46,34 @@ Resources:
         Name: GHAccountId
         Type: String
 
-  ProjectTable:
+  RepoStatusTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
-      TableName: CEProjects
+      TableName: CERepoStatus
       PrimaryKey:
-        Name: ProjectId
+        Name: GHRepo
         Type: String
+
+  # provisioned throughput set to PAY_PER_REQUEST, same as simpletable
+  ProjectTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: CEProjects
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        -
+          AttributeName: GHIssueId
+          AttributeType: S
+        -
+          AttributeName: GHRepo
+          AttributeType: S
+      KeySchema:
+        -
+          AttributeName: GHIssueId
+          KeyType: HASH
+        -
+          AttributeName: GHRepo
+          KeyType: RANGE
 
   AgreementTable:
     Type: 'AWS::Serverless::SimpleTable'
@@ -170,6 +191,8 @@ Resources:
           TableName: !Ref ProjectTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PersonTable
+       - DynamoDBCrudPolicy:
+          TableName: !Ref RepoStatusTable
        - DynamoDBCrudPolicy:
           TableName: !Ref GithubTable
        - DynamoDBCrudPolicy:

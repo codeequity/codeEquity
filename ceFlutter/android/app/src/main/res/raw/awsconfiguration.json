@@ -1,8 +1,8 @@
 {
     "CognitoUserPool": {
         "Default": {
-            "PoolId": "us-east-1_2mRv1hKps",
-            "AppClientId": "2rpf7uu29e6qh7a97821gtgo4e",
+            "PoolId": "us-east-1_lAZpkYA2r",
+            "AppClientId": "50q0o3gplet0il6du0igptv6fc",
             "AppClientSecret": "",
             "Region": "us-east-1"
         }
