@@ -365,7 +365,7 @@ Future<void> reloadMyProjects( context, container ) async {
                                                       '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
 
       var postData = {};
-      postData.GHRepo = ghRepo;
+      postData['GHRepo'] = ghRepo;
       var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postData };
       appState.myPEQSummary = await fetchPEQSummary( context, container, pd );
 
@@ -402,9 +402,9 @@ Future<void> updateCEUID( PEQAction pact, PEQ peq, context, container ) async {
    if( pact.action == PActAction.accrue && pact.verb == PActVerb.confirm ) {  ceGrantor = ghu;   }
 
    var postData = {};
-   postData.PEQId       = peq.id;
-   postData.CEHolderId  = ceHolders;
-   postData.CEGrantorId = ceGrantor;
+   postData['PEQId']       = peq.id;
+   postData['CEHolderId']  = ceHolders;
+   postData['CEGrantorId'] = ceGrantor;
    var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
       
    await updateDynamo( context, container, pd, "UpdatePEQ" );
@@ -518,8 +518,8 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
          }
 
          var postData = {};
-         postData.PEQId    = peq.id;
-         postData.PeqType  = newType;
+         postData['PEQId']    = peq.id;
+         postData['PeqType']  = newType;
          var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
          
          await updateDynamo( context, container, pd, "UpdatePEQ" );

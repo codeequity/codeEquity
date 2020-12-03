@@ -56,8 +56,8 @@ var githubUtils = {
 	return createUnClaimedCard( installClient, owner, repo, issueId );
     },
 
-    populateCEProjects: function( installClient, owner, repo, fullName ) {
-	return populateCEProjects( installClient, owner, repo, fullName );
+    populateCELinkage: function( installClient, owner, repo, fullName ) {
+	return populateCELinkage( installClient, owner, repo, fullName );
     },
 
     validateCEProjectLayout: function( installClient, issueId ) {
@@ -254,7 +254,7 @@ async function createIssue( installClient, owner, repo, title, labels, allocatio
 // Would be soooo much better if Octokit/Github had reverse link from issue to card.
 // newborn issues not populated.  newborn cards not populated.  Just linkages.
 // XXX something like this really needs graphQL
-async function populateCEProjects( installClient, owner, repo, fullName )
+async function populateCELinkage( installClient, owner, repo, fullName )
 {
     let alreadyDone = await utils.checkPopulated( installClient[1], fullName );
     if( alreadyDone ) { return false; }
@@ -582,7 +582,7 @@ async function getProjectName( installClient, projId ) {
 }
 
 async function getColumnName( installClient, colId ) {
-
+    
     let column = await( installClient[0].projects.getColumn({ column_id: colId }))
 	.catch( e => {
 	    console.log( installClient[1], "Get Column failed.", e );
@@ -592,30 +592,27 @@ async function getColumnName( installClient, colId ) {
     return column['data']['name'];
 }
 
-// XXX app will need to allow moving unallocated around - will be lots of misses.
-// If Master has already been created, with sub projects, then aws lookup will work.
-// If not, then neither aws nor GH lookup will work, since project layout will probably not be valid
-// Safer from aws as well - known if need to be unallocated
+// This needs to occur after linkage is overwritten.
+// Provide good subs no matter if using Master project indirection, or flat projects.
 async function getProjectSubs( installClient, repoName, projName, colName ) {
-    let projSub = [ "Unallocated" ];  // XXX config
+    let projSub = [ "Unallocated" ];  // Should not occur.
 
     console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
-    
-    if( projName == config.MAIN_PROJ ) {
-	if( colName == "" ) { return projSub; }
-	projSub = [ colName ];
-    }
+	
+    if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
-	// e.g. projName = 'codeEquity web front end', which should be found in Master as a card
-	console.log( installClient[1], "Find card", projName );
+	// Check if project is a card in Master
 	let card = await( utils.getFromCardName( installClient[1], repoName, config.MAIN_PROJ, projName ));   
 	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
+	else             { projSub = [ projName ]; }
+
+	// If col isn't a CE organizational col, add to psub
+	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
     }
+	    
     console.log( "... returning", projSub.toString() );
     return projSub;
 }
-
-
 
 function getAllocated( content ) {
     let res = false;

@@ -117,7 +117,11 @@ async function wrappedPostIt( source, shortName, postData ) {
 	return body;
     }
     else if (response['status'] == 204) {
-	console.log(source, "Issue not found.", response['status'] );
+	console.log(source, "Not found.", response['status'] );
+	return -1;
+    }
+    else if (response['status'] == 422) {
+	console.log(source, "Semantic error.  Normally means more items found than expected.", response['status'] );
 	return -1;
     }
     else {
@@ -128,16 +132,45 @@ async function wrappedPostIt( source, shortName, postData ) {
     }
 }
 
+
+/* XXX
+// One of two methods to get linkage from issueId.
+// Here: 204 or 422 if count != 1... by def not a valid PEQ issue.
+async function getPEQLinkageFId( source, issueId ) {
+    console.log( source, "Get PEQ linkage from issue:", issueId );
+
+    let shortName = "GetEntry";
+    let query     = { "GHIssueId": issueId.toString() };
+    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
+
+    return await wrappedPostIt( source, shortName, postData );
+}
+*/
+
+// One of two methods to get linkage from issueId.
+// Here: expect list return.
+// Clean results?  A clean list expects: 1) <= 1 peqtype == PLAN; and 2) either no unclaimed or no PLAN/ALLOC peq type in list
+async function getIssueLinkage( source, issueId ) {
+    console.log( source, "Get card data from issue:", issueId );
+
+    let shortName = "GetLinkages";
+    let postData  = { "Endpoint": shortName, "GHIssueId": issueId.toString() };
+
+    return await wrappedPostIt( source, shortName, postData );
+}
+
+/*
+// XXX 1:M This splits into 2 functions:
 async function getFromIssue( source, issueId ) {
     console.log( source, "Get card data from issue:", issueId );
 
     let shortName = "GetEntry";
     let query     = { "GHIssueId": issueId.toString() };
-    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
 
     return await wrappedPostIt( source, shortName, postData );
 }
-
+*/
 
 async function getPeq( source, issueId ) {
     console.log( "Get PEQ from issueId:", issueId );
@@ -164,17 +197,18 @@ async function getFromCardName( source, repoName, projName, cardTitle ) {
 
     let shortName = "GetEntry";
     let query     = { "GHRepo": repoName, "GHProjName": projName, "GHCardTitle": cardTitle };
-    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
 
     return await wrappedPostIt( source, shortName, postData );
 }
 
+// card:issue 1:1   issue:card 1:m   should be good
 async function getFromCardId( source, repo, cardId ) {
     console.log( source, "Get linkage from repo, card Id", repo, cardId );
 
     let shortName = "GetEntry";
     let query     = { "GHRepo": repo, "GHCardId": cardId.toString() };
-    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
 
     return await wrappedPostIt( source, shortName, postData );
 }
@@ -258,6 +292,7 @@ async function populateIssueCards( repo, cardIds ) {
     return await wrappedPostIt( "", shortName, pd );
 }
 
+// XXX XXX XXX XXX   need to do this for all cards tied to issueId
 // XXX awsdynamo change update to 1 func, linkage obj, any exist are set.
 // Zero out fields in linkage table no longer being tracked
 async function rebaseLinkage( fullName, issueId ) {
@@ -391,48 +426,60 @@ function getToday() {
     return today.toString();
 }
 
-// XXX do not validateCE.  Basic info is plan/pend/accr project ghuser tracking.
 // XXX cut down arg count
 // XXX this function can be sped up, especially when animating an unclaimed
-async function processNewPEQ( installClient, repo, owner, reqBody, issueCardContent, creator, issueNum, issueId, card ) {
+// Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
+async function processNewPEQ( installClient, repo, owner, reqBody, issueCardContent, creator, issueNum, issueId, link ) {
 
     // normal for card -> issue.  odd but legal for issue -> card
     let allocation = gh.getAllocated( issueCardContent );
+    let fullName   = reqBody['repository']['full_name'];
 
-    // XXX add label can occur before submit issue, after submit issue, or after add to card.  test all
     // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
     let peqValue = 0;
     if( issueNum == -1 ) { peqValue = gh.parsePEQ( issueCardContent, allocation ); }
     else                 { peqValue = gh.parseLabelDescr( issueCardContent ); }   
-    if( peqValue <= 0 ) { return; }
 
     // XXX allow PROJ_PEND
-    // should not be able to create PROJ_ACCR card.  check is below
-    let peqType = allocation ? "allocation" : "plan";
-
+    let peqType = "end";
+    if( peqValue > 0 ) {  peqType = allocation ? "allocation" : "plan"; }
     console.log( "processing", peqValue.toString(), peqType );
 
-    let projId     = card == -1 ? reqBody['project_card']['project_url'].split('/').pop() : card['project_url'].split('/').pop()
-    let colId      = card == -1 ? reqBody['project_card']['column_id'] : card['column_url'].split('/').pop();
-    let origCardId = card == -1 ? reqBody['project_card']['id'] : card['id'];
+    let origCardId = link == -1 ? reqBody['project_card']['id']                           : link.GHCardId;
+    let colId      = link == -1 ? reqBody['project_card']['column_id']                    : link.GHColumnId;
+    let projId     = link == -1 ? reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
+
+    // Newborn or a carded issue only?  Just add base linkage and return.  No PEQ (by def), so no PEQAction, no wait.
+    if( peqType == "end" ) {
+	assert( link == -1 );  
+	if( issueId != -1 ) {
+	    let blank      = config.EMPTY;
+	    addLinkage( fullName, issueId, issueNum, projId, blank , -1, blank, origCardId, blank, peqType );
+	}
+    }
+
+    // XXX not for end.  still need to check, given origination
+    // XXX where check for resove?
     
-    let fullName   = reqBody['repository']['full_name'];
     let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
     let peqLabel = await gh.findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue );
     let colName  = await gh.getColumnName( installClient, colId );
     let projName = await gh.getProjectName( installClient, projId );
-
+    
     assert( colName != config.PROJ_COLS[ config.PROJ_PEND ] );
     assert( colName != config.PROJ_COLS[ config.PROJ_ACCR ] );
     
+    // Note: some linkages exist and will be overwritten with dup info.  this is rare, and it is faster to do so than to check.
+    // XXX currently linkage await unnecessary?  getProjSubs calls getLinkage.  could pass info eh?
     // issue->card:  issueId is available, but linkage has not yet been added
     if( issueNum > -1 ) {
 	await( addLinkage( fullName, issueId, issueNum, projId, projName, colId, colName, origCardId, issueCardContent[0] ));
     }
-    // card -> issue
+    // card -> issue..  exactly one linkage.
     else {
+	assert( links.length == 1 );        
 	let cardTitle = issueCardContent[0];
-
+	
 	// create new issue
 	let issueData = await gh.createIssue( installClient, owner, repo, cardTitle, [peqHumanLabelName], allocation );
 	assert( issueData.length == 2 );
@@ -448,14 +495,15 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
 	await( installClient[0].projects.deleteCard( { card_id: origCardId } ));	    
 	
 	// Add card issue linkage
-	await( addLinkage( fullName, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ));
+	await( addLinkage( fullName, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle));
     }
+
+    // XXX resolve.  peqtype end?  return.
     
     // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
     // there are no assignees for card-created issues.. they are added, or created directly from issues.
     let assignees = await gh.getAssignees( installClient, owner, repo, issueNum );
-    // This needs to occur after linkage is overwritten.
-    let projSub   = await gh.getProjectSubs( installClient, fullName, projName, colName );
+    let projSub   = await gh.getProjectSubs( installClient, fullName, issueId );
     
     // Only 1 peq per issueId. Might be moving a card here
     // XXX This check could be done in lambda handler and save a rest roundtrip.

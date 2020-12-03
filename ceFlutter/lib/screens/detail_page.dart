@@ -78,8 +78,8 @@ class _CEDetailState extends State<CEDetailPage> {
          onTap: () async
          {
             var postData = {};
-            postData.PEQRawId = pact.id;
-            var pd = { "Endpoint": "GetEntry", "tableName": CEPEQRaw", "query": query }; 
+            postData['PEQRawId'] = pact.id;
+            var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQRaw", "query": postData }; 
             PEQRaw pr = await fetchPEQRaw( context, container, pd );
             var encoder = new JsonEncoder.withIndent("  ");
             var prj = json.decode( pr.rawReqBody );

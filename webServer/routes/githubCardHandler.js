@@ -103,8 +103,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     await gh.checkRateLimit(installClient);
 
     if( action == "created" && reqBody['project_card']['content_url'] != null ) {
-
-	// Coming from issueHandler - can't attach to summary object until we see it here, in project cards.
+	// In issues, add to project, triage to add to column.  May or may not be PEQ.
 	console.log( "new card created from issue" );
 
 	// e.g. content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
@@ -117,7 +116,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	await utils.processNewPEQ( installClient, repo, owner, reqBody, issue[1], creator, issueNum, issue[0], -1 ); 
     }
     else if( action == "created" ) {
-	// In projects, creating a card.  If detect a PEQ label in content, will create corresponding issue.
+	// In projects, creating a card that MAY have a human PEQ label in content.
 	console.log( "New card created, unattached" );
 	let cardContent = reqBody['project_card']['note'].split('\n');
 
