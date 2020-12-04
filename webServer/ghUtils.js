@@ -36,16 +36,24 @@ var githubUtils = {
 	return getIssue( installClient, owner, repo, issueNum );
     },
 
+    getFullIssue: function( installClient, owner, repo, issueNum ) {
+	return getFullIssue( installClient, owner, repo, issueNum );
+    },
+
+    splitIssue: function( installClient, owner, repo, issue, splitTag ) {
+	return splitIssue( installClient, owner, repo, issue, splitTag );
+    }
+
     updateIssue: function( installClient, owner, repo, issueNum, newState ) {
 	return updateIssue( installClient, owner, repo, issueNum, newState );
     },
     
-    findOrCreateLabel: function( installClient, owner, repo, peqHumanLabelName, peqValue ) {
-	return findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue );
+    findOrCreateLabel: function( installClient, owner, repo, allocation, peqHumanLabelName, peqValue ) {
+	return findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue );
     },
 
-    createIssue: function( installClient, owner, repo, title, labels ) {
-	return createIssue( installClient, owner, repo, title, labels );
+    createIssue: function( installClient, owner, repo, title, labels, allocation ) {
+	return createIssue( installClient, owner, repo, title, labels, allocation );
     },
 
     createProjectCard: function( installClient, columnID, issueID, justId ) {
@@ -56,8 +64,8 @@ var githubUtils = {
 	return createUnClaimedCard( installClient, owner, repo, issueId );
     },
 
-    populateCEProjects: function( installClient, owner, repo, fullName ) {
-	return populateCEProjects( installClient, owner, repo, fullName );
+    populateCELinkage: function( installClient, owner, repo, fullName ) {
+	return populateCELinkage( installClient, owner, repo, fullName );
     },
 
     validateCEProjectLayout: function( installClient, issueId ) {
@@ -121,6 +129,8 @@ async function checkIssueExists( installClient, owner, repo, title )
     return retVal;
 }
 
+// Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
+// there are no assignees for card-created issues.. they are added, or created directly from issues.
 async function getAssignees( installClient, owner, repo, issueNum )
 {
     let retVal = [];
@@ -142,27 +152,67 @@ async function getAssignees( installClient, owner, repo, issueNum )
     return retVal;
 }
 
+// [id, content]
 async function getIssue( installClient, owner, repo, issueNum )
 {
-    let retIssue = [];
-    let retVal = [];
     if( issueNum == -1 ) { return retVal; }
-
-    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
-	.then( issue => {
-	    retIssue.push( issue['data']['id'] );
-	    retVal.push( issue['data']['title'] );
-	    if( issue['data']['labels'].length > 0 ) {
-		for( label of issue['data']['labels'] ) {
-		    retVal.push( label['description'] );
-		}
-	    }
-	})
-	.catch( e => {
-	    console.log( installClient[1], "Problem in getIssueContent", e );
-	});
+    
+    let issue = await getFullIssue( installClient, owner, repo, issueNum ); 
+    let retIssue = [];
+    let retVal   = [];
+    
+    retIssue.push( issue.id );
+    retVal.push( issue.title );
+    if( issue.labels.length > 0 ) {
+	for( label of issue.labels ) { retVal.push( label['description'] ); }
+    }
     retIssue.push( retVal );
     return retIssue;
+}
+
+async function getFullIssue( installClient, owner, repo, issueNum )
+{
+    if( issueNum == -1 ) { return retVal; }
+    let retIssue = "";
+
+    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+	.then( issue => { retIssue = issue['data']; })
+	.catch( e => { console.log( installClient[1], "Problem in getIssueContent", e ); });
+    
+    return retIssue;
+}
+
+async function splitIssue( installClient, owner, repo, issue, splitTag ) {
+
+    let issueData = [-1,-1];  // issue id, num
+    let title = issue.title + " split: " + splitTag;
+    
+    await( installClient[0].issues.create( {
+	owner:     owner,
+	repo:      repo,
+	title:     title,
+	body:      issue.body,
+	milestone: issue.milestone,
+	labels:    issue.labels,
+	assignees: issue.assignees
+    } ))
+	.then( issue => {
+	    issueData[0] = issue['data']['id'];
+	    issueData[1] = issue['data']['number'];
+	})
+	.catch( e => {
+	    console.log( installClient[1], "Create issue failed.", e );
+	});
+
+    let comment = "CodeEquity duplicated this new issue from " + issue.id.toString() + " on " + getToday().toString();
+    comment += " in order to maintain a 1:1 mapping between issues and cards."
+
+    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } )
+	   .catch( e => {
+	       console.log( installClient[1], "Create issue comment failed.", e );
+	   });
+
+    return issueData;
 }
 
 async function updateIssue( installClient, owner, repo, issueNum, newState ) {
@@ -181,7 +231,7 @@ async function updateIssue( installClient, owner, repo, issueNum, newState ) {
 }
 
 
-async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName, peqValue )
+async function findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue )
 {
     // does label exist 
     let peqLabel = "";
@@ -200,10 +250,9 @@ async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName,
     // if not, create
     if( status == 404 ) {
 	console.log( installClient[1], "Not found, creating.." );
-	let descr = config.PDESC + peqValue.toString();
-	await( installClient[0].issues.createLabel( { owner: owner, repo: repo,
-						   name: peqHumanLabelName, color: config.PEQ_COLOR,
-						   description: descr }))
+	let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
+	let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
+	await( installClient[0].issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
 	    .then( label => {
 		peqLabel = label['data'];
 	    })
@@ -217,12 +266,20 @@ async function findOrCreateLabel( installClient, owner, repo, peqHumanLabelName,
 }
 
 
-async function createIssue( installClient, owner, repo, title, labels )
+async function createIssue( installClient, owner, repo, title, labels, allocation )
 {
     let issueData = [-1,-1];  // issue id, num
+
+    let body = "";
+    if( allocation ) {
+	body  = "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
+	body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"
+	body += "It is safe to filter this out of your issues list.\n\n";
+	body += "It is NOT safe to close, reopen, or edit this issue.";
+    }
     
     // NOTE: will see several notifications are pending here, like issue:open, issue:labelled
-    await( installClient[0].issues.create( { owner: owner, repo: repo, title: title, labels: labels } ))
+    await( installClient[0].issues.create( { owner: owner, repo: repo, title: title, labels: labels, body: body } ))
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
@@ -247,7 +304,7 @@ async function createIssue( installClient, owner, repo, title, labels )
 // Would be soooo much better if Octokit/Github had reverse link from issue to card.
 // newborn issues not populated.  newborn cards not populated.  Just linkages.
 // XXX something like this really needs graphQL
-async function populateCEProjects( installClient, owner, repo, fullName )
+async function populateCELinkage( installClient, owner, repo, fullName )
 {
     let alreadyDone = await utils.checkPopulated( installClient[1], fullName );
     if( alreadyDone ) { return false; }
@@ -318,6 +375,7 @@ async function populateCEProjects( installClient, owner, repo, fullName )
     }
     // console.log( "Trips", trips );
 
+    // XXX may not be necessary
     // Eliminate trips where cardId already exists
     // Note: this is largely overkill, since 99% of the time this will be done before serious use of CE starts.
     let idsOnly = trips.map((trip) => trip[1] );
@@ -339,16 +397,32 @@ async function populateCEProjects( installClient, owner, repo, fullName )
     // Add issueId to each trip, to complete linkage pkey and enable typical usage pattern
     let lPromises = [];
     for( const trip of trips ) {
-	let newLink = trip;
 	lPromises.push( getIssue( installClient, owner, repo, trip[2] )
 			.then((issue) => [ trip[0], trip[1], trip[2], issue[0] ] ));
     }
     let linkage = await Promise.all( lPromises );
-    // await Promise.all( lPromises )
-    // 	.then((newLink) => linkage = newLink );
     console.log( "linkages", linkage );
 		      
     await utils.populateIssueCards( fullName, linkage );
+
+    // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
+    // Resolve here to split those up.  Normally, would then worry about first time users being confused about
+    // why the new peq label applied to their 1:m issue, only 'worked' for one card.
+    // But, populate will be run from ceFlutter, separately from actual label notification.
+    let pd = {};
+    pd.GHOwner    = owner;
+    pd.GHRepo     = repo;
+    pd.peqType    = "end";
+
+    let rPromises = [];
+    for( const trip of trips ) {
+	pd.GHIssueId  = issueId;
+	pd.GHIssueNum = issueNum;
+	console.log( "Start resolve for", trip );
+	rPromises.push( utils.resolve( installClient, pd, false ) );
+    }
+    await Promise.all( rPromises );
+    
     await utils.setPopulated( installClient[1], fullName );
     return true;
 }
@@ -575,7 +649,7 @@ async function getProjectName( installClient, projId ) {
 }
 
 async function getColumnName( installClient, colId ) {
-
+    
     let column = await( installClient[0].projects.getColumn({ column_id: colId }))
 	.catch( e => {
 	    console.log( installClient[1], "Get Column failed.", e );
@@ -585,31 +659,27 @@ async function getColumnName( installClient, colId ) {
     return column['data']['name'];
 }
 
-// XXX app will need to allow moving unallocated around - will be lots of misses.
-// If Master has already been created, with sub projects, then aws lookup will work.
-// If not, then neither aws nor GH lookup will work, since project layout will probably not be valid
-// Safer from aws as well - known if need to be unallocated
+// This needs to occur after linkage is overwritten.
+// Provide good subs no matter if using Master project indirection, or flat projects.
 async function getProjectSubs( installClient, repoName, projName, colName ) {
-    let projSub = [ "Unallocated" ];  // XXX config
+    let projSub = [ "Unallocated" ];  // Should not occur.
 
     console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
-    
-    if( projName == config.MAIN_PROJ ) {
-	if( colName == "" ) { return projSub; }
-	projSub = [ colName ];
-    }
+	
+    if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
-	// e.g. projName = 'codeEquity web front end', which should be found in Master as a card
-	// Note - Sub: card names are stored without "Sub: "
-	console.log( installClient[1], "Find card", projName );
+	// Check if project is a card in Master
 	let card = await( utils.getFromCardName( installClient[1], repoName, config.MAIN_PROJ, projName ));   
 	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
+	else             { projSub = [ projName ]; }
+
+	// If col isn't a CE organizational col, add to psub
+	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
     }
+	    
     console.log( "... returning", projSub.toString() );
     return projSub;
 }
-
-
 
 function getAllocated( content ) {
     let res = false;
@@ -626,8 +696,8 @@ function getAllocated( content ) {
 
 
 // Allow:
-//  <allocated, PEQ: 1000>
-//  <allocated, PEQ: 1,000>
+//  <allocation, PEQ: 1000>
+//  <allocation, PEQ: 1,000>
 //  <PEQ: 1000>
 //  <PEQ: 1,000>
 function parsePEQ( content, allocation ) {
@@ -666,15 +736,21 @@ function parsePEQ( content, allocation ) {
     return peqValue;
 }
 
-// no commas, no shorthand, just like this:  'PEQ value: 500'
+// no commas, no shorthand, just like this:  'PEQ value: 500'  or 'Allocation PEQ value: 30000'
 function parseLabelDescr( labelDescr ) {
     let peqValue = 0;
-    let descLen = config.PDESC.length;
+    let pDescLen = config.PDESC.length;
+    let aDescLen = config.ADESC.length;
 
     for( const line of labelDescr ) {
 	if( line.indexOf( config.PDESC ) == 0 ) {
-	    console.log( "Found peq val in", line.substring( descLen ) );
-	    peqValue = parseInt( line.substring( descLen ) );
+	    console.log( "Found peq val in", line.substring( pDescLen ) );
+	    peqValue = parseInt( line.substring( pDescLen ) );
+	    break;
+	}
+	else if( line.indexOf( config.ADESC ) == 0 ) {
+	    console.log( "Found peq val in", line.substring( aDescLen ) );
+	    peqValue = parseInt( line.substring( aDescLen ) );
 	    break;
 	}
     }

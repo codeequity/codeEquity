@@ -55,24 +55,24 @@ Resources:
         Type: String
 
   # provisioned throughput set to PAY_PER_REQUEST, same as simpletable
-  ProjectTable:
+  LinkageTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
-      TableName: CEProjects
+      TableName: CELinkage
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         -
           AttributeName: GHIssueId
           AttributeType: S
         -
-          AttributeName: GHRepo
+          AttributeName: GHCardId
           AttributeType: S
       KeySchema:
         -
           AttributeName: GHIssueId
           KeyType: HASH
         -
-          AttributeName: GHRepo
+          AttributeName: GHCardId
           KeyType: RANGE
 
   AgreementTable:
@@ -188,7 +188,7 @@ Resources:
               Authorizer: CodeEquitySec
       Policies:
        - DynamoDBCrudPolicy:
-          TableName: !Ref ProjectTable 
+          TableName: !Ref LinkageTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PersonTable
        - DynamoDBCrudPolicy:

@@ -61,39 +61,47 @@ async function handler( action, repo, owner, reqBody, res ) {
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
 	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_ACCR
 	// ... but it if is situated already, adding a second peq label is ignored.
+	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only 
 	
 	peqValue = gh.theOnePEQ( reqBody['issue']['labels'] );
 	if( peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    return;
 	}
-	
+
 	// Was this a carded issue?  Get that card.  If populate not yet done, do it and try again.
-	let card = await( utils.getFromIssue( installClient[1], issueId ));
-	if( card == -1 ) {  
+	let links = await( utils.getIssueLinkage( installClient[1], issueId ));
+	assert( links == -1 || links.length == 1 );
+	let link = links == -1 ? links : links[0];
+	if( link == -1 ) {  
 	    console.log( "Card linkage not present in dynamo" );
 	    if( await( gh.populateCEProjects( installClient, owner, repo, fullName ) ) ) {  
-		card = await( utils.getFromIssue( installClient[1], issueId ));
+		links = await( utils.getIssueLinkage( installClient[1], issueId ));
+		link = links == -1 ? links : links[0];
 	    }
 	}
 
-	if( card == -1 ) {
+	if( link == -1 ) {
 	    console.log( "Newborn PEQ issue.  Create card in unclaimed" );
-	    // NOTE: newborn might have set project already... but not yet triage
 	    // Can't create card without column_id.  No project, or column_id without triage.
 	    // Create in proj:col UnClaimed:Unclaimed to maintain promise of linkage in dynamo.
-	    card = await( gh.createUnClaimedCard( installClient, owner, repo, issueId ) );
+	    let card = await( gh.createUnClaimedCard( installClient, owner, repo, issueId ) );
+	    link = {};
+	    link.GHCardId    = card.id
+	    link.GHColumnId  = card.column_url.split('/').pop();
+	    link.GHProjectId = card.project_url.split('/').pop();
+	    let issueURL = card.content_url.split('/');
+	    assert( issueURL.length > 0 );
+	    link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );
 	}
 
-	let issueURL = card['content_url'].split('/');
-	assert( issueURL.length > 0 );
-	let issueNum = parseInt( issueURL[issueURL.length - 1] );
-	console.log( "Ready to update Proj PEQ PAct with", card.id, issueNum );
+	console.log( "Ready to update Proj PEQ PAct, first linkage:", link.GHCardId, link.GHIssueNum );
 
 	let content = [];
 	content.push( reqBody['issue']['title'] );
 	content.push( config.PDESC + peqValue.toString() );
-	await utils.processNewPEQ( installClient, repo, owner, reqBody, content, creator, issueNum, issueId, card );
+
+	await utils.processNewPEQ( installClient, repo, owner, reqBody, content, creator, issueNum, issueId, link );
 	break;
     case 'unlabeled':
 	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  PROJ_PEND is OK, since could just demote to PROG/PLAN

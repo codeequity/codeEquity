@@ -13,6 +13,12 @@ const NO_CONTENT = {
 		headers: { 'Access-Control-Allow-Origin': '*' }
 	    };
 
+const BAD_SEMANTICS = {
+		statusCode: 422,
+		body: JSON.stringify( "---" ),
+		headers: { 'Access-Control-Allow-Origin': '*' }
+	    };
+
 // Because we're using a Cognito User Pools authorizer, all of the claims
 // included in the authentication token are provided in the request context.
 // This includes the username as well as other attributes.
@@ -44,11 +50,13 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.icLink ); }
+    else if( endPoint == "DeleteLinkage")  { resultPromise = delLinkage( rb.GHIssueId, rb.GHCardId ); }
     else if( endPoint == "RecordBaseGH")   { resultPromise = putBaseGHC( rb.icLinks ); }
     else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.icLink ); }
     else if( endPoint == "UpdateGHCardFID") { resultPromise = updateGHCid( rb.GHRepo, rb.GHCardId, rb.GHColumnId, rb.GHColumnName ); }
     else if( endPoint == "CheckSetGHPop")  { resultPromise = checkSetGHPop( rb.GHRepo, rb.Set ); }
     else if( endPoint == "GetExistCardIds") { resultPromise = getExistGHC( rb.GHRepo, rb.GHCardIds ); }
+    else if( endPoint == "GetLinkages")    { resultPromise = getLinkages( rb.GHIssueId ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
@@ -60,7 +68,6 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
     else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
-    else if( endPoint == "GetAgreements")  { resultPromise = getAgreements( username ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood", context.awsRequestId));
 	return;
@@ -194,7 +201,7 @@ async function getEntry( tableName, query ) {
     case "CEPeople":
 	props = ["PersonId", "UserName", "Email", "First", "Last"];
 	break;
-    case "CEProjects":
+    case "CELinkage":
 	props = [ "GHIssueId", "GHRepo", "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
 	break;
     case "CEPEQs":
@@ -223,11 +230,9 @@ async function getEntry( tableName, query ) {
     let daPromise = bsdb.scan( params ).promise();
     return daPromise.then((entry) => {
 	// if this is false, consider pagination for this specific query
-	assert( entry.Count < 2 );
-	if( entry.Count == 1 ) {
-	    return success( entry.Items[0] );
-	}
-	else { return NO_CONTENT; }
+	if( entry.Count == 1 )     { return success( entry.Items[0] ); }
+	else if( entry.Count > 1 ) { return BAD_SEMANTICS; }
+	else                       { return NO_CONTENT; }
     });
 }
 
@@ -268,7 +273,7 @@ async function getCEUID( ghUser ) {
 
 async function getGHIdFromCard( repo, cardId ) {
     const paramsP = {
-        TableName: 'CEProjects',
+        TableName: 'CELinkage',
         FilterExpression: 'GHCardId = :cid AND GHRepo = :repo',
         ExpressionAttributeValues: { ":cid": cardId, ":repo": repo }
     };
@@ -331,7 +336,7 @@ async function getExistGHC( repo, cardIds ) {
     let promises = [];
     cardIds.forEach( function (cardId) {
 	const params = {
-            TableName: 'CEProjects',
+            TableName: 'CELinkage',
             FilterExpression: 'GHCardId = :cid AND GHRepo = :repo',
             ExpressionAttributeValues: { ":repo": repo, ":cid": cardId.toString() }
 	};
@@ -352,7 +357,7 @@ async function getExistGHC( repo, cardIds ) {
 async function putGHC( icLink ) {
 
     const params = {
-        TableName: 'CEProjects',
+        TableName: 'CELinkage',
 	Item: {
 	    "GHIssueId":   icLink.GHIssueId,
 	    "GHRepo":      icLink.GHRepo,
@@ -362,12 +367,23 @@ async function putGHC( icLink ) {
 	    "GHColumnId":  icLink.GHColumnId,
 	    "GHColumnName": icLink.GHColumnName,
 	    "GHCardId":    icLink.GHCardId,
-	    "GHCardTitle": icLink.GHCardTitle,
+	    "GHCardTitle": icLink.GHCardTitle
 	}
     };
 
     let recPromise = bsdb.put( params ).promise();
     return recPromise.then(() =>success( true ));
+}
+
+async function delLinkage( issueId, cardId ) {
+
+    const params = {
+        TableName: 'CELinkage',
+	Key: {"GHIssueId": issueId, "GHCardId": cardId }
+    };
+
+    let promise = bsdb.delete( params ).promise();
+    return promise.then(() =>success( true ));
 }
 
 
@@ -379,7 +395,7 @@ async function putBaseGHC( icLinks ) {
 
     icLinks.forEach( function (icLink) {
 	const params = {
-            TableName: 'CEProjects',
+            TableName: 'CELinkage',
 	    Item: {
 		"GHIssueId":     icLink.GHIssueId,
 		"GHRepo":        icLink.GHRepo,
@@ -411,7 +427,7 @@ async function updateGHC( icLink ) {
     assert( updateVals.length == 2 );
 
     let params = {};
-    params.TableName                  = 'CEProjects';
+    params.TableName                  = 'CELinkage';
     params.Key                        = {"GHIssueId": icLink.GHIssueId, "GHRepo": icLink.GHRepo };
     params.UpdateExpression           = updateVals[0];
     params.ExpressionAttributeValues  = updateVals[1];
@@ -429,7 +445,7 @@ async function updateGHCid( repo, cardId, columnId, columnName ) {
     console.log( "Updating by key", issueId, columnId );
 
     const params = {
-	TableName: 'CEProjects',
+	TableName: 'CELinkage',
 	Key: {"GHIssueId": issueId, "GHRepo": repo },
 	UpdateExpression: 'set GHColumnId = :colId, GHColumnName = :colName',
 	ExpressionAttributeValues: { ':colId': columnId, ':colName': columnName }};
@@ -505,6 +521,18 @@ async function putPAct( newPAction ) {
     return promise.then(() =>success( newId ));
 }
 
+async function getLinkages( ghIssueId ) {
+    const params = { TableName: 'CELinkage', Limit: 99, };
+
+    params.FilterExpression = 'GHIssueId = :ghIssueId';
+    params.ExpressionAttributeValues = { ":ghIssueId": ghIssueId };
+
+    let promise = paginatedScan( params );
+    return promise.then((links) => {
+	console.log( "Found links ", links );
+	return success( links );
+    });
+}
 
 // XXX Slow
 // Get all for uid, app can figure out whether or not to sort by associated ghUser
@@ -780,14 +808,6 @@ async function putGHA( newGHAcct ) {
     return success( updated );
 }
 
-// XXX Placeholder
-async function getAgreements( username ) {
-    return success( true );
-}
-
-
-
-
 function errorResponse(status, errorMessage, awsRequestId) {
     return {
 	statusCode: status, 
@@ -798,6 +818,3 @@ function errorResponse(status, errorMessage, awsRequestId) {
 	headers: { 'Access-Control-Allow-Origin': '*' }
     };
 }
-
-
-
