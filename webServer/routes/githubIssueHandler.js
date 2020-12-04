@@ -70,11 +70,14 @@ async function handler( action, repo, owner, reqBody, res ) {
 	}
 
 	// Was this a carded issue?  Get that card.  If populate not yet done, do it and try again.
-	let link = await( utils.getIssueLinkage( installClient[1], issueId ));
+	let links = await( utils.getIssueLinkage( installClient[1], issueId ));
+	assert( links == -1 || links.length == 1 );
+	let link = links == -1 ? links : links[0];
 	if( link == -1 ) {  
 	    console.log( "Card linkage not present in dynamo" );
 	    if( await( gh.populateCEProjects( installClient, owner, repo, fullName ) ) ) {  
-		link = await( utils.getIssueLinkage( installClient[1], issueId ));
+		links = await( utils.getIssueLinkage( installClient[1], issueId ));
+		link = links == -1 ? links : links[0];
 	    }
 	}
 

@@ -36,6 +36,14 @@ var githubUtils = {
 	return getIssue( installClient, owner, repo, issueNum );
     },
 
+    getFullIssue: function( installClient, owner, repo, issueNum ) {
+	return getFullIssue( installClient, owner, repo, issueNum );
+    },
+
+    splitIssue: function( installClient, owner, repo, issue, splitTag ) {
+	return splitIssue( installClient, owner, repo, issue, splitTag );
+    }
+
     updateIssue: function( installClient, owner, repo, issueNum, newState ) {
 	return updateIssue( installClient, owner, repo, issueNum, newState );
     },
@@ -121,6 +129,8 @@ async function checkIssueExists( installClient, owner, repo, title )
     return retVal;
 }
 
+// Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
+// there are no assignees for card-created issues.. they are added, or created directly from issues.
 async function getAssignees( installClient, owner, repo, issueNum )
 {
     let retVal = [];
@@ -142,27 +152,67 @@ async function getAssignees( installClient, owner, repo, issueNum )
     return retVal;
 }
 
+// [id, content]
 async function getIssue( installClient, owner, repo, issueNum )
 {
-    let retIssue = [];
-    let retVal = [];
     if( issueNum == -1 ) { return retVal; }
-
-    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
-	.then( issue => {
-	    retIssue.push( issue['data']['id'] );
-	    retVal.push( issue['data']['title'] );
-	    if( issue['data']['labels'].length > 0 ) {
-		for( label of issue['data']['labels'] ) {
-		    retVal.push( label['description'] );
-		}
-	    }
-	})
-	.catch( e => {
-	    console.log( installClient[1], "Problem in getIssueContent", e );
-	});
+    
+    let issue = await getFullIssue( installClient, owner, repo, issueNum ); 
+    let retIssue = [];
+    let retVal   = [];
+    
+    retIssue.push( issue.id );
+    retVal.push( issue.title );
+    if( issue.labels.length > 0 ) {
+	for( label of issue.labels ) { retVal.push( label['description'] ); }
+    }
     retIssue.push( retVal );
     return retIssue;
+}
+
+async function getFullIssue( installClient, owner, repo, issueNum )
+{
+    if( issueNum == -1 ) { return retVal; }
+    let retIssue = "";
+
+    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+	.then( issue => { retIssue = issue['data']; })
+	.catch( e => { console.log( installClient[1], "Problem in getIssueContent", e ); });
+    
+    return retIssue;
+}
+
+async function splitIssue( installClient, owner, repo, issue, splitTag ) {
+
+    let issueData = [-1,-1];  // issue id, num
+    let title = issue.title + " split: " + splitTag;
+    
+    await( installClient[0].issues.create( {
+	owner:     owner,
+	repo:      repo,
+	title:     title,
+	body:      issue.body,
+	milestone: issue.milestone,
+	labels:    issue.labels,
+	assignees: issue.assignees
+    } ))
+	.then( issue => {
+	    issueData[0] = issue['data']['id'];
+	    issueData[1] = issue['data']['number'];
+	})
+	.catch( e => {
+	    console.log( installClient[1], "Create issue failed.", e );
+	});
+
+    let comment = "CodeEquity duplicated this new issue from " + issue.id.toString() + " on " + getToday().toString();
+    comment += " in order to maintain a 1:1 mapping between issues and cards."
+
+    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } )
+	   .catch( e => {
+	       console.log( installClient[1], "Create issue comment failed.", e );
+	   });
+
+    return issueData;
 }
 
 async function updateIssue( installClient, owner, repo, issueNum, newState ) {
@@ -325,6 +375,7 @@ async function populateCELinkage( installClient, owner, repo, fullName )
     }
     // console.log( "Trips", trips );
 
+    // XXX may not be necessary
     // Eliminate trips where cardId already exists
     // Note: this is largely overkill, since 99% of the time this will be done before serious use of CE starts.
     let idsOnly = trips.map((trip) => trip[1] );
@@ -346,16 +397,32 @@ async function populateCELinkage( installClient, owner, repo, fullName )
     // Add issueId to each trip, to complete linkage pkey and enable typical usage pattern
     let lPromises = [];
     for( const trip of trips ) {
-	let newLink = trip;
 	lPromises.push( getIssue( installClient, owner, repo, trip[2] )
 			.then((issue) => [ trip[0], trip[1], trip[2], issue[0] ] ));
     }
     let linkage = await Promise.all( lPromises );
-    // await Promise.all( lPromises )
-    // 	.then((newLink) => linkage = newLink );
     console.log( "linkages", linkage );
 		      
     await utils.populateIssueCards( fullName, linkage );
+
+    // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
+    // Resolve here to split those up.  Normally, would then worry about first time users being confused about
+    // why the new peq label applied to their 1:m issue, only 'worked' for one card.
+    // But, populate will be run from ceFlutter, separately from actual label notification.
+    let pd = {};
+    pd.GHOwner    = owner;
+    pd.GHRepo     = repo;
+    pd.peqType    = "end";
+
+    let rPromises = [];
+    for( const trip of trips ) {
+	pd.GHIssueId  = issueId;
+	pd.GHIssueNum = issueNum;
+	console.log( "Start resolve for", trip );
+	rPromises.push( utils.resolve( installClient, pd, false ) );
+    }
+    await Promise.all( rPromises );
+    
     await utils.setPopulated( installClient[1], fullName );
     return true;
 }

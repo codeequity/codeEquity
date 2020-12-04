@@ -50,6 +50,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.icLink ); }
+    else if( endPoint == "DeleteLinkage")  { resultPromise = delLinkage( rb.GHIssueId, rb.GHCardId ); }
     else if( endPoint == "RecordBaseGH")   { resultPromise = putBaseGHC( rb.icLinks ); }
     else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.icLink ); }
     else if( endPoint == "UpdateGHCardFID") { resultPromise = updateGHCid( rb.GHRepo, rb.GHCardId, rb.GHColumnId, rb.GHColumnName ); }
@@ -372,6 +373,17 @@ async function putGHC( icLink ) {
 
     let recPromise = bsdb.put( params ).promise();
     return recPromise.then(() =>success( true ));
+}
+
+async function delLinkage( issueId, cardId ) {
+
+    const params = {
+        TableName: 'CELinkage',
+	Key: {"GHIssueId": issueId, "GHCardId": cardId }
+    };
+
+    let promise = bsdb.delete( params ).promise();
+    return promise.then(() =>success( true ));
 }
 
 
