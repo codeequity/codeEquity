@@ -53,7 +53,6 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "DeleteLinkage")  { resultPromise = delLinkage( rb.GHIssueId, rb.GHCardId ); }
     else if( endPoint == "RecordBaseGH")   { resultPromise = putBaseGHC( rb.icLinks ); }
     else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.icLink ); }
-    else if( endPoint == "UpdateGHCardFID") { resultPromise = updateGHCid( rb.GHRepo, rb.GHCardId, rb.GHColumnId, rb.GHColumnName ); }
     else if( endPoint == "CheckSetGHPop")  { resultPromise = checkSetGHPop( rb.GHRepo, rb.Set ); }
     else if( endPoint == "GetExistCardIds") { resultPromise = getExistGHC( rb.GHRepo, rb.GHCardIds ); }
     else if( endPoint == "GetLinkages")    { resultPromise = getLinkages( rb.GHIssueId ); }
@@ -177,8 +176,6 @@ function buildConjScanParams( obj, props ) {
     return [filterExpr, attrVals];
 }
 
-
-
 async function setLock( pactId, lockVal ) {
     console.log( "Locking", pactId, lockVal );
 
@@ -251,6 +248,21 @@ async function getPersonId( username ) {
     });
 }
 
+async function getLinkageCardId( issueId ) {
+    const paramsP = {
+        TableName: 'CELinkage',
+        FilterExpression: 'GHIssueId = :issueId',
+        ExpressionAttributeValues: { ":issueId": issueId }
+    };
+
+    let promise = bsdb.scan( paramsP ).promise();
+    return promise.then((cards) => {
+	assert(cards.Count == 1 );
+	console.log( "Found CardId ", cards.Items[0].GHCardId );
+	return success( cards.Items[0].GHCardId );
+    });
+}
+
 async function getCEUID( ghUser ) {
     const params = {
         TableName: 'CEGithub',
@@ -268,21 +280,6 @@ async function getCEUID( ghUser ) {
 	    // may not be one yet
 	    return success( "" );
 	}
-    });
-}
-
-async function getGHIdFromCard( repo, cardId ) {
-    const paramsP = {
-        TableName: 'CELinkage',
-        FilterExpression: 'GHCardId = :cid AND GHRepo = :repo',
-        ExpressionAttributeValues: { ":cid": cardId, ":repo": repo }
-    };
-
-    let ghPromise = bsdb.scan( paramsP ).promise();
-    return ghPromise.then((ghc) => {
-	assert(ghc.Count == 1 );
-	console.log( "Found Id ", ghc.Items[0].GHIssueId );
-	return ghc.Items[0].GHIssueId;
     });
 }
 
@@ -360,13 +357,13 @@ async function putGHC( icLink ) {
         TableName: 'CELinkage',
 	Item: {
 	    "GHIssueId":   icLink.GHIssueId,
+	    "GHCardId":    icLink.GHCardId,
 	    "GHRepo":      icLink.GHRepo,
 	    "GHIssueNum":  icLink.GHIssueNum,
 	    "GHProjectId": icLink.GHProjectId,
 	    "GHProjectName": icLink.GHProjectName,
 	    "GHColumnId":  icLink.GHColumnId,
 	    "GHColumnName": icLink.GHColumnName,
-	    "GHCardId":    icLink.GHCardId,
 	    "GHCardTitle": icLink.GHCardTitle
 	}
     };
@@ -386,8 +383,6 @@ async function delLinkage( issueId, cardId ) {
     return promise.then(() =>success( true ));
 }
 
-
-// XXX this should not be called any longer - pkey is dead
 async function putBaseGHC( icLinks ) {
     const empty = "-1";
     const emptyName = "---";
@@ -398,13 +393,13 @@ async function putBaseGHC( icLinks ) {
             TableName: 'CELinkage',
 	    Item: {
 		"GHIssueId":     icLink.GHIssueId,
+		"GHCardId":      icLink.GHCardId,
 		"GHRepo":        icLink.GHRepo,
 		"GHIssueNum":    icLink.GHIssueNum,
 		"GHProjectId":   icLink.GHProjectId,
 		"GHProjectName": emptyName,
 		"GHColumnId":    empty,
 		"GHColumnName":  emptyName,
-		"GHCardId":      icLink.GHCardId,
 		"GHCardTitle":   emptyName,
 	    }
 	};
@@ -420,36 +415,24 @@ async function putBaseGHC( icLinks ) {
 
 async function updateGHC( icLink ) {
 
-    console.log( "Updating linkage", icLink.GHRepo, icLink.GHIssueId );
+    console.log( "Updating linkage", icLink.GHIssueId, icLink.GHCardId );
 
     let props = [ "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
     let updateVals = buildUpdateParams( icLink, props );
     assert( updateVals.length == 2 );
 
+    // 1:1 mapping after populate/resolve, plus operating on a peq issue should
+    // guarantee that issueId is unique. 
+    if( icLink.GHCardId == -1 ) { icLink.GHCardId = await getLinkageCardId( icLink.issueId ); }
+    
     let params = {};
     params.TableName                  = 'CELinkage';
-    params.Key                        = {"GHIssueId": icLink.GHIssueId, "GHRepo": icLink.GHRepo };
+    params.Key                        = {"GHIssueId": icLink.GHIssueId, "GHCardId": icLink.GHCardId };
     params.UpdateExpression           = updateVals[0];
     params.ExpressionAttributeValues  = updateVals[1];
 
     // console.log( params );
 	
-    let uPromise = bsdb.update( params ).promise();
-    return uPromise.then(() => success( true ));
-}
-
-
-async function updateGHCid( repo, cardId, columnId, columnName ) {
-
-    const issueId  = await getGHIdFromCard( repo, cardId );
-    console.log( "Updating by key", issueId, columnId );
-
-    const params = {
-	TableName: 'CELinkage',
-	Key: {"GHIssueId": issueId, "GHRepo": repo },
-	UpdateExpression: 'set GHColumnId = :colId, GHColumnName = :colName',
-	ExpressionAttributeValues: { ':colId': columnId, ':colName': columnName }};
-    
     let uPromise = bsdb.update( params ).promise();
     return uPromise.then(() => success( true ));
 }
@@ -530,7 +513,8 @@ async function getLinkages( ghIssueId ) {
     let promise = paginatedScan( params );
     return promise.then((links) => {
 	console.log( "Found links ", links );
-	return success( links );
+	if( links.length == 0 ) { return NO_CONTENT; }
+	else                    { return success( links ); }
     });
 }
 

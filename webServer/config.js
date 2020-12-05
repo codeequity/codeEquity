@@ -28,8 +28,8 @@ const ADESC    = 'Allocation ' + PDESC;
 
 const MAIN_PROJ = 'Master';
 
-const EMPTY    = '---';
-
+const EMPTY     = '---';
+const UNCLAIMED = 'UnClaimed';
 
 
 exports.CE_BOT    = CE_BOT;
@@ -52,6 +52,7 @@ exports.ADESC    = ADESC;
 
 exports.MAIN_PROJ = MAIN_PROJ;
 exports.EMPTY     = EMPTY;
+exports.UNCLAIMED = UNCLAIMED;
 
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
 exports.COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;

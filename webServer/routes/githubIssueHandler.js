@@ -75,7 +75,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	let link = links == -1 ? links : links[0];
 	if( link == -1 ) {  
 	    console.log( "Card linkage not present in dynamo" );
-	    if( await( gh.populateCEProjects( installClient, owner, repo, fullName ) ) ) {  
+	    if( await( gh.populateCELinkage( installClient, owner, repo, fullName ) ) ) {  
 		links = await( utils.getIssueLinkage( installClient[1], issueId ));
 		link = links == -1 ? links : links[0];
 	    }
@@ -149,15 +149,14 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    return;
 	}
 
-	// XXX validateCE and moveIssue both call getGHCard
-	
 	// Get array: [proj_id, col_idx4]
-	let ceProjectLayout = await gh.validateCEProjectLayout( installClient, issueId );
+	// XXX getLayout and moveIssue both call getGHCard
+	let ceProjectLayout = await gh.getCEProjectLayout( installClient, issueId );
 	if( ceProjectLayout[0] == -1 ) {
 	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	}
 	else {
-	    let success = await gh.moveIssueCard( installClient, owner, repo, fullName, issueId, action, ceProjectLayout ); 
+	    let success = await gh.moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
 	    if( success ) {
 		console.log( source, "Find & validate PEQ" );
 		let peqId = ( await( gh.validatePEQ( installClient, fullName, issueId, title, ceProjectLayout[0] )) )['PEQId'];
@@ -172,7 +171,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 		    if( action == "reopened" ) { verb = "reject"; }   // XXX this will not be seen!!
 		    
 		    let subject = [ peqId.toString() ];
-		    await( utils.recordPEQAction(
+		    utils.recordPEQAction(
 			source,
 			config.EMPTY,     // CE UID
 			sender,           // gh user name
@@ -183,7 +182,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 			"",               // note
 			utils.getToday(), // entryDate
 			reqBody           // raw
-		    ));
+		    );
 		}
 	    }
 	    else { console.log( "Unable to complete move of issue card.  No action taken" ); }

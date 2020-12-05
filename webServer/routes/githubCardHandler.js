@@ -87,6 +87,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     
     let creator = reqBody['project_card']['creator']['login'];
     let sender  = reqBody['sender']['login'];
+    let fullName  = reqBody['repository']['full_name'];
     console.log( "Got Card.  Creator:", creator, "Sender:", sender );
     // console.log( "note", reqBody['project_card']['note'] );
     
@@ -103,7 +104,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     await gh.checkRateLimit(installClient);
 
     if( action == "created" && reqBody['project_card']['content_url'] != null ) {
-	// In issues, add to project, triage to add to column.  May or may not be PEQ.
+	// In issues, add to project, triage to add to column.  May or may not be PEQ.  
 	console.log( "new card created from issue" );
 
 	// e.g. content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
@@ -111,8 +112,10 @@ async function handler( action, repo, owner, reqBody, res ) {
 	assert( issueURL.length > 0 );
 	let issueNum = parseInt( issueURL[issueURL.length - 1] );
 	let issue = await gh.getIssue( installClient, owner, repo, issueNum );   // [ id, [content] ]
-
 	console.log( "Found issue:", issueNum.toString(), issue[1] );
+
+	// Is underlying issue already linked to unclaimed?  if so, remove it.
+	await gh.cleanUnclaimed( installClient, owner, repo, creator, fullName, issue[0] );
 	await utils.processNewPEQ( installClient, repo, owner, reqBody, issue[1], creator, issueNum, issue[0], -1 ); 
     }
     else if( action == "created" ) {
@@ -147,7 +150,6 @@ async function handler( action, repo, owner, reqBody, res ) {
 	let oldColId  = reqBody['changes']['column_id']['from'];
 	let newColId  = reqBody['project_card']['column_id'];
 	let newProjId = reqBody['project_card']['project_url'].split('/').pop();
-	let fullName  = reqBody['repository']['full_name'];
 	
 	// First, verify current status
 	// XXX This chunk could be optimized out, down the road
@@ -156,14 +158,14 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    console.log( "Moved card not processed, could not find the card id", cardId );
 	    return;
 	}
-	// XXX could have limbo card/issue, in which case do not perform actions below
 	
 	let issueId = card['GHIssueId'];
 	let oldNameIndex = config.PROJ_COLS.indexOf( card['GHColumnName'] );
 	assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.
 	assert( cardId       == card['GHCardId'] );
 	assert( oldColId     == card['GHColumnId'] );
-	assert( issueId == -1 || oldNameIndex != -1 );                // likely allocation, or known project layout
+	// XXX This was pre-flat projects.  chunk below is probably bad
+	// assert( issueId == -1 || oldNameIndex != -1 );                // likely allocation, or known project layout
 	assert( newProjId     == card['GHProjectId'] );               // not yet supporting moves between projects
 
 	// reflect card move in dynamo, if move is legal
@@ -178,7 +180,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 		return;
 	    }
 	}
-	let success = await( utils.updateCardFromCardId( installClient[1], fullName, cardId, newColId, newColName )) 
+	let success = await( utils.updateLinkage( installClient[1], issueId, cardId, newColId, newColName )) 
 	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
 	
 	// handle issue
