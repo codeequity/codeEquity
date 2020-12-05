@@ -4,6 +4,7 @@ var ghUtils = require('../ghUtils');
 var config  = require('../config');
 var assert = require('assert');
 const auth = require( "../auth");
+const peqData = require( '../peqData' );
 
 var gh = ghUtils.githubUtils;
 
@@ -33,29 +34,31 @@ async function handler( action, repo, owner, reqBody, res ) {
     //       project_card:created notification after submit, then projects:triage to pick column.
 
     // Sender is the event generator.  Issue:user is ... the original creator of the issue?
-    // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
     let sender   = reqBody['sender']['login'];
-    let creator  = reqBody['issue']['user']['login'];
-    let title    = (reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
-    let fullName = reqBody['repository']['full_name'];
-    
-    console.log( "Got issue, sender:", sender, "action", action );
-    console.log( "title:", title );
+    console.log( "title:", reqBody['issue']['title'] );
 
     if( sender == config.CE_BOT ) {
 	console.log( "Bot issue.. taking no action" );
 	return;
     }
 
+    // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
+    let pd = new peqData.PeqData();
+    pd.GHOwner      = owner;
+    pd.GHRepo       = repo;
+    pd.reqBody      = reqBody;
+    pd.GHIssueId    = reqBody['issue']['id'];
+    pd.GHCreator    = reqBody['issue']['user']['login'];
+    pd.GHIssueTitle = (reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
+    pd.GHFullName   = reqBody['repository']['full_name'];
+    
     // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( owner, repo );
+    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
     let source = "<ISS:"+action+"> ";
     let installClient = [token, source];
-    let issueId = reqBody['issue']['id'];
 
-    let peqValue = -1;
     await gh.checkRateLimit(installClient);
-
+    
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
@@ -63,20 +66,20 @@ async function handler( action, repo, owner, reqBody, res ) {
 	// ... but it if is situated already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only 
 	
-	peqValue = gh.theOnePEQ( reqBody['issue']['labels'] );
-	if( peqValue <= 0 ) {
+	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
+	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    return;
 	}
 
 	// Was this a carded issue?  Get that card.  If populate not yet done, do it and try again.
-	let links = await( utils.getIssueLinkage( installClient[1], issueId ));
+	let links = await( utils.getIssueLinkage( installClient[1], pd.GHIssueId ));
 	assert( links == -1 || links.length == 1 );
 	let link = links == -1 ? links : links[0];
 	if( link == -1 ) {  
-	    console.log( "Card linkage not present in dynamo" );
-	    if( await( gh.populateCEProjects( installClient, owner, repo, fullName ) ) ) {  
-		links = await( utils.getIssueLinkage( installClient[1], issueId ));
+	    // console.log( "Card linkage not present in dynamo" );
+	    if( await( gh.populateCELinkage( installClient, pd.GHOwner, pd.GHRepo, pd.GHFullName ) ) ) {  
+		links = await( utils.getIssueLinkage( installClient[1], pd.GHIssueId ));
 		link = links == -1 ? links : links[0];
 	    }
 	}
@@ -85,7 +88,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    console.log( "Newborn PEQ issue.  Create card in unclaimed" );
 	    // Can't create card without column_id.  No project, or column_id without triage.
 	    // Create in proj:col UnClaimed:Unclaimed to maintain promise of linkage in dynamo.
-	    let card = await( gh.createUnClaimedCard( installClient, owner, repo, issueId ) );
+	    let card = await( gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId ) );
 	    link = {};
 	    link.GHCardId    = card.id
 	    link.GHColumnId  = card.column_url.split('/').pop();
@@ -95,72 +98,71 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );
 	}
 
+	// XXX pd.updateFromLink( link );
 	console.log( "Ready to update Proj PEQ PAct, first linkage:", link.GHCardId, link.GHIssueNum );
 
 	let content = [];
-	content.push( reqBody['issue']['title'] );
-	content.push( config.PDESC + peqValue.toString() );
-
-	await utils.processNewPEQ( installClient, repo, owner, reqBody, content, creator, issueNum, issueId, link );
+	content.push( pd.GHIssueTitle );
+	content.push( config.PDESC + pd.peqValue.toString() );
+	await utils.processNewPEQ( installClient, pd, content, link );
 	break;
     case 'unlabeled':
 	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  PROJ_PEND is OK, since could just demote to PROG/PLAN
 	// Do not move card, would be confusing for user.
 
 	// Unlabel'd label data is not located under issue.. parseLabel looks in arrays
-	peqValue = gh.parseLabelDescr( [ reqBody['label']['description'] ] );
-	if( peqValue <= 0 ) {
+	pd.peqValue = gh.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
+	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    return;
 	}
 	// XXX Inform contributors that status is now UNTRACKED
 
 	console.log( "PEQ Issue unlabeled" );
-	utils.rebaseLinkage( fullName, issueId );   // setting various to -1, as it is now untracked
-	let peq = await utils.getPeq( installClient[1], issueId );	
+	utils.rebaseLinkage( pd.GHFullName, pd.GHIssueId );   // setting various to -1, as it is now untracked
+	let peq = await utils.getPeq( installClient[1], pd.GHIssueId );	
 	utils.recordPEQAction(
 	    installClient[1],
 	    config.EMPTY,     // CE UID
-	    creator,          // gh user name
-	    fullName,         // gh repo
+	    pd.GHCreator,          // gh user name
+	    pd.GHFullName,         // gh pd.GHRepo
 	    "confirm",        // verb
 	    "delete",         // action
 	    [ peq.PEQId ],    // subject
 	    "unlabel",        // note
 	    utils.getToday(), // entryDate
-	    reqBody           // raw
+	    pd.reqBody           // raw
 	);
 	
 	break;
     case 'edited':
 	// XXX what happens to push this notice?
-	await( utils.recordPEQTodo( title, peqValue ));
+	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
     case 'deleted':
 	// XXX if peq, confirm:delete    similar to unlabel?
-	await( utils.recordPEQTodo( title, peqValue ));
+	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
 	break;
     case 'closed':
     case 'reopened':
 	console.log( "closed or reopened" );
 
-	peqValue = gh.theOnePEQ( reqBody['issue']['labels'] );
-	if( peqValue <= 0 ) {
+	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
+	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    return;
 	}
 
-	// XXX validateCE and moveIssue both call getGHCard
-	
 	// Get array: [proj_id, col_idx4]
-	let ceProjectLayout = await gh.validateCEProjectLayout( installClient, issueId );
+	// XXX getLayout and moveIssue both call getGHCard
+	let ceProjectLayout = await gh.getCEProjectLayout( installClient, pd.GHIssueId );
 	if( ceProjectLayout[0] == -1 ) {
 	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	}
 	else {
-	    let success = await gh.moveIssueCard( installClient, owner, repo, fullName, issueId, action, ceProjectLayout ); 
+	    let success = await gh.moveIssueCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId, action, ceProjectLayout ); 
 	    if( success ) {
 		console.log( source, "Find & validate PEQ" );
-		let peqId = ( await( gh.validatePEQ( installClient, fullName, issueId, title, ceProjectLayout[0] )) )['PEQId'];
+		let peqId = ( await( gh.validatePEQ( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
 		if( peqId == -1 ) {
 		    console.log( source, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		}
@@ -172,18 +174,18 @@ async function handler( action, repo, owner, reqBody, res ) {
 		    if( action == "reopened" ) { verb = "reject"; }   // XXX this will not be seen!!
 		    
 		    let subject = [ peqId.toString() ];
-		    await( utils.recordPEQAction(
+		    utils.recordPEQAction(
 			source,
 			config.EMPTY,     // CE UID
 			sender,           // gh user name
-			fullName,         // gh repo
+			pd.GHFullName,         // gh repo
 			verb,
 			action,
 			subject,          // subject
 			"",               // note
 			utils.getToday(), // entryDate
-			reqBody           // raw
-		    ));
+			pd.reqBody           // raw
+		    );
 		}
 	    }
 	    else { console.log( "Unable to complete move of issue card.  No action taken" ); }
@@ -192,7 +194,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     case 'transferred':
 	// XXX Need to handle confirm add/delete here if peq
 	//     Optionally, revisit and try to handle xfer automatically if between PEQ projects.
-	await( utils.recordPEQTodo( title, peqValue ));
+	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
 	break;
     case 'assigned':
 	// XXX

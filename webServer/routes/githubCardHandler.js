@@ -4,6 +4,7 @@ var config  = require('../config');
 var ghUtils = require('../ghUtils');
 var assert = require('assert');
 const auth = require( "../auth");
+const peqData = require( '../peqData' );
 
 var gh = ghUtils.githubUtils;
 
@@ -85,48 +86,54 @@ async function handler( action, repo, owner, reqBody, res ) {
 
     // Actions: created, deleted, moved, edited, converted
     
-    let creator = reqBody['project_card']['creator']['login'];
     let sender  = reqBody['sender']['login'];
-    console.log( "Got Card.  Creator:", creator, "Sender:", sender );
-    // console.log( "note", reqBody['project_card']['note'] );
-    
     if( sender == config.CE_BOT) {
 	console.log( "Bot card, skipping." );
 	return;
     }
 
+    let pd = new peqData.PeqData();
+    pd.GHOwner      = owner;
+    pd.GHRepo       = repo;
+    pd.reqBody      = reqBody;
+    pd.GHCreator    = reqBody['project_card']['creator']['login'];
+    pd.GHFullName   = reqBody['repository']['full_name'];
+    
     // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( owner, repo );
+    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
     let source = "<CAR:"+action+"> ";
     let installClient = [token, source];
 
     await gh.checkRateLimit(installClient);
 
-    if( action == "created" && reqBody['project_card']['content_url'] != null ) {
-	// In issues, add to project, triage to add to column.  May or may not be PEQ.
+    if( action == "created" && pd.reqBody['project_card']['content_url'] != null ) {
+	// In issues, add to project, triage to add to column.  May or may not be PEQ.  
 	console.log( "new card created from issue" );
 
 	// e.g. content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
-	let issueURL = reqBody['project_card']['content_url'].split('/');
+	let issueURL = pd.reqBody['project_card']['content_url'].split('/');
 	assert( issueURL.length > 0 );
-	let issueNum = parseInt( issueURL[issueURL.length - 1] );
-	let issue = await gh.getIssue( installClient, owner, repo, issueNum );   // [ id, [content] ]
+	pd.GHIssueNum = parseInt( issueURL[issueURL.length - 1] );
+	let issue = await gh.getIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );   // [ id, [content] ]
+	pd.GHIssueId = issue[0];
+	console.log( "Found issue:", pd.GHIssueNum.toString(), issue[1] );
 
-	console.log( "Found issue:", issueNum.toString(), issue[1] );
-	await utils.processNewPEQ( installClient, repo, owner, reqBody, issue[1], creator, issueNum, issue[0], -1 ); 
+	// Is underlying issue already linked to unclaimed?  if so, remove it.
+	await gh.cleanUnclaimed( installClient, pd );
+	await utils.processNewPEQ( installClient, pd, issue[1], -1 ); 
     }
     else if( action == "created" ) {
 	// In projects, creating a card that MAY have a human PEQ label in content.
 	console.log( "New card created, unattached" );
-	let cardContent = reqBody['project_card']['note'].split('\n');
+	let cardContent = pd.reqBody['project_card']['note'].split('\n');
 
 	// XXX This may be overly restrictive..?
-	if( await gh.checkIssueExists( installClient, owner, repo, cardContent[0] ) ) {
+	if( await gh.checkIssueExists( installClient, pd.GHOwner, pd.GHRepo, cardContent[0] ) ) {
 	    console.log( "Issue with same title already exists.  Do nothing." );
 	    return;
 	}
 
-	await utils.processNewPEQ( installClient, repo, owner, reqBody, cardContent, creator, -1, -1, -1 );
+	await utils.processNewPEQ( installClient, pd, cardContent, -1 );
     }
     else if( action == "converted" ) {
 	// Can only be non-PEQ.  Otherwise, would see created/content_url
@@ -134,36 +141,35 @@ async function handler( action, repo, owner, reqBody, res ) {
     }
     else if( action == "moved" ) {
 	// Note: Unclaimed card - try to uncheck it directly from column bar gives: cardHander move within same column.  Check stays.
-	//       Need to click on projects, then on repo, then can check/uncheck successfully.  Get cardHandler:card deleted
+	//       Need to click on projects, then on pd.GHRepo, then can check/uncheck successfully.  Get cardHandler:card deleted
 	// within gh project, move card from 1 col to another.  
 	console.log( installClient[1], "Card", action, "Sender:", sender )
 
-	if( reqBody['changes'] == null ) {
+	if( pd.reqBody['changes'] == null ) {
 	    console.log( installClient[1], "Move within columns are ignored." );
 	    return;
 	}
 
-	let cardId    = reqBody['project_card']['id'];
-	let oldColId  = reqBody['changes']['column_id']['from'];
-	let newColId  = reqBody['project_card']['column_id'];
-	let newProjId = reqBody['project_card']['project_url'].split('/').pop();
-	let fullName  = reqBody['repository']['full_name'];
+	let cardId    = pd.reqBody['project_card']['id'];
+	let oldColId  = pd.reqBody['changes']['column_id']['from'];
+	let newColId  = pd.reqBody['project_card']['column_id'];
+	let newProjId = pd.reqBody['project_card']['project_url'].split('/').pop();
 	
 	// First, verify current status
 	// XXX This chunk could be optimized out, down the road
-	let card = await( utils.getFromCardId( installClient[1], fullName, cardId ));  
+	let card = await( utils.getFromCardId( installClient[1], pd.GHFullName, cardId ));  
 	if( card == -1 ) {
 	    console.log( "Moved card not processed, could not find the card id", cardId );
 	    return;
 	}
-	// XXX could have limbo card/issue, in which case do not perform actions below
 	
 	let issueId = card['GHIssueId'];
 	let oldNameIndex = config.PROJ_COLS.indexOf( card['GHColumnName'] );
 	assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.
 	assert( cardId       == card['GHCardId'] );
 	assert( oldColId     == card['GHColumnId'] );
-	assert( issueId == -1 || oldNameIndex != -1 );                // likely allocation, or known project layout
+	// XXX This was pre-flat projects.  chunk below is probably bad
+	// assert( issueId == -1 || oldNameIndex != -1 );                // likely allocation, or known project layout
 	assert( newProjId     == card['GHProjectId'] );               // not yet supporting moves between projects
 
 	// reflect card move in dynamo, if move is legal
@@ -171,14 +177,14 @@ async function handler( action, repo, owner, reqBody, res ) {
 	let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	assert( issueId == -1 || newNameIndex != -1 );
 	if( newNameIndex > config.PROJ_PROG ) { 
-	    let assignees = await gh.getAssignees( installClient, owner, repo, card['GHIssueNum'] );
+	    let assignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, card['GHIssueNum'] );
 	    if( assignees.length == 0  ) {
 		console.log( "Update card failed - no assignees" );   // can't propose grant without a grantee
 		console.log( "XXX move card back by hand with ceServer off" );
 		return;
 	    }
 	}
-	let success = await( utils.updateCardFromCardId( installClient[1], fullName, cardId, newColId, newColName )) 
+	let success = await( utils.updateLinkage( installClient[1], issueId, cardId, newColId, newColName )) 
 	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
 	
 	// handle issue
@@ -187,16 +193,16 @@ async function handler( action, repo, owner, reqBody, res ) {
 	else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
 	
 	if( issueId > -1 && newIssueState != "" ) {
-	    success = success && await gh.updateIssue( installClient, owner, repo, card['GHIssueNum'], newIssueState );
+	    success = success && await gh.updateIssue( installClient, pd.GHOwner, pd.GHRepo, card['GHIssueNum'], newIssueState );
 	}
 
 	// recordPeq
-	recordMove( installClient, reqBody, fullName, oldNameIndex, newNameIndex, card );
+	recordMove( installClient, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, card );
     }
     else if( action == "deleted" || action == "edited" ) {
 	// Note, if action source is issue-delete, linked card is deleted first.  Watch recording.
 	// Note: Unclaimed card - try to uncheck it directly from column bar gives: cardHander move within same column.  Check stays.
-	//       Need to click on projects, then on repo, then can check/uncheck successfully.  Get cardHandler:card deleted
+	//       Need to click on projects, then on pd.GHRepo, then can check/uncheck successfully.  Get cardHandler:card deleted
 	console.log( "Card", action, "Recorded." )
 	await( utils.recordPEQTodo( "XXX TBD. Content may be from issue, or card." , -1 ));	
     }

@@ -36,13 +36,17 @@ var githubUtils = {
 	return getIssue( installClient, owner, repo, issueNum );
     },
 
+    getCard: function( installClient, cardId ) {
+	return getCard( installClient, cardId );
+    },
+
     getFullIssue: function( installClient, owner, repo, issueNum ) {
 	return getFullIssue( installClient, owner, repo, issueNum );
     },
 
     splitIssue: function( installClient, owner, repo, issue, splitTag ) {
 	return splitIssue( installClient, owner, repo, issue, splitTag );
-    }
+    },
 
     updateIssue: function( installClient, owner, repo, issueNum, newState ) {
 	return updateIssue( installClient, owner, repo, issueNum, newState );
@@ -56,14 +60,22 @@ var githubUtils = {
 	return createIssue( installClient, owner, repo, title, labels, allocation );
     },
 
-    createProjectCard: function( installClient, columnID, issueID, justId ) {
-	return createProjectCard( installClient, columnID, issueID, justId );
+    rebuildCard: function( installClient, owner, repo, colId, origCardId, issueData ) {
+	return rebuildCard( installClient, owner, repo, colId, origCardId, issueData );
+    },
+
+    createProjectCard: function( installClient, columnId, issueId, justId ) {
+	return createProjectCard( installClient, columnId, issueId, justId );
     },
 
     createUnClaimedCard: function( installClient, owner, repo, issueId ) {
 	return createUnClaimedCard( installClient, owner, repo, issueId );
     },
 
+    cleanUnclaimed: function( installClient, pd ) {
+	return cleanUnclaimed( installClient, pd );
+    },
+    
     populateCELinkage: function( installClient, owner, repo, fullName ) {
 	return populateCELinkage( installClient, owner, repo, fullName );
     },
@@ -76,8 +88,8 @@ var githubUtils = {
 	return validatePEQ( installClient, repo, issueId, title, projId );
     },
 
-    moveIssueCard: function( installClient, owner, repo, fullName, issueId, action, ceProjectLayout ) {
-	return moveIssueCard( installClient, owner, repo, fullName, issueId, action, ceProjectLayout ); 
+    moveIssueCard: function( installClient, owner, repo, issueId, action, ceProjectLayout ) {
+	return moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
     },
 
     getProjectName: function( installClient, projId ) {
@@ -96,7 +108,7 @@ var githubUtils = {
 
 async function checkRateLimit( installClient ) {
 
-    console.log( "Rate limit check currently off" );
+    // console.log( "Rate limit check currently off" );
     return;
     
     await( installClient[0].rateLimit.get())
@@ -182,8 +194,19 @@ async function getFullIssue( installClient, owner, repo, issueNum )
     return retIssue;
 }
 
-async function splitIssue( installClient, owner, repo, issue, splitTag ) {
+async function getCard( installClient, cardId ) {
+    let retCard = -1;
+    if( cardId == -1 ) { return retCard; }
+    
+    await( installClient[0].projects.getCard( { card_id: cardId } ))
+	.then((card) => {  retCard = card.data; } )
+	.catch( e => { console.log( installClient[1], "Get card failed.", e ); });
+    return retCard;
+}
 
+
+async function splitIssue( installClient, owner, repo, issue, splitTag ) {
+    console.log( "Split issue" );
     let issueData = [-1,-1];  // issue id, num
     let title = issue.title + " split: " + splitTag;
     
@@ -204,14 +227,14 @@ async function splitIssue( installClient, owner, repo, issue, splitTag ) {
 	    console.log( installClient[1], "Create issue failed.", e );
 	});
 
-    let comment = "CodeEquity duplicated this new issue from " + issue.id.toString() + " on " + getToday().toString();
+    let comment = "CodeEquity duplicated this new issue from issue id:" + issue.id.toString() + " on " + utils.getToday().toString();
     comment += " in order to maintain a 1:1 mapping between issues and cards."
-
-    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } )
-	   .catch( e => {
-	       console.log( installClient[1], "Create issue comment failed.", e );
-	   });
-
+    
+    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
+	.catch( e => {
+	    console.log( installClient[1], "Create issue comment failed.", e );
+	});
+    
     return issueData;
 }
 
@@ -360,7 +383,7 @@ async function populateCELinkage( installClient, owner, repo, fullName )
 	    cardIds = cardIds.concat( quads );
 	});
     // console.log( "Card ids", cardIds );
-
+    
     // list of trips [projid, cardid, issuenum].. all "" are stripped.
     // Clean this list up before pushing to populate.
     let trips = [];
@@ -402,7 +425,7 @@ async function populateCELinkage( installClient, owner, repo, fullName )
     }
     let linkage = await Promise.all( lPromises );
     console.log( "linkages", linkage );
-		      
+    
     await utils.populateIssueCards( fullName, linkage );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
@@ -413,13 +436,26 @@ async function populateCELinkage( installClient, owner, repo, fullName )
     pd.GHOwner    = owner;
     pd.GHRepo     = repo;
     pd.peqType    = "end";
-
-    let rPromises = [];
-    for( const trip of trips ) {
-	pd.GHIssueId  = issueId;
-	pd.GHIssueNum = issueNum;
-	console.log( "Start resolve for", trip );
-	rPromises.push( utils.resolve( installClient, pd, false ) );
+    
+    // Only resolve once per issue.
+    let showOnce  = [];
+    let showTwice = [];
+    let one2Many = [];
+    for( const link of linkage ) {
+	if( !showOnce.includes( link[3] ))       { showOnce.push( link[3] ); }
+	else if( !showTwice.includes( link[3] )) {
+	    showTwice.push( link[3] );
+	    one2Many.push( link );
+	}
+    }
+    
+    let rPromises   = [];
+    // [ [projId, cardId, issueNum, issueId], ... ]
+    for( const link of one2Many ) {
+	    pd.GHIssueId  = link[3];
+	    pd.GHIssueNum = link[2];
+	    console.log( "Start resolve for", link );
+	    rPromises.push( utils.resolve( installClient, pd, false ) );
     }
     await Promise.all( rPromises );
     
@@ -428,12 +464,36 @@ async function populateCELinkage( installClient, owner, repo, fullName )
 }
 
 
+async function rebuildCard( installClient, owner, repo, colId, origCardId, issueData ) {
+    assert( issueData.length == 2 );
+    let issueId  = issueData[0];
+    let issueNum = issueData[1];
+    assert.notEqual( issueId, -1, "Attempting to attach card to non-issue." );
 
-async function createProjectCard( installClient, columnID, issueID, justId )
+    // If card has not been tracked, colId could be wrong.  relocate.
+    // Note: do not try to avoid this step during populateCE - creates a false expectation (i.e. ce is tracking) for any simple carded issue.
+    if( colId == -1 ) {
+	let projCard = await getCard( installClient, origCardId ); 
+	colId = projCard.column_url.split('/').pop();
+    }
+    
+    // create issue-linked project_card, requires id not num
+    let newCardId = await createProjectCard( installClient, colId, issueId, true );
+    assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
+    
+    // remove orig card
+    // Note: await waits for GH to finish - not for notification to be received by webserver.
+    await( installClient[0].projects.deleteCard( { card_id: origCardId } ));
+
+    return newCardId;
+}
+
+
+async function createProjectCard( installClient, columnId, issueId, justId )
 {
     let newCard = -1;
 
-    await( installClient[0].projects.createCard({ column_id: columnID, content_id: issueID, content_type: 'Issue' }))
+    await( installClient[0].projects.createCard({ column_id: columnId, content_id: issueId, content_type: 'Issue' }))
 	.then( card => { newCard = card['data']; })
 	.catch( e => { console.log( installClient[1], "Create issue-linked project card failed.", e ); });
 
@@ -446,10 +506,9 @@ async function createProjectCard( installClient, columnID, issueID, justId )
 async function createUnClaimedCard( installClient, owner, repo, issueId )
 {
     let unClaimedProjId = -1;
-    const unClaimed = "UnClaimed";   // XXX config 
+    const unClaimed = config.UNCLAIMED;
 
     // Get, or create, unclaimed project id
-    console.log( "List proj for repo", repo, issueId );
     // Note.  pagination removes .headers, .data and etc.
     await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
 	.then((projects) => {
@@ -468,7 +527,6 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 
     // Get, or create, unclaimed column id
     let unClaimedColId = -1;
-    console.log( "List col for proj", unClaimedProjId );
     await installClient[0].paginate( installClient[0].projects.listColumns, { project_id: unClaimedProjId, per_page: 100 } )
 	.then((columns) => {
 	    for( column of columns ) {
@@ -491,28 +549,56 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
     return card;
 }
 
+// Unclaimed cards are peq issues by definition.  So, linkage table will be complete.
+async function cleanUnclaimed( installClient, pd ) {
+    console.log( "cleanUnclaimed", pd.GHIssueId );
+    let link = await utils.getPEQLinkageFId( installClient[1], pd.GHIssueId );
+    if( link == -1 ) { return; }
 
+    console.log( "Found unclaimed" );
+    assert( link.GHCardId != -1 );
+    assert( link.GHColumnName != config.EMPTY );
+    
+    // verify, then remove unclaimed
+    if( link.GHColumnName == config.UNCLAIMED ) {
+	await( installClient[0].projects.deleteCard( { card_id: link.GHCardId } ));
+    }
+    else {
+	console.log( "Unexpected link", link );
+	assert( false );
+    }
+    
+    // delete linkage, send PAct
+    await( utils.removeLinkage( pd.GHIssueId, link.GHCardId ));
 
-// This function is called ONLY during an issue close / reopen notification.
-// The difficulty is that a GH issue is a leaf in a big tree.  Project_cards can point to those leaves,
-// but there is no reverse pointer.   Looking for related project_card from issue would require getting
-// a list of projects, and a list of columns per project, and a list of cards per column, which could be
-// a LARGE number of REST calls.
-// CE's approach to resolving this: as a matter of course, CE is tracking all PEQ-issues-and-cards, including ids.
-// This call will get and set proj/col/card ids for an issue from AWS:dynamodb, while simultaneously
-// validating the project column layout (worker threads).
-// Alternatively, we could solve part of the problem by moving to graphQL and requiring a project label for every PEQ-issue.
-// But that is an extra layer of requirement on the client, and the result will most likely be slower.
-async function validateCEProjectLayout( installClient, issueId )
+    // Manage PEQ from ceFlutter side, when processing PActs
+    let newPEQ = await utils.getPeq( installClient[1], pd.GHIssueId );
+    let subject = [ newPEQ.PEQId ];
+    utils.recordPEQAction(
+	installClient[1],
+	config.EMPTY,     // CE UID
+	pd.GHCreator,     // gh user name
+	pd.GHFullName,        
+	"confirm",        // verb
+	"delete",         // action
+	subject,          // subject
+	"unclaimed",      // note
+	utils.getToday(), // entryDate
+	pd.reqBody        // raw
+    );
+    
+	   
+}
+
+// XXX don't actually need to find all 4.  Just the col I'm moving to.
+async function getCEProjectLayout( installClient, issueId )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
     // XXX revisit cardHandler to track all of this.  part of record.
     // XXX may be hole in create card from isssue
-    // XXX card move, need new id/col/proj id
-    // ??? how long will IDs last within project?  at a minimum, should get edit notification
 
-    let card = await( utils.getFromIssue( installClient[1], issueId ));
+    let card = await( utils.getPEQLinkageFId( installClient[1], issueId ));
     let projId = card == -1 ? card : parseInt( card['GHProjectId'] );
     
     console.log( installClient[1], "Found project id: ", projId );
@@ -546,6 +632,7 @@ async function validateCEProjectLayout( installClient, issueId )
     return foundReqCol;
 }
 
+    
 // issueId?  then verify "plan".  no issueId?  then verify "allocation".  No legal move of accrue.
 async function validatePEQ( installClient, repo, issueId, title, projId ) {
     let peq = -1;
@@ -572,7 +659,7 @@ async function validatePEQ( installClient, repo, issueId, title, projId ) {
 async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 
     let cardId = -1;
-    let card = await( utils.getFromIssue( installClient[1], issueId ));
+    let card = await( utils.getPEQLinkageFId( installClient[1], issueId ));
     if( card != -1 && parseInt( card['GHColumnId'] ) == colId ) { cardId = parseInt( card['GHCardId'] ); }
 
     console.log( installClient[1], "find card in col", issueId, colId, "found?", cardId );
@@ -580,13 +667,13 @@ async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 }
 
 
-async function moveIssueCard( installClient, owner, repo, fullName, issueId, action, ceProjectLayout )
+async function moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout )
 {
     let success    = false;
     let newColId   = -1;
     let newColName = "";
     assert.notEqual( ceProjectLayout[0], -1 );
-    let cardID = -1;
+    let cardId = -1;
     let pip = [ config.PROJ_PLAN, config.PROJ_PROG ];  
     let pac = [ config.PROJ_PEND, config.PROJ_ACCR ];  
     
@@ -594,15 +681,15 @@ async function moveIssueCard( installClient, owner, repo, fullName, issueId, act
 
 	// verify card is in the right place
 	for( let i = 0; i < 2; i++ ) {
-	    cardID = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[ pip[i]+1 ] );
-	    if( cardID != -1 ) { break; }
+	    cardId = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[ pip[i]+1 ] );
+	    if( cardId != -1 ) { break; }
 	}
 
 	// move card to "Pending PEQ Approval"
-	if( cardID != -1 ) {
+	if( cardId != -1 ) {
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ]; 
-	    success = await( installClient[0].projects.moveCard({ card_id: cardID, position: "top", column_id: newColId }))
+	    success = await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: newColId }))
 		.catch( e => {
 		    console.log( installClient[1], "Move card failed.", e );
 		});
@@ -613,15 +700,15 @@ async function moveIssueCard( installClient, owner, repo, fullName, issueId, act
 
 	// verify card is currently in the right place
 	for( let i = 0; i < 2; i++ ) {
-	    cardID = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[ pac[i]+1 ] );
-	    if( cardID != -1 ) { break; }
+	    cardId = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[ pac[i]+1 ] );
+	    if( cardId != -1 ) { break; }
 	}
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
-	if( cardID != -1 ) {
+	if( cardId != -1 ) {
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
 	    newColName = config.PROJ_COLS[ config.PROJ_PROG ]; 	    
-	    success = await( installClient[0].projects.moveCard({ card_id: cardID, position: "top", column_id: newColId }))
+	    success = await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: newColId }))
 		.catch( e => {
 		    console.log( installClient[1], "Move card failed.", e );
 		});
@@ -629,7 +716,7 @@ async function moveIssueCard( installClient, owner, repo, fullName, issueId, act
     }
 
     if( success ) {
-	success = await( utils.updateCardFromIssue( installClient[1], issueId, fullName, newColId, newColName ))
+	success = await( utils.updateLinkage( installClient[1], issueId, cardId, newColId, newColName ))
 	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
     }
 
@@ -727,7 +814,7 @@ function parsePEQ( content, allocation ) {
 		console.log( "Malformed peq" );
 		break;
 	    }
-	    console.log( "Found peq val in ", s, e, lineVal.substring(c, e) );
+	    // console.log( "Found peq val in ", s, e, lineVal.substring(c, e) );
 	    // js parseint doesn't like commmas
 	    peqValue = parseInt( lineVal.substring( c, e ).split(",").join("") );
 	    break;
@@ -744,12 +831,12 @@ function parseLabelDescr( labelDescr ) {
 
     for( const line of labelDescr ) {
 	if( line.indexOf( config.PDESC ) == 0 ) {
-	    console.log( "Found peq val in", line.substring( pDescLen ) );
+	    // console.log( "Found peq val in", line.substring( pDescLen ) );
 	    peqValue = parseInt( line.substring( pDescLen ) );
 	    break;
 	}
 	else if( line.indexOf( config.ADESC ) == 0 ) {
-	    console.log( "Found peq val in", line.substring( aDescLen ) );
+	    // console.log( "Found peq val in", line.substring( aDescLen ) );
 	    peqValue = parseInt( line.substring( aDescLen ) );
 	    break;
 	}

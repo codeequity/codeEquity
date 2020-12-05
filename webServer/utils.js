@@ -133,9 +133,9 @@ async function wrappedPostIt( source, shortName, postData ) {
 }
 
 
-/* XXX
+
 // One of two methods to get linkage from issueId.
-// Here: 204 or 422 if count != 1... by def not a valid PEQ issue.
+// Here: 204 or 422 if count != 1... if it is a known peq issue, the mapping is guaranteed to be 1:1
 async function getPEQLinkageFId( source, issueId ) {
     console.log( source, "Get PEQ linkage from issue:", issueId );
 
@@ -145,13 +145,13 @@ async function getPEQLinkageFId( source, issueId ) {
 
     return await wrappedPostIt( source, shortName, postData );
 }
-*/
+
 
 // One of two methods to get linkage from issueId.
 // Here: expect list return.
 // Clean results?  A clean list expects: 1) <= 1 peqtype == PLAN; and 2) either no unclaimed or no PLAN/ALLOC peq type in list
 async function getIssueLinkage( source, issueId ) {
-    console.log( source, "Get card data from issue:", issueId );
+    // console.log( source, "Get card data from issue:", issueId );
 
     let shortName = "GetLinkages";
     let postData  = { "Endpoint": shortName, "GHIssueId": issueId.toString() };
@@ -159,18 +159,6 @@ async function getIssueLinkage( source, issueId ) {
     return await wrappedPostIt( source, shortName, postData );
 }
 
-/*
-// XXX 1:M This splits into 2 functions:
-async function getFromIssue( source, issueId ) {
-    console.log( source, "Get card data from issue:", issueId );
-
-    let shortName = "GetEntry";
-    let query     = { "GHIssueId": issueId.toString() };
-    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
-
-    return await wrappedPostIt( source, shortName, postData );
-}
-*/
 
 async function getPeq( source, issueId ) {
     console.log( "Get PEQ from issueId:", issueId );
@@ -225,7 +213,7 @@ async function getExistCardIds( source, repo, cardIds ) {
 
 async function removeLinkage( issueId, cardId ) {
     let shortName = "DeleteLinkage";
-    let pd = { "Endpoint": shortName, "GHIssueId": issueId, "GHCardId":, cardId };
+    let pd = { "Endpoint": shortName, "GHIssueId": issueId.toString(), "GHCardId": cardId.toString() };
 
     return await wrappedPostIt( "", shortName, pd );
 }
@@ -299,8 +287,7 @@ async function populateIssueCards( repo, cardIds ) {
     return await wrappedPostIt( "", shortName, pd );
 }
 
-// XXX XXX XXX XXX   need to do this for all cards tied to issueId
-// XXX awsdynamo change update to 1 func, linkage obj, any exist are set.
+// Use only with known PEQ issues, 1:1
 // Zero out fields in linkage table no longer being tracked
 async function rebaseLinkage( fullName, issueId ) {
     console.log( "Rebasing card linkage for", issueId );
@@ -309,7 +296,7 @@ async function rebaseLinkage( fullName, issueId ) {
 
     let postData = {};
     postData.GHIssueId     = issueId.toString();  // pkey
-    postData.GHRepo        = fullName;                // pkey
+    postData.GHCardId      = -1;                  // pkey
 
     postData.GHProjectName = config.EMPTY;
     postData.GHColumnId    = -1;
@@ -322,14 +309,15 @@ async function rebaseLinkage( fullName, issueId ) {
 
 
 // XXX handle move to new project?
-async function updateCardFromIssue( source, issueId, fullName, newColId, newColName ) {
+// XXX this should be reused in util funcs here
+async function updateLinkage( source, issueId, cardId, newColId, newColName ) {
     console.log( source, "Updating issue / card linkage" );
 
     let shortName = "UpdateGHCard";
 
     let postData = {};
     postData.GHIssueId     = issueId.toString();  // pkey
-    postData.GHRepo        = fullName;            // pkey
+    postData.GHCardid      = cardId;              // pkey
 
     postData.GHColumnId = newColId;
     postData.GHColumnName = newColName;
@@ -338,16 +326,6 @@ async function updateCardFromIssue( source, issueId, fullName, newColId, newColN
     return await wrappedPostIt( source, shortName, pd );
 }
 
-
-// XXX rewrite - want issueId but this is actually valid
-async function updateCardFromCardId( source, repo, cardId, colId, colName ) {
-    console.log( source, "Updating issue / card linkage from cardId" );
-
-    let shortName = "UpdateGHCardFID";
-    let postData = { "Endpoint": shortName, "GHRepo": repo, "GHCardId": cardId.toString(), "GHColumnId": colId.toString(), "GHColumnName": colName };
-
-    return await wrappedPostIt( source, shortName, postData );
-}
 
 async function updatePEQPSub( source, peqId, projSub ) {
     console.log( source, "Updating PEQ project sub", projSub.toString() );
@@ -493,25 +471,12 @@ async function recordPeqData( installClient, pd, checkDup ) {
 async function rebuildLinkage( link, issueData, newCardId, newTitle ) {
     // no need to wait for the deletion
     removeLinkage( link.GHIssueId, link.GHCardId );
+
+    // is this an untracked carded issue?
+    if( link.GHColumnId == -1 ) { newTitle = config.EMPTY; } 
     
     await( addLinkage( link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
 		       link.GHColumnId, link.GHColumnName, newCardId, newTitle ));
-}
-
-async function rebuildCard( installClient, owner, repo, colId, origCardId, issueData ) {
-    assert( issueData.length == 2 );
-    let issueId  = issueData[0];
-    let issueNum = issueData[1];
-    assert.notEqual( issueId, -1, "Attempting to attach card to non-issue." );
-    
-    // create issue-linked project_card, requires id not num
-    let newCardId = await gh.createProjectCard( installClient, colId, issueId, true );
-    assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
-    
-    // remove orig card
-    await( installClient[0].projects.deleteCard( { card_id: origCardId } ));
-
-    return newCardId;
 }
 
 // populateCE is called with first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
@@ -519,8 +484,9 @@ async function rebuildCard( installClient, owner, repo, colId, origCardId, issue
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
 //       learns 1:m is a semantic error in CE
 async function resolve( installClient, pd, allocation ) {
+    console.log( "resolve" );
     // on first call from populate, list may be large.  Afterwards, max 2.
-    let links = await( utils.getIssueLinkage( installClient[1], pd.GHIssueId ));
+    let links = await( getIssueLinkage( installClient[1], pd.GHIssueId ));
     if( links == -1 || links.length < 2 ) { return; }
 
     console.log( "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.GHIssueId, pd.GHIssueNum );
@@ -530,13 +496,14 @@ async function resolve( installClient, pd, allocation ) {
     let issue = await gh.getFullIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );  
     assert( issue != -1 );
 
+    // console.log( "FULL ISSUE", issue );
+
     // If peq label exists, recast it.  There can only be 0 or 1.
     let idx = 0;
     let newLabel = "";
     for( label of issue.labels ) {
-	idx += 1;
 	let content = label['description'];
-	let peqVal = parseLabelDescr( [content] );
+	let peqVal  = gh.parseLabelDescr( [content] );
 
 	if( peqVal > 0 ) {
 	    console.log( "Resolve, original peqValue:", peqVal );
@@ -545,29 +512,26 @@ async function resolve( installClient, pd, allocation ) {
 
 	    let peqHumanLabelName = peqVal.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
 	    newLabel = await gh.findOrCreateLabel( installClient, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, peqVal )
+	    issue.labels[idx] = newLabel;
+	    console.log( "New label", issue.labels[idx] );
 	    break;
 	}
-	
+	idx += 1;
     }
-    issue.labels[idx] = newLabel;
-    
+
     // Leave first issue, card, linkage in place. Start from second.
-    console.log( "XXX Expect to see i interleaved.  can NOT see inter-i sequence interleaving, e.g. 1 3 followed by 1 2" );
     for( let i = 1; i < links.length; i++ ) {
 	let colId      = links[i].GHColumnId;
 	let origCardId = links[i].GHCardId;
 	let projName   = links[i].GHProjectName;
 	let colName    = links[i].GHColumnName;
 	let splitTag   = randAlpha(8);
-	console.log( "loop i", i, 0 );
+
 	let issueData   = await gh.splitIssue( installClient, pd.GHOwner, pd.GHRepo, issue, splitTag );  
-	console.log( "... issuedata, i", issueData, i, 1 );
 	let newCardId   = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, colId, origCardId, issueData );
-	console.log( "... newid, i", newCardId, i, 2 );
 
 	pd.GHIssueTitle = issue.title + " split: " + splitTag;
 	await rebuildLinkage( links[i], issueData, newCardId, pd.GHIssueTitle );
-	console.log( "... linkage i", i, 3 );
 
 	if( pd.peqType != "end" ) {
 	    assert( projName != "" );
@@ -576,45 +540,28 @@ async function resolve( installClient, pd, allocation ) {
 	    
 	    recordPEQData(installClient, pd, false );
 	}
-	console.log( "... record i", i, 4 );
     }
 }
 
-// XXX cut down arg count
 // XXX this function can be sped up, especially when animating an unclaimed
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
-async function processNewPEQ( installClient, repo, owner, reqBody, issueCardContent, creator, issueNum, issueId, link ) {
-
-    // XXX peqData make this nicer, start in handlers.  Push this up and down.
-    let pd = {};
-    pd.GHRepo     = repo;
-    pd.GHOwner    = owner;
-    pd.GHCreator  = creator
-    pd.GHIssueNum = issueNum;
-    pd.GHIssueId  = issueId;
-    pd.GHFullName = reqBody['repository']['full_name'];
-    pd.reqBody    = reqBody;
-    pd.peqValue   = 0;
-    pd.peqType    = "end";
-    pd.GHProjectId = -1;
-    pd.GHIssueTitle = "";
-    pd.GHAssignees = [];
-    pd.projSub     = [];
+async function processNewPEQ( installClient, pd, issueCardContent, link ) {
+    pd.GHIssueTitle = issueCardContent[0];
     
     // normal for card -> issue.  odd but legal for issue -> card
     let allocation = gh.getAllocated( issueCardContent );
 
     // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
-    if( pe.GHIssueNum == -1 ) { pd.peqValue = gh.parsePEQ( issueCardContent, allocation ); }
+    if( pd.GHIssueNum == -1 ) { pd.peqValue = gh.parsePEQ( issueCardContent, allocation ); }
     else                      { pd.peqValue = gh.parseLabelDescr( issueCardContent ); }   
 
     // XXX allow PROJ_PEND
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; }
-    console.log( "processing", pd.peqValue.toString(), pd.peqType );
+    console.log( "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
-    let origCardId = link == -1 ? reqBody['project_card']['id']                           : link.GHCardId;
-    let colId      = link == -1 ? reqBody['project_card']['column_id']                    : link.GHColumnId;
-    pd.GHProjectId = link == -1 ? reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
+    let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
+    let colId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
+    pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
     let colName    = "";
     let projName   = "";
     
@@ -643,7 +590,7 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
 	// card -> issue..  exactly one linkage.
 	else {
 	    assert( links.length == 1 );        
-	    let pd.GHIssueTitle = issueCardContent[0];
+	    pd.GHIssueTitle = issueCardContent[0];
 	    
 	    // create new issue, rebuild card
 	    let issueData = await gh.createIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
@@ -657,13 +604,13 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
 	}
     }
 
-    if( pd.peqType != end ) { pd.GHAssignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum ); }
+    if( pd.peqType != "end" ) { pd.GHAssignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum ); }
 
     // Resolve splits issues to ensure a 1:1 mapping issue:card, record peq data for all newly created issue:card(s)
     await resolve( installClient, pd, allocation );
 
     // record peq data for the original issue:card
-    if( peqType != "end" ) {
+    if( pd.peqType != "end" ) {
 	pd.projSub = await gh.getProjectSubs( installClient, pd.GHFullName, projName, colName );
 	recordPeqData( installClient, pd, true );
     }
@@ -677,7 +624,7 @@ exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
 exports.recordPEQTodo = recordPEQTodo;
 exports.addLinkage = addLinkage;
-exports.getFromIssue = getFromIssue;
+exports.removeLinkage = removeLinkage;
 exports.getFromCardName = getFromCardName;
 exports.getFromCardId = getFromCardId;
 exports.getExistCardIds = getExistCardIds;
@@ -687,8 +634,9 @@ exports.checkPopulated = checkPopulated;
 exports.setPopulated = setPopulated;
 exports.populateIssueCards = populateIssueCards;
 exports.rebaseLinkage = rebaseLinkage;
-exports.updateCardFromIssue = updateCardFromIssue;
-exports.updateCardFromCardId = updateCardFromCardId;
+exports.updateLinkage = updateLinkage;
+exports.getIssueLinkage = getIssueLinkage;
+exports.getPEQLinkageFId = getPEQLinkageFId;
 exports.updatePEQPSub = updatePEQPSub;
 exports.getToday = getToday;
 exports.resolve = resolve;
