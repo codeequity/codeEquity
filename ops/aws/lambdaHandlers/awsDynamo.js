@@ -380,7 +380,7 @@ async function delLinkage( issueId, cardId ) {
     };
 
     let promise = bsdb.delete( params ).promise();
-    return promise.then(() =>success( true ));
+    return promise.then(() => success( true ));
 }
 
 async function putBaseGHC( icLinks ) {

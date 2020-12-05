@@ -36,6 +36,10 @@ var githubUtils = {
 	return getIssue( installClient, owner, repo, issueNum );
     },
 
+    getCard: function( installClient, cardId ) {
+	return getCard( installClient, cardId );
+    },
+
     getFullIssue: function( installClient, owner, repo, issueNum ) {
 	return getFullIssue( installClient, owner, repo, issueNum );
     },
@@ -68,8 +72,8 @@ var githubUtils = {
 	return createUnClaimedCard( installClient, owner, repo, issueId );
     },
 
-    cleanUnclaimed: function( installClient, owner, repo, creator, fullName, issueId ) {
-	return cleanUnclaimed( installClient, owner, repo, creator, fullName, issueId );
+    cleanUnclaimed: function( installClient, owner, repo, reqBody, creator, fullName, issueId ) {
+	return cleanUnclaimed( installClient, owner, repo, reqBody, creator, fullName, issueId );
     },
     
     populateCELinkage: function( installClient, owner, repo, fullName ) {
@@ -190,6 +194,17 @@ async function getFullIssue( installClient, owner, repo, issueNum )
     return retIssue;
 }
 
+async function getCard( installClient, cardId ) {
+    let retCard = -1;
+    if( cardId == -1 ) { return retCard; }
+    
+    await( installClient[0].projects.getCard( { card_id: cardId } ))
+	.then((card) => {  retCard = card.data; } )
+	.catch( e => { console.log( installClient[1], "Get card failed.", e ); });
+    return retCard;
+}
+
+
 async function splitIssue( installClient, owner, repo, issue, splitTag ) {
     console.log( "Split issue" );
     let issueData = [-1,-1];  // issue id, num
@@ -212,7 +227,7 @@ async function splitIssue( installClient, owner, repo, issue, splitTag ) {
 	    console.log( installClient[1], "Create issue failed.", e );
 	});
 
-    let comment = "CodeEquity duplicated this new issue from " + issue.id.toString() + " on " + utils.getToday().toString();
+    let comment = "CodeEquity duplicated this new issue from issue id:" + issue.id.toString() + " on " + utils.getToday().toString();
     comment += " in order to maintain a 1:1 mapping between issues and cards."
     
     await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
@@ -454,12 +469,20 @@ async function rebuildCard( installClient, owner, repo, colId, origCardId, issue
     let issueId  = issueData[0];
     let issueNum = issueData[1];
     assert.notEqual( issueId, -1, "Attempting to attach card to non-issue." );
+
+    // If card has not been tracked, colId could be wrong.  relocate.
+    // Note: do not try to avoid this step during populateCE - creates a false expectation (i.e. ce is tracking) for any simple carded issue.
+    if( colId == -1 ) {
+	let projCard = await getCard( installClient, origCardId ); 
+	colId = projCard.column_url.split('/').pop();
+    }
     
     // create issue-linked project_card, requires id not num
     let newCardId = await createProjectCard( installClient, colId, issueId, true );
     assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
     
     // remove orig card
+    // Note: await waits for GH to finish - not for notification to be received by webserver.
     await( installClient[0].projects.deleteCard( { card_id: origCardId } ));
 
     return newCardId;
@@ -486,7 +509,6 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
     const unClaimed = config.UNCLAIMED;
 
     // Get, or create, unclaimed project id
-    console.log( "List proj for repo", repo, issueId );
     // Note.  pagination removes .headers, .data and etc.
     await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
 	.then((projects) => {
@@ -505,7 +527,6 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 
     // Get, or create, unclaimed column id
     let unClaimedColId = -1;
-    console.log( "List col for proj", unClaimedProjId );
     await installClient[0].paginate( installClient[0].projects.listColumns, { project_id: unClaimedProjId, per_page: 100 } )
 	.then((columns) => {
 	    for( column of columns ) {
@@ -529,7 +550,7 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 }
 
 // Unclaimed cards are peq issues by definition.  So, linkage table will be complete.
-async function cleanUnclaimed( installClient, owner, repo, creator, fullName, issueId ) {
+async function cleanUnclaimed( installClient, owner, repo, reqBody, creator, fullName, issueId ) {
     console.log( "cleanUnclaimed", issueId );
     let link = await utils.getPEQLinkageFId( installClient[1], issueId );
     if( link == -1 ) { return; }
@@ -563,7 +584,7 @@ async function cleanUnclaimed( installClient, owner, repo, creator, fullName, is
 	subject,          // subject
 	"unclaimed",      // note
 	utils.getToday(), // entryDate
-	pd.reqBody        // raw
+	reqBody        // raw
     );
     
 	   

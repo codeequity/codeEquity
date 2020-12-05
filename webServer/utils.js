@@ -213,7 +213,7 @@ async function getExistCardIds( source, repo, cardIds ) {
 
 async function removeLinkage( issueId, cardId ) {
     let shortName = "DeleteLinkage";
-    let pd = { "Endpoint": shortName, "GHIssueId": issueId, "GHCardId": cardId };
+    let pd = { "Endpoint": shortName, "GHIssueId": issueId.toString(), "GHCardId": cardId.toString() };
 
     return await wrappedPostIt( "", shortName, pd );
 }
@@ -471,6 +471,9 @@ async function recordPeqData( installClient, pd, checkDup ) {
 async function rebuildLinkage( link, issueData, newCardId, newTitle ) {
     // no need to wait for the deletion
     removeLinkage( link.GHIssueId, link.GHCardId );
+
+    // is this an untracked carded issue?
+    if( link.GHColumnId == -1 ) { newTitle = config.EMPTY; } 
     
     await( addLinkage( link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
 		       link.GHColumnId, link.GHColumnName, newCardId, newTitle ));
@@ -500,7 +503,7 @@ async function resolve( installClient, pd, allocation ) {
     let newLabel = "";
     for( label of issue.labels ) {
 	let content = label['description'];
-	let peqVal = parseLabelDescr( [content] );
+	let peqVal  = gh.parseLabelDescr( [content] );
 
 	if( peqVal > 0 ) {
 	    console.log( "Resolve, original peqValue:", peqVal );
@@ -516,26 +519,19 @@ async function resolve( installClient, pd, allocation ) {
 	idx += 1;
     }
 
-    // XXX colId during populate is from addBaseLinkage.. is -1.  RebuildCard fails.
-
     // Leave first issue, card, linkage in place. Start from second.
-    console.log( "XXX Expect to see i interleaved.  can NOT see inter-i sequence interleaving, e.g. 1 3 followed by 1 2" );
     for( let i = 1; i < links.length; i++ ) {
 	let colId      = links[i].GHColumnId;
 	let origCardId = links[i].GHCardId;
 	let projName   = links[i].GHProjectName;
 	let colName    = links[i].GHColumnName;
 	let splitTag   = randAlpha(8);
-	console.log( "loop i", i, 0 );
+
 	let issueData   = await gh.splitIssue( installClient, pd.GHOwner, pd.GHRepo, issue, splitTag );  
-	console.log( "... issuedata, i", issueData, i, 1 );
-	console.log( "......", pd.GHOwner, pd.GHRepo, colId, origCardId );
 	let newCardId   = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, colId, origCardId, issueData );
-	console.log( "... newid, i", newCardId, i, 2 );
 
 	pd.GHIssueTitle = issue.title + " split: " + splitTag;
 	await rebuildLinkage( links[i], issueData, newCardId, pd.GHIssueTitle );
-	console.log( "... linkage i", i, 3 );
 
 	if( pd.peqType != "end" ) {
 	    assert( projName != "" );
@@ -544,7 +540,6 @@ async function resolve( installClient, pd, allocation ) {
 	    
 	    recordPEQData(installClient, pd, false );
 	}
-	console.log( "... record i", i, 4 );
     }
 }
 
@@ -564,7 +559,7 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
     pd.peqValue   = 0;
     pd.peqType    = "end";
     pd.GHProjectId = -1;
-    pd.GHIssueTitle = "";
+    pd.GHIssueTitle = issueCardContent[0];
     pd.GHAssignees = [];
     pd.projSub     = [];
     
@@ -630,7 +625,7 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
     await resolve( installClient, pd, allocation );
 
     // record peq data for the original issue:card
-    if( peqType != "end" ) {
+    if( pd.peqType != "end" ) {
 	pd.projSub = await gh.getProjectSubs( installClient, pd.GHFullName, projName, colName );
 	recordPeqData( installClient, pd, true );
     }
@@ -644,6 +639,7 @@ exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
 exports.recordPEQTodo = recordPEQTodo;
 exports.addLinkage = addLinkage;
+exports.removeLinkage = removeLinkage;
 exports.getFromCardName = getFromCardName;
 exports.getFromCardId = getFromCardId;
 exports.getExistCardIds = getExistCardIds;

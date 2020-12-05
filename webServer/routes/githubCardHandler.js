@@ -115,7 +115,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	console.log( "Found issue:", issueNum.toString(), issue[1] );
 
 	// Is underlying issue already linked to unclaimed?  if so, remove it.
-	await gh.cleanUnclaimed( installClient, owner, repo, creator, fullName, issue[0] );
+	await gh.cleanUnclaimed( installClient, owner, repo, reqBody, creator, fullName, issue[0] );
 	await utils.processNewPEQ( installClient, repo, owner, reqBody, issue[1], creator, issueNum, issue[0], -1 ); 
     }
     else if( action == "created" ) {

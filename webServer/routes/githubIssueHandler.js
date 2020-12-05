@@ -101,7 +101,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	content.push( reqBody['issue']['title'] );
 	content.push( config.PDESC + peqValue.toString() );
 
-	await utils.processNewPEQ( installClient, repo, owner, reqBody, content, creator, issueNum, issueId, link );
+	await utils.processNewPEQ( installClient, repo, owner, reqBody, content, creator, link.GHIssueNum, issueId, link );
 	break;
     case 'unlabeled':
 	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  PROJ_PEND is OK, since could just demote to PROG/PLAN
