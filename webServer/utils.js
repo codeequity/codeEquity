@@ -151,7 +151,7 @@ async function getPEQLinkageFId( source, issueId ) {
 // Here: expect list return.
 // Clean results?  A clean list expects: 1) <= 1 peqtype == PLAN; and 2) either no unclaimed or no PLAN/ALLOC peq type in list
 async function getIssueLinkage( source, issueId ) {
-    console.log( source, "Get card data from issue:", issueId );
+    // console.log( source, "Get card data from issue:", issueId );
 
     let shortName = "GetLinkages";
     let postData  = { "Endpoint": shortName, "GHIssueId": issueId.toString() };
@@ -543,25 +543,10 @@ async function resolve( installClient, pd, allocation ) {
     }
 }
 
-// XXX cut down arg count
 // XXX this function can be sped up, especially when animating an unclaimed
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
-async function processNewPEQ( installClient, repo, owner, reqBody, issueCardContent, creator, issueNum, issueId, link ) {
-    // XXX peqData make this nicer, start in handlers.  Push this up and down.
-    let pd = {};
-    pd.GHRepo     = repo;
-    pd.GHOwner    = owner;
-    pd.GHCreator  = creator
-    pd.GHIssueNum = issueNum;
-    pd.GHIssueId  = issueId;
-    pd.GHFullName = reqBody['repository']['full_name'];
-    pd.reqBody    = reqBody;
-    pd.peqValue   = 0;
-    pd.peqType    = "end";
-    pd.GHProjectId = -1;
+async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     pd.GHIssueTitle = issueCardContent[0];
-    pd.GHAssignees = [];
-    pd.projSub     = [];
     
     // normal for card -> issue.  odd but legal for issue -> card
     let allocation = gh.getAllocated( issueCardContent );
@@ -574,9 +559,9 @@ async function processNewPEQ( installClient, repo, owner, reqBody, issueCardCont
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; }
     console.log( "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
-    let origCardId = link == -1 ? reqBody['project_card']['id']                           : link.GHCardId;
-    let colId      = link == -1 ? reqBody['project_card']['column_id']                    : link.GHColumnId;
-    pd.GHProjectId = link == -1 ? reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
+    let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
+    let colId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
+    pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
     let colName    = "";
     let projName   = "";
     

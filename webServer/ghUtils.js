@@ -72,8 +72,8 @@ var githubUtils = {
 	return createUnClaimedCard( installClient, owner, repo, issueId );
     },
 
-    cleanUnclaimed: function( installClient, owner, repo, reqBody, creator, fullName, issueId ) {
-	return cleanUnclaimed( installClient, owner, repo, reqBody, creator, fullName, issueId );
+    cleanUnclaimed: function( installClient, pd ) {
+	return cleanUnclaimed( installClient, pd );
     },
     
     populateCELinkage: function( installClient, owner, repo, fullName ) {
@@ -108,7 +108,7 @@ var githubUtils = {
 
 async function checkRateLimit( installClient ) {
 
-    console.log( "Rate limit check currently off" );
+    // console.log( "Rate limit check currently off" );
     return;
     
     await( installClient[0].rateLimit.get())
@@ -550,9 +550,9 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 }
 
 // Unclaimed cards are peq issues by definition.  So, linkage table will be complete.
-async function cleanUnclaimed( installClient, owner, repo, reqBody, creator, fullName, issueId ) {
-    console.log( "cleanUnclaimed", issueId );
-    let link = await utils.getPEQLinkageFId( installClient[1], issueId );
+async function cleanUnclaimed( installClient, pd ) {
+    console.log( "cleanUnclaimed", pd.GHIssueId );
+    let link = await utils.getPEQLinkageFId( installClient[1], pd.GHIssueId );
     if( link == -1 ) { return; }
 
     console.log( "Found unclaimed" );
@@ -569,22 +569,22 @@ async function cleanUnclaimed( installClient, owner, repo, reqBody, creator, ful
     }
     
     // delete linkage, send PAct
-    await( utils.removeLinkage( issueId, link.GHCardId ));
+    await( utils.removeLinkage( pd.GHIssueId, link.GHCardId ));
 
-    // send PAct
-    let newPEQ = await utils.getPeq( installClient[1], issueId );
+    // Manage PEQ from ceFlutter side, when processing PActs
+    let newPEQ = await utils.getPeq( installClient[1], pd.GHIssueId );
     let subject = [ newPEQ.PEQId ];
     utils.recordPEQAction(
 	installClient[1],
 	config.EMPTY,     // CE UID
-	creator,          // gh user name
-	fullName,         // gh repo
+	pd.GHCreator,     // gh user name
+	pd.GHFullName,        
 	"confirm",        // verb
 	"delete",         // action
 	subject,          // subject
 	"unclaimed",      // note
 	utils.getToday(), // entryDate
-	reqBody        // raw
+	pd.reqBody        // raw
     );
     
 	   
@@ -814,7 +814,7 @@ function parsePEQ( content, allocation ) {
 		console.log( "Malformed peq" );
 		break;
 	    }
-	    console.log( "Found peq val in ", s, e, lineVal.substring(c, e) );
+	    // console.log( "Found peq val in ", s, e, lineVal.substring(c, e) );
 	    // js parseint doesn't like commmas
 	    peqValue = parseInt( lineVal.substring( c, e ).split(",").join("") );
 	    break;
@@ -831,12 +831,12 @@ function parseLabelDescr( labelDescr ) {
 
     for( const line of labelDescr ) {
 	if( line.indexOf( config.PDESC ) == 0 ) {
-	    console.log( "Found peq val in", line.substring( pDescLen ) );
+	    // console.log( "Found peq val in", line.substring( pDescLen ) );
 	    peqValue = parseInt( line.substring( pDescLen ) );
 	    break;
 	}
 	else if( line.indexOf( config.ADESC ) == 0 ) {
-	    console.log( "Found peq val in", line.substring( aDescLen ) );
+	    // console.log( "Found peq val in", line.substring( aDescLen ) );
 	    peqValue = parseInt( line.substring( aDescLen ) );
 	    break;
 	}
