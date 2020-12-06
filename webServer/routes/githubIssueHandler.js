@@ -98,7 +98,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );
 	}
 
-	// XXX pd.updateFromLink( link );
+	pd.updateFromLink( link );
 	console.log( "Ready to update Proj PEQ PAct, first linkage:", link.GHCardId, link.GHIssueNum );
 
 	let content = [];
@@ -124,8 +124,8 @@ async function handler( action, repo, owner, reqBody, res ) {
 	utils.recordPEQAction(
 	    installClient[1],
 	    config.EMPTY,     // CE UID
-	    pd.GHCreator,          // gh user name
-	    pd.GHFullName,         // gh pd.GHRepo
+	    pd.GHCreator,     // gh user name
+	    pd.GHFullName,    // of the repo
 	    "confirm",        // verb
 	    "delete",         // action
 	    [ peq.PEQId ],    // subject
@@ -133,7 +133,6 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    utils.getToday(), // entryDate
 	    pd.reqBody           // raw
 	);
-	
 	break;
     case 'edited':
 	// XXX what happens to push this notice?
@@ -178,13 +177,13 @@ async function handler( action, repo, owner, reqBody, res ) {
 			source,
 			config.EMPTY,     // CE UID
 			sender,           // gh user name
-			pd.GHFullName,         // gh repo
+			pd.GHFullName,    // of the repo
 			verb,
 			action,
 			subject,          // subject
 			"",               // note
 			utils.getToday(), // entryDate
-			pd.reqBody           // raw
+			pd.reqBody        // raw
 		    );
 		}
 	    }

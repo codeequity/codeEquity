@@ -218,6 +218,13 @@ async function removeLinkage( issueId, cardId ) {
     return await wrappedPostIt( "", shortName, pd );
 }
 
+async function removePEQ( issueId, projSub ) {
+    let shortName = "DeletePEQ";
+    let pd = { "Endpoint": shortName, "GHIssueId": issueId.toString(), "subComponent": projSub };
+
+    return await wrappedPostIt( "", shortName, pd );
+}
+
 async function addLinkage( repo, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ) {
     console.log( "Adding issue / card linkage", repo, issueId, projName, colId );
 
@@ -317,9 +324,9 @@ async function updateLinkage( source, issueId, cardId, newColId, newColName ) {
 
     let postData = {};
     postData.GHIssueId     = issueId.toString();  // pkey
-    postData.GHCardid      = cardId;              // pkey
+    postData.GHCardId      = cardId.toString();   // pkey
 
-    postData.GHColumnId = newColId;
+    postData.GHColumnId = newColId.toString();
     postData.GHColumnName = newColName;
 
     let pd = { "Endpoint": shortName, "icLink": postData };
@@ -554,7 +561,7 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
     if( pd.GHIssueNum == -1 ) { pd.peqValue = gh.parsePEQ( issueCardContent, allocation ); }
     else                      { pd.peqValue = gh.parseLabelDescr( issueCardContent ); }   
-
+    
     // XXX allow PROJ_PEND
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; }
     console.log( "PNP: processing", pd.peqValue.toString(), pd.peqType );
@@ -625,6 +632,7 @@ exports.recordPEQ = recordPEQ;
 exports.recordPEQTodo = recordPEQTodo;
 exports.addLinkage = addLinkage;
 exports.removeLinkage = removeLinkage;
+exports.removePEQ = removePEQ;
 exports.getFromCardName = getFromCardName;
 exports.getFromCardId = getFromCardId;
 exports.getExistCardIds = getExistCardIds;
