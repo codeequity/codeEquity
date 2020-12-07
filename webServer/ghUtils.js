@@ -80,8 +80,8 @@ var githubUtils = {
 	return populateCELinkage( installClient, owner, repo, fullName );
     },
 
-    validateCEProjectLayout: function( installClient, issueId ) {
-	return validateCEProjectLayout( installClient, issueId );
+    getCEProjectLayout: function( installClient, issueId ) {
+	return getCEProjectLayout( installClient, issueId );
     },
     
     validatePEQ: function( installClient, repo, issueId, title, projId ) {
@@ -568,8 +568,9 @@ async function cleanUnclaimed( installClient, pd ) {
 	assert( false );
     }
     
-    // delete linkage, send PAct
+    // Remove turds, report.  Note - this is the only situation in which webServer will delete a PEQ record.
     await( utils.removeLinkage( pd.GHIssueId, link.GHCardId ));
+    await( utils.removePEQ( pd.GHIssueId, config.UNCLAIMED ) );
 
     // Manage PEQ from ceFlutter side, when processing PActs
     let newPEQ = await utils.getPeq( installClient[1], pd.GHIssueId );
@@ -590,21 +591,26 @@ async function cleanUnclaimed( installClient, pd ) {
 	   
 }
 
-// XXX don't actually need to find all 4.  Just the col I'm moving to.
+//                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
+// If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
 async function getCEProjectLayout( installClient, issueId )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
-    // XXX revisit cardHandler to track all of this.  part of record.
+    // XXX Revisit if ever decided to track cols, projects.
     // XXX may be hole in create card from isssue
 
     let card = await( utils.getPEQLinkageFId( installClient[1], issueId ));
     let projId = card == -1 ? card : parseInt( card['GHProjectId'] );
+    let curCol = card == -1 ? card : parseInt( card['GHColumnId'] );        // moves are only tracked for peq issues
+
+    // XXX curCol is good for first close issue.  But then, on reopen, curCol is the newly made PEND
     
     console.log( installClient[1], "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
 
+    let missing = true;
     await( installClient[0].projects.listColumns({ project_id: projId, per_page: 100 }))
 	.then( columns => {
 	    let foundCount = 0;
@@ -614,21 +620,54 @@ async function getCEProjectLayout( installClient, issueId )
 		for( let i = 0; i < 4; i++ ) {
 		    if( colName == config.PROJ_COLS[i] ) {
 			if( foundReqCol[i+1] == -1 ) { foundCount++; }
-			else                         { console.log( "Validate CE Project Layout found column repeat: ", config.PROJ_COLS[i] ); }
+			else {
+			    console.log( "Validate CE Project Layout found column repeat: ", config.PROJ_COLS[i] );
+			    assert( false );
+			}
 			foundReqCol[i+1] = column['id'];
 			break;
 		    }
 		}
 		// no need to check every col when required are found
-		if( foundCount == 4 ) { break; }
+		if( foundCount == 4 ) { missing = false; break; }
 	    }
-	    // every required col must have been found by now
-	    if( foundCount != 4 ) { foundReqCol[0] = -1; }
 	})
 	.catch( e => {
 	    console.log( installClient[1], "Validate CE Project Layout failed.", e );
 	});
-    
+
+    // Make this project viable for PEQ tracking
+    if( missing ) {
+	// use PLAN or PROG if present
+	if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] != -1 ) {
+	    foundReqCol[config.PROJ_PLAN + 1] = foundReqCol[config.PROJ_PROG + 1];
+	}
+	if( foundReqCol[config.PROJ_PLAN + 1] != -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
+	    foundReqCol[config.PROJ_PROG + 1] = foundReqCol[config.PROJ_PLAN + 1];
+	}
+	// Use current if both are missing
+	if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
+	    foundReqCol[config.PROJ_PLAN + 1] = curCol;
+	    foundReqCol[config.PROJ_PROG + 1] = curCol;
+	}
+	// Create PEND if missing
+	if( foundReqCol[config.PROJ_PEND + 1] == -1 ) {
+	    let pendName = config.PROJ_COLS[ config.PROJ_PEND ];
+	    console.log( "Creating new column:", pendName );
+	    await installClient[0].projects.createColumn({ project_id: projId, name: pendName })
+		.then((column) => { foundReqCol[config.PROJ_PEND + 1] = column.data.id; })
+		.catch( e => { console.log( installClient[1], "Create column failed.", e ); });
+	}
+	// Create ACCR if missing
+	if( foundReqCol[config.PROJ_ACCR + 1] == -1 ) {
+	    let accrName = config.PROJ_COLS[ config.PROJ_ACCR ];
+	    console.log( "Creating new column:", accrName );
+	    await installClient[0].projects.createColumn({ project_id: projId, name: accrName })
+		.then((column) => { foundReqCol[config.PROJ_ACCR + 1] = column.data.id; })
+		.catch( e => { console.log( installClient[1], "Create column failed.", e ); });
+	}
+    }
+    console.log( "Layout:", foundReqCol );
     return foundReqCol;
 }
 
@@ -669,6 +708,7 @@ async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 
 async function moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout )
 {
+    console.log( "Moving issue card" );
     let success    = false;
     let newColId   = -1;
     let newColName = "";
@@ -687,6 +727,7 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
 
 	// move card to "Pending PEQ Approval"
 	if( cardId != -1 ) {
+	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ]; 
 	    success = await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: newColId }))
@@ -706,6 +747,7 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {
+	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
 	    newColName = config.PROJ_COLS[ config.PROJ_PROG ]; 	    
 	    success = await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: newColId }))

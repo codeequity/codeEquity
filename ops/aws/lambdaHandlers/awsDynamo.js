@@ -51,6 +51,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.icLink ); }
     else if( endPoint == "DeleteLinkage")  { resultPromise = delLinkage( rb.GHIssueId, rb.GHCardId ); }
+    else if( endPoint == "DeletePEQ")      { resultPromise = delPeq( rb.GHIssueId, rb.subComponent ); }
     else if( endPoint == "RecordBaseGH")   { resultPromise = putBaseGHC( rb.icLinks ); }
     else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.icLink ); }
     else if( endPoint == "CheckSetGHPop")  { resultPromise = checkSetGHPop( rb.GHRepo, rb.Set ); }
@@ -95,12 +96,8 @@ function paginatedScan( params ) {
 	bsdb.scan( params, onScan );
 
 	function onScan(err, data) {
-	    if (err) {
-		return reject(err);
-	    }
+	    if (err) { return reject(err); }
 	    result = result.concat(data.Items);
-	    //console.log( "on scan.." );
-	    //data.Items.forEach(function(book) { console.log( book.Title ); });	    
 	    if (typeof data.LastEvaluatedKey === "undefined") {
 		return resolve(result);
 	    } else {
@@ -383,6 +380,18 @@ async function delLinkage( issueId, cardId ) {
     return promise.then(() => success( true ));
 }
 
+async function delPeq( issueId, subComp ) {
+    let peqId = await getPeqId( issueId, subComp );
+    console.log( "peqId", peqId );
+    const params = {
+        TableName: 'CEPEQs',
+	Key: {"PEQId": peqId }
+    };
+    
+    let promise = bsdb.delete( params ).promise();
+    return promise.then(() => success( true ));
+}
+
 async function putBaseGHC( icLinks ) {
     const empty = "-1";
     const emptyName = "---";
@@ -417,7 +426,8 @@ async function updateGHC( icLink ) {
 
     console.log( "Updating linkage", icLink.GHIssueId, icLink.GHCardId );
 
-    let props = [ "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
+    // Can't update pkey, so no card or issue id here
+    let props = [ "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardTitle" ];
     let updateVals = buildUpdateParams( icLink, props );
     assert( updateVals.length == 2 );
 
@@ -516,6 +526,21 @@ async function getLinkages( ghIssueId ) {
 	if( links.length == 0 ) { return NO_CONTENT; }
 	else                    { return success( links ); }
     });
+}
+
+async function getPeqId( issueId, subComp ) {
+    const params = { TableName: 'CEPEQs', Limit: 99, };
+
+    params.FilterExpression = 'GHIssueId = :issueId AND contains( GHProjectSub, :subcomp )';
+    params.ExpressionAttributeValues = { ":issueId": issueId, ":subcomp": subComp };
+
+    let promise = bsdb.scan( params ).promise();
+    return promise.then((peqs) => {
+	// console.log( "Found peqs ", peqs );
+	if( peqs.Count == 1 ) { return peqs.Items[0].PEQId ; }
+	else                  { return -1; }
+    });
+    
 }
 
 // XXX Slow
