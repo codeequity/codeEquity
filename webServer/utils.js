@@ -38,6 +38,7 @@ function getCognito() {
 	console.log('Error:', e.stack);
     }
 }
+
 function getCEServer() {
     let fname = config.CESERVER_CONFIG_LOC;
     try {
@@ -67,21 +68,17 @@ async function getRemotePackageJSONObject(owner, repo, installationAccessToken) 
     return fileObject;
 };
 
-
-// XXX unused, untested as of yet.
-// XXX naming convention
-async function getGH( url ) {
-
+// XXX rename postIt
+async function postGH( PAT, url, postData ) {
     const params = {
-        url: url,
-	method: "GET",
-        headers: {'contentTypeHeader': 'application/json' }
+	method: "POST",
+        headers: {'Authorization': 'bearer ' + PAT },
+	body: postData 
     };
-    
+
     return fetch( url, params )
 	.then((res) => {
-	    console.log( res );
-	    return res;
+	    return res.json();
 	})
 	.catch(err => console.log(err));
 }
@@ -622,7 +619,7 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     }
 }
 
-exports.getGH = getGH;
+exports.postGH = postGH;
 exports.getCognito = getCognito;
 exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
