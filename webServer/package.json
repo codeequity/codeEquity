@@ -4,7 +4,7 @@
     "main": "ceServer",
     "scripts": {
         "start": "node ./bin/www",
-        "testAuth": "node ./testAuth"
+        "testSetup": "node ./tests/testSetup.js"
     },
     "dependencies": {
         "@octokit/app": "^4.2.0",

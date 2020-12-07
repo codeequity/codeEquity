@@ -31,6 +31,10 @@ const MAIN_PROJ = 'Master';
 const EMPTY     = '---';
 const UNCLAIMED = 'UnClaimed';
 
+const CREDS_PATH = "../ops/github/auth/ghAppCredentials";
+const CREDS_TPATH = "../ops/github/auth/ghAppTestCredentials";
+const TEST_OWNER = "rmusick2000";
+const TEST_REPO  = "CodeEquityTester";
 
 exports.CE_BOT    = CE_BOT;
 exports.PROJ_COLS = PROJ_COLS;
@@ -57,3 +61,8 @@ exports.UNCLAIMED = UNCLAIMED;
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
 exports.COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;
 exports.CESERVER_CONFIG_LOC = CESERVER_CONFIG_LOC;
+
+exports.CREDS_PATH = CREDS_PATH;
+exports.CREDS_TPATH = CREDS_TPATH;
+exports.TEST_OWNER = TEST_OWNER;
+exports.TEST_REPO  = TEST_REPO;

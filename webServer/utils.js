@@ -226,7 +226,7 @@ async function removePEQ( issueId, projSub ) {
 }
 
 async function addLinkage( repo, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ) {
-    console.log( "Adding issue / card linkage", repo, issueId, projName, colId );
+    console.log( "Adding issue / card linkage", repo, issueId, newCardId, projName, colId );
 
     let shortName = "RecordGHCard";
     let cardTitleStrip = cardTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
@@ -596,7 +596,6 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	}
 	// card -> issue..  exactly one linkage.
 	else {
-	    assert( links.length == 1 );        
 	    pd.GHIssueTitle = issueCardContent[0];
 	    
 	    // create new issue, rebuild card

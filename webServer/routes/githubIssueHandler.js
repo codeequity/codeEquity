@@ -1,4 +1,3 @@
-var testAuth = require('../testAuth');
 var utils = require('../utils');
 var ghUtils = require('../ghUtils');
 var config  = require('../config');

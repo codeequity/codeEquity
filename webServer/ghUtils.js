@@ -603,6 +603,8 @@ async function getCEProjectLayout( installClient, issueId )
     let card = await( utils.getPEQLinkageFId( installClient[1], issueId ));
     let projId = card == -1 ? card : parseInt( card['GHProjectId'] );
     let curCol = card == -1 ? card : parseInt( card['GHColumnId'] );        // moves are only tracked for peq issues
+
+    // XXX curCol is good for first close issue.  But then, on reopen, curCol is the newly made PEND
     
     console.log( installClient[1], "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
