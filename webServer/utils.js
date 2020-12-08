@@ -156,7 +156,6 @@ async function getIssueLinkage( source, issueId ) {
     return await wrappedPostIt( source, shortName, postData );
 }
 
-
 async function getPeq( source, issueId ) {
     console.log( "Get PEQ from issueId:", issueId );
 
@@ -619,6 +618,56 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     }
 }
 
+async function getPActs( source, owner, repo ) {
+    console.log( "Get PEQActions for a given repo:", owner, repo );
+
+    let shortName = "GetEntries";
+    let query     = { "GHUserName": owner, "GHRepo": repo};
+    let postData  = { "Endpoint": shortName, "tableName": "CEPEQActions", "query": query };
+
+    return await wrappedPostIt( source, shortName, postData );
+}
+
+async function getPeqs( source, repo ) {
+    console.log( "Get PEQs for a given repo:", repo );
+
+    let shortName = "GetEntries";
+    let query     = { "GHRepo": repo};
+    let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
+
+    return await wrappedPostIt( source, shortName, postData );
+}
+
+async function getLinks( source, repo ) {
+    console.log( "Get Linkages for a given repo:", repo );
+
+    let shortName = "GetEntries";
+    let query     = { "GHRepo": repo};
+    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
+
+    return await wrappedPostIt( source, shortName, postData );
+}
+
+async function getRepoStatus( source, repo ) {
+    console.log( "Get Status for a given repo:", repo );
+
+    let shortName = "GetEntry";
+    let query     = { "GHRepo": repo};
+    let postData  = { "Endpoint": shortName, "tableName": "CERepoStatus", "query": query };
+
+    return await wrappedPostIt( source, shortName, postData );
+}
+
+async function cleanDynamo( source, tableName, ids ) {
+    // console.log( tableName, "deleting ids:", ids );
+
+    let shortName = "RemoveEntries";
+    let postData  = { "Endpoint": shortName, "tableName": tableName, "ids": ids };
+
+    return await wrappedPostIt( source, shortName, postData );
+}
+
+
 exports.postGH = postGH;
 exports.getCognito = getCognito;
 exports.getCEServer = getCEServer;
@@ -645,3 +694,9 @@ exports.updatePEQPSub = updatePEQPSub;
 exports.getToday = getToday;
 exports.resolve = resolve;
 exports.processNewPEQ = processNewPEQ;
+
+exports.getPActs = getPActs;
+exports.getPeqs = getPeqs;
+exports.getLinks = getLinks;
+exports.getRepoStatus = getRepoStatus;
+exports.cleanDynamo = cleanDynamo;

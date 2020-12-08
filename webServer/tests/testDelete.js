@@ -23,7 +23,8 @@ async function runTests() {
     let pd = new peqData.PeqData();
     pd.GHOwner      = config.TEST_OWNER;
     pd.GHRepo       = config.TEST_REPO;
-
+    pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
+    
     let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
     let PAT   = await auth.getPAT( pd.GHOwner );
     let source = "<TEST: Delete> ";
@@ -97,8 +98,40 @@ async function runTests() {
 	    .catch( e => { console.log( installClient[1], "Problem in delete label", e ); });
     }
 
-    // Clean up dynamo too!
-    
+
+
+
+    // Clean up dynamo.
+    // Note: awaits may not be needed here.  No dependencies... yet...
+    // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
+    // Eeek.  This works a little too well.  Make sure the repo is expected.
+    assert( pd.GHFullName == "rmusick2000/CodeEquityTester" );
+
+    // PActions raw and otherwise
+    let pacts = await utils.getPActs( installClient[1], pd.GHOwner, pd.GHFullName );
+    let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
+    console.log( pactIds );
+    await utils.cleanDynamo( installClient[1], "CEPEQActions", pactIds );
+    await utils.cleanDynamo( installClient[1], "CEPEQRaw", pactIds );
+
+    // PEQs
+    let peqs =  await utils.getPeqs( installClient[1], pd.GHFullName );
+    let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
+    console.log( peqIds );
+    await utils.cleanDynamo( installClient[1], "CEPEQs", peqIds );
+
+    // Linkages
+    let links = await utils.getLinks( installClient[1], pd.GHFullName );
+    let linkIds = links == -1 ? [] : links.map(( link ) => [link.GHIssueId, link.GHCardId] );
+    console.log( linkIds );
+    await utils.cleanDynamo( installClient[1], "CELinkage", linkIds );
+
+    // RepoStatus
+    let status = await utils.getRepoStatus( installClient[1], pd.GHFullName );
+    let statusIds = status == -1 ? [] : [status.GHRepo];
+    console.log( statusIds );
+    await utils.cleanDynamo( installClient[1], "CERepoStatus", statusIds );
+
 }
 
 
