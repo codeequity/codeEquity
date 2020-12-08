@@ -22,7 +22,7 @@ async function runTests() {
     let source = "<TEST: Setup> ";
     let installClient = [token, source];
 
-    let issueData = await( gh.createIssue( installClient, pd.GHOwner, pd.GHRepo, "Look ma, no hands!", [], false ));
+    let issueData = await( gh.createIssue( installClient, pd.GHOwner, pd.GHRepo, "Yo hands!", [], false ));
     console.log( issueData );
 
     if( issueData[0] > -1 ) { 
