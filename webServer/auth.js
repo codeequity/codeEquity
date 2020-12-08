@@ -4,6 +4,7 @@ const { request } = require("@octokit/request");
 
 const fetch = require("node-fetch");
 const dotenv = require("dotenv");
+var fs = require('fs'), json;
 
 var config    = require('./config');
 
@@ -59,5 +60,16 @@ async function getInstallationClient(owner, repo) {
 }
 
 
+async function getPAT( owner ) {
+    let PAT = "";
+    if( owner == config.TEST_OWNER ) {
+	let fname = config.PAT_PATH;
+	try { PAT = fs.readFileSync(fname, 'utf8'); }
+	catch(e) { console.log('Error:', e.stack); }
+    }
+    return PAT.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+}
+
 exports.getInstallationAccessToken = getInstallationAccessToken;
 exports.getInstallationClient      = getInstallationClient;
+exports.getPAT                     = getPAT;

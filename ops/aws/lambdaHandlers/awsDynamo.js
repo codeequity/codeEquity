@@ -45,6 +45,8 @@ exports.handler = (event, context, callback) => {
 
     console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
+    else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
+    else if( endPoint == "RemoveEntries")  { resultPromise = removeEntries( rb.tableName, rb.ids ); }
     else if( endPoint == "GetID")          { resultPromise = getPersonId( username ); }             // username is local
     else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.GHUserName ); }           // return varies on no_content
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
@@ -207,6 +209,9 @@ async function getEntry( tableName, query ) {
     case "CEPEQRaw":
 	props = [ "PEQRawId" ];
 	break;
+    case "CERepoStatus":
+	props = [ "GHRepo" ];
+	break;
     default:
 	assert( false );
     }
@@ -229,6 +234,98 @@ async function getEntry( tableName, query ) {
 	else                       { return NO_CONTENT; }
     });
 }
+
+async function getEntries( tableName, query ) {
+    console.log( "Get from", tableName, ":", query );
+    
+    let props = [];
+    switch( tableName ) {
+    case "CELinkage":
+	props = [ "GHIssueId", "GHRepo", "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
+	break;
+    case "CEPEQs":
+	props = [ "PEQId", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
+	break;
+    case "CEPEQActions":
+	props = [ "PEQActionId", "CEUID", "GHUserName", "GHRepo", "Verb", "Action"];
+	break;
+    case "CEPEQRaw":
+	props = [ "PEQRawId" ];
+	break;
+    case "CERepoStatus": 
+	props = [ "GHRepo" ];
+	break;
+    default:
+	assert( false );
+    }
+    
+    let scanVals = buildConjScanParams( query, props );
+    assert( scanVals.length == 2 );
+
+    let params = {};
+    params.TableName                  = tableName;
+    params.FilterExpression           = scanVals[0];
+    params.ExpressionAttributeValues  = scanVals[1];
+
+    let daPromise = paginatedScan( params ); 
+    return daPromise.then((entries) => {
+	if( entries.length == 0 ) { return NO_CONTENT; }
+	else                      { return success( entries ); }
+    });
+}
+
+
+async function removeEntries( tableName, ids ) {
+    console.log( "Remove from", tableName, ":", ids );
+    
+    let pkey1 = "";
+    let pkey2 = "";
+    switch( tableName ) {
+    case "CELinkage":
+	pkey1 = "GHIssueId";
+	pkey2 = "GHCardId";
+	break;
+    case "CEPEQs":
+	pkey1 = "PEQId";
+	break;
+    case "CEPEQActions":
+	pkey1 = "PEQActionId";
+	break;
+    case "CEPEQRaw":
+	pkey1 = "PEQRawId";
+	break;
+    case "CERepoStatus": 
+	pkey1 = "GHRepo";
+	break;
+    default:
+	assert( false );
+    }
+
+    let promises = [];
+    for( const id of ids ) {
+	let keyPhrase = {};
+	keyPhrase[pkey1] = id[0];
+	if( pkey2 != "" ) {
+	    assert( id.length == 2 );
+	    keyPhrase[pkey2] = id[1]; 
+	}
+	const params = {
+	    TableName: tableName,
+	    Key: keyPhrase
+	};
+
+	promises.push( bsdb.delete( params ).promise() );
+    }
+
+    return await Promise.all( promises )
+	.then((results) => {
+	    console.log( '...promises done' );
+	    return success( true );
+	});
+}
+
+
+
 
 async function getPersonId( username ) {
     const paramsP = {
@@ -580,7 +677,7 @@ async function getPeqActions( uid, ghUser, ghRepo ) {
     console.log( "Looking for peqActions");
     let peqPromise = paginatedScan( params );
     return peqPromise.then((peqs) => {
-	console.log( "Found peqActions ", peqs );
+	//console.log( "Found peqActions ", peqs );
 	return success( peqs );
     });
 }

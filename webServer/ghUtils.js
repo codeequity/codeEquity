@@ -873,7 +873,7 @@ function parseLabelDescr( labelDescr ) {
 
     for( const line of labelDescr ) {
 	if( line.indexOf( config.PDESC ) == 0 ) {
-	    // console.log( "Found peq val in", line.substring( pDescLen ) );
+	    //console.log( "Found peq val in", line.substring( pDescLen ) );
 	    peqValue = parseInt( line.substring( pDescLen ) );
 	    break;
 	}

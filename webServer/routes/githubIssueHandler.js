@@ -203,6 +203,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     case 'opened':
 	// Can get here by 'convert to issue' on a newborn card, or more commonly, New issue with submit.
 	// XXX If the latter, convert newborn issue -> carded issue (unclaimed)
+	console.log( "Issue id:", reqBody['issue']['id'], "nodeId:", reqBody['issue']['node_id'] );
     case 'pinned': 
     case 'unpinned': 
     case 'locked': 
