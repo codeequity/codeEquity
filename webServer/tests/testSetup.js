@@ -15,6 +15,8 @@ var gh = ghUtils.githubUtils;
 async function createPreferredCEProjects( installClient, pd ) {
     console.log( "Building preferred CE project layout, a mini version" );
 
+    // XXX  find or create first peq label. add newborn issue, then label it.  Trigger populate and wait.
+
     // Master: softwareContr, businessOps, unallocated
     let masterPID = await tu.makeProject( installClient, pd, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
     let mastCol1  = await tu.makeColumn( installClient, masterPID, "Software Contributions" );
@@ -38,7 +40,6 @@ async function createPreferredCEProjects( installClient, pd ) {
     let ubCardId = await tu.makeNewbornCard( installClient, mastCol2, "Unallocated\n<allocation, PEQ: 1,000,000>" )
 
 
-    // XXX should allow pause for populate
     // XXX peqs are doubled.. alloc + plan
     // Expectations
     // have alloc labels
