@@ -16,6 +16,7 @@ async function createPreferredCEProjects( installClient, pd ) {
     console.log( "Building preferred CE project layout, a mini version" );
 
     // XXX  find or create first peq label. add newborn issue, then label it.  Trigger populate and wait.
+    // 
 
     // Master: softwareContr, businessOps, unallocated
     let masterPID = await tu.makeProject( installClient, pd, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
