@@ -115,7 +115,7 @@ async function runTests() {
     await utils.cleanDynamo( installClient[1], "CEPEQRaw", pactIds );
 
     // PEQs
-    let peqs =  await utils.getPeqs( installClient[1], pd.GHFullName );
+    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": pd.GHFullName });
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
     console.log( peqIds );
     await utils.cleanDynamo( installClient[1], "CEPEQs", peqIds );

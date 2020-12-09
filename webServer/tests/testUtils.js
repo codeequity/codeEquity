@@ -44,8 +44,53 @@ async function makeNewbornCard( installClient, colId, note ) {
     
 }
 
+function checkEq( lhs, rhs, testStatus, msg ) {
+    if( lhs == rhs ) {
+	testStatus[0]++;
+    }
+    else {
+	testStatus[1]++;
+	testStatus[2].push( msg + ": " + lhs );
+    }
+    return testStatus;
+}
+
+function checkAr( lhs, rhs, testStatus, msg ) {
+    let test = true;
+    if( lhs.length != rhs.length ) { test = false; }
+    else {
+	for( let i = 0; i < lhs.length; i++ ) {
+	    if( lhs[i] != rhs[i] ) {
+		test = false;
+		break;
+	    }
+	}
+    }
+	
+    if( test ) {
+	testStatus[0]++;
+    }
+    else {
+	testStatus[1]++;
+	testStatus[2].push( msg + ": " + lhs );
+    }
+    return testStatus;
+}
+
+function testReport( testStatus, component ) {
+    let count = testStatus[0] + testStatus[1];
+    if( testStatus[1] == 0 ) { console.log( count, "Tests for", component, ".. All Passed." ); }
+    else                     { console.log( count, "Tests results for", component, ".. failed test count:", testStatus[1] ); }
+
+    for( const failure of testStatus[2] ) {
+	console.log( "   failed test:", failure );
+    }
+}
 
 exports.makeProject     = makeProject;
 exports.makeColumn      = makeColumn;
 exports.make4xCols      = make4xCols;
 exports.makeNewbornCard = makeNewbornCard;
+exports.checkEq         = checkEq;
+exports.checkAr         = checkAr;
+exports.testReport      = testReport;

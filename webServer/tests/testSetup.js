@@ -16,8 +16,15 @@ async function createPreferredCEProjects( installClient, pd ) {
     console.log( "Building preferred CE project layout, a mini version" );
 
     // XXX  find or create first peq label. add newborn issue, then label it.  Trigger populate and wait.
-    // 
 
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+    
+    let githubOpsTitle   = "Github Operations";
+    let unallocatedTitle = "Unallocated";
+    let dataSecTitle     = "Data Security";
+    
+    /*
     // Master: softwareContr, businessOps, unallocated
     let masterPID = await tu.makeProject( installClient, pd, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
     let mastCol1  = await tu.makeColumn( installClient, masterPID, "Software Contributions" );
@@ -33,14 +40,36 @@ async function createPreferredCEProjects( installClient, pd ) {
     let ghOpCols = await tu.make4xCols( installClient, ghOpPID );
     
     // softCont: dataSecurity, githubOps, unallocated
-    let dsCardId = await tu.makeNewbornCard( installClient, mastCol1, "Data Security\n<allocation, PEQ: 1,000,000>" )
-    let ghCardId = await tu.makeNewbornCard( installClient, mastCol1, "Github Operations\n<allocation, PEQ: 1,500,000>" )
-    let usCardId = await tu.makeNewbornCard( installClient, mastCol1, "Unallocated\n<allocation, PEQ: 3,000,000>" )
+    let dsCardId = await tu.makeNewbornCard( installClient, mastCol1, dataSecTitle+"\n<allocation, PEQ: 1,000,000>" )
+    let ghCardId = await tu.makeNewbornCard( installClient, mastCol1, githubOpsTitle+"\n<allocation, PEQ: 1,500,000>" )
+    let usCardId = await tu.makeNewbornCard( installClient, mastCol1, unallocatedTitle+"\n<allocation, PEQ: 3,000,000>" )
     
     // busOps:  unallocated
     let ubCardId = await tu.makeNewbornCard( installClient, mastCol2, "Unallocated\n<allocation, PEQ: 1,000,000>" )
+    */
 
+    // Check proper peq
+    let ghPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": pd.GHFullName, "GHIssueTitle": githubOpsTitle });
+    testStatus = tu.checkEq( ghPeqs.length, 1,                                   testStatus, "Number of githubOps peq objects" );
+    testStatus = tu.checkEq( ghPeqs[0].PeqType, "allocation",                    testStatus, "PeqType" );
+    testStatus = tu.checkAr( ghPeqs[0].GHProjectSub, ['Software Contributions'], testStatus, "Project sub" );
+    //testStatus = tu.checkEq( ghPeqs[0].GHProjectId, masterPID,                  testStatus, "Project ID" );  
+    testStatus = tu.checkEq( ghPeqs[0].Amount, "1500000",                        testStatus, "Project ID" );  
+    
+    let dsPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": pd.GHFullName, "GHIssueTitle": dataSecTitle });
+    testStatus = tu.checkEq( dsPeqs.length, 1,                                   testStatus, "Number of datasec peq objects" );
+    testStatus = tu.checkEq( dsPeqs[0].PeqType, "allocation",                    testStatus, "PeqType" );
+    testStatus = tu.checkAr( dsPeqs[0].GHProjectSub, ['Software Contributions'], testStatus, "Project sub" );
 
+    let unPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": pd.GHFullName, "GHIssueTitle": unallocatedTitle });
+    testStatus = tu.checkEq( unPeqs.length, 2,                                   testStatus, "Number of unalloc peq objects" );
+    testStatus = tu.checkEq( unPeqs[0].PeqType, "allocation",                    testStatus, "PeqType" );
+
+    let busTest = unPeqs[0].GHProjectSub.includes('Business Operations') || unPeqs[1].GHProjectSub.includes( 'Business Operations' );
+    testStatus = tu.checkEq( busTest, true,                            testStatus, "Project subs for unalloc" );    
+
+    
+    
     // XXX peqs are doubled.. alloc + plan
     // Expectations
     // have alloc labels
@@ -48,7 +77,7 @@ async function createPreferredCEProjects( installClient, pd ) {
     // check issues exist
     // dynamo: links, peqs, pacts
     
-    
+    tu.testReport( testStatus, "Create preferred CE Projects" );
 }
 
 

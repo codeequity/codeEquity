@@ -628,11 +628,10 @@ async function getPActs( source, owner, repo ) {
     return await wrappedPostIt( source, shortName, postData );
 }
 
-async function getPeqs( source, repo ) {
-    console.log( "Get PEQs for a given repo:", repo );
+async function getPeqs( source, query ) {
+    // console.log( "Get PEQs for a given repo:", query);
 
     let shortName = "GetEntries";
-    let query     = { "GHRepo": repo};
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
 
     return await wrappedPostIt( source, shortName, postData );
