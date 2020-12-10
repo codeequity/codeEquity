@@ -109,13 +109,13 @@ async function runTests() {
 
     // PActions raw and otherwise
     // Note: clean both bot and GHOwner pacts
-    let pacts = await utils.getPActs( installClient[1], config.TESTER_BOT, pd.GHFullName );
+    let pacts = await utils.getPActs( installClient[1], {"GHUserName": config.TESTER_BOT, "GHRepo": pd.GHFullName} );
     let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
     console.log( "Dynamo bot PActIds", pactIds );
     await utils.cleanDynamo( installClient[1], "CEPEQActions", pactIds );
     await utils.cleanDynamo( installClient[1], "CEPEQRaw", pactIds );
 
-    pacts = await utils.getPActs( installClient[1], pd.GHOwner, pd.GHFullName );
+    pacts = await utils.getPActs( installClient[1], {"GHUserName": pd.GHOwner, "GHRepo": pd.GHFullName} );
     pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
     console.log( "Dynamo owner PActIds", pactIds );
     await utils.cleanDynamo( installClient[1], "CEPEQActions", pactIds );

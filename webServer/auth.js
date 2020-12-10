@@ -37,7 +37,10 @@ function getInstallationClientFromToken(installationAccessToken) {
 
 async function getInstallationClient(owner, repo, source) {
 
-    // XXX Revisit auth creds setup 
+    // Both the codeEquity app, and the ceTester app are installed for local development, both are authorized against the github repo.
+    // the codeEquity app contains the webServer - use those credentials for posting to GH, otherwise secondary notification filtering
+    // doesn't work (i.e. we filter sender:codeequity[bot] notifications, but can't filter cetester[bot] notifications.  The name of the
+    // sender, for bot posts, appears to be drawn from the installed app name.
     let credPath = config.CREDS_PATH;
     if( source != config.CE_USER && owner == config.TEST_OWNER && repo == config.TEST_REPO ) {
 	credPath = config.CREDS_TPATH;
