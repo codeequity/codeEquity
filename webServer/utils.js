@@ -221,8 +221,8 @@ async function removePEQ( issueId, projSub ) {
     return await wrappedPostIt( "", shortName, pd );
 }
 
-async function addLinkage( repo, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ) {
-    console.log( "Adding issue / card linkage", repo, issueId, newCardId, projName, colId );
+async function addLinkage( source, repo, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ) {
+    console.log( source, "AddLinkage", repo, issueId, newCardId, projName, colId );
 
     let shortName = "RecordGHCard";
     let cardTitleStrip = cardTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
@@ -403,6 +403,10 @@ async function recordPEQTodo( blit, blot ) {
     console.log( "Musta hava sum tingy here" );
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function getToday() {
     var today = new Date();
     var dd = String(today.getDate()).padStart(2, '0');
@@ -471,14 +475,14 @@ async function recordPeqData( installClient, pd, checkDup ) {
     );
 }
 
-async function rebuildLinkage( link, issueData, newCardId, newTitle ) {
+async function rebuildLinkage( source, link, issueData, newCardId, newTitle ) {
     // no need to wait for the deletion
     removeLinkage( link.GHIssueId, link.GHCardId );
 
     // is this an untracked carded issue?
     if( link.GHColumnId == -1 ) { newTitle = config.EMPTY; } 
     
-    await( addLinkage( link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
+    await( addLinkage( source, link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
 		       link.GHColumnId, link.GHColumnName, newCardId, newTitle ));
 }
 
@@ -487,12 +491,12 @@ async function rebuildLinkage( link, issueData, newCardId, newTitle ) {
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
 //       learns 1:m is a semantic error in CE
 async function resolve( installClient, pd, allocation ) {
-    console.log( "resolve" );
+    console.log( installClient[1], "resolve" );
     // on first call from populate, list may be large.  Afterwards, max 2.
     let links = await( getIssueLinkage( installClient[1], pd.GHIssueId ));
     if( links == -1 || links.length < 2 ) { return; }
 
-    console.log( "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.GHIssueId, pd.GHIssueNum );
+    console.log( installClient[1], "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.GHIssueId, pd.GHIssueNum );
 
     // Need all issue data, with mod to title and to comment
     assert( links[0].GHIssueNum == pd.GHIssueNum );
@@ -534,7 +538,7 @@ async function resolve( installClient, pd, allocation ) {
 	let newCardId   = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, colId, origCardId, issueData );
 
 	pd.GHIssueTitle = issue.title + " split: " + splitTag;
-	await rebuildLinkage( links[i], issueData, newCardId, pd.GHIssueTitle );
+	await rebuildLinkage( installClient[1], links[i], issueData, newCardId, pd.GHIssueTitle );
 
 	if( pd.peqType != "end" ) {
 	    assert( projName != "" );
@@ -560,7 +564,7 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     
     // XXX allow PROJ_PEND
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; }
-    console.log( "PNP: processing", pd.peqValue.toString(), pd.peqType );
+    console.log( installClient[1], "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
     let colId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
@@ -572,7 +576,7 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	assert( link == -1 );  
 	if( pd.GHIssueId != -1 ) {
 	    let blank      = config.EMPTY;
-	    addLinkage( pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, blank , -1, blank, origCardId, blank );
+	    await addLinkage( installClient[1], pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, blank , -1, blank, origCardId, blank );
 	}
     }
     else {
@@ -580,7 +584,8 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	let peqLabel = await gh.findOrCreateLabel( installClient, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
 	colName  = await gh.getColumnName( installClient, colId );
 	projName = await gh.getProjectName( installClient, pd.GHProjectId );
-	
+
+	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 	assert( colName != config.PROJ_COLS[ config.PROJ_PEND ] );
 	assert( colName != config.PROJ_COLS[ config.PROJ_ACCR ] );
 	
@@ -588,7 +593,7 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	// Note: some linkages exist and will be overwritten with dup info.  this is rare, and it is faster to do so than to check.
 	// issue->card:  issueId is available, but linkage has not yet been added
 	if( pd.GHIssueNum > -1 ) {
-	    await( addLinkage( pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, origCardId, issueCardContent[0] ));
+	    await( addLinkage( installClient[1], pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, origCardId, issueCardContent[0] ));
 	}
 	// card -> issue..  exactly one linkage.
 	else {
@@ -602,7 +607,11 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	    pd.GHIssueNum = issueData[1];
 	    
 	    // Add card issue linkage
-	    await( addLinkage( pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle));
+	    await( addLinkage( installClient[1], pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle));
+
+	    // Can get here by creating allocation card.  there is no issue, by def.  so no double linkage.
+	    // This could be the trigger for populateCE   check and do so
+	    if( allocation ) { await( gh.populateCELinkage( installClient, pd.GHOwner, pd.GHRepo, pd.GHFullName )); }
 	}
     }
 
@@ -628,11 +637,10 @@ async function getPActs( source, owner, repo ) {
     return await wrappedPostIt( source, shortName, postData );
 }
 
-async function getPeqs( source, repo ) {
-    console.log( "Get PEQs for a given repo:", repo );
+async function getPeqs( source, query ) {
+    // console.log( "Get PEQs for a given repo:", query);
 
     let shortName = "GetEntries";
-    let query     = { "GHRepo": repo};
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
 
     return await wrappedPostIt( source, shortName, postData );
@@ -691,6 +699,7 @@ exports.updateLinkage = updateLinkage;
 exports.getIssueLinkage = getIssueLinkage;
 exports.getPEQLinkageFId = getPEQLinkageFId;
 exports.updatePEQPSub = updatePEQPSub;
+exports.sleep = sleep;
 exports.getToday = getToday;
 exports.resolve = resolve;
 exports.processNewPEQ = processNewPEQ;

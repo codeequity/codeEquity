@@ -35,11 +35,11 @@ function getInstallationClientFromToken(installationAccessToken) {
     return new Octokit({ auth: `token ${installationAccessToken}` });
 }
 
-async function getInstallationClient(owner, repo) {
+async function getInstallationClient(owner, repo, source) {
 
     // XXX Revisit auth creds setup 
     let credPath = config.CREDS_PATH;
-    if( owner == config.TEST_OWNER && repo == config.TEST_REPO ) {
+    if( source != config.CE_USER && owner == config.TEST_OWNER && repo == config.TEST_REPO ) {
 	credPath = config.CREDS_TPATH;
     }
     

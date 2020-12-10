@@ -81,7 +81,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
-async function handler( action, repo, owner, reqBody, res ) {
+async function handler( action, repo, owner, reqBody, res, tag ) {
 
     // Actions: created, deleted, moved, edited, converted
     
@@ -97,17 +97,18 @@ async function handler( action, repo, owner, reqBody, res ) {
     pd.reqBody      = reqBody;
     pd.GHCreator    = reqBody['project_card']['creator']['login'];
     pd.GHFullName   = reqBody['repository']['full_name'];
+
     
     // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
-    let source = "<CAR:"+action+"> ";
+    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, config.CE_USER );
+    let source = "<car:"+action+" "+tag+"> ";
     let installClient = [token, source];
 
     await gh.checkRateLimit(installClient);
 
     if( action == "created" && pd.reqBody['project_card']['content_url'] != null ) {
 	// In issues, add to project, triage to add to column.  May or may not be PEQ.  
-	console.log( "new card created from issue" );
+	// console.log( "new card created from issue" );
 
 	// e.g. content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
 	let issueURL = pd.reqBody['project_card']['content_url'].split('/');
@@ -115,7 +116,7 @@ async function handler( action, repo, owner, reqBody, res ) {
 	pd.GHIssueNum = parseInt( issueURL[issueURL.length - 1] );
 	let issue = await gh.getIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );   // [ id, [content] ]
 	pd.GHIssueId = issue[0];
-	console.log( "Found issue:", pd.GHIssueNum.toString(), issue[1] );
+	// console.log( "Found issue:", pd.GHIssueNum.toString(), issue[1] );
 
 	// Is underlying issue already linked to unclaimed?  if so, remove it.
 	await gh.cleanUnclaimed( installClient, pd );
@@ -123,7 +124,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     }
     else if( action == "created" ) {
 	// In projects, creating a card that MAY have a human PEQ label in content.
-	console.log( "New card created, unattached" );
+	// console.log( "New card created, unattached" );
 	let cardContent = pd.reqBody['project_card']['note'].split('\n');
 
 	// XXX This may be overly restrictive..?

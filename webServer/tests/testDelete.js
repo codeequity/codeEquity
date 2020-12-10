@@ -24,7 +24,7 @@ async function runTests() {
     pd.GHOwner      = config.TEST_OWNER;
     pd.GHRepo       = config.TEST_REPO;
     pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
-    
+
     let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
     let PAT   = await auth.getPAT( pd.GHOwner );
     let source = "<TEST: Delete> ";
@@ -108,28 +108,35 @@ async function runTests() {
     assert( pd.GHFullName == "rmusick2000/CodeEquityTester" );
 
     // PActions raw and otherwise
-    let pacts = await utils.getPActs( installClient[1], pd.GHOwner, pd.GHFullName );
+    // Note: clean both bot and GHOwner pacts
+    let pacts = await utils.getPActs( installClient[1], config.TESTER_BOT, pd.GHFullName );
     let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
-    console.log( pactIds );
+    console.log( "Dynamo bot PActIds", pactIds );
+    await utils.cleanDynamo( installClient[1], "CEPEQActions", pactIds );
+    await utils.cleanDynamo( installClient[1], "CEPEQRaw", pactIds );
+
+    pacts = await utils.getPActs( installClient[1], pd.GHOwner, pd.GHFullName );
+    pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
+    console.log( "Dynamo owner PActIds", pactIds );
     await utils.cleanDynamo( installClient[1], "CEPEQActions", pactIds );
     await utils.cleanDynamo( installClient[1], "CEPEQRaw", pactIds );
 
     // PEQs
-    let peqs =  await utils.getPeqs( installClient[1], pd.GHFullName );
+    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": pd.GHFullName });
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
-    console.log( peqIds );
+    console.log( "Dynamo PEQ ids", peqIds );
     await utils.cleanDynamo( installClient[1], "CEPEQs", peqIds );
 
     // Linkages
     let links = await utils.getLinks( installClient[1], pd.GHFullName );
     let linkIds = links == -1 ? [] : links.map(( link ) => [link.GHIssueId, link.GHCardId] );
-    console.log( linkIds );
+    console.log( "Dynamo link ids", linkIds );
     await utils.cleanDynamo( installClient[1], "CELinkage", linkIds );
 
     // RepoStatus
     let status = await utils.getRepoStatus( installClient[1], pd.GHFullName );
-    let statusIds = status == -1 ? [] : [status.GHRepo];
-    console.log( statusIds );
+    let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
+    console.log( "Dynamo status id", statusIds );
     await utils.cleanDynamo( installClient[1], "CERepoStatus", statusIds );
 
 }
