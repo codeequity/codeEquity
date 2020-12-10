@@ -1,4 +1,6 @@
-const CE_BOT = 'codeequity[bot]';
+const CE_USER = 'codeEquity';
+const CE_BOT  = 'codeequity[bot]';
+const TESTER_BOT = 'cetester[bot]';
 
 // Default path locations
 const APIPATH_CONFIG_LOC  = './public-flutter/assets/files/api_base_path.txt';
@@ -37,7 +39,9 @@ const PAT_PATH    = "../ops/github/auth/ghPersonalAccessToken";
 const TEST_OWNER  = "rmusick2000";
 const TEST_REPO   = "CodeEquityTester";
 
+exports.CE_USER   = CE_USER;
 exports.CE_BOT    = CE_BOT;
+exports.TESTER_BOT = TESTER_BOT;
 exports.PROJ_COLS = PROJ_COLS;
 exports.PROJ_PLAN = PROJ_PLAN;
 exports.PROJ_PROG = PROJ_PROG;

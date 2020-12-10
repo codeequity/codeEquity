@@ -16,15 +16,18 @@ async function createPreferredCEProjects( installClient, pd ) {
     console.log( "Building preferred CE project layout, a mini version" );
 
     // XXX  find or create first peq label. add newborn issue, then label it.  Trigger populate and wait.
+    // Create 1000peq
+    // create issue with label.
+    // wait.
+    // remove unclaimedproj, issue, label. ... or leave it alone..
 
-    // [pass, fail, msgs]
-    let testStatus = [ 0, 0, []];
+
+    // ============ Build structure
     
     let githubOpsTitle   = "Github Operations";
     let unallocatedTitle = "Unallocated";
     let dataSecTitle     = "Data Security";
-    
-    /*
+
     // Master: softwareContr, businessOps, unallocated
     let masterPID = await tu.makeProject( installClient, pd, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
     let mastCol1  = await tu.makeColumn( installClient, masterPID, "Software Contributions" );
@@ -40,20 +43,40 @@ async function createPreferredCEProjects( installClient, pd ) {
     let ghOpCols = await tu.make4xCols( installClient, ghOpPID );
     
     // softCont: dataSecurity, githubOps, unallocated
-    let dsCardId = await tu.makeNewbornCard( installClient, mastCol1, dataSecTitle+"\n<allocation, PEQ: 1,000,000>" )
-    let ghCardId = await tu.makeNewbornCard( installClient, mastCol1, githubOpsTitle+"\n<allocation, PEQ: 1,500,000>" )
-    let usCardId = await tu.makeNewbornCard( installClient, mastCol1, unallocatedTitle+"\n<allocation, PEQ: 3,000,000>" )
+    let dsCardId = await tu.makeAllocCard( installClient, mastCol1, dataSecTitle, "1,000,000" )
+
+    // Just triggered populate.
+    console.log( "Wait while populating.." );
+    await utils.sleep( 15000 );
+    console.log( "Done waiting." );
+    
+    let ghCardId = await tu.makeAllocCard( installClient, mastCol1, githubOpsTitle, "1,500,000" )
+    let usCardId = await tu.makeAllocCard( installClient, mastCol1, unallocatedTitle, "3,000,000" )
     
     // busOps:  unallocated
-    let ubCardId = await tu.makeNewbornCard( installClient, mastCol2, "Unallocated\n<allocation, PEQ: 1,000,000>" )
-    */
+    let ubCardId = await tu.makeAllocCard( installClient, mastCol2, "Unallocated", "1,000,000" )
+
+
+
+    // Wait for things to settle
+    // XXX Note, this does have some merit - CE is built for human hands, and hands + native github delay means human
+    //     operations are far slower than the test execution above.  However, this is still pretty darned slow ATM
+    console.log( "Waiting to allow settle" );
+    await utils.sleep( 15000 );
+    console.log( "Done waiting" );
+
+    // ============ check results
+
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
 
     // Check proper peq
     let ghPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": pd.GHFullName, "GHIssueTitle": githubOpsTitle });
+    assert( ghPeqs.length > 0 ); // total fail if this fails
     testStatus = tu.checkEq( ghPeqs.length, 1,                                   testStatus, "Number of githubOps peq objects" );
     testStatus = tu.checkEq( ghPeqs[0].PeqType, "allocation",                    testStatus, "PeqType" );
     testStatus = tu.checkAr( ghPeqs[0].GHProjectSub, ['Software Contributions'], testStatus, "Project sub" );
-    //testStatus = tu.checkEq( ghPeqs[0].GHProjectId, masterPID,                  testStatus, "Project ID" );  
+    testStatus = tu.checkEq( ghPeqs[0].GHProjectId, masterPID,                  testStatus, "Project ID" );  
     testStatus = tu.checkEq( ghPeqs[0].Amount, "1500000",                        testStatus, "Project ID" );  
     
     let dsPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": pd.GHFullName, "GHIssueTitle": dataSecTitle });
@@ -78,6 +101,7 @@ async function createPreferredCEProjects( installClient, pd ) {
     // dynamo: links, peqs, pacts
     
     tu.testReport( testStatus, "Create preferred CE Projects" );
+
 }
 
 
@@ -89,7 +113,7 @@ async function runTests() {
     pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
 
     // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
+    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, pd.GHOwner );
     let source = "<TEST: Setup> ";
     let installClient = [token, source];
 

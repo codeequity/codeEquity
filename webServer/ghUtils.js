@@ -148,7 +148,7 @@ async function getAssignees( installClient, owner, repo, issueNum )
     let retVal = [];
     if( issueNum == -1 ) { return retVal; }
 
-    console.log( installClient[1], "Getting assignees for", owner, repo, issueNum );
+    // console.log( installClient[1], "Getting assignees for", owner, repo, issueNum );
     await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => {
 	    // console.log( issue['data'] );
@@ -272,7 +272,7 @@ async function findOrCreateLabel( installClient, owner, repo, allocation, peqHum
     
     // if not, create
     if( status == 404 ) {
-	console.log( installClient[1], "Not found, creating.." );
+	console.log( installClient[1], "Label not found, creating.." );
 	let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
 	let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
 	await( installClient[0].issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
@@ -291,6 +291,7 @@ async function findOrCreateLabel( installClient, owner, repo, allocation, peqHum
 
 async function createIssue( installClient, owner, repo, title, labels, allocation )
 {
+    console.log( installClient[1], "Creating issue, from alloc?", allocation );
     let issueData = [-1,-1];  // issue id, num
 
     let body = "";
@@ -329,6 +330,7 @@ async function createIssue( installClient, owner, repo, title, labels, allocatio
 // XXX something like this really needs graphQL
 async function populateCELinkage( installClient, owner, repo, fullName )
 {
+    console.log( installClient[1], "Populate CE Linkage start" );
     let alreadyDone = await utils.checkPopulated( installClient[1], fullName );
     if( alreadyDone ) { return false; }
     
@@ -460,6 +462,7 @@ async function populateCELinkage( installClient, owner, repo, fullName )
     await Promise.all( rPromises );
     
     await utils.setPopulated( installClient[1], fullName );
+    console.log( installClient[1], "Populate CE Linkage Done" );
     return true;
 }
 
@@ -551,22 +554,16 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 
 // Unclaimed cards are peq issues by definition.  So, linkage table will be complete.
 async function cleanUnclaimed( installClient, pd ) {
-    console.log( "cleanUnclaimed", pd.GHIssueId );
+    console.log( installClient[1], "cleanUnclaimed", pd.GHIssueId );
     let link = await utils.getPEQLinkageFId( installClient[1], pd.GHIssueId );
     if( link == -1 ) { return; }
-
-    console.log( "Found unclaimed" );
+    if( link.GHColumnName != config.UNCLAIMED ) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
+	
     assert( link.GHCardId != -1 );
     assert( link.GHColumnName != config.EMPTY );
     
-    // verify, then remove unclaimed
-    if( link.GHColumnName == config.UNCLAIMED ) {
-	await( installClient[0].projects.deleteCard( { card_id: link.GHCardId } ));
-    }
-    else {
-	console.log( "Unexpected link", link );
-	assert( false );
-    }
+    console.log( "Found unclaimed" );
+    await( installClient[0].projects.deleteCard( { card_id: link.GHCardId } ));
     
     // Remove turds, report.  Note - this is the only situation in which webServer will delete a PEQ record.
     await( utils.removeLinkage( pd.GHIssueId, link.GHCardId ));
@@ -778,6 +775,8 @@ async function getProjectName( installClient, projId ) {
 }
 
 async function getColumnName( installClient, colId ) {
+
+    if( colId == -1 ) { return -1; }
     
     let column = await( installClient[0].projects.getColumn({ column_id: colId }))
 	.catch( e => {
@@ -793,7 +792,7 @@ async function getColumnName( installClient, colId ) {
 async function getProjectSubs( installClient, repoName, projName, colName ) {
     let projSub = [ "Unallocated" ];  // Should not occur.
 
-    console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
+    //console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
 	
     if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
@@ -806,7 +805,7 @@ async function getProjectSubs( installClient, repoName, projName, colName ) {
 	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
     }
 	    
-    console.log( "... returning", projSub.toString() );
+    //console.log( "... returning", projSub.toString() );
     return projSub;
 }
 
@@ -836,7 +835,6 @@ function parsePEQ( content, allocation ) {
 	let s = -1;
 	let c = -1;
 	if( allocation ) {
-	    console.log( "In alloc" );
 	    s = line.indexOf( config.PALLOC );
 	    if( s > -1 ) {
 		s = line.indexOf( config.PEQ );   // both conds true for one line only in content

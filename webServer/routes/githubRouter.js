@@ -13,13 +13,29 @@ router.post('/:location?', async function (req, res) {
     let repo   = req.body['repository']['name'];
     let owner  = req.body['repository']['owner']['login'];
     let retVal = "";
-    console.log( "Working with", event, action, "for", owner, repo );
 
     if( event == "issues" ) {
-	retVal = issues.handler( action, repo, owner, req.body, res );
+	let tag = (req.body['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
+	console.log( "Notification:", event, action, tag, "for", owner, repo );
+	retVal = issues.handler( action, repo, owner, req.body, res, tag );
     }
     else if( event == "project_card" ) {
-	retVal = cards.handler(  action, repo, owner, req.body, res );
+
+	let tag = "";
+	
+	if( req.body['project_card']['content_url'] != null ) {
+	    let issueURL = req.body['project_card']['content_url'].split('/');
+	    let issueNum = parseInt( issueURL[issueURL.length - 1] );
+	    tag = "iss"+parseInt(issueNum);
+	}
+	else {
+	    let cardContent = req.body['project_card']['note'].split('\n');
+	    tag = "*"+cardContent[0].substring(0,8)+"*";
+	}
+	tag = tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+	
+	console.log( "Notification:", event, action, tag, "for", owner, repo );
+	retVal = cards.handler(  action, repo, owner, req.body, res, tag );
     }
     else {
 	retVal = res.json({

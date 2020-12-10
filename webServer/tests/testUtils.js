@@ -34,7 +34,9 @@ async function make4xCols( installClient, projId ) {
     return [prog, plan, pend, accr];
 }
 
-async function makeNewbornCard( installClient, colId, note ) {
+async function makeAllocCard( installClient, colId, title, amount ) {
+    let note = title + "\n<allocation, PEQ: " + amount + ">";
+    
     let cid = await installClient[0].projects.createCard({ column_id: colId, note: note })
 	.then((card) => { return card.data.id; })
 	.catch( e => { console.log( installClient[1], "Create newborn card failed.", e ); });
@@ -90,7 +92,7 @@ function testReport( testStatus, component ) {
 exports.makeProject     = makeProject;
 exports.makeColumn      = makeColumn;
 exports.make4xCols      = make4xCols;
-exports.makeNewbornCard = makeNewbornCard;
+exports.makeAllocCard   = makeAllocCard;
 exports.checkEq         = checkEq;
 exports.checkAr         = checkAr;
 exports.testReport      = testReport;

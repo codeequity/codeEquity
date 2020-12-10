@@ -24,7 +24,7 @@ https://developer.github.com/v3/issues/#create-an-issue
 //       {label, open, add card} operation on newborn issues will cause conversion to carded (unclaimed) or situated issue,
 //       and inclusion in linkage table.
 
-async function handler( action, repo, owner, reqBody, res ) {
+async function handler( action, repo, owner, reqBody, res, tag ) {
 
     // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
     //          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
@@ -52,8 +52,8 @@ async function handler( action, repo, owner, reqBody, res ) {
     pd.GHFullName   = reqBody['repository']['full_name'];
     
     // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
-    let source = "<ISS:"+action+"> ";
+    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, config.CE_USER );
+    let source = "<ISS:"+action+" "+tag+"> ";
     let installClient = [token, source];
 
     await gh.checkRateLimit(installClient);
@@ -61,6 +61,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
+	// Should not get here from adding alloc card - that is a bot action.
 	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_ACCR
 	// ... but it if is situated already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only 
@@ -83,18 +84,24 @@ async function handler( action, repo, owner, reqBody, res ) {
 	    }
 	}
 
-	if( link == -1 ) {
-	    console.log( "Newborn PEQ issue.  Create card in unclaimed" );
-	    // Can't create card without column_id.  No project, or column_id without triage.
-	    // Create in proj:col UnClaimed:Unclaimed to maintain promise of linkage in dynamo.
-	    let card = await( gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId ) );
-	    link = {};
-	    link.GHCardId    = card.id
-	    link.GHColumnId  = card.column_url.split('/').pop();
-	    link.GHProjectId = card.project_url.split('/').pop();
-	    let issueURL = card.content_url.split('/');
-	    assert( issueURL.length > 0 );
-	    link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );
+	if( link == -1 || link.GHColumnId == -1) {
+	    if( link == -1 ) { 
+		link = {};
+		// console.log( "Newborn PEQ issue.  Create card in unclaimed" );
+		// Can't create card without column_id.  No project, or column_id without triage.
+		// Create in proj:col UnClaimed:Unclaimed to maintain promise of linkage in dynamo.
+		let card = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId );
+		let issueURL = card.content_url.split('/');
+		assert( issueURL.length > 0 );
+		link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );
+		link.GHCardId    = card.id
+		link.GHProjectId = card.project_url.split('/').pop();
+	    }
+	    else {
+		// This is a base card - need to get current col id, which has been untracked so far
+		let card = await gh.getCard( installClient, link.GHCardId );
+		link.GHColumnId  = card.column_url.split('/').pop();
+	    }
 	}
 
 	pd.updateFromLink( link );
@@ -203,7 +210,7 @@ async function handler( action, repo, owner, reqBody, res ) {
     case 'opened':
 	// Can get here by 'convert to issue' on a newborn card, or more commonly, New issue with submit.
 	// XXX If the latter, convert newborn issue -> carded issue (unclaimed)
-	console.log( "Issue id:", reqBody['issue']['id'], "nodeId:", reqBody['issue']['node_id'] );
+	console.log( installClient[1], "Issue id:", reqBody['issue']['id'], "nodeId:", reqBody['issue']['node_id'] );
     case 'pinned': 
     case 'unpinned': 
     case 'locked': 
