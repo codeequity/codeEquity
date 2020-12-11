@@ -37,6 +37,60 @@ async function getPeqLabels( installClient, td ) {
     return peqLabels;
 }
 
+async function getIssues( installClient, td ) {
+    let issues = "";
+
+    await( installClient[0].issues.listForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
+	.then( allissues => { issues = allissues['data']; })
+	.catch( e => { console.log( installClient[1], "list issues failed.", e ); });
+
+    return issues;
+}
+
+async function getProjects( installClient, td ) {
+    let projects = "";
+
+    await( installClient[0].projects.listForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
+	.then( allproj => { projects = allproj['data']; })
+	.catch( e => { console.log( installClient[1], "list projects failed.", e ); });
+
+    return projects;
+}
+
+async function getColumns( installClient, projId ) {
+    let cols = "";
+
+    await( installClient[0].projects.listColumns( { project_id: projId }))
+	.then( allcols => { cols = allcols['data']; })
+	.catch( e => { console.log( installClient[1], "list columns failed.", e ); });
+
+    return cols;
+}
+
+async function getCards( installClient, colId ) {
+    let cards = "";
+
+    await( installClient[0].projects.listCards( { column_id: colId }))
+	.then( allcards => { cards = allcards['data']; })
+	.catch( e => { console.log( installClient[1], "list cards failed.", e ); });
+
+    return cards;
+}
+
+
+function findCardForIssue( cards, issueNum ) {
+    let cardId = -1;
+    for( const card of cards ) {
+	let parts = card['content_url'].split('/');
+	let issNum = parts[ parts.length - 1] ;
+	if( issNum == issueNum ) {
+	    cardId = card.id;
+	    break;
+	}
+    }
+
+    return cardId;
+}
 
 
 async function makeProject(installClient, td, name, body ) {
@@ -147,6 +201,12 @@ exports.makeAllocCard   = makeAllocCard;
 
 exports.hasRaw          = hasRaw; 
 exports.getPeqLabels    = getPeqLabels;
+exports.getIssues       = getIssues;
+exports.getProjects     = getProjects;
+exports.getColumns      = getColumns;
+exports.getCards        = getCards;
+
+exports.findCardForIssue = findCardForIssue;
 
 exports.checkEq         = checkEq;
 exports.checkGE         = checkGE;
