@@ -8,13 +8,13 @@ var gh = ghUtils.githubUtils;
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
 
 
-async function refresh( installClient, td ){
+async function refresh( installClient, td, projName ){
     if( td.masterPID != config.EMPTY ) { return; }
 
     await installClient[0].projects.listForRepo({ owner: td.GHOwner, repo: td.GHRepo, state: "open" })
 	.then((projects) => {
 	    for( const project of projects.data ) {
-		if( project.name == "Master" ) { td.masterPID = project.id; }
+		if( project.name ==  projName ) { td.masterPID = project.id; }
 	    }
 	})
 	.catch( e => { console.log( installClient[1], "list projects failed.", e ); });
@@ -135,7 +135,17 @@ async function makeAllocCard( installClient, colId, title, amount ) {
     console.log( "MakeCard:", cid );
     utils.sleep( 300 );
     return cid;
+}
+
+async function makeNewbornCard( installClient, colId, title ) {
+    let note = title;
     
+    let cid = await installClient[0].projects.createCard({ column_id: colId, note: note })
+	.then((card) => { return card.data.id; })
+	.catch( e => { console.log( installClient[1], "Create newborn card failed.", e ); });
+
+    utils.sleep( 300 );
+    return cid;
 }
 
 function checkEq( lhs, rhs, testStatus, msg ) {
@@ -198,6 +208,7 @@ exports.makeProject     = makeProject;
 exports.makeColumn      = makeColumn;
 exports.make4xCols      = make4xCols;
 exports.makeAllocCard   = makeAllocCard;
+exports.makeNewbornCard = makeNewbornCard;
 
 exports.hasRaw          = hasRaw; 
 exports.getPeqLabels    = getPeqLabels;

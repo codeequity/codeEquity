@@ -1,10 +1,8 @@
-const auth = require( "../auth");
 var utils = require('../utils');
 var ghUtils = require('../ghUtils');
 var config  = require('../config');
 var assert = require('assert');
 
-const testData = require( './testData' );
 const tu = require('./testUtils');
 
 var gh = ghUtils.githubUtils;
@@ -29,18 +27,18 @@ async function createPreferredCEProjects( installClient, td ) {
     let ghOpCols = await tu.make4xCols( installClient, ghOpPID );
     
     // softCont: dataSecurity, githubOps, unallocated
-    let dsCardId = await tu.makeAllocCard( installClient, mastCol1, td.dataSecTitle, "1,000,000" )
+    let dsCardId = await tu.makeAllocCard( installClient, mastCol1, td.dataSecTitle, "1,000,000" );
 
     // Just triggered populate.
     console.log( "Wait while populating.." );
     await utils.sleep( 15000 );
     console.log( "Done waiting." );
     
-    let ghCardId = await tu.makeAllocCard( installClient, mastCol1, td.githubOpsTitle, "1,500,000" )
-    let usCardId = await tu.makeAllocCard( installClient, mastCol1, td.unallocTitle, "3,000,000" )
+    let ghCardId = await tu.makeAllocCard( installClient, mastCol1, td.githubOpsTitle, "1,500,000" );
+    let usCardId = await tu.makeAllocCard( installClient, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    let ubCardId = await tu.makeAllocCard( installClient, mastCol2, td.unallocTitle, "1,000,000" )
+    let ubCardId = await tu.makeAllocCard( installClient, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
 async function testPreferredCEProjects( installClient, td ) {
@@ -48,7 +46,7 @@ async function testPreferredCEProjects( installClient, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    await tu.refresh( installClient, td );
+    await tu.refresh( installClient, td, config.MAIN_PROJ );
 
     // Check DYNAMO PEQ table
     let ghPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName, "GHIssueTitle": td.githubOpsTitle });
@@ -277,30 +275,17 @@ async function testPreferredCEProjects( installClient, td ) {
 //     this does have some merit - CE is built for human hands, and hands + native github delay means human
 //     operations are far slower than the test execution above.  However, this is still pretty darned slow ATM
 
-async function runTests() {
-    console.log( "Testing" );
-    let td = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
-    td.GHRepo       = config.TEST_REPO;
-    td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
-
-    // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    let source = "<TEST: Setup> ";
-    let installClient = [token, source];
+async function runTests( installClient, td ) {
 
     console.log( "Preferred CE project structure =================" );
+
     // await createPreferredCEProjects( installClient, td );
     // await utils.sleep( 15000 );
+
     await testPreferredCEProjects( installClient, td );
-
-    // createFlatProjects();
-
-    // test add, delete, close, reopen, assign, etc.
-
-    // retest
-
 
 }
 
-runTests();
+//runTests();
+
+exports.runTests = runTests;
