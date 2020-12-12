@@ -404,7 +404,8 @@ async function recordPEQTodo( blit, blot ) {
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+    if( ms > 1000 ) { console.log( "Sleeping for", ms / 1000, "seconds" ); }
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function getToday() {
@@ -627,11 +628,20 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     }
 }
 
-async function getPActs( source, owner, repo ) {
-    console.log( "Get PEQActions for a given repo:", owner, repo );
+async function getRaw( source, pactId ) {
+    console.log( source, "Get raw PAction", pactId );
+
+    let shortName = "GetEntry";
+    let query     = { "PEQRawId": pactId.toString() };
+    let postData  = { "Endpoint": shortName, "tableName": "CEPEQRaw", "query": query };
+
+    return await wrappedPostIt( source, shortName, postData );
+}
+
+async function getPActs( source, query ) {
+    console.log( "Get PEQActions:", query );
 
     let shortName = "GetEntries";
-    let query     = { "GHUserName": owner, "GHRepo": repo};
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQActions", "query": query };
 
     return await wrappedPostIt( source, shortName, postData );
@@ -704,6 +714,7 @@ exports.getToday = getToday;
 exports.resolve = resolve;
 exports.processNewPEQ = processNewPEQ;
 
+exports.getRaw   = getRaw; 
 exports.getPActs = getPActs;
 exports.getPeqs = getPeqs;
 exports.getLinks = getLinks;

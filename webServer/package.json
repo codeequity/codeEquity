@@ -4,6 +4,7 @@
     "main": "ceServer",
     "scripts": {
         "start": "node ./bin/www",
+        "testMain": "node ./tests/testMain.js",
         "testSetup": "node ./tests/testSetup.js",
         "testDelete": "node ./tests/testDelete.js"
     },

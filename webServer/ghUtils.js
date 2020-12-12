@@ -121,6 +121,7 @@ async function checkRateLimit( installClient ) {
 	.catch( e => { console.log( installClient[1], "Problem in check Rate Limit", e );   });
 }
 
+// XXX paginate
 async function checkIssueExists( installClient, owner, repo, title )
 {
     let retVal = false;
