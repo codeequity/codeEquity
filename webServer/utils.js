@@ -495,7 +495,7 @@ async function resolve( installClient, pd, allocation ) {
     console.log( installClient[1], "resolve" );
     // on first call from populate, list may be large.  Afterwards, max 2.
     let links = await( getIssueLinkage( installClient[1], pd.GHIssueId ));
-    if( links == -1 || links.length < 2 ) { return; }
+    if( links == -1 || links.length < 2 ) { console.log("Resolve: early return" ); return; }
 
     console.log( installClient[1], "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.GHIssueId, pd.GHIssueNum );
 
@@ -549,6 +549,7 @@ async function resolve( installClient, pd, allocation ) {
 	    recordPEQData(installClient, pd, false );
 	}
     }
+    console.log( installClient[1], "Resolve DONE" );
 }
 
 // XXX this function can be sped up, especially when animating an unclaimed

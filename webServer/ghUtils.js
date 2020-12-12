@@ -418,7 +418,7 @@ async function populateCELinkage( installClient, owner, repo, fullName )
 	    if( index > -1 ) { trips.splice( index, 1 ); }
 	}
     }
-    console.log( "Clean trips", trips );
+    // console.log( "Clean trips", trips );
     
     // Add issueId to each trip, to complete linkage pkey and enable typical usage pattern
     let lPromises = [];
@@ -452,15 +452,16 @@ async function populateCELinkage( installClient, owner, repo, fullName )
 	}
     }
     
-    let rPromises   = [];
+    console.log( "Remaining links to resolve", one2Many );
+    
     // [ [projId, cardId, issueNum, issueId], ... ]
+    // Note - this can't be a promise.all - parallel execution with shared pd == big mess
+    //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql.
     for( const link of one2Many ) {
-	    pd.GHIssueId  = link[3];
-	    pd.GHIssueNum = link[2];
-	    console.log( "Start resolve for", link );
-	    rPromises.push( utils.resolve( installClient, pd, false ) );
+	pd.GHIssueId  = link[3];
+	pd.GHIssueNum = link[2];
+	await utils.resolve( installClient, pd, false );
     }
-    await Promise.all( rPromises );
     
     await utils.setPopulated( installClient[1], fullName );
     console.log( installClient[1], "Populate CE Linkage Done" );

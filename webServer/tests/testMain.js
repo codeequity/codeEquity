@@ -3,6 +3,7 @@ var config  = require('../config');
 
 const testSetup = require( './testSetup' );
 const testFlat = require( './testFlat' );
+const testPopulate = require( './testPopulate' );
 const testData = require( './testData' );
 
 
@@ -20,11 +21,10 @@ async function runTests() {
     
     // await testSetup.runTests( installClient, td );
 
-    await testFlat.runTests( installClient, td );
+    // await testFlat.runTests( installClient, td );
 
-    // testPopulate();
-    // here, unset pop for structured.  add some issues/cards and run. for split.
-    // do same for flat
+    // NOTE: you must TURN OFF ceServer to construct this test, and turn it back on to execute it.
+    await testPopulate.runTests( installClient, td );
 
     // test standard add, move, close, reopen, accrue
 

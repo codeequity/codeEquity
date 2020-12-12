@@ -6,7 +6,7 @@ class TestData {
 	this.GHOwner      = config.EMPTY;
 	this.GHFullName   = config.EMPTY;
 
-	// A preferred CE structure
+	// A Recommended CE structure
 	this.softContTitle    = "Software Contributions";
 	this.busOpsTitle      = "Business Operations"; 
 	this.dataSecTitle     = "Data Security";
@@ -24,16 +24,30 @@ class TestData {
 	this.dataSecCID       = config.EMPTY;
 	    
 	this.dataSecPID       = config.EMPTY;
+	this.dsPlanID         = config.EMPTY;
 	this.githubOpsPID     = config.EMPTY;
+	this.ghProgID         = config.EMPTY;
 
 	this.githubOpsIss     = config.EMPTY;  // [ id, num ]
 	this.dataSecIss       = config.EMPTY;
 	this.unallocIss1      = config.EMPTY;
 	this.unallocIss2      = config.EMPTY;
+
+	// A Flat CE Structure
+	this.flatTitle        = "A Pre-Existing Project";
+	this.col1Title        = "Eggs";
+	this.col2Title        = "Bacon";
+	this.card1Title       = "Parsley";
+	this.card2Title       = "Sage";
+	this.card3Title       = "Rosemary";
+
+	this.flatPID          = config.EMPTY;
+	this.col1ID           = config.EMPTY;
+	this.col2ID           = config.EMPTY;
 	
     }
     show() {
-	console.log( "TestData object contents" );
+	console.log( "TestData object contents.. Recommended==============" );
 	if( this.GHRepo     != config.EMPTY ) { console.log( "GHRepo", this.GHRepo ); }
 	if( this.GHOwner    != config.EMPTY ) { console.log( "GHOwner", this.GHOwner ); }
 	if( this.GHFullName != config.EMPTY ) { console.log( "GHFullName", this.GHFullName ); }
@@ -45,6 +59,8 @@ class TestData {
 	if( this.scColID  != config.EMPTY )   { console.log( "scColID", this.scColID ); }
 	if( this.boColID  != config.EMPTY )   { console.log( "boColID", this.boColID ); }
 	if( this.unColID  != config.EMPTY )   { console.log( "unColID", this.unColID ); }
+	if( this.dsPlanID != config.EMPTY )   { console.log( "dsPlanID", this.dsPlanID ); }
+	if( this.ghProgID != config.EMPTY )   { console.log( "ghProgID", this.ghProgID ); }
 
 	if( this.scUnallocCID != config.EMPTY )   { console.log( "scUnallocCID", this.scUnallocCID ); }
 	if( this.boUnallocCID != config.EMPTY )   { console.log( "boUnallocCID", this.boUnallocCID ); }
@@ -55,7 +71,11 @@ class TestData {
 	if( this.dataSecIss   != config.EMPTY )   { console.log( "dataSecIss", this.dataSecIss ); }
 	if( this.unallocIss1  != config.EMPTY )   { console.log( "unallocIss1", this.unallocIss1 ); }
 	if( this.unallocIss2  != config.EMPTY )   { console.log( "unallocIss2", this.unallocIss2 ); }
-	
+
+	console.log( "TestData object contents.. Flat==============" );	
+	if( this.flatPID     != config.EMPTY ) { console.log( "flatPID", this.flatPID ); }
+	if( this.col1ID      != config.EMPTY ) { console.log( "col1ID", this.col1ID ); }
+	if( this.col2ID      != config.EMPTY ) { console.log( "col2ID", this.col2ID ); }
 
     }
 }

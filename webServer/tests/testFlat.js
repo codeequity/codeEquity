@@ -1,4 +1,3 @@
-const auth = require( "../auth");
 var utils = require('../utils');
 var config  = require('../config');
 
@@ -6,6 +5,7 @@ const testData = require( './testData' );
 const tu = require('./testUtils');
 
 
+// XXX use td names
 const FLAT_PROJ = "A Pre-Existing Project";
 
 
