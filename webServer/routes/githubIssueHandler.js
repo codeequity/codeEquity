@@ -65,6 +65,12 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_ACCR
 	// ... but it if is situated already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only 
+
+	// XXXX XXXXX This will go away with ceFlutter
+	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
+	    await gh.populateCELinkage( installClient, pd );
+	    return;
+	}
 	
 	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
@@ -72,24 +78,16 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	    return;
 	}
 
-	// Was this a carded issue?  Get that card.  If populate not yet done, do it and try again.
+	// Was this a carded issue?  Get linkage
 	let links = await( utils.getIssueLinkage( installClient[1], pd.GHIssueId ));
 	assert( links == -1 || links.length == 1 );
 	let link = links == -1 ? links : links[0];
-	if( link == -1 ) {  
-	    // console.log( "Card linkage not present in dynamo" );
-	    if( await( gh.populateCELinkage( installClient, pd.GHOwner, pd.GHRepo, pd.GHFullName ) ) ) {  
-		links = await( utils.getIssueLinkage( installClient[1], pd.GHIssueId ));
-		link = links == -1 ? links : links[0];
-	    }
-	}
 
+	// Newborn PEQ issue.  Create card in unclaimed... need to maintain promise of linkage in dynamo.
+	// but can't create card without column_id.  No project, or column_id without triage.
 	if( link == -1 || link.GHColumnId == -1) {
-	    if( link == -1 ) { 
+	    if( link == -1 ) {    
 		link = {};
-		// console.log( "Newborn PEQ issue.  Create card in unclaimed" );
-		// Can't create card without column_id.  No project, or column_id without triage.
-		// Create in proj:col UnClaimed:Unclaimed to maintain promise of linkage in dynamo.
 		let card = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId );
 		let issueURL = card.content_url.split('/');
 		assert( issueURL.length > 0 );
@@ -97,15 +95,14 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 		link.GHCardId    = card.id
 		link.GHProjectId = card.project_url.split('/').pop();
 	    }
-	    else {
-		// This is a base card - need to get current col id, which has been untracked so far
+	    else {  // newborn card.
 		let card = await gh.getCard( installClient, link.GHCardId );
 		link.GHColumnId  = card.column_url.split('/').pop();
 	    }
 	}
 
 	pd.updateFromLink( link );
-	console.log( "Ready to update Proj PEQ PAct, first linkage:", link.GHCardId, link.GHIssueNum );
+	console.log( "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
 
 	let content = [];
 	content.push( pd.GHIssueTitle );

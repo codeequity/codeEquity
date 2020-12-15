@@ -26,6 +26,8 @@ async function runTests() {
     // NOTE: you must TURN OFF ceServer to construct this test, and turn it back on to execute it.
     await testPopulate.runTests( installClient, td );
 
+    // test add, peq, then add new card to peq issue.
+    
     // test standard add, move, close, reopen, accrue
 
     // label, unlabel, label

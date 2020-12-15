@@ -64,6 +64,10 @@ var githubUtils = {
 	return rebuildCard( installClient, owner, repo, colId, origCardId, issueData );
     },
 
+    rebuildLabel: function( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
+	return rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel );
+    },
+
     createProjectCard: function( installClient, columnId, issueId, justId ) {
 	return createProjectCard( installClient, columnId, issueId, justId );
     },
@@ -76,8 +80,12 @@ var githubUtils = {
 	return cleanUnclaimed( installClient, pd );
     },
     
-    populateCELinkage: function( installClient, owner, repo, fullName ) {
-	return populateCELinkage( installClient, owner, repo, fullName );
+    populateCELinkage: function( installClient, pd ) {
+	return populateCELinkage( installClient, pd );
+    },
+
+    populateRequest: function( labels ) {
+	return populateRequest( labels );
     },
 
     getCEProjectLayout: function( installClient, issueId ) {
@@ -274,15 +282,19 @@ async function findOrCreateLabel( installClient, owner, repo, allocation, peqHum
     // if not, create
     if( status == 404 ) {
 	console.log( installClient[1], "Label not found, creating.." );
-	let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
-	let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
-	await( installClient[0].issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
-	    .then( label => {
-		peqLabel = label['data'];
-	    })
-	    .catch( e => {
-		console.log( installClient[1], "Create label failed.", e );
-	    });
+
+	if( peqHumanLabelName == config.POPULATE ) {
+	await( installClient[0].issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
+	    .then( label => { peqLabel = label['data']; })
+	    .catch( e => { console.log( installClient[1], "Create label failed.", e );  });
+	}
+	else {
+	    let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
+	    let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
+	    await( installClient[0].issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
+		.then( label => { peqLabel = label['data']; })
+		.catch( e => { console.log( installClient[1], "Create label failed.", e ); });
+	}
     }
 
     assert.notStrictEqual( peqLabel, undefined, "Did not manage to find or create the PEQ label" );
@@ -316,6 +328,20 @@ async function createIssue( installClient, owner, repo, title, labels, allocatio
     return issueData;
 }
 
+
+function populateRequest( labels ) {
+    let retVal = false;
+
+    for( label of labels ) {
+	if( label.name == config.POPULATE ) {
+	    retVal = true;
+	    break;
+	}
+    }
+
+    return retVal;
+}
+
 // Add linkage data for all carded issues in a project.
 // 
 // As soon as 1 situated (or carded) issue is labeled, all this work must be done to find it if not already in dynamo.
@@ -329,15 +355,14 @@ async function createIssue( installClient, owner, repo, title, labels, allocatio
 // Would be soooo much better if Octokit/Github had reverse link from issue to card.
 // newborn issues not populated.  newborn cards not populated.  Just linkages.
 // XXX something like this really needs graphQL
-async function populateCELinkage( installClient, owner, repo, fullName )
+async function populateCELinkage( installClient, pd )
 {
     console.log( installClient[1], "Populate CE Linkage start" );
-    let alreadyDone = await utils.checkPopulated( installClient[1], fullName );
-    if( alreadyDone ) { return false; }
+    assert( !utils.checkPopulated( installClient[1], pd.GHFullName ) != -1);
     
     // Get project IDs
     let projIds = [];
-    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
+    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "open" } )
 	.then((projects) => {
 	    projIds = projects.map((project) => project.id );
 	});
@@ -405,7 +430,7 @@ async function populateCELinkage( installClient, owner, repo, fullName )
     // Eliminate trips where cardId already exists
     // Note: this is largely overkill, since 99% of the time this will be done before serious use of CE starts.
     let idsOnly = trips.map((trip) => trip[1] );
-    let existingIds = await utils.getExistCardIds( installClient[1], fullName, idsOnly );
+    let existingIds = await utils.getExistCardIds( installClient[1], pd.GHFullName, idsOnly );
     if( existingIds != -1 ) {
 	for( const id of existingIds ) {
 	    let index = -1;
@@ -423,21 +448,18 @@ async function populateCELinkage( installClient, owner, repo, fullName )
     // Add issueId to each trip, to complete linkage pkey and enable typical usage pattern
     let lPromises = [];
     for( const trip of trips ) {
-	lPromises.push( getIssue( installClient, owner, repo, trip[2] )
+	lPromises.push( getIssue( installClient, pd.GHOwner, pd.GHRepo, trip[2] )
 			.then((issue) => [ trip[0], trip[1], trip[2], issue[0] ] ));
     }
     let linkage = await Promise.all( lPromises );
     console.log( "linkages", linkage );
     
-    await utils.populateIssueCards( fullName, linkage );
+    await utils.populateIssueCards( pd.GHFullName, linkage );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
     // why the new peq label applied to their 1:m issue, only 'worked' for one card.
     // But, populate will be run from ceFlutter, separately from actual label notification.
-    let pd = {};
-    pd.GHOwner    = owner;
-    pd.GHRepo     = repo;
     pd.peqType    = "end";
     
     // Only resolve once per issue.
@@ -457,13 +479,14 @@ async function populateCELinkage( installClient, owner, repo, fullName )
     // [ [projId, cardId, issueNum, issueId], ... ]
     // Note - this can't be a promise.all - parallel execution with shared pd == big mess
     //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql.
+    // Note - this mods values of pd, but exits immediately afterwards.
     for( const link of one2Many ) {
 	pd.GHIssueId  = link[3];
 	pd.GHIssueNum = link[2];
-	await utils.resolve( installClient, pd, false );
+	await utils.resolve( installClient, pd, "???" );
     }
     
-    await utils.setPopulated( installClient[1], fullName );
+    await utils.setPopulated( installClient[1], pd.GHFullName );
     console.log( installClient[1], "Populate CE Linkage Done" );
     return true;
 }
@@ -491,6 +514,15 @@ async function rebuildCard( installClient, owner, repo, colId, origCardId, issue
     await( installClient[0].projects.deleteCard( { card_id: origCardId } ));
 
     return newCardId;
+}
+
+async function rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
+    await installClient[0].issues.removeLabel({ owner: owner, repo: repo, issue_number: issueNum, name: oldLabel.name  } )
+	.catch( e => { console.log( installClient[1], "Remove label from issue failed.", e ); });
+
+    await installClient[0].issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [newLabel.name] })
+	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
+    
 }
 
 
@@ -789,12 +821,13 @@ async function getColumnName( installClient, colId ) {
     return column['data']['name'];
 }
 
+// XXX nope.  softCont:dataSec  not datasec
 // This needs to occur after linkage is overwritten.
 // Provide good subs no matter if using Master project indirection, or flat projects.
 async function getProjectSubs( installClient, repoName, projName, colName ) {
     let projSub = [ "Unallocated" ];  // Should not occur.
 
-    //console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
+    console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
 	
     if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
@@ -807,7 +840,7 @@ async function getProjectSubs( installClient, repoName, projName, colName ) {
 	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
     }
 	    
-    //console.log( "... returning", projSub.toString() );
+    console.log( "... returning", projSub.toString() );
     return projSub;
 }
 

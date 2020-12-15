@@ -487,7 +487,7 @@ async function rebuildLinkage( source, link, issueData, newCardId, newTitle ) {
 		       link.GHColumnId, link.GHColumnName, newCardId, newTitle ));
 }
 
-// populateCE is called with first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
+// populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
 //       learns 1:m is a semantic error in CE
@@ -504,8 +504,8 @@ async function resolve( installClient, pd, allocation ) {
     let issue = await gh.getFullIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );  
     assert( issue != -1 );
 
-    // console.log( "FULL ISSUE", issue );
-
+    // Can get here with blank slate from Populate, in which case no peq label to split.
+    // Can get here with peq issue that just added new card, so will have peq label to split.
     // If peq label exists, recast it.  There can only be 0 or 1.
     let idx = 0;
     let newLabel = "";
@@ -518,35 +518,50 @@ async function resolve( installClient, pd, allocation ) {
 	    peqVal = Math.floor( peqVal / links.length );
 	    console.log( ".... new peqValue:", peqVal );
 
+	    pd.peqType = allocation ? "allocation" : "plan"; 
 	    let peqHumanLabelName = peqVal.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
 	    newLabel = await gh.findOrCreateLabel( installClient, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, peqVal )
 	    issue.labels[idx] = newLabel;
-	    console.log( "New label", issue.labels[idx] );
+	    // update peqData for subsequent recording
+	    pd.peqValue = peqVal;
+
+	    await gh.rebuildLabel( installClient, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
 	    break;
 	}
 	idx += 1;
     }
 
-    // Leave first issue, card, linkage in place. Start from second.
     for( let i = 1; i < links.length; i++ ) {
-	let colId      = links[i].GHColumnId;
 	let origCardId = links[i].GHCardId;
-	let projName   = links[i].GHProjectName;
-	let colName    = links[i].GHColumnName;
 	let splitTag   = randAlpha(8);
 
+	// XXX This information could be passed down.. but save speedups for graphql
+	if( pd.peqType != "end" ) {
+	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
+	    links[i].GHProjectName = await gh.getProjectName( installClient, links[i].GHProjectId );
+	    links[i].GHColumnId    = ( await gh.getCard( installClient, origCardId ) ).column_url.split('/').pop();
+	    links[i].GHColumnName  = await gh.getColumnName( installClient, links[i].GHColumnId );
+	}
+
 	let issueData   = await gh.splitIssue( installClient, pd.GHOwner, pd.GHRepo, issue, splitTag );  
-	let newCardId   = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, colId, origCardId, issueData );
+	let newCardId   = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
 	pd.GHIssueTitle = issue.title + " split: " + splitTag;
 	await rebuildLinkage( installClient[1], links[i], issueData, newCardId, pd.GHIssueTitle );
+    }
 
+    // On initial populate call, this is called first, followed by processNewPeq.
+    // Leave first issue for PNP.  Start from second.
+    for( let i = 1; i < links.length; i++ ) {    
+	// Don't record simple multiply-carded issues
 	if( pd.peqType != "end" ) {
+	    let projName   = links[i].GHProjectName;
+	    let colName    = links[i].GHColumnName;
 	    assert( projName != "" );
 	    assert( colName != "" );
 	    pd.projSub = await gh.getProjectSubs( installClient, pd.GHFullName, projName, colName );	    
 	    
-	    recordPEQData(installClient, pd, false );
+	    recordPeqData(installClient, pd, false );
 	}
     }
     console.log( installClient[1], "Resolve DONE" );
@@ -562,7 +577,9 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 
     // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
     if( pd.GHIssueNum == -1 ) { pd.peqValue = gh.parsePEQ( issueCardContent, allocation ); }
-    else                      { pd.peqValue = gh.parseLabelDescr( issueCardContent ); }   
+    else                      { pd.peqValue = gh.parseLabelDescr( issueCardContent ); }
+
+    assert( await checkPopulated( installClient[1], pd.GHFullName ) != -1 );
     
     // XXX allow PROJ_PEND
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; }
@@ -610,10 +627,6 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	    
 	    // Add card issue linkage
 	    await( addLinkage( installClient[1], pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle));
-
-	    // Can get here by creating allocation card.  there is no issue, by def.  so no double linkage.
-	    // This could be the trigger for populateCE   check and do so
-	    if( allocation ) { await( gh.populateCELinkage( installClient, pd.GHOwner, pd.GHRepo, pd.GHFullName )); }
 	}
     }
 

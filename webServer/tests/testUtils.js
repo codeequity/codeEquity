@@ -69,6 +69,31 @@ async function refreshFlat( installClient, td ) {
     assert( td.flatPID != -1 );
 }
 
+// Build map from issue_num to issue
+function buildIssueMap( issues ) {
+    let m = {};
+    for( const issue of issues ) {
+	m[issue.number] = issue;
+    }
+    return m;
+}
+
+// [ cardId, issueNum, issueId, issueTitle]
+function getQuad( card, issueMap ) {
+    if( !card.hasOwnProperty( 'content_url' )) { return [card.id, -1, -1, ""]; }
+
+    let parts = card['content_url'].split('/');
+    let issNum = parts[ parts.length - 1] ;
+    let issue = issueMap[issNum];
+    
+    return [card.id, issNum, issue.id, issue.title];
+}
+
+function makeTitleReducer( aStr ) {
+    // return ( acc, cur ) => ( console.log( cur, acc, aStr) || acc || cur.includes( aStr ) ); 
+    return ( acc, cur ) => ( acc || cur.includes( aStr ) ); 
+}
+
 
 async function hasRaw( source, pactId ) {
     let retVal = false;
@@ -216,8 +241,8 @@ async function makeNewbornCard( installClient, colId, title ) {
     return cid;
 }
 
-async function addLabel( installClient, td, issueNumber, newLabel ) {
-    await installClient[0].issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [newLabel.name] })
+async function addLabel( installClient, td, issueNumber, labelName ) {
+    await installClient[0].issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
 	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
 }	
     
@@ -279,6 +304,9 @@ function testReport( testStatus, component ) {
 exports.refresh         = refresh;
 exports.refreshRec      = refreshRec;  
 exports.refreshFlat     = refreshFlat;
+exports.buildIssueMap   = buildIssueMap;
+exports.getQuad         = getQuad;
+exports.makeTitleReducer = makeTitleReducer;
 
 exports.makeProject     = makeProject;
 exports.makeColumn      = makeColumn;
