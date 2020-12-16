@@ -85,9 +85,8 @@ async function runTests() {
     await installClient[0].paginate( installClient[0].issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
 	.then((labels) => {
 	    for( const label of labels ) {
-		if( gh.parseLabelDescr( [label.description] ) > 0 ) {
-		    labelNames.push( label.name );
-		}
+		if( gh.parseLabelDescr( [label.description] ) > 0 ) { labelNames.push( label.name ); }
+		else if( label.name == config.POPULATE )            { labelNames.push( label.name ); }
 	    }
 	})
 	.catch( e => { console.log( installClient[1], "Problem in listLabels", e ); });

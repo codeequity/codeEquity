@@ -15,6 +15,8 @@ const PROJ_PROG = 1;
 const PROJ_PEND = 2;
 const PROJ_ACCR = 3;
 
+const POPULATE = "populate";
+
 // XXX Hmm better as two enums?
 const PEQ_COLOR = 'ffcc80';
 const APEQ_COLOR = 'fef2c0';
@@ -47,6 +49,8 @@ exports.PROJ_PLAN = PROJ_PLAN;
 exports.PROJ_PROG = PROJ_PROG;
 exports.PROJ_PEND = PROJ_PEND;
 exports.PROJ_ACCR = PROJ_ACCR;
+
+exports.POPULATE = POPULATE;
 
 exports.PEQ_COLOR = PEQ_COLOR;
 exports.APEQ_COLOR = APEQ_COLOR;

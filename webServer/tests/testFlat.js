@@ -1,4 +1,3 @@
-const auth = require( "../auth");
 var utils = require('../utils');
 var config  = require('../config');
 
@@ -6,6 +5,7 @@ const testData = require( './testData' );
 const tu = require('./testUtils');
 
 
+// XXX use td names
 const FLAT_PROJ = "A Pre-Existing Project";
 
 
@@ -110,8 +110,8 @@ async function runTests( installClient ) {
 
     console.log( "Flat CE project structure =================" );
 
-    // await createFlatProject( installClient, td );
-    // await utils.sleep( 1000 );
+    await createFlatProject( installClient, td );
+    await utils.sleep( 1000 );
     await testFlatProject( installClient, td );
 
 }

@@ -3,6 +3,7 @@ var config  = require('../config');
 
 const testSetup = require( './testSetup' );
 const testFlat = require( './testFlat' );
+const testPopulate = require( './testPopulate' );
 const testData = require( './testData' );
 
 
@@ -20,12 +21,16 @@ async function runTests() {
     
     // await testSetup.runTests( installClient, td );
 
-    await testFlat.runTests( installClient, td );
+    // await testFlat.runTests( installClient, td );
 
-    // testPopulate();
-    // here, unset pop for structured.  add some issues/cards and run. for split.
-    // do same for flat
+    // Have already populated in setup, but will re-pop here.  No harm.
+    // NOTE: you must TURN OFF ceServer to construct this test, and turn it back on to execute it.
+    // XXX should break this into setup/test
+    
+    await testPopulate.runTests( installClient, td );
 
+    // test add, peq, then add new card to peq issue.  unclaimed.  split issue with assignees?
+    
     // test standard add, move, close, reopen, accrue
 
     // label, unlabel, label
