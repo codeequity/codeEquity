@@ -821,7 +821,6 @@ async function getColumnName( installClient, colId ) {
     return column['data']['name'];
 }
 
-// XXX nope.  softCont:dataSec  not datasec
 // This needs to occur after linkage is overwritten.
 // Provide good subs no matter if using Master project indirection, or flat projects.
 async function getProjectSubs( installClient, repoName, projName, colName ) {
@@ -832,7 +831,7 @@ async function getProjectSubs( installClient, repoName, projName, colName ) {
     if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
 	// Check if project is a card in Master
-	let card = await( utils.getFromCardName( installClient[1], repoName, config.MAIN_PROJ, projName ));   
+	let card = await( utils.getFromCardName( installClient[1], repoName, config.MAIN_PROJ, projName ));
 	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
 	else             { projSub = [ projName ]; }
 
@@ -843,6 +842,7 @@ async function getProjectSubs( installClient, repoName, projName, colName ) {
     console.log( "... returning", projSub.toString() );
     return projSub;
 }
+
 
 function getAllocated( content ) {
     let res = false;

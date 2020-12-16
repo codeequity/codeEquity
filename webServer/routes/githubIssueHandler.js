@@ -23,6 +23,7 @@ https://developer.github.com/v3/issues/#create-an-issue
 //       are added to linkage table.  Newborn issues and cards can still exist.
 //       {label, open, add card} operation on newborn issues will cause conversion to carded (unclaimed) or situated issue,
 //       and inclusion in linkage table.
+//       Guarantee: once populated, all issues will be carded or situated from here on in.  Pre-existing newbies may exist without cards.
 
 async function handler( action, repo, owner, reqBody, res, tag ) {
 
@@ -34,7 +35,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 
     // Sender is the event generator.  Issue:user is ... the original creator of the issue?
     let sender   = reqBody['sender']['login'];
-    console.log( "title:", reqBody['issue']['title'] );
+    console.log( reqBody.issue.updated_at, "title:", reqBody['issue']['title'] );
 
     if( sender == config.CE_BOT ) {
 	console.log( "Bot issue.. taking no action" );
@@ -77,7 +78,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    return;
 	}
-
+	
 	// Was this a carded issue?  Get linkage
 	let links = await( utils.getIssueLinkage( installClient[1], pd.GHIssueId ));
 	assert( links == -1 || links.length == 1 );

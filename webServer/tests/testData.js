@@ -28,6 +28,7 @@ class TestData {
 	this.githubOpsPID     = config.EMPTY;
 	this.ghProgID         = config.EMPTY;
 
+	// XXX used?
 	this.githubOpsIss     = config.EMPTY;  // [ id, num ]
 	this.dataSecIss       = config.EMPTY;
 	this.unallocIss1      = config.EMPTY;

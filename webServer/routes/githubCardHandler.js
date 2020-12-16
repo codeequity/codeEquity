@@ -84,7 +84,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 async function handler( action, repo, owner, reqBody, res, tag ) {
 
     // Actions: created, deleted, moved, edited, converted
-    
+    console.log( reqBody.project_card.updated_at, "card", action );
     let sender  = reqBody['sender']['login'];
     if( sender == config.CE_BOT) {
 	console.log( "Bot card, skipping." );

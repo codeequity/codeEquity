@@ -110,8 +110,8 @@ async function runTests( installClient ) {
 
     console.log( "Flat CE project structure =================" );
 
-    // await createFlatProject( installClient, td );
-    // await utils.sleep( 1000 );
+    await createFlatProject( installClient, td );
+    await utils.sleep( 1000 );
     await testFlatProject( installClient, td );
 
 }

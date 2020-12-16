@@ -25,15 +25,20 @@ async function createPreferredCEProjects( installClient, td ) {
     // githubOPs: 4x
     let ghOpPID  = await tu.makeProject( installClient, td, td.githubOpsTitle, "Make it giddy" );
     let ghOpCols = await tu.make4xCols( installClient, ghOpPID );
-    
+
+
+    // TRIGGER
+    let nbi1     = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, "A special populate issue", [], false );
+    let card11   = await gh.createProjectCard( installClient, mastCol1, nbi1[0] );
+    let popLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
+    await tu.addLabel( installClient, td, nbi1[1], popLabel.name );       // ready.. set... Go!
+
+    console.log( "Waiting for populate" );
+    await utils.sleep( 15000 );
+    console.log( "Done waiting for populate" );
+
     // softCont: dataSecurity, githubOps, unallocated
     let dsCardId = await tu.makeAllocCard( installClient, mastCol1, td.dataSecTitle, "1,000,000" );
-
-    // Just triggered populate.
-    console.log( "Wait while populating.." );
-    await utils.sleep( 15000 );
-    console.log( "Done waiting." );
-    
     let ghCardId = await tu.makeAllocCard( installClient, mastCol1, td.githubOpsTitle, "1,500,000" );
     let usCardId = await tu.makeAllocCard( installClient, mastCol1, td.unallocTitle, "3,000,000" );
     
@@ -203,7 +208,7 @@ async function testPreferredCEProjects( installClient, td ) {
     let boCards = await tu.getCards( installClient, td.boColID );
     let noCards = await tu.getCards( installClient, td.unColID );
 
-    testStatus = tu.checkEq( scCards.length, 3, testStatus, "Soft cont col card count" );
+    testStatus = tu.checkEq( scCards.length, 4, testStatus, "Soft cont col card count" );
     testStatus = tu.checkEq( boCards.length, 1, testStatus, "Bus ops col card count" );
     testStatus = tu.checkEq( noCards.length, 0, testStatus, "Unalloc col card count" );
 
@@ -229,7 +234,7 @@ async function testPreferredCEProjects( installClient, td ) {
 	    testStatus = tu.checkEq( link.GHIssueNum, td.githubOpsIss[1],    testStatus, "Linkage Issue num" );
 	    testStatus = tu.checkEq( link.GHColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
 	    testStatus = tu.checkEq( link.GHColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
-	    testStatus = tu.checkEq( link.GHCardTitle, td.githubOpsTitle,    testStatus, "Linkage Card Id" );
+	    testStatus = tu.checkEq( link.GHCardTitle, td.githubOpsTitle,    testStatus, "Linkage Card Title" );
 	    let cardId = tu.findCardForIssue( scCards, link.GHIssueNum );
 	    testStatus = tu.checkEq( link.GHCardId, cardId,                  testStatus, "Linkage Card Id" );
 	    found = true;
@@ -238,21 +243,21 @@ async function testPreferredCEProjects( installClient, td ) {
 	    testStatus = tu.checkEq( link.GHIssueNum, td.dataSecIss[1],      testStatus, "Linkage Issue num" );
 	    testStatus = tu.checkEq( link.GHColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
 	    testStatus = tu.checkEq( link.GHColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
-	    testStatus = tu.checkEq( link.GHCardTitle, td.dataSecTitle,      testStatus, "Linkage Card Id" );
+	    testStatus = tu.checkEq( link.GHCardTitle, td.dataSecTitle,      testStatus, "Linkage Card Title" );
 	    let cardId = tu.findCardForIssue( scCards, link.GHIssueNum );
 	    testStatus = tu.checkEq( link.GHCardId, cardId,                  testStatus, "Linkage Card Id" );
 	    found = true;
 	}
 	else if( link.GHIssueId == td.unallocIss1[0] ) {
 	    testStatus = tu.checkEq( link.GHIssueNum, td.unallocIss1[1],  testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHCardTitle, td.unallocTitle,   testStatus, "Linkage Card Id" );
+	    testStatus = tu.checkEq( link.GHCardTitle, td.unallocTitle,   testStatus, "Linkage Card Title" );
 	    if( link.GHColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.GHColumnId; }
 	    else                                        { unallocBus  = true; lBus  = link.GHColumnId; }
 	    found = true;
 	}
 	else if( link.GHIssueId == td.unallocIss2[0] ) {
 	    testStatus = tu.checkEq( link.GHIssueNum, td.unallocIss2[1],  testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHCardTitle, td.unallocTitle,   testStatus, "Linkage Card Id" );
+	    testStatus = tu.checkEq( link.GHCardTitle, td.unallocTitle,   testStatus, "Linkage Card Title" );
 	    if( link.GHColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.GHColumnId; }
 	    else                                        { unallocBus  = true; lBus  = link.GHColumnId; }
 	    found = true;
@@ -279,9 +284,8 @@ async function runTests( installClient, td ) {
 
     console.log( "Preferred CE project structure =================" );
 
-    // await createPreferredCEProjects( installClient, td );
-    // await utils.sleep( 15000 );
-
+    await createPreferredCEProjects( installClient, td );
+    await utils.sleep( 15000 );
     await testPreferredCEProjects( installClient, td );
 
 }

@@ -36,8 +36,6 @@ class PeqData {
 	if( this.projSub     != [] ) { console.log( "this.projSub", this.projSub ); }
     }
     updateFromLink( link ) {
-	// this.GHCardId    = link.GHCardId;
-	// this.GHColumnId  = link.GHColumnId;
 	this.GHProjectId = link.GHProjectId;
 	this.GHIssueNum  = link.GHIssueNum;
     }
