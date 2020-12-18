@@ -442,12 +442,7 @@ async function testResolve( installClient, td ) {
 
 
 
-async function runTests( installClient ) {
-
-    let td = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
-    td.GHRepo       = config.TEST_REPO;
-    td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
+async function runTests( installClient, td ) {
 
     console.log( "Populate - add a repo to CE =================" );
 

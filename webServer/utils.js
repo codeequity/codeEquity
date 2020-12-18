@@ -160,7 +160,7 @@ async function getPeq( source, issueId ) {
     console.log( "Get PEQ from issueId:", issueId );
 
     let shortName = "GetEntry";
-    let query     = { "GHIssueId": issueId.toString() };
+    let query     = { "GHIssueId": issueId.toString(), "Active": "true" };
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
 
     return await wrappedPostIt( source, shortName, postData );
@@ -214,11 +214,13 @@ async function removeLinkage( issueId, cardId ) {
     return await wrappedPostIt( "", shortName, pd );
 }
 
-async function removePEQ( issueId, projSub ) {
-    let shortName = "DeletePEQ";
-    let pd = { "Endpoint": shortName, "GHIssueId": issueId.toString(), "subComponent": projSub };
+async function removePEQ( source, peqId ) {
 
-    return await wrappedPostIt( "", shortName, pd );
+    let shortName = "UpdatePEQ";
+    let query = { "PEQId": peqId, "Active": "false" };
+
+    let pd = { "Endpoint": shortName, "pLink": query };
+    return await wrappedPostIt( source, shortName, pd );
 }
 
 async function addLinkage( source, repo, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ) {

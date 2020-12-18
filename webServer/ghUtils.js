@@ -586,7 +586,7 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
     return card;
 }
 
-// Unclaimed cards are peq issues by definition.  So, linkage table will be complete.
+// Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
 async function cleanUnclaimed( installClient, pd ) {
     console.log( installClient[1], "cleanUnclaimed", pd.GHIssueId );
     let link = await utils.getPEQLinkageFId( installClient[1], pd.GHIssueId );
@@ -599,13 +599,12 @@ async function cleanUnclaimed( installClient, pd ) {
     console.log( "Found unclaimed" );
     await( installClient[0].projects.deleteCard( { card_id: link.GHCardId } ));
     
-    // Remove turds, report.  Note - this is the only situation in which webServer will delete a PEQ record.
+    // Remove turds, report.  
     await( utils.removeLinkage( pd.GHIssueId, link.GHCardId ));
-    await( utils.removePEQ( pd.GHIssueId, config.UNCLAIMED ) );
-
-    // Manage PEQ from ceFlutter side, when processing PActs
-    let newPEQ = await utils.getPeq( installClient[1], pd.GHIssueId );
-    let subject = [ newPEQ.PEQId ];
+    // do not delete peq - set it inactive.
+    let daPEQ = await utils.getPeq( installClient[1], pd.GHIssueId );
+    await utils.removePEQ( installClient[1], daPEQ.PEQId );
+	   
     utils.recordPEQAction(
 	installClient[1],
 	config.EMPTY,     // CE UID
@@ -613,7 +612,7 @@ async function cleanUnclaimed( installClient, pd ) {
 	pd.GHFullName,        
 	"confirm",        // verb
 	"delete",         // action
-	subject,          // subject
+	[daPEQ.PEQId],    // subject
 	"unclaimed",      // note
 	utils.getToday(), // entryDate
 	pd.reqBody        // raw

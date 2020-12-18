@@ -25,6 +25,9 @@ class TestData {
 	    
 	this.dataSecPID       = config.EMPTY;
 	this.dsPlanID         = config.EMPTY;
+	this.dsProgID         = config.EMPTY;
+	this.dsPendID         = config.EMPTY;
+	this.dsAccrID         = config.EMPTY;
 	this.githubOpsPID     = config.EMPTY;
 	this.ghProgID         = config.EMPTY;
 
@@ -45,6 +48,11 @@ class TestData {
 	this.flatPID          = config.EMPTY;
 	this.col1ID           = config.EMPTY;
 	this.col2ID           = config.EMPTY;
+
+	// Unclaimed
+	this.unclaimTitle     = config.UNCLAIMED;
+	this.unclaimPID       = config.EMPTY;
+	this.unclaimCID       = config.EMPTY;
 	
     }
     show() {
@@ -61,6 +69,9 @@ class TestData {
 	if( this.boColID  != config.EMPTY )   { console.log( "boColID", this.boColID ); }
 	if( this.unColID  != config.EMPTY )   { console.log( "unColID", this.unColID ); }
 	if( this.dsPlanID != config.EMPTY )   { console.log( "dsPlanID", this.dsPlanID ); }
+	if( this.dsProgID != config.EMPTY )   { console.log( "dsProgID", this.dsProgID ); }
+	if( this.dsPendID != config.EMPTY )   { console.log( "dsPendID", this.dsPendID ); }
+	if( this.dsAccrID != config.EMPTY )   { console.log( "dsAccrID", this.dsAccrID ); }
 	if( this.ghProgID != config.EMPTY )   { console.log( "ghProgID", this.ghProgID ); }
 
 	if( this.scUnallocCID != config.EMPTY )   { console.log( "scUnallocCID", this.scUnallocCID ); }
@@ -77,6 +88,10 @@ class TestData {
 	if( this.flatPID     != config.EMPTY ) { console.log( "flatPID", this.flatPID ); }
 	if( this.col1ID      != config.EMPTY ) { console.log( "col1ID", this.col1ID ); }
 	if( this.col2ID      != config.EMPTY ) { console.log( "col2ID", this.col2ID ); }
+
+	console.log( "TestData object contents.. Unclaimed=========" );	
+	if( this.unclaimPID     != config.EMPTY ) { console.log( "unclaimPID", this.unclaimPID ); }
+	if( this.unclaimCID     != config.EMPTY ) { console.log( "unclaimCID", this.unclaimCID ); }
 
     }
 }

@@ -44,6 +44,9 @@ async function refreshRec( installClient, td ) {
     let columns = await getColumns( installClient, td.dataSecPID );
     for( const col of columns ) {
 	if( col.name == config.PROJ_COLS[ config.PROJ_PLAN ] ) { td.dsPlanID = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.dsProgID = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PEND ] ) { td.dsPendID = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_ACCR ] ) { td.dsAccrID = col.id; }
     }
     columns = await getColumns( installClient, td.githubOpsPID );
     for( const col of columns ) {
@@ -67,6 +70,22 @@ async function refreshFlat( installClient, td ) {
 	}
     }
     assert( td.flatPID != -1 );
+}
+
+// Refresh unclaimed.
+async function refreshUnclaimed( installClient, td ) {
+    let projects = await getProjects( installClient, td );
+    for( const proj of projects ) {
+	if( proj.name == td.unclaimTitle ) {
+	    td.unclaimPID = proj.id;
+
+	    let columns = await getColumns( installClient, proj.id );
+	    for( const col of columns ) {
+		if( col.name == td.unclaimTitle )  { td.unclaimCID = col.id; }
+	    }
+	}
+    }
+    assert( td.unclaimPID != -1 );
 }
 
 // Build map from issue_num to issue
@@ -241,11 +260,32 @@ async function makeNewbornCard( installClient, colId, title ) {
     return cid;
 }
 
+async function makeProjectCard( installClient, colId, issueId ) {
+    let card = await gh.createProjectCard( installClient, colId, issueId );
+    utils.sleep( 300 );
+    return card;
+}
+
+async function makeIssue( installClient, td, title, labels ) {
+    let issue = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, title, labels, false );
+    utils.sleep( 300 );
+    return issue;
+}
+
 async function addLabel( installClient, td, issueNumber, labelName ) {
     await installClient[0].issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
 	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
 }	
-    
+
+async function addAssignee( installClient, td, issueNumber, assignee ) {
+    await installClient[0].issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
+	.catch( e => { console.log( installClient[1], "Add assignee failed.", e ); });
+}
+
+async function moveCard( installClient, cardId, columnId ) {
+    await installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: columnId })
+	.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
+}
 
 function checkEq( lhs, rhs, testStatus, msg ) {
     if( lhs == rhs ) {
@@ -304,6 +344,7 @@ function testReport( testStatus, component ) {
 exports.refresh         = refresh;
 exports.refreshRec      = refreshRec;  
 exports.refreshFlat     = refreshFlat;
+exports.refreshUnclaimed = refreshUnclaimed;
 exports.buildIssueMap   = buildIssueMap;
 exports.getQuad         = getQuad;
 exports.makeTitleReducer = makeTitleReducer;
@@ -313,7 +354,12 @@ exports.makeColumn      = makeColumn;
 exports.make4xCols      = make4xCols;
 exports.makeAllocCard   = makeAllocCard;
 exports.makeNewbornCard = makeNewbornCard;
+exports.makeProjectCard = makeProjectCard;
+exports.makeIssue       = makeIssue;
+
 exports.addLabel        = addLabel;
+exports.addAssignee     = addAssignee;
+exports.moveCard        = moveCard;
 
 exports.hasRaw          = hasRaw; 
 exports.getPeqLabels    = getPeqLabels;

@@ -201,7 +201,7 @@ async function getEntry( tableName, query ) {
 	props = [ "GHIssueId", "GHRepo", "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
 	break;
     case "CEPEQs":
-	props = [ "PEQId", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
 	break;
     case "CEPEQActions":
 	props = [ "PEQActionId", "CEUID", "GHUserName", "GHRepo", "Verb", "Action"];
