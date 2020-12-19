@@ -134,7 +134,7 @@ async function getPeqLabels( installClient, td ) {
 async function getIssues( installClient, td ) {
     let issues = "";
 
-    await( installClient[0].issues.listForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
+    await( installClient[0].issues.listForRepo( { owner: td.GHOwner, repo: td.GHRepo, state: "all" }))
 	.then( allissues => { issues = allissues['data']; })
 	.catch( e => { console.log( installClient[1], "list issues failed.", e ); });
 
@@ -287,6 +287,11 @@ async function moveCard( installClient, cardId, columnId ) {
 	.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
 }
 
+async function closeIssue( installClient, td, issueNumber ) {
+    await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
+	.catch( e => { console.log( installClient[1], "Close issue failed.", e );	});
+}
+
 function checkEq( lhs, rhs, testStatus, msg ) {
     if( lhs == rhs ) {
 	testStatus[0]++;
@@ -360,6 +365,7 @@ exports.makeIssue       = makeIssue;
 exports.addLabel        = addLabel;
 exports.addAssignee     = addAssignee;
 exports.moveCard        = moveCard;
+exports.closeIssue      = closeIssue;
 
 exports.hasRaw          = hasRaw; 
 exports.getPeqLabels    = getPeqLabels;

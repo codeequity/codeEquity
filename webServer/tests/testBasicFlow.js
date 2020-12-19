@@ -247,13 +247,21 @@ async function checkMove( installClient, td, colId, meltCard, testStatus ) {
     // CHECK github issues
     // id, num in linkage
     let meltIssue = await tu.findIssue( installClient, td, ISS_FLOW );
-    testStatus = tu.checkEq( meltIssue.assignees.length, 2,             testStatus, "Issue assignee count" );
+    testStatus = tu.checkEq( meltIssue.assignees.length, 2,                              testStatus, "Issue assignee count" );
+    if     ( colId == td.dsPendID ) { testStatus = tu.checkEq( meltIssue.state, "closed",     testStatus, "Issue status" );  }
+    else if( colId == td.dsAccrID ) { testStatus = tu.checkEq( meltIssue.state, "closed",     testStatus, "Issue status" );  }
+    else                            { testStatus = tu.checkEq( meltIssue.state, "open",       testStatus, "Issue status" );  }
 
     // CHECK github location
     let cards = await tu.getCards( installClient, colId );   
     let mCard = cards.filter((card) => card.content_url.split('/').pop() == meltIssue.number );
-    testStatus = tu.checkEq( mCard.length, 1,                           testStatus, "Card location" );
-    testStatus = tu.checkEq( mCard[0].id, meltCard.id,                  testStatus, "Card location" );
+    testStatus = tu.checkGE( mCard.length, 1,                           testStatus, "Card location" );
+    let foundCard = false;
+    for( const c of mCard ) {
+	if( c.id == meltCard.id ) { foundCard = true; }
+    }
+    testStatus = tu.checkEq( foundCard, true,                           testStatus, "Card location" );   
+
     
     // CHECK Dynamo PEQ
     // Should be no change
@@ -274,13 +282,16 @@ async function checkMove( installClient, td, colId, meltCard, testStatus ) {
     testStatus = tu.checkEq( meltPeq.Active, "true",                      testStatus, "peq" );
 
     // CHECK Dynamo PAct
-    // Should show relevant change action
+    // Should show relevant change 
     let pacts = await utils.getPActs( installClient[1], {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
-    testStatus = tu.checkEq( meltPacts.length, 4,                            testStatus, "PAct count" );
+    testStatus = tu.checkGE( meltPacts.length, 4,                     testStatus, "PAct count" );
     
     meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let pact  = meltPacts[3];   // move
+    let pact = {};
+    if     ( colId == td.dsProgID ) { pact  = meltPacts[3];  }  // move
+    else if( colId == td.dsPendID ) { pact  = meltPacts[4];  }  // close
+    else if( colId == td.dsAccrID ) { pact  = meltPacts[5];  }  // grant
 
     let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
     testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
@@ -291,20 +302,31 @@ async function checkMove( installClient, td, colId, meltCard, testStatus ) {
 	testStatus = tu.checkEq( pact.Verb, "confirm",                testStatus, "PAct Verb"); 
 	testStatus = tu.checkEq( pact.Action, "notice",               testStatus, "PAct Verb");
     }
-    else { console.log( "eh?" ); }
+    else if( colId == td.dsPendID ) {
+	testStatus = tu.checkEq( pact.Verb, "propose",                testStatus, "PAct Verb"); 
+	testStatus = tu.checkEq( pact.Action, "accrue",               testStatus, "PAct Verb");
+    }
+    else if( colId == td.dsAccrID ) {
+	testStatus = tu.checkEq( pact.Verb, "confirm",                testStatus, "PAct Verb"); 
+	testStatus = tu.checkEq( pact.Action, "accrue",               testStatus, "PAct Verb");
+    }
 
 
     // CHECK dynamo linkage
     let prog = config.PROJ_COLS[ config.PROJ_PROG ]; 
+    let pend = config.PROJ_COLS[ config.PROJ_PEND ]; 
+    let accr = config.PROJ_COLS[ config.PROJ_ACCR ]; 
     let links    = await utils.getLinks( installClient[1], td.GHFullName );
     let meltLink = ( links.filter((link) => link.GHIssueId == meltIssue.id ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
-    testStatus = tu.checkEq( meltLink.GHColumnName, prog,                  testStatus, "Linkage Col name" );
     testStatus = tu.checkEq( meltLink.GHCardTitle, ISS_FLOW,               testStatus, "Linkage Card Title" );
     testStatus = tu.checkEq( meltLink.GHProjectName, td.dataSecTitle,      testStatus, "Linkage Project Title" );
-    testStatus = tu.checkEq( meltLink.GHColumnId, td.dsProgID,             testStatus, "Linkage Col Id" );
     testStatus = tu.checkEq( meltLink.GHProjectId, td.dataSecPID,          testStatus, "Linkage project id" );
+    testStatus = tu.checkEq( meltLink.GHColumnId, colId,                   testStatus, "Linkage Col Id" );
+    if     ( colId == td.dsProgID ) { testStatus = tu.checkEq( meltLink.GHColumnName, prog,  testStatus, "Linkage Col name" ); }
+    else if( colId == td.dsPendID ) { testStatus = tu.checkEq( meltLink.GHColumnName, pend,  testStatus, "Linkage Col name" ); }
+    else if( colId == td.dsAccrID ) { testStatus = tu.checkEq( meltLink.GHColumnName, accr,  testStatus, "Linkage Col name" ); }
     
     return testStatus;
 }
@@ -319,7 +341,6 @@ async function testCycle( installClient, td ) {
     await tu.refreshRec( installClient, td );
     await tu.refreshFlat( installClient, td );
 
-    if( false ) {
 
     // 1. Create issue 
     let meltData = await tu.makeIssue( installClient, td, ISS_FLOW, [] );               // [id, number]  (mix str/int)
@@ -348,19 +369,21 @@ async function testCycle( installClient, td ) {
     await utils.sleep( 10000 );
     testStatus = await checkMove( installClient, td, td.dsProgID, meltCard, testStatus );
 	
-    }
-    else {
-	let meltData = [771113772, 116];
-	let meltCard = await gh.getCard( installClient, 51515045 );
-	await tu.refreshUnclaimed( installClient, td );
-
-    }
-
-    
     // 6. close
+    await tu.closeIssue( installClient, td, meltData[1] );
+    await utils.sleep( 10000 );
+    testStatus = await checkMove( installClient, td, td.dsPendID, meltCard, testStatus );
+
     // 7. move to accr
+    await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
+    await utils.sleep( 10000 );
+    testStatus = await checkMove( installClient, td, td.dsAccrID, meltCard, testStatus );
     
-    
+    // let meltData = [771113772, 116];
+    // let meltCard = await gh.getCard( installClient, 51515045 );
+    // await tu.refreshUnclaimed( installClient, td );
+
+     
 
     tu.testReport( testStatus, "Test Resolve" );
 }
