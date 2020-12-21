@@ -2,7 +2,7 @@ var utils = require('../utils');
 var ghUtils = require('../ghUtils');
 var config  = require('../config');
 var assert = require('assert');
-const auth = require( "../auth");
+var cardHandler = require('./githubCardHandler.js' );
 const peqData = require( '../peqData' );
 
 var gh = ghUtils.githubUtils;
@@ -19,29 +19,80 @@ https://developer.github.com/v3/issues/#create-an-issue
 // newborn issue:  a plain issue without a project card, without PEQ label
 // newborn card :  a card without an issue
 
-// Note: Once populateCEProjects has been run once for a repo, all carded issues in that repo
-//       are added to linkage table.  Newborn issues and cards can still exist.
-//       {label, open, add card} operation on newborn issues will cause conversion to carded (unclaimed) or situated issue,
-//       and inclusion in linkage table.
-//       Guarantee: once populated, all issues will be carded or situated from here on in.  Pre-existing newbies may exist without cards.
+// Guarantee: Once populateCEProjects has been run once for a repo:
+//            1) Every carded issues in that repo resides in the linkage table.
+//            2) Newborn issues and newborn cards can still exist (pre-existing, or post-populate), and will not reside in the linkage table.
+//            3) {label, add card} operation on newborn issues will cause conversion to carded (unclaimed) or situated issue as needed,
+//               and inclusion in linkage table.
+//            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
-async function handler( action, repo, owner, reqBody, res, tag ) {
 
-    // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
-    //          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
-    // Note: issue:opened         notification after 'submit' is pressed.
-    //       issue:labeled        notification after click out of label section
-    //       project_card:created notification after submit, then projects:triage to pick column.
-
-    // Sender is the event generator.  Issue:user is ... the original creator of the issue?
-    let sender   = reqBody['sender']['login'];
-    console.log( reqBody.issue.updated_at, "title:", reqBody['issue']['title'] );
-
-    if( sender == config.CE_BOT ) {
-	console.log( "Bot issue.. taking no action" );
-	return;
+async function checkOrphans( installClient, owner, repo, sender ) {
+    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
+    if( jobData != -1 ) {
+	console.log( "!!!!!!!!!!!!! ORPHAN FOUND !!!!!!!!!!!!!!!    processing..." );
+	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "Got next job:", ic[1] );
+	if( jobData.Handler == "issue" ) {             handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	else                             { cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
     }
+    else {
+	console.log( installClient[1], "no orphans" );
+    }
+    return;
+}
 
+async function getNextJob( installClient, owner, repo, sender ) {
+    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
+    if( jobData != -1 ) {
+	// Need a new installClient, else source for non-awaited actions is overwritten
+	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "Got next job:", ic[1] );
+	if( jobData.Handler == "issue" ) {             handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	else                             { cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+    }
+    else {
+	// By definition, this call has just caused the 'Locked' entry to be removed.
+	// In a rare case, an orphan job can be created if a 'checkQueue' was running at the same time, and caught the lock before it was removed.
+	// Wait for a brief moment, then check for orphans.  This is safe because:
+	// 1) If there is not an orphan, none get added, then extra check is no harm
+	// 2) If there is not an orphan, then new job fires up, only 'locked' will exist, nothing extra starts.
+	// 3) If there is an orphan, this will drive it while setting lock..
+	console.log( installClient[1], "jobs done, checking for orphan" );
+	checkOrphans(installClient, owner, repo, sender );
+    }
+    return;
+}
+
+
+// Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
+//          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
+// Note: issue:opened         notification after 'submit' is pressed.
+//       issue:labeled        notification after click out of label section
+//       project_card:created notification after submit, then projects:triage to pick column.
+async function handler( installClient, action, repo, owner, reqBody, res, tag, internal ) {
+
+    // Sender is the event generator.
+    let sender   = reqBody['sender']['login'];
+    console.log( reqBody.issue.updated_at, "issue title:", reqBody['issue']['title'], action, internal ? "internal" : "external" );
+
+    // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
+
+    if( !internal ) {
+	let tstart = Date.now();
+	// ??? don't pass res along - ceServer is a dead-end as far as GH notifications are concerned
+	// XXX Speed can vary between .25s and 2s .. seems to be dependent on how 'hot' amazon instance is.
+	//     upgrade instance == better results here
+	let senderPending = await utils.checkQueue( installClient, "issue", owner, repo, sender, action, reqBody, tag );
+	if( senderPending > 0 ) {
+	    console.log( installClient[1], "Sender busy", senderPending, Date.now() - tstart, "millis" );
+	    return;
+	}
+	console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
+    }
+    
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
     let pd = new peqData.PeqData();
     pd.GHOwner      = owner;
@@ -51,14 +102,9 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
     pd.GHCreator    = reqBody['issue']['user']['login'];
     pd.GHIssueTitle = (reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
     pd.GHFullName   = reqBody['repository']['full_name'];
-    
-    // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, config.CE_USER );
-    let source = "<ISS:"+action+" "+tag+"> ";
-    let installClient = [token, source];
 
-    await gh.checkRateLimit(installClient);
-    
+    // await gh.checkRateLimit(installClient);
+
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
@@ -70,17 +116,19 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	// XXXX XXXXX This will go away with ceFlutter
 	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
 	    await gh.populateCELinkage( installClient, pd );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 	
 	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 	
 	// Was this a carded issue?  Get linkage
-	let links = await( utils.getIssueLinkage( installClient[1], pd.GHIssueId ));
+	let links = await( utils.getIssueLinkage( installClient, pd.GHIssueId ));
 	assert( links == -1 || links.length == 1 );
 	let link = links == -1 ? links : links[0];
 
@@ -95,6 +143,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 		link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );
 		link.GHCardId    = card.id
 		link.GHProjectId = card.project_url.split('/').pop();
+		link.GHColumnId  = card.column_url.split('/').pop();
 	    }
 	    else {  // newborn card.
 		let card = await gh.getCard( installClient, link.GHCardId );
@@ -118,15 +167,16 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	pd.peqValue = gh.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 	// XXX Inform contributors that status is now UNTRACKED
 
 	console.log( "PEQ Issue unlabeled" );
-	utils.rebaseLinkage( pd.GHFullName, pd.GHIssueId );   // setting various to -1, as it is now untracked
-	let peq = await utils.getPeq( installClient[1], pd.GHIssueId );	
+	utils.rebaseLinkage( installClient, pd.GHFullName, pd.GHIssueId );   // setting various to -1, as it is now untracked
+	let peq = await utils.getPeq( installClient, pd.GHIssueId );	
 	utils.recordPEQAction(
-	    installClient[1],
+	    installClient,
 	    config.EMPTY,     // CE UID
 	    pd.GHCreator,     // gh user name
 	    pd.GHFullName,    // of the repo
@@ -152,6 +202,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 
@@ -164,10 +215,10 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	else {
 	    let success = await gh.moveIssueCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId, action, ceProjectLayout ); 
 	    if( success ) {
-		console.log( source, "Find & validate PEQ" );
+		console.log( installClient[1], "Find & validate PEQ" );
 		let peqId = ( await( gh.validatePEQ( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
 		if( peqId == -1 ) {
-		    console.log( source, "Could not find or verify associated PEQ.  Trouble in paradise." );
+		    console.log( installClient[1], "Could not find or verify associated PEQ.  Trouble in paradise." );
 		}
 		else {
 		    // githubCardHandler:recordMove must handle many more options.  Choices here are limited.
@@ -178,7 +229,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 		    
 		    let subject = [ peqId.toString() ];
 		    utils.recordPEQAction(
-			source,
+			installClient,
 			config.EMPTY,     // CE UID
 			sender,           // gh user name
 			pd.GHFullName,    // of the repo
@@ -200,14 +251,70 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
 	break;
     case 'assigned':
-	// XXX
-	console.log( "Check if peq, then assign" );
-    case 'unassigned': 
-	// XXX  could need to move to unattr, probably need to submit peq action
-	console.log( "Check if peq, then unassign" );
+	{
+	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
+	    console.log( "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
+	    
+	    pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    if( pd.peqValue <= 0 ) {
+		console.log( "Not a PEQ issue, no action taken." );
+		getNextJob( installClient, owner, repo, sender );
+		return;
+	    }
+	    
+	    // Peq issues only.  PEQ tracks assignees from ceFlutter.  Just send PAct upstream.
+	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
+	    let assignee = pd.reqBody.assignee.login;
+	    let verb = "confirm";
+	    let action = "change";
+	    let subject = [peq.PEQId.toString(), assignee];
+	    utils.recordPEQAction(
+		installClient,
+		config.EMPTY,     // CE UID
+		sender,           // gh user name
+		pd.GHFullName,    // of the repo
+		verb,
+		action,
+		subject,          // subject
+		"add assignee",   // note
+		utils.getToday(), // entryDate
+		pd.reqBody        // raw
+	    );
+	}
+	break;
+    case 'unassigned':
+	{
+	    console.log( "Unassign", pd.reqBody.assignee.login, "from issue", pd.GHIssueId );
+	    
+	    pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    if( pd.peqValue <= 0 ) {
+		console.log( "Not a PEQ issue, no action taken." );
+		getNextJob( installClient, owner, repo, sender );
+		return;
+	    }
+	    
+	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
+	    let assignee = pd.reqBody.assignee.login;
+	    let verb = "confirm";
+	    let action = "change";
+	    let subject = [peq.PEQId.toString(), assignee];
+	    utils.recordPEQAction(
+		installClient,
+		config.EMPTY,     // CE UID
+		sender,           // gh user name
+		pd.GHFullName,    // of the repo
+		verb,
+		action,
+		subject,          // subject
+		"remove assignee",   // note
+		utils.getToday(), // entryDate
+		pd.reqBody        // raw
+	    );
+	}
+	break;
     case 'opened':
 	// Can get here by 'convert to issue' on a newborn card, or more commonly, New issue with submit.
-	// XXX If the latter, convert newborn issue -> carded issue (unclaimed)
+	// XXX Do NOT convert newborn issue -> carded issue (unclaimed)
 	console.log( installClient[1], "Issue id:", reqBody['issue']['id'], "nodeId:", reqBody['issue']['node_id'] );
     case 'pinned': 
     case 'unpinned': 
@@ -222,9 +329,8 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	break;
     }
     
-    return res.json({
-	status: 200,
-    });
+    getNextJob( installClient, owner, repo, sender );
+    return;
 }
 
 exports.handler = handler;

@@ -70,7 +70,7 @@ async function testPopulate( installClient, td ) {
     let singleIssue = await tu.findIssue( installClient, td, ISS_SINREC );
     await tu.addLabel( installClient, td, singleIssue.number, popLabel.name );       // ready.. set... Go!
 
-    await utils.sleep( 35000 );
+    await utils.sleep( 20000 );
 
 
     // CHECK RESULTS
@@ -159,7 +159,7 @@ async function testPopulate( installClient, td ) {
 
     
     // Check DYNAMO PEQ
-    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     for( const name of allNames ) {
 	let fpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( name ));
 	testStatus = tu.checkEq( fpeqs.length, 0,   testStatus, "Bad peq created" );
@@ -206,23 +206,10 @@ async function testResolve( installClient, td ) {
     console.log( "Send add label" );
     await tu.addLabel( installClient, td, tripleIssue.number, newLabel.name );       // ready.. set... Go!
 
-    // Looks like aws - use of linkages - is really slowing things down.  Could get rid of many calls with graphql
-    console.log( "Start sleep" );
-    await utils.sleep( 1000 );
-    console.log( "tick 1" );
-    await utils.sleep( 1000 );
-    console.log( "tick 2" );
-    await utils.sleep( 1000 );
-    console.log( "tick 3" );
-    await utils.sleep( 1000 );
-    console.log( "tick 4" );
-    await utils.sleep( 1000 );
-    console.log( "tick 5" );
-    
     console.log( "Send create card" );
     await gh.createProjectCard( installClient, td.dsPlanID, tripleIssue.id, false );
 
-    await utils.sleep( 15000 );
+    await utils.sleep( 10000 );
 
     
     // CHECK RESULTS
@@ -294,7 +281,7 @@ async function testResolve( installClient, td ) {
 
 
     // Check DYNAMO PEQ
-    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
 
     for( const name of [ ISS_NEWBIE, ISS_SINREC, ISS_DUBREC, ISS_SINFLAT, ISS_DUBMIX ] ) {
 	let fpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( name ));
@@ -336,7 +323,7 @@ async function testResolve( installClient, td ) {
 
 
     // Check DYNAMO PAct
-    let pacts = await utils.getPActs( installClient[1], {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     let masPeq = tpeqs.filter((peq) => peq.GHProjectId == td.masterPID.toString() );
     let dsPeq  = tpeqs.filter((peq) => peq.GHProjectId == td.dataSecPID.toString() );
     testStatus = tu.checkGE( pacts.length, 3,         testStatus, "Number of PActs" );
@@ -346,7 +333,7 @@ async function testResolve( installClient, td ) {
     let f3 = 0;
     for( pact of pacts ) {
 	if( pact.Subject[0] == masPeq[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,         testStatus, "PAct user name" ); 
@@ -356,7 +343,7 @@ async function testResolve( installClient, td ) {
 	    else if( pact.Action == "change" ) { f2 = 1; }
 	}
 	else if( pact.Subject[0] == dsPeq[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
@@ -369,13 +356,13 @@ async function testResolve( installClient, td ) {
 
 
     // Check DYNAMO RepoStatus
-    let pop = await utils.checkPopulated( installClient[1], td.GHFullName );
+    let pop = await utils.checkPopulated( installClient, td.GHFullName );
     testStatus = tu.checkEq( pop, "true", testStatus, "Repo status wrt populated" );
 
 
     // Check DYNAMO linkage
     // note.. newbie will not be here.. expect 10/11.
-    let links = await utils.getLinks( installClient[1], td.GHFullName );
+    let links = await utils.getLinks( installClient, td.GHFullName );
     testStatus = tu.checkGE( links.length, 10, testStatus, "Linkage count" );
     let tripPeqIds = tripIssues.map((iss) => iss.id.toString() );
     let othPeqIds  = othIssues.map((iss) => iss.id.toString() );
@@ -442,19 +429,14 @@ async function testResolve( installClient, td ) {
 
 
 
-async function runTests( installClient ) {
-
-    let td = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
-    td.GHRepo       = config.TEST_REPO;
-    td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
+async function runTests( installClient, td ) {
 
     console.log( "Populate - add a repo to CE =================" );
 
     // *** these two tests are siblings (below)
     // TURN OFF ceServer
     // await makePrePopulateData( installClient, td );
-
+    
     // TURN ON ceServer
     // await testPopulate( installClient, td );
     // *** these two tests are siblings (above)

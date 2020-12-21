@@ -2,8 +2,8 @@ var utils   = require('../utils');
 var config  = require('../config');
 var ghUtils = require('../ghUtils');
 var assert = require('assert');
-const auth = require( "../auth");
 const peqData = require( '../peqData' );
+var issueHandler = require('./githubIssueHandler.js' );
 
 var gh = ghUtils.githubUtils;
 
@@ -63,7 +63,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 
     let subject = [ peq['PEQId'] ];
     await( utils.recordPEQAction(
-	installClient[1],
+	installClient,
 	config.EMPTY,     // CE UID
 	reqBody['sender']['login'],   // gh actor
 	fullName,         // gh repo
@@ -76,21 +76,63 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
     ));
 }
 
+// XXX Move these two up?
+async function checkOrphans( installClient, owner, repo, sender ) {
+    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
+    if( jobData != -1 ) {
+	console.log( "!!!!!!!!!!!!! ORPHAN FOUND !!!!!!!!!!!!!!!    processing..." );
+	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "Got next job:", ic[1] );
+	if( jobData.Handler == "card" ) {              handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	else                            { issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+    }
+    else {
+	console.log( installClient[1], "no orphans" );
+    }
+    return;
+}
+
+// XXX Move these two up?
+async function getNextJob( installClient, owner, repo, sender ) {
+    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
+    if( jobData != -1 ) {
+	// Need a new installClient, else source for non-awaited actions is overwritten
+	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "Got next job:", ic[1] );
+	if( jobData.Handler == "card" ) {              handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	else                            { issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+    }
+    else {
+	console.log( installClient[1], "jobs done" );
+	checkOrphans( installClient, owner, repo, sender ); 
+    }
+    
+    return;
+}
+
 
 // Card operations: no PEQ label, not related to CodeEquity.  No action.
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
-async function handler( action, repo, owner, reqBody, res, tag ) {
+async function handler( installClient, action, repo, owner, reqBody, res, tag, internal ) {
 
-    // Actions: created, deleted, moved, edited, converted
-    console.log( reqBody.project_card.updated_at, "card", action );
     let sender  = reqBody['sender']['login'];
-    if( sender == config.CE_BOT) {
-	console.log( "Bot card, skipping." );
-	return;
+    // if( !reqBody.hasOwnProperty( 'project_card') || !reqBody.project_card.hasOwnProperty( 'updated_at')) { console.log( reqBody ); }
+    console.log( reqBody.project_card.updated_at, "Card", action, internal ? "internal" : "external" );
+    // If called from external event, look at queue first, add if necessary
+    if( !internal ) {
+	let tstart = Date.now();
+	let senderPending = await utils.checkQueue( installClient, "card", owner, repo, sender, action, reqBody, tag );
+	if( senderPending > 0 ) {
+	    console.log( installClient[1], "Sender busy", senderPending, Date.now() - tstart, "millis" );
+	    return;
+	}
+	console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
     }
-
+    
     let pd = new peqData.PeqData();
     pd.GHOwner      = owner;
     pd.GHRepo       = repo;
@@ -98,13 +140,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
     pd.GHCreator    = reqBody['project_card']['creator']['login'];
     pd.GHFullName   = reqBody['repository']['full_name'];
 
-    
-    // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, config.CE_USER );
-    let source = "<car:"+action+" "+tag+"> ";
-    let installClient = [token, source];
-
-    await gh.checkRateLimit(installClient);
+    // await gh.checkRateLimit(installClient);
 
     if( action == "created" && pd.reqBody['project_card']['content_url'] != null ) {
 	// In issues, add to project, triage to add to column.  May or may not be PEQ.  
@@ -128,10 +164,13 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	let cardContent = pd.reqBody['project_card']['note'].split('\n');
 
 	// XXX This may be overly restrictive..?
+	/*
 	if( await gh.checkIssueExists( installClient, pd.GHOwner, pd.GHRepo, cardContent[0] ) ) {
 	    console.log( "Issue with same title already exists.  Do nothing." );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
+	*/
 
 	await utils.processNewPEQ( installClient, pd, cardContent, -1 );
     }
@@ -147,6 +186,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 
 	if( pd.reqBody['changes'] == null ) {
 	    console.log( installClient[1], "Move within columns are ignored." );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 
@@ -157,9 +197,10 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	
 	// First, verify current status
 	// XXX This chunk could be optimized out, down the road
-	let card = await( utils.getFromCardId( installClient[1], pd.GHFullName, cardId ));  
+	let card = await( utils.getFromCardId( installClient, pd.GHFullName, cardId ));  
 	if( card == -1 ) {
 	    console.log( "Moved card not processed, could not find the card id", cardId );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 	
@@ -181,10 +222,11 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	    if( assignees.length == 0  ) {
 		console.log( "Update card failed - no assignees" );   // can't propose grant without a grantee
 		console.log( "XXX move card back by hand with ceServer off" );
+		getNextJob( installClient, owner, repo, sender );
 		return;
 	    }
 	}
-	let success = await( utils.updateLinkage( installClient[1], issueId, cardId, newColId, newColName )) 
+	let success = await( utils.updateLinkage( installClient, issueId, cardId, newColId, newColName )) 
 	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
 	
 	// handle issue
@@ -207,9 +249,8 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	await( utils.recordPEQTodo( "XXX TBD. Content may be from issue, or card." , -1 ));	
     }
 
-    return res.json({
-	status: 200,
-    });
+    getNextJob( installClient, owner, repo, sender );
+    return;
 }
 
 exports.handler = handler;

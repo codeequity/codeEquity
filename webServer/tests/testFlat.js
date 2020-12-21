@@ -31,7 +31,7 @@ async function testFlatProject( installClient, td ) {
     await tu.refresh( installClient, td, FLAT_PROJ );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
-    let links = await utils.getLinks( installClient[1], td.GHFullName );
+    let links = await utils.getLinks( installClient, td.GHFullName );
     let foundFlat = false;
     for( const link of links ) {
 	if( link.GHProjectName == FLAT_PROJ    ||
