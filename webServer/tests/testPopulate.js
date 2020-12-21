@@ -70,7 +70,7 @@ async function testPopulate( installClient, td ) {
     let singleIssue = await tu.findIssue( installClient, td, ISS_SINREC );
     await tu.addLabel( installClient, td, singleIssue.number, popLabel.name );       // ready.. set... Go!
 
-    await utils.sleep( 35000 );
+    await utils.sleep( 20000 );
 
 
     // CHECK RESULTS
@@ -206,23 +206,10 @@ async function testResolve( installClient, td ) {
     console.log( "Send add label" );
     await tu.addLabel( installClient, td, tripleIssue.number, newLabel.name );       // ready.. set... Go!
 
-    // Looks like aws - use of linkages - is really slowing things down.  Could get rid of many calls with graphql
-    console.log( "Start sleep" );
-    await utils.sleep( 1000 );
-    console.log( "tick 1" );
-    await utils.sleep( 1000 );
-    console.log( "tick 2" );
-    await utils.sleep( 1000 );
-    console.log( "tick 3" );
-    await utils.sleep( 1000 );
-    console.log( "tick 4" );
-    await utils.sleep( 1000 );
-    console.log( "tick 5" );
-    
     console.log( "Send create card" );
     await gh.createProjectCard( installClient, td.dsPlanID, tripleIssue.id, false );
 
-    await utils.sleep( 15000 );
+    await utils.sleep( 10000 );
 
     
     // CHECK RESULTS
@@ -449,7 +436,7 @@ async function runTests( installClient, td ) {
     // *** these two tests are siblings (below)
     // TURN OFF ceServer
     // await makePrePopulateData( installClient, td );
-
+    
     // TURN ON ceServer
     // await testPopulate( installClient, td );
     // *** these two tests are siblings (above)

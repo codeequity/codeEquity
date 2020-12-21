@@ -211,7 +211,7 @@ async function makeProject(installClient, td, name, body ) {
 	.catch( e => { console.log( installClient[1], "Create project failed.", e ); });
 
     console.log( "MakeProject:", name, pid );
-    utils.sleep( 300 );
+    await utils.sleep( 300 );
     return pid;
 }
 
@@ -222,7 +222,7 @@ async function makeColumn( installClient, projId, name ) {
 	.catch( e => { console.log( installClient[1], "Create column failed.", e ); });
 
     console.log( "MakeColumn:", name, cid );
-    utils.sleep( 300 );
+    await utils.sleep( 300 );
     return cid;
 }
 
@@ -233,7 +233,7 @@ async function make4xCols( installClient, projId ) {
     let pend = await makeColumn( installClient, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
     let accr = await makeColumn( installClient, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
 	
-    utils.sleep( 300 );
+    await utils.sleep( 300 );
     return [prog, plan, pend, accr];
 }
 
@@ -245,7 +245,7 @@ async function makeAllocCard( installClient, colId, title, amount ) {
 	.catch( e => { console.log( installClient[1], "Create newborn card failed.", e ); });
 
     console.log( "MakeCard:", cid );
-    utils.sleep( 300 );
+    await utils.sleep( 300 );
     return cid;
 }
 
@@ -256,40 +256,44 @@ async function makeNewbornCard( installClient, colId, title ) {
 	.then((card) => { return card.data.id; })
 	.catch( e => { console.log( installClient[1], "Create newborn card failed.", e ); });
 
-    utils.sleep( 300 );
+    await utils.sleep( 300 );
     return cid;
 }
 
 async function makeProjectCard( installClient, colId, issueId ) {
     let card = await gh.createProjectCard( installClient, colId, issueId );
-    utils.sleep( 300 );
+    await utils.sleep( 300 );
     return card;
 }
 
 async function makeIssue( installClient, td, title, labels ) {
     let issue = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, title, labels, false );
-    utils.sleep( 300 );
+    await utils.sleep( 300 );
     return issue;
 }
 
 async function addLabel( installClient, td, issueNumber, labelName ) {
     await installClient[0].issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
 	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
+    await utils.sleep( 300 );
 }	
 
 async function addAssignee( installClient, td, issueNumber, assignee ) {
     await installClient[0].issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
 	.catch( e => { console.log( installClient[1], "Add assignee failed.", e ); });
+    await utils.sleep( 300 );
 }
 
 async function moveCard( installClient, cardId, columnId ) {
     await installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: columnId })
 	.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
+    await utils.sleep( 300 );
 }
 
 async function closeIssue( installClient, td, issueNumber ) {
     await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
 	.catch( e => { console.log( installClient[1], "Close issue failed.", e );	});
+    await utils.sleep( 300 );
 }
 
 function checkEq( lhs, rhs, testStatus, msg ) {

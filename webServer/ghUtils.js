@@ -595,18 +595,19 @@ async function cleanUnclaimed( installClient, pd ) {
 	
     assert( link.GHCardId != -1 );
     assert( link.GHColumnName != config.EMPTY );
-    
+
     console.log( "Found unclaimed" );
     await( installClient[0].projects.deleteCard( { card_id: link.GHCardId } ));
     
     // Remove turds, report.  
     await( utils.removeLinkage( installClient, pd.GHIssueId, link.GHCardId ));
+    
     // do not delete peq - set it inactive.
     let daPEQ = await utils.getPeq( installClient, pd.GHIssueId );
     await utils.removePEQ( installClient, daPEQ.PEQId );
-	   
+
     utils.recordPEQAction(
-	installClient[1],
+	installClient,
 	config.EMPTY,     // CE UID
 	pd.GHCreator,     // gh user name
 	pd.GHFullName,        

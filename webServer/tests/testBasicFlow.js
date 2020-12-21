@@ -338,13 +338,6 @@ async function testCycle( installClient, td ) {
 
     console.log( "Test basic lifecycle of an issue" );
 
-    /*
-    let meltData  = await tu.makeIssue( installClient, td, "Mog", [] );               // [id, number]  (mix str/int)
-    let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-    await tu.addLabel( installClient, td, meltData[1], newLabel.name );
-    let meltData1 = await tu.makeIssue( installClient, td, "Dob", [] );               // [id, number]  (mix str/int)
-    */
-    
     await tu.refreshRec( installClient, td );
     await tu.refreshFlat( installClient, td );
 
@@ -355,41 +348,36 @@ async function testCycle( installClient, td ) {
     // 2. add peq label
     let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
     await tu.addLabel( installClient, td, meltData[1], newLabel.name );
-    await utils.sleep( 10000 );
+    await utils.sleep( 6000 );
     await tu.refreshUnclaimed( installClient, td );
     testStatus = await checkUnclaimedIssue( installClient, td, meltData, testStatus );
     
     // 3. Add to project
     let meltCard  = await tu.makeProjectCard( installClient, td.dsPlanID, meltData[0] );
-    await utils.sleep( 15000 );
+    await utils.sleep( 8000 );
     testStatus = await checkNewlySituatedIssue( installClient, td, meltData, meltCard, testStatus );
 
     // 4. add assignee
     await tu.addAssignee( installClient, td, meltData[1], ASSIGNEE1 );
     await tu.addAssignee( installClient, td, meltData[1], ASSIGNEE2 );
-    await utils.sleep( 10000 );
+    await utils.sleep( 6000 );
     testStatus = await checkAssignees( installClient, td, meltData, testStatus );
 
     // 5. move to prog
     await tu.moveCard( installClient, meltCard.id, td.dsProgID );
-    await utils.sleep( 10000 );
+    await utils.sleep( 6000 );
     testStatus = await checkMove( installClient, td, td.dsProgID, meltCard, testStatus );
 	
     // 6. close
     await tu.closeIssue( installClient, td, meltData[1] );
-    await utils.sleep( 10000 );
+    await utils.sleep( 6000 );
     testStatus = await checkMove( installClient, td, td.dsPendID, meltCard, testStatus );
 
     // 7. move to accr
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
-    await utils.sleep( 10000 );
+    await utils.sleep( 6000 );
     testStatus = await checkMove( installClient, td, td.dsAccrID, meltCard, testStatus );
     
-    // let meltData = [771113772, 116];
-    // let meltCard = await gh.getCard( installClient, 51515045 );
-    // await tu.refreshUnclaimed( installClient, td );
-     
-
     tu.testReport( testStatus, "Test Resolve" );
 }
 
@@ -401,6 +389,7 @@ async function runTests( installClient, td ) {
 
     await testCycle( installClient, td );
 
+    // XXX test a flow at end, not between steps, looking at queue
     // XXX test all basic flows.  e.g. create, add, label   // (no unclaimed/peq)
     
     // await cleanupCycle( installClient, td );

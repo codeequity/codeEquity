@@ -215,10 +215,10 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	else {
 	    let success = await gh.moveIssueCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId, action, ceProjectLayout ); 
 	    if( success ) {
-		console.log( source, "Find & validate PEQ" );
+		console.log( installClient[1], "Find & validate PEQ" );
 		let peqId = ( await( gh.validatePEQ( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
 		if( peqId == -1 ) {
-		    console.log( source, "Could not find or verify associated PEQ.  Trouble in paradise." );
+		    console.log( installClient[1], "Could not find or verify associated PEQ.  Trouble in paradise." );
 		}
 		else {
 		    // githubCardHandler:recordMove must handle many more options.  Choices here are limited.
