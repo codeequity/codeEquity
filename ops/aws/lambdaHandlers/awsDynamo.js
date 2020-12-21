@@ -265,7 +265,10 @@ async function getFromQueue( jobData ) {
 	else if( entries.Count == 1 ) { return entries.Items[0]; } // return Locked entry
 	else {                                                     // return first added job, the 2nd element in q after sort
 	    let sorts = entries.Items.sort((a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ));
-	    return sorts[1];   
+	    // Need lock for currently running job (empty queue otherwise)
+	    // Lock gets deleted, re-added, won't always be first
+	    if( sorts[0].hasOwnProperty( "Locked" )) { return sorts[1]; }
+	    else{ return sorts[0]; }
 	}
     });
 

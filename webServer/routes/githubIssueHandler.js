@@ -31,9 +31,11 @@ https://developer.github.com/v3/issues/#create-an-issue
 async function getNextJob( installClient, owner, repo, sender ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
-	console.log( "Got next job" )
-	// jobData: [ action, repo, owner, reqBody, res, tag ]
-	handler( installClient, jobData[0], jobData[1], jobData[2], jobData[3], jobData[4], jobData[5], true );
+	// Need a new installClient, else source for non-awaited actions is overwritten
+	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	ic[1] = "<issue: "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "Got next job:", ic[1] );
+	handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true );
     }
     else {
 	console.log( sender, "jobs done" );
@@ -52,20 +54,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 
     // Sender is the event generator.
     let sender   = reqBody['sender']['login'];
-    console.log( reqBody.issue.updated_at, "title:", reqBody['issue']['title'] );
-
-    /*
-    if( sender == config.CE_BOT ) {
-	console.log( "Bot issue.. taking no action" );
-	return;
-    }
-    // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
-    let source = "<issue:"+action+" "+tag+"> ";
-    let apiPath = utils.getAPIPath() + "/find";
-    let idToken = await awsAuth.getCogIDToken();
-    let installClient = [-1, source, apiPath, idToken];
-    */
-    
+    console.log( reqBody.issue.updated_at, "issue title:", reqBody['issue']['title'], action, internal ? "internal" : "external" );
 
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 
@@ -76,10 +65,10 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	//     upgrade instance == better results here
 	let senderPending = await utils.checkQueue( installClient, owner, repo, sender, action, reqBody, "", tag );
 	if( senderPending > 0 ) {
-	    console.log( installClient[1], "Sender busy", senderPending );
+	    console.log( installClient[1], "Sender busy", senderPending, Date.now() - tstart, "millis" );
 	    return;
 	}
-	console.log( installClient[1], "check Q done", Date.now() - tstart );
+	console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
     }
     
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
@@ -91,10 +80,9 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
     pd.GHCreator    = reqBody['issue']['user']['login'];
     pd.GHIssueTitle = (reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
     pd.GHFullName   = reqBody['repository']['full_name'];
-    
-    // installClient[0] = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, config.CE_USER );
+
     // await gh.checkRateLimit(installClient);
-    
+
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise

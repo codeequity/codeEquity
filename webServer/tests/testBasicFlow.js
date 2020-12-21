@@ -338,15 +338,15 @@ async function testCycle( installClient, td ) {
 
     console.log( "Test basic lifecycle of an issue" );
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
-
     let meltData  = await tu.makeIssue( installClient, td, "Mog", [] );               // [id, number]  (mix str/int)
     let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
     await tu.addLabel( installClient, td, meltData[1], newLabel.name );
     let meltData1 = await tu.makeIssue( installClient, td, "Dob", [] );               // [id, number]  (mix str/int)
 
     /*
+    await tu.refreshRec( installClient, td );
+    await tu.refreshFlat( installClient, td );
+
     // 1. Create issue 
     let meltData = await tu.makeIssue( installClient, td, ISS_FLOW, [] );               // [id, number]  (mix str/int)
     testStatus = await checkNewbornIssue( installClient, td, meltData, testStatus );

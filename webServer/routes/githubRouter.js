@@ -22,12 +22,6 @@ router.post('/:location?', async function (req, res) {
     let retVal = "";
 
 
-    let sender  = req.body['sender']['login'];
-    if( sender == config.CE_BOT) {
-	console.log( "Bot-sent, skipping." );
-	return;
-    }
-
     let tag = "";
     let source = "<";
     if( event == "issues" )    {
@@ -48,6 +42,13 @@ router.post('/:location?', async function (req, res) {
 	tag = tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
     }
     source += action+" "+tag+"> ";
+    console.log( "Notification:", event, action, tag, "for", owner, repo );
+
+    let sender  = req.body['sender']['login'];
+    if( sender == config.CE_BOT) {
+	console.log( "Bot-sent, skipping." );
+	return;
+    }
 
     // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
     let apiPath = utils.getAPIPath() + "/find";
@@ -55,7 +56,6 @@ router.post('/:location?', async function (req, res) {
     let installClient = [-1, source, apiPath, idToken];
     installClient[0] = await auth.getInstallationClient( owner, repo, config.CE_USER );
     
-    console.log( "Notification:", event, action, tag, "for", owner, repo );
     if( event == "issues" ) {
 	retVal = issues.handler( installClient, action, repo, owner, req.body, res, tag, false );
     }

@@ -80,9 +80,11 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 async function getNextJob( installClient, owner, repo, sender ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
-	console.log( "Got next job" )
-	// jobData: [ action, repo, owner, reqBody, res, tag ]
-	handler( installClient, jobData[0], jobData[1], jobData[2], jobData[3], jobData[4], jobData[5], true );
+	// Need a new installClient, else source for non-awaited actions is overwritten
+	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	ic[1] = "<card: "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "Got next job:", ic[1] );
+	handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true );
     }
     else {
 	console.log( sender, "jobs done" );
@@ -98,31 +100,17 @@ async function getNextJob( installClient, owner, repo, sender ) {
 
 async function handler( installClient, action, repo, owner, reqBody, res, tag, internal ) {
 
-    /*
-    // Actions: created, deleted, moved, edited, converted
-    console.log( reqBody.project_card.updated_at, "card", action );
-    if( sender == config.CE_BOT) {
-	console.log( "Bot card, skipping." );
-	return;
-    }
-    
-    // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
-    let source = "<card:"+action+" "+tag+"> ";
-    let apiPath = utils.getAPIPath() + "/find";
-    let idToken = await awsAuth.getCogIDToken();
-    let installClient = [-1, source, apiPath, idToken];
-    */
-
     let sender  = reqBody['sender']['login'];
+    console.log( reqBody.issue.updated_at, "Card", action, internal ? "internal" : "external" );
     // If called from external event, look at queue first, add if necessary
     if( !internal ) {
 	let tstart = Date.now();
 	let senderPending = await utils.checkQueue( installClient, owner, repo, sender, action, reqBody, "", tag );
 	if( senderPending > 0 ) {
-	    console.log( installClient[1], "Sender busy", senderPending );
+	    console.log( installClient[1], "Sender busy", senderPending, Date.now() - tstart, "millis" );
 	    return;
 	}
-	console.log( installClient[1], "check Q done", Date.now() - tstart );
+	console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
     }
     
     let pd = new peqData.PeqData();
@@ -132,7 +120,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
     pd.GHCreator    = reqBody['project_card']['creator']['login'];
     pd.GHFullName   = reqBody['repository']['full_name'];
 
-    // installClient[0] = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, config.CE_USER );
     // await gh.checkRateLimit(installClient);
 
     if( action == "created" && pd.reqBody['project_card']['content_url'] != null ) {
