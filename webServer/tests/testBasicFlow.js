@@ -338,12 +338,13 @@ async function testCycle( installClient, td ) {
 
     console.log( "Test basic lifecycle of an issue" );
 
+    /*
     let meltData  = await tu.makeIssue( installClient, td, "Mog", [] );               // [id, number]  (mix str/int)
     let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
     await tu.addLabel( installClient, td, meltData[1], newLabel.name );
     let meltData1 = await tu.makeIssue( installClient, td, "Dob", [] );               // [id, number]  (mix str/int)
-
-    /*
+    */
+    
     await tu.refreshRec( installClient, td );
     await tu.refreshFlat( installClient, td );
 
@@ -387,7 +388,6 @@ async function testCycle( installClient, td ) {
     // let meltData = [771113772, 116];
     // let meltCard = await gh.getCard( installClient, 51515045 );
     // await tu.refreshUnclaimed( installClient, td );
-*/
      
 
     tu.testReport( testStatus, "Test Resolve" );
@@ -399,13 +399,6 @@ async function runTests( installClient, td ) {
 
     console.log( "Populate - add a repo to CE =================" );
 
-    // create issue     
-    // add peq label    // yes unclaimed, peq
-    // Add to project   
-    // add assignee
-    // move to prog
-    // close
-    // move to accr
     await testCycle( installClient, td );
 
     // XXX test all basic flows.  e.g. create, add, label   // (no unclaimed/peq)

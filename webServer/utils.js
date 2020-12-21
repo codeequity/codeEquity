@@ -736,6 +736,17 @@ async function getLinks( installClient, repo ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
+// TESTING ONLY - gets everything for everyone in repo, repo here is shortname not fullname
+async function getQueue( installClient, repo ) {
+    console.log( installClient[1], "Get Queue for a given repo:", repo );
+
+    let shortName = "GetEntries";
+    let query     = { "GHRepo": repo};
+    let postData  = { "Endpoint": shortName, "tableName": "CEQueue", "query": query };
+
+    return await wrappedPostIt( installClient, shortName, postData );
+}
+
 async function getRepoStatus( installClient, repo ) {
     console.log( installClient[1], "Get Status for a given repo:", repo );
 
@@ -755,11 +766,11 @@ async function cleanDynamo( installClient, tableName, ids ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
-async function checkQueue( installClient, owner, repo, sender, action, reqBody, res, tag ) {
+async function checkQueue( installClient, handler, owner, repo, sender, action, reqBody, tag ) {
     console.log( installClient[1], "check queue" );
 
     let shortName = "CheckQueue";
-    let jobData = {"owner": owner, "repo": repo, "sender": sender, "action": action, "reqBody": reqBody, "res": res, "tag": tag };
+    let jobData = {"handler": handler, "owner": owner, "repo": repo, "sender": sender, "action": action, "reqBody": reqBody, "tag": tag };
     let postData  = { "Endpoint": shortName, "jobData": jobData };
 
     return await wrappedPostIt( installClient, shortName, postData );
@@ -809,6 +820,7 @@ exports.getRaw   = getRaw;
 exports.getPActs = getPActs;
 exports.getPeqs = getPeqs;
 exports.getLinks = getLinks;
+exports.getQueue = getQueue;
 exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;
 

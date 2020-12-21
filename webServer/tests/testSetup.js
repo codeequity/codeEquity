@@ -34,7 +34,7 @@ async function createPreferredCEProjects( installClient, td ) {
     await tu.addLabel( installClient, td, nbi1[1], popLabel.name );       // ready.. set... Go!
 
     console.log( "Waiting for populate" );
-    await utils.sleep( 15000 );
+    await utils.sleep( 8000 );
     console.log( "Done waiting for populate" );
 
     // softCont: dataSecurity, githubOps, unallocated
@@ -285,7 +285,7 @@ async function runTests( installClient, td ) {
     console.log( "Preferred CE project structure =================" );
 
     await createPreferredCEProjects( installClient, td );
-    await utils.sleep( 15000 );
+    await utils.sleep( 20000 );
     await testPreferredCEProjects( installClient, td );
 
 }

@@ -28,7 +28,7 @@ router.post('/:location?', async function (req, res) {
 	tag = (req.body['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
 	source += "issue:";
     }
-    else if( event == "card" ) {
+    else if( event == "project_card" ) {
 	source += "card:";
 	if( req.body['project_card']['content_url'] != null ) {
 	    let issueURL = req.body['project_card']['content_url'].split('/');

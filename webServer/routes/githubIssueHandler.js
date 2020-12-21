@@ -1,9 +1,8 @@
-// const awsAuth = require( '../awsAuth' );
-// const auth = require( "../auth");
 var utils = require('../utils');
 var ghUtils = require('../ghUtils');
 var config  = require('../config');
 var assert = require('assert');
+var cardHandler = require('./githubCardHandler.js' );
 const peqData = require( '../peqData' );
 
 var gh = ghUtils.githubUtils;
@@ -28,19 +27,42 @@ https://developer.github.com/v3/issues/#create-an-issue
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
+async function checkOrphans( installClient, owner, repo, sender ) {
+    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
+    if( jobData != -1 ) {
+	console.log( "!!!!!!!!!!!!! ORPHAN FOUND !!!!!!!!!!!!!!!    processing..." );
+	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "Got next job:", ic[1] );
+	if( jobData.Handler == "issue" ) {             handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	else                             { cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+    }
+    else {
+	console.log( installClient[1], "no orphans" );
+    }
+    return;
+}
+
 async function getNextJob( installClient, owner, repo, sender ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
 	// Need a new installClient, else source for non-awaited actions is overwritten
 	let ic = [installClient[0], "", installClient[2], installClient[3]];
-	ic[1] = "<issue: "+jobData.Action+" "+jobData.Tag+"> ";
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
 	console.log( "Got next job:", ic[1] );
-	handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true );
+	if( jobData.Handler == "issue" ) {             handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	else                             { cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
     }
     else {
-	console.log( sender, "jobs done" );
+	// By definition, this call has just caused the 'Locked' entry to be removed.
+	// In a rare case, an orphan job can be created if a 'checkQueue' was running at the same time, and caught the lock before it was removed.
+	// Wait for a brief moment, then check for orphans.  This is safe because:
+	// 1) If there is not an orphan, none get added, then extra check is no harm
+	// 2) If there is not an orphan, then new job fires up, only 'locked' will exist, nothing extra starts.
+	// 3) If there is an orphan, this will drive it while setting lock..
+	console.log( installClient[1], "jobs done, checking for orphan" );
+	checkOrphans(installClient, owner, repo, sender );
     }
-    
     return;
 }
 
@@ -63,7 +85,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	// ??? don't pass res along - ceServer is a dead-end as far as GH notifications are concerned
 	// XXX Speed can vary between .25s and 2s .. seems to be dependent on how 'hot' amazon instance is.
 	//     upgrade instance == better results here
-	let senderPending = await utils.checkQueue( installClient, owner, repo, sender, action, reqBody, "", tag );
+	let senderPending = await utils.checkQueue( installClient, "issue", owner, repo, sender, action, reqBody, tag );
 	if( senderPending > 0 ) {
 	    console.log( installClient[1], "Sender busy", senderPending, Date.now() - tstart, "millis" );
 	    return;

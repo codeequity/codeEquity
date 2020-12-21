@@ -26,7 +26,7 @@ async function runTests() {
     let installClient = [token, source, apiPath, idToken];
 
     
-    // await testSetup.runTests( installClient, td );
+    await testSetup.runTests( installClient, td );
 
     // await testFlat.runTests( installClient, td );
 
@@ -35,7 +35,7 @@ async function runTests() {
     // XXX should break this into setup/test
     // await testPopulate.runTests( installClient, td );
 
-    await testBasicFlow.runTests( installClient, td );
+    // await testBasicFlow.runTests( installClient, td );
     
     
     // test add, peq, then add new card to peq issue.  unclaimed.  split issue with assignees?

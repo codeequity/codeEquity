@@ -1,10 +1,9 @@
-// const awsAuth = require( '../awsAuth' );  // XXX
-// const auth = require( "../auth");
 var utils   = require('../utils');
 var config  = require('../config');
 var ghUtils = require('../ghUtils');
 var assert = require('assert');
 const peqData = require( '../peqData' );
+var issueHandler = require('./githubIssueHandler.js' );
 
 var gh = ghUtils.githubUtils;
 
@@ -77,17 +76,37 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
     ));
 }
 
+// XXX Move these two up?
+async function checkOrphans( installClient, owner, repo, sender ) {
+    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
+    if( jobData != -1 ) {
+	console.log( "!!!!!!!!!!!!! ORPHAN FOUND !!!!!!!!!!!!!!!    processing..." );
+	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "Got next job:", ic[1] );
+	if( jobData.Handler == "card" ) {              handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	else                            { issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+    }
+    else {
+	console.log( installClient[1], "no orphans" );
+    }
+    return;
+}
+
+// XXX Move these two up?
 async function getNextJob( installClient, owner, repo, sender ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
 	// Need a new installClient, else source for non-awaited actions is overwritten
 	let ic = [installClient[0], "", installClient[2], installClient[3]];
-	ic[1] = "<card: "+jobData.Action+" "+jobData.Tag+"> ";
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
 	console.log( "Got next job:", ic[1] );
-	handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true );
+	if( jobData.Handler == "card" ) {              handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	else                            { issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
     }
     else {
-	console.log( sender, "jobs done" );
+	console.log( installClient[1], "jobs done" );
+	checkOrphans( installClient, owner, repo, sender ); 
     }
     
     return;
@@ -101,11 +120,12 @@ async function getNextJob( installClient, owner, repo, sender ) {
 async function handler( installClient, action, repo, owner, reqBody, res, tag, internal ) {
 
     let sender  = reqBody['sender']['login'];
-    console.log( reqBody.issue.updated_at, "Card", action, internal ? "internal" : "external" );
+    // if( !reqBody.hasOwnProperty( 'project_card') || !reqBody.project_card.hasOwnProperty( 'updated_at')) { console.log( reqBody ); }
+    console.log( reqBody.project_card.updated_at, "Card", action, internal ? "internal" : "external" );
     // If called from external event, look at queue first, add if necessary
     if( !internal ) {
 	let tstart = Date.now();
-	let senderPending = await utils.checkQueue( installClient, owner, repo, sender, action, reqBody, "", tag );
+	let senderPending = await utils.checkQueue( installClient, "card", owner, repo, sender, action, reqBody, tag );
 	if( senderPending > 0 ) {
 	    console.log( installClient[1], "Sender busy", senderPending, Date.now() - tstart, "millis" );
 	    return;
@@ -144,11 +164,13 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	let cardContent = pd.reqBody['project_card']['note'].split('\n');
 
 	// XXX This may be overly restrictive..?
+	/*
 	if( await gh.checkIssueExists( installClient, pd.GHOwner, pd.GHRepo, cardContent[0] ) ) {
 	    console.log( "Issue with same title already exists.  Do nothing." );
 	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
+	*/
 
 	await utils.processNewPEQ( installClient, pd, cardContent, -1 );
     }

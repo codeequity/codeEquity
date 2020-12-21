@@ -137,6 +137,12 @@ async function runTests() {
     console.log( "Dynamo link ids", linkIds );
     await utils.cleanDynamo( installClient, "CELinkage", linkIds );
 
+    // Queue
+    let notes = await utils.getQueue( installClient, pd.GHRepo );
+    let noteIds = notes == -1 ? [] : notes.map(( note ) => [note.QueueId] );
+    console.log( "Dynamo queue ids", noteIds );
+    await utils.cleanDynamo( installClient, "CEQueue", noteIds );
+
     // RepoStatus
     let status = await utils.getRepoStatus( installClient, pd.GHFullName );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];

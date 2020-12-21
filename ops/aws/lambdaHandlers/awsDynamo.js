@@ -217,13 +217,13 @@ async function checkQueue( jobData ) {
 	    TableName: 'CEQueue',
 	    Item: {
 		"QueueId":        randAlpha(10),
+		"Handler":        jobData.handler,
 		"GHRepo":         jobData.repo,
 		"GHOwner":        jobData.owner,
 		"GHSender":       jobData.sender,
 		"TimeStamp":      Date.now(),
 		"Action":         jobData.action,
 		"ReqBody":        jobData.reqBody,
-		"Res":            jobData.res,
 		"Tag":            jobData.tag 
 	    }
 	};
@@ -354,6 +354,9 @@ async function getEntries( tableName, query ) {
     case "CERepoStatus": 
 	props = [ "GHRepo" ];
 	break;
+    case "CEQueue": 
+	props = [ "GHRepo" ];
+	break;
     default:
 	assert( false );
     }
@@ -395,6 +398,9 @@ async function removeEntries( tableName, ids ) {
 	break;
     case "CERepoStatus": 
 	pkey1 = "GHRepo";
+	break;
+    case "CEQueue": 
+	pkey1 = "QueueId";
 	break;
     default:
 	assert( false );
