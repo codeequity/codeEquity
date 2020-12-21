@@ -1,4 +1,6 @@
+const awsAuth = require( '../awsAuth' );
 const auth = require( "../auth");
+const utils = require( "../utils");
 var config  = require('../config');
 
 const testSetup = require( './testSetup' );
@@ -15,10 +17,14 @@ async function runTests() {
     td.GHRepo       = config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
-    // installClient is pair [installationAccessToken, creationSource]
+
+    // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
     let token = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
     let source = "<TEST: Setup> ";
-    let installClient = [token, source];
+    let apiPath = utils.getAPIPath() + "/find";
+    let idToken = await awsAuth.getCogIDToken();
+    let installClient = [token, source, apiPath, idToken];
+
     
     // await testSetup.runTests( installClient, td );
 

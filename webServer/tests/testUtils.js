@@ -114,9 +114,9 @@ function makeTitleReducer( aStr ) {
 }
 
 
-async function hasRaw( source, pactId ) {
+async function hasRaw( installClient, pactId ) {
     let retVal = false;
-    let praw = await utils.getRaw( source, pactId );
+    let praw = await utils.getRaw( installClient, pactId );
     if( praw != -1 ) { retVal = true; }
     return retVal;
 }
@@ -198,10 +198,10 @@ function findCardForIssue( cards, issueNum ) {
 }
 
 async function setUnpopulated( installClient, td ) {
-    let status = await utils.getRepoStatus( installClient[1], td.GHFullName );
+    let status = await utils.getRepoStatus( installClient, td.GHFullName );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
-    await utils.cleanDynamo( installClient[1], "CERepoStatus", statusIds );
+    await utils.cleanDynamo( installClient, "CERepoStatus", statusIds );
 }
 
 

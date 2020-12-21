@@ -44,7 +44,9 @@ exports.handler = (event, context, callback) => {
     var resultPromise;
 
     console.log( "User:", username, "Endpoint:", endPoint );
-    if(      endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
+    if(      endPoint == "CheckQueue")     { resultPromise = checkQueue( rb.jobData ); }
+    else if( endPoint == "GetFromQueue")   { resultPromise = getFromQueue( rb.jobData ); }
+    else if( endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
     else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
     else if( endPoint == "RemoveEntries")  { resultPromise = removeEntries( rb.tableName, rb.ids ); }
     else if( endPoint == "GetID")          { resultPromise = getPersonId( username ); }             // username is local
@@ -187,6 +189,100 @@ async function setLock( pactId, lockVal ) {
     let lockPromise = bsdb.update( paramsSL ).promise();
     return lockPromise.then(() => success( true ));
 }
+
+
+// If I'm locked already, add job.  else, lock me up.
+async function checkQueue( jobData ) {
+    console.log( "Check lock status" );
+
+    let params = {
+	TableName: 'CEQueue',
+	FilterExpression: 'GHRepo = :repo AND GHOwner = :owner AND GHSender = :sender',
+	ExpressionAttributeValues: { ':repo': jobData.repo, ':owner': jobData.owner, ':sender': jobData.sender },
+	Limit: 99
+    };
+    let promise = bsdb.scan( params ).promise();
+    let lockData = await promise.then((entries) => {
+	if( entries.Count == 0 ) { return -1; }
+	for( const entry of entries.Items ) {
+	    if( entry.hasOwnProperty( 'Locked' )) { return [ entries.Count, entry.Locked ]; }
+	}
+	assert( false );
+    });
+    assert( lockData == -1 || ( lockData[1] && lockData[0] > 0 ));
+
+    // add to Q
+    if( lockData != -1 ) {
+	params = {
+	    TableName: 'CEQueue',
+	    Item: {
+		"QueueId":        randAlpha(10),
+		"GHRepo":         jobData.repo,
+		"GHOwner":        jobData.owner,
+		"GHSender":       jobData.sender,
+		"TimeStamp":      Date.now(),
+		"Action":         jobData.action,
+		"ReqBody":        jobData.reqBody,
+		"Res":            jobData.res,
+		"Tag":            jobData.tag 
+	    }
+	};
+	
+	promise = bsdb.put( params ).promise();
+	return promise.then(() => success( lockData[0] ));
+    }
+    // just lock
+    else {
+	params = {
+	    TableName: 'CEQueue',
+	    Item: {
+		"QueueId":        randAlpha(10),
+		"GHRepo":         jobData.repo,
+		"GHOwner":        jobData.owner,
+		"GHSender":       jobData.sender,
+		"Locked":         true
+	    }
+	};
+	
+	promise = bsdb.put( params ).promise();
+	return promise.then(() => success( 0 ));  // i.e. none waiting after calling job finishes
+    }
+}
+
+// If only the lock is left, unlock it.  Otherwise, return next job and remove it.
+async function getFromQueue( jobData ) {
+    console.log( "get another job" );
+
+    let params = {
+	TableName: 'CEQueue',
+	FilterExpression: 'GHRepo = :repo AND GHOwner = :owner AND GHSender = :sender',
+	ExpressionAttributeValues: { ':repo': jobData.repo, ':owner': jobData.owner, ':sender': jobData.sender },
+	Limit: 99
+    };
+    let promise = bsdb.scan( params ).promise();
+    let lockData = await promise.then((entries) => {
+	if     ( entries.Count == 0 ) { assert( false ); }         // should not have been called.
+	else if( entries.Count == 1 ) { return entries.Items[0]; } // return Locked entry
+	else {                                                     // return first added job, the 2nd element in q after sort
+	    let sorts = entries.Items.sort((a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ));
+	    return sorts[1];   
+	}
+    });
+
+    console.log( lockData );
+
+    // lockData is either the lock entry, or the next job.  Either way, delete.
+    params = {
+        TableName: 'CEQueue',
+	Key: {"QueueId": lockData.QueueId }
+    };
+    promise = bsdb.delete( params ).promise();
+    promise.then(() => true );
+
+    if( lockData.hasOwnProperty( 'Locked' )) { lockData = -1; }
+    return success( lockData );
+}
+
 
 async function getEntry( tableName, query ) {
     console.log( "Get from", tableName, ":", query );

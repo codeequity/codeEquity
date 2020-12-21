@@ -358,7 +358,7 @@ function populateRequest( labels ) {
 async function populateCELinkage( installClient, pd )
 {
     console.log( installClient[1], "Populate CE Linkage start" );
-    assert( !utils.checkPopulated( installClient[1], pd.GHFullName ) != -1);
+    assert( !utils.checkPopulated( installClient, pd.GHFullName ) != -1);
     
     // Get project IDs
     let projIds = [];
@@ -430,7 +430,7 @@ async function populateCELinkage( installClient, pd )
     // Eliminate trips where cardId already exists
     // Note: this is largely overkill, since 99% of the time this will be done before serious use of CE starts.
     let idsOnly = trips.map((trip) => trip[1] );
-    let existingIds = await utils.getExistCardIds( installClient[1], pd.GHFullName, idsOnly );
+    let existingIds = await utils.getExistCardIds( installClient, pd.GHFullName, idsOnly );
     if( existingIds != -1 ) {
 	for( const id of existingIds ) {
 	    let index = -1;
@@ -454,7 +454,7 @@ async function populateCELinkage( installClient, pd )
     let linkage = await Promise.all( lPromises );
     console.log( "linkages", linkage );
     
-    await utils.populateIssueCards( pd.GHFullName, linkage );
+    await utils.populateIssueCards( installClient, pd.GHFullName, linkage );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
@@ -486,7 +486,7 @@ async function populateCELinkage( installClient, pd )
 	await utils.resolve( installClient, pd, "???" );
     }
     
-    await utils.setPopulated( installClient[1], pd.GHFullName );
+    await utils.setPopulated( installClient, pd.GHFullName );
     console.log( installClient[1], "Populate CE Linkage Done" );
     return true;
 }
@@ -589,7 +589,7 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 // Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
 async function cleanUnclaimed( installClient, pd ) {
     console.log( installClient[1], "cleanUnclaimed", pd.GHIssueId );
-    let link = await utils.getPEQLinkageFId( installClient[1], pd.GHIssueId );
+    let link = await utils.getPEQLinkageFId( installClient, pd.GHIssueId );
     if( link == -1 ) { return; }
     if( link.GHColumnName != config.UNCLAIMED ) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
 	
@@ -600,10 +600,10 @@ async function cleanUnclaimed( installClient, pd ) {
     await( installClient[0].projects.deleteCard( { card_id: link.GHCardId } ));
     
     // Remove turds, report.  
-    await( utils.removeLinkage( pd.GHIssueId, link.GHCardId ));
+    await( utils.removeLinkage( installClient, pd.GHIssueId, link.GHCardId ));
     // do not delete peq - set it inactive.
-    let daPEQ = await utils.getPeq( installClient[1], pd.GHIssueId );
-    await utils.removePEQ( installClient[1], daPEQ.PEQId );
+    let daPEQ = await utils.getPeq( installClient, pd.GHIssueId );
+    await utils.removePEQ( installClient, daPEQ.PEQId );
 	   
     utils.recordPEQAction(
 	installClient[1],
@@ -630,7 +630,7 @@ async function getCEProjectLayout( installClient, issueId )
     // XXX Revisit if ever decided to track cols, projects.
     // XXX may be hole in create card from isssue
 
-    let card = await( utils.getPEQLinkageFId( installClient[1], issueId ));
+    let card = await( utils.getPEQLinkageFId( installClient, issueId ));
     let projId = card == -1 ? card : parseInt( card['GHProjectId'] );
     let curCol = card == -1 ? card : parseInt( card['GHColumnId'] );        // moves are only tracked for peq issues
 
@@ -709,11 +709,11 @@ async function validatePEQ( installClient, repo, issueId, title, projId ) {
     let peqType = "";
     if( issueId == -1 ) {
 	peqType = "allocation";
-	peq = await( utils.getPeqFromTitle( installClient[1], repo, projId, title ));
+	peq = await( utils.getPeqFromTitle( installClient, repo, projId, title ));
     }
     else {
 	peqType = "plan";
-	peq = await( utils.getPeq( installClient[1], issueId ));
+	peq = await( utils.getPeq( installClient, issueId ));
     }
 
     if( peq != -1 && peq['GHIssueTitle'] == title && peq['PeqType'] == peqType && peq['GHRepo'] == repo)  {
@@ -728,7 +728,7 @@ async function validatePEQ( installClient, repo, issueId, title, projId ) {
 async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 
     let cardId = -1;
-    let card = await( utils.getPEQLinkageFId( installClient[1], issueId ));
+    let card = await( utils.getPEQLinkageFId( installClient, issueId ));
     if( card != -1 && parseInt( card['GHColumnId'] ) == colId ) { cardId = parseInt( card['GHCardId'] ); }
 
     console.log( installClient[1], "find card in col", issueId, colId, "found?", cardId );
@@ -788,7 +788,7 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
     }
 
     if( success ) {
-	success = await( utils.updateLinkage( installClient[1], issueId, cardId, newColId, newColName ))
+	success = await( utils.updateLinkage( installClient, issueId, cardId, newColId, newColName ))
 	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
     }
 
@@ -830,7 +830,7 @@ async function getProjectSubs( installClient, repoName, projName, colName ) {
     if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
 	// Check if project is a card in Master
-	let card = await( utils.getFromCardName( installClient[1], repoName, config.MAIN_PROJ, projName ));
+	let card = await( utils.getFromCardName( installClient, repoName, config.MAIN_PROJ, projName ));
 	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
 	else             { projSub = [ projName ]; }
 

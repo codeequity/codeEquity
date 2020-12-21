@@ -31,12 +31,12 @@ async function checkNewbornIssue( installClient, td, issueData, testStatus ) {
     
     
     // CHECK dynamo linkage
-    let links    = await utils.getLinks( installClient[1], td.GHFullName );
+    let links    = await utils.getLinks( installClient, td.GHFullName );
     let meltLink = links.filter((link) => link.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltLink.length, 0, testStatus, "invalid linkage" );
     
     // CHECK dynamo Peq
-    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltPeqs.length, 0, testStatus, "invalid peq" );
     
@@ -60,7 +60,7 @@ async function checkUnclaimedIssue( installClient, td, issueData, testStatus ) {
     testStatus = tu.checkEq( meltCard.column_url.split('/').pop(), td.unclaimCID,     testStatus, "Card location" );
     
     // CHECK dynamo linkage
-    let links    = await utils.getLinks( installClient[1], td.GHFullName );
+    let links    = await utils.getLinks( installClient, td.GHFullName );
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -71,7 +71,7 @@ async function checkUnclaimedIssue( installClient, td, issueData, testStatus ) {
     testStatus = tu.checkEq( meltLink.GHProjectId, td.unclaimPID,          testStatus, "Linkage project id" );
 
     // CHECK dynamo Peq
-    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeq = ( peqs.filter((peq) => peq.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltPeq.PeqType, "plan",                     testStatus, "peq type invalid" );
     testStatus = tu.checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
@@ -86,9 +86,9 @@ async function checkUnclaimedIssue( installClient, td, issueData, testStatus ) {
     testStatus = tu.checkEq( meltPeq.Active, "true",                      testStatus, "peq" );
 
     // CHECK dynamo Pact
-    let pacts = await utils.getPActs( installClient[1], {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     let meltPact = (pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId ))[0];
-    let hasRaw = await tu.hasRaw( installClient[1], meltPact.PEQActionId );
+    let hasRaw = await tu.hasRaw( installClient, meltPact.PEQActionId );
     testStatus = tu.checkEq( hasRaw, true,                                   testStatus, "PAct Raw match" ); 
     testStatus = tu.checkEq( meltPact.Verb, "confirm",                       testStatus, "PAct Verb"); 
     testStatus = tu.checkEq( meltPact.Action, "add",                         testStatus, "PAct Verb"); 
@@ -121,7 +121,7 @@ async function checkNewlySituatedIssue( installClient, td, issueData, meltCard, 
     testStatus = tu.checkEq( mCard[0].id, meltCard.id,                  testStatus, "Card claimed" );
 
     // CHECK dynamo linkage
-    let links    = await utils.getLinks( installClient[1], td.GHFullName );
+    let links    = await utils.getLinks( installClient, td.GHFullName );
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -132,7 +132,7 @@ async function checkNewlySituatedIssue( installClient, td, issueData, meltCard, 
     testStatus = tu.checkEq( meltLink.GHProjectId, td.dataSecPID,          testStatus, "Linkage project id" );
 
     // CHECK dynamo Peq
-    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltPeqs.length, 2,                          testStatus, "Peq count" );
     let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
@@ -158,7 +158,7 @@ async function checkNewlySituatedIssue( installClient, td, issueData, meltCard, 
 
 
     // CHECK dynamo Pact
-    let pacts = await utils.getPActs( installClient[1], {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     let mps = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     let dps = pacts.filter((pact) => pact.Subject[0] == deadPeq.PEQId );
     let meltPacts = mps.concat( dps );
@@ -169,7 +169,7 @@ async function checkNewlySituatedIssue( installClient, td, issueData, meltCard, 
     let remUncl  = meltPacts[1];
     let meltPact = meltPacts[2];
     for( const pact of meltPacts ) {
-	let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
+	let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
 	testStatus = tu.checkEq( hasRaw, true,                                testStatus, "PAct Raw match" ); 
 	testStatus = tu.checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
 	testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
@@ -196,7 +196,7 @@ async function checkAssignees( installClient, td, issueData, testStatus ) {
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltPeqs.length, 2,                          testStatus, "Peq count" );
     let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
@@ -215,7 +215,7 @@ async function checkAssignees( installClient, td, issueData, testStatus ) {
     
     // CHECK Dynamo PAct
     // Should show relevant change action
-    let pacts = await utils.getPActs( installClient[1], {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     testStatus = tu.checkEq( meltPacts.length, 3,                            testStatus, "PAct count" );
     
@@ -224,7 +224,7 @@ async function checkAssignees( installClient, td, issueData, testStatus ) {
     let addA1  = meltPacts[1];   // add assignee 1
     let addA2  = meltPacts[2];   // add assignee 2
     for( const pact of [addMP, addA1, addA2] ) {
-	let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
+	let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
 	testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
 	testStatus = tu.checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
 	testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
@@ -265,7 +265,7 @@ async function checkMove( installClient, td, colId, meltCard, testStatus ) {
     
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == meltIssue.id );
     testStatus = tu.checkEq( meltPeqs.length, 2,                          testStatus, "Peq count" );
     let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
@@ -283,7 +283,7 @@ async function checkMove( installClient, td, colId, meltCard, testStatus ) {
 
     // CHECK Dynamo PAct
     // Should show relevant change 
-    let pacts = await utils.getPActs( installClient[1], {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     testStatus = tu.checkGE( meltPacts.length, 4,                     testStatus, "PAct count" );
     
@@ -293,7 +293,7 @@ async function checkMove( installClient, td, colId, meltCard, testStatus ) {
     else if( colId == td.dsPendID ) { pact  = meltPacts[4];  }  // close
     else if( colId == td.dsAccrID ) { pact  = meltPacts[5];  }  // grant
 
-    let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
+    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
     testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
     testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
     testStatus = tu.checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
@@ -316,7 +316,7 @@ async function checkMove( installClient, td, colId, meltCard, testStatus ) {
     let prog = config.PROJ_COLS[ config.PROJ_PROG ]; 
     let pend = config.PROJ_COLS[ config.PROJ_PEND ]; 
     let accr = config.PROJ_COLS[ config.PROJ_ACCR ]; 
-    let links    = await utils.getLinks( installClient[1], td.GHFullName );
+    let links    = await utils.getLinks( installClient, td.GHFullName );
     let meltLink = ( links.filter((link) => link.GHIssueId == meltIssue.id ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -341,7 +341,12 @@ async function testCycle( installClient, td ) {
     await tu.refreshRec( installClient, td );
     await tu.refreshFlat( installClient, td );
 
+    let meltData  = await tu.makeIssue( installClient, td, "Mog", [] );               // [id, number]  (mix str/int)
+    let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    await tu.addLabel( installClient, td, meltData[1], newLabel.name );
+    let meltData1 = await tu.makeIssue( installClient, td, "Dob", [] );               // [id, number]  (mix str/int)
 
+    /*
     // 1. Create issue 
     let meltData = await tu.makeIssue( installClient, td, ISS_FLOW, [] );               // [id, number]  (mix str/int)
     testStatus = await checkNewbornIssue( installClient, td, meltData, testStatus );
@@ -382,7 +387,7 @@ async function testCycle( installClient, td ) {
     // let meltData = [771113772, 116];
     // let meltCard = await gh.getCard( installClient, 51515045 );
     // await tu.refreshUnclaimed( installClient, td );
-
+*/
      
 
     tu.testReport( testStatus, "Test Resolve" );

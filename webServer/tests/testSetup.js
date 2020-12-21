@@ -54,7 +54,7 @@ async function testPreferredCEProjects( installClient, td ) {
     await tu.refresh( installClient, td, config.MAIN_PROJ );
 
     // Check DYNAMO PEQ table
-    let ghPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName, "GHIssueTitle": td.githubOpsTitle });
+    let ghPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
     testStatus = tu.checkEq( ghPeqs.length, 1,                           testStatus, "Number of githubOps peq objects" );
     testStatus = tu.checkEq( ghPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
@@ -62,12 +62,12 @@ async function testPreferredCEProjects( installClient, td ) {
     testStatus = tu.checkAr( ghPeqs[0].GHProjectSub, [td.softContTitle], testStatus, "Project sub" );
     testStatus = tu.checkEq( ghPeqs[0].GHProjectId, td.masterPID,        testStatus, "Project ID" );  
     
-    let dsPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName, "GHIssueTitle": td.dataSecTitle });
+    let dsPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": td.dataSecTitle });
     testStatus = tu.checkEq( dsPeqs.length, 1,                           testStatus, "Number of datasec peq objects" );
     testStatus = tu.checkEq( dsPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
     testStatus = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], testStatus, "Project sub" );
 
-    let unPeqs =  await utils.getPeqs( installClient[1], { "GHRepo": td.GHFullName, "GHIssueTitle": td.unallocTitle });
+    let unPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": td.unallocTitle });
     testStatus = tu.checkEq( unPeqs.length, 2,                           testStatus, "Number of unalloc peq objects" );
     testStatus = tu.checkEq( unPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
 
@@ -76,12 +76,12 @@ async function testPreferredCEProjects( installClient, td ) {
 
     
     // Check DYNAMO PAct 
-    let pacts = await utils.getPActs( installClient[1], {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     testStatus = tu.checkGE( pacts.length, 4,         testStatus, "Number of PActs" );
     let foundPActs = 0;
     for( pact of pacts ) {
 	if( pact.Subject[0] == ghPeqs[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
@@ -91,7 +91,7 @@ async function testPreferredCEProjects( installClient, td ) {
 	    foundPActs++;
 	}
 	else if( pact.Subject[0] == dsPeqs[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
@@ -99,7 +99,7 @@ async function testPreferredCEProjects( installClient, td ) {
 	    foundPActs++;
 	}
 	else if( pact.Subject[0] == unPeqs[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient[1], pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( hasRaw,  true,                              testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
@@ -109,7 +109,7 @@ async function testPreferredCEProjects( installClient, td ) {
     testStatus = tu.checkEq( foundPActs, 3 ,           testStatus, "Matched PActs with PEQs" );
 
     // Check DYNAMO RepoStatus
-    let pop = await utils.checkPopulated( installClient[1], td.GHFullName );
+    let pop = await utils.checkPopulated( installClient, td.GHFullName );
     testStatus = tu.checkEq( pop, "true", testStatus, "Repo status wrt populated" );
     
 
@@ -223,7 +223,7 @@ async function testPreferredCEProjects( installClient, td ) {
 
 
     // Check DYNAMO Linkage
-    let links = await utils.getLinks( installClient[1], td.GHFullName );
+    let links = await utils.getLinks( installClient, td.GHFullName );
     testStatus = tu.checkGE( links.length, 4, testStatus, "Linkage count" );
     let unallocSoft = false;   let lSoft = -1;
     let unallocBus  = false;   let lBus  = -1;

@@ -1,8 +1,9 @@
+// const awsAuth = require( '../awsAuth' );
+// const auth = require( "../auth");
 var utils = require('../utils');
 var ghUtils = require('../ghUtils');
 var config  = require('../config');
 var assert = require('assert');
-const auth = require( "../auth");
 const peqData = require( '../peqData' );
 
 var gh = ghUtils.githubUtils;
@@ -27,23 +28,60 @@ https://developer.github.com/v3/issues/#create-an-issue
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
-async function handler( action, repo, owner, reqBody, res, tag ) {
+async function getNextJob( installClient, owner, repo, sender ) {
+    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
+    if( jobData != -1 ) {
+	console.log( "Got next job" )
+	// jobData: [ action, repo, owner, reqBody, res, tag ]
+	handler( installClient, jobData[0], jobData[1], jobData[2], jobData[3], jobData[4], jobData[5], true );
+    }
+    else {
+	console.log( sender, "jobs done" );
+    }
+    
+    return;
+}
 
-    // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
-    //          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
-    // Note: issue:opened         notification after 'submit' is pressed.
-    //       issue:labeled        notification after click out of label section
-    //       project_card:created notification after submit, then projects:triage to pick column.
 
-    // Sender is the event generator.  Issue:user is ... the original creator of the issue?
+// Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
+//          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
+// Note: issue:opened         notification after 'submit' is pressed.
+//       issue:labeled        notification after click out of label section
+//       project_card:created notification after submit, then projects:triage to pick column.
+async function handler( installClient, action, repo, owner, reqBody, res, tag, internal ) {
+
+    // Sender is the event generator.
     let sender   = reqBody['sender']['login'];
     console.log( reqBody.issue.updated_at, "title:", reqBody['issue']['title'] );
 
+    /*
     if( sender == config.CE_BOT ) {
 	console.log( "Bot issue.. taking no action" );
 	return;
     }
+    // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
+    let source = "<issue:"+action+" "+tag+"> ";
+    let apiPath = utils.getAPIPath() + "/find";
+    let idToken = await awsAuth.getCogIDToken();
+    let installClient = [-1, source, apiPath, idToken];
+    */
+    
 
+    // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
+
+    if( !internal ) {
+	let tstart = Date.now();
+	// ??? don't pass res along - ceServer is a dead-end as far as GH notifications are concerned
+	// XXX Speed can vary between .25s and 2s .. seems to be dependent on how 'hot' amazon instance is.
+	//     upgrade instance == better results here
+	let senderPending = await utils.checkQueue( installClient, owner, repo, sender, action, reqBody, "", tag );
+	if( senderPending > 0 ) {
+	    console.log( installClient[1], "Sender busy", senderPending );
+	    return;
+	}
+	console.log( installClient[1], "check Q done", Date.now() - tstart );
+    }
+    
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
     let pd = new peqData.PeqData();
     pd.GHOwner      = owner;
@@ -54,12 +92,8 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
     pd.GHIssueTitle = (reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
     pd.GHFullName   = reqBody['repository']['full_name'];
     
-    // installClient is pair [installationAccessToken, creationSource]
-    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, config.CE_USER );
-    let source = "<ISS:"+action+" "+tag+"> ";
-    let installClient = [token, source];
-
-    await gh.checkRateLimit(installClient);
+    // installClient[0] = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo, config.CE_USER );
+    // await gh.checkRateLimit(installClient);
     
     switch( action ) {
     case 'labeled':
@@ -72,17 +106,19 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	// XXXX XXXXX This will go away with ceFlutter
 	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
 	    await gh.populateCELinkage( installClient, pd );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 	
 	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 	
 	// Was this a carded issue?  Get linkage
-	let links = await( utils.getIssueLinkage( installClient[1], pd.GHIssueId ));
+	let links = await( utils.getIssueLinkage( installClient, pd.GHIssueId ));
 	assert( links == -1 || links.length == 1 );
 	let link = links == -1 ? links : links[0];
 
@@ -121,15 +157,16 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	pd.peqValue = gh.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 	// XXX Inform contributors that status is now UNTRACKED
 
 	console.log( "PEQ Issue unlabeled" );
-	utils.rebaseLinkage( pd.GHFullName, pd.GHIssueId );   // setting various to -1, as it is now untracked
-	let peq = await utils.getPeq( installClient[1], pd.GHIssueId );	
+	utils.rebaseLinkage( installClient, pd.GHFullName, pd.GHIssueId );   // setting various to -1, as it is now untracked
+	let peq = await utils.getPeq( installClient, pd.GHIssueId );	
 	utils.recordPEQAction(
-	    installClient[1],
+	    installClient,
 	    config.EMPTY,     // CE UID
 	    pd.GHCreator,     // gh user name
 	    pd.GHFullName,    // of the repo
@@ -155,6 +192,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
+	    getNextJob( installClient, owner, repo, sender );
 	    return;
 	}
 
@@ -181,7 +219,7 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 		    
 		    let subject = [ peqId.toString() ];
 		    utils.recordPEQAction(
-			source,
+			installClient,
 			config.EMPTY,     // CE UID
 			sender,           // gh user name
 			pd.GHFullName,    // of the repo
@@ -210,17 +248,18 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	    pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
+		getNextJob( installClient, owner, repo, sender );
 		return;
 	    }
 	    
 	    // Peq issues only.  PEQ tracks assignees from ceFlutter.  Just send PAct upstream.
-	    let peq = await utils.getPeq( installClient[1], pd.GHIssueId );
+	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
 	    let assignee = pd.reqBody.assignee.login;
 	    let verb = "confirm";
 	    let action = "change";
 	    let subject = [peq.PEQId.toString(), assignee];
 	    utils.recordPEQAction(
-		source,
+		installClient,
 		config.EMPTY,     // CE UID
 		sender,           // gh user name
 		pd.GHFullName,    // of the repo
@@ -240,16 +279,17 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	    pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
+		getNextJob( installClient, owner, repo, sender );
 		return;
 	    }
 	    
-	    let peq = await utils.getPeq( installClient[1], pd.GHIssueId );
+	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
 	    let assignee = pd.reqBody.assignee.login;
 	    let verb = "confirm";
 	    let action = "change";
 	    let subject = [peq.PEQId.toString(), assignee];
 	    utils.recordPEQAction(
-		source,
+		installClient,
 		config.EMPTY,     // CE UID
 		sender,           // gh user name
 		pd.GHFullName,    // of the repo
@@ -279,9 +319,8 @@ async function handler( action, repo, owner, reqBody, res, tag ) {
 	break;
     }
     
-    return res.json({
-	status: 200,
-    });
+    getNextJob( installClient, owner, repo, sender );
+    return;
 }
 
 exports.handler = handler;
