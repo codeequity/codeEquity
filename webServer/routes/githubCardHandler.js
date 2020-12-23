@@ -5,8 +5,8 @@ var assert = require('assert');
 const peqData = require( '../peqData' );
 var issueHandler = require('./githubIssueHandler.js' );
 
-var gh = ghUtils.githubUtils;
-
+var gh     = ghUtils.githubUtils;
+var ghSafe = ghUtils.githubSafe;
 /*
 https://developer.github.com/webhooks/event-payloads/#issues
 https://octokit.github.io/rest.js/v18#projects-delete-card
@@ -29,7 +29,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
-    let peq = await( gh.validatePEQ( installClient, fullName, ghCard['GHIssueId'], ghCard['GHCardTitle'], ghCard['GHProjectId'] ));
+    let peq = await( ghSafe.validatePEQ( installClient, fullName, ghCard['GHIssueId'], ghCard['GHCardTitle'], ghCard['GHProjectId'] ));
 
     assert( peq['PeqType'] != "grant" );
 
@@ -76,35 +76,15 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
     ));
 }
 
-// XXX Move these two up?
-async function checkOrphans( installClient, owner, repo, sender, committedJob ) {
-    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
-    if( jobData != -1 ) {
-	console.log( "!!!!!!!!!!!!! ORPHAN FOUND !!!!!!!!!!!!!!!    processing..." );
-	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId];
-	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "Got next job:", ic[1] );
-	if( jobData.Handler == "card" ) {
-            handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
-	}
-	else {
-	    issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
-	}
-    }
-    else {
-	console.log( installClient[1], "no orphans" );
-    }
-    return;
-}
 
-// XXX Move these two up?
+// XXX Move this up?
 async function getNextJob( installClient, owner, repo, sender, committedJob ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
 	// Need a new installClient, else source for non-awaited actions is overwritten
 	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId];
 	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "\n\n\nGot next job:", ic[1] );
+	console.log( "\n\n\n installClient[1], Got next job:", ic[1] );
 	if( jobData.Handler == "card" ) {
 	    handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
 	}
@@ -114,9 +94,7 @@ async function getNextJob( installClient, owner, repo, sender, committedJob ) {
     }
     else {
 	console.log( installClient[1], "jobs done" );
-	// checkOrphans( installClient, owner, repo, sender, committedJob );
     }
-    
     return;
 }
 

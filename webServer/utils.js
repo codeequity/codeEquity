@@ -4,7 +4,8 @@ var fetch     = require('node-fetch');
 var ghUtils = require('./ghUtils');
 var assert = require('assert');
 
-var gh = ghUtils.githubUtils;
+var gh     = ghUtils.githubUtils;
+var ghSafe = ghUtils.githubSafe;
 
 // read apiBasePath
 // XXX combine
@@ -259,13 +260,36 @@ async function setPopulated( installClient, repo ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
+// This needs to occur after linkage is overwritten.
+// Provide good subs no matter if using Master project indirection, or flat projects.
+async function getProjectSubs( installClient, repoName, projName, colName ) {
+    let projSub = [ "Unallocated" ];  // Should not occur.
+
+    console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
+	
+    if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
+    else {
+	// Check if project is a card in Master
+	let card = await( getFromCardName( installClient, repoName, config.MAIN_PROJ, projName ));
+	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
+	else             { projSub = [ projName ]; }
+
+	// If col isn't a CE organizational col, add to psub
+	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
+    }
+	    
+    console.log( "... returning", projSub.toString() );
+    return projSub;
+}
+
+
 // Base linkage is for issue-cards that are not in validated CE project structure.
 //
 // [ [projId, cardId, issueNum, issueId], ... ]
 // Each cardId quad is one of three types:
 //  1. issue-card linkage is already in place.    Should not overwrite - handled by caller
-//  2. no linkage in dynamo, but linkage in GH.   Do write.
-//  3. no linkage in dynamo, only card in GH.     No.  Need a linkage in order to add to linkage table.
+//  2. no linkage in dynamo, but linkage in GH,   Do write.
+//  3. no linkage in dynamo, only card in GH,     No.  Need a linkage in order to add to linkage table.
 //
 // Write repo, projId, cardId, issueNum.    issueId is much more expensive to find, not justified speculatively.
 async function populateIssueCards( installClient, repo, cardIds ) {
@@ -443,6 +467,27 @@ function randAlpha(length) {
    return result;
 }
 
+function getTimeDiff( lastEvent, newStamp ) {
+    // lastEvent: {h, m, s}
+    // newstamp: "2020-12-23T20:55:27Z"
+    assert( newStamp.length >= 20 );
+    let h = parseInt( newStamp.substr(11,2) );
+    let m = parseInt( newStamp.substr(14,2) );
+    let s = parseInt( newStamp.substr(17,2) );
+
+    let newTime = h * 3600 + m * 60 + s;
+    let oldTime = lastEvent.h * 3600 + lastEvent.m * 60 + lastEvent.s;
+    let tdiff = newTime - oldTime;
+
+    if( tdiff < 0 ) { console.log( "Old event:", lastEvent, "New timestamp", h, m, s ); }
+
+    lastEvent.h = h;
+    lastEvent.m = m;
+    lastEvent.s = s;
+
+    return tdiff;
+}
+
 // XXX dup check could occur in lambda handler, save a round trip
 async function recordPeqData( installClient, pd, checkDup ) {
     let newPEQ   = -1;
@@ -557,7 +602,7 @@ async function resolve( installClient, pd, allocation ) {
     let newLabel = "";
     for( label of issue.labels ) {
 	let content = label['description'];
-	let peqVal  = gh.parseLabelDescr( [content] );
+	let peqVal  = ghSafe.parseLabelDescr( [content] );
 
 	if( peqVal > 0 ) {
 	    console.log( "Resolve, original peqValue:", peqVal );
@@ -608,7 +653,7 @@ async function resolve( installClient, pd, allocation ) {
 	    let projName   = links[i].GHProjectName;
 	    let colName    = links[i].GHColumnName;
 	    assert( projName != "" );
-	    pd.projSub = await gh.getProjectSubs( installClient, pd.GHFullName, projName, colName );	    
+	    pd.projSub = await getProjectSubs( installClient, pd.GHFullName, projName, colName );	    
 	    
 	    recordPeqData(installClient, pd, false );
 	}
@@ -623,11 +668,11 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     pd.GHIssueTitle = issueCardContent[0];
     
     // normal for card -> issue.  odd but legal for issue -> card
-    let allocation = gh.getAllocated( issueCardContent );
+    let allocation = ghSafe.getAllocated( issueCardContent );
 
     // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
-    if( pd.GHIssueNum == -1 ) { pd.peqValue = gh.parsePEQ( issueCardContent, allocation ); }
-    else                      { pd.peqValue = gh.parseLabelDescr( issueCardContent ); }
+    if( pd.GHIssueNum == -1 ) { pd.peqValue = ghSafe.parsePEQ( issueCardContent, allocation ); }
+    else                      { pd.peqValue = ghSafe.parseLabelDescr( issueCardContent ); }
 
     assert( await checkPopulated( installClient, pd.GHFullName ) != -1 );
     
@@ -694,8 +739,9 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( !gotSplit && pd.peqType != "end" ) {
 	console.log( "Building peq for", pd.GHIssueTitle );	
-	pd.projSub = await gh.getProjectSubs( installClient, pd.GHFullName, projName, colName );
-	recordPeqData( installClient, pd, true );
+	pd.projSub = await getProjectSubs( installClient, pd.GHFullName, projName, colName );
+	// Need to wait here - occasionally rapid fire testing creates a card before peq is finished recording
+	await recordPeqData( installClient, pd, true );
     }
 }
 
@@ -788,6 +834,8 @@ async function getFromQueue( installClient, owner, repo, sender ) {
 }
 
 exports.randAlpha = randAlpha;
+exports.getTimeDiff = getTimeDiff;
+
 exports.getAPIPath = getAPIPath;
 exports.getCognito = getCognito;
 exports.postGH = postGH;

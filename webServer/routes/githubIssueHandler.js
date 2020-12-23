@@ -5,7 +5,8 @@ var assert = require('assert');
 var cardHandler = require('./githubCardHandler.js' );
 const peqData = require( '../peqData' );
 
-var gh = ghUtils.githubUtils;
+var gh     = ghUtils.githubUtils;
+var ghSafe = ghUtils.githubSafe;
 
 /*
 https://developer.github.com/webhooks/event-payloads/#issues
@@ -27,25 +28,6 @@ https://developer.github.com/v3/issues/#create-an-issue
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
-async function checkOrphans( installClient, owner, repo, sender, committedJob ) {
-    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
-    if( jobData != -1 ) {
-	console.log( "!!!!!!!!!!!!! ORPHAN FOUND !!!!!!!!!!!!!!!    processing..." );
-	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId];
-	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "Got next job:", ic[1] );
-	if( jobData.Handler == "issue" ) {
-            handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
-	}
-	else {
-	    cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
-	}
-    }
-    else {
-	console.log( installClient[1], "no orphans" );
-    }
-    return;
-}
 
 // Only this call will remove from the queue before getting next.  Interleaving should be OK since if id == id, OK and if not, interleaver will pass.
 async function getNextJob( installClient, owner, repo, sender, committedJob ) {
@@ -55,7 +37,7 @@ async function getNextJob( installClient, owner, repo, sender, committedJob ) {
 	// Need a new installClient, else source for non-awaited actions is overwritten
 	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId ];
 	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "\n\n\nGot next job:", ic[1] );
+	console.log( "\n\n\n installClient[1], Got next job:", ic[1] );
 	if( jobData.Handler == "issue" ) {
 	    handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
 	}
@@ -64,9 +46,7 @@ async function getNextJob( installClient, owner, repo, sender, committedJob ) {
 	}
     }
     else {
-	console.log( installClient[1], "jobs done, checking for orphan" );
-	// NO  removes another job eeek
-	// checkOrphans(installClient, owner, repo, sender, committedJob );
+	console.log( installClient[1], "jobs done" );
     }
     return;
 }
@@ -82,7 +62,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
     // Sender is the event generator.
     let sender   = reqBody['sender']['login'];
     console.log( installClient[4], reqBody.issue.updated_at, "issue title:", reqBody['issue']['title'], action, internal ? "internal" : "external" );
-
+    
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
@@ -135,7 +115,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    return;
 	}
 	
-	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
+	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    getNextJob( installClient, owner, repo, sender, committedJob );
@@ -179,7 +159,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	// Do not move card, would be confusing for user.
 
 	// Unlabel'd label data is not located under issue.. parseLabel looks in arrays
-	pd.peqValue = gh.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
+	pd.peqValue = ghSafe.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    getNextJob( installClient, owner, repo, sender, committedJob ) ;
@@ -214,7 +194,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
     case 'reopened':
 	console.log( "closed or reopened" );
 
-	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
+	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    getNextJob( installClient, owner, repo, sender, committedJob ) ;
@@ -231,7 +211,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    let success = await gh.moveIssueCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId, action, ceProjectLayout ); 
 	    if( success ) {
 		console.log( installClient[1], "Find & validate PEQ" );
-		let peqId = ( await( gh.validatePEQ( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
+		let peqId = ( await( ghSafe.validatePEQ( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
 		if( peqId == -1 ) {
 		    console.log( installClient[1], "Could not find or verify associated PEQ.  Trouble in paradise." );
 		}
@@ -270,7 +250,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
 	    console.log( "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 	    
-	    pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
 		getNextJob( installClient, owner, repo, sender, committedJob );
@@ -301,7 +281,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	{
 	    console.log( "Unassign", pd.reqBody.assignee.login, "from issue", pd.GHIssueId );
 	    
-	    pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
 		getNextJob( installClient, owner, repo, sender, committedJob );

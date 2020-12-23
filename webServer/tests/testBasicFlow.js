@@ -295,6 +295,7 @@ async function checkMove( installClient, td, title, colId, meltCard, testStatus 
     else if( colId == td.dsAccrID ) { pact  = meltPacts[5];  }  // grant
 
     let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
+    console.log( pact.PEQActionId );
     testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
     testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
     testStatus = tu.checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
@@ -416,11 +417,9 @@ async function testEndpoint( installClient, td ) {
     td.show();
     
     // 7. move to accr
-    // XXX
-    await utils.sleep( 1000 );
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
 
-    await utils.sleep( 20000 );
+    await utils.sleep( 15000 );
 
     testStatus = await checkMove( installClient, td, ISS_RACE, td.dsAccrID, meltCard, testStatus );
 

@@ -5,7 +5,7 @@ var assert = require('assert');
 
 var gh = ghUtils.githubUtils;
 
-const MIN_DELAY = 5000;   // Make up for rest variance, and GH slowness.  Expect 500-1000
+const MIN_DELAY = 1500;   // Make up for rest variance, and GH slowness.  Expect 500-1000
 
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast

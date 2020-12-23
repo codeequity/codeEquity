@@ -2,8 +2,7 @@ var config  = require('./config');
 var utils = require('./utils');
 var assert = require('assert');
 
-var githubUtils = {
-
+var githubSafe = {
     getAllocated: function( cardContent ) {
 	return getAllocated( cardContent );
     },
@@ -19,6 +18,15 @@ var githubUtils = {
     theOnePEQ: function( labels ) {
 	return theOnePEQ( labels );
     },
+
+    validatePEQ: function( installClient, repo, issueId, title, projId ) {
+	return validatePEQ( installClient, repo, issueId, title, projId );
+    },
+
+}
+
+
+var githubUtils = {
 
     checkRateLimit: function( installClient ) {
 	return checkRateLimit( installClient );
@@ -92,10 +100,6 @@ var githubUtils = {
 	return getCEProjectLayout( installClient, issueId );
     },
     
-    validatePEQ: function( installClient, repo, issueId, title, projId ) {
-	return validatePEQ( installClient, repo, issueId, title, projId );
-    },
-
     moveIssueCard: function( installClient, owner, repo, issueId, action, ceProjectLayout ) {
 	return moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
     },
@@ -108,9 +112,6 @@ var githubUtils = {
 	return getColumnName( installClient, colId ); 
     },
 
-    getProjectSubs: function( installClient, repoName, projName, colId ) {
-	return getProjectSubs( installClient, repoName, projName, colId ); 
-    },
 };
 
 
@@ -597,10 +598,10 @@ async function cleanUnclaimed( installClient, pd ) {
     assert( link.GHColumnName != config.EMPTY );
 
     console.log( "Found unclaimed" );
-    await( installClient[0].projects.deleteCard( { card_id: link.GHCardId } ));
+    await installClient[0].projects.deleteCard( { card_id: link.GHCardId } );
     
     // Remove turds, report.  
-    await( utils.removeLinkage( installClient, pd.GHIssueId, link.GHCardId ));
+    await utils.removeLinkage( installClient, pd.GHIssueId, link.GHCardId );
     
     // do not delete peq - set it inactive.
     let daPEQ = await utils.getPeq( installClient, pd.GHIssueId );
@@ -821,28 +822,6 @@ async function getColumnName( installClient, colId ) {
     return column['data']['name'];
 }
 
-// This needs to occur after linkage is overwritten.
-// Provide good subs no matter if using Master project indirection, or flat projects.
-async function getProjectSubs( installClient, repoName, projName, colName ) {
-    let projSub = [ "Unallocated" ];  // Should not occur.
-
-    console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
-	
-    if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
-    else {
-	// Check if project is a card in Master
-	let card = await( utils.getFromCardName( installClient, repoName, config.MAIN_PROJ, projName ));
-	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
-	else             { projSub = [ projName ]; }
-
-	// If col isn't a CE organizational col, add to psub
-	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
-    }
-	    
-    console.log( "... returning", projSub.toString() );
-    return projSub;
-}
-
 
 function getAllocated( content ) {
     let res = false;
@@ -948,6 +927,7 @@ function theOnePEQ( labels ) {
 // ??  ifdef for window being global obj?
 // ??  third by-hand step?  fug
 exports.githubUtils = githubUtils;
+exports.githubSafe = githubSafe;
 
 
 

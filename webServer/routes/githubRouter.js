@@ -8,8 +8,11 @@ var config  = require('../config');
 var issues  = require('./githubIssueHandler');
 var cards   = require('./githubCardHandler');
 
-// This second jobId is that the handers eventually commit to
+// This jobId is that which the handers eventually commit to
 var committedJob = {"id": -1};
+
+// XXX temp, or add date
+var lastEvent = {"h": 0, "m": 0, "s": 0 };
 
 
 var router = express.Router();
@@ -53,6 +56,15 @@ router.post('/:location?', async function (req, res) {
 	return;
     }
 
+    // Look for out of order GH notifications.  Note the timestamp is only to within 1 second...
+    let newStamp = req.body.hasOwnProperty( 'project_card' ) ? req.body.project_card.updated_at : req.body.issue.updated_at;
+    let tdiff = utils.getTimeDiff( lastEvent, newStamp );  
+    if( tdiff < 0 ) {
+	console.log( "\n\n\n!!!!!!!!!!!!!" );
+	console.log( "Out of order notification, diff", tdiff );
+	console.log( "!!!!!!!!!!!!!\n\n\n" );
+    }
+    
     // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
     let apiPath = utils.getAPIPath() + "/find";
     let idToken = await awsAuth.getCogIDToken();
