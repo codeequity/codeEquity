@@ -8,6 +8,9 @@ var config  = require('../config');
 var issues  = require('./githubIssueHandler');
 var cards   = require('./githubCardHandler');
 
+// This second jobId is that the handers eventually commit to
+var committedJob = {"id": -1};
+
 
 var router = express.Router();
 
@@ -53,14 +56,17 @@ router.post('/:location?', async function (req, res) {
     // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
     let apiPath = utils.getAPIPath() + "/find";
     let idToken = await awsAuth.getCogIDToken();
-    let installClient = [-1, source, apiPath, idToken];
+    let jobId = utils.randAlpha(10);
+
+    // this first jobId is set by getNext to reflect the proposed next job.
+    let installClient = [-1, source, apiPath, idToken, jobId]; 
     installClient[0] = await auth.getInstallationClient( owner, repo, config.CE_USER );
-    
+
     if( event == "issues" ) {
-	retVal = issues.handler( installClient, action, repo, owner, req.body, res, tag, false );
+	retVal = issues.handler( installClient, action, repo, owner, req.body, res, tag, false, committedJob );
     }
     else if( event == "project_card" ) {
-	retVal = cards.handler( installClient, action, repo, owner, req.body, res, tag, false );
+	retVal = cards.handler( installClient, action, repo, owner, req.body, res, tag, false, committedJob );
     }
     else {
 	retVal = res.json({

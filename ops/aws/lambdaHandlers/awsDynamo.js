@@ -190,10 +190,8 @@ async function setLock( pactId, lockVal ) {
     return lockPromise.then(() => success( true ));
 }
 
-
-// If I'm locked already, add job.  else, lock me up.
-async function checkQueue( jobData ) {
-    console.log( "Check lock status" );
+async function getTopOfQueue( jobData ) {
+    console.log( "get another job", Date.now() );
 
     let params = {
 	TableName: 'CEQueue',
@@ -202,88 +200,61 @@ async function checkQueue( jobData ) {
 	Limit: 99
     };
     let promise = bsdb.scan( params ).promise();
-    let lockData = await promise.then((entries) => {
-	if( entries.Count == 0 ) { return -1; }
-	for( const entry of entries.Items ) {
-	    if( entry.hasOwnProperty( 'Locked' )) { return [ entries.Count, entry.Locked ]; }
+    let nextJob = await promise.then((entries) => {
+	if(    ( entries.Count == 0 )) { return -1; }
+	else if( entries.Count == 1 ) { return entries.Items[0]; } 
+	else {                                                     
+	    let sorts = entries.Items.sort((a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ));
+	    return sorts[0];
 	}
-	assert( false );
     });
-    assert( lockData == -1 || ( lockData[1] && lockData[0] > 0 ));
-
-    // add to Q
-    if( lockData != -1 ) {
-	params = {
-	    TableName: 'CEQueue',
-	    Item: {
-		"QueueId":        randAlpha(10),
-		"Handler":        jobData.handler,
-		"GHRepo":         jobData.repo,
-		"GHOwner":        jobData.owner,
-		"GHSender":       jobData.sender,
-		"TimeStamp":      Date.now(),
-		"Action":         jobData.action,
-		"ReqBody":        jobData.reqBody,
-		"Tag":            jobData.tag 
-	    }
-	};
-	
-	promise = bsdb.put( params ).promise();
-	return promise.then(() => success( lockData[0] ));
-    }
-    // just lock
-    else {
-	params = {
-	    TableName: 'CEQueue',
-	    Item: {
-		"QueueId":        randAlpha(10),
-		"GHRepo":         jobData.repo,
-		"GHOwner":        jobData.owner,
-		"GHSender":       jobData.sender,
-		"Locked":         true
-	    }
-	};
-	
-	promise = bsdb.put( params ).promise();
-	return promise.then(() => success( 0 ));  // i.e. none waiting after calling job finishes
-    }
+    return nextJob;
 }
 
-// If only the lock is left, unlock it.  Otherwise, return next job and remove it.
-async function getFromQueue( jobData ) {
-    console.log( "get another job" );
+// Put the job.  Then return first on queue.  Do NOT delete first.
+async function checkQueue( jobData ) {
+    console.log( "Check Queue status", Date.now(), jobData.handler, jobData.reqBody.action );
 
+    // put first.. faster operation
     let params = {
 	TableName: 'CEQueue',
-	FilterExpression: 'GHRepo = :repo AND GHOwner = :owner AND GHSender = :sender',
-	ExpressionAttributeValues: { ':repo': jobData.repo, ':owner': jobData.owner, ':sender': jobData.sender },
-	Limit: 99
-    };
-    let promise = bsdb.scan( params ).promise();
-    let lockData = await promise.then((entries) => {
-	if     ( entries.Count == 0 ) { assert( false ); }         // should not have been called.
-	else if( entries.Count == 1 ) { return entries.Items[0]; } // return Locked entry
-	else {                                                     // return first added job, the 2nd element in q after sort
-	    let sorts = entries.Items.sort((a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ));
-	    // Need lock for currently running job (empty queue otherwise)
-	    // Lock gets deleted, re-added, won't always be first
-	    if( sorts[0].hasOwnProperty( "Locked" )) { return sorts[1]; }
-	    else{ return sorts[0]; }
+	Item: {
+	    "QueueId":        jobData.id,
+	    "Handler":        jobData.handler,
+	    "GHRepo":         jobData.repo,
+	    "GHOwner":        jobData.owner,
+	    "GHSender":       jobData.sender,
+	    "TimeStamp":      Date.now(),
+	    "Action":         jobData.action,
+	    "ReqBody":        jobData.reqBody,
+	    "Tag":            jobData.tag 
 	}
-    });
-
-    console.log( lockData );
-
-    // lockData is either the lock entry, or the next job.  Either way, delete.
-    params = {
-        TableName: 'CEQueue',
-	Key: {"QueueId": lockData.QueueId }
     };
-    promise = bsdb.delete( params ).promise();
-    promise.then(() => true );
+	
+    let promise = bsdb.put( params ).promise();
+    await promise.then(() => success( true ));
 
-    if( lockData.hasOwnProperty( 'Locked' )) { lockData = -1; }
-    return success( lockData );
+    console.log( "put done", Date.now() );
+
+    return success( await( getTopOfQueue( jobData ) ));
+}
+
+// Remove top of queue, get next top.
+async function getFromQueue( jobData ) {
+    console.log( "Get to remove top", Date.now() );
+    let toq = await getTopOfQueue( jobData );
+    if( toq == -1 ) { return success( -1 ); }
+
+    console.log( "Remove top", Date.now(), toq.QueueId );
+    let paramsD = {
+        TableName: 'CEQueue',
+	Key: {"QueueId": toq.QueueId }
+    };
+    let promiseD = bsdb.delete( paramsD ).promise();
+    await promiseD.then(() => true );
+
+    console.log( "Get next top", Date.now() );
+    return success( await getTopOfQueue( jobData )); 
 }
 
 

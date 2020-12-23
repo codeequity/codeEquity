@@ -84,6 +84,7 @@ async function postGH( PAT, url, postData ) {
 
 
 async function postIt( installClient, shortName, postData ) {
+
     console.log( installClient[1], "postIt:", shortName );
     
     const params = {
@@ -770,7 +771,7 @@ async function checkQueue( installClient, handler, owner, repo, sender, action, 
     console.log( installClient[1], "check queue" );
 
     let shortName = "CheckQueue";
-    let jobData = {"handler": handler, "owner": owner, "repo": repo, "sender": sender, "action": action, "reqBody": reqBody, "tag": tag };
+    let jobData = {"id": installClient[4], "handler": handler, "owner": owner, "repo": repo, "sender": sender, "action": action, "reqBody": reqBody, "tag": tag };
     let postData  = { "Endpoint": shortName, "jobData": jobData };
 
     return await wrappedPostIt( installClient, shortName, postData );
@@ -786,6 +787,7 @@ async function getFromQueue( installClient, owner, repo, sender ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
+exports.randAlpha = randAlpha;
 exports.getAPIPath = getAPIPath;
 exports.getCognito = getCognito;
 exports.postGH = postGH;

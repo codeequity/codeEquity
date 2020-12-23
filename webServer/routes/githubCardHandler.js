@@ -77,15 +77,19 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 }
 
 // XXX Move these two up?
-async function checkOrphans( installClient, owner, repo, sender ) {
+async function checkOrphans( installClient, owner, repo, sender, committedJob ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
 	console.log( "!!!!!!!!!!!!! ORPHAN FOUND !!!!!!!!!!!!!!!    processing..." );
-	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId];
 	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
 	console.log( "Got next job:", ic[1] );
-	if( jobData.Handler == "card" ) {              handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
-	else                            { issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	if( jobData.Handler == "card" ) {
+            handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
+	}
+	else {
+	    issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
+	}
     }
     else {
 	console.log( installClient[1], "no orphans" );
@@ -94,19 +98,23 @@ async function checkOrphans( installClient, owner, repo, sender ) {
 }
 
 // XXX Move these two up?
-async function getNextJob( installClient, owner, repo, sender ) {
+async function getNextJob( installClient, owner, repo, sender, committedJob ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
 	// Need a new installClient, else source for non-awaited actions is overwritten
-	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId];
 	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "Got next job:", ic[1] );
-	if( jobData.Handler == "card" ) {              handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
-	else                            { issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	console.log( "\n\n\nGot next job:", ic[1] );
+	if( jobData.Handler == "card" ) {
+	    handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
+	}
+	else {
+	    issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
+	}
     }
     else {
 	console.log( installClient[1], "jobs done" );
-	checkOrphans( installClient, owner, repo, sender ); 
+	// checkOrphans( installClient, owner, repo, sender, committedJob );
     }
     
     return;
@@ -117,21 +125,35 @@ async function getNextJob( installClient, owner, repo, sender ) {
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
-async function handler( installClient, action, repo, owner, reqBody, res, tag, internal ) {
+async function handler( installClient, action, repo, owner, reqBody, res, tag, internal, committedJob ) {
 
     let sender  = reqBody['sender']['login'];
     // if( !reqBody.hasOwnProperty( 'project_card') || !reqBody.project_card.hasOwnProperty( 'updated_at')) { console.log( reqBody ); }
-    console.log( reqBody.project_card.updated_at, "Card", action, internal ? "internal" : "external" );
-    // If called from external event, look at queue first, add if necessary
+    console.log( installClient[4], reqBody.project_card.updated_at, "Card", action, internal ? "internal" : "external" );
+
+    // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
     if( !internal ) {
 	let tstart = Date.now();
-	let senderPending = await utils.checkQueue( installClient, "card", owner, repo, sender, action, reqBody, tag );
-	if( senderPending > 0 ) {
-	    console.log( installClient[1], "Sender busy", senderPending, Date.now() - tstart, "millis" );
+	let jobData = await utils.checkQueue( installClient, "card", owner, repo, sender, action, reqBody, tag );
+	assert( jobData != -1 );
+	if( installClient[4] != jobData.QueueId ) {
+	    console.log( installClient[1], "Sender busy with job#", jobData.QueueId, Date.now() - tstart, "millis" );
 	    return;
 	}
 	console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
     }
+    // It is possible for external:checkQ and the internal:getNext interleave perfectly with AWs so 2 are running at same time.
+    // Check for that, bail on the late comer.
+    // NOTE: it may be remotely possible to interleave around this instruction.. XXX bug
+    console.log( "\n\n\nCommitted, job", committedJob.id, installClient[4] );
+    if( committedJob.id == installClient[4] ) {
+	console.log( "I'm a latecomer - bailing" );
+	return;
+    }
+    else {
+	committedJob.id = installClient[4];
+    }
+    
     
     let pd = new peqData.PeqData();
     pd.GHOwner      = owner;
@@ -163,15 +185,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	// console.log( "New card created, unattached" );
 	let cardContent = pd.reqBody['project_card']['note'].split('\n');
 
-	// XXX This may be overly restrictive..?
-	/*
-	if( await gh.checkIssueExists( installClient, pd.GHOwner, pd.GHRepo, cardContent[0] ) ) {
-	    console.log( "Issue with same title already exists.  Do nothing." );
-	    getNextJob( installClient, owner, repo, sender );
-	    return;
-	}
-	*/
-
 	await utils.processNewPEQ( installClient, pd, cardContent, -1 );
     }
     else if( action == "converted" ) {
@@ -186,12 +199,12 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 
 	if( pd.reqBody['changes'] == null ) {
 	    console.log( installClient[1], "Move within columns are ignored." );
-	    getNextJob( installClient, owner, repo, sender );
+	    getNextJob( installClient, owner, repo, sender, committedJob );
 	    return;
 	}
 
 	let cardId    = pd.reqBody['project_card']['id'];
-	let oldColId  = pd.reqBody['changes']['column_id']['from'];
+	//let oldColId  = pd.reqBody['changes']['column_id']['from'];
 	let newColId  = pd.reqBody['project_card']['column_id'];
 	let newProjId = pd.reqBody['project_card']['project_url'].split('/').pop();
 	
@@ -200,7 +213,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	let card = await( utils.getFromCardId( installClient, pd.GHFullName, cardId ));  
 	if( card == -1 ) {
 	    console.log( "Moved card not processed, could not find the card id", cardId );
-	    getNextJob( installClient, owner, repo, sender );
+	    getNextJob( installClient, owner, repo, sender, committedJob );
 	    return;
 	}
 	
@@ -208,7 +221,10 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	let oldNameIndex = config.PROJ_COLS.indexOf( card['GHColumnName'] );
 	assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.
 	assert( cardId       == card['GHCardId'] );
-	assert( oldColId     == card['GHColumnId'] );
+
+	// In speed mode, GH doesn't keep up - the changes_from column is a step behind.
+	// assert( oldColId     == card['GHColumnId'] );
+
 	// XXX This was pre-flat projects.  chunk below is probably bad
 	// assert( issueId == -1 || oldNameIndex != -1 );                // likely allocation, or known project layout
 	assert( newProjId     == card['GHProjectId'] );               // not yet supporting moves between projects
@@ -222,7 +238,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    if( assignees.length == 0  ) {
 		console.log( "Update card failed - no assignees" );   // can't propose grant without a grantee
 		console.log( "XXX move card back by hand with ceServer off" );
-		getNextJob( installClient, owner, repo, sender );
+		getNextJob( installClient, owner, repo, sender, committedJob );
 		return;
 	    }
 	}
@@ -249,7 +265,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	await( utils.recordPEQTodo( "XXX TBD. Content may be from issue, or card." , -1 ));	
     }
 
-    getNextJob( installClient, owner, repo, sender );
+    getNextJob( installClient, owner, repo, sender, committedJob );
     return;
 }
 

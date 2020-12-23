@@ -27,15 +27,19 @@ https://developer.github.com/v3/issues/#create-an-issue
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
-async function checkOrphans( installClient, owner, repo, sender ) {
+async function checkOrphans( installClient, owner, repo, sender, committedJob ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
 	console.log( "!!!!!!!!!!!!! ORPHAN FOUND !!!!!!!!!!!!!!!    processing..." );
-	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId];
 	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
 	console.log( "Got next job:", ic[1] );
-	if( jobData.Handler == "issue" ) {             handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
-	else                             { cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	if( jobData.Handler == "issue" ) {
+            handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
+	}
+	else {
+	    cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
+	}
     }
     else {
 	console.log( installClient[1], "no orphans" );
@@ -43,25 +47,26 @@ async function checkOrphans( installClient, owner, repo, sender ) {
     return;
 }
 
-async function getNextJob( installClient, owner, repo, sender ) {
+// Only this call will remove from the queue before getting next.  Interleaving should be OK since if id == id, OK and if not, interleaver will pass.
+async function getNextJob( installClient, owner, repo, sender, committedJob ) {
     let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
     if( jobData != -1 ) {
+
 	// Need a new installClient, else source for non-awaited actions is overwritten
-	let ic = [installClient[0], "", installClient[2], installClient[3]];
+	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId ];
 	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "Got next job:", ic[1] );
-	if( jobData.Handler == "issue" ) {             handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
-	else                             { cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true ); }
+	console.log( "\n\n\nGot next job:", ic[1] );
+	if( jobData.Handler == "issue" ) {
+	    handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
+	}
+	else {
+	    cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
+	}
     }
     else {
-	// By definition, this call has just caused the 'Locked' entry to be removed.
-	// In a rare case, an orphan job can be created if a 'checkQueue' was running at the same time, and caught the lock before it was removed.
-	// Wait for a brief moment, then check for orphans.  This is safe because:
-	// 1) If there is not an orphan, none get added, then extra check is no harm
-	// 2) If there is not an orphan, then new job fires up, only 'locked' will exist, nothing extra starts.
-	// 3) If there is an orphan, this will drive it while setting lock..
 	console.log( installClient[1], "jobs done, checking for orphan" );
-	checkOrphans(installClient, owner, repo, sender );
+	// NO  removes another job eeek
+	// checkOrphans(installClient, owner, repo, sender, committedJob );
     }
     return;
 }
@@ -72,25 +77,35 @@ async function getNextJob( installClient, owner, repo, sender ) {
 // Note: issue:opened         notification after 'submit' is pressed.
 //       issue:labeled        notification after click out of label section
 //       project_card:created notification after submit, then projects:triage to pick column.
-async function handler( installClient, action, repo, owner, reqBody, res, tag, internal ) {
+async function handler( installClient, action, repo, owner, reqBody, res, tag, internal, committedJob ) {
 
     // Sender is the event generator.
     let sender   = reqBody['sender']['login'];
-    console.log( reqBody.issue.updated_at, "issue title:", reqBody['issue']['title'], action, internal ? "internal" : "external" );
+    console.log( installClient[4], reqBody.issue.updated_at, "issue title:", reqBody['issue']['title'], action, internal ? "internal" : "external" );
 
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 
+    // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
     if( !internal ) {
 	let tstart = Date.now();
-	// ??? don't pass res along - ceServer is a dead-end as far as GH notifications are concerned
-	// XXX Speed can vary between .25s and 2s .. seems to be dependent on how 'hot' amazon instance is.
-	//     upgrade instance == better results here
-	let senderPending = await utils.checkQueue( installClient, "issue", owner, repo, sender, action, reqBody, tag );
-	if( senderPending > 0 ) {
-	    console.log( installClient[1], "Sender busy", senderPending, Date.now() - tstart, "millis" );
+	let jobData = await utils.checkQueue( installClient, "issue", owner, repo, sender, action, reqBody, tag );
+	assert( jobData != -1 );
+	if( installClient[4] != jobData.QueueId ) {
+	    console.log( installClient[1], "Sender busy with job#", jobData.QueueId, Date.now() - tstart, "millis" );
 	    return;
 	}
 	console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
+    }
+    // It is possible for external:checkQ and the internal:getNext interleave perfectly with AWs so 2 are running at same time.
+    // Check for that, bail on the late comer.
+    // NOTE: it may be remotely possible to interleave around this instruction.. XXX bug
+    console.log( "\n\n\nCommitted, job", committedJob.id, installClient[4] );
+    if( committedJob.id == installClient[4] ) {
+	console.log( "I'm a latecomer - bailing" );
+	return;
+    }
+    else {
+	committedJob.id = installClient[4];
     }
     
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
@@ -116,14 +131,14 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	// XXXX XXXXX This will go away with ceFlutter
 	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
 	    await gh.populateCELinkage( installClient, pd );
-	    getNextJob( installClient, owner, repo, sender );
+	    getNextJob( installClient, owner, repo, sender, committedJob );
 	    return;
 	}
 	
 	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
-	    getNextJob( installClient, owner, repo, sender );
+	    getNextJob( installClient, owner, repo, sender, committedJob );
 	    return;
 	}
 	
@@ -167,7 +182,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	pd.peqValue = gh.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
-	    getNextJob( installClient, owner, repo, sender );
+	    getNextJob( installClient, owner, repo, sender, committedJob ) ;
 	    return;
 	}
 	// XXX Inform contributors that status is now UNTRACKED
@@ -202,7 +217,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
-	    getNextJob( installClient, owner, repo, sender );
+	    getNextJob( installClient, owner, repo, sender, committedJob ) ;
 	    return;
 	}
 
@@ -258,7 +273,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
-		getNextJob( installClient, owner, repo, sender );
+		getNextJob( installClient, owner, repo, sender, committedJob );
 		return;
 	    }
 	    
@@ -289,7 +304,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    pd.peqValue = gh.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
-		getNextJob( installClient, owner, repo, sender );
+		getNextJob( installClient, owner, repo, sender, committedJob );
 		return;
 	    }
 	    
@@ -329,7 +344,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	break;
     }
     
-    getNextJob( installClient, owner, repo, sender );
+    getNextJob( installClient, owner, repo, sender, committedJob );
     return;
 }
 
