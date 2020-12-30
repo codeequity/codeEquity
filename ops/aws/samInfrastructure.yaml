@@ -54,14 +54,6 @@ Resources:
         Name: GHRepo
         Type: String
 
-  QueueTable:
-    Type: 'AWS::Serverless::SimpleTable'
-    Properties:
-      TableName: CEQueue
-      PrimaryKey:
-        Name: QueueId
-        Type: String
-
   # provisioned throughput set to PAY_PER_REQUEST, same as simpletable
   LinkageTable:
     Type: 'AWS::DynamoDB::Table'
@@ -201,8 +193,6 @@ Resources:
           TableName: !Ref PersonTable
        - DynamoDBCrudPolicy:
           TableName: !Ref RepoStatusTable
-       - DynamoDBCrudPolicy:
-          TableName: !Ref QueueTable
        - DynamoDBCrudPolicy:
           TableName: !Ref GithubTable
        - DynamoDBCrudPolicy:

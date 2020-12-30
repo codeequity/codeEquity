@@ -1,10 +1,13 @@
-var config    = require('./config');
-const auth    = require( './auth' );
-var fetch     = require('node-fetch');
-var ghUtils = require('./ghUtils');
+var fetch  = require('node-fetch');
 var assert = require('assert');
 
-var gh = ghUtils.githubUtils;
+const auth = require( './auth' );
+var config = require('./config');
+var fifoQ  = require('./components/queue.js');
+
+var ghUtils = require('./ghUtils');
+var gh      = ghUtils.githubUtils;
+var ghSafe  = ghUtils.githubSafe;
 
 // read apiBasePath
 // XXX combine
@@ -84,6 +87,7 @@ async function postGH( PAT, url, postData ) {
 
 
 async function postIt( installClient, shortName, postData ) {
+
     console.log( installClient[1], "postIt:", shortName );
     
     const params = {
@@ -258,13 +262,36 @@ async function setPopulated( installClient, repo ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
+// This needs to occur after linkage is overwritten.
+// Provide good subs no matter if using Master project indirection, or flat projects.
+async function getProjectSubs( installClient, repoName, projName, colName ) {
+    let projSub = [ "Unallocated" ];  // Should not occur.
+
+    console.log( installClient[1], "Set up proj subs", repoName, projName, colName );
+	
+    if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
+    else {
+	// Check if project is a card in Master
+	let card = await( getFromCardName( installClient, repoName, config.MAIN_PROJ, projName ));
+	if( card != -1 ) { projSub = [ card['GHColumnName'], projName ]; }
+	else             { projSub = [ projName ]; }
+
+	// If col isn't a CE organizational col, add to psub
+	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
+    }
+	    
+    console.log( "... returning", projSub.toString() );
+    return projSub;
+}
+
+
 // Base linkage is for issue-cards that are not in validated CE project structure.
 //
 // [ [projId, cardId, issueNum, issueId], ... ]
 // Each cardId quad is one of three types:
 //  1. issue-card linkage is already in place.    Should not overwrite - handled by caller
-//  2. no linkage in dynamo, but linkage in GH.   Do write.
-//  3. no linkage in dynamo, only card in GH.     No.  Need a linkage in order to add to linkage table.
+//  2. no linkage in dynamo, but linkage in GH,   Do write.
+//  3. no linkage in dynamo, only card in GH,     No.  Need a linkage in order to add to linkage table.
 //
 // Write repo, projId, cardId, issueNum.    issueId is much more expensive to find, not justified speculatively.
 async function populateIssueCards( installClient, repo, cardIds ) {
@@ -442,6 +469,27 @@ function randAlpha(length) {
    return result;
 }
 
+function getTimeDiff( lastEvent, newStamp ) {
+    // lastEvent: {h, m, s}
+    // newstamp: "2020-12-23T20:55:27Z"
+    assert( newStamp.length >= 20 );
+    let h = parseInt( newStamp.substr(11,2) );
+    let m = parseInt( newStamp.substr(14,2) );
+    let s = parseInt( newStamp.substr(17,2) );
+
+    let newTime = h * 3600 + m * 60 + s;
+    let oldTime = lastEvent.h * 3600 + lastEvent.m * 60 + lastEvent.s;
+    let tdiff = newTime - oldTime;
+
+    if( tdiff < 0 ) { console.log( "Old event:", lastEvent, "New timestamp", h, m, s ); }
+
+    lastEvent.h = h;
+    lastEvent.m = m;
+    lastEvent.s = s;
+
+    return tdiff;
+}
+
 // XXX dup check could occur in lambda handler, save a round trip
 async function recordPeqData( installClient, pd, checkDup ) {
     let newPEQ   = -1;
@@ -526,6 +574,8 @@ async function rebuildPEQ( installClient, pd, peqVal ) {
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
 //       learns 1:m is a semantic error in CE
+// Main trigger during typical runtime:
+//  1: add another project card to situated issue
 async function resolve( installClient, pd, allocation ) {
     let gotSplit = false;
     console.log( installClient[1], "resolve" );
@@ -556,7 +606,7 @@ async function resolve( installClient, pd, allocation ) {
     let newLabel = "";
     for( label of issue.labels ) {
 	let content = label['description'];
-	let peqVal  = gh.parseLabelDescr( [content] );
+	let peqVal  = ghSafe.parseLabelDescr( [content] );
 
 	if( peqVal > 0 ) {
 	    console.log( "Resolve, original peqValue:", peqVal );
@@ -570,7 +620,7 @@ async function resolve( installClient, pd, allocation ) {
 	    // update peqData for subsequent recording
 	    pd.peqValue = peqVal;
 
-	    await gh.rebuildLabel( installClient, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
+	    await ghSafe.rebuildLabel( installClient, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
 	    await rebuildPEQ( installClient, pd, peqVal );
 	    break;
 	}
@@ -589,7 +639,7 @@ async function resolve( installClient, pd, allocation ) {
 	    links[i].GHColumnName  = await gh.getColumnName( installClient, links[i].GHColumnId );
 	}
 
-	let issueData   = await gh.splitIssue( installClient, pd.GHOwner, pd.GHRepo, issue, splitTag );  
+	let issueData   = await ghSafe.splitIssue( installClient, pd.GHOwner, pd.GHRepo, issue, splitTag );  
 	let newCardId   = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
 	pd.GHIssueId    = issueData[0];
@@ -607,7 +657,7 @@ async function resolve( installClient, pd, allocation ) {
 	    let projName   = links[i].GHProjectName;
 	    let colName    = links[i].GHColumnName;
 	    assert( projName != "" );
-	    pd.projSub = await gh.getProjectSubs( installClient, pd.GHFullName, projName, colName );	    
+	    pd.projSub = await getProjectSubs( installClient, pd.GHFullName, projName, colName );	    
 	    
 	    recordPeqData(installClient, pd, false );
 	}
@@ -622,11 +672,11 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     pd.GHIssueTitle = issueCardContent[0];
     
     // normal for card -> issue.  odd but legal for issue -> card
-    let allocation = gh.getAllocated( issueCardContent );
+    let allocation = ghSafe.getAllocated( issueCardContent );
 
     // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
-    if( pd.GHIssueNum == -1 ) { pd.peqValue = gh.parsePEQ( issueCardContent, allocation ); }
-    else                      { pd.peqValue = gh.parseLabelDescr( issueCardContent ); }
+    if( pd.GHIssueNum == -1 ) { pd.peqValue = ghSafe.parsePEQ( issueCardContent, allocation ); }
+    else                      { pd.peqValue = ghSafe.parseLabelDescr( issueCardContent ); }
 
     assert( await checkPopulated( installClient, pd.GHFullName ) != -1 );
     
@@ -668,7 +718,7 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	    pd.GHIssueTitle = issueCardContent[0];
 	    
 	    // create new issue, rebuild card
-	    let issueData = await gh.createIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
+	    let issueData = await ghSafe.createIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
 	    let newCardId = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, colId, origCardId, issueData );
 
 	    pd.GHIssueId  = issueData[0];
@@ -679,7 +729,9 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	}
     }
 
-    if( pd.peqType != "end" ) { pd.GHAssignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum ); }
+    // NO.. There are PActs for this.  GH/CE jobQ misalignment can cause this value to change depending on ms timing.
+    //       Remember, this is only called for PEQs, not for initial populate
+    // if( pd.peqType != "end" ) { pd.GHAssignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum ); }
 
     // Resolve splits issues to ensure a 1:1 mapping issue:card, record peq data for all newly created issue:card(s)
     let gotSplit = await resolve( installClient, pd, allocation );
@@ -693,8 +745,9 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( !gotSplit && pd.peqType != "end" ) {
 	console.log( "Building peq for", pd.GHIssueTitle );	
-	pd.projSub = await gh.getProjectSubs( installClient, pd.GHFullName, projName, colName );
-	recordPeqData( installClient, pd, true );
+	pd.projSub = await getProjectSubs( installClient, pd.GHFullName, projName, colName );
+	// Need to wait here - occasionally rapid fire testing creates a card before peq is finished recording
+	await recordPeqData( installClient, pd, true );
     }
 }
 
@@ -736,16 +789,6 @@ async function getLinks( installClient, repo ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
-// TESTING ONLY - gets everything for everyone in repo, repo here is shortname not fullname
-async function getQueue( installClient, repo ) {
-    console.log( installClient[1], "Get Queue for a given repo:", repo );
-
-    let shortName = "GetEntries";
-    let query     = { "GHRepo": repo};
-    let postData  = { "Endpoint": shortName, "tableName": "CEQueue", "query": query };
-
-    return await wrappedPostIt( installClient, shortName, postData );
-}
 
 async function getRepoStatus( installClient, repo ) {
     console.log( installClient[1], "Get Status for a given repo:", repo );
@@ -766,25 +809,44 @@ async function cleanDynamo( installClient, tableName, ids ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
-async function checkQueue( installClient, handler, owner, repo, sender, action, reqBody, tag ) {
-    console.log( installClient[1], "check queue" );
+// XXX seems to belong elsewhere
+// Put the job.  Then return first on queue.  Do NOT delete first.
+function checkQueue( ceJobs, installClient, handler, sender, reqBody, tag ) {
+    // XXX handle aws, sam
+    let jobData     = {};
+    jobData.QueueId = installClient[4];
+    jobData.Handler = handler;
+    jobData.GHOwner = reqBody['repository']['owner']['login'];
+    jobData.GHRepo  = reqBody['repository']['name'];
+    jobData.Action  = reqBody['action'];
+    jobData.ReqBody = reqBody;
+    jobData.Tag     = tag;
 
-    let shortName = "CheckQueue";
-    let jobData = {"handler": handler, "owner": owner, "repo": repo, "sender": sender, "action": action, "reqBody": reqBody, "tag": tag };
-    let postData  = { "Endpoint": shortName, "jobData": jobData };
+    // Get or create fifoQ
+    let fullName = reqBody['repository']['full_name'];
+    if( !ceJobs.hasOwnProperty( fullName ) )         { ceJobs[fullName] = {}; }
+    if( !ceJobs[fullName].hasOwnProperty( sender ) ) { ceJobs[fullName][sender] = new fifoQ.Queue(); }
+    
+    ceJobs[fullName][sender].push( jobData );
 
-    return await wrappedPostIt( installClient, shortName, postData );
+    // console.log("Check q after push", ceJobs[fullName][sender] );
+    
+    return ceJobs[fullName][sender].first;
 }
 
-async function getFromQueue( installClient, owner, repo, sender ) {
-    console.log( installClient[1], "get From Queue" );
+// Remove top of queue, get next top.
+async function getFromQueue( ceJobs, installClient, fullName, sender ) {
+    // console.log("Get from q at start", ceJobs[fullName][sender] );
 
-    let shortName = "GetFromQueue";
-    let jobData = {"owner": owner, "repo": repo, "sender": sender };
-    let postData  = { "Endpoint": shortName, "jobData": jobData };
-
-    return await wrappedPostIt( installClient, shortName, postData );
+    assert( ceJobs.hasOwnProperty( fullName ) );
+    assert( ceJobs[fullName].hasOwnProperty( sender ) );
+    
+    ceJobs[fullName][sender].shift();
+    return ceJobs[fullName][sender].first;
 }
+
+exports.randAlpha = randAlpha;
+exports.getTimeDiff = getTimeDiff;
 
 exports.getAPIPath = getAPIPath;
 exports.getCognito = getCognito;
@@ -820,7 +882,6 @@ exports.getRaw   = getRaw;
 exports.getPActs = getPActs;
 exports.getPeqs = getPeqs;
 exports.getLinks = getLinks;
-exports.getQueue = getQueue;
 exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;
 

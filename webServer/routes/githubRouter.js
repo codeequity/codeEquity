@@ -1,12 +1,23 @@
 var express = require('express');
+var assert  = require('assert');
 
 const awsAuth = require( '../awsAuth' );
 const auth = require( "../auth");
 var utils = require('../utils');
 var config  = require('../config');
 
-var issues  = require('./githubIssueHandler');
-var cards   = require('./githubCardHandler');
+const peqData = require( '../peqData' );
+var fifoQ     = require('../components/queue.js');
+
+var issues    = require('./githubIssueHandler');
+var cards     = require('./githubCardHandler');
+
+// CE Job Queue  {fullName:  {sender1: fifoQ1, sender2: fifoQ2 }}
+var ceJobs = {};
+
+
+// XXX temp, or add date
+var lastEvent = {"h": 0, "m": 0, "s": 0 };
 
 
 var router = express.Router();
@@ -15,12 +26,19 @@ var router = express.Router();
 router.post('/:location?', async function (req, res) {
 
     console.log( "" );
-    let event  = req.headers['x-github-event'];
-    let action = req.body['action'];
-    let repo   = req.body['repository']['name'];
-    let owner  = req.body['repository']['owner']['login'];
-    let retVal = "";
+    let event    = req.headers['x-github-event'];
+    let action   = req.body['action'];
+    
+    let sender  = req.body['sender']['login'];
+    if( sender == config.CE_BOT) {
+	console.log( "Notification for", event, action, "Bot-sent, skipping." );
+	return;
+    }
 
+    let fullName = req.body['repository']['full_name'];
+    let repo     = req.body['repository']['name'];
+    let owner    = req.body['repository']['owner']['login'];
+    let retVal   = "";
 
     let tag = "";
     let source = "<";
@@ -42,25 +60,51 @@ router.post('/:location?', async function (req, res) {
 	tag = tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
     }
     source += action+" "+tag+"> ";
-    console.log( "Notification:", event, action, tag, "for", owner, repo );
+    let jobId = utils.randAlpha(10);
+    console.log( "Notification:", event, action, tag, jobId, "for", owner, repo );
 
-    let sender  = req.body['sender']['login'];
-    if( sender == config.CE_BOT) {
-	console.log( "Bot-sent, skipping." );
-	return;
+    // Look for out of order GH notifications.  Note the timestamp is only to within 1 second...
+    let newStamp = req.body.hasOwnProperty( 'project_card' ) ? req.body.project_card.updated_at : req.body.issue.updated_at;
+    let tdiff = utils.getTimeDiff( lastEvent, newStamp );  
+    if( tdiff < 0 ) {
+	console.log( "\n\n\n!!!!!!!!!!!!!" );
+	console.log( "Out of order notification, diff", tdiff );
+	console.log( "!!!!!!!!!!!!!\n\n\n" );
     }
-
-    // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
+    
+    // installClient is pent [installationAccessToken, creationSource, apiPath, cognitoIdToken, jobId]
     let apiPath = utils.getAPIPath() + "/find";
     let idToken = await awsAuth.getCogIDToken();
-    let installClient = [-1, source, apiPath, idToken];
+
+    // this first jobId is set by getNext to reflect the proposed next job.
+    let installClient = [-1, source, apiPath, idToken, jobId]; 
     installClient[0] = await auth.getInstallationClient( owner, repo, config.CE_USER );
+
+    // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
+    // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
+    let tstart = Date.now();
+    let jobData = utils.checkQueue( ceJobs, installClient, event, sender, req.body, tag );
+    assert( jobData != -1 );
+    if( installClient[4] != jobData.QueueId ) {
+	console.log( installClient[1], "Sender busy with job#", jobData.QueueId, Date.now() - tstart, "millis" );
+	// Leave running this job to currently running external 
+	return;
+    }
+    console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
     
+    let pd          = new peqData.PeqData();
+    pd.GHOwner      = owner;
+    pd.GHRepo       = repo;
+    pd.reqBody      = req.body;
+    pd.GHFullName   = req.body['repository']['full_name'];
+
     if( event == "issues" ) {
-	retVal = issues.handler( installClient, action, repo, owner, req.body, res, tag, false );
+	retVal = await issues.handler( installClient, pd, action, tag );
+	getNextJob( installClient, pd, sender );	
     }
     else if( event == "project_card" ) {
-	retVal = cards.handler( installClient, action, repo, owner, req.body, res, tag, false );
+	retVal = await cards.handler( installClient, pd, action, tag );
+	getNextJob( installClient, pd, sender );	
     }
     else {
 	retVal = res.json({
@@ -70,6 +114,37 @@ router.post('/:location?', async function (req, res) {
 
     return retVal;
 });
+
+
+// Without this call, incoming non-bot jobs that were delayed would not get executed.
+// Only this call will remove from the queue before getting next.  
+async function getNextJob( installClient, pdOld, sender ) {
+    let jobData = await utils.getFromQueue( ceJobs, installClient, pdOld.GHFullName, sender );
+    if( jobData != -1 ) {
+
+	// New job, new pd
+	let pd          = new peqData.PeqData();
+	pd.GHOwner      = jobData.GHOwner;
+	pd.GHRepo       = jobData.GHRepo;
+	pd.reqBody      = jobData.ReqBody;
+	pd.GHFullName   = jobData.ReqBody['repository']['full_name'];
+	
+	// Need a new installClient, else source for non-awaited actions is overwritten
+	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId ];
+	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	console.log( "\n\n\n", installClient[1], "Got next job:", ic[1] );
+
+	if     ( jobData.Handler == "issues" )       { await issues.handler( ic, pd, jobData.Action, jobData.Tag ); }
+	else if( jobData.Handler == "project_card" ) { await cards.handler( ic, pd, jobData.Action, jobData.Tag );  }
+	else                                         { assert( false ); }
+
+	getNextJob( ic, pd, sender );
+    }
+    else {
+	console.log( installClient[1], "jobs done" );
+    }
+    return;
+}
 
 
 module.exports = router;

@@ -6,8 +6,8 @@ var config  = require('../config');
 var assert = require('assert');
 const peqData = require( '../peqData' );
 
-var gh = ghUtils.githubUtils;
-
+var gh     = ghUtils.githubUtils;
+var ghSafe = ghUtils.githubSafe;
 /*
 https://developer.github.com/webhooks/event-payloads/#issues
 https://octokit.github.io/rest.js/v18#projects-delete-card
@@ -90,8 +90,8 @@ async function runTests() {
     await installClient[0].paginate( installClient[0].issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
 	.then((labels) => {
 	    for( const label of labels ) {
-		if( gh.parseLabelDescr( [label.description] ) > 0 ) { labelNames.push( label.name ); }
-		else if( label.name == config.POPULATE )            { labelNames.push( label.name ); }
+		if( ghSafe.parseLabelDescr( [label.description] ) > 0 ) { labelNames.push( label.name ); }
+		else if( label.name == config.POPULATE )                { labelNames.push( label.name ); }
 	    }
 	})
 	.catch( e => { console.log( installClient[1], "Problem in listLabels", e ); });
@@ -138,11 +138,14 @@ async function runTests() {
     await utils.cleanDynamo( installClient, "CELinkage", linkIds );
 
     // Queue
+    ceJobs = {};
+    /*
     let notes = await utils.getQueue( installClient, pd.GHRepo );
     let noteIds = notes == -1 ? [] : notes.map(( note ) => [note.QueueId] );
     console.log( "Dynamo queue ids", noteIds );
     await utils.cleanDynamo( installClient, "CEQueue", noteIds );
-
+    */
+    
     // RepoStatus
     let status = await utils.getRepoStatus( installClient, pd.GHFullName );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
