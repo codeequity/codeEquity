@@ -1,11 +1,13 @@
-var config    = require('./config');
-const auth    = require( './auth' );
-var fetch     = require('node-fetch');
-var ghUtils = require('./ghUtils');
+var fetch  = require('node-fetch');
 var assert = require('assert');
 
-var gh     = ghUtils.githubUtils;
-var ghSafe = ghUtils.githubSafe;
+const auth = require( './auth' );
+var config = require('./config');
+var fifoQ  = require('./components/queue.js');
+
+var ghUtils = require('./ghUtils');
+var gh      = ghUtils.githubUtils;
+var ghSafe  = ghUtils.githubSafe;
 
 // read apiBasePath
 // XXX combine
@@ -572,6 +574,8 @@ async function rebuildPEQ( installClient, pd, peqVal ) {
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
 //       learns 1:m is a semantic error in CE
+// Main trigger during typical runtime:
+//  1: add another project card to situated issue
 async function resolve( installClient, pd, allocation ) {
     let gotSplit = false;
     console.log( installClient[1], "resolve" );
@@ -616,7 +620,7 @@ async function resolve( installClient, pd, allocation ) {
 	    // update peqData for subsequent recording
 	    pd.peqValue = peqVal;
 
-	    await gh.rebuildLabel( installClient, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
+	    await ghSafe.rebuildLabel( installClient, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
 	    await rebuildPEQ( installClient, pd, peqVal );
 	    break;
 	}
@@ -635,7 +639,7 @@ async function resolve( installClient, pd, allocation ) {
 	    links[i].GHColumnName  = await gh.getColumnName( installClient, links[i].GHColumnId );
 	}
 
-	let issueData   = await gh.splitIssue( installClient, pd.GHOwner, pd.GHRepo, issue, splitTag );  
+	let issueData   = await ghSafe.splitIssue( installClient, pd.GHOwner, pd.GHRepo, issue, splitTag );  
 	let newCardId   = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
 	pd.GHIssueId    = issueData[0];
@@ -714,7 +718,7 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	    pd.GHIssueTitle = issueCardContent[0];
 	    
 	    // create new issue, rebuild card
-	    let issueData = await gh.createIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
+	    let issueData = await ghSafe.createIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
 	    let newCardId = await gh.rebuildCard( installClient, pd.GHOwner, pd.GHRepo, colId, origCardId, issueData );
 
 	    pd.GHIssueId  = issueData[0];
@@ -725,7 +729,9 @@ async function processNewPEQ( installClient, pd, issueCardContent, link ) {
 	}
     }
 
-    if( pd.peqType != "end" ) { pd.GHAssignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum ); }
+    // NO.. There are PActs for this.  GH/CE jobQ misalignment can cause this value to change depending on ms timing.
+    //       Remember, this is only called for PEQs, not for initial populate
+    // if( pd.peqType != "end" ) { pd.GHAssignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum ); }
 
     // Resolve splits issues to ensure a 1:1 mapping issue:card, record peq data for all newly created issue:card(s)
     let gotSplit = await resolve( installClient, pd, allocation );
@@ -783,16 +789,6 @@ async function getLinks( installClient, repo ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
-// TESTING ONLY - gets everything for everyone in repo, repo here is shortname not fullname
-async function getQueue( installClient, repo ) {
-    console.log( installClient[1], "Get Queue for a given repo:", repo );
-
-    let shortName = "GetEntries";
-    let query     = { "GHRepo": repo};
-    let postData  = { "Endpoint": shortName, "tableName": "CEQueue", "query": query };
-
-    return await wrappedPostIt( installClient, shortName, postData );
-}
 
 async function getRepoStatus( installClient, repo ) {
     console.log( installClient[1], "Get Status for a given repo:", repo );
@@ -813,24 +809,40 @@ async function cleanDynamo( installClient, tableName, ids ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
-async function checkQueue( installClient, handler, owner, repo, sender, action, reqBody, tag ) {
-    console.log( installClient[1], "check queue" );
+// XXX seems to belong elsewhere
+// Put the job.  Then return first on queue.  Do NOT delete first.
+function checkQueue( ceJobs, installClient, handler, sender, reqBody, tag ) {
+    // XXX handle aws, sam
+    let jobData     = {};
+    jobData.QueueId = installClient[4];
+    jobData.Handler = handler;
+    jobData.GHOwner = reqBody['repository']['owner']['login'];
+    jobData.GHRepo  = reqBody['repository']['name'];
+    jobData.Action  = reqBody['action'];
+    jobData.ReqBody = reqBody;
+    jobData.Tag     = tag;
 
-    let shortName = "CheckQueue";
-    let jobData = {"id": installClient[4], "handler": handler, "owner": owner, "repo": repo, "sender": sender, "action": action, "reqBody": reqBody, "tag": tag };
-    let postData  = { "Endpoint": shortName, "jobData": jobData };
+    // Get or create fifoQ
+    let fullName = reqBody['repository']['full_name'];
+    if( !ceJobs.hasOwnProperty( fullName ) )         { ceJobs[fullName] = {}; }
+    if( !ceJobs[fullName].hasOwnProperty( sender ) ) { ceJobs[fullName][sender] = new fifoQ.Queue(); }
+    
+    ceJobs[fullName][sender].push( jobData );
 
-    return await wrappedPostIt( installClient, shortName, postData );
+    // console.log("Check q after push", ceJobs[fullName][sender] );
+    
+    return ceJobs[fullName][sender].first;
 }
 
-async function getFromQueue( installClient, owner, repo, sender ) {
-    console.log( installClient[1], "get From Queue" );
+// Remove top of queue, get next top.
+async function getFromQueue( ceJobs, installClient, fullName, sender ) {
+    // console.log("Get from q at start", ceJobs[fullName][sender] );
 
-    let shortName = "GetFromQueue";
-    let jobData = {"owner": owner, "repo": repo, "sender": sender };
-    let postData  = { "Endpoint": shortName, "jobData": jobData };
-
-    return await wrappedPostIt( installClient, shortName, postData );
+    assert( ceJobs.hasOwnProperty( fullName ) );
+    assert( ceJobs[fullName].hasOwnProperty( sender ) );
+    
+    ceJobs[fullName][sender].shift();
+    return ceJobs[fullName][sender].first;
 }
 
 exports.randAlpha = randAlpha;
@@ -870,7 +882,6 @@ exports.getRaw   = getRaw;
 exports.getPActs = getPActs;
 exports.getPeqs = getPeqs;
 exports.getLinks = getLinks;
-exports.getQueue = getQueue;
 exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;
 

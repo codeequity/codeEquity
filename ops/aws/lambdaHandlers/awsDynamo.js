@@ -44,9 +44,7 @@ exports.handler = (event, context, callback) => {
     var resultPromise;
 
     console.log( "User:", username, "Endpoint:", endPoint );
-    if(      endPoint == "CheckQueue")     { resultPromise = checkQueue( rb.jobData ); }
-    else if( endPoint == "GetFromQueue")   { resultPromise = getFromQueue( rb.jobData ); }
-    else if( endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
+    if( endPoint == "GetEntry")            { resultPromise = getEntry( rb.tableName, rb.query ); }
     else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
     else if( endPoint == "RemoveEntries")  { resultPromise = removeEntries( rb.tableName, rb.ids ); }
     else if( endPoint == "GetID")          { resultPromise = getPersonId( username ); }             // username is local
@@ -190,73 +188,6 @@ async function setLock( pactId, lockVal ) {
     return lockPromise.then(() => success( true ));
 }
 
-async function getTopOfQueue( jobData ) {
-    console.log( "get another job", Date.now() );
-
-    let params = {
-	TableName: 'CEQueue',
-	FilterExpression: 'GHRepo = :repo AND GHOwner = :owner AND GHSender = :sender',
-	ExpressionAttributeValues: { ':repo': jobData.repo, ':owner': jobData.owner, ':sender': jobData.sender },
-	Limit: 99
-    };
-    let promise = bsdb.scan( params ).promise();
-    let nextJob = await promise.then((entries) => {
-	if(    ( entries.Count == 0 )) { return -1; }
-	else if( entries.Count == 1 ) { return entries.Items[0]; } 
-	else {                                                     
-	    let sorts = entries.Items.sort((a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ));
-	    return sorts[0];
-	}
-    });
-    return nextJob;
-}
-
-// Put the job.  Then return first on queue.  Do NOT delete first.
-async function checkQueue( jobData ) {
-    console.log( "Check Queue status", Date.now(), jobData.handler, jobData.reqBody.action );
-
-    // put first.. faster operation
-    let params = {
-	TableName: 'CEQueue',
-	Item: {
-	    "QueueId":        jobData.id,
-	    "Handler":        jobData.handler,
-	    "GHRepo":         jobData.repo,
-	    "GHOwner":        jobData.owner,
-	    "GHSender":       jobData.sender,
-	    "TimeStamp":      Date.now(),
-	    "Action":         jobData.action,
-	    "ReqBody":        jobData.reqBody,
-	    "Tag":            jobData.tag 
-	}
-    };
-	
-    let promise = bsdb.put( params ).promise();
-    await promise.then(() => success( true ));
-
-    console.log( "put done", Date.now() );
-
-    return success( await( getTopOfQueue( jobData ) ));
-}
-
-// Remove top of queue, get next top.
-async function getFromQueue( jobData ) {
-    console.log( "Get to remove top", Date.now() );
-    let toq = await getTopOfQueue( jobData );
-    if( toq == -1 ) { return success( -1 ); }
-
-    console.log( "Remove top", Date.now(), toq.QueueId );
-    let paramsD = {
-        TableName: 'CEQueue',
-	Key: {"QueueId": toq.QueueId }
-    };
-    let promiseD = bsdb.delete( paramsD ).promise();
-    await promiseD.then(() => true );
-
-    console.log( "Get next top", Date.now() );
-    return success( await getTopOfQueue( jobData )); 
-}
-
 
 async function getEntry( tableName, query ) {
     console.log( "Get from", tableName, ":", query );
@@ -325,9 +256,6 @@ async function getEntries( tableName, query ) {
     case "CERepoStatus": 
 	props = [ "GHRepo" ];
 	break;
-    case "CEQueue": 
-	props = [ "GHRepo" ];
-	break;
     default:
 	assert( false );
     }
@@ -369,9 +297,6 @@ async function removeEntries( tableName, ids ) {
 	break;
     case "CERepoStatus": 
 	pkey1 = "GHRepo";
-	break;
-    case "CEQueue": 
-	pkey1 = "QueueId";
 	break;
     default:
 	assert( false );

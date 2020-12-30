@@ -29,8 +29,8 @@ async function createPreferredCEProjects( installClient, td ) {
 
 
     // TRIGGER
-    let nbi1     = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, "A special populate issue", [], false );
-    let card11   = await gh.createProjectCard( installClient, mastCol1, nbi1[0] );
+    let nbi1     = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, "A special populate issue", [], false );
+    let card11   = await ghSafe.createProjectCard( installClient, mastCol1, nbi1[0] );
     let popLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
     await tu.addLabel( installClient, td, nbi1[1], popLabel.name );       // ready.. set... Go!
 

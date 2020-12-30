@@ -1,8 +1,10 @@
 var assert = require('assert');
 var utils = require('../utils');
 var config  = require('../config');
+
 var ghUtils = require('../ghUtils');
-var gh = ghUtils.githubUtils;
+var gh      = ghUtils.githubUtils;
+var ghSafe  = ghUtils.githubSafe;
 
 const testData = require( './testData' );
 const tu = require('./testUtils');
@@ -26,28 +28,28 @@ async function makePrePopulateData( installClient, td ) {
     // !!!!!!!!!!!
 
     // This is for a recommended project structure
-    let nbi0 = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_NEWBIE, [], false );
+    let nbi0 = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_NEWBIE, [], false );
     
-    let nbi1   = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_SINREC, [], false );
-    let card11 = await gh.createProjectCard( installClient, td.scColID, nbi1[0] );
+    let nbi1   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_SINREC, [], false );
+    let card11 = await ghSafe.createProjectCard( installClient, td.scColID, nbi1[0] );
 	
-    let nbi2   = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_DUBREC, [], false );
-    let card21 = await gh.createProjectCard( installClient, td.boColID, nbi2[0] );
-    let card22 = await gh.createProjectCard( installClient, td.dsPlanID, nbi2[0] );
+    let nbi2   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_DUBREC, [], false );
+    let card21 = await ghSafe.createProjectCard( installClient, td.boColID, nbi2[0] );
+    let card22 = await ghSafe.createProjectCard( installClient, td.dsPlanID, nbi2[0] );
 
     // GH allows multiple same-title cards per project.  But only 1 issue-card per project.
-    let nbi3   = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_TRIPREC, [], false );
-    let card31 = await gh.createProjectCard( installClient, td.scColID, nbi3[0] );
-    let card32 = await gh.createProjectCard( installClient, td.dsPlanID, nbi3[0] );
-    let card33 = await gh.createProjectCard( installClient, td.ghProgID, nbi3[0] );
+    let nbi3   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_TRIPREC, [], false );
+    let card31 = await ghSafe.createProjectCard( installClient, td.scColID, nbi3[0] );
+    let card32 = await ghSafe.createProjectCard( installClient, td.dsPlanID, nbi3[0] );
+    let card33 = await ghSafe.createProjectCard( installClient, td.ghProgID, nbi3[0] );
     
     // Now add a flat project structure in
-    let nbi4   = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_SINFLAT, [], false );
-    let card41 = await gh.createProjectCard( installClient, td.col1ID, nbi4[0] );
+    let nbi4   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_SINFLAT, [], false );
+    let card41 = await ghSafe.createProjectCard( installClient, td.col1ID, nbi4[0] );
 	
-    let nbi5   = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_DUBMIX, [], false );
-    let card51 = await gh.createProjectCard( installClient, td.col2ID, nbi5[0] );
-    let card52 = await gh.createProjectCard( installClient, td.dsPlanID, nbi5[0] );
+    let nbi5   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_DUBMIX, [], false );
+    let card51 = await ghSafe.createProjectCard( installClient, td.col2ID, nbi5[0] );
+    let card52 = await ghSafe.createProjectCard( installClient, td.dsPlanID, nbi5[0] );
 }
 
 async function testPopulate( installClient, td ) {
@@ -207,7 +209,7 @@ async function testResolve( installClient, td ) {
     await tu.addLabel( installClient, td, tripleIssue.number, newLabel.name );       // ready.. set... Go!
 
     console.log( "Send create card" );
-    await gh.createProjectCard( installClient, td.dsPlanID, tripleIssue.id, false );
+    await ghSafe.createProjectCard( installClient, td.dsPlanID, tripleIssue.id, false );
 
     await utils.sleep( 10000 );
 

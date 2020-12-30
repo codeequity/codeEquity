@@ -419,7 +419,7 @@ async function testEndpoint( installClient, td ) {
     // 7. move to accr
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
 
-    await utils.sleep( 15000 );
+    await utils.sleep( 10000 );
 
     testStatus = await checkMove( installClient, td, ISS_RACE, td.dsAccrID, meltCard, testStatus );
 

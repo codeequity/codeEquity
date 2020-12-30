@@ -2,8 +2,6 @@ var utils = require('../utils');
 var ghUtils = require('../ghUtils');
 var config  = require('../config');
 var assert = require('assert');
-var cardHandler = require('./githubCardHandler.js' );
-const peqData = require( '../peqData' );
 
 var gh     = ghUtils.githubUtils;
 var ghSafe = ghUtils.githubSafe;
@@ -29,74 +27,23 @@ https://developer.github.com/v3/issues/#create-an-issue
 
 
 
-// Only this call will remove from the queue before getting next.  Interleaving should be OK since if id == id, OK and if not, interleaver will pass.
-async function getNextJob( installClient, owner, repo, sender, committedJob ) {
-    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
-    if( jobData != -1 ) {
-
-	// Need a new installClient, else source for non-awaited actions is overwritten
-	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId ];
-	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "\n\n\n installClient[1], Got next job:", ic[1] );
-	if( jobData.Handler == "issue" ) {
-	    handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
-	}
-	else {
-	    cardHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
-	}
-    }
-    else {
-	console.log( installClient[1], "jobs done" );
-    }
-    return;
-}
-
-
 // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
 //          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
 // Note: issue:opened         notification after 'submit' is pressed.
 //       issue:labeled        notification after click out of label section
 //       project_card:created notification after submit, then projects:triage to pick column.
-async function handler( installClient, action, repo, owner, reqBody, res, tag, internal, committedJob ) {
+async function handler( installClient, pd, action, tag ) {
 
     // Sender is the event generator.
-    let sender   = reqBody['sender']['login'];
-    console.log( installClient[4], reqBody.issue.updated_at, "issue title:", reqBody['issue']['title'], action, internal ? "internal" : "external" );
+    let sender   = pd.reqBody['sender']['login'];
+    console.log( installClient[4], pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 
-    // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
-    if( !internal ) {
-	let tstart = Date.now();
-	let jobData = await utils.checkQueue( installClient, "issue", owner, repo, sender, action, reqBody, tag );
-	assert( jobData != -1 );
-	if( installClient[4] != jobData.QueueId ) {
-	    console.log( installClient[1], "Sender busy with job#", jobData.QueueId, Date.now() - tstart, "millis" );
-	    return;
-	}
-	console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
-    }
-    // It is possible for external:checkQ and the internal:getNext interleave perfectly with AWs so 2 are running at same time.
-    // Check for that, bail on the late comer.
-    // NOTE: it may be remotely possible to interleave around this instruction.. XXX bug
-    console.log( "\n\n\nCommitted, job", committedJob.id, installClient[4] );
-    if( committedJob.id == installClient[4] ) {
-	console.log( "I'm a latecomer - bailing" );
-	return;
-    }
-    else {
-	committedJob.id = installClient[4];
-    }
-    
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
-    let pd = new peqData.PeqData();
-    pd.GHOwner      = owner;
-    pd.GHRepo       = repo;
-    pd.reqBody      = reqBody;
-    pd.GHIssueId    = reqBody['issue']['id'];
-    pd.GHCreator    = reqBody['issue']['user']['login'];
-    pd.GHIssueTitle = (reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
-    pd.GHFullName   = reqBody['repository']['full_name'];
+    pd.GHIssueId    = pd.reqBody['issue']['id'];
+    pd.GHCreator    = pd.reqBody['issue']['user']['login'];
+    pd.GHIssueTitle = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
     // await gh.checkRateLimit(installClient);
 
@@ -111,14 +58,12 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	// XXXX XXXXX This will go away with ceFlutter
 	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
 	    await gh.populateCELinkage( installClient, pd );
-	    getNextJob( installClient, owner, repo, sender, committedJob );
 	    return;
 	}
 	
 	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
-	    getNextJob( installClient, owner, repo, sender, committedJob );
 	    return;
 	}
 	
@@ -147,7 +92,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	}
 
 	pd.updateFromLink( link );
-	console.log( "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
+	console.log( installClient[1], "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
 
 	let content = [];
 	content.push( pd.GHIssueTitle );
@@ -162,7 +107,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	pd.peqValue = ghSafe.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
-	    getNextJob( installClient, owner, repo, sender, committedJob ) ;
 	    return;
 	}
 	// XXX Inform contributors that status is now UNTRACKED
@@ -197,7 +141,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
-	    getNextJob( installClient, owner, repo, sender, committedJob ) ;
 	    return;
 	}
 
@@ -253,7 +196,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
-		getNextJob( installClient, owner, repo, sender, committedJob );
 		return;
 	    }
 	    
@@ -284,7 +226,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
-		getNextJob( installClient, owner, repo, sender, committedJob );
 		return;
 	    }
 	    
@@ -310,7 +251,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
     case 'opened':
 	// Can get here by 'convert to issue' on a newborn card, or more commonly, New issue with submit.
 	// XXX Do NOT convert newborn issue -> carded issue (unclaimed)
-	console.log( installClient[1], "Issue id:", reqBody['issue']['id'], "nodeId:", reqBody['issue']['node_id'] );
+	console.log( installClient[1], "Issue id:", pd.reqBody['issue']['id'], "nodeId:", pd.reqBody['issue']['node_id'] );
     case 'pinned': 
     case 'unpinned': 
     case 'locked': 
@@ -324,7 +265,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	break;
     }
     
-    getNextJob( installClient, owner, repo, sender, committedJob );
     return;
 }
 

@@ -1,12 +1,11 @@
 var utils   = require('../utils');
 var config  = require('../config');
-var ghUtils = require('../ghUtils');
 var assert = require('assert');
-const peqData = require( '../peqData' );
-var issueHandler = require('./githubIssueHandler.js' );
 
-var gh     = ghUtils.githubUtils;
-var ghSafe = ghUtils.githubSafe;
+var ghUtils = require('../ghUtils');
+var gh      = ghUtils.githubUtils;
+var ghSafe  = ghUtils.githubSafe;
+
 /*
 https://developer.github.com/webhooks/event-payloads/#issues
 https://octokit.github.io/rest.js/v18#projects-delete-card
@@ -77,68 +76,18 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 }
 
 
-// XXX Move this up?
-async function getNextJob( installClient, owner, repo, sender, committedJob ) {
-    let jobData = await utils.getFromQueue( installClient, owner, repo, sender );
-    if( jobData != -1 ) {
-	// Need a new installClient, else source for non-awaited actions is overwritten
-	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId];
-	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "\n\n\n installClient[1], Got next job:", ic[1] );
-	if( jobData.Handler == "card" ) {
-	    handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
-	}
-	else {
-	    issueHandler.handler( ic, jobData.Action, jobData.GHRepo, jobData.GHOwner, jobData.ReqBody, "", jobData.Tag, true, committedJob );
-	}
-    }
-    else {
-	console.log( installClient[1], "jobs done" );
-    }
-    return;
-}
-
-
 // Card operations: no PEQ label, not related to CodeEquity.  No action.
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
-async function handler( installClient, action, repo, owner, reqBody, res, tag, internal, committedJob ) {
+async function handler( installClient, pd, action, tag ) {
 
-    let sender  = reqBody['sender']['login'];
+    let sender  = pd.reqBody['sender']['login'];
     // if( !reqBody.hasOwnProperty( 'project_card') || !reqBody.project_card.hasOwnProperty( 'updated_at')) { console.log( reqBody ); }
-    console.log( installClient[4], reqBody.project_card.updated_at, "Card", action, internal ? "internal" : "external" );
+    console.log( installClient[4], pd.reqBody.project_card.updated_at, "Card", action );
 
-    // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
-    if( !internal ) {
-	let tstart = Date.now();
-	let jobData = await utils.checkQueue( installClient, "card", owner, repo, sender, action, reqBody, tag );
-	assert( jobData != -1 );
-	if( installClient[4] != jobData.QueueId ) {
-	    console.log( installClient[1], "Sender busy with job#", jobData.QueueId, Date.now() - tstart, "millis" );
-	    return;
-	}
-	console.log( installClient[1], "check Q done", Date.now() - tstart, "millis" );
-    }
-    // It is possible for external:checkQ and the internal:getNext interleave perfectly with AWs so 2 are running at same time.
-    // Check for that, bail on the late comer.
-    // NOTE: it may be remotely possible to interleave around this instruction.. XXX bug
-    console.log( "\n\n\nCommitted, job", committedJob.id, installClient[4] );
-    if( committedJob.id == installClient[4] ) {
-	console.log( "I'm a latecomer - bailing" );
-	return;
-    }
-    else {
-	committedJob.id = installClient[4];
-    }
-    
-    
-    let pd = new peqData.PeqData();
-    pd.GHOwner      = owner;
-    pd.GHRepo       = repo;
-    pd.reqBody      = reqBody;
-    pd.GHCreator    = reqBody['project_card']['creator']['login'];
-    pd.GHFullName   = reqBody['repository']['full_name'];
+    pd.GHCreator    = pd.reqBody['project_card']['creator']['login'];
+    pd.GHFullName   = pd.reqBody['repository']['full_name'];
 
     // await gh.checkRateLimit(installClient);
 
@@ -150,12 +99,13 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	let issueURL = pd.reqBody['project_card']['content_url'].split('/');
 	assert( issueURL.length > 0 );
 	pd.GHIssueNum = parseInt( issueURL[issueURL.length - 1] );
+	// XXX low alignment risk here... exists in theory, hard to imagine any real damage in practice, dependent on ID only
 	let issue = await gh.getIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );   // [ id, [content] ]
 	pd.GHIssueId = issue[0];
 	// console.log( "Found issue:", pd.GHIssueNum.toString(), issue[1] );
 
 	// Is underlying issue already linked to unclaimed?  if so, remove it.
-	await gh.cleanUnclaimed( installClient, pd );
+	await ghSafe.cleanUnclaimed( installClient, pd );
 	await utils.processNewPEQ( installClient, pd, issue[1], -1 ); 
     }
     else if( action == "created" ) {
@@ -177,7 +127,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 
 	if( pd.reqBody['changes'] == null ) {
 	    console.log( installClient[1], "Move within columns are ignored." );
-	    getNextJob( installClient, owner, repo, sender, committedJob );
 	    return;
 	}
 
@@ -191,7 +140,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	let card = await( utils.getFromCardId( installClient, pd.GHFullName, cardId ));  
 	if( card == -1 ) {
 	    console.log( "Moved card not processed, could not find the card id", cardId );
-	    getNextJob( installClient, owner, repo, sender, committedJob );
 	    return;
 	}
 	
@@ -216,7 +164,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	    if( assignees.length == 0  ) {
 		console.log( "Update card failed - no assignees" );   // can't propose grant without a grantee
 		console.log( "XXX move card back by hand with ceServer off" );
-		getNextJob( installClient, owner, repo, sender, committedJob );
 		return;
 	    }
 	}
@@ -229,7 +176,7 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
 	
 	if( issueId > -1 && newIssueState != "" ) {
-	    success = success && await gh.updateIssue( installClient, pd.GHOwner, pd.GHRepo, card['GHIssueNum'], newIssueState );
+	    success = success && await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, card['GHIssueNum'], newIssueState );
 	}
 
 	// recordPeq
@@ -243,7 +190,6 @@ async function handler( installClient, action, repo, owner, reqBody, res, tag, i
 	await( utils.recordPEQTodo( "XXX TBD. Content may be from issue, or card." , -1 ));	
     }
 
-    getNextJob( installClient, owner, repo, sender, committedJob );
     return;
 }
 

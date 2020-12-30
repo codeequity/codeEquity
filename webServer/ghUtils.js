@@ -23,6 +23,30 @@ var githubSafe = {
 	return validatePEQ( installClient, repo, issueId, title, projId );
     },
 
+    createIssue: function( installClient, owner, repo, title, labels, allocation ) {
+	return createIssue( installClient, owner, repo, title, labels, allocation );
+    },
+
+    createProjectCard: function( installClient, columnId, issueId, justId ) {
+	return createProjectCard( installClient, columnId, issueId, justId );
+    },
+
+    rebuildLabel: function( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
+	return rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel );
+    },
+
+    splitIssue: function( installClient, owner, repo, issue, splitTag ) {
+	return splitIssue( installClient, owner, repo, issue, splitTag );
+    },
+
+    cleanUnclaimed: function( installClient, pd ) {
+	return cleanUnclaimed( installClient, pd );
+    },
+    
+    updateIssue: function( installClient, owner, repo, issueNum, newState ) {
+	return updateIssue( installClient, owner, repo, issueNum, newState );
+    },
+    
 }
 
 
@@ -52,42 +76,18 @@ var githubUtils = {
 	return getFullIssue( installClient, owner, repo, issueNum );
     },
 
-    splitIssue: function( installClient, owner, repo, issue, splitTag ) {
-	return splitIssue( installClient, owner, repo, issue, splitTag );
-    },
-
-    updateIssue: function( installClient, owner, repo, issueNum, newState ) {
-	return updateIssue( installClient, owner, repo, issueNum, newState );
-    },
-    
     findOrCreateLabel: function( installClient, owner, repo, allocation, peqHumanLabelName, peqValue ) {
 	return findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue );
-    },
-
-    createIssue: function( installClient, owner, repo, title, labels, allocation ) {
-	return createIssue( installClient, owner, repo, title, labels, allocation );
     },
 
     rebuildCard: function( installClient, owner, repo, colId, origCardId, issueData ) {
 	return rebuildCard( installClient, owner, repo, colId, origCardId, issueData );
     },
 
-    rebuildLabel: function( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
-	return rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel );
-    },
-
-    createProjectCard: function( installClient, columnId, issueId, justId ) {
-	return createProjectCard( installClient, columnId, issueId, justId );
-    },
-
     createUnClaimedCard: function( installClient, owner, repo, issueId ) {
 	return createUnClaimedCard( installClient, owner, repo, issueId );
     },
 
-    cleanUnclaimed: function( installClient, pd ) {
-	return cleanUnclaimed( installClient, pd );
-    },
-    
     populateCELinkage: function( installClient, pd ) {
 	return populateCELinkage( installClient, pd );
     },
@@ -153,6 +153,7 @@ async function checkIssueExists( installClient, owner, repo, title )
 
 // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
 // there are no assignees for card-created issues.. they are added, or created directly from issues.
+// XXX alignment risk - card info could have moved on
 async function getAssignees( installClient, owner, repo, issueNum )
 {
     let retVal = [];
@@ -175,6 +176,7 @@ async function getAssignees( installClient, owner, repo, issueNum )
 }
 
 // [id, content]
+// XXX alignment risk - card info could have moved on
 async function getIssue( installClient, owner, repo, issueNum )
 {
     if( issueNum == -1 ) { return retVal; }
@@ -192,6 +194,7 @@ async function getIssue( installClient, owner, repo, issueNum )
     return retIssue;
 }
 
+// XXX alignment risk - card info could have moved on
 async function getFullIssue( installClient, owner, repo, issueNum )
 {
     if( issueNum == -1 ) { return retVal; }
@@ -204,6 +207,7 @@ async function getFullIssue( installClient, owner, repo, issueNum )
     return retIssue;
 }
 
+// XXX alignment risk - card info could have moved on
 async function getCard( installClient, cardId ) {
     let retCard = -1;
     if( cardId == -1 ) { return retCard; }
@@ -264,6 +268,7 @@ async function updateIssue( installClient, owner, repo, issueNum, newState ) {
 }
 
 
+// XXX (very) low risk for alignment trouble. warn if see same label create/delete on job queue.
 async function findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue )
 {
     // does label exist 
@@ -303,6 +308,7 @@ async function findOrCreateLabel( installClient, owner, repo, allocation, peqHum
 }
 
 
+// New information being pushed into GH - alignment safe.
 async function createIssue( installClient, owner, repo, title, labels, allocation )
 {
     console.log( installClient[1], "Creating issue, from alloc?", allocation );
@@ -493,6 +499,7 @@ async function populateCELinkage( installClient, pd )
 }
 
 
+// XXX alignment risk - card info could have moved on
 async function rebuildCard( installClient, owner, repo, colId, origCardId, issueData ) {
     assert( issueData.length == 2 );
     let issueId  = issueData[0];
@@ -540,6 +547,7 @@ async function createProjectCard( installClient, columnId, issueId, justId )
 }
 
 
+// XXX alignment risk
 // XXX could look in linkage for unclaimed proj / col ids .. ?
 async function createUnClaimedCard( installClient, owner, repo, issueId )
 {
@@ -625,6 +633,7 @@ async function cleanUnclaimed( installClient, pd ) {
 
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
 // If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
+// XXX alignment risk
 async function getCEProjectLayout( installClient, issueId )
 {
     // if not validLayout, won't worry about auto-card move
@@ -738,6 +747,7 @@ async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 }
 
 
+// XXX alignment risk if card moves in the middle of this
 async function moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout )
 {
     console.log( "Moving issue card" );
@@ -798,6 +808,7 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
     return success;
 }
 
+// XXX alignment risk
 async function getProjectName( installClient, projId ) {
 
     let project = await( installClient[0].projects.get({ project_id: projId }))
@@ -809,6 +820,7 @@ async function getProjectName( installClient, projId ) {
     return project['data']['name'];
 }
 
+// XXX alignment risk
 async function getColumnName( installClient, colId ) {
 
     if( colId == -1 ) { return -1; }

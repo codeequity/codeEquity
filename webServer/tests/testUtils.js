@@ -1,9 +1,10 @@
 var utils = require('../utils');
-var ghUtils = require('../ghUtils');
 var config  = require('../config');
 var assert = require('assert');
 
-var gh = ghUtils.githubUtils;
+var ghUtils = require('../ghUtils');
+var gh      = ghUtils.githubUtils;
+var ghSafe  = ghUtils.githubSafe;
 
 const MIN_DELAY = 1500;   // Make up for rest variance, and GH slowness.  Expect 500-1000
 
@@ -264,13 +265,13 @@ async function makeNewbornCard( installClient, colId, title ) {
 }
 
 async function makeProjectCard( installClient, colId, issueId ) {
-    let card = await gh.createProjectCard( installClient, colId, issueId );
+    let card = await ghSafe.createProjectCard( installClient, colId, issueId );
     await utils.sleep( MIN_DELAY );
     return card;
 }
 
 async function makeIssue( installClient, td, title, labels ) {
-    let issue = await gh.createIssue( installClient, td.GHOwner, td.GHRepo, title, labels, false );
+    let issue = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, title, labels, false );
     await utils.sleep( MIN_DELAY );
     return issue;
 }
