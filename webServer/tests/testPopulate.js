@@ -176,7 +176,7 @@ async function testPopulate( installClient, td ) {
     tu.testReport( testStatus, "Create preferred CE Projects" );
 }
 
-async function testResolve( installClient, td ) {
+async function testResolve( installClient, ghLinks, td ) {
 
     // !!!!!!!!!!!
     // NOTE: you must TURN ON ceServer to run this test.
@@ -364,7 +364,8 @@ async function testResolve( installClient, td ) {
 
     // Check DYNAMO linkage
     // note.. newbie will not be here.. expect 10/11.
-    let links = await utils.getLinks( installClient, td.GHFullName );
+    // YYY let links = await utils.getLinks( installClient, td.GHFullName );
+    let links = ghLinks.getLinks( installClient, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 10, testStatus, "Linkage count" );
     let tripPeqIds = tripIssues.map((iss) => iss.id.toString() );
     let othPeqIds  = othIssues.map((iss) => iss.id.toString() );
@@ -431,7 +432,7 @@ async function testResolve( installClient, td ) {
 
 
 
-async function runTests( installClient, td ) {
+async function runTests( installClient, ghLinks, td ) {
 
     console.log( "Populate - add a repo to CE =================" );
 

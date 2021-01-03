@@ -170,8 +170,8 @@ function buildConjScanParams( obj, props ) {
 	    first = false;
 	}
     }
-
-    assert( filterExpr.length >= 5 );
+    
+    assert( filterExpr.length == 0 || filterExpr.length >= 5 );
     return [filterExpr, attrVals];
 }
 
@@ -265,8 +265,10 @@ async function getEntries( tableName, query ) {
 
     let params = {};
     params.TableName                  = tableName;
-    params.FilterExpression           = scanVals[0];
-    params.ExpressionAttributeValues  = scanVals[1];
+    if( scanVals[0] != "" ) {
+	params.FilterExpression           = scanVals[0];
+	params.ExpressionAttributeValues  = scanVals[1];
+    }
 
     let daPromise = paginatedScan( params ); 
     return daPromise.then((entries) => {

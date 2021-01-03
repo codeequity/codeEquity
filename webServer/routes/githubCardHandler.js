@@ -80,7 +80,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
-async function handler( installClient, pd, action, tag ) {
+async function handler( installClient, ghLinks, pd, action, tag ) {
 
     let sender  = pd.reqBody['sender']['login'];
     // if( !reqBody.hasOwnProperty( 'project_card') || !reqBody.project_card.hasOwnProperty( 'updated_at')) { console.log( reqBody ); }
@@ -105,15 +105,15 @@ async function handler( installClient, pd, action, tag ) {
 	// console.log( "Found issue:", pd.GHIssueNum.toString(), issue[1] );
 
 	// Is underlying issue already linked to unclaimed?  if so, remove it.
-	await ghSafe.cleanUnclaimed( installClient, pd );
-	await utils.processNewPEQ( installClient, pd, issue[1], -1 ); 
+	await ghSafe.cleanUnclaimed( installClient, ghLinks, pd );
+	await utils.processNewPEQ( installClient, ghLinks, pd, issue[1], -1 ); 
     }
     else if( action == "created" ) {
 	// In projects, creating a card that MAY have a human PEQ label in content.
 	// console.log( "New card created, unattached" );
 	let cardContent = pd.reqBody['project_card']['note'].split('\n');
 
-	await utils.processNewPEQ( installClient, pd, cardContent, -1 );
+	await utils.processNewPEQ( installClient, ghLinks, pd, cardContent, -1 );
     }
     else if( action == "converted" ) {
 	// Can only be non-PEQ.  Otherwise, would see created/content_url
@@ -137,38 +137,41 @@ async function handler( installClient, pd, action, tag ) {
 	
 	// First, verify current status
 	// XXX This chunk could be optimized out, down the road
-	let card = await( utils.getFromCardId( installClient, pd.GHFullName, cardId ));  
-	if( card == -1 ) {
+	// YYY let link = await( utils.getFromCardId( installClient, pd.GHFullName, cardId ));  
+	let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "cardId": cardId } );
+	if( links == -1 ) {
 	    console.log( "Moved card not processed, could not find the card id", cardId );
 	    return;
 	}
+	let link = links[0]; // cards are 1:1 with issues
 	
-	let issueId = card['GHIssueId'];
-	let oldNameIndex = config.PROJ_COLS.indexOf( card['GHColumnName'] );
+	let issueId = link['GHIssueId'];
+	let oldNameIndex = config.PROJ_COLS.indexOf( link['GHColumnName'] );
 	assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.
-	assert( cardId       == card['GHCardId'] );
+	assert( cardId       == link['GHCardId'] );
 
 	// In speed mode, GH doesn't keep up - the changes_from column is a step behind.
-	// assert( oldColId     == card['GHColumnId'] );
+	// assert( oldColId     == link['GHColumnId'] );
 
 	// XXX This was pre-flat projects.  chunk below is probably bad
 	// assert( issueId == -1 || oldNameIndex != -1 );                // likely allocation, or known project layout
-	assert( newProjId     == card['GHProjectId'] );               // not yet supporting moves between projects
+	assert( newProjId     == link['GHProjectId'] );               // not yet supporting moves between projects
 
 	// reflect card move in dynamo, if move is legal
 	let newColName = await gh.getColumnName( installClient, newColId );
 	let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	assert( issueId == -1 || newNameIndex != -1 );
 	if( newNameIndex > config.PROJ_PROG ) { 
-	    let assignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, card['GHIssueNum'] );
+	    let assignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'] );
 	    if( assignees.length == 0  ) {
 		console.log( "Update card failed - no assignees" );   // can't propose grant without a grantee
 		console.log( "XXX move card back by hand with ceServer off" );
 		return;
 	    }
 	}
-	let success = await( utils.updateLinkage( installClient, issueId, cardId, newColId, newColName )) 
-	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
+	// YYY let success = await( utils.updateLinkage( installClient, issueId, cardId, newColId, newColName )) 
+        // .catch( e => { console.log( installClient[1], "update card failed.", e ); });
+	let success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName ); 
 	
 	// handle issue
 	let newIssueState = "";
@@ -176,11 +179,11 @@ async function handler( installClient, pd, action, tag ) {
 	else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
 	
 	if( issueId > -1 && newIssueState != "" ) {
-	    success = success && await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, card['GHIssueNum'], newIssueState );
+	    success = success && await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
 	}
 
 	// recordPeq
-	recordMove( installClient, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, card );
+	recordMove( installClient, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, link );
     }
     else if( action == "deleted" || action == "edited" ) {
 	// Note, if action source is issue-delete, linked card is deleted first.  Watch recording.

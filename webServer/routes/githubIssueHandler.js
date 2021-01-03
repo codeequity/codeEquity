@@ -32,7 +32,7 @@ https://developer.github.com/v3/issues/#create-an-issue
 // Note: issue:opened         notification after 'submit' is pressed.
 //       issue:labeled        notification after click out of label section
 //       project_card:created notification after submit, then projects:triage to pick column.
-async function handler( installClient, pd, action, tag ) {
+async function handler( installClient, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
@@ -57,7 +57,7 @@ async function handler( installClient, pd, action, tag ) {
 
 	// XXXX XXXXX This will go away with ceFlutter
 	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
-	    await gh.populateCELinkage( installClient, pd );
+	    await gh.populateCELinkage( installClient, ghLinks, pd );
 	    return;
 	}
 	
@@ -68,7 +68,8 @@ async function handler( installClient, pd, action, tag ) {
 	}
 	
 	// Was this a carded issue?  Get linkage
-	let links = await( utils.getIssueLinkage( installClient, pd.GHIssueId ));
+	// YYY let links = await( utils.getIssueLinkage( installClient, pd.GHIssueId ));
+	let links = ghLinks.getLinks( installClient, { "issueId": pd.GHIssueId } );
 	assert( links == -1 || links.length == 1 );
 	let link = links == -1 ? links : links[0];
 
@@ -97,7 +98,7 @@ async function handler( installClient, pd, action, tag ) {
 	let content = [];
 	content.push( pd.GHIssueTitle );
 	content.push( config.PDESC + pd.peqValue.toString() );
-	await utils.processNewPEQ( installClient, pd, content, link );
+	await utils.processNewPEQ( installClient, ghLinks, pd, content, link );
 	break;
     case 'unlabeled':
 	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  PROJ_PEND is OK, since could just demote to PROG/PLAN
@@ -112,7 +113,8 @@ async function handler( installClient, pd, action, tag ) {
 	// XXX Inform contributors that status is now UNTRACKED
 
 	console.log( "PEQ Issue unlabeled" );
-	utils.rebaseLinkage( installClient, pd.GHFullName, pd.GHIssueId );   // setting various to -1, as it is now untracked
+	// YYYutils.rebaseLinkage( installClient, pd.GHFullName, pd.GHIssueId );   // setting various to -1, as it is now untracked
+	ghLinks.rebaseLinkage( installClient, pd.GHIssueId );   // setting various to -1, as it is now untracked
 	let peq = await utils.getPeq( installClient, pd.GHIssueId );	
 	utils.recordPEQAction(
 	    installClient,
@@ -146,12 +148,12 @@ async function handler( installClient, pd, action, tag ) {
 
 	// Get array: [proj_id, col_idx4]
 	// XXX getLayout and moveIssue both call getGHCard
-	let ceProjectLayout = await gh.getCEProjectLayout( installClient, pd.GHIssueId );
+	let ceProjectLayout = await gh.getCEProjectLayout( installClient, ghLinks, pd.GHIssueId );
 	if( ceProjectLayout[0] == -1 ) {
 	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	}
 	else {
-	    let success = await gh.moveIssueCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId, action, ceProjectLayout ); 
+	    let success = await gh.moveIssueCard( installClient, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHIssueId, action, ceProjectLayout ); 
 	    if( success ) {
 		console.log( installClient[1], "Find & validate PEQ" );
 		let peqId = ( await( ghSafe.validatePEQ( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
