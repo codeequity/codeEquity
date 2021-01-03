@@ -225,7 +225,7 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 
     // Check DYNAMO Linkage
     // YYY let links = await utils.getLinks( installClient, td.GHFullName );
-    let links = ghLinks.getlinks( installClient, { "repo": td.GHFullName } );
+    let links = tu.getlinks( installClient, ghLinks, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 4, testStatus, "Linkage count" );
     let unallocSoft = false;   let lSoft = -1;
     let unallocBus  = false;   let lBus  = -1;
@@ -286,7 +286,7 @@ async function runTests( installClient, ghLinks, td ) {
 
     console.log( "Preferred CE project structure =================" );
 
-    await createPreferredCEProjects( installClient, td );
+    await createPreferredCEProjects( installClient, ghLinks, td );
     await utils.sleep( 20000 );
     await testPreferredCEProjects( installClient, td );
 

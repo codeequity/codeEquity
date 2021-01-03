@@ -12,9 +12,11 @@ var links     = require('../components/linkage.js');
 
 var issues    = require('./githubIssueHandler');
 var cards     = require('./githubCardHandler');
+var testing   = require('./githubTestHandler');
 
 // CE Job Queue  {fullName:  {sender1: fifoQ1, sender2: fifoQ2 }}
 var ceJobs = {};
+var notificationCount = 0;
 
 // GH Linkage table
 var ghLinks = new links.Linkage();
@@ -52,6 +54,9 @@ async function initAuth( installClient, owner, repo ) {
 // Notifications from GH webhooks
 router.post('/:location?', async function (req, res) {
 
+    // invisible, mostly
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, req.body, res ); }
+    
     console.log( "" );
     let event    = req.headers['x-github-event'];
     let action   = req.body['action'];
@@ -90,6 +95,9 @@ router.post('/:location?', async function (req, res) {
     let jobId = utils.randAlpha(10);
     let newStamp = req.body.hasOwnProperty( 'project_card' ) ? req.body.project_card.updated_at : req.body.issue.updated_at;
     console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
+
+    notificationCount++;
+    if( notificationCount % 20 == 0 ) { ghLinks.show(); }
 
     // Look for out of order GH notifications.  Note the timestamp is only to within 1 second...
     let tdiff = utils.getTimeDiff( lastEvent, newStamp );  
@@ -166,7 +174,6 @@ async function getNextJob( installClient, pdOld, sender ) {
     else {
 	console.log( installClient[1], "jobs done" );
     }
-    ghLinks.show();
     return;
 }
 

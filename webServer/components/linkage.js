@@ -56,6 +56,18 @@ class Linkage {
 	this.show();
     }
 
+    fromJson( linkData ) {
+	this.links = {};
+	console.log( "Creating ghLinks from json data" );
+	for( const [_, clinks] of Object.entries( linkData ) ) {
+	    for( const [_, link] of Object.entries( clinks ) ) {
+		this.addLinkage( ["", "fromJson"], link.GHRepo, link.GHIssueId, link.GHIssueNum,
+				 link.GHProjectId, link.GHProjectName, link.GHColumnId, link.GHColumnName,
+				 link.GHCardId, link.GHCardTitle );
+	    }
+	}
+    }
+    
     addLinkage( installClient, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle ) {
 
 	console.log( installClient[1], "add link", issueId, cardId );
@@ -161,6 +173,7 @@ class Linkage {
 
 	link.GHColumnId   = newColId;
 	link.GHColumnName = newColName;
+	return true;
     }
 
     removeLinkage( installClient, issueId, cardId ) {
@@ -199,7 +212,8 @@ class Linkage {
 			     link.GHColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHColumnId, 10 ),
 			     this.fill( link.GHColumnName, 20 ),
 			     link.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHProjectId, 10 ),
-			     this.fill( link.GHProjectName, 15 )
+			     this.fill( link.GHProjectName, 15 ),
+			     this.fill( link.GHRepo )
 			   );
 	    }
 	}

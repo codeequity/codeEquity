@@ -175,6 +175,14 @@ async function getCards( installClient, colId ) {
     return cards;
 }
 
+// Get everything from ceServer
+async function getLinks( installClient, ghLinks, query ) {
+    let postData = {"Endpoint": "Testing", "Request": "getLinks" };
+    let linkData = await utils.postCE( "Grog", JSON.stringify( postData ));
+    ghLinks.fromJson( linkData );
+    return ghLinks.getLinks( installClient, query );
+}
+
 async function findIssue( installClient, td, issueTitle ) {
     let retVal = -1;
     let issues = await getIssues( installClient, td );
@@ -381,7 +389,8 @@ exports.getIssues       = getIssues;
 exports.getProjects     = getProjects;
 exports.getColumns      = getColumns;
 exports.getCards        = getCards;
-exports.findIssue        = findIssue;
+exports.getLinks        = getLinks;
+exports.findIssue       = findIssue;
 
 exports.findCardForIssue = findCardForIssue;
 exports.setUnpopulated   = setUnpopulated;

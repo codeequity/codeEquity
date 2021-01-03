@@ -33,7 +33,7 @@ async function checkNewbornIssue( installClient, ghLinks, td, issueData, testSta
     
     // CHECK dynamo linkage
     // YYY let links    = await utils.getLinks( installClient, td.GHFullName );
-    let links    = ghLinks.getLinks( installClient, { "repo": td.GHFullName } );
+    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let meltLink = links.filter((link) => link.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltLink.length, 0, testStatus, "invalid linkage" );
     
@@ -63,7 +63,7 @@ async function checkUnclaimedIssue( installClient, ghLinks, td, issueData, testS
     
     // CHECK dynamo linkage
     // YYY let links    = await utils.getLinks( installClient, td.GHFullName );
-    let links    = ghLinks.getLinks( installClient, { "repo": td.GHFullName });
+    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName });
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -125,7 +125,7 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, issueData, m
 
     // CHECK dynamo linkage
     // YYY let links    = await utils.getLinks( installClient, td.GHFullName );
-    let links    = ghLinks.getLinks( installClient, { "repo": td.GHFullName } );
+    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -322,7 +322,8 @@ async function checkMove( installClient, ghLinks, td, title, colId, meltCard, te
     let pend = config.PROJ_COLS[ config.PROJ_PEND ]; 
     let accr = config.PROJ_COLS[ config.PROJ_ACCR ]; 
     // YYY let links    = await utils.getLinks( installClient, td.GHFullName );
-    let links    = ghLinks.getLinks( installClient, { "repo": td.GHFullName });
+    let links = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName });
+    assert( links != -1 );
     let meltLink = ( links.filter((link) => link.GHIssueId == meltIssue.id ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );

@@ -29,7 +29,8 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 
     // I want peqId for notice PActions, with or without issueId
     let peq = await( ghSafe.validatePEQ( installClient, fullName, ghCard['GHIssueId'], ghCard['GHCardTitle'], ghCard['GHProjectId'] ));
-
+    console.log( peq );
+    
     assert( peq['PeqType'] != "grant" );
 
     let verb   = "";
@@ -56,7 +57,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 	action = "accrue";
     }
     else {
-	console.log( installClient[1], "Verb, action combo not understood", verb, action );
+	console.log( installClient[1], "Verb, action combo not understood", oldCol, newCol, peq.PeqType );
 	assert( false );
     }
 
@@ -171,7 +172,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	}
 	// YYY let success = await( utils.updateLinkage( installClient, issueId, cardId, newColId, newColName )) 
         // .catch( e => { console.log( installClient[1], "update card failed.", e ); });
-	let success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName ); 
+	let success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
+	ghLinks.show();
 	
 	// handle issue
 	let newIssueState = "";

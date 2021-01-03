@@ -85,7 +85,53 @@ async function postGH( PAT, url, postData ) {
 	.catch(err => console.log(err));
 }
 
+/*
+Future<http.Response> localPost( String shortName, postData ) async {
+   print( shortName );
+   // https://stackoverflow.com/questions/43871637/no-access-control-allow-origin-header-is-present-on-the-requested-resource-whe
+   // https://medium.com/@alexishevia/using-cors-in-express-cac7e29b005b
 
+   // XXX
+   final gatewayURL = new Uri.http("127.0.0.1:3000", "/update/github");
+   
+   // need httpheaders app/json else body is empty
+   final response =
+      await http.post(
+         gatewayURL,
+         headers: {HttpHeaders.contentTypeHeader: 'application/json' },
+         body: postData
+         );
+   
+   return response;
+}
+*/
+
+async function postCE( shortName, postData ) {
+    console.log( "PostCE" );
+
+    // XXX
+    const ceServerTestingURL = "http://127.0.0.1:3000/github/testing";
+
+    const params = {
+	url: ceServerTestingURL,
+	method: "POST",
+	headers: {'Content-Type': 'application/json' },
+	body: postData
+    };
+
+    let ret = await fetch( ceServerTestingURL, params )
+	.then ((res) => res )
+	.catch( err => console.log( err ));
+
+    if( ret['status'] == 201 ) { 
+	let body = await ret.json();
+	return body;
+    }
+    else { return -1; }
+}
+    
+
+// postAWS
 async function postIt( installClient, shortName, postData ) {
 
     console.log( installClient[1], "postIt:", shortName );
@@ -915,6 +961,7 @@ exports.getTimeDiff = getTimeDiff;
 exports.getAPIPath = getAPIPath;
 exports.getCognito = getCognito;
 exports.postGH = postGH;
+exports.postCE = postCE;
 exports.getCognito = getCognito;
 exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;

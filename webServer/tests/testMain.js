@@ -15,7 +15,11 @@ const testData = require( './testData' );
 async function runTests() {
 
     // GH Linkage table
-    var ghLinks = new links.Linkage();
+    // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
+    let postData = {"Endpoint": "Testing", "Request": "getLinks" };
+    let linkData = await utils.postCE( "Grog", JSON.stringify( postData ));
+    let ghLinks = new links.Linkage();
+    ghLinks.fromJson( linkData );
     
     let td = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
@@ -50,7 +54,7 @@ async function runTests() {
 
     // add assignees, assignee
 
-    
+    ghLinks.show();
     
 }
 

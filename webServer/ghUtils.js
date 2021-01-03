@@ -773,11 +773,8 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, acti
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ]; 
 	    success = await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: newColId }))
-		.catch( e => {
-		    console.log( installClient[1], "Move card failed.", e );
-		});
+		.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
 	}
-	
     }
     else if( action == "reopened" ) {
 
