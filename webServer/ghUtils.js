@@ -454,7 +454,6 @@ async function populateCELinkage( installClient, ghLinks, pd )
     
     let linkage = await getBasicLinkDataFromGH( installClient, pd.GHOwner, pd.GHRepo );
 
-    // YYY await utils.populateIssueCards( installClient, pd.GHFullName, linkage );
     ghLinks.populateLinkage( installClient, pd.GHFullName, linkage );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
@@ -592,7 +591,6 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 // Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
 async function cleanUnclaimed( installClient, ghLinks, pd ) {
     console.log( installClient[1], "cleanUnclaimed", pd.GHIssueId );
-    // YYY let link = await utils.getPEQLinkageFId( installClient, pd.GHIssueId );
     let link = ghLinks.getUniqueLink( installClient, pd.GHIssueId );
     if( link == -1 ) { return; }
     if( link.GHColumnName != config.UNCLAIMED ) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
@@ -604,7 +602,6 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
     await installClient[0].projects.deleteCard( { card_id: link.GHCardId } );
     
     // Remove turds, report.  
-    // YYY await utils.removeLinkage( installClient, pd.GHIssueId, link.GHCardId );
     ghLinks.removeLinkage( installClient, pd.GHIssueId, link.GHCardId );
     
     // do not delete peq - set it inactive.
@@ -637,7 +634,6 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
     // XXX Revisit if ever decided to track cols, projects.
     // XXX may be hole in create card from isssue
 
-    // YYY let link = await( utils.getPEQLinkageFId( installClient, issueId ));
     let link = ghLinks.getUniqueLink( installClient, issueId );
 
     let projId = link == -1 ? link : parseInt( link['GHProjectId'] );
@@ -737,7 +733,6 @@ async function validatePEQ( installClient, repo, issueId, title, projId ) {
 async function findCardInColumn( installClient, ghLinks, owner, repo, issueId, colId ) {
 
     let cardId = -1;
-    // YYY let card = await( utils.getPEQLinkageFId( installClient, issueId ));
     let link = ghLinks.getUniqueLink( installClient, issueId );
 	
     if( link != -1 && parseInt( link['GHColumnId'] ) == colId ) { cardId = parseInt( link['GHCardId'] ); }
@@ -797,8 +792,6 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, acti
     }
 
     if( success ) {
-	// YYY success = await( utils.updateLinkage( installClient, issueId, cardId, newColId, newColName ))
-	// .catch( e => { console.log( installClient[1], "update card failed.", e ); });
 	success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
     }
 
@@ -929,13 +922,6 @@ function theOnePEQ( labels ) {
     return peqValue;
 }
 
-
-
-// XXX 
-// !!! Keep this, backend (githubIssueHandler) works.
-//     remove this, remove load error for localHost
-// ??  ifdef for window being global obj?
-// ??  third by-hand step?  fug
 exports.githubUtils = githubUtils;
 exports.githubSafe = githubSafe;
 

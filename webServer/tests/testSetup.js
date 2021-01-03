@@ -224,7 +224,6 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 
 
     // Check DYNAMO Linkage
-    // YYY let links = await utils.getLinks( installClient, td.GHFullName );
     let links = tu.getlinks( installClient, ghLinks, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 4, testStatus, "Linkage count" );
     let unallocSoft = false;   let lSoft = -1;

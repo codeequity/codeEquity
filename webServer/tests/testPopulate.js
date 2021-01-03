@@ -364,7 +364,6 @@ async function testResolve( installClient, ghLinks, td ) {
 
     // Check DYNAMO linkage
     // note.. newbie will not be here.. expect 10/11.
-    // YYY let links = await utils.getLinks( installClient, td.GHFullName );
     let links = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 10, testStatus, "Linkage count" );
     let tripPeqIds = tripIssues.map((iss) => iss.id.toString() );

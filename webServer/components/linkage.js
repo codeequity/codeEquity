@@ -154,6 +154,15 @@ class Linkage {
 
     // Use only with known PEQ issues, 1:1
     // Zero out fields in linkage table no longer being tracked
+    // Base linkage is for issue-cards that are not in validated CE project structure.
+    //
+    // [ [projId, cardId, issueNum, issueId], ... ]
+    // Each cardId quad is one of three types:
+    //  1. issue-card linkage is already in place.    Should not overwrite - handled by caller
+    //  2. no linkage in dynamo, but linkage in GH,   Do write.
+    //  3. no linkage in dynamo, only card in GH,     No.  Need a linkage in order to add to linkage table.
+    //
+    // Write repo, projId, cardId, issueNum.    issueId is much more expensive to find, not justified speculatively.
     rebaseLinkage( installClient, issueId ) {
 	console.log( installClient[1], "Rebasing link for", issueId );
 	let cLinks = this.links[issueId];

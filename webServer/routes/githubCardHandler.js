@@ -12,9 +12,6 @@ https://octokit.github.io/rest.js/v18#projects-delete-card
 https://developer.github.com/v3/issues/#create-an-issue
 */
 
-// XXX Looking slow - lots of waiting on GH.. not much work.  Hard to cache given access model
-
-
 // The implied action of an underlying move out of a column depends on the originating PEQType.
 // PeqType:GRANT  Illegal       There are no 'takebacks' when it comes to provisional equity grants
 //                              This type only exists for cards/issues in the 'Accrued' column... can not move out 
@@ -29,7 +26,6 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 
     // I want peqId for notice PActions, with or without issueId
     let peq = await( ghSafe.validatePEQ( installClient, fullName, ghCard['GHIssueId'], ghCard['GHCardTitle'], ghCard['GHProjectId'] ));
-    console.log( peq );
     
     assert( peq['PeqType'] != "grant" );
 
@@ -138,7 +134,6 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	
 	// First, verify current status
 	// XXX This chunk could be optimized out, down the road
-	// YYY let link = await( utils.getFromCardId( installClient, pd.GHFullName, cardId ));  
 	let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "cardId": cardId } );
 	if( links == -1 ) {
 	    console.log( "Moved card not processed, could not find the card id", cardId );
@@ -170,8 +165,6 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	}
-	// YYY let success = await( utils.updateLinkage( installClient, issueId, cardId, newColId, newColName )) 
-        // .catch( e => { console.log( installClient[1], "update card failed.", e ); });
 	let success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
 	ghLinks.show();
 	

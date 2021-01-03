@@ -85,26 +85,6 @@ async function postGH( PAT, url, postData ) {
 	.catch(err => console.log(err));
 }
 
-/*
-Future<http.Response> localPost( String shortName, postData ) async {
-   print( shortName );
-   // https://stackoverflow.com/questions/43871637/no-access-control-allow-origin-header-is-present-on-the-requested-resource-whe
-   // https://medium.com/@alexishevia/using-cors-in-express-cac7e29b005b
-
-   // XXX
-   final gatewayURL = new Uri.http("127.0.0.1:3000", "/update/github");
-   
-   // need httpheaders app/json else body is empty
-   final response =
-      await http.post(
-         gatewayURL,
-         headers: {HttpHeaders.contentTypeHeader: 'application/json' },
-         body: postData
-         );
-   
-   return response;
-}
-*/
 
 async function postCE( shortName, postData ) {
     console.log( "PostCE" );
@@ -175,41 +155,6 @@ async function wrappedPostIt( installClient, shortName, postData ) {
     }
 }
 
-
-/* YYY
-// One of two methods to get linkage from issueId.
-// Here: 204 or 422 if count != 1... if it is a known peq issue, the mapping is guaranteed to be 1:1
-async function getPEQLinkageFId( installClient, issueId ) {
-    console.log( installClient[1], "Get linkage:", issueId );
-
-    let tstart = Date.now();
-    
-    let shortName = "GetEntry";
-    let query     = { "GHIssueId": issueId.toString() };
-    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
-
-    let rv = await wrappedPostIt( installClient, shortName, postData );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-
-// One of two methods to get linkage from issueId.
-// Here: expect list return.
-// Clean results?  A clean list expects: 1) <= 1 peqtype == PLAN; and 2) either no unclaimed or no PLAN/ALLOC peq type in list
-async function getIssueLinkage( installClient, issueId ) {
-    // console.log( source, "Get card data from issue:", issueId );
-
-    let tstart = Date.now();
-    
-    let shortName = "GetLinkages";
-    let postData  = { "Endpoint": shortName, "GHIssueId": issueId.toString() };
-
-    let rv = await wrappedPostIt( installClient, shortName, postData );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-*/
-
 async function getPeq( installClient, issueId ) {
     console.log( "Get PEQ from issueId:", issueId );
 
@@ -230,54 +175,6 @@ async function getPeqFromTitle( installClient, repo, projId, title ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
-/*
-async function getFromCardName( installClient, repoName, projName, cardTitle ) {
-    console.log( installClient[1], "Get linkage from repo, card info", repoName, projName, cardTitle );
-
-    let tstart = Date.now();
-    
-    let shortName = "GetEntry";
-    let query     = { "GHRepo": repoName, "GHProjName": projName, "GHCardTitle": cardTitle };
-    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
-
-    let rv = await wrappedPostIt( installClient, shortName, postData );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-
-// card:issue 1:1   issue:card 1:m   should be good
-async function getFromCardId( installClient, repo, cardId ) {
-    console.log( installClient[1], "Get linkage from repo, card Id", repo, cardId );
-
-    let tstart = Date.now();
-    
-    let shortName = "GetEntry";
-    let query     = { "GHRepo": repo, "GHCardId": cardId.toString() };
-    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
-
-    let rv = await wrappedPostIt( installClient, shortName, postData );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-
-// YYY clean out dynamo
-async function getExistCardIds( installClient, repo, cardIds ) {
-    console.log( installClient[1], "Which of these already exist?" );
-
-    const shortName = "GetExistCardIds";
-    const ids = cardIds.map((id) => id.toString() );
-    const postData = { "Endpoint": shortName, "GHRepo": repo, "GHCardIds": ids };
-
-    return await wrappedPostIt( installClient, shortName, postData );
-}
-
-async function removeLinkage( installClient, issueId, cardId ) {
-    let shortName = "DeleteLinkage";
-    let pd = { "Endpoint": shortName, "GHIssueId": issueId.toString(), "GHCardId": cardId.toString() };
-
-    return await wrappedPostIt( installClient, shortName, pd );
-}
-*/
 
 async function removePEQ( installClient, peqId ) {
 
@@ -288,32 +185,6 @@ async function removePEQ( installClient, peqId ) {
     return await wrappedPostIt( installClient, shortName, pd );
 }
 
-/*
-async function addLinkage( installClient, repo, issueId, issueNum, projId, projName, colId, colName, newCardId, cardTitle ) {
-    console.log( installClient[1], "AddLinkage", repo, issueId, newCardId, projName, colId );
-
-    let tstart = Date.now();
-
-    let shortName = "RecordGHCard";
-    let cardTitleStrip = cardTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
-    
-    let postData = { "GHRepo": repo };
-    postData.GHIssueId     = issueId.toString();          // all headed into dynamo is String, future flexibility
-    postData.GHProjectId   = projId.toString();
-    postData.GHIssueNum    = issueNum.toString();
-    postData.GHProjectName = projName;
-    postData.GHColumnId    = colId.toString();
-    postData.GHColumnName  = colName;
-    postData.GHCardId      = newCardId.toString();
-    postData.GHCardTitle   = cardTitleStrip;
-
-    let pd = { "Endpoint": shortName, "icLink": postData };
-
-    let rv = await wrappedPostIt( installClient, shortName, pd );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-*/
 
 async function checkPopulated( installClient, repo ) {
     console.log( installClient[1], "check populated: ", repo );
@@ -343,7 +214,6 @@ async function getProjectSubs( installClient, ghLinks, repoName, projName, colNa
     if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
 	// Check if project is a card in Master
-	// YYY let card = await( getFromCardName( installClient, repoName, config.MAIN_PROJ, projName ));
 	let links = ghLinks.getLinks( installClient, {"repo": repoName, "projName": config.MAIN_PROJ, "cardTitle": projName} );
 	if( links != -1 ) { projSub = [ links[0]['GHColumnName'], projName ]; }  // XXX multiple?
 	else              { projSub = [ projName ]; }
@@ -356,97 +226,6 @@ async function getProjectSubs( installClient, ghLinks, repoName, projName, colNa
     return projSub;
 }
 
-
-
-// Base linkage is for issue-cards that are not in validated CE project structure.
-//
-// [ [projId, cardId, issueNum, issueId], ... ]
-// Each cardId quad is one of three types:
-//  1. issue-card linkage is already in place.    Should not overwrite - handled by caller
-//  2. no linkage in dynamo, but linkage in GH,   Do write.
-//  3. no linkage in dynamo, only card in GH,     No.  Need a linkage in order to add to linkage table.
-//
-// Write repo, projId, cardId, issueNum.    issueId is much more expensive to find, not justified speculatively.
-/*
-async function populateIssueCards( installClient, repo, cardIds ) {
-    console.log( "Populating issue / card linkages for", repo );
-
-    let shortName = "RecordBaseGH";
-
-    let tstart = Date.now();
-
-    // XXX repo is repeated needlessly
-    let postData = [];
-    for( const card of cardIds ) {
-	
-	let pData = { "GHRepo": repo };
-	pData.GHProjectId   = card[0].toString();
-	pData.GHCardId      = card[1].toString();
-	pData.GHIssueNum    = card[2].toString();
-	pData.GHIssueId     = card[3].toString();
-	postData.push( pData );
-    }
-
-    let pd = { "Endpoint": shortName, "icLinks": postData };
-
-    let rv = await wrappedPostIt( installClient, shortName, pd );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-*/
-
-/*
-// Use only with known PEQ issues, 1:1
-// Zero out fields in linkage table no longer being tracked
-async function rebaseLinkage( installClient, fullName, issueId ) {
-    console.log( "Rebasing card linkage for", issueId );
-
-    let shortName = "UpdateGHCard";
-
-    let tstart = Date.now();
-
-    let postData = {};
-    postData.GHIssueId     = issueId.toString();  // pkey
-    postData.GHCardId      = -1;                  // pkey    // XXXXXXX wrong
-
-    postData.GHProjectName = config.EMPTY;
-    postData.GHColumnId    = -1;
-    postData.GHColumnName  = config.EMPTY;
-    postData.GHCardTitle   = config.EMPTY;
-
-    let pd = { "Endpoint": shortName, "icLink": postData };
-
-    let rv = await wrappedPostIt( installClient, shortName, pd );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-*/
-
-
-// XXX handle move to new project?
-// XXX this should be reused in util funcs here
-/*
-async function updateLinkage( installClient, issueId, cardId, newColId, newColName ) {
-    console.log( installClient[1], "Updating issue / card linkage" );
-
-    let shortName = "UpdateGHCard";
-
-    let tstart = Date.now();
-
-    let postData = {};
-    postData.GHIssueId     = issueId.toString();  // pkey
-    postData.GHCardId      = cardId.toString();   // pkey
-
-    postData.GHColumnId = newColId.toString();
-    postData.GHColumnName = newColName;
-
-    let pd = { "Endpoint": shortName, "icLink": postData };
-
-    let rv = await wrappedPostIt( installClient, shortName, pd );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-*/
 
 async function updatePEQPSub( installClient, peqId, projSub ) {
     console.log( installClient[1], "Updating PEQ project sub", projSub.toString() );
@@ -639,9 +418,7 @@ function rebuildLinkage( installClient, ghLinks, link, issueData, newCardId, new
 
     // is this an untracked carded issue?
     if( link.GHColumnId == -1 ) { newTitle = config.EMPTY; } 
-    
-    // YYY await( addLinkage( installClient, link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
-    // link.GHColumnId, link.GHColumnName, newCardId, newTitle ));
+
     ghLinks.addLinkage( installClient, link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
 			link.GHColumnId, link.GHColumnName, newCardId, newTitle )
     
@@ -681,7 +458,6 @@ async function resolve( installClient, ghLinks, pd, allocation ) {
     let gotSplit = false;
     console.log( installClient[1], "resolve" );
     // on first call from populate, list may be large.  Afterwards, max 2.
-    // YYY let links = await( getIssueLinkage( installClient, pd.GHIssueId ));
     let links = ghLinks.getLinks( installClient, { "issueId": pd.GHIssueId } );
     if( links == -1 || links.length < 2 ) { console.log("Resolve: early return" ); return gotSplit; }
     gotSplit = true;
@@ -796,7 +572,6 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 	assert( link == -1 );  
 	if( pd.GHIssueId != -1 ) {
 	    let blank      = config.EMPTY;
-	    // YYY await addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, blank , -1, blank, origCardId, blank );
 	    ghLinks.addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, blank , -1, blank, origCardId, blank );
 	}
     }
@@ -814,7 +589,6 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 	// Note: some linkages exist and will be overwritten with dup info.  this is rare, and it is faster to do so than to check.
 	// issue->card:  issueId is available, but linkage has not yet been added
 	if( pd.GHIssueNum > -1 ) {
-	    // YYY await( addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, origCardId, issueCardContent[0] ));
 	    ghLinks.addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, origCardId, issueCardContent[0] );
 	}
 	// card -> issue..  exactly one linkage.
@@ -829,7 +603,6 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 	    pd.GHIssueNum = issueData[1];
 	    
 	    // Add card issue linkage
-	    // YYY await( addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle));
 	    ghLinks.addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle);
 	}
     }
@@ -884,21 +657,6 @@ async function getPeqs( installClient, query ) {
     return await wrappedPostIt( installClient, shortName, postData );
 }
 
-/*
-async function getLinks( installClient, repo ) {
-    console.log( installClient[1], "Get Linkages for a given repo:", repo );
-
-    let tstart = Date.now();
-    
-    let shortName = "GetEntries";
-    let query     = { "GHRepo": repo};
-    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
-
-    let rv =  await wrappedPostIt( installClient, shortName, postData );
-    console.log( "millis", Date.now() - tstart );
-    return rv;
-}
-*/
 
 async function getRepoStatus( installClient, repo ) {
     console.log( installClient[1], "Get Status for a given repo:", repo );
@@ -968,21 +726,11 @@ exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
 exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
 exports.recordPEQTodo = recordPEQTodo;
-// exports.addLinkage = addLinkage;            YYY
-// exports.removeLinkage = removeLinkage;      YYY
 exports.removePEQ = removePEQ;
-// exports.getFromCardName = getFromCardName;  YYY
-// exports.getFromCardId = getFromCardId;      YYY
-// exports.getExistCardIds = getExistCardIds;  YYY
 exports.getPeq = getPeq;
 exports.getPeqFromTitle = getPeqFromTitle;
 exports.checkPopulated = checkPopulated;
 exports.setPopulated = setPopulated;
-// exports.populateIssueCards = populateIssueCards;  YYY
-// exports.rebaseLinkage = rebaseLinkage;            YYY
-// exports.updateLinkage = updateLinkage;            YYY
-// exports.getIssueLinkage = getIssueLinkage;    YYY
-// exports.getPEQLinkageFId = getPEQLinkageFId;  YYY
 exports.updatePEQPSub = updatePEQPSub;
 exports.sleep = sleep;
 exports.getToday = getToday;
@@ -992,7 +740,6 @@ exports.processNewPEQ = processNewPEQ;
 exports.getRaw   = getRaw; 
 exports.getPActs = getPActs;
 exports.getPeqs = getPeqs;
-// exports.getLinks = getLinks;                  YYY
 exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;
 

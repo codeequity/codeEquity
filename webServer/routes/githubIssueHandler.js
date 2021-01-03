@@ -68,7 +68,6 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	}
 	
 	// Was this a carded issue?  Get linkage
-	// YYY let links = await( utils.getIssueLinkage( installClient, pd.GHIssueId ));
 	let links = ghLinks.getLinks( installClient, { "issueId": pd.GHIssueId } );
 	assert( links == -1 || links.length == 1 );
 	let link = links == -1 ? links : links[0];
@@ -113,7 +112,6 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// XXX Inform contributors that status is now UNTRACKED
 
 	console.log( "PEQ Issue unlabeled" );
-	// YYYutils.rebaseLinkage( installClient, pd.GHFullName, pd.GHIssueId );   // setting various to -1, as it is now untracked
 	ghLinks.rebaseLinkage( installClient, pd.GHIssueId );   // setting various to -1, as it is now untracked
 	let peq = await utils.getPeq( installClient, pd.GHIssueId );	
 	utils.recordPEQAction(
