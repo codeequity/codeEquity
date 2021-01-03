@@ -14,7 +14,7 @@ const ASSIGNEE2 = "codeequity";
 
 
 // Newborn issues are not carded, by definition.  Too clunky in projects if we were to do so.
-async function checkNewbornIssue( installClient, td, issueData, testStatus ) {
+async function checkNewbornIssue( installClient, ghLinks, td, issueData, testStatus ) {
 
     // CHECK github issues
     let meltIssue = await tu.findIssue( installClient, td, ISS_FLOW );
@@ -32,7 +32,7 @@ async function checkNewbornIssue( installClient, td, issueData, testStatus ) {
     
     
     // CHECK dynamo linkage
-    let links    = await utils.getLinks( installClient, td.GHFullName );
+    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let meltLink = links.filter((link) => link.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltLink.length, 0, testStatus, "invalid linkage" );
     
@@ -47,7 +47,7 @@ async function checkNewbornIssue( installClient, td, issueData, testStatus ) {
 
 // Peq-labeling a newborn issue is valid.  In which case, we need a card, a linkage, a pec and a pact.
 // But no card/column has been provided.  So, CE creates an unclaimed area for safe keeping.
-async function checkUnclaimedIssue( installClient, td, issueData, testStatus ) {
+async function checkUnclaimedIssue( installClient, ghLinks, td, issueData, testStatus ) {
     // CHECK github issues
     let meltIssue = await tu.findIssue( installClient, td, ISS_FLOW );
     testStatus = tu.checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
@@ -61,7 +61,7 @@ async function checkUnclaimedIssue( installClient, td, issueData, testStatus ) {
     testStatus = tu.checkEq( meltCard.column_url.split('/').pop(), td.unclaimCID,     testStatus, "Card location" );
     
     // CHECK dynamo linkage
-    let links    = await utils.getLinks( installClient, td.GHFullName );
+    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName });
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -101,7 +101,7 @@ async function checkUnclaimedIssue( installClient, td, issueData, testStatus ) {
 }
 
 
-async function checkNewlySituatedIssue( installClient, td, issueData, meltCard, testStatus ) {
+async function checkNewlySituatedIssue( installClient, ghLinks, td, issueData, meltCard, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
@@ -122,7 +122,7 @@ async function checkNewlySituatedIssue( installClient, td, issueData, meltCard, 
     testStatus = tu.checkEq( mCard[0].id, meltCard.id,                  testStatus, "Card claimed" );
 
     // CHECK dynamo linkage
-    let links    = await utils.getLinks( installClient, td.GHFullName );
+    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -243,7 +243,7 @@ async function checkAssignees( installClient, td, issueData, testStatus ) {
     return testStatus;
 }
 
-async function checkMove( installClient, td, title, colId, meltCard, testStatus ) {
+async function checkMove( installClient, ghLinks, td, title, colId, meltCard, testStatus ) {
 
     // CHECK github issues
     // id, num in linkage
@@ -318,7 +318,8 @@ async function checkMove( installClient, td, title, colId, meltCard, testStatus 
     let prog = config.PROJ_COLS[ config.PROJ_PROG ]; 
     let pend = config.PROJ_COLS[ config.PROJ_PEND ]; 
     let accr = config.PROJ_COLS[ config.PROJ_ACCR ]; 
-    let links    = await utils.getLinks( installClient, td.GHFullName );
+    let links = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName });
+    assert( links != -1 );
     let meltLink = ( links.filter((link) => link.GHIssueId == meltIssue.id ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -333,7 +334,7 @@ async function checkMove( installClient, td, title, colId, meltCard, testStatus 
     return testStatus;
 }
 
-async function testStepByStep( installClient, td ) {
+async function testStepByStep( installClient, ghLinks, td ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
@@ -352,12 +353,12 @@ async function testStepByStep( installClient, td ) {
     await tu.addLabel( installClient, td, meltData[1], newLabel.name );
     await utils.sleep( 6000 );
     await tu.refreshUnclaimed( installClient, td );
-    testStatus = await checkUnclaimedIssue( installClient, td, meltData, testStatus );
+    testStatus = await checkUnclaimedIssue( installClient, ghLinks, td, meltData, testStatus );
     
     // 3. Add to project
     let meltCard  = await tu.makeProjectCard( installClient, td.dsPlanID, meltData[0] );
     await utils.sleep( 8000 );
-    testStatus = await checkNewlySituatedIssue( installClient, td, meltData, meltCard, testStatus );
+    testStatus = await checkNewlySituatedIssue( installClient, ghLinks, td, meltData, meltCard, testStatus );
 
     // 4. add assignee
     await tu.addAssignee( installClient, td, meltData[1], ASSIGNEE1 );
@@ -368,22 +369,22 @@ async function testStepByStep( installClient, td ) {
     // 5. move to prog
     await tu.moveCard( installClient, meltCard.id, td.dsProgID );
     await utils.sleep( 6000 );
-    testStatus = await checkMove( installClient, td, ISS_FLOW, td.dsProgID, meltCard, testStatus );
+    testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW, td.dsProgID, meltCard, testStatus );
 	
     // 6. close
     await tu.closeIssue( installClient, td, meltData[1] );
     await utils.sleep( 6000 );
-    testStatus = await checkMove( installClient, td, ISS_FLOW,td.dsPendID, meltCard, testStatus );
+    testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW,td.dsPendID, meltCard, testStatus );
 
     // 7. move to accr
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
     await utils.sleep( 6000 );
-    testStatus = await checkMove( installClient, td, ISS_FLOW, td.dsAccrID, meltCard, testStatus );
+    testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW, td.dsAccrID, meltCard, testStatus );
     
     tu.testReport( testStatus, "Test Resolve" );
 }
 
-async function testEndpoint( installClient, td ) {
+async function testEndpoint( installClient, ghLinks, td ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
@@ -419,24 +420,24 @@ async function testEndpoint( installClient, td ) {
     // 7. move to accr
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
 
-    await utils.sleep( 10000 );
+    await utils.sleep( 3000 );
 
-    testStatus = await checkMove( installClient, td, ISS_RACE, td.dsAccrID, meltCard, testStatus );
+    testStatus = await checkMove( installClient, ghLinks, td, ISS_RACE, td.dsAccrID, meltCard, testStatus );
 
     tu.testReport( testStatus, "Test lifecycles" );
 }
 
 
 
-async function runTests( installClient, td ) {
+async function runTests( installClient, ghLinks, td ) {
 
     console.log( "Populate - add a repo to CE =================" );
 
     // Stop and check each step
-    // await testStepByStep( installClient, td );
+    // await testStepByStep( installClient, ghLinks, td );
 
     // Blast through, check the end
-    await testEndpoint( installClient, td );
+    await testEndpoint( installClient, ghLinks, td );
 
     // XXX test a flow at end, not between steps, looking at queue
     // XXX test all basic flows.  e.g. create, add, label   // (no unclaimed/peq)

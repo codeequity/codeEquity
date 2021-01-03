@@ -47,7 +47,7 @@ async function createPreferredCEProjects( installClient, td ) {
     let ubCardId = await tu.makeAllocCard( installClient, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
-async function testPreferredCEProjects( installClient, td ) {
+async function testPreferredCEProjects( installClient, ghLinks, td ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
@@ -224,7 +224,7 @@ async function testPreferredCEProjects( installClient, td ) {
 
 
     // Check DYNAMO Linkage
-    let links = await utils.getLinks( installClient, td.GHFullName );
+    let links = tu.getlinks( installClient, ghLinks, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 4, testStatus, "Linkage count" );
     let unallocSoft = false;   let lSoft = -1;
     let unallocBus  = false;   let lBus  = -1;
@@ -281,11 +281,11 @@ async function testPreferredCEProjects( installClient, td ) {
 //     this does have some merit - CE is built for human hands, and hands + native github delay means human
 //     operations are far slower than the test execution above.  However, this is still pretty darned slow ATM
 
-async function runTests( installClient, td ) {
+async function runTests( installClient, ghLinks, td ) {
 
     console.log( "Preferred CE project structure =================" );
 
-    await createPreferredCEProjects( installClient, td );
+    await createPreferredCEProjects( installClient, ghLinks, td );
     await utils.sleep( 20000 );
     await testPreferredCEProjects( installClient, td );
 

@@ -21,6 +21,7 @@ https://graphql.org/graphql-js/graphql-clients/
 async function runTests() {
 
     console.log( "Clear testing environment" );
+
     let pd = new peqData.PeqData();
     pd.GHOwner      = config.TEST_OWNER;
     pd.GHRepo       = config.TEST_REPO;
@@ -132,11 +133,8 @@ async function runTests() {
     await utils.cleanDynamo( installClient, "CEPEQs", peqIds );
 
     // Linkages
-    let links = await utils.getLinks( installClient, pd.GHFullName );
-    let linkIds = links == -1 ? [] : links.map(( link ) => [link.GHIssueId, link.GHCardId] );
-    console.log( "Dynamo link ids", linkIds );
-    await utils.cleanDynamo( installClient, "CELinkage", linkIds );
-
+    // no need, just restart ceServer
+    
     // Queue
     ceJobs = {};
     /*

@@ -39,8 +39,8 @@ var githubSafe = {
 	return splitIssue( installClient, owner, repo, issue, splitTag );
     },
 
-    cleanUnclaimed: function( installClient, pd ) {
-	return cleanUnclaimed( installClient, pd );
+    cleanUnclaimed: function( installClient, ghLinks, pd ) {
+	return cleanUnclaimed( installClient, ghLinks, pd );
     },
     
     updateIssue: function( installClient, owner, repo, issueNum, newState ) {
@@ -88,20 +88,24 @@ var githubUtils = {
 	return createUnClaimedCard( installClient, owner, repo, issueId );
     },
 
-    populateCELinkage: function( installClient, pd ) {
-	return populateCELinkage( installClient, pd );
+    getBasicLinkDataFromGH: function( installClient, owner, repo ) {
+	return getBasicLinkDataFromGH( installClient, owner, repo );
+    },
+    
+    populateCELinkage: function( installClient, ghLinks, pd ) {
+	return populateCELinkage( installClient, ghLinks, pd );
     },
 
     populateRequest: function( labels ) {
 	return populateRequest( labels );
     },
 
-    getCEProjectLayout: function( installClient, issueId ) {
-	return getCEProjectLayout( installClient, issueId );
+    getCEProjectLayout: function( installClient, ghLinks, issueId ) {
+	return getCEProjectLayout( installClient, ghLinks, issueId );
     },
     
-    moveIssueCard: function( installClient, owner, repo, issueId, action, ceProjectLayout ) {
-	return moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout ); 
+    moveIssueCard: function( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout ) {
+	return moveIssueCard( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout ); 
     },
 
     getProjectName: function( installClient, projId ) {
@@ -349,27 +353,12 @@ function populateRequest( labels ) {
     return retVal;
 }
 
-// Add linkage data for all carded issues in a project.
-// 
-// As soon as 1 situated (or carded) issue is labeled, all this work must be done to find it if not already in dynamo.
-// May as well just do this once.
-//
-// This occurs once only per repo, preferably when CE usage starts.
-// Afterwards, if a newborn issue adds a card, githubCardHandler will pick it up.
-// Afterwards, if a newborn issue adds peqlabel, create card, githubCardHandler will pick it up.
-// Afterwards, if a newborn card converts to issue, pick it up in githubIssueHandler
-//
-// Would be soooo much better if Octokit/Github had reverse link from issue to card.
-// newborn issues not populated.  newborn cards not populated.  Just linkages.
-// XXX something like this really needs graphQL
-async function populateCELinkage( installClient, pd )
-{
-    console.log( installClient[1], "Populate CE Linkage start" );
-    assert( !utils.checkPopulated( installClient, pd.GHFullName ) != -1);
-    
+
+// XXX getting open only is probably a mistake.  what if added back?
+async function getBasicLinkDataFromGH( installClient, owner, repo ) {
     // Get project IDs
     let projIds = [];
-    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "open" } )
+    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
 	.then((projects) => {
 	    projIds = projects.map((project) => project.id );
 	});
@@ -420,7 +409,7 @@ async function populateCELinkage( installClient, pd )
     // console.log( "Card ids", cardIds );
     
     // list of trips [projid, cardid, issuenum].. all "" are stripped.
-    // Clean this list up before pushing to populate.
+    // Clean this list up
     let trips = [];
     for( const column of cardIds ) {
 	assert( column.length == 4 );
@@ -433,35 +422,39 @@ async function populateCELinkage( installClient, pd )
     }
     // console.log( "Trips", trips );
 
-    // XXX may not be necessary
-    // Eliminate trips where cardId already exists
-    // Note: this is largely overkill, since 99% of the time this will be done before serious use of CE starts.
-    let idsOnly = trips.map((trip) => trip[1] );
-    let existingIds = await utils.getExistCardIds( installClient, pd.GHFullName, idsOnly );
-    if( existingIds != -1 ) {
-	for( const id of existingIds ) {
-	    let index = -1;
-	    for( let i = 0; i < trips.length; i++ ) {
-		if( trips[i][1].toString() == id ) {
-		    index = i;
-		    break;
-		}
-	    }
-	    if( index > -1 ) { trips.splice( index, 1 ); }
-	}
-    }
-    // console.log( "Clean trips", trips );
-    
     // Add issueId to each trip, to complete linkage pkey and enable typical usage pattern
     let lPromises = [];
     for( const trip of trips ) {
-	lPromises.push( getIssue( installClient, pd.GHOwner, pd.GHRepo, trip[2] )
+	lPromises.push( getIssue( installClient, owner, repo, trip[2] )
 			.then((issue) => [ trip[0], trip[1], trip[2], issue[0] ] ));
     }
     let linkage = await Promise.all( lPromises );
     console.log( "linkages", linkage );
+    return linkage; 
+}
+
+
+// Add linkage data for all carded issues in a project.
+// 
+// As soon as 1 situated (or carded) issue is labeled, all this work must be done to find it if not already in dynamo.
+// May as well just do this once.
+//
+// This occurs once only per repo, preferably when CE usage starts.
+// Afterwards, if a newborn issue adds a card, githubCardHandler will pick it up.
+// Afterwards, if a newborn issue adds peqlabel, create card, githubCardHandler will pick it up.
+// Afterwards, if a newborn card converts to issue, pick it up in githubIssueHandler
+//
+// Would be soooo much better if Octokit/Github had reverse link from issue to card.
+// newborn issues not populated.  newborn cards not populated.  Just linkages.
+// XXX something like this really needs graphQL
+async function populateCELinkage( installClient, ghLinks, pd )
+{
+    console.log( installClient[1], "Populate CE Linkage start" );
+    assert( !utils.checkPopulated( installClient, pd.GHFullName ) != -1);
     
-    await utils.populateIssueCards( installClient, pd.GHFullName, linkage );
+    let linkage = await getBasicLinkDataFromGH( installClient, pd.GHOwner, pd.GHRepo );
+
+    ghLinks.populateLinkage( installClient, pd.GHFullName, linkage );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
@@ -490,7 +483,7 @@ async function populateCELinkage( installClient, pd )
     for( const link of one2Many ) {
 	pd.GHIssueId  = link[3];
 	pd.GHIssueNum = link[2];
-	await utils.resolve( installClient, pd, "???" );
+	await utils.resolve( installClient, ghLinks, pd, "???" );
     }
     
     await utils.setPopulated( installClient, pd.GHFullName );
@@ -596,9 +589,9 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 }
 
 // Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
-async function cleanUnclaimed( installClient, pd ) {
+async function cleanUnclaimed( installClient, ghLinks, pd ) {
     console.log( installClient[1], "cleanUnclaimed", pd.GHIssueId );
-    let link = await utils.getPEQLinkageFId( installClient, pd.GHIssueId );
+    let link = ghLinks.getUniqueLink( installClient, pd.GHIssueId );
     if( link == -1 ) { return; }
     if( link.GHColumnName != config.UNCLAIMED ) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
 	
@@ -609,7 +602,7 @@ async function cleanUnclaimed( installClient, pd ) {
     await installClient[0].projects.deleteCard( { card_id: link.GHCardId } );
     
     // Remove turds, report.  
-    await utils.removeLinkage( installClient, pd.GHIssueId, link.GHCardId );
+    ghLinks.removeLinkage( installClient, pd.GHIssueId, link.GHCardId );
     
     // do not delete peq - set it inactive.
     let daPEQ = await utils.getPeq( installClient, pd.GHIssueId );
@@ -634,16 +627,17 @@ async function cleanUnclaimed( installClient, pd ) {
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
 // If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
 // XXX alignment risk
-async function getCEProjectLayout( installClient, issueId )
+async function getCEProjectLayout( installClient, ghLinks, issueId )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
     // XXX Revisit if ever decided to track cols, projects.
     // XXX may be hole in create card from isssue
 
-    let card = await( utils.getPEQLinkageFId( installClient, issueId ));
-    let projId = card == -1 ? card : parseInt( card['GHProjectId'] );
-    let curCol = card == -1 ? card : parseInt( card['GHColumnId'] );        // moves are only tracked for peq issues
+    let link = ghLinks.getUniqueLink( installClient, issueId );
+
+    let projId = link == -1 ? link : parseInt( link['GHProjectId'] );
+    let curCol = link == -1 ? link : parseInt( link['GHColumnId'] );        // moves are only tracked for peq issues
 
     // XXX curCol is good for first close issue.  But then, on reopen, curCol is the newly made PEND
     
@@ -736,11 +730,12 @@ async function validatePEQ( installClient, repo, issueId, title, projId ) {
     return peq;
 }
 
-async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
+async function findCardInColumn( installClient, ghLinks, owner, repo, issueId, colId ) {
 
     let cardId = -1;
-    let card = await( utils.getPEQLinkageFId( installClient, issueId ));
-    if( card != -1 && parseInt( card['GHColumnId'] ) == colId ) { cardId = parseInt( card['GHCardId'] ); }
+    let link = ghLinks.getUniqueLink( installClient, issueId );
+	
+    if( link != -1 && parseInt( link['GHColumnId'] ) == colId ) { cardId = parseInt( link['GHCardId'] ); }
 
     console.log( installClient[1], "find card in col", issueId, colId, "found?", cardId );
     return cardId;
@@ -748,7 +743,7 @@ async function findCardInColumn( installClient, owner, repo, issueId, colId ) {
 
 
 // XXX alignment risk if card moves in the middle of this
-async function moveIssueCard( installClient, owner, repo, issueId, action, ceProjectLayout )
+async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout )
 {
     console.log( "Moving issue card" );
     let success    = false;
@@ -763,7 +758,7 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
 
 	// verify card is in the right place
 	for( let i = 0; i < 2; i++ ) {
-	    cardId = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[ pip[i]+1 ] );
+	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueId, ceProjectLayout[ pip[i]+1 ] );
 	    if( cardId != -1 ) { break; }
 	}
 
@@ -773,17 +768,14 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ]; 
 	    success = await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: newColId }))
-		.catch( e => {
-		    console.log( installClient[1], "Move card failed.", e );
-		});
+		.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
 	}
-	
     }
     else if( action == "reopened" ) {
 
 	// verify card is currently in the right place
 	for( let i = 0; i < 2; i++ ) {
-	    cardId = await findCardInColumn( installClient, owner, repo, issueId, ceProjectLayout[ pac[i]+1 ] );
+	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueId, ceProjectLayout[ pac[i]+1 ] );
 	    if( cardId != -1 ) { break; }
 	}
 
@@ -800,8 +792,7 @@ async function moveIssueCard( installClient, owner, repo, issueId, action, cePro
     }
 
     if( success ) {
-	success = await( utils.updateLinkage( installClient, issueId, cardId, newColId, newColName ))
-	    .catch( e => { console.log( installClient[1], "update card failed.", e ); });
+	success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
     }
 
     
@@ -931,13 +922,6 @@ function theOnePEQ( labels ) {
     return peqValue;
 }
 
-
-
-// XXX 
-// !!! Keep this, backend (githubIssueHandler) works.
-//     remove this, remove load error for localHost
-// ??  ifdef for window being global obj?
-// ??  third by-hand step?  fug
 exports.githubUtils = githubUtils;
 exports.githubSafe = githubSafe;
 

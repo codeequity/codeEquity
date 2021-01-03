@@ -51,14 +51,8 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.GHUserName ); }           // return varies on no_content
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
-    else if( endPoint == "RecordGHCard")   { resultPromise = putGHC( rb.icLink ); }
-    else if( endPoint == "DeleteLinkage")  { resultPromise = delLinkage( rb.GHIssueId, rb.GHCardId ); }
     else if( endPoint == "DeletePEQ")      { resultPromise = delPeq( rb.GHIssueId, rb.subComponent ); }
-    else if( endPoint == "RecordBaseGH")   { resultPromise = putBaseGHC( rb.icLinks ); }
-    else if( endPoint == "UpdateGHCard")   { resultPromise = updateGHC( rb.icLink ); }
     else if( endPoint == "CheckSetGHPop")  { resultPromise = checkSetGHPop( rb.GHRepo, rb.Set ); }
-    else if( endPoint == "GetExistCardIds") { resultPromise = getExistGHC( rb.GHRepo, rb.GHCardIds ); }
-    else if( endPoint == "GetLinkages")    { resultPromise = getLinkages( rb.GHIssueId ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
@@ -170,8 +164,8 @@ function buildConjScanParams( obj, props ) {
 	    first = false;
 	}
     }
-
-    assert( filterExpr.length >= 5 );
+    
+    assert( filterExpr.length == 0 || filterExpr.length >= 5 );
     return [filterExpr, attrVals];
 }
 
@@ -197,9 +191,6 @@ async function getEntry( tableName, query ) {
     switch( tableName ) {
     case "CEPeople":
 	props = ["PersonId", "UserName", "Email", "First", "Last"];
-	break;
-    case "CELinkage":
-	props = [ "GHIssueId", "GHRepo", "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
 	break;
     case "CEPEQs":
 	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
@@ -241,9 +232,6 @@ async function getEntries( tableName, query ) {
     
     let props = [];
     switch( tableName ) {
-    case "CELinkage":
-	props = [ "GHIssueId", "GHRepo", "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardId", "GHCardTitle" ];
-	break;
     case "CEPEQs":
 	props = [ "PEQId", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
 	break;
@@ -265,8 +253,10 @@ async function getEntries( tableName, query ) {
 
     let params = {};
     params.TableName                  = tableName;
-    params.FilterExpression           = scanVals[0];
-    params.ExpressionAttributeValues  = scanVals[1];
+    if( scanVals[0] != "" ) {
+	params.FilterExpression           = scanVals[0];
+	params.ExpressionAttributeValues  = scanVals[1];
+    }
 
     let daPromise = paginatedScan( params ); 
     return daPromise.then((entries) => {
@@ -282,10 +272,6 @@ async function removeEntries( tableName, ids ) {
     let pkey1 = "";
     let pkey2 = "";
     switch( tableName ) {
-    case "CELinkage":
-	pkey1 = "GHIssueId";
-	pkey2 = "GHCardId";
-	break;
     case "CEPEQs":
 	pkey1 = "PEQId";
 	break;
@@ -343,20 +329,6 @@ async function getPersonId( username ) {
     });
 }
 
-async function getLinkageCardId( issueId ) {
-    const paramsP = {
-        TableName: 'CELinkage',
-        FilterExpression: 'GHIssueId = :issueId',
-        ExpressionAttributeValues: { ":issueId": issueId }
-    };
-
-    let promise = bsdb.scan( paramsP ).promise();
-    return promise.then((cards) => {
-	assert(cards.Count == 1 );
-	console.log( "Found CardId ", cards.Items[0].GHCardId );
-	return success( cards.Items[0].GHCardId );
-    });
-}
 
 async function getCEUID( ghUser ) {
     const params = {
@@ -424,60 +396,6 @@ async function checkSetGHPop( repo, setVal ) {
 }
 
 
-async function getExistGHC( repo, cardIds ) {
-    let promises = [];
-    cardIds.forEach( function (cardId) {
-	const params = {
-            TableName: 'CELinkage',
-            FilterExpression: 'GHCardId = :cid AND GHRepo = :repo',
-            ExpressionAttributeValues: { ":repo": repo, ":cid": cardId.toString() }
-	};
-	promises.push( bsdb.scan( params ).promise() );
-    });
-
-    return await Promise.all( promises )
-	.then((results) => {
-	    let res = [];
-	    results.forEach( function (card) {
-		if(  card.Count == 1 ) { res.push( card.Items[0].GHCardId ); }
-	    });
-	    if( res.length > 0 ) { return success( res ); }
-	    else                 { return NO_CONTENT; }
-	});
-}
-
-async function putGHC( icLink ) {
-
-    const params = {
-        TableName: 'CELinkage',
-	Item: {
-	    "GHIssueId":   icLink.GHIssueId,
-	    "GHCardId":    icLink.GHCardId,
-	    "GHRepo":      icLink.GHRepo,
-	    "GHIssueNum":  icLink.GHIssueNum,
-	    "GHProjectId": icLink.GHProjectId,
-	    "GHProjectName": icLink.GHProjectName,
-	    "GHColumnId":  icLink.GHColumnId,
-	    "GHColumnName": icLink.GHColumnName,
-	    "GHCardTitle": icLink.GHCardTitle
-	}
-    };
-
-    let recPromise = bsdb.put( params ).promise();
-    return recPromise.then(() =>success( true ));
-}
-
-async function delLinkage( issueId, cardId ) {
-
-    const params = {
-        TableName: 'CELinkage',
-	Key: {"GHIssueId": issueId, "GHCardId": cardId }
-    };
-
-    let promise = bsdb.delete( params ).promise();
-    return promise.then(() => success( true ));
-}
-
 async function delPeq( issueId, subComp ) {
     let peqId = await getPeqId( issueId, subComp );
     console.log( "peqId", peqId );
@@ -488,61 +406,6 @@ async function delPeq( issueId, subComp ) {
     
     let promise = bsdb.delete( params ).promise();
     return promise.then(() => success( true ));
-}
-
-async function putBaseGHC( icLinks ) {
-    const empty = "-1";
-    const emptyName = "---";
-    let promises = [];
-
-    icLinks.forEach( function (icLink) {
-	const params = {
-            TableName: 'CELinkage',
-	    Item: {
-		"GHIssueId":     icLink.GHIssueId,
-		"GHCardId":      icLink.GHCardId,
-		"GHRepo":        icLink.GHRepo,
-		"GHIssueNum":    icLink.GHIssueNum,
-		"GHProjectId":   icLink.GHProjectId,
-		"GHProjectName": emptyName,
-		"GHColumnId":    empty,
-		"GHColumnName":  emptyName,
-		"GHCardTitle":   emptyName,
-	    }
-	};
-	promises.push( bsdb.put( params ).promise() );
-    });
-
-    return await Promise.all( promises )
-	.then((results) => {
-	    console.log( '...promises done' );
-	    return success( true );
-	});
-}
-
-async function updateGHC( icLink ) {
-
-    console.log( "Updating linkage", icLink.GHIssueId, icLink.GHCardId );
-
-    // Can't update pkey, so no card or issue id here
-    let props = [ "GHIssueNum", "GHProjectId", "GHProjectName", "GHColumnId", "GHColumnName", "GHCardTitle" ];
-    let updateVals = buildUpdateParams( icLink, props );
-    assert( updateVals.length == 2 );
-
-    // 1:1 mapping after populate/resolve, plus operating on a peq issue should
-    // guarantee that issueId is unique. 
-    if( icLink.GHCardId == -1 ) { icLink.GHCardId = await getLinkageCardId( icLink.issueId ); }
-    
-    let params = {};
-    params.TableName                  = 'CELinkage';
-    params.Key                        = {"GHIssueId": icLink.GHIssueId, "GHCardId": icLink.GHCardId };
-    params.UpdateExpression           = updateVals[0];
-    params.ExpressionAttributeValues  = updateVals[1];
-
-    // console.log( params );
-	
-    let uPromise = bsdb.update( params ).promise();
-    return uPromise.then(() => success( true ));
 }
 
 
@@ -612,19 +475,6 @@ async function putPAct( newPAction ) {
     return promise.then(() =>success( newId ));
 }
 
-async function getLinkages( ghIssueId ) {
-    const params = { TableName: 'CELinkage', Limit: 99, };
-
-    params.FilterExpression = 'GHIssueId = :ghIssueId';
-    params.ExpressionAttributeValues = { ":ghIssueId": ghIssueId };
-
-    let promise = paginatedScan( params );
-    return promise.then((links) => {
-	console.log( "Found links ", links );
-	if( links.length == 0 ) { return NO_CONTENT; }
-	else                    { return success( links ); }
-    });
-}
 
 async function getPeqId( issueId, subComp ) {
     const params = { TableName: 'CEPEQs', Limit: 99, };

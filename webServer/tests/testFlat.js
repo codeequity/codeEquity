@@ -23,7 +23,7 @@ async function createFlatProject( installClient, td ) {
     
 }
 
-async function testFlatProject( installClient, td ) {
+async function testFlatProject( installClient, ghLinks, td ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
@@ -31,7 +31,7 @@ async function testFlatProject( installClient, td ) {
     await tu.refresh( installClient, td, FLAT_PROJ );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
-    let links = await utils.getLinks( installClient, td.GHFullName );
+    let links = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let foundFlat = false;
     for( const link of links ) {
 	if( link.GHProjectName == FLAT_PROJ    ||
@@ -101,7 +101,7 @@ async function testFlatProject( installClient, td ) {
 }
 
 
-async function runTests( installClient ) {
+async function runTests( installClient, ghLinks ) {
 
     let td = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
@@ -112,7 +112,7 @@ async function runTests( installClient ) {
 
     await createFlatProject( installClient, td );
     await utils.sleep( 1000 );
-    await testFlatProject( installClient, td );
+    await testFlatProject( installClient, ghLinks, td );
 
 }
 

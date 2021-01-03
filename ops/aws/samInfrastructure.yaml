@@ -54,27 +54,6 @@ Resources:
         Name: GHRepo
         Type: String
 
-  # provisioned throughput set to PAY_PER_REQUEST, same as simpletable
-  LinkageTable:
-    Type: 'AWS::DynamoDB::Table'
-    Properties:
-      TableName: CELinkage
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        -
-          AttributeName: GHIssueId
-          AttributeType: S
-        -
-          AttributeName: GHCardId
-          AttributeType: S
-      KeySchema:
-        -
-          AttributeName: GHIssueId
-          KeyType: HASH
-        -
-          AttributeName: GHCardId
-          KeyType: RANGE
-
   AgreementTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
@@ -187,8 +166,6 @@ Resources:
             Auth:
               Authorizer: CodeEquitySec
       Policies:
-       - DynamoDBCrudPolicy:
-          TableName: !Ref LinkageTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PersonTable
        - DynamoDBCrudPolicy:
