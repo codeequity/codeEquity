@@ -32,7 +32,7 @@ async function checkNewbornIssue( installClient, ghLinks, td, issueData, testSta
     
     
     // CHECK dynamo linkage
-    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links    = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let meltLink = links.filter((link) => link.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltLink.length, 0, testStatus, "invalid linkage" );
     
@@ -61,7 +61,7 @@ async function checkUnclaimedIssue( installClient, ghLinks, td, issueData, testS
     testStatus = tu.checkEq( meltCard.column_url.split('/').pop(), td.unclaimCID,     testStatus, "Card location" );
     
     // CHECK dynamo linkage
-    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName });
+    let links    = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName });
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -122,7 +122,7 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, issueData, m
     testStatus = tu.checkEq( mCard[0].id, meltCard.id,                  testStatus, "Card claimed" );
 
     // CHECK dynamo linkage
-    let links    = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links    = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
@@ -346,39 +346,39 @@ async function testStepByStep( installClient, ghLinks, td ) {
 
     // 1. Create issue 
     let meltData = await tu.makeIssue( installClient, td, ISS_FLOW, [] );               // [id, number]  (mix str/int)
-    testStatus = await checkNewbornIssue( installClient, td, meltData, testStatus );
+    testStatus = await checkNewbornIssue( installClient, ghLinks, td, meltData, testStatus );
     
     // 2. add peq label
     let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
     await tu.addLabel( installClient, td, meltData[1], newLabel.name );
-    await utils.sleep( 6000 );
+    await utils.sleep( 2000 );
     await tu.refreshUnclaimed( installClient, td );
     testStatus = await checkUnclaimedIssue( installClient, ghLinks, td, meltData, testStatus );
     
     // 3. Add to project
     let meltCard  = await tu.makeProjectCard( installClient, td.dsPlanID, meltData[0] );
-    await utils.sleep( 8000 );
+    await utils.sleep( 2000 );
     testStatus = await checkNewlySituatedIssue( installClient, ghLinks, td, meltData, meltCard, testStatus );
 
     // 4. add assignee
     await tu.addAssignee( installClient, td, meltData[1], ASSIGNEE1 );
     await tu.addAssignee( installClient, td, meltData[1], ASSIGNEE2 );
-    await utils.sleep( 6000 );
+    await utils.sleep( 2000 );
     testStatus = await checkAssignees( installClient, td, meltData, testStatus );
 
     // 5. move to prog
     await tu.moveCard( installClient, meltCard.id, td.dsProgID );
-    await utils.sleep( 6000 );
+    await utils.sleep( 2000 );
     testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW, td.dsProgID, meltCard, testStatus );
 	
     // 6. close
     await tu.closeIssue( installClient, td, meltData[1] );
-    await utils.sleep( 6000 );
+    await utils.sleep( 2000 );
     testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW,td.dsPendID, meltCard, testStatus );
 
     // 7. move to accr
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
-    await utils.sleep( 6000 );
+    await utils.sleep( 2000 );
     testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW, td.dsAccrID, meltCard, testStatus );
     
     tu.testReport( testStatus, "Test Resolve" );
@@ -415,7 +415,10 @@ async function testEndpoint( installClient, ghLinks, td ) {
     // 6. close
     await tu.closeIssue( installClient, td, meltData[1] );
 
-    td.show();
+    // Here, physically can't get from close issue screen to project screen to move it within a second.
+    // which is good, since if GH updates the internal move a hair too slowly, the subsequent move below fails.
+    // To see this, set mindelay to 1s or less, and comment out this sleep.
+    await utils.sleep( 1000 );
     
     // 7. move to accr
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );

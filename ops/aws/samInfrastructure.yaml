@@ -155,6 +155,7 @@ Resources:
       CodeUri: ./lambdaHandlers/
       Handler: awsDynamo.handler
       Runtime: nodejs10.x
+      Timeout: 180
       Description: AWS Handler
       Events:
         FindAPI:

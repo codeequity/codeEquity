@@ -10,7 +10,7 @@ var ghSafe = ghUtils.githubSafe;
 
 
 // Adding a small sleep in each tu.make* - GH seems to get confused if requests come in too fast
-async function createPreferredCEProjects( installClient, td ) {
+async function createPreferredCEProjects( installClient, ghLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
     
     // Master: softwareContr, businessOps, unallocated
@@ -35,7 +35,7 @@ async function createPreferredCEProjects( installClient, td ) {
     await tu.addLabel( installClient, td, nbi1[1], popLabel.name );       // ready.. set... Go!
 
     console.log( "Waiting for populate" );
-    await utils.sleep( 8000 );
+    await utils.sleep( 3000 );
     console.log( "Done waiting for populate" );
 
     // softCont: dataSecurity, githubOps, unallocated
@@ -224,11 +224,12 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 
 
     // Check DYNAMO Linkage
-    let links = tu.getlinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 4, testStatus, "Linkage count" );
     let unallocSoft = false;   let lSoft = -1;
     let unallocBus  = false;   let lBus  = -1;
     // td.show();
+    let foundDS = 0;
     for( const link of links ) {
 	let found = false;
 	if( link.GHIssueId == td.githubOpsIss[0] ) {
@@ -264,11 +265,14 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 	    found = true;
 	}
 
+	if( link.GHCardTitle == td.dataSecTitle ) { foundDS++; }
+	
 	if( found ) {
 	    testStatus = tu.checkEq( link.GHProjectName, config.MAIN_PROJ, testStatus, "Linkage Proj name" );
 	    testStatus = tu.checkEq( link.GHProjectId, td.masterPID,       testStatus, "Linkage Proj id" );
 	}
     }
+    testStatus = tu.checkEq( foundDS, 1, testStatus, "Duplicate links" );
     testStatus = tu.checkEq( (unallocSoft && unallocBus), true, testStatus, "Linkage unalloc unique count" );
     if( unallocSoft ) { testStatus = tu.checkEq( lSoft, td.scColID.toString(), testStatus, "Linkage Col Id" ); }
     if( unallocBus )  { testStatus = tu.checkEq( lBus,  td.boColID.toString(), testStatus, "Linkage Col Id" ); }
@@ -286,8 +290,8 @@ async function runTests( installClient, ghLinks, td ) {
     console.log( "Preferred CE project structure =================" );
 
     await createPreferredCEProjects( installClient, ghLinks, td );
-    await utils.sleep( 20000 );
-    await testPreferredCEProjects( installClient, td );
+    await utils.sleep( 15000 );
+    await testPreferredCEProjects( installClient, ghLinks, td );
 
 }
 

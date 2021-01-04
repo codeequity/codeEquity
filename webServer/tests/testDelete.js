@@ -84,7 +84,8 @@ async function runTests() {
 	    .catch( e => { console.log( installClient[1], "Problem in delete Project", e ); });
     }
 
-
+    await utils.sleep( 3000 );
+    
     // Get all peq labels in repo for deletion
     console.log( "Removing all PEQ Labels. " );
     let labelNames = [];
@@ -120,11 +121,15 @@ async function runTests() {
     await utils.cleanDynamo( installClient, "CEPEQActions", pactIds );
     await utils.cleanDynamo( installClient, "CEPEQRaw", pactIds );
 
+    await utils.sleep( 3000 );
+    
     pacts = await utils.getPActs( installClient, {"GHUserName": pd.GHOwner, "GHRepo": pd.GHFullName} );
     pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
     console.log( "Dynamo owner PActIds", pactIds );
     await utils.cleanDynamo( installClient, "CEPEQActions", pactIds );
     await utils.cleanDynamo( installClient, "CEPEQRaw", pactIds );
+
+    await utils.sleep( 3000 );
 
     // PEQs
     let peqs =  await utils.getPeqs( installClient, { "GHRepo": pd.GHFullName });

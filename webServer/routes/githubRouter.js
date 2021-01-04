@@ -93,11 +93,20 @@ router.post('/:location?', async function (req, res) {
     }
     source += action+" "+tag+"> ";
     let jobId = utils.randAlpha(10);
-    let newStamp = req.body.hasOwnProperty( 'project_card' ) ? req.body.project_card.updated_at : req.body.issue.updated_at;
+
+    let newStamp = "";
+    if     ( req.body.hasOwnProperty( 'project_card' ) ) { newStamp = req.body.project_card.updated_at; }
+    else if( req.body.hasOwnProperty( 'issue' ))         { newStamp = req.body.issue.updated_at; }
+    else if( req.body.hasOwnProperty( 'project' ))       { newStamp = req.body.project.updated_at; }
+    else { console.log( "XXX New event, update_at exists?", event, req.body ); }
+    
     console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
 
+    // leave early for events not handled here
+    if( event == "project" ) { return; }
+
     notificationCount++;
-    if( notificationCount % 20 == 0 ) { ghLinks.show(); }
+    if( notificationCount % 1 == 0 ) { ghLinks.show(); }
 
     // Look for out of order GH notifications.  Note the timestamp is only to within 1 second...
     let tdiff = utils.getTimeDiff( lastEvent, newStamp );  

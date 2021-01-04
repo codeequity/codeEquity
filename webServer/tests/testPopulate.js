@@ -72,7 +72,7 @@ async function testPopulate( installClient, td ) {
     let singleIssue = await tu.findIssue( installClient, td, ISS_SINREC );
     await tu.addLabel( installClient, td, singleIssue.number, popLabel.name );       // ready.. set... Go!
 
-    await utils.sleep( 20000 );
+    await utils.sleep( 15000 );
 
 
     // CHECK RESULTS
@@ -193,6 +193,7 @@ async function testResolve( installClient, ghLinks, td ) {
 
     // XXX try adding assignees
     // First add a few normal labels
+    // At the start, will have 3 triprecs, non are peq
     let tripleIssue = await tu.findIssue( installClient, td, ISS_TRIPREC );
     await tu.addLabel( installClient, td, tripleIssue.number, "bug" );       
     await tu.addLabel( installClient, td, tripleIssue.number, "enhancement" );       
@@ -206,10 +207,10 @@ async function testResolve( installClient, ghLinks, td ) {
     //       triage.  Adds a (bigger than this) delay.
     // Note: test setup has 2 random delays.  1: local -> gh rest time.  2: gh -> local.   by-hand has 1.
     console.log( "Send add label" );
-    await tu.addLabel( installClient, td, tripleIssue.number, newLabel.name );       // ready.. set... Go!
+    await tu.addLabel( installClient, td, tripleIssue.number, newLabel.name );       
 
     console.log( "Send create card" );
-    await ghSafe.createProjectCard( installClient, td.dsPlanID, tripleIssue.id, false );
+    await ghSafe.createProjectCard( installClient, td.dsPlanID, tripleIssue.id, false );  // ready.. set... Go!
 
     await utils.sleep( 10000 );
 
@@ -364,7 +365,7 @@ async function testResolve( installClient, ghLinks, td ) {
 
     // Check DYNAMO linkage
     // note.. newbie will not be here.. expect 10/11.
-    let links = tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 10, testStatus, "Linkage count" );
     let tripPeqIds = tripIssues.map((iss) => iss.id.toString() );
     let othPeqIds  = othIssues.map((iss) => iss.id.toString() );
@@ -437,13 +438,16 @@ async function runTests( installClient, ghLinks, td ) {
 
     // *** these two tests are siblings (below)
     // TURN OFF ceServer
-    // await makePrePopulateData( installClient, td );
+    //await makePrePopulateData( installClient, td );
     
     // TURN ON ceServer
+    // NOTE this test is flawed in concept, in that the current state of ceServer may already have
+    //      PEQ issues, but populate assumes a binary none then some.  ghLinks.initOneRepo handles this flaw,
+    //      but is slower than need be.
     // await testPopulate( installClient, td );
     // *** these two tests are siblings (above)
 
-    // Normal - leave it on
+    // Normal - leave it on.  A separate resolve test, run only after above 2.
     await testResolve( installClient, ghLinks, td );
 
 }
