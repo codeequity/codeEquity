@@ -316,7 +316,7 @@ async function recordPEQTodo( blit, blot ) {
 }
 
 function sleep(ms) {
-    if( ms > 1000 ) { console.log( "Sleeping for", ms / 1000, "seconds" ); }
+    if( ms >= 1000 ) { console.log( "Sleeping for", ms / 1000, "seconds" ); }
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 

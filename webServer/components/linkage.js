@@ -15,6 +15,35 @@ class Linkage {
 	this.links  = {};
     }
 
+
+    async initOneRepo( installClient, fn ) {
+	let peqs        = await utils.getPeqs( installClient, { "GHRepo": fn } );
+	let peqIssueIds = peqs == -1 ? [] : peqs.map((peq) => peq.GHIssueId );
+	
+	let fnParts = fn.split('/');
+	
+	// Basic:   issueId, cardId, issueNum, projId, repo
+	// [ [projId, cardId, issueNum, issueId], ... ]
+	let baseLinks = await gh.getBasicLinkDataFromGH( installClient, fnParts[0], fnParts[1] );
+	this.populateLinkage( installClient, fn, baseLinks );
+	
+	// peq add: cardTitle, colId, colName, projName
+	// XXX could reduce calls to get colName, projName, but this is going away shortly
+	for( const pid of peqIssueIds ) {
+	    let link = this.getUniqueLink( installClient, pid );
+	    if( link == -1 ) { console.log( "Did you remove an issue without removing the corresponding PEQ?" ); }
+	    assert( link != -1 ); // peq without issue means badness
+	    let card = await gh.getCard( installClient, link.GHCardId );
+	    
+	    link.GHCardTitle   = ( await gh.getFullIssue( installClient, fnParts[0], fnParts[1], link.GHIssueNum ) ).title;
+	    link.GHColumnId    = card.column_url.split('/').pop()
+	    link.GHProjectName = await gh.getProjectName( installClient, link.GHProjectId );
+	    link.GHColumnName  = await gh.getColumnName( installClient, link.GHColumnId );
+	}
+	return baseLinks; 
+    }
+
+    
     // XXX Fix cold start.  This should occur at startup, in order of most active repos.
     // populateCEServer migrates a project into CE.  lots of extra checks.
     // init here is to handle a server restart, only 'remembers' official CE projects.
@@ -23,34 +52,11 @@ class Linkage {
 	console.log( "Init linkages" );
 
 	let fullNames = await utils.getRepoStatus( installClient, -1 );   // get all repos
+	if( fullNames == -1 ) { return; }
 	for( const entry of fullNames ) {
 	    let fn = entry.GHRepo;
 	    console.log( ".. working on", fn );
-
-	    let peqs        = await utils.getPeqs( installClient, { "GHRepo": fn } );
-	    let peqIssueIds = peqs == -1 ? [] : peqs.map((peq) => peq.GHIssueId );
-
-	    let fnParts = fn.split('/');
-	    
-	    // Basic:   issueId, cardId, issueNum, projId, repo
-	    // [ [projId, cardId, issueNum, issueId], ... ]
-	    let baseLinks = await gh.getBasicLinkDataFromGH( installClient, fnParts[0], fnParts[1] );
-	    this.populateLinkage( installClient, fn, baseLinks );
-	    
-	    // peq add: cardTitle, colId, colName, projName
-	    // XXX could reduce calls to get colName, projName, but this is going away shortly
-	    for( const pid of peqIssueIds ) {
-		let link = this.getUniqueLink( installClient, pid );
-		if( link == -1 ) { console.log( "Did you remove an issue without removing the corresponding PEQ?" ); }
-		assert( link != -1 ); // peq without issue means badness
-		let card = await gh.getCard( installClient, link.GHCardId );
-		
-		link.GHCardTitle   = ( await gh.getFullIssue( installClient, fnParts[0], fnParts[1], link.GHIssueNum ) ).title;
-		link.GHColumnId    = card.column_url.split('/').pop()
-		link.GHProjectName = await gh.getProjectName( installClient, link.GHProjectId );
-		link.GHColumnName  = await gh.getColumnName( installClient, link.GHColumnId );
-	    }
-	    
+	    await this.initOneRepo( installClient, fn );
 	}
 	// console.log( this.links );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
@@ -80,10 +86,10 @@ class Linkage {
 	// issuedId, cardId doubly-stored for convenience
 	link.GHRepo        = repo;
 	link.GHIssueId     = issueId.toString();
-	link.GHIssueNum    = issueNum;
+	link.GHIssueNum    = issueNum.toString();
 	link.GHProjectId   = projId.toString();
 	link.GHProjectName = projName;
-	link.GHColumnId    = colId;
+	link.GHColumnId    = colId.toString();
 	link.GHColumnName  = colName;
 	link.GHCardId      = cardId.toString();
 	link.GHCardTitle   = issueTitle;   // XXX rename

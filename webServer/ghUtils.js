@@ -451,10 +451,9 @@ async function populateCELinkage( installClient, ghLinks, pd )
 {
     console.log( installClient[1], "Populate CE Linkage start" );
     assert( !utils.checkPopulated( installClient, pd.GHFullName ) != -1);
-    
-    let linkage = await getBasicLinkDataFromGH( installClient, pd.GHOwner, pd.GHRepo );
 
-    ghLinks.populateLinkage( installClient, pd.GHFullName, linkage );
+    // XXX this does more work than is needed - checks for peqs which only exist during testing.
+    let linkage = await ghLinks.initOneRepo( installClient, pd.GHFullName );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
