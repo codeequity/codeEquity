@@ -41,6 +41,7 @@ class Linkage {
 	    // XXX could reduce calls to get colName, projName, but this is going away shortly
 	    for( const pid of peqIssueIds ) {
 		let link = this.getUniqueLink( installClient, pid );
+		if( link == -1 ) { console.log( "Did you remove an issue without removing the corresponding PEQ?" ); }
 		assert( link != -1 ); // peq without issue means badness
 		let card = await gh.getCard( installClient, link.GHCardId );
 		
