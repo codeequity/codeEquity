@@ -5,10 +5,12 @@ var config  = require('../config');
 
 var links     = require('../components/linkage.js');
 
-const testSetup = require( './testSetup' );
-const testFlat = require( './testFlat' );
-const testPopulate = require( './testPopulate' );
-const testBasicFlow = require( './testBasicFlow' );
+const testSetup      = require( './testSetup' );
+const testFlat       = require( './testFlat' );
+const testPopulate   = require( './testPopulate' );
+const testBasicFlow  = require( './testBasicFlow' );
+const testComponents = require( './testComponents' );
+
 const testData = require( './testData' );
 
 
@@ -16,10 +18,7 @@ async function runTests() {
 
     // GH Linkage table
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
-    // let postData = {"Endpoint": "Testing", "Request": "getLinks" };
-    // let linkData = await utils.postCE( "Grog", JSON.stringify( postData ));
     let ghLinks = new links.Linkage();
-    // ghLinks.fromJson( linkData );
     
     let td = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
@@ -44,7 +43,10 @@ async function runTests() {
     // XXX should break this into setup/test
     // await testPopulate.runTests( installClient, ghLinks, td );
 
-    await testBasicFlow.runTests( installClient, ghLinks, td );
+    // await testBasicFlow.runTests( installClient, ghLinks, td );
+
+
+    await testComponents.runTests( installClient, ghLinks, td );
     
     
     // test add, peq, then add new card to peq issue.  unclaimed.  split issue with assignees?

@@ -296,6 +296,12 @@ async function addAssignee( installClient, td, issueNumber, assignee ) {
     await utils.sleep( MIN_DELAY );
 }
 
+async function remAssignee( installClient, td, issueNumber, assignee ) {
+    await installClient[0].issues.removeAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
+	.catch( e => { console.log( installClient[1], "Remove assignee failed.", e ); });
+    await utils.sleep( MIN_DELAY );
+}
+
 async function moveCard( installClient, cardId, columnId ) {
     await installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: columnId })
 	.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
@@ -362,6 +368,149 @@ function testReport( testStatus, component ) {
     }
 }
 
+
+async function checkNewlySituatedIssue( installClient, ghLinks, td, issueName, issueData, meltCard, testStatus ) {
+    let plan = config.PROJ_COLS[config.PROJ_PLAN];
+    
+    // CHECK github issues
+    let meltIssue = await findIssue( installClient, td, issueName );
+    testStatus = checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
+    testStatus = checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
+    testStatus = checkEq( meltIssue.labels.length, 1,                testStatus, "Issue label" );
+    testStatus = checkEq( meltIssue.labels[0].name, "1000 PEQ",      testStatus, "Issue label" );
+
+    // CHECK github location
+    let cards = await getCards( installClient, td.unclaimCID );   
+    let tCard = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    testStatus = checkEq( tCard.length, 0,                           testStatus, "No unclaimed" );
+
+    cards = await getCards( installClient, td.dsPlanID );   
+    let mCard = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    testStatus = checkEq( mCard.length, 1,                           testStatus, "Card claimed" );
+    testStatus = checkEq( mCard[0].id, meltCard.id,                  testStatus, "Card claimed" );
+
+    // CHECK dynamo linkage
+    let links    = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+    testStatus = checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
+    testStatus = checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
+    testStatus = checkEq( meltLink.GHColumnName, plan,                  testStatus, "Linkage Col name" );
+    testStatus = checkEq( meltLink.GHCardTitle, issueName,               testStatus, "Linkage Card Title" );
+    testStatus = checkEq( meltLink.GHProjectName, td.dataSecTitle,      testStatus, "Linkage Project Title" );
+    testStatus = checkEq( meltLink.GHColumnId, td.dsPlanID,             testStatus, "Linkage Col Id" );
+    testStatus = checkEq( meltLink.GHProjectId, td.dataSecPID,          testStatus, "Linkage project id" );
+
+    // CHECK dynamo Peq
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
+    testStatus = checkEq( meltPeqs.length, 2,                          testStatus, "Peq count" );
+    let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
+    let deadPeq = meltPeqs[0].Active == "true" ? meltPeqs[1] : meltPeqs[0];
+    for( const peq of meltPeqs ) {
+	testStatus = checkEq( peq.PeqType, "plan",                     testStatus, "peq type invalid" );
+	testStatus = checkEq( peq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
+	testStatus = checkEq( peq.GHIssueTitle, issueName,              testStatus, "peq title is wrong" );
+	testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
+	testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
+	testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );
+	testStatus = checkEq( peq.Amount, 1000,                        testStatus, "peq amount" );
+    }
+    testStatus = checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   testStatus, "peq project sub invalid" );
+    testStatus = checkEq( meltPeq.GHProjectSub[1], td.dataSecTitle,    testStatus, "peq project sub invalid" );
+    testStatus = checkEq( meltPeq.GHProjectId, td.dataSecPID,          testStatus, "peq unclaimed PID bad" );
+    testStatus = checkEq( meltPeq.Active, "true",                      testStatus, "peq" );
+
+    testStatus = checkEq( deadPeq.GHProjectSub[0], config.UNCLAIMED,   testStatus, "peq project sub invalid" );
+    testStatus = checkEq( deadPeq.GHProjectSub[1], config.UNCLAIMED,   testStatus, "peq project sub invalid" );
+    testStatus = checkEq( deadPeq.GHProjectId, td.unclaimPID,          testStatus, "peq unclaimed PID bad" );
+    testStatus = checkEq( deadPeq.Active, "false",                      testStatus, "peq" );
+
+
+    // CHECK dynamo Pact
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let mps = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
+    let dps = pacts.filter((pact) => pact.Subject[0] == deadPeq.PEQId );
+    let meltPacts = mps.concat( dps );
+    testStatus = checkEq( meltPacts.length, 3,                            testStatus, "PAct count" );
+    
+    meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
+    let addUncl  = meltPacts[0];
+    let remUncl  = meltPacts[1];
+    let meltPact = meltPacts[2];
+    for( const pact of meltPacts ) {
+	let hasraw = await hasRaw( installClient, pact.PEQActionId );
+	testStatus = checkEq( hasraw, true,                                testStatus, "PAct Raw match" ); 
+	testStatus = checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
+	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
+	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
+	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
+    }
+    testStatus = checkEq( addUncl.Action, "add",                         testStatus, "PAct Verb"); 
+    testStatus = checkEq( remUncl.Action, "delete",                      testStatus, "PAct Verb"); 
+    testStatus = checkEq( meltPact.Action, "add",                        testStatus, "PAct Verb"); 
+
+    return testStatus;
+}
+
+async function checkAssignees( installClient, td, issueName, ass1, ass2, issueData, testStatus ) {
+    let plan = config.PROJ_COLS[config.PROJ_PLAN];
+    
+    // CHECK github issues
+    let meltIssue = await findIssue( installClient, td, issueName );
+    testStatus = checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
+    testStatus = checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
+    testStatus = checkEq( meltIssue.assignees.length, 2,             testStatus, "Issue assignee count" );
+    testStatus = checkEq( meltIssue.assignees[0].login, ass1,        testStatus, "assignee1" );
+    testStatus = checkEq( meltIssue.assignees[1].login, ass2,        testStatus, "assignee2" );
+
+    // CHECK Dynamo PEQ
+    // Should be no change
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
+    testStatus = checkEq( meltPeqs.length, 2,                          testStatus, "Peq count" );
+    let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
+    testStatus = checkEq( meltPeq.PeqType, "plan",                     testStatus, "peq type invalid" );
+    testStatus = checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
+    testStatus = checkEq( meltPeq.GHIssueTitle, issueName,             testStatus, "peq title is wrong" );
+    testStatus = checkEq( meltPeq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
+    testStatus = checkEq( meltPeq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
+    testStatus = checkEq( meltPeq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );
+    testStatus = checkEq( meltPeq.Amount, 1000,                        testStatus, "peq amount" );
+    testStatus = checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   testStatus, "peq project sub invalid" );
+    testStatus = checkEq( meltPeq.GHProjectSub[1], td.dataSecTitle,    testStatus, "peq project sub invalid" );
+    testStatus = checkEq( meltPeq.GHProjectId, td.dataSecPID,          testStatus, "peq unclaimed PID bad" );
+    testStatus = checkEq( meltPeq.Active, "true",                      testStatus, "peq" );
+
+    
+    // CHECK Dynamo PAct
+    // Should show relevant change action
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
+    testStatus = checkEq( meltPacts.length, 3,                            testStatus, "PAct count" );
+    
+    meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
+    let addMP  = meltPacts[0];   // add the issue
+    let addA1  = meltPacts[1];   // add assignee 1
+    let addA2  = meltPacts[2];   // add assignee 2
+    for( const pact of [addMP, addA1, addA2] ) {
+	let hasraw = await hasRaw( installClient, pact.PEQActionId );
+	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
+	testStatus = checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
+	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
+	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
+	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
+    }
+    testStatus = checkEq( addMP.Action, "add",                         testStatus, "PAct Verb"); 
+    testStatus = checkEq( addA1.Action, "change",                      testStatus, "PAct Verb"); 
+    testStatus = checkEq( addA2.Action, "change",                      testStatus, "PAct Verb"); 
+    testStatus = checkEq( addA1.Subject[1], ass1,                      testStatus, "PAct Verb"); 
+    testStatus = checkEq( addA2.Subject[1], ass2,                      testStatus, "PAct Verb"); 
+    testStatus = checkEq( addA1.Note, "add assignee",                  testStatus, "PAct Verb"); 
+    testStatus = checkEq( addA2.Note, "add assignee",                  testStatus, "PAct Verb"); 
+    
+    return testStatus;
+}
+
 exports.refresh         = refresh;
 exports.refreshRec      = refreshRec;  
 exports.refreshFlat     = refreshFlat;
@@ -380,6 +529,7 @@ exports.makeIssue       = makeIssue;
 
 exports.addLabel        = addLabel;
 exports.addAssignee     = addAssignee;
+exports.remAssignee     = remAssignee;
 exports.moveCard        = moveCard;
 exports.closeIssue      = closeIssue;
 
@@ -399,3 +549,6 @@ exports.checkEq         = checkEq;
 exports.checkGE         = checkGE;
 exports.checkAr         = checkAr;
 exports.testReport      = testReport;
+
+exports.checkNewlySituatedIssue = checkNewlySituatedIssue;
+exports.checkAssignees          = checkAssignees;
