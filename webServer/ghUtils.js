@@ -1,6 +1,9 @@
+var assert = require('assert');
+
+const auth = require( "./auth");
 var config  = require('./config');
 var utils = require('./utils');
-var assert = require('assert');
+
 
 var githubSafe = {
     getAllocated: function( cardContent ) {
@@ -353,9 +356,91 @@ function populateRequest( labels ) {
     return retVal;
 }
 
+// GraphQL to init link table
+async function getBasicLinkDataGQL( installClient, owner, repo, cursor ) {
+    console.log( "Enter GQL" );
+    
+    const query1 = `
+    query baseConnection($owner: String!, $repo: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    issues(first: 2) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node {
+		    id databaseId url number title
+		    projectCards(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { id 
+                                       project { id name } 
+                                       column { id name } }}}
+		    labels(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { id name description }}}
+		}}}}}`;
+    
+    const queryN = `
+    query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    issues(first: 2 after: $cursor) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node {
+		    id databaseId url number title
+		    projectCards(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { id 
+                                       project { id name } 
+                                       column { id name } }}}
+		    labels(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { id name description }}}
+		}}}}}`;
+    
+    // XXX
+    let endpoint = "https://api.github.com/graphql";
+    let PAT   = await auth.getPAT( owner );
+
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let res = await utils.postGH( PAT, endpoint, query )
+	.catch( e => console.log( "GQL issue", e ));
+
+    const issues = res.data.repository.issues;
+    console.log( "issues has next page? cursor?", issues.pageInfo.hasNextPage, issues.pageInfo.endCursor );
+    console.log( "---------------" );
+
+    for( let i = 0; i < issues.edges.length; i++ ) {
+	const issue = issues.edges[i].node;
+	console.log( issue.title, ",", issue.databaseId, ",", issue.number );
+
+	const cards  = issue.projectCards;
+	const labels = issue.labels;
+	// XXX Over 100 cards or 100 labels for 1 issue?  Don't use CE.  Warn here.
+	assert( !cards.pageInfo.hasNextPage && !labels.hasNextPage );
+	
+	for( const card of cards.edges ) {
+	    console.log( card.node.project.name, ",", card.node.column.name );
+	}
+	for( const label of labels.edges ) {
+	    console.log( label.node.name, ",", label.node.description );
+	}
+
+	console.log( "---------------" );
+    }
+
+    if( issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( installClient, owner, repo, issues.pageInfo.endCursor ); }
+}
 
 // XXX getting open only is probably a mistake.  what if added back?
 async function getBasicLinkDataFromGH( installClient, owner, repo ) {
+
+    await getBasicLinkDataGQL( installClient, owner, repo, -1 );
+    console.log( "" );
+    console.log( "----------Goot!-------------" );
+    assert( false );
+    
     // Get project IDs
     let projIds = [];
     await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
