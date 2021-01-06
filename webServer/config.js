@@ -35,6 +35,8 @@ const MAIN_PROJ = 'Master';
 const EMPTY     = '---';
 const UNCLAIMED = 'UnClaimed';
 
+const GQL_ENDPOINT = "https://api.github.com/graphql";
+
 const CREDS_PATH  = "../ops/github/auth/ghAppCredentials";
 const CREDS_TPATH = "../ops/github/auth/ghAppTestCredentials";
 const PAT_PATH    = "../ops/github/auth/ghPersonalAccessToken"; 
@@ -70,6 +72,8 @@ exports.UNCLAIMED = UNCLAIMED;
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
 exports.COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;
 exports.CESERVER_CONFIG_LOC = CESERVER_CONFIG_LOC;
+
+exports.GQL_ENDPOINT = GQL_ENDPOINT;
 
 exports.CREDS_PATH  = CREDS_PATH;
 exports.CREDS_TPATH = CREDS_TPATH;

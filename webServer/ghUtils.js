@@ -91,10 +91,10 @@ var githubUtils = {
 	return createUnClaimedCard( installClient, owner, repo, issueId );
     },
 
-    getBasicLinkDataFromGH: function( installClient, owner, repo ) {
-	return getBasicLinkDataFromGH( installClient, owner, repo );
+    getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
+	return getBasicLinkDataGQL( PAT, owner, repo, data, cursor );
     },
-    
+
     populateCELinkage: function( installClient, ghLinks, pd ) {
 	return populateCELinkage( installClient, ghLinks, pd );
     },
@@ -357,22 +357,23 @@ function populateRequest( labels ) {
 }
 
 // GraphQL to init link table
-async function getBasicLinkDataGQL( installClient, owner, repo, cursor ) {
-    console.log( "Enter GQL" );
-    
+// XXX getting open only is probably a mistake.  what if added back?  does this get all?
+async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
+
+    // XXX move these
     const query1 = `
     query baseConnection($owner: String!, $repo: String!) 
     {
 	repository(owner: $owner, name: $repo) {
-	    issues(first: 2) {
+	    issues(first: 100) {
 		pageInfo { hasNextPage, endCursor },
 		edges { node {
 		    id databaseId url number title
 		    projectCards(first: 100) {
 			pageInfo { hasNextPage, endCursor },
-			edges { node { id 
-                                       project { id name } 
-                                       column { id name } }}}
+			edges { node { databaseId 
+                                       project { databaseId name } 
+                                       column { databaseId name } }}}
 		    labels(first: 100) {
 			pageInfo { hasNextPage, endCursor },
 			edges { node { id name description }}}
@@ -382,142 +383,59 @@ async function getBasicLinkDataGQL( installClient, owner, repo, cursor ) {
     query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
     {
 	repository(owner: $owner, name: $repo) {
-	    issues(first: 2 after: $cursor) {
+	    issues(first: 100 after: $cursor) {
 		pageInfo { hasNextPage, endCursor },
 		edges { node {
 		    id databaseId url number title
 		    projectCards(first: 100) {
 			pageInfo { hasNextPage, endCursor },
-			edges { node { id 
-                                       project { id name } 
-                                       column { id name } }}}
+			edges { node { databaseId 
+                                       project { databaseId name } 
+                                       column { databaseId name } }}}
 		    labels(first: 100) {
 			pageInfo { hasNextPage, endCursor },
 			edges { node { id name description }}}
 		}}}}}`;
     
-    // XXX
-    let endpoint = "https://api.github.com/graphql";
-    let PAT   = await auth.getPAT( owner );
-
     let query     = cursor == -1 ? query1 : queryN;
     let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
     query = JSON.stringify({ query, variables });
 
-    let res = await utils.postGH( PAT, endpoint, query )
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
 	.catch( e => console.log( "GQL issue", e ));
 
     const issues = res.data.repository.issues;
-    console.log( "issues has next page? cursor?", issues.pageInfo.hasNextPage, issues.pageInfo.endCursor );
-    console.log( "---------------" );
-
     for( let i = 0; i < issues.edges.length; i++ ) {
-	const issue = issues.edges[i].node;
-	console.log( issue.title, ",", issue.databaseId, ",", issue.number );
-
+	const issue  = issues.edges[i].node;
 	const cards  = issue.projectCards;
 	const labels = issue.labels;
+
 	// XXX Over 100 cards or 100 labels for 1 issue?  Don't use CE.  Warn here.
 	assert( !cards.pageInfo.hasNextPage && !labels.hasNextPage );
-	
+
 	for( const card of cards.edges ) {
-	    console.log( card.node.project.name, ",", card.node.column.name );
+	    console.log( card.node.project.name, ",", card.node.column.databaseId );
+	    let datum = {};
+	    datum.issueId     = issue.databaseId;
+	    datum.issueNum    = issue.number;
+	    datum.title       = issue.title;
+	    datum.cardId      = card.node.databaseId;
+	    datum.projectName = card.node.project.name;
+	    datum.projectId   = card.node.project.databaseId;
+	    datum.columnName  = card.node.column.name;
+	    datum.columnId    = card.node.column.databaseId;
+	    data.push( datum );
 	}
+	// XXX Unused
+	/*
 	for( const label of labels.edges ) {
 	    console.log( label.node.name, ",", label.node.description );
 	}
-
-	console.log( "---------------" );
+	*/
     }
 
-    if( issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( installClient, owner, repo, issues.pageInfo.endCursor ); }
+    if( issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
 }
-
-// XXX getting open only is probably a mistake.  what if added back?
-async function getBasicLinkDataFromGH( installClient, owner, repo ) {
-
-    await getBasicLinkDataGQL( installClient, owner, repo, -1 );
-    console.log( "" );
-    console.log( "----------Goot!-------------" );
-    assert( false );
-    
-    // Get project IDs
-    let projIds = [];
-    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
-	.then((projects) => {
-	    projIds = projects.map((project) => project.id );
-	});
-    // console.log( "Project ids", projIds );
-
-    // Get column Ids per project
-    let colIds = [];         // list [ [projId, [col ids]], ...]
-    let colPromises = [];
-    for( const projId of projIds ) {
-	colPromises.push(
-	    installClient[0].paginate( installClient[0].projects.listColumns, { project_id: projId } )
-		.then((columns) => {
-		    let tcol = columns.map((column)=> column.id );
-		    return [projId, tcol];
-		})
-	);
-    }
-    await Promise.all( colPromises )
-	.then((pairs) => {
-	    colIds = colIds.concat( pairs );
-	});
-    // console.log( "Column ids", colIds );
-
-    // Get card Ids per column Id
-    let cardIds = [];         // list [ [projId, colId, [cardIds], [issueNums]], ... ]
-    let cardPromises = [];
-    for( const projCols of colIds ) {  
-	for( const colId of projCols[1] ) {
-	    cardPromises.push(
-		installClient[0].paginate( installClient[0].projects.listCards, { column_id: colId, archived_state: "not_archived" } )
-		    .then((cards) => {
-			let tcards  = cards.map((card)=> card.id );
-			let issNums = cards.map((card) => {
-			    if( card['content_url'] == null ) { return ""; }
-			    let parts = card['content_url'].split('/');
-			    return parts[ parts.length - 1] ; 
-			});
-			
-			return [projCols[0], colId, tcards, issNums];
-		    })
-	    );
-	}
-    }
-    await Promise.all( cardPromises )
-	.then((quads) => {
-	    cardIds = cardIds.concat( quads );
-	});
-    // console.log( "Card ids", cardIds );
-    
-    // list of trips [projid, cardid, issuenum].. all "" are stripped.
-    // Clean this list up
-    let trips = [];
-    for( const column of cardIds ) {
-	assert( column.length == 4 );
-	assert( column[2].length == column[3].length );
-	for( let i = 0; i < column[2].length; i++ ) {
-	    if( column[2][i] != "" && column[3][i] != "" ) {
-		trips.push( [ column[0], column[2][i], column[3][i] ] ); 
-	    }
-	}
-    }
-    // console.log( "Trips", trips );
-
-    // Add issueId to each trip, to complete linkage pkey and enable typical usage pattern
-    let lPromises = [];
-    for( const trip of trips ) {
-	lPromises.push( getIssue( installClient, owner, repo, trip[2] )
-			.then((issue) => [ trip[0], trip[1], trip[2], issue[0] ] ));
-    }
-    let linkage = await Promise.all( lPromises );
-    console.log( "linkages", linkage );
-    return linkage; 
-}
-
 
 // Add linkage data for all carded issues in a project.
 // 
@@ -538,7 +456,8 @@ async function populateCELinkage( installClient, ghLinks, pd )
     assert( !utils.checkPopulated( installClient, pd.GHFullName ) != -1);
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    let linkage = await ghLinks.initOneRepo( installClient, pd.GHFullName );
+    let PAT     = await auth.getPAT( pd.GHOwner );
+    let linkage = await ghLinks.initOneRepo( installClient, pd.GHFullName, PAT );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
