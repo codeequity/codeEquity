@@ -114,6 +114,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	console.log( "PEQ Issue unlabeled" );
 	ghLinks.rebaseLinkage( installClient, pd.GHIssueId );   // setting various to -1, as it is now untracked
 	let peq = await utils.getPeq( installClient, pd.GHIssueId );	
+	utils.removePEQ( installClient, peq.PEQId );
 	utils.recordPEQAction(
 	    installClient,
 	    config.EMPTY,     // CE UID
@@ -191,7 +192,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     case 'assigned':
 	{
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
-	    console.log( "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
+	    console.log( installClient[1], "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 	    
 	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {

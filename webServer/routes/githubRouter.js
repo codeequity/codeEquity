@@ -64,7 +64,7 @@ router.post('/:location?', async function (req, res) {
     let sender  = req.body['sender']['login'];
     if( sender == config.CE_BOT) {
 	console.log( "Notification for", event, action, "Bot-sent, skipping." );
-	return;
+	return res.end();
     }
 
     let fullName = req.body['repository']['full_name'];
@@ -103,10 +103,10 @@ router.post('/:location?', async function (req, res) {
     console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
 
     // leave early for events not handled here
-    if( event == "project" ) { return; }
+    if( event == "project" ) { return res.end(); }
 
     notificationCount++;
-    if( notificationCount % 1 == 0 ) { ghLinks.show(); }
+    if( notificationCount % 20 == 0 ) { ghLinks.show(); }
 
     // Look for out of order GH notifications.  Note the timestamp is only to within 1 second...
     let tdiff = utils.getTimeDiff( lastEvent, newStamp );  
@@ -128,7 +128,7 @@ router.post('/:location?', async function (req, res) {
     assert( jobData != -1 );
     if( installClient[4] != jobData.QueueId ) {
 	console.log( installClient[1], "Sender busy with job#", jobData.QueueId );
-	return;
+	return res.end();
     }
     console.log( installClient[1], "job Q clean, start-er-up" );
     
@@ -152,7 +152,9 @@ router.post('/:location?', async function (req, res) {
 	});
     }
 
-    return retVal;
+    // avoid socket hangup error, response undefined
+    // return retVal;
+    return res.end();
 });
 
 

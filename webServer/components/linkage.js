@@ -1,5 +1,6 @@
 var assert = require('assert');
 
+const auth = require( "../auth");
 var utils = require('../utils');
 var config  = require('../config');
 
@@ -16,30 +17,32 @@ class Linkage {
     }
 
 
-    async initOneRepo( installClient, fn ) {
+    async initOneRepo( installClient, fn, PAT ) {
 	let peqs        = await utils.getPeqs( installClient, { "GHRepo": fn } );
 	let peqIssueIds = peqs == -1 ? [] : peqs.map((peq) => peq.GHIssueId );
 	
 	let fnParts = fn.split('/');
 	
-	// Basic:   issueId, cardId, issueNum, projId, repo
-	// [ [projId, cardId, issueNum, issueId], ... ]
-	let baseLinks = await gh.getBasicLinkDataFromGH( installClient, fnParts[0], fnParts[1] );
+	let baseLinks = [];
+	await gh.getBasicLinkDataGQL( PAT, fnParts[0], fnParts[1], baseLinks, -1 );
+
 	this.populateLinkage( installClient, fn, baseLinks );
-	
+
 	// peq add: cardTitle, colId, colName, projName
-	// XXX could reduce calls to get colName, projName, but this is going away shortly
+	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
 	for( const pid of peqIssueIds ) {
 	    let link = this.getUniqueLink( installClient, pid );
 	    if( link == -1 ) { console.log( "Did you remove an issue without removing the corresponding PEQ?" ); }
 	    assert( link != -1 ); // peq without issue means badness
-	    let card = await gh.getCard( installClient, link.GHCardId );
+
+	    let card = baseLinks.find( datum => datum.cardId == link.GHCardId );
 	    
-	    link.GHCardTitle   = ( await gh.getFullIssue( installClient, fnParts[0], fnParts[1], link.GHIssueNum ) ).title;
-	    link.GHColumnId    = card.column_url.split('/').pop()
-	    link.GHProjectName = await gh.getProjectName( installClient, link.GHProjectId );
-	    link.GHColumnName  = await gh.getColumnName( installClient, link.GHColumnId );
-	}
+	    link.GHCardTitle   = card.title;
+	    link.GHColumnId    = card.columnId.toString();
+	    link.GHProjectName = card.projectName;
+	    link.GHColumnName  = card.columnName;
+	    }
+	
 	return baseLinks; 
     }
 
@@ -51,12 +54,15 @@ class Linkage {
 	let tstart = Date.now();
 	console.log( "Init linkages" );
 
+	// XXX review  Need one per repo?
+	let PAT = await auth.getPAT( owner );
+	
 	let fullNames = await utils.getRepoStatus( installClient, -1 );   // get all repos
 	if( fullNames == -1 ) { return; }
 	for( const entry of fullNames ) {
 	    let fn = entry.GHRepo;
 	    console.log( ".. working on", fn );
-	    await this.initOneRepo( installClient, fn );
+	    await this.initOneRepo( installClient, fn, PAT );
 	}
 	// console.log( this.links );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
@@ -95,11 +101,10 @@ class Linkage {
 	link.GHCardTitle   = issueTitle;   // XXX rename
     }
 
-    // [ [projId, cardId, issueNum, issueId], ... ]
     populateLinkage( installClient, fn, baseLinkData ) {
 	console.log( installClient[1], "Populate linkage" );
 	for( const elt of baseLinkData ) {
-	    this.addLinkage( installClient, fn, elt[3], elt[2], elt[0], config.EMPTY, -1, config.EMPTY, elt[1], config.EMPTY );
+	    this.addLinkage( installClient, fn, elt.issueId, elt.issueNum, elt.projectId, config.EMPTY, -1, config.EMPTY, elt.cardId, config.EMPTY );
 	}
     }
     

@@ -156,7 +156,7 @@ async function wrappedPostIt( installClient, shortName, postData ) {
 }
 
 async function getPeq( installClient, issueId ) {
-    console.log( "Get PEQ from issueId:", issueId );
+    console.log( installClient[1], "Get PEQ from issueId:", issueId );
 
     let shortName = "GetEntry";
     let query     = { "GHIssueId": issueId.toString(), "Active": "true" };
