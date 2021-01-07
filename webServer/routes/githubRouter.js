@@ -184,6 +184,7 @@ async function getNextJob( installClient, pdOld, sender ) {
     }
     else {
 	console.log( installClient[1], "jobs done" );
+	ghLinks.show();	
     }
     return;
 }

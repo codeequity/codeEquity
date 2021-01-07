@@ -27,7 +27,7 @@ async function runTests() {
 
     // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
     let token = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    let source = "<TEST: Setup> ";
+    let source = "<TEST: Main> ";
     let apiPath = utils.getAPIPath() + "/find";
     let idToken = await awsAuth.getCogIDToken();
     let installClient = [token, source, apiPath, idToken];

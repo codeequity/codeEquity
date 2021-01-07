@@ -1,3 +1,9 @@
+/*
+https://octokit.github.io/rest.js
+https://developer.github.com/webhooks/event-payloads/#issues
+https://developer.github.com/v3/issues/#create-an-issue
+*/
+
 var assert = require('assert');
 
 const auth = require( "./auth");
@@ -605,7 +611,7 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
     await installClient[0].projects.deleteCard( { card_id: link.GHCardId } );
     
     // Remove turds, report.  
-    ghLinks.removeLinkage( installClient, pd.GHIssueId, link.GHCardId );
+    ghLinks.removeLinkage({ "installClient": installClient, "issueId": pd.GHIssueId, "cardId": link.GHCardId });
     
     // do not delete peq - set it inactive.
     let daPEQ = await utils.getPeq( installClient, pd.GHIssueId );

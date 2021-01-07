@@ -113,6 +113,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	await utils.processNewPEQ( installClient, ghLinks, pd, cardContent, -1 );
     }
     else if( action == "converted" ) {
+	// Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle here.
 	// Can only be non-PEQ.  Otherwise, would see created/content_url
 	console.log( "Non-PEQ card converted to issue.  No action." );
     }

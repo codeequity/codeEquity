@@ -55,6 +55,39 @@ class TestData {
 	this.unclaimCID       = config.EMPTY;
 	
     }
+
+    // These helper functions are nice for testing
+    getDSPlanLoc() { 
+	let loc = {};
+	loc.projId   = this.dataSecPID;
+	loc.projName = this.dataSecTitle;
+	loc.colId    = this.dsPlanID;
+	loc.colName  = config.PROJ_COLS[config.PROJ_PLAN];
+	loc.projSub  = [this.softContTitle, this.dataSecTitle];
+	loc.peqType  = "plan";  // XXX probably need to add alloc
+	return loc;
+    }
+    getDSPendLoc() {
+	let loc = {};
+	loc.projId   = this.dataSecPID;
+	loc.projName = this.dataSecTitle;
+	loc.colId    = this.dsPendID;
+	loc.colName  = config.PROJ_COLS[config.PROJ_PEND];
+	loc.projSub  = [this.softContTitle, this.dataSecTitle];
+	loc.peqType  = "pending"; // XXX probably need to add alloc
+	return loc;
+    }
+    getDSAccrLoc() {
+	let loc = {};
+	loc.projId   = this.dataSecPID;
+	loc.projName = this.dataSecTitle;
+	loc.colId    = this.dsAccrID;
+	loc.colName  = config.PROJ_COLS[config.PROJ_ACCR];
+	loc.projSub  = [this.softContTitle, this.dataSecTitle];
+	loc.peqType  = "grant";
+	return loc;
+    }
+    
     show() {
 	console.log( "TestData object contents.. Recommended==============" );
 	if( this.GHRepo     != config.EMPTY ) { console.log( "GHRepo", this.GHRepo ); }

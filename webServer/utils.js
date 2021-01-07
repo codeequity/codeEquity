@@ -133,6 +133,9 @@ async function postIt( installClient, shortName, postData ) {
 async function wrappedPostIt( installClient, shortName, postData ) {
     let response = await postIt( installClient, shortName, JSON.stringify( postData ))
     if( typeof response === 'undefined' ) return null;
+
+    let tableName = "";
+    if( shortName == "GetEntry" || shortName == "GetEntries" ) { tableName = postData.tableName; }
     
     if (response['status'] == 201) {
 	let body = await response.json();
@@ -140,7 +143,7 @@ async function wrappedPostIt( installClient, shortName, postData ) {
 	return body;
     }
     else if (response['status'] == 204) {
-	console.log(installClient[1], "Not found.", response['status'] );
+	console.log(installClient[1], "Not found.", tableName, response['status'] );
 	return -1;
     }
     else if (response['status'] == 422) {
@@ -414,7 +417,7 @@ function rebuildLinkage( installClient, ghLinks, link, issueData, newCardId, new
     let tstart = Date.now();
     
     // no need to wait for the deletion
-    ghLinks.removeLinkage( installClient, link.GHIssueId, link.GHCardId );
+    ghLinks.removeLinkage({ "installClient": installClient, "issueId": link.GHIssueId, "cardId": link.GHCardId });
 
     // is this an untracked carded issue?
     if( link.GHColumnId == -1 ) { newTitle = config.EMPTY; } 

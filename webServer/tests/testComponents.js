@@ -7,7 +7,8 @@ var gh = ghUtils.githubUtils;
 const testData = require( './testData' );
 const tu = require('./testUtils');
 
-const ISS_ASS = "Assignee";
+const ISS_ASS = "AssignTest";
+const ISS_LAB = "LabelTest";
 const ASSIGNEE1 = "rmusick2000";
 const ASSIGNEE2 = "codeequity";
 
@@ -117,6 +118,102 @@ async function checkProgAssignees( installClient, td, issueName, ass1, ass2, iss
     return testStatus;
 }
 
+async function testLabel( installClient, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Test Label" );
+    installClient[1] = "<TEST: Label>";
+
+    await tu.refreshRec( installClient, td );
+    await tu.refreshFlat( installClient, td );
+    await tu.refreshUnclaimed( installClient, td );
+
+    let dsPlan = td.getDSPlanLoc();
+    let dsPend = td.getDSPendLoc();
+    let dsAccr = td.getDSAccrLoc();
+    
+    console.log( "Test label/unlabel in full CE structure" );
+
+    // XXX update all tests: makeissue, issueData
+    // XXX oddd... timestamp is way off (8s) but notification order is correct...?
+    
+    // 1. create peq issue in dsplan
+    console.log( "Make newly situated issue in dsplan" );
+    let issueData = await tu.makeIssue( installClient, td, ISS_LAB, [] );     // [id, number, title]  (str,int,str)
+    let label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    await tu.addLabel( installClient, td, issueData[1], label.name );
+
+    let card  = await tu.makeProjectCard( installClient, td.dsPlanID, issueData[0] );
+    await utils.sleep( 4000 );
+    testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+    
+    // 2. unlabel
+    await tu.remLabel( installClient, td, issueData[1], label );
+    testStatus = await tu.checkCardedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+    
+    // 3. move to accr,  label (fail)
+    await tu.moveCard( installClient, card.id, td.dsAccrId );
+    await tu.addLabel( installClient, td, issueData[1], label.name ); 
+    testStatus = await tu.checkCardedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
+    
+    // 4. move to pend, label (succeed)
+    await tu.moveCard( installClient, card.id, td.dsPendId );
+    await tu.addLabel( installClient, td, issueData[1], label.name ); 
+    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsPend, issueData, card, testStatus );
+    
+    // 5. unlabel, label
+    await tu.remLabel( installClient, td, issueData[1], label );
+    await tu.addLabel( installClient, td, issueData[1], label.name ); 
+    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsPend, issueData, card, testStatus );
+    
+    // 6. move to accr, unlabel (fail)
+    await tu.moveCard( installClient, card.id, td.dsAccrId );
+    await tu.remLabel( installClient, td, issueData[1], label );
+    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
+
+
+    
+    console.log( "Test label/unlabel in flat projects structure" );
+    // create new flat proj, 2 cols
+    // create peq issue in 2nd col
+    // unlabel
+    // label
+    // move to pend
+    // unlabel
+
+    tu.testReport( testStatus, "Test Label" );
+}
+
+async function testDelete( installClient, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Test Delete" );
+    installClient[1] = "<TEST: Delete>";
+
+    await tu.refreshRec( installClient, td );
+    await tu.refreshFlat( installClient, td );
+    await tu.refreshUnclaimed( installClient, td );
+
+    // create newborn issue in dsPlan
+    // delete
+
+    // create peq issue in dsPlan
+    // delete
+
+    // create peq issue in dsAccr
+    // delete (fail)
+
+    // create peq issue in new proj col 1
+    // delete
+
+    // create peq issue in new proj col accr
+    // delete
+
+    tu.testReport( testStatus, "Test Delete" );
+}
+
 
 async function testAssignment( installClient, ghLinks, td ) {
 
@@ -124,6 +221,7 @@ async function testAssignment( installClient, ghLinks, td ) {
     let testStatus = [ 0, 0, []];
 
     console.log( "Test Assignment" );
+    installClient[1] = "<TEST: Assign>";
 
     await tu.refreshRec( installClient, td );
     await tu.refreshFlat( installClient, td );
@@ -166,7 +264,10 @@ async function testAssignment( installClient, ghLinks, td ) {
 
     // There is no further relevant logic.  
     
-    tu.testReport( testStatus, "Test Resolve" );
+    tu.testReport( testStatus, "Test Assign" );
+}
+
+async function cleanup( installClient, ghLinks, td ) {
 }
 
 
@@ -174,8 +275,11 @@ async function runTests( installClient, ghLinks, td ) {
 
     console.log( "One-off tests =================" );
 
-    await testAssignment( installClient, ghLinks, td );
+    // await testAssignment( installClient, ghLinks, td );
 
+    await testLabel( installClient, ghLinks, td );
+    await testDelete( installClient, ghLinks, td );
+    await cleanup( installClient, ghLinks, td );
 }
 
 
