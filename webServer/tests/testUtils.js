@@ -406,7 +406,7 @@ async function checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, 
     // CHECK dynamo Peq.  inactive, if it exists
     let peqs      = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = checkLE( issuePeqs.length, 2,                      testStatus, "Peq count" );
+    testStatus = checkEq( issuePeqs.length, 1,                      testStatus, "Peq count" );
     if( issuePeqs.length > 0 ) {
 	let peq = issuePeqs[0];
 	testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
@@ -443,7 +443,7 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
     // Unclaimed may not have happened if peq'd a carded issue
     let peqs      = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = checkLE( issuePeqs.length, 2,                      testStatus, "Peq count" );
+    testStatus = checkEq( issuePeqs.length, 1,                      testStatus, "Peq count" );
     for( const peq of issuePeqs ) {
 	testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
 	testStatus = checkEq( peq.GHIssueTitle, issueData[2],       testStatus, "peq title is wrong" );
@@ -505,8 +505,8 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     // CHECK dynamo Peq
     let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = checkLE( meltPeqs.length, 2,                          testStatus, "Peq count" );
-    let peq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
+    testStatus = checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
+    let peq = meltPeqs[0];
     
     testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );        
     testStatus = checkEq( peq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" ); // XXX
@@ -547,9 +547,8 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueDa
     // CHECK dynamo Peq
     let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = checkEq( meltPeqs.length, 2,                          testStatus, "Peq count" );
-    let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
-    let deadPeq = meltPeqs[0].Active == "true" ? meltPeqs[1] : meltPeqs[0];
+    testStatus = checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
+    let meltPeq = meltPeqs[0];
     for( const peq of meltPeqs ) {
 	testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );       
 	testStatus = checkEq( peq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
@@ -564,17 +563,9 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueDa
     testStatus = checkEq( meltPeq.GHProjectId, loc.projId,             testStatus, "peq unclaimed PID bad" );
     testStatus = checkEq( meltPeq.Active, "true",                      testStatus, "peq" );
 
-    testStatus = checkEq( deadPeq.GHProjectSub[0], config.UNCLAIMED,   testStatus, "peq project sub invalid" );
-    testStatus = checkEq( deadPeq.GHProjectSub[1], config.UNCLAIMED,   testStatus, "peq project sub invalid" );
-    testStatus = checkEq( deadPeq.GHProjectId, td.unclaimPID,          testStatus, "peq unclaimed PID bad" );
-    testStatus = checkEq( deadPeq.Active, "false",                     testStatus, "peq" );
-
-
     // CHECK dynamo Pact
     let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
-    let mps = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
-    let dps = pacts.filter((pact) => pact.Subject[0] == deadPeq.PEQId );
-    let meltPacts = mps.concat( dps );
+    let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     testStatus = checkEq( meltPacts.length, 3,                         testStatus, "PAct count" );          // XXX
     
     meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );

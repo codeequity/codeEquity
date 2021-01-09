@@ -77,6 +77,7 @@ class TestData {
 	loc.peqType  = "plan";  // XXX probably need to add alloc
 	return loc;
     }
+    // NOTE: peq type is not updated by ceServer, only ceFlutter.
     getDSPendLoc() {
 	let loc = {};
 	loc.projId   = this.dataSecPID;
@@ -84,9 +85,10 @@ class TestData {
 	loc.colId    = this.dsPendID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PEND];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = "pending"; // XXX probably need to add alloc
+	loc.peqType  = "plan"; // XXX probably need to add alloc
 	return loc;
     }
+    // NOTE: peq type is not updated by ceServer, only ceFlutter.
     getDSAccrLoc() {
 	let loc = {};
 	loc.projId   = this.dataSecPID;
@@ -94,7 +96,7 @@ class TestData {
 	loc.colId    = this.dsAccrID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_ACCR];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = "grant";
+	loc.peqType  = "plan";
 	return loc;
     }
     

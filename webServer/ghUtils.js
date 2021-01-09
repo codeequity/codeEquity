@@ -44,6 +44,10 @@ var githubSafe = {
 	return removeLabel( installClient, owner, repo, issueNum, label );
     },
 
+    addLabel: function( installClient, owner, repo, issueNum, label ) {
+	return addLabel( installClient, owner, repo, issueNum, label );
+    },
+
     rebuildLabel: function( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
 	return rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel );
     },
@@ -539,12 +543,14 @@ async function removeLabel( installClient, owner, repo, issueNum, label ) {
 	.catch( e => { console.log( installClient[1], "Remove label from issue failed.", e ); });
 }
 
+async function addLabel( installClient, owner, repo, issueNum, label ) {
+    await installClient[0].issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [label.name] })
+	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
+}
+
 async function rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
     await removeLabel( installClient, owner, repo, issueNum, oldLabel );
-
-    await installClient[0].issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [newLabel.name] })
-	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
-    
+    await addLabel( installClient, owner, repo, issueNum, newLabel );
 }
 
 

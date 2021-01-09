@@ -45,7 +45,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
 	// Should not get here from adding alloc card - that is a bot action.
-	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_ACCR
+	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_PEND
 	// ... but it if is situated already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only 
 
@@ -79,7 +79,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		link.GHProjectId = card.project_url.split('/').pop();
 		link.GHColumnId  = card.column_url.split('/').pop();
 	    }
-	    else {  // newborn card.
+	    else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
 		let card = await gh.getCard( installClient, link.GHCardId );
 		link.GHColumnId  = card.column_url.split('/').pop();
 	    }
@@ -93,8 +93,10 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	content.push( config.PDESC + pd.peqValue.toString() );
 	let retVal = await utils.processNewPEQ( installClient, ghLinks, pd, content, link );
 
-	// Attempted to label ACCR.  GH has already applied it, so remove
+	// Attempted to label >= PEND.  GH has already applied it, so remove
+	// XXX This should no longer be possible, since carded issue can no longer move in.
 	if( retVal == "removeLabel" ) {
+	    assert( false ); 
 	    console.log( "..removing GH label on ACCR card" );
 	    link.GHColumnId = -1;
 	    await ghSafe.removeLabel( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum, pd.reqBody.label );
@@ -110,15 +112,20 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		console.log( "Not a PEQ issue, no action taken." );
 		return;
 	    }
-	    let peq = await utils.getPeq( installClient, pd.GHIssueId );	
-	    if( peq.PeqType == "grant" ) {
+	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+	    let link = links[0]; // cards are 1:1 with issues, this is peq
+	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
+	    if( newNameIndex > config.PROJ_PROG ) { 
 		// XXX inform contribs of attempt to remove the peq label from an accrued issue
-		// XXX leaves discrepancy with GH in granted case
-		console.log( "Can't remove the peq label from an issue associated with an accrued PEQ" );
+		console.log( "WARNING.  Can't remove the peq label from a pending or accrued PEQ" );
+		// GH already removed this.  Put it back.
+		pd.GHIssueNum = pd.reqBody['issue']['number'];		
+		ghSafe.addLabel( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
 		return;
 	    }
 	    
 	    // XXX Inform contributors that status is now UNTRACKED
+	    let peq = await utils.getPeq( installClient, pd.GHIssueId );	
 	    console.log( "PEQ Issue unlabeled" );
 	    ghLinks.rebaseLinkage( installClient, pd.GHIssueId );   // setting various to -1, as it is now untracked
 	    utils.removePEQ( installClient, peq.PEQId );

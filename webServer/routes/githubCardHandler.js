@@ -48,7 +48,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 	action = "accrue";
     }
     else if( oldCol <= config.PROJ_PEND && newCol == config.PROJ_ACCR ) {
-	// approved!   PEQ will be updated to "type:accrue" when processed.
+	// approved!   PEQ will be updated to "type:accrue" when processed in ceFlutter.
 	verb = "confirm";
 	action = "accrue";
     }
@@ -140,15 +140,14 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "cardId": cardId } );
 	if( links == -1 || links[0].GHColumnId == -1 ) {
 	    console.log( "Moved card is untracked (carded or newborn).  Move not processed.", cardId );
-	    // Trying to move into reserved column?  Move back.
-	    if( newNameIndex > config.PROJ_PROG ) { 
-		gh.moveCard( installClient, cardId, oldColId );
-		return;
+	    // Trying to move untracked card into reserved column?  Move back.
+	    if( newNameIndex > config.PROJ_PROG ) {
+		await gh.moveCard( installClient, cardId, oldColId );
 	    }
 	    return;
 	}
 	let link = links[0]; // cards are 1:1 with issues
-
+	
 	// allocations have issues
 	let issueId = link['GHIssueId'];
 	assert( issueId != -1 );
@@ -182,7 +181,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    success = success && await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
 	}
 
-	// recordPeq
+	// recordPAct
 	recordMove( installClient, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, link );
     }
     else if( action == "deleted" || action == "edited" ) {

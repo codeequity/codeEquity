@@ -411,11 +411,11 @@ async function delPeq( issueId, subComp ) {
 
 async function putPeq( newPEQ ) {
 
-    let newId = randAlpha(10);
+    if( newPEQ.PEQId == -1 ) { newPEQ.PEQId = randAlpha(10); }
     const params = {
         TableName: 'CEPEQs',
 	Item: {
-	    "PEQId":        newId,
+	    "PEQId":        newPEQ.PEQId,
 	    "CEHolderId":   newPEQ.CEHolderId,
 	    "GHHolderId":   newPEQ.GHHolderId,
 	    "CEGrantorId":  newPEQ.CEGrantorId,
@@ -433,7 +433,7 @@ async function putPeq( newPEQ ) {
     };
 
     let recPromise = bsdb.put( params ).promise();
-    return recPromise.then(() =>success( newId ));
+    return recPromise.then(() => success( newPEQ.PEQId ));
 }
 
 

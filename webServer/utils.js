@@ -158,11 +158,14 @@ async function wrappedPostIt( installClient, shortName, postData ) {
     }
 }
 
-async function getPeq( installClient, issueId ) {
+
+async function getPeq( installClient, issueId, checkActive ) {
     console.log( installClient[1], "Get PEQ from issueId:", issueId );
+    let active = true;
+    if( checkActive !== undefined ) { active = checkActive; }
 
     let shortName = "GetEntry";
-    let query     = { "GHIssueId": issueId.toString(), "Active": "true" };
+    let query     = active ? { "GHIssueId": issueId.toString(), "Active": "true" } : { "GHIssueId": issueId.toString() }; 
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
 
     return await wrappedPostIt( installClient, shortName, postData );
@@ -279,17 +282,13 @@ async function recordPEQAction( installClient, ceUID, ghUserName, ghRepo, verb, 
     return await wrappedPostIt( installClient, shortName, pd );
 }
 
-async function recordPEQ( installClient, amount, peqType, assignees, repo, projSub, projId, issueId, title ) {
-    console.log( installClient[1], "Recording PEQ", peqType, amount, "PEQs for", title );
+async function recordPEQ( installClient, postData ) {
+    console.log( installClient[1], "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.GHIssueTitle );
 
-    // Erm.. model is defined in .dart.  Could jump through hoops to access it via public_flutter, buuuuut this is simpler?
-    
     let shortName = "RecordPEQ";
-    let titleStrip = title.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
+    postData.GHIssueTitle = postData.GHIssueTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
 
-    let postData = {}
-
-    if( peqType == "allocation" || peqType == "plan" ) {
+    if( postData.PeqType == "allocation" || postData.PeqType == "plan" ) {
 	postData.CEGrantorId = config.EMPTY;
 	postData.AccrualDate = config.EMPTY;
 	postData.VestedPerc  = 0.0;
@@ -300,17 +299,9 @@ async function recordPEQ( installClient, amount, peqType, assignees, repo, projS
     }
 
     postData.CEHolderId   = [];            // no access to this, yet
-    postData.GHHolderId   = assignees;     
-    postData.PeqType      = peqType;
-    postData.Amount       = amount;
-    postData.GHRepo       = repo;
-    postData.GHProjectSub = projSub;
-    postData.GHProjectId  = projId;
-    postData.GHIssueId    = issueId;
-    postData.GHIssueTitle = titleStrip;
-    postData.Active       = "true";
 
     let pd = { "Endpoint": shortName, "newPEQ": postData };
+    
     return await wrappedPostIt( installClient, shortName, pd );
 }
 
@@ -367,34 +358,29 @@ function getTimeDiff( lastEvent, newStamp ) {
 
 // XXX dup check could occur in lambda handler, save a round trip
 async function recordPeqData( installClient, pd, checkDup ) {
+    console.log( "Recording peq data for", pd.GHIssueTitle );	
     let newPEQ   = -1;
     let newPEQId = -1;
     if( checkDup ) { 
 	// Only 1 peq per issueId. Might be moving a card here
-	let newPEQ = await getPeq( installClient, pd.GHIssueId );
+	let newPEQ = await getPeq( installClient, pd.GHIssueId, false );
+	if( newPEQ != -1 ) { newPEQId = newPEQ.PEQId; }
     }
 
-    if( newPEQ != -1 ) {
-	console.log( "Peq", newPEQId, "already exists - using it instead of creating a new one" );
-	console.log( "XXX XXXX XXXXX what circumstance?  If this still occurs, fix psub below." );
-	// no need to wait
-	newPEQId = newPEQ.PEQId;
-	updatePEQPSub( installClient, newPEQId, pd.projSub );
-    }
-    else {
-	newPEQId = await( recordPEQ(
-	    installClient,
-	    pd.peqValue,                    // amount
-	    pd.peqType,                     // type of peq
-	    pd.GHAssignees,                 // list of ghUserLogins assigned
-	    pd.GHFullName,                  // gh repo
-	    pd.projSub,                     // gh project subs
-	    pd.GHProjectId,                 // gh project id
-	    pd.GHIssueId.toString(),        // gh issue id
-	    pd.GHIssueTitle                 // gh issue title
-	));
-	assert( newPEQId != -1 );
-    }
+    let postData = {};
+    postData.PEQId        = newPEQId;
+    postData.GHHolderId   = pd.GHAssignees;           // list of ghUserLogins assigned
+    postData.PeqType      = pd.peqType;               // type of peq
+    postData.Amount       = pd.peqValue;              // amount
+    postData.GHRepo       = pd.GHFullName;            // gh repo
+    postData.GHProjectSub = pd.projSub;               // gh project subs
+    postData.GHProjectId  = pd.GHProjectId;           // gh project id
+    postData.GHIssueId    = pd.GHIssueId.toString();  // gh issue id
+    postData.GHIssueTitle = pd.GHIssueTitle;          // gh issue title
+    postData.Active       = "true";
+
+    newPEQId = await recordPEQ(	installClient, postData );
+    assert( newPEQId != -1 );
     
     // no need to wait
     let subject = [ newPEQId ];
@@ -561,7 +547,7 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 
     assert( await checkPopulated( installClient, pd.GHFullName ) != -1 );
     
-    if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; } // pending set below
+    if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; } 
     console.log( installClient[1], "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
@@ -569,7 +555,7 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
     pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
     let colName    = "";
     let projName   = "";
-    
+
     if( pd.peqType == "end" ) {
 	assert( link == -1 );  
 	if( pd.GHIssueId != -1 ) {
@@ -583,16 +569,13 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 	colName  = await gh.getColumnName( installClient, colId );
 	projName = await gh.getProjectName( installClient, pd.GHProjectId );
 
-	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
+	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] || colName == config.PROJ_COLS[ config.PROJ_PEND ] ) {
 	    console.log( installClient[1], "WARNING.  Action not processed in CE.", colName, "is reserved, do not label or create cards here." );
 	    return "removeLabel";
 	}
-	else if( colName == config.PROJ_COLS[ config.PROJ_PEND ] && pd.peqType == "plan" ) { pd.peqType == "pending"; }
 	
 	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 	
-	// XXX currently linkage await unnecessary?  getProjSubs calls getLinkage.  could pass info eh?
-	// Note: some linkages exist and will be overwritten with dup info.  this is rare, and it is faster to do so than to check.
 	// issue->card:  issueId is available, but linkage has not yet been added
 	if( pd.GHIssueNum > -1 ) {
 	    ghLinks.addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, origCardId, issueCardContent[0] );
@@ -628,7 +611,6 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
     //                issue is to create card.  Furthermore populate does not call this function.
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( !gotSplit && pd.peqType != "end" ) {
-	console.log( "Building peq for", pd.GHIssueTitle );	
 	pd.projSub = await getProjectSubs( installClient, ghLinks, pd.GHFullName, projName, colName );
 	// Need to wait here - occasionally rapid fire testing creates a card before peq is finished recording
 	await recordPeqData( installClient, pd, true );

@@ -165,20 +165,25 @@ async function testLabel( installClient, ghLinks, td ) {
     testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
     tu.testReport( testStatus, "BB" );
 
-    // 5. move to prog, label
+    // 5. move to prog (untracked), label
     await tu.moveCard( installClient, card.id, td.dsProgID );
-    await tu.addLabel( installClient, td, issueData[1], label.name ); 
+    await tu.addLabel( installClient, td, issueData[1], label.name );
+    await utils.sleep( 2000 );
     testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
     tu.testReport( testStatus, "C" );
     
     // 6. unlabel, label
     await tu.remLabel( installClient, td, issueData[1], label );
     await tu.addLabel( installClient, td, issueData[1], label.name ); 
+    await utils.sleep( 2000 );
     testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
+    tu.testReport( testStatus, "D" );
     
     // 7. move to accr, unlabel (fail)
+    await tu.addAssignee( installClient, td, issueData[1], ASSIGNEE1 );   // can't ACCR without this.    
     await tu.moveCard( installClient, card.id, td.dsAccrID );
-    await tu.remLabel( installClient, td, issueData[1], label );
+    await tu.remLabel( installClient, td, issueData[1], label );          // will be added back
+    await utils.sleep( 2000 );
     testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
 
 
