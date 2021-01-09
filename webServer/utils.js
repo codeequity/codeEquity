@@ -143,7 +143,7 @@ async function wrappedPostIt( installClient, shortName, postData ) {
 	return body;
     }
     else if (response['status'] == 204) {
-	console.log(installClient[1], "Not found.", tableName, response['status'] );
+	console.log(installClient[1], tableName, "Not found.", response['status'] );
 	return -1;
     }
     else if (response['status'] == 422) {
@@ -561,8 +561,7 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 
     assert( await checkPopulated( installClient, pd.GHFullName ) != -1 );
     
-    // XXX allow PROJ_PEND
-    if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; }
+    if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; } // pending set below
     console.log( installClient[1], "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
@@ -584,9 +583,13 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 	colName  = await gh.getColumnName( installClient, colId );
 	projName = await gh.getProjectName( installClient, pd.GHProjectId );
 
+	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
+	    console.log( installClient[1], "WARNING.  Action not processed in CE.", colName, "is reserved, do not label or create cards here." );
+	    return "removeLabel";
+	}
+	else if( colName == config.PROJ_COLS[ config.PROJ_PEND ] && pd.peqType == "plan" ) { pd.peqType == "pending"; }
+	
 	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
-	assert( colName != config.PROJ_COLS[ config.PROJ_PEND ] );
-	assert( colName != config.PROJ_COLS[ config.PROJ_ACCR ] );
 	
 	// XXX currently linkage await unnecessary?  getProjSubs calls getLinkage.  could pass info eh?
 	// Note: some linkages exist and will be overwritten with dup info.  this is rare, and it is faster to do so than to check.

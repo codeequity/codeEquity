@@ -6,7 +6,7 @@ var ghUtils = require('../ghUtils');
 var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
-const MIN_DELAY = 1000;   // Make up for rest variance, and GH slowness.  Expect 500-1000
+const MIN_DELAY = 1500;   // Make up for rest variance, and GH slowness.  Expect 500-1000
 
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
@@ -381,71 +381,99 @@ function testReport( testStatus, component ) {
 }
 
 
-async function checkCardedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
-    
+// Should work for carded issues that have never been peq.  Does NOT work for newborn.
+async function checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+
+    console.log( "Check Untracked issue", issueData );
+
     // CHECK github issues
     let issue  = await findIssue( installClient, td, issueData[2] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, 0,                testStatus, "Issue label" );
 
-    // CHECK github location
-    let cards  = await getCards( installClient, td.unclaimCID );   
-    let tCard  = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
-    testStatus = checkEq( tCard.length, 0,                       testStatus, "No unclaimed" );
-
-    cards      = await getCards( installClient, loc.colId );   
-    let mCard  = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
-    testStatus = checkEq( mCard.length, 1,                       testStatus, "Card claimed" );
-    testStatus = checkEq( mCard[0].id, card.id,                  testStatus, "Card claimed" );
-
     // CHECK dynamo linkage
     let links  = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
-    testStatus = checkEq( link.GHColumnName, loc.colName,           testStatus, "Linkage Col name" );
-    testStatus = checkEq( link.GHCardTitle, issueData[2],           testStatus, "Linkage Card Title" );
-    testStatus = checkEq( link.GHProjectName, loc.projName,         testStatus, "Linkage Project Title" );
-    testStatus = checkEq( link.GHColumnId, loc.colId,               testStatus, "Linkage Col Id" );
-    testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );
+    testStatus = checkEq( link.GHColumnName, "---",                 testStatus, "Linkage Col name" );
+    testStatus = checkEq( link.GHCardTitle, "---",                  testStatus, "Linkage Card Title" );
+    testStatus = checkEq( link.GHProjectName, "---",                testStatus, "Linkage Project Title" );
+    testStatus = checkEq( link.GHColumnId, -1,                      testStatus, "Linkage Col Id" );
+    testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );     // XXX tracking this??
 
     // CHECK dynamo Peq.  inactive, if it exists
     let peqs      = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = checkLE( issuePeqs.length, 1,                      testStatus, "Peq count" );
-    if( issuePeqs.length == 1 ) {
-	let peq = issuePeqs[1];
+    testStatus = checkLE( issuePeqs.length, 2,                      testStatus, "Peq count" );
+    if( issuePeqs.length > 0 ) {
+	let peq = issuePeqs[0];
 	testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
 	testStatus = checkEq( peq.GHIssueTitle, issueData[2],       testStatus, "peq title is wrong" );
 	testStatus = checkEq( peq.CEGrantorId, config.EMPTY,        testStatus, "peq grantor wrong" );
-	// The rest can vary
     }
 
+    // CHECK dynamo Pact.. nothing to do here for newborn
+
+    return testStatus;
+}
+
+// Used for previously situated issues that were unlabeled
+async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+
+    console.log( "Check demotedissue", loc.projName, loc.colName );
+
+    // For issues, linkage
+    testStatus = await checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus );
+	
+     // CHECK github location
+    let cards  = await getCards( installClient, td.unclaimCID );   
+    let tCard  = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    testStatus = checkEq( tCard.length, 0,                       testStatus, "No unclaimed" );
+    
+    cards      = await getCards( installClient, loc.colId );   
+    let mCard  = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    testStatus = checkEq( mCard.length, 1,                       testStatus, "Card claimed" );
+    testStatus = checkEq( mCard[0].id, card.id,                  testStatus, "Card claimed" );
+    
+
+    // CHECK dynamo Peq.  inactive
+    // Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
+    // Unclaimed may not have happened if peq'd a carded issue
+    let peqs      = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
+    testStatus = checkLE( issuePeqs.length, 2,                      testStatus, "Peq count" );
+    for( const peq of issuePeqs ) {
+	testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
+	testStatus = checkEq( peq.GHIssueTitle, issueData[2],       testStatus, "peq title is wrong" );
+	testStatus = checkEq( peq.CEGrantorId, config.EMPTY,        testStatus, "peq grantor wrong" );
+    }
+    let peqId = issuePeqs[0].GHProjectSub[0] == "UnClaimed" ? issuePeqs[1].PEQId : issuePeqs[0].PEQId;
+    
+    
     // CHECK dynamo Pact
     let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
-    let peqId = issuePeqs.length == 1 ? issuePeqs[0].PEQId : -1; 
     let issuePacts = pacts.filter((pact) => pact.Subject[0] == peqId );
 
     // Must have been a PEQ before. Depeq'd with unlabel, or delete.
-    if( issuePacts.length > 0 ) {
-	issuePacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-	let lastPact = issuePacts[ issuePacts.length - 1 ];
-
-	let hasraw = await hasRaw( installClient, lastPact.PEQActionId );
-	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
-	testStatus = checkEq( lastPact.Verb, "confirm",                testStatus, "PAct Verb"); 
-	testStatus = checkEq( lastPact.Action, "delete",               testStatus, "PAct Verb"); 
-	testStatus = checkEq( lastPact.GHUserName, config.TESTER_BOT,  testStatus, "PAct user name" ); 
-	testStatus = checkEq( lastPact.Ingested, "false",              testStatus, "PAct ingested" );
-	testStatus = checkEq( lastPact.Locked, "false",                testStatus, "PAct locked" );
-    }
+    issuePacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
+    let lastPact = issuePacts[ issuePacts.length - 1 ];
+    
+    let hasraw = await hasRaw( installClient, lastPact.PEQActionId );
+    testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
+    testStatus = checkEq( lastPact.Verb, "confirm",                testStatus, "PAct Verb"); 
+    testStatus = checkEq( lastPact.Action, "delete",               testStatus, "PAct Verb"); 
+    testStatus = checkEq( lastPact.GHUserName, config.TESTER_BOT,  testStatus, "PAct user name" ); 
+    testStatus = checkEq( lastPact.Ingested, "false",              testStatus, "PAct ingested" );
+    testStatus = checkEq( lastPact.Locked, "false",                testStatus, "PAct locked" );
 
     return testStatus;
 }
 
 async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
     
+    console.log( "Check situated issue", loc.projName, loc.colName );
     // CHECK github issues
     let meltIssue = await findIssue( installClient, td, issueData[2] );
     testStatus = checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
@@ -509,7 +537,10 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     return testStatus;
 }
 
+// XXX will need to modify to handle freshly labeling a carded issue, which will not have unclaimed
 async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+
+    console.log( "Check newly situated issue", loc.projName, loc.colName );
 
     testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus );
 
@@ -667,5 +698,6 @@ exports.testReport      = testReport;
 
 exports.checkNewlySituatedIssue = checkNewlySituatedIssue;
 exports.checkSituatedIssue      = checkSituatedIssue;
-exports.checkCardedIssue        = checkCardedIssue;
+exports.checkDemotedIssue       = checkDemotedIssue;
+exports.checkUntrackedIssue     = checkUntrackedIssue;
 exports.checkAssignees          = checkAssignees;

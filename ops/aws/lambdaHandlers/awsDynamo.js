@@ -440,6 +440,7 @@ async function putPeq( newPEQ ) {
 async function putPAct( newPAction ) {
 
     let newId = randAlpha(10);
+    console.log( newId, newPAction.Verb, newPAction.Action, newPAction.subject );
     const params = {
         TableName: 'CEPEQActions',
 	Item: {

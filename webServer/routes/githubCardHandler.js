@@ -124,25 +124,35 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	console.log( installClient[1], "Card", action, "Sender:", sender )
 
 	if( pd.reqBody['changes'] == null ) {
-	    console.log( installClient[1], "Move within columns are ignored." );
+	    console.log( installClient[1], "Move within columns are ignored.", pd.reqBody['project_card']['id'] );
 	    return;
 	}
 
 	let cardId    = pd.reqBody['project_card']['id'];
-	//let oldColId  = pd.reqBody['changes']['column_id']['from'];
+	let oldColId  = pd.reqBody['changes']['column_id']['from'];
 	let newColId  = pd.reqBody['project_card']['column_id'];
 	let newProjId = pd.reqBody['project_card']['project_url'].split('/').pop();
+
+	let newColName = await gh.getColumnName( installClient, newColId );
+	let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	
-	// First, verify current status
-	// XXX This chunk could be optimized out, down the road
+	// Ignore newborn cards.
 	let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "cardId": cardId } );
-	if( links == -1 ) {
-	    console.log( "Moved card not processed, could not find the card id", cardId );
+	if( links == -1 || links[0].GHColumnId == -1 ) {
+	    console.log( "Moved card is untracked (carded or newborn).  Move not processed.", cardId );
+	    // Trying to move into reserved column?  Move back.
+	    if( newNameIndex > config.PROJ_PROG ) { 
+		gh.moveCard( installClient, cardId, oldColId );
+		return;
+	    }
 	    return;
 	}
 	let link = links[0]; // cards are 1:1 with issues
-	
+
+	// allocations have issues
 	let issueId = link['GHIssueId'];
+	assert( issueId != -1 );
+	
 	let oldNameIndex = config.PROJ_COLS.indexOf( link['GHColumnName'] );
 	assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.
 	assert( cardId       == link['GHCardId'] );
@@ -150,31 +160,25 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// In speed mode, GH doesn't keep up - the changes_from column is a step behind.
 	// assert( oldColId     == link['GHColumnId'] );
 
-	// XXX This was pre-flat projects.  chunk below is probably bad
-	// assert( issueId == -1 || oldNameIndex != -1 );                // likely allocation, or known project layout
 	assert( newProjId     == link['GHProjectId'] );               // not yet supporting moves between projects
 
-	// reflect card move in dynamo, if move is legal
-	let newColName = await gh.getColumnName( installClient, newColId );
-	let newNameIndex = config.PROJ_COLS.indexOf( newColName );
-	assert( issueId == -1 || newNameIndex != -1 );
 	if( newNameIndex > config.PROJ_PROG ) { 
 	    let assignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'] );
 	    if( assignees.length == 0  ) {
-		console.log( "Update card failed - no assignees" );   // can't propose grant without a grantee
-		console.log( "XXX move card back by hand with ceServer off" );
+		console.log( "WARNING.  Update card failed - no assignees" );   // can't propose grant without a grantee
+		gh.moveCard( installClient, cardId, oldColId );
 		return;
 	    }
 	}
 	let success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
 	ghLinks.show();
 	
-	// handle issue
+	// handle issue.  Don't update issue state if not clear reopen/closed
 	let newIssueState = "";
 	if(      oldNameIndex <= config.PROJ_PROG && newNameIndex >= config.PROJ_PEND ) {  newIssueState = "closed"; }
 	else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
 	
-	if( issueId > -1 && newIssueState != "" ) {
+	if( newIssueState != "" ) {
 	    success = success && await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
 	}
 

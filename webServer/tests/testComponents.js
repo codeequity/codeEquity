@@ -130,6 +130,7 @@ async function testLabel( installClient, ghLinks, td ) {
     await tu.refreshUnclaimed( installClient, td );
 
     let dsPlan = td.getDSPlanLoc();
+    let dsProg = td.getDSProgLoc();
     let dsPend = td.getDSPendLoc();
     let dsAccr = td.getDSAccrLoc();
     
@@ -145,34 +146,44 @@ async function testLabel( installClient, ghLinks, td ) {
     await tu.addLabel( installClient, td, issueData[1], label.name );
 
     let card  = await tu.makeProjectCard( installClient, td.dsPlanID, issueData[0] );
-    await utils.sleep( 4000 );
+    await utils.sleep( 6000 );
     testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+    tu.testReport( testStatus, "Z" );
     
     // 2. unlabel
     await tu.remLabel( installClient, td, issueData[1], label );
-    testStatus = await tu.checkCardedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+    testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+    tu.testReport( testStatus, "A" );
     
-    // 3. move to accr,  label (fail)
-    await tu.moveCard( installClient, card.id, td.dsAccrId );
+    // 3. move to accr (untracked), watch it bounce back
+    await tu.moveCard( installClient, card.id, td.dsAccrID );        
+    testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+    tu.testReport( testStatus, "B" );
+    
+    // 4. move to pend, bounce
+    await tu.moveCard( installClient, card.id, td.dsPendID );
+    testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+    tu.testReport( testStatus, "BB" );
+
+    // 5. move to prog, label
+    await tu.moveCard( installClient, card.id, td.dsProgID );
     await tu.addLabel( installClient, td, issueData[1], label.name ); 
-    testStatus = await tu.checkCardedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
+    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
+    tu.testReport( testStatus, "C" );
     
-    // 4. move to pend, label (succeed)
-    await tu.moveCard( installClient, card.id, td.dsPendId );
-    await tu.addLabel( installClient, td, issueData[1], label.name ); 
-    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsPend, issueData, card, testStatus );
-    
-    // 5. unlabel, label
+    // 6. unlabel, label
     await tu.remLabel( installClient, td, issueData[1], label );
     await tu.addLabel( installClient, td, issueData[1], label.name ); 
-    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsPend, issueData, card, testStatus );
+    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
     
-    // 6. move to accr, unlabel (fail)
-    await tu.moveCard( installClient, card.id, td.dsAccrId );
+    // 7. move to accr, unlabel (fail)
+    await tu.moveCard( installClient, card.id, td.dsAccrID );
     await tu.remLabel( installClient, td, issueData[1], label );
     testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
 
 
+    // add two peq labels
+    // add same label 2x
     
     console.log( "Test label/unlabel in flat projects structure" );
     // create new flat proj, 2 cols

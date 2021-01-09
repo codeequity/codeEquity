@@ -91,7 +91,14 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	let content = [];
 	content.push( pd.GHIssueTitle );
 	content.push( config.PDESC + pd.peqValue.toString() );
-	await utils.processNewPEQ( installClient, ghLinks, pd, content, link );
+	let retVal = await utils.processNewPEQ( installClient, ghLinks, pd, content, link );
+
+	// Attempted to label ACCR.  GH has already applied it, so remove
+	if( retVal == "removeLabel" ) {
+	    console.log( "..removing GH label on ACCR card" );
+	    link.GHColumnId = -1;
+	    await ghSafe.removeLabel( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum, pd.reqBody.label );
+	}
 	break;
     case 'unlabeled':
 	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  
@@ -215,8 +222,10 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	//     Optionally, revisit and try to handle xfer automatically if between PEQ projects.
 	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
 	break;
-    case 'assigned':
+    case 'assigned': 
 	{
+	    // XXX assign a closed peq issue?  Move to pending.  THis is an 'oops i forgot to assign it' recovery
+	    
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
 	    console.log( installClient[1], "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 	    

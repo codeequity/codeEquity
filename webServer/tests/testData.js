@@ -67,6 +67,16 @@ class TestData {
 	loc.peqType  = "plan";  // XXX probably need to add alloc
 	return loc;
     }
+    getDSProgLoc() { 
+	let loc = {};
+	loc.projId   = this.dataSecPID;
+	loc.projName = this.dataSecTitle;
+	loc.colId    = this.dsProgID;
+	loc.colName  = config.PROJ_COLS[config.PROJ_PROG];
+	loc.projSub  = [this.softContTitle, this.dataSecTitle];
+	loc.peqType  = "plan";  // XXX probably need to add alloc
+	return loc;
+    }
     getDSPendLoc() {
 	let loc = {};
 	loc.projId   = this.dataSecPID;
