@@ -5,3 +5,5 @@ __pycache__
 *Pack.yaml
 node_modules
 ceFlutter/build
+webServer/dump*
+tmp*

@@ -6,12 +6,6 @@ var assert = require('assert');
 var gh     = ghUtils.githubUtils;
 var ghSafe = ghUtils.githubSafe;
 
-/*
-https://developer.github.com/webhooks/event-payloads/#issues
-https://octokit.github.io/rest.js/v18#projects-delete-card
-https://developer.github.com/v3/issues/#create-an-issue
-*/
-
 // Terminology:
 // situated issue: an issue with a card in a CE-valid project structure
 // carded issue:   an issue with a card not in a CE-valid structure
@@ -51,7 +45,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
 	// Should not get here from adding alloc card - that is a bot action.
-	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_ACCR
+	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_PEND
 	// ... but it if is situated already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only 
 
@@ -85,7 +79,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		link.GHProjectId = card.project_url.split('/').pop();
 		link.GHColumnId  = card.column_url.split('/').pop();
 	    }
-	    else {  // newborn card.
+	    else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
 		let card = await gh.getCard( installClient, link.GHCardId );
 		link.GHColumnId  = card.column_url.split('/').pop();
 	    }
@@ -97,43 +91,89 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	let content = [];
 	content.push( pd.GHIssueTitle );
 	content.push( config.PDESC + pd.peqValue.toString() );
-	await utils.processNewPEQ( installClient, ghLinks, pd, content, link );
+	let retVal = await utils.processNewPEQ( installClient, ghLinks, pd, content, link );
+
+	// Attempted to label >= PEND.  GH has already applied it, so remove
+	// XXX This should no longer be possible, since carded issue can no longer move in.
+	if( retVal == "removeLabel" ) {
+	    assert( false ); 
+	    console.log( "..removing GH label on ACCR card" );
+	    link.GHColumnId = -1;
+	    await ghSafe.removeLabel( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum, pd.reqBody.label );
+	}
 	break;
     case 'unlabeled':
-	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  PROJ_PEND is OK, since could just demote to PROG/PLAN
+	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  
 	// Do not move card, would be confusing for user.
-
-	// Unlabel'd label data is not located under issue.. parseLabel looks in arrays
-	pd.peqValue = ghSafe.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
-	if( pd.peqValue <= 0 ) {
-	    console.log( "Not a PEQ issue, no action taken." );
-	    return;
+	{
+	    // Unlabel'd label data is not located under issue.. parseLabel looks in arrays
+	    pd.peqValue = ghSafe.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
+	    if( pd.peqValue <= 0 ) {
+		console.log( "Not a PEQ issue, no action taken." );
+		return;
+	    }
+	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+	    let link = links[0]; // cards are 1:1 with issues, this is peq
+	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
+	    if( newNameIndex > config.PROJ_PROG ) { 
+		// XXX inform contribs of attempt to remove the peq label from an accrued issue
+		console.log( "WARNING.  Can't remove the peq label from a pending or accrued PEQ" );
+		// GH already removed this.  Put it back.
+		pd.GHIssueNum = pd.reqBody['issue']['number'];		
+		ghSafe.addLabel( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
+		return;
+	    }
+	    
+	    // XXX Inform contributors that status is now UNTRACKED
+	    let peq = await utils.getPeq( installClient, pd.GHIssueId );	
+	    console.log( "PEQ Issue unlabeled" );
+	    ghLinks.rebaseLinkage( installClient, pd.GHIssueId );   // setting various to -1, as it is now untracked
+	    utils.removePEQ( installClient, peq.PEQId );
+	    utils.recordPEQAction(
+		installClient,
+		config.EMPTY,     // CE UID
+		pd.GHCreator,     // gh user name
+		pd.GHFullName,    // of the repo
+		"confirm",        // verb
+		"delete",         // action
+		[ peq.PEQId ],    // subject
+		"unlabel",        // note
+		utils.getToday(), // entryDate
+		pd.reqBody        // raw
+	    );
 	}
-	// XXX Inform contributors that status is now UNTRACKED
-
-	console.log( "PEQ Issue unlabeled" );
-	ghLinks.rebaseLinkage( installClient, pd.GHIssueId );   // setting various to -1, as it is now untracked
-	let peq = await utils.getPeq( installClient, pd.GHIssueId );	
-	utils.removePEQ( installClient, peq.PEQId );
-	utils.recordPEQAction(
-	    installClient,
-	    config.EMPTY,     // CE UID
-	    pd.GHCreator,     // gh user name
-	    pd.GHFullName,    // of the repo
-	    "confirm",        // verb
-	    "delete",         // action
-	    [ peq.PEQId ],    // subject
-	    "unlabel",        // note
-	    utils.getToday(), // entryDate
-	    pd.reqBody           // raw
-	);
 	break;
     case 'edited':
 	// XXX what happens to push this notice?
 	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
     case 'deleted':
-	// XXX if peq, confirm:delete    similar to unlabel?
-	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
+	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
+	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
+	{
+	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
+	    if( peq != -1 && peq.PeqType == "grant" ) {
+		// XXX inform contribs of attempt to remove an accrued issue
+		// XXX leaves discrepancy with GH in granted case
+		console.log( "Can't delete issue associated with an accrued PEQ" );
+		return;
+	    }
+	    
+	    console.log( "Issue deleted" );
+	    ghLinks.removeLinkage({"installClient": installClient, "issueId": pd.GHIssueId });  
+	    utils.removePEQ( installClient, peq.PEQId );
+	    utils.recordPEQAction(
+		installClient,
+		config.EMPTY,     // CE UID
+		pd.GHCreator,     // gh user name
+		pd.GHFullName,    // of the repo
+		"confirm",        // verb
+		"delete",         // action
+		[ peq.PEQId ],    // subject
+		"delete",        // note
+		utils.getToday(), // entryDate
+		pd.reqBody        // raw
+	    );
+	}
 	break;
     case 'closed':
     case 'reopened':
@@ -189,8 +229,10 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	//     Optionally, revisit and try to handle xfer automatically if between PEQ projects.
 	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
 	break;
-    case 'assigned':
+    case 'assigned': 
 	{
+	    // XXX assign a closed peq issue?  Move to pending.  THis is an 'oops i forgot to assign it' recovery
+	    
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
 	    console.log( installClient[1], "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 	    
@@ -249,17 +291,15 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    );
 	}
 	break;
-    case 'opened':
-	// Can get here by 'convert to issue' on a newborn card, or more commonly, New issue with submit.
-	// XXX Do NOT convert newborn issue -> carded issue (unclaimed)
-	console.log( installClient[1], "Issue id:", pd.reqBody['issue']['id'], "nodeId:", pd.reqBody['issue']['node_id'] );
-    case 'pinned': 
-    case 'unpinned': 
-    case 'locked': 
-    case 'unlocked': 
-    case 'milestoned': 
-    case 'demilestoned':
-	console.log( "Issue", action, "- no action taken.");
+    case 'opened':	        // Do nothing.
+	// Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle in cards.
+	// Get here with: or more commonly, New issue with submit.
+    case 'pinned':             	// Do nothing.
+    case 'unpinned':      	// Do nothing.
+    case 'locked':      	// Do nothing.
+    case 'unlocked':      	// Do nothing.
+    case 'milestoned':      	// Do nothing.
+    case 'demilestoned':     	// Do nothing.
 	break;
     default:
 	console.log( "Unrecognized action" );

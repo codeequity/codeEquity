@@ -83,7 +83,7 @@ class Linkage {
     
     addLinkage( installClient, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle ) {
 
-	console.log( installClient[1], "add link", issueId, cardId );
+	// console.log( installClient[1], "add link", issueId, cardId, colName, colId, issueTitle );
 
 	if( !this.links.hasOwnProperty( issueId ) )         { this.links[issueId] = {}; }
 	if( !this.links[issueId].hasOwnProperty( cardId ) ) { this.links[issueId][cardId] = {}; }
@@ -188,16 +188,20 @@ class Linkage {
     }
 
     updateLinkage( installClient, issueId, cardId, newColId, newColName ) {
-	console.log( installClient[1], "Update linkage for", issueId );
+	console.log( installClient[1], "Update linkage for", issueId, cardId, newColId );
 	let link = this.links[issueId][cardId];
 	assert( link !== 'undefined' );
 
-	link.GHColumnId   = newColId;
+	link.GHColumnId   = newColId.toString();
 	link.GHColumnName = newColName;
 	return true;
     }
 
-    removeLinkage( installClient, issueId, cardId ) {
+    removeLinkage({ installClient, issueId, cardId }) {
+	if( !installClient ) { console.log( "missing installClient" ); return; }
+	if( !issueId )       { console.log( "missing issueId" ); return; }
+	// cardId can be missing
+	
 	console.log( installClient[1], "Remove link", issueId, cardId );
 	if( Object.keys( this.links[issueId] ).length == 0 )      { return; }
 	else if( Object.keys( this.links[issueId] ).length == 1 ) { delete this.links[issueId]; }

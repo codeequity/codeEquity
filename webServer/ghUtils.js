@@ -1,3 +1,9 @@
+/*
+https://octokit.github.io/rest.js
+https://developer.github.com/webhooks/event-payloads/#issues
+https://developer.github.com/v3/issues/#create-an-issue
+*/
+
 var assert = require('assert');
 
 const auth = require( "./auth");
@@ -32,6 +38,14 @@ var githubSafe = {
 
     createProjectCard: function( installClient, columnId, issueId, justId ) {
 	return createProjectCard( installClient, columnId, issueId, justId );
+    },
+
+    removeLabel: function( installClient, owner, repo, issueNum, label ) {
+	return removeLabel( installClient, owner, repo, issueNum, label );
+    },
+
+    addLabel: function( installClient, owner, repo, issueNum, label ) {
+	return addLabel( installClient, owner, repo, issueNum, label );
     },
 
     rebuildLabel: function( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
@@ -107,6 +121,10 @@ var githubUtils = {
 	return getCEProjectLayout( installClient, ghLinks, issueId );
     },
     
+    moveCard: function( installClient, cardId, colId ) {
+	return moveCard( installClient, cardId, colId ); 
+    },
+
     moveIssueCard: function( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout ) {
 	return moveIssueCard( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout ); 
     },
@@ -520,13 +538,19 @@ async function rebuildCard( installClient, owner, repo, colId, origCardId, issue
     return newCardId;
 }
 
-async function rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
-    await installClient[0].issues.removeLabel({ owner: owner, repo: repo, issue_number: issueNum, name: oldLabel.name  } )
+async function removeLabel( installClient, owner, repo, issueNum, label ) {
+    await installClient[0].issues.removeLabel({ owner: owner, repo: repo, issue_number: issueNum, name: label.name  } )
 	.catch( e => { console.log( installClient[1], "Remove label from issue failed.", e ); });
+}
 
-    await installClient[0].issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [newLabel.name] })
+async function addLabel( installClient, owner, repo, issueNum, label ) {
+    await installClient[0].issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [label.name] })
 	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
-    
+}
+
+async function rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
+    await removeLabel( installClient, owner, repo, issueNum, oldLabel );
+    await addLabel( installClient, owner, repo, issueNum, newLabel );
 }
 
 
@@ -605,7 +629,7 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
     await installClient[0].projects.deleteCard( { card_id: link.GHCardId } );
     
     // Remove turds, report.  
-    ghLinks.removeLinkage( installClient, pd.GHIssueId, link.GHCardId );
+    ghLinks.removeLinkage({ "installClient": installClient, "issueId": pd.GHIssueId, "cardId": link.GHCardId });
     
     // do not delete peq - set it inactive.
     let daPEQ = await utils.getPeq( installClient, pd.GHIssueId );
@@ -744,6 +768,10 @@ async function findCardInColumn( installClient, ghLinks, owner, repo, issueId, c
     return cardId;
 }
 
+async function moveCard( installClient, cardId, colId ) {
+    return await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: colId }))
+	.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
+}
 
 // XXX alignment risk if card moves in the middle of this
 async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout )
@@ -770,8 +798,7 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, acti
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ]; 
-	    success = await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: newColId }))
-		.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
+	    success = await moveCard( installClient, cardId, newColId );
 	}
     }
     else if( action == "reopened" ) {
@@ -787,10 +814,7 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, acti
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
 	    newColName = config.PROJ_COLS[ config.PROJ_PROG ]; 	    
-	    success = await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: newColId }))
-		.catch( e => {
-		    console.log( installClient[1], "Move card failed.", e );
-		});
+	    success = moveCard( installClient, cardId, newColId );
 	}
     }
 
