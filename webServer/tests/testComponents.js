@@ -7,8 +7,9 @@ var gh = ghUtils.githubUtils;
 const testData = require( './testData' );
 const tu = require('./testUtils');
 
-const ISS_ASS = "AssignTest";
-const ISS_LAB = "LabelTest";
+const ISS_ASS   = "AssignTest";
+const ISS_LAB   = "LabelTest";
+const ISS_LAB2  = "LabelTest Dubs";
 const ASSIGNEE1 = "rmusick2000";
 const ASSIGNEE2 = "codeequity";
 
@@ -118,6 +119,30 @@ async function checkProgAssignees( installClient, td, issueName, ass1, ass2, iss
     return testStatus;
 }
 
+async function checkDubLabel( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+
+    // CHECK github issues
+    let issue = await tu.findIssue( installClient, td, issueData[2] );
+    testStatus = tu.checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
+    testStatus = tu.checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
+    testStatus = tu.checkEq( issue.labels.length, 2,                testStatus, "Issue label" );
+    const labels0 = issue.labels[0].name == "1000 PEQ" && issue.labels[1].name == "documentation";
+    const labels1 = issue.labels[1].name == "1000 PEQ" && issue.labels[0].name == "documentation";
+    testStatus = tu.checkEq( labels0 || labels1, true,              testStatus, "Issue label" );
+
+    // CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
+    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    peqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
+    testStatus = tu.checkEq( peqs.length, 1,                          testStatus, "Peq count" );
+    let peq = peqs[0];
+
+    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+    testStatus = tu.checkEq( pacts.length, 3,                         testStatus, "PAct count" );     
+    
+    return testStatus;
+}
+
 async function testLabel( installClient, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
@@ -133,70 +158,103 @@ async function testLabel( installClient, ghLinks, td ) {
     let dsProg = td.getDSProgLoc();
     let dsPend = td.getDSPendLoc();
     let dsAccr = td.getDSAccrLoc();
+    let bacon  = td.getBaconLoc();
     
-    console.log( "Test label/unlabel in full CE structure" );
 
     // XXX update all tests: makeissue, issueData
+    // XXX update all tests: peq counts
     // XXX oddd... timestamp is way off (8s) but notification order is correct...?
-    
-    // 1. create peq issue in dsplan
-    console.log( "Make newly situated issue in dsplan" );
-    let issueData = await tu.makeIssue( installClient, td, ISS_LAB, [] );     // [id, number, title]  (str,int,str)
-    let label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-    await tu.addLabel( installClient, td, issueData[1], label.name );
 
-    let card  = await tu.makeProjectCard( installClient, td.dsPlanID, issueData[0] );
-    await utils.sleep( 6000 );
-    testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
-    tu.testReport( testStatus, "Z" );
-    
-    // 2. unlabel
-    await tu.remLabel( installClient, td, issueData[1], label );
-    testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
-    tu.testReport( testStatus, "A" );
-    
-    // 3. move to accr (untracked), watch it bounce back
-    await tu.moveCard( installClient, card.id, td.dsAccrID );        
-    testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
-    tu.testReport( testStatus, "B" );
-    
-    // 4. move to pend, bounce
-    await tu.moveCard( installClient, card.id, td.dsPendID );
-    testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
-    tu.testReport( testStatus, "BB" );
+    /*
+    {    
+	console.log( "Test label/unlabel in full CE structure" );
 
-    // 5. move to prog (untracked), label
-    await tu.moveCard( installClient, card.id, td.dsProgID );
-    await tu.addLabel( installClient, td, issueData[1], label.name );
-    await utils.sleep( 2000 );
-    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
-    tu.testReport( testStatus, "C" );
-    
-    // 6. unlabel, label
-    await tu.remLabel( installClient, td, issueData[1], label );
-    await tu.addLabel( installClient, td, issueData[1], label.name ); 
-    await utils.sleep( 2000 );
-    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
-    tu.testReport( testStatus, "D" );
-    
-    // 7. move to accr, unlabel (fail)
-    await tu.addAssignee( installClient, td, issueData[1], ASSIGNEE1 );   // can't ACCR without this.    
-    await tu.moveCard( installClient, card.id, td.dsAccrID );
-    await tu.remLabel( installClient, td, issueData[1], label );          // will be added back
-    await utils.sleep( 2000 );
-    testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
+	// 1. create peq issue in dsplan
+	console.log( "Make newly situated issue in dsplan" );
+	let issueData = await tu.makeIssue( installClient, td, ISS_LAB, [] );     // [id, number, title]  (str,int,str)
+	let label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	await tu.addLabel( installClient, td, issueData[1], label.name );
+	
+	let card  = await tu.makeProjectCard( installClient, td.dsPlanID, issueData[0] );
+	await utils.sleep( 6000 );
+	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label 1" );
+	
+	// 2. unlabel
+	await tu.remLabel( installClient, td, issueData[1], label );
+	testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+	tu.testReport( testStatus, "A" );
+	
+	// 3. move to accr (untracked), watch it bounce back
+	await tu.moveCard( installClient, card.id, td.dsAccrID );        
+	testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label 3" );
+	
+	// 4. move to pend, bounce
+	await tu.moveCard( installClient, card.id, td.dsPendID );
+	testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label 4" );
+	
+	// 5. move to prog (untracked), label
+	await tu.moveCard( installClient, card.id, td.dsProgID );
+	await tu.addLabel( installClient, td, issueData[1], label.name );
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label 5" );
+	
+	// 6. unlabel, label
+	await tu.remLabel( installClient, td, issueData[1], label );
+	await tu.addLabel( installClient, td, issueData[1], label.name ); 
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label 6" );
+	
+	// 7. move to accr, unlabel (fail)
+	await tu.addAssignee( installClient, td, issueData[1], ASSIGNEE1 );   // can't ACCR without this.    
+	await tu.moveCard( installClient, card.id, td.dsAccrID );
+	await tu.remLabel( installClient, td, issueData[1], label );          // will be added back
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label 7" );
+    }	
+    */
 
+    {
+	// add two peq labels
+	console.log( "Double-labels" ); 
 
-    // add two peq labels
-    // add same label 2x
+	// 1. create 1k peq issue in bacon
+	console.log( "Make newly situated issue in bacon" );
+	let issueData = await tu.makeIssue( installClient, td, ISS_LAB2, [] );     // [id, number, title]  (str,int,str)
+	let label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	await tu.addLabel( installClient, td, issueData[1], label.name );
+	let card  = await tu.makeProjectCard( installClient, bacon.colId, issueData[0] );
+
+	await utils.sleep( 6000 );
+	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label Dub 1" );
+	
+	// 2. add "documentation" twice (fail - will not receive 2nd notification)
+	let docLabel  = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "documentation", -1 );	
+	await tu.addLabel( installClient, td, issueData[1], docLabel.name );
+	await tu.addLabel( installClient, td, issueData[1], docLabel.name );
+	testStatus = await checkDubLabel( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label Dub 2" );
+	
+	// 3. add 500 peq (fail)
+	let label500  = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "500 PEQ", 500 );	
+	await tu.addLabel( installClient, td, issueData[1], label500.name );
+	testStatus = await checkDubLabel( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	tu.testReport( testStatus, "Label Dub 3" );
     
-    console.log( "Test label/unlabel in flat projects structure" );
-    // create new flat proj, 2 cols
-    // create peq issue in 2nd col
-    // unlabel
-    // label
-    // move to pend
-    // unlabel
+	console.log( "Test label/unlabel in flat projects structure" );
+	// create new flat proj, 2 cols
+	// create peq issue in 2nd col
+	// unlabel
+	// label
+	// move to pend
+	// unlabel
+    }
 
     tu.testReport( testStatus, "Test Label" );
 }

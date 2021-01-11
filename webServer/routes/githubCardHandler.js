@@ -169,7 +169,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	}
-	let success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
+	ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
 	ghLinks.show();
 	
 	// handle issue.  Don't update issue state if not clear reopen/closed
@@ -178,7 +178,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
 	
 	if( newIssueState != "" ) {
-	    success = success && await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
+	    await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
 	}
 
 	// recordPAct

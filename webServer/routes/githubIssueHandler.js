@@ -35,6 +35,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
+    // XXX set issueNum here as well
     pd.GHIssueId    = pd.reqBody['issue']['id'];
     pd.GHCreator    = pd.reqBody['issue']['user']['login'];
     pd.GHIssueTitle = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
@@ -47,7 +48,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// Should not get here from adding alloc card - that is a bot action.
 	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_PEND
 	// ... but it if is situated already, adding a second peq label is ignored.
-	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only 
+	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only
+	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 
 	// XXXX XXXXX This will go away with ceFlutter
 	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
@@ -55,9 +57,20 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    return;
 	}
 	
-	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
-	if( pd.peqValue <= 0 ) {
-	    console.log( "Not a PEQ issue, no action taken." );
+	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody.issue.labels );
+
+	// more than 1 peq?  remove it.
+	let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
+	if( pd.peqValue <= 0 && curVal > 0 ) {
+	    // XXX 
+	    console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
+	    await ghSafe.removeLabel( installClient, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
+	    return;
+	}
+
+	// Current notification not for peq label?
+	if( pd.peqValue <= 0 || curVal <= 0 ) {
+	    console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
 	    return;
 	}
 	

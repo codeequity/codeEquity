@@ -429,11 +429,11 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
 	
      // CHECK github location
     let cards  = await getCards( installClient, td.unclaimCID );   
-    let tCard  = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    let tCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( tCard.length, 0,                       testStatus, "No unclaimed" );
     
     cards      = await getCards( installClient, loc.colId );   
-    let mCard  = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    let mCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( mCard.length, 1,                       testStatus, "Card claimed" );
     testStatus = checkEq( mCard[0].id, card.id,                  testStatus, "Card claimed" );
     
@@ -472,7 +472,8 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
 }
 
 async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
-    
+
+    // XXX this can break with > 1 issue with same title. get list and filter instead.
     console.log( "Check situated issue", loc.projName, loc.colName );
     // CHECK github issues
     let meltIssue = await findIssue( installClient, td, issueData[2] );
@@ -483,11 +484,11 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
 
     // CHECK github location
     let cards = await getCards( installClient, td.unclaimCID );   
-    let tCard = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( tCard.length, 0,                           testStatus, "No unclaimed" );
 
-    cards = await getCards( installClient, loc.colId );   
-    let mCard = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    cards = await getCards( installClient, loc.colId );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( mCard.length, 1,                           testStatus, "Card claimed" );
     testStatus = checkEq( mCard[0].id, card.id,                      testStatus, "Card claimed" );
 
