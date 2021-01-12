@@ -195,6 +195,27 @@ async function findIssue( installClient, td, issueTitle ) {
     return retVal; 
 }
 
+async function getLoc( installClient, projId, projName, colName ) {
+    const cols = await getColumns( installClient, projId );
+    let col = cols.find(c => c.name == colName );
+
+    let ptype = "plan";
+    // no.  ceFlutter makes this happen
+    // if( colName == config.PROJ_COLS[config.PROJ_PEND] ) { ptype = "pending"; }
+    // if( colName == config.PROJ_COLS[config.PROJ_ACCR] ) { ptype = "grant"; }
+    
+    let loc = {};
+    loc.projId   = projId;
+    loc.projName = projName;
+    loc.colId    = col.id;
+    loc.colName  = col.name;
+    loc.projSub  = [projName, colName];
+    loc.peqType  = ptype; // XXX probably need to add alloc
+    
+    return loc;
+}
+
+
 function findCardForIssue( cards, issueNum ) {
     let cardId = -1;
     for( const card of cards ) {
@@ -397,9 +418,9 @@ async function checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, 
     let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
-    testStatus = checkEq( link.GHColumnName, "---",                 testStatus, "Linkage Col name" );
-    testStatus = checkEq( link.GHCardTitle, "---",                  testStatus, "Linkage Card Title" );
-    testStatus = checkEq( link.GHProjectName, "---",                testStatus, "Linkage Project Title" );
+    testStatus = checkEq( link.GHColumnName, config.EMPTY,          testStatus, "Linkage Col name" );
+    testStatus = checkEq( link.GHCardTitle, config.EMPTY,           testStatus, "Linkage Card Title" );
+    testStatus = checkEq( link.GHProjectName, config.EMPTY,         testStatus, "Linkage Project Title" );
     testStatus = checkEq( link.GHColumnId, -1,                      testStatus, "Linkage Col Id" );
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );     // XXX tracking this??
 
@@ -429,11 +450,11 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
 	
      // CHECK github location
     let cards  = await getCards( installClient, td.unclaimCID );   
-    let tCard  = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    let tCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( tCard.length, 0,                       testStatus, "No unclaimed" );
     
     cards      = await getCards( installClient, loc.colId );   
-    let mCard  = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    let mCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( mCard.length, 1,                       testStatus, "Card claimed" );
     testStatus = checkEq( mCard[0].id, card.id,                  testStatus, "Card claimed" );
     
@@ -472,7 +493,8 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
 }
 
 async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
-    
+
+    // XXX this can break with > 1 issue with same title. get list and filter instead.
     console.log( "Check situated issue", loc.projName, loc.colName );
     // CHECK github issues
     let meltIssue = await findIssue( installClient, td, issueData[2] );
@@ -483,11 +505,11 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
 
     // CHECK github location
     let cards = await getCards( installClient, td.unclaimCID );   
-    let tCard = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( tCard.length, 0,                           testStatus, "No unclaimed" );
 
-    cards = await getCards( installClient, loc.colId );   
-    let mCard = cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() );
+    cards = await getCards( installClient, loc.colId );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( mCard.length, 1,                           testStatus, "Card claimed" );
     testStatus = checkEq( mCard[0].id, card.id,                      testStatus, "Card claimed" );
 
@@ -677,6 +699,7 @@ exports.getColumns      = getColumns;
 exports.getCards        = getCards;
 exports.getLinks        = getLinks;
 exports.findIssue       = findIssue;
+exports.getLoc          = getLoc; 
 
 exports.findCardForIssue = findCardForIssue;
 exports.setUnpopulated   = setUnpopulated;

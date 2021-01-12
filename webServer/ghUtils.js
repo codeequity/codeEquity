@@ -125,6 +125,10 @@ var githubUtils = {
 	return moveCard( installClient, cardId, colId ); 
     },
 
+    checkReserveSafe: function( installClient, owner, repo, issueNum, colNameIndex ) {
+	return checkReserveSafe( installClient, owner, repo, issueNum, colNameIndex );
+    },
+    
     moveIssueCard: function( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout ) {
 	return moveIssueCard( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout ); 
     },
@@ -182,7 +186,7 @@ async function checkIssueExists( installClient, owner, repo, title )
 async function getAssignees( installClient, owner, repo, issueNum )
 {
     let retVal = [];
-    if( issueNum == -1 ) { return retVal; }
+    if( issueNum == -1 ) { console.log( "getAssignees: bad issue number", issueNum ); return retVal; }
 
     // console.log( installClient[1], "Getting assignees for", owner, repo, issueNum );
     await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
@@ -773,15 +777,29 @@ async function moveCard( installClient, cardId, colId ) {
 	.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
 }
 
+
+async function checkReserveSafe( installClient, owner, repo, issueNum, colNameIndex ) {
+    let retVal = true;
+    if( colNameIndex > config.PROJ_PROG ) { 
+	let assignees = await getAssignees( installClient, owner, repo, issueNum );
+	if( assignees.length == 0  ) {
+	    console.log( "WARNING.  Update card failed - no assignees" );   // can't propose grant without a grantee
+	    retVal = false;
+	}
+    }
+    return retVal;
+}
+
 // XXX alignment risk if card moves in the middle of this
-async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout )
+async function moveIssueCard( installClient, ghLinks, owner, repo, issueData, action, ceProjectLayout )
 {
-    console.log( "Moving issue card" );
+    console.log( "Moving issue card", issueData );
     let success    = false;
     let newColId   = -1;
     let newColName = "";
     assert.notEqual( ceProjectLayout[0], -1 );
     let cardId = -1;
+    let oldColId = -1;
     let pip = [ config.PROJ_PLAN, config.PROJ_PROG ];  
     let pac = [ config.PROJ_PEND, config.PROJ_ACCR ];  
     
@@ -789,7 +807,8 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, acti
 
 	// verify card is in the right place
 	for( let i = 0; i < 2; i++ ) {
-	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueId, ceProjectLayout[ pip[i]+1 ] );
+	    oldColId = ceProjectLayout[ pip[i]+1 ];
+	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueData[0], oldColId );
 	    if( cardId != -1 ) { break; }
 	}
 
@@ -797,15 +816,25 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, acti
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
-	    newColName = config.PROJ_COLS[ config.PROJ_PEND ]; 
+	    newColName = config.PROJ_COLS[ config.PROJ_PEND ];
+	    
+	    success = await checkReserveSafe( installClient, owner, repo, issueData[1], config.PROJ_PEND );
+	    if( !success ) {
+		// no need to put card back - didn't move it.
+		await updateIssue( installClient, owner, repo, issueData[1], "open" ); // reopen issue
+		return false;
+	    }
+
 	    success = await moveCard( installClient, cardId, newColId );
 	}
     }
     else if( action == "reopened" ) {
 
+	// XXX create In progress, if not exist
+	
 	// verify card is currently in the right place
 	for( let i = 0; i < 2; i++ ) {
-	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueId, ceProjectLayout[ pac[i]+1 ] );
+	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueData[0], ceProjectLayout[ pac[i]+1 ] );
 	    if( cardId != -1 ) { break; }
 	}
 
@@ -819,7 +848,7 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueId, acti
     }
 
     if( success ) {
-	success = ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
+	success = ghLinks.updateLinkage( installClient, issueData[0], cardId, newColId, newColName );
     }
 
     

@@ -99,6 +99,27 @@ class TestData {
 	loc.peqType  = "plan";
 	return loc;
     }
+    // NOTE: peq type is not updated by ceServer, only ceFlutter.
+    getBaconLoc() {
+	let loc = {};
+	loc.projId   = this.flatPID;
+	loc.projName = this.flatTitle;
+	loc.colId    = this.col2ID;
+	loc.colName  = this.col2Title;
+	loc.projSub  = [this.flatTitle, this.col2Title];
+	loc.peqType  = "plan";
+	return loc;
+    }
+    getUntrackLoc( pid ) {
+	let loc = {};
+	loc.projId   = pid;
+	loc.projName = config.EMPTY;
+	loc.colId    = -1;
+	loc.colName  = config.EMPTY;
+	loc.projSub  = -1;
+	loc.peqType  = config.EMPTY;
+	return loc;
+    }
     
     show() {
 	console.log( "TestData object contents.. Recommended==============" );

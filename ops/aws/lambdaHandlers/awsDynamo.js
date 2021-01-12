@@ -183,6 +183,8 @@ async function setLock( pactId, lockVal ) {
 }
 
 
+// NOTE: scan return limit, before filter, is 1m. If desired item is not found, will return empty set.
+//      So, paginate is required, for every scan.
 async function getEntry( tableName, query ) {
     console.log( "Get from", tableName, ":", query );
 
@@ -217,13 +219,12 @@ async function getEntry( tableName, query ) {
     params.ExpressionAttributeValues  = scanVals[1];
 
     // console.log( params );
-	
-    let daPromise = bsdb.scan( params ).promise();
-    return daPromise.then((entry) => {
-	// if this is false, consider pagination for this specific query
-	if( entry.Count == 1 )     { return success( entry.Items[0] ); }
-	else if( entry.Count > 1 ) { return BAD_SEMANTICS; }
-	else                       { return NO_CONTENT; }
+
+    let daPromise = paginatedScan( params );
+    return daPromise.then((entries) => {
+	if( entries.length == 1 )     { return success( entries[0] ); }
+	else if( entries.length > 1 ) { return BAD_SEMANTICS; }
+	else                          { return NO_CONTENT; }
     });
 }
 
