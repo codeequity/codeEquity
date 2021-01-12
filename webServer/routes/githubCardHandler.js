@@ -120,7 +120,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     else if( action == "moved" ) {
 	// Note: Unclaimed card - try to uncheck it directly from column bar gives: cardHander move within same column.  Check stays.
 	//       Need to click on projects, then on pd.GHRepo, then can check/uncheck successfully.  Get cardHandler:card deleted
-	// within gh project, move card from 1 col to another.  
+	// within gh project, move card from 1 col to another.
+	// Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
 	console.log( installClient[1], "Card", action, "Sender:", sender )
 
 	if( pd.reqBody['changes'] == null ) {
@@ -161,13 +162,10 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 
 	assert( newProjId     == link['GHProjectId'] );               // not yet supporting moves between projects
 
-	if( newNameIndex > config.PROJ_PROG ) { 
-	    let assignees = await gh.getAssignees( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'] );
-	    if( assignees.length == 0  ) {
-		console.log( "WARNING.  Update card failed - no assignees" );   // can't propose grant without a grantee
-		gh.moveCard( installClient, cardId, oldColId );
-		return;
-	    }
+	let success = await gh.checkReserveSafe( installClient, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newNameIndex );
+	if( !success ) {
+	    gh.moveCard( installClient, cardId, oldColId );
+	    return;
 	}
 	ghLinks.updateLinkage( installClient, issueId, cardId, newColId, newColName );
 	ghLinks.show();

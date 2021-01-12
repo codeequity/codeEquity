@@ -114,7 +114,7 @@ async function postCE( shortName, postData ) {
 // postAWS
 async function postIt( installClient, shortName, postData ) {
 
-    console.log( installClient[1], "postIt:", shortName );
+    // console.log( installClient[1], "postIt:", shortName );
     
     const params = {
         url: installClient[2],

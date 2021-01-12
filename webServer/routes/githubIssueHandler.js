@@ -35,8 +35,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
-    // XXX set issueNum here as well
     pd.GHIssueId    = pd.reqBody['issue']['id'];
+    pd.GHIssueNum   = pd.reqBody['issue']['number'];		
     pd.GHCreator    = pd.reqBody['issue']['user']['login'];
     pd.GHIssueTitle = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
@@ -87,7 +87,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		let card = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId );
 		let issueURL = card.content_url.split('/');
 		assert( issueURL.length > 0 );
-		link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );
+		link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );  // XXX already have this
 		link.GHCardId    = card.id
 		link.GHProjectId = card.project_url.split('/').pop();
 		link.GHColumnId  = card.column_url.split('/').pop();
@@ -122,7 +122,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    // Unlabel'd label data is not located under issue.. parseLabel looks in arrays
 	    pd.peqValue = ghSafe.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
 	    if( pd.peqValue <= 0 ) {
-		console.log( "Not a PEQ issue, no action taken." );
+		console.log( "Not a PEQ label, no action taken." );
 		return;
 	    }
 	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
@@ -132,7 +132,6 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		// XXX inform contribs of attempt to remove the peq label from an accrued issue
 		console.log( "WARNING.  Can't remove the peq label from a pending or accrued PEQ" );
 		// GH already removed this.  Put it back.
-		pd.GHIssueNum = pd.reqBody['issue']['number'];		
 		ghSafe.addLabel( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
 		return;
 	    }
@@ -205,7 +204,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	}
 	else {
-	    let success = await gh.moveIssueCard( installClient, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHIssueId, action, ceProjectLayout ); 
+	    let success = await gh.moveIssueCard( installClient, ghLinks, pd.GHOwner, pd.GHRepo, [pd.GHIssueId, pd.GHIssueNum], action, ceProjectLayout ); 
 	    if( success ) {
 		console.log( installClient[1], "Find & validate PEQ" );
 		let peqId = ( await( ghSafe.validatePEQ( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
