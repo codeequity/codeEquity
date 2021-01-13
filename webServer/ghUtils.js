@@ -678,7 +678,7 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
     let allColumns = [];
     await( installClient[0].projects.listColumns({ project_id: projId, per_page: 100 }))
 	.then( columns => {
-	    allColumns = columns;
+	    allColumns = columns.data;
 	    let foundCount = 0;
 	    for( column of columns['data'] ) {
 		// console.log( "checking", column );
@@ -710,7 +710,7 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 	    const peq = await( utils.getPeq( installClient, issueId ));
 	    let curColName = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
 	    let tmpCol = allColumns.find( col => col.name == curColName );
-	    if( tmpCol.length > 0 ) {
+	    if( tmpCol !== undefined ) {
 		curCol = tmpCol.id;
 		console.log( "Will open issue back to col", curColName );
 	    }
@@ -862,7 +862,7 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueData, ac
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
-	    newColName = config.PROJ_COLS[ config.PROJ_PROG ]; 	    
+	    newColName = await getColumnName( installClient, newColId );
 	    success = moveCard( installClient, cardId, newColId );
 	}
     }

@@ -215,8 +215,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		    // githubCardHandler:recordMove must handle many more options.  Choices here are limited.
 		    // Closed: 
 		    let verb = "propose";
-		    let action = "accrue";
-		    if( action == "reopened" ) { verb = "reject"; }   // XXX this will not be seen!!
+		    let paction = "accrue";
+		    if( action == "reopened" ) { verb = "reject"; }
 		    
 		    let subject = [ peqId.toString() ];
 		    utils.recordPEQAction(
@@ -225,7 +225,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 			sender,           // gh user name
 			pd.GHFullName,    // of the repo
 			verb,
-			action,
+			paction,
 			subject,          // subject
 			"",               // note
 			utils.getToday(), // entryDate
