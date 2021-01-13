@@ -10,6 +10,7 @@ const tu = require('./testUtils');
 const ISS_ASS   = "AssignTest";
 const ISS_LAB   = "LabelTest";
 const ISS_LAB2  = "LabelTest Dubs";
+const ISS_LAB3  = "LabelTest Carded";
 const ASSIGNEE1 = "rmusick2000";
 const ASSIGNEE2 = "codeequity";
 
@@ -28,8 +29,8 @@ async function checkNoAssignees( installClient, td, issueName, ass1, ass2, issue
     // Should be no change
     let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = tu.checkEq( meltPeqs.length, 2,                          testStatus, "Peq count" );
-    let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
+    testStatus = tu.checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
+    let meltPeq = meltPeqs[0];
     testStatus = tu.checkEq( meltPeq.PeqType, "plan",                     testStatus, "peq type invalid" );
     testStatus = tu.checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
     testStatus = tu.checkEq( meltPeq.GHIssueTitle, issueName,             testStatus, "peq title is wrong" );
@@ -86,8 +87,8 @@ async function checkProgAssignees( installClient, td, issueName, ass1, ass2, iss
     // CHECK Dynamo PEQ  .. no change already verified
     let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = tu.checkEq( meltPeqs.length, 2, testStatus, "Peq count" );
-    let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
+    testStatus = tu.checkEq( meltPeqs.length, 1, testStatus, "Peq count" );
+    let meltPeq = meltPeqs[0];
     
     // CHECK Dynamo PAct
     // Check new relevant actions
@@ -233,18 +234,12 @@ async function testLabel( installClient, ghLinks, td ) {
 
     const flatUntrack = td.getUntrackLoc( td.flatPID );
     
-
-    // XXX update all tests: makeissue, issueData
-    // XXX update all tests: peq counts
-    // XXX oddd... timestamp is way off (8s) but notification order is correct...?
-
-    /*
     {    
 	console.log( "Test label/unlabel in full CE structure" );
 
 	// 1. create peq issue in dsplan
 	console.log( "Make newly situated issue in dsplan" );
-	let issueData = await tu.makeIssue( installClient, td, ISS_LAB, [] );     // [id, number, title]  (str,int,str)
+	let issueData = await tu.makeIssue( installClient, td, ISS_LAB, [] );     // [id, number, title]  
 	let label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
 	await tu.addLabel( installClient, td, issueData[1], label.name );
 	
@@ -290,16 +285,14 @@ async function testLabel( installClient, ghLinks, td ) {
 	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 7" );
     }	
-    */
 
     {
-	/*
 	// add two peq labels
 	console.log( "Double-labels" ); 
 
 	// 1. create 1k peq issue in bacon
 	console.log( "Make newly situated issue in bacon" );
-	let issueData = await tu.makeIssue( installClient, td, ISS_LAB2, [] );     // [id, number, title]  (str,int,str)
+	let issueData = await tu.makeIssue( installClient, td, ISS_LAB2, [] );     // [id, number, title] 
 	let label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
 	await tu.addLabel( installClient, td, issueData[1], label.name );
 	let card  = await tu.makeProjectCard( installClient, bacon.colId, issueData[0] );
@@ -320,13 +313,15 @@ async function testLabel( installClient, ghLinks, td ) {
 	await tu.addLabel( installClient, td, issueData[1], label500.name );
 	testStatus = await checkDubLabel( installClient, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 3" );
-	*/
+
+
+	
 
 	console.log( "Test label/unlabel in flat projects structure" );
-	const issueData = ["783704596", "416", ISS_LAB2];  // XXX
-	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-	const docLabel  = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "documentation", -1 );
-	const card      = {"id": "52603808"};
+	// const issueData = ["783704596", "416", ISS_LAB2];  // XXX
+	// const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	// const docLabel  = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "documentation", -1 );
+	// const card      = {"id": "52603808"};
 	
 	// 1. unlabel
 	await tu.remLabel( installClient, td, issueData[1], docLabel );    
@@ -374,7 +369,6 @@ async function testLabel( installClient, ghLinks, td ) {
 
     tu.testReport( testStatus, "Test Label" );
 }
-
 async function testDelete( installClient, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
@@ -419,7 +413,7 @@ async function testAssignment( installClient, ghLinks, td ) {
 
     // 1. Create PEQ issue, add to proj
     console.log( "Make newly situated issue" );
-    let assData = await tu.makeIssue( installClient, td, ISS_ASS, [] );     // [id, number]  (mix str/int)
+    let assData = await tu.makeIssue( installClient, td, ISS_ASS, [] );     // [id, number, title]  
 
     let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
     await tu.addLabel( installClient, td, assData[1], newLabel.name );
@@ -433,7 +427,7 @@ async function testAssignment( installClient, ghLinks, td ) {
     await tu.addAssignee( installClient, td, assData[1], ASSIGNEE1 );
     await tu.addAssignee( installClient, td, assData[1], ASSIGNEE2 );
     await utils.sleep( 2000 );
-    testStatus = await tu.checkAssignees( installClient, td, ISS_ASS, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
+    testStatus = await tu.checkAssignees( installClient, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
 
     // 3. remove assignees
     console.log( "Rem assignees" );
@@ -457,6 +451,41 @@ async function testAssignment( installClient, ghLinks, td ) {
     tu.testReport( testStatus, "Test Assign" );
 }
 
+async function testLabelCarded( installClient, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Test Label Carded" );
+    installClient[1] = "<TEST: Label Carded>";
+
+    await tu.refreshRec( installClient, td );
+    await tu.refreshFlat( installClient, td );
+    await tu.refreshUnclaimed( installClient, td );
+
+    const bacon       = td.getBaconLoc();
+
+    {    
+	console.log( "Test label carded in flat" );
+
+	// 1. make carded issue in bacon
+	console.log( "Make carded issue" );
+	const issueData = await tu.makeIssue( installClient, td, ISS_LAB3, [] );     // [id, number, title] 
+	const card      = await tu.makeProjectCard( installClient, bacon.colId, issueData[0] );
+	await utils.sleep( 2000 );
+	testStatus     = await tu.checkUntrackedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	tu.testReport( testStatus, "Test Label A" );
+
+	// 2. add label
+	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	await tu.addLabel( installClient, td, issueData[1], label.name );
+	await utils.sleep( 3000 );
+	testStatus     = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+    }	
+
+    tu.testReport( testStatus, "Test Label" );
+}
+
+
 async function cleanup( installClient, ghLinks, td ) {
 }
 
@@ -467,9 +496,13 @@ async function runTests( installClient, ghLinks, td ) {
 
     // await testAssignment( installClient, ghLinks, td );
 
-    await testLabel( installClient, ghLinks, td );
+    // await testLabel( installClient, ghLinks, td ); 
+    await testLabelCarded( installClient, ghLinks, td ); 
     await testDelete( installClient, ghLinks, td );
-    // open/close test in full, flat,    sync with move move
+    // open/close test in full, flat,    sync with move move.
+    // flat -> pend.  reopen, goto orig col.
+    // full -> pend.  reopen, goto inprog.
+    
     await cleanup( installClient, ghLinks, td );
 }
 

@@ -5,6 +5,7 @@ var config  = require('../config');
 
 var links     = require('../components/linkage.js');
 
+const tu             = require('./testUtils');
 const testSetup      = require( './testSetup' );
 const testFlat       = require( './testFlat' );
 const testPopulate   = require( './testPopulate' );
@@ -33,6 +34,18 @@ async function runTests() {
     let idToken = await awsAuth.getCogIDToken();
     let installClient = [token, source, apiPath, idToken];
 
+    // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
+    // If this is first PAct for the day, start it up
+    const wakeyPID = await tu.makeProject( installClient, td, "ceServer wakey XYZZYXXK837598", "" );
+    const pacts    = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
+    const mrp = pacts != 1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
+    if( utils.getToday() != mrp.EntryDate ) {
+	console.log( "Cold start?  Most recent pact", mrp.EntryDate );
+	await utils.sleep( 8000 );
+    }
+    tu.remProject( installClient, wakeyPID );
+    
     /*
     await testSetup.runTests( installClient, ghLinks, td );
     await utils.sleep( 10000 );

@@ -127,8 +127,8 @@ async function checkMove( installClient, ghLinks, td, title, colId, meltCard, te
     // Should be no change
     let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == meltIssue.id );
-    testStatus = tu.checkEq( meltPeqs.length, 2,                          testStatus, "Peq count" );
-    let meltPeq = meltPeqs[0].Active == "true" ? meltPeqs[0] : meltPeqs[1];
+    testStatus = tu.checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
+    let meltPeq = meltPeqs[0];
     testStatus = tu.checkEq( meltPeq.PeqType, "plan",                     testStatus, "peq type invalid" );
     testStatus = tu.checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
     testStatus = tu.checkEq( meltPeq.GHIssueTitle, title,                 testStatus, "peq title is wrong" );
@@ -204,7 +204,7 @@ async function testStepByStep( installClient, ghLinks, td ) {
     await tu.refreshFlat( installClient, td );
 
     // 1. Create issue 
-    let meltData = await tu.makeIssue( installClient, td, ISS_FLOW, [] );               // [id, number]  (mix str/int)
+    let meltData = await tu.makeIssue( installClient, td, ISS_FLOW, [] );               // [id, number, title]  (mix str/int)
     testStatus = await checkNewbornIssue( installClient, ghLinks, td, meltData, testStatus );
     
     // 2. add peq label
@@ -223,7 +223,7 @@ async function testStepByStep( installClient, ghLinks, td ) {
     await tu.addAssignee( installClient, td, meltData[1], ASSIGNEE1 );
     await tu.addAssignee( installClient, td, meltData[1], ASSIGNEE2 );
     await utils.sleep( 2000 );
-    testStatus = await tu.checkAssignees( installClient, td, ISS_FLOW, ASSIGNEE1, ASSIGNEE2, meltData, testStatus );
+    testStatus = await tu.checkAssignees( installClient, td, ASSIGNEE1, ASSIGNEE2, meltData, testStatus );
 
     // 5. move to prog
     await tu.moveCard( installClient, meltCard.id, td.dsProgID );
@@ -255,7 +255,7 @@ async function testEndpoint( installClient, ghLinks, td ) {
     await tu.refreshUnclaimed( installClient, td );
 
     // 1. Create issue 
-    let meltData = await tu.makeIssue( installClient, td, ISS_RACE, [] );               // [id, number]  (mix str/int)
+    let meltData = await tu.makeIssue( installClient, td, ISS_RACE, [] );               // [id, number, title]  (mix str/int)
     
     // 2. add peq label
     let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
