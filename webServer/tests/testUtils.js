@@ -238,6 +238,15 @@ async function setUnpopulated( installClient, td ) {
 }
 
 
+async function ingestPActs( installClient, issueData ) {
+    const peq   = await utils.getPeq( installClient, issueData[0] );    
+    const pacts = await utils.getPActs( installClient, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
+    const pactIds = pacts.map( pact => pact.PEQActionId );
+    await utils.ingestPActs( installClient, pactIds );
+}
+
+
+
 async function makeProject(installClient, td, name, body ) {
     let pid = await installClient[0].projects.createForRepo({ owner: td.GHOwner, repo: td.GHRepo, name: name, body: body })
 	.then((project) => { return  project.data.id; })
@@ -508,9 +517,11 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
 }
 
 // Remember, PEQ is largely not updated once created.  So don't look for types, PEND or ACCR in subs
-async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    console.log( "Check situated issue", loc.projName, loc.colName );
+    let muteIngested = specials !== undefined && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
+
+    console.log( "Check situated issue", loc.projName, loc.colName, muteIngested );
     // CHECK github issues
     // let meltIssue = await findIssue( installClient, td, issueData[2] );
     let issues = await getIssues( installClient, td );
@@ -557,32 +568,37 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub invalid" );
     testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq unclaimed PID bad" );
     testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
-    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
-    if( !pip.includes( loc.projSub[1] )) { 
-	testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1], testStatus, "peq project sub invalid" );
-    }
-	
+
     // CHECK dynamo Pact
     let allPacts  = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );  
 
+    // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
+    if( pacts.length <= 3 ) {
+	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
+	if( !pip.includes( loc.projSub[1] )) { 
+	    testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1], testStatus, "peq project sub invalid" );
+	}
+    }
+    
     // Could have been many operations on this.
     for( const pact of pacts ) {
 	let hasraw = await hasRaw( installClient, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
 	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
-	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
 	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
+
+	if( !muteIngested ) { testStatus = checkEq( pact.Ingested, "false", testStatus, "PAct ingested" ); }
     }
 
     return testStatus;
 }
 
 // Check last PAct
-async function checkNewlyClosedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkNewlyClosedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus );
+    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check Closed issue", loc.projName, loc.colName );
     
@@ -602,9 +618,9 @@ async function checkNewlyClosedIssue( installClient, ghLinks, td, loc, issueData
 }
 
 // Check last PAct
-async function checkNewlyOpenedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkNewlyOpenedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus );
+    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check Opened issue", loc.projName, loc.colName );
     
@@ -625,9 +641,9 @@ async function checkNewlyOpenedIssue( installClient, ghLinks, td, loc, issueData
 
 
 
-async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus );
+    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check newly situated issue", loc.projName, loc.colName );
 
@@ -771,6 +787,7 @@ exports.getLoc          = getLoc;
 
 exports.findCardForIssue = findCardForIssue;
 exports.setUnpopulated   = setUnpopulated;
+exports.ingestPActs      = ingestPActs;
 
 exports.checkEq         = checkEq;
 exports.checkGE         = checkGE;

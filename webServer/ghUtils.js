@@ -651,8 +651,32 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
 	utils.getToday(), // entryDate
 	pd.reqBody        // raw
     );
+}
+
+// XXX expensive.. worthy?
+// This is a peq issue being reopened.  Can't reopen into PEND, so where to put it?
+async function getCurCol( installClient, issueId, allColumns ) {
+    const peq   = await utils.getPeq( installClient, issueId );
+    const pacts = await utils.getPActs( installClient, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
+    let curCol  = -1;
+
+    // Is psub out of date?
+    if( pacts != -1 ) {
+	for( const pact of pacts ) {
+	    const ignoreMe = ["notice", "accrue"];   // moves are notices (XXX overly broad), open close are accrue
+	    if( ignoreMe.includes( pact.Action )) { return curCol; }
+	}
+    }
     
-	   
+    let curColName = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
+    let tmpCol = allColumns.find( col => col.name == curColName );
+    if( tmpCol !== undefined ) {
+	curCol = tmpCol.id;
+	console.log( "Will open issue back to col", curColName, curCol );
+    }
+    else { console.log( "Could not find original column." ); }
+    
+    return curCol;
 }
 
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
@@ -707,17 +731,7 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 	// Check if curCol needs to be reset
 	if( link != -1 && link.GHColumnName == config.PROJ_COLS[ config.PROJ_PEND ] ) {
 	    // currently in PEND, being reopened.  Move out of reserved space.  XXX Warn?
-	    const peq = await( utils.getPeq( installClient, issueId ));
-	    let curColName = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
-	    let tmpCol = allColumns.find( col => col.name == curColName );
-	    if( tmpCol !== undefined ) {
-		curCol = tmpCol.id;
-		console.log( "Will open issue back to col", curColName );
-	    }
-	    else {  // Should only happen if projSubs fails in some way.
-		console.log( "Could not find original column." );
-		curCol = -1;
-	    }
+	    curCol = await getCurCol( installClient, issueId, allColumns );
 	}
 	
 	// use PLAN or PROG if present
@@ -729,8 +743,6 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 	}
 	// Use current if both are missing
 	if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
-	    // No curCol?  create in progress.
-	    // XXX probably unneeded
 	    if( curCol == -1 ) {
 		const progName = config.PROJ_COLS[ config.PROJ_PROG]; 
 		console.log( "Creating new column:", progName );

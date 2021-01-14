@@ -425,7 +425,8 @@ async function testCloseReopen( installClient, ghLinks, td ) {
     await tu.refreshFlat( installClient, td );
     await tu.refreshUnclaimed( installClient, td );
 
-    const bacon       = td.getBaconLoc();
+    const bacon      = td.getBaconLoc();
+    const eggs       = td.getEggsLoc();
 
     {
 	console.log( "Open/close in flat" );
@@ -457,32 +458,71 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "C" );
+
+
+	// Erm.  Simulate ceFlutter processing to ingest propose:accrue, else won't see bacon col in step 3
+	await tu.ingestPActs( installClient, issueData );
+
 	
 	// 3. Reopen
 	await tu.reopenIssue( installClient, td, issueData[1] );
-	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	await utils.sleep( 4000 );
+	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus, {"muteIngested": true} );
 	
 	tu.testReport( testStatus, "D" );
 
 	// 4. Reopen again (fail)
 	await tu.reopenIssue( installClient, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus, {"muteIngested": true} );
 	
 	tu.testReport( testStatus, "E" );
 
 	// 5. move to eggs
+	await tu.moveCard( installClient, card.id, eggs.colId );
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, eggs, issueData, card, testStatus, {"muteIngested": true}  );
 
+	tu.testReport( testStatus, "F" );
+	
 	// 6. close
+	await tu.closeIssue( installClient, td, issueData[1] );
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus, {"muteIngested": true} );
+	
+	tu.testReport( testStatus, "G" );
 
 	// 7. reopen
+	await tu.reopenIssue( installClient, td, issueData[1] );
+	await utils.sleep( 2000 );
+
+	// get new cols/locs PROG
+	const flatProg = await tu.getLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PROG] );
+	
+	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, flatProg, issueData, card, testStatus, {"muteIngested": true} );
+	
+	tu.testReport( testStatus, "H" );
 
 	// 8. close
+	await tu.closeIssue( installClient, td, issueData[1] );
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus, {"muteIngested": true} );
+	
+	tu.testReport( testStatus, "I" );
+
 
 	// 9. move to accr
+	await tu.moveCard( installClient, card.id, flatAccr.colId );
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, flatAccr, issueData, card, testStatus, {"muteIngested": true} );
+
+	tu.testReport( testStatus, "J" );
+	
 
 	// 10. reopen (fail)
+	await tu.reopenIssue( installClient, td, issueData[1] );
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, flatAccr, issueData, card, testStatus, {"muteIngested": true} );
     }	
 
     {
@@ -513,6 +553,7 @@ async function runTests( installClient, ghLinks, td ) {
 
     await testCloseReopen( installClient, ghLinks, td ); 
     
+    // create in place?  Yes, major mode.  Can detect and avoid abuse (i.e. creating newborns or carded issues in PEND)
     await testDelete( installClient, ghLinks, td );
     
     await cleanup( installClient, ghLinks, td );
