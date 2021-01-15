@@ -190,7 +190,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	break;
     case 'closed':
     case 'reopened':
-	console.log( "closed or reopened" );
+	console.log( installClient[1], "closed or reopened" );
 
 	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {

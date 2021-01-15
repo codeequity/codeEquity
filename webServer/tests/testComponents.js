@@ -17,11 +17,11 @@ const ASSIGNEE2 = "codeequity";
 
 
 
-async function checkNoAssignees( installClient, td, issueName, ass1, ass2, issueData, testStatus ) {
+async function checkNoAssignees( installClient, td, ass1, ass2, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
-    let meltIssue = await tu.findIssue( installClient, td, issueName );
+    let meltIssue = await tu.findIssue( installClient, td, issueData[0] );
     testStatus = tu.checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.assignees.length, 0,             testStatus, "Issue assignee count" );
@@ -34,7 +34,7 @@ async function checkNoAssignees( installClient, td, issueName, ass1, ass2, issue
     let meltPeq = meltPeqs[0];
     testStatus = tu.checkEq( meltPeq.PeqType, "plan",                     testStatus, "peq type invalid" );
     testStatus = tu.checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
-    testStatus = tu.checkEq( meltPeq.GHIssueTitle, issueName,             testStatus, "peq title is wrong" );
+    testStatus = tu.checkEq( meltPeq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
     testStatus = tu.checkEq( meltPeq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
     testStatus = tu.checkEq( meltPeq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
     testStatus = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );
@@ -76,11 +76,11 @@ async function checkNoAssignees( installClient, td, issueName, ass1, ass2, issue
     return testStatus;
 }
 
-async function checkProgAssignees( installClient, td, issueName, ass1, ass2, issueData, testStatus ) {
+async function checkProgAssignees( installClient, td, ass1, ass2, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
-    let meltIssue = await tu.findIssue( installClient, td, issueName );
+    let meltIssue = await tu.findIssue( installClient, td, issueData[0] );
     testStatus = tu.checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.assignees.length, 2,             testStatus, "Issue assignee count" );
@@ -278,8 +278,8 @@ async function testLabel( installClient, ghLinks, td ) {
 	await utils.sleep( 2000 );
 	
 	// get new cols/locs pend/accr
-	const flatPend = await tu.getLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
-	const flatAccr = await tu.getLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+	const flatPend = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
+	const flatAccr = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 	
 	testStatus = await checkSituatedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 4" );
@@ -364,7 +364,7 @@ async function testAssignment( installClient, ghLinks, td ) {
     await tu.remAssignee( installClient, td, assData[1], ASSIGNEE1 );
     await tu.remAssignee( installClient, td, assData[1], ASSIGNEE2 );
     await utils.sleep( 2000 );
-    testStatus = await checkNoAssignees( installClient, td, ISS_ASS, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
+    testStatus = await checkNoAssignees( installClient, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
     
     // 4. add assignees
     console.log( "Add assignees" );
@@ -374,7 +374,7 @@ async function testAssignment( installClient, ghLinks, td ) {
     // 5. move to Prog
     await tu.moveCard( installClient, assCard.id, td.dsProgID );
     await utils.sleep( 2000 );
-    testStatus = await checkProgAssignees( installClient, td, ISS_ASS, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
+    testStatus = await checkProgAssignees( installClient, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
 
     // There is no further relevant logic.  
     
@@ -428,6 +428,7 @@ async function testCloseReopen( installClient, ghLinks, td ) {
     const bacon      = td.getBaconLoc();
     const eggs       = td.getEggsLoc();
 
+    /*
     {
 	console.log( "Open/close in flat" );
 	// 0. make peq in bacon
@@ -445,8 +446,8 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 	await utils.sleep( 2000 );
 
 	// get new cols/locs pend/accr
-	const flatPend = await tu.getLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
-	const flatAccr = await tu.getLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+	const flatPend = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
+	const flatAccr = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 	
 	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
 	
@@ -459,10 +460,8 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 	
 	tu.testReport( testStatus, "C" );
 
-
 	// Erm.  Simulate ceFlutter processing to ingest propose:accrue, else won't see bacon col in step 3
 	await tu.ingestPActs( installClient, issueData );
-
 	
 	// 3. Reopen
 	await tu.reopenIssue( installClient, td, issueData[1] );
@@ -497,7 +496,7 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 	await utils.sleep( 2000 );
 
 	// get new cols/locs PROG
-	const flatProg = await tu.getLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PROG] );
+	const flatProg = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PROG] );
 	
 	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, flatProg, issueData, card, testStatus, {"muteIngested": true} );
 	
@@ -509,7 +508,6 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus, {"muteIngested": true} );
 	
 	tu.testReport( testStatus, "I" );
-
 
 	// 9. move to accr
 	await tu.moveCard( installClient, card.id, flatAccr.colId );
@@ -524,19 +522,117 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, flatAccr, issueData, card, testStatus, {"muteIngested": true} );
     }	
-
-    {
-	console.log( "Open/close in full" );
-    }
+    */
 
     {
 	console.log( "Open/close in full++" );
+
+	await tu.makeColumn( installClient, td.githubOpsPID, "Stars" );	
+	await tu.makeColumn( installClient, td.githubOpsPID, "Stripes" );
+
+	const stars      = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+	const stripes    = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+
+	const ghoProg = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+	const ghoPend = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+	const ghoAccr = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+
+	// 0. make peq in stars
+	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	const issueData = await tu.makeIssue( installClient, td, ISS_LAB4, [label] );     // [id, number, title] 
+	const card      = await tu.makeProjectCard( installClient, stars.colId, issueData[0] );
+	await utils.sleep( 5000 );
+	testStatus     = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, stars, issueData, card, testStatus );
+
+	tu.testReport( testStatus, "A" );
+	
+	// 1. close
+	await tu.addAssignee( installClient, td, issueData[1], ASSIGNEE1 );	
+	await tu.closeIssue( installClient, td, issueData[1] );
+	await utils.sleep( 4000 );
+	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, ghoPend, issueData, card, testStatus );
+	
+	tu.testReport( testStatus, "B" );
+
+	// 2  Simulate ceFlutter processing to ingest propose:accrue, else won't see stars col in step 3
+	await tu.ingestPActs( installClient, issueData );
+	
+	// 3. Reopen
+	await tu.reopenIssue( installClient, td, issueData[1] );
+	await utils.sleep( 4000 );
+	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, stars, issueData, card, testStatus, {"muteIngested": true} );
+	
+	tu.testReport( testStatus, "C" );
+
+	// 4. move to stripes
+	await tu.moveCard( installClient, card.id, stripes.colId );
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, stripes, issueData, card, testStatus, {"muteIngested": true}  );
+
+	tu.testReport( testStatus, "D" );
+	
+	// 5. close
+	await tu.closeIssue( installClient, td, issueData[1] );
+	await utils.sleep( 4000 );
+	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, ghoPend, issueData, card, testStatus, {"muteIngested": true} );
+	
+	tu.testReport( testStatus, "E" );
+
+	// 6. reopen
+	await tu.reopenIssue( installClient, td, issueData[1] );
+	await utils.sleep( 4000 );
+	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, ghoProg, issueData, card, testStatus, {"muteIngested": true} );
+	
+	tu.testReport( testStatus, "F" );
+
+	// 7. close
+	await tu.closeIssue( installClient, td, issueData[1] );
+	await utils.sleep( 4000 );
+	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, ghoPend, issueData, card, testStatus, {"muteIngested": true} );
+	
+	tu.testReport( testStatus, "G" );
+
+	// 8. move to accr
+	await tu.moveCard( installClient, card.id, ghoAccr.colId );
+	await utils.sleep( 2000 );
+	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, ghoAccr, issueData, card, testStatus, {"muteIngested": true} );
+
+	tu.testReport( testStatus, "H" );
     }
 
     
     tu.testReport( testStatus, "Test Close Reopen" );
 }
 
+
+async function testCreateDelete( installClient, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    /*
+    console.log( "Test Close Reopen" );
+    installClient[1] = "<TEST: Close Reopen>";
+
+    await tu.refreshRec( installClient, td );
+    await tu.refreshFlat( installClient, td );
+    await tu.refreshUnclaimed( installClient, td );
+
+    const bacon      = td.getBaconLoc();
+    const eggs       = td.getEggsLoc();
+
+    {
+	console.log( "Open/close in flat" );
+	// 0. make peq in bacon
+	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	const issueData = await tu.makeIssue( installClient, td, ISS_LAB4, [label] );     // [id, number, title] 
+	const card      = await tu.makeProjectCard( installClient, bacon.colId, issueData[0] );
+	await utils.sleep( 5000 );
+	testStatus     = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+    }
+    
+    tu.testReport( testStatus, "Test Close Reopen" );
+    */
+}
 
 async function cleanup( installClient, ghLinks, td ) {
 }
@@ -554,7 +650,8 @@ async function runTests( installClient, ghLinks, td ) {
     await testCloseReopen( installClient, ghLinks, td ); 
     
     // create in place?  Yes, major mode.  Can detect and avoid abuse (i.e. creating newborns or carded issues in PEND)
-    await testDelete( installClient, ghLinks, td );
+    // PROG PEND ACCR create/delete newborn, carded, situated.
+    await testCreateDelete( installClient, ghLinks, td );
     
     await cleanup( installClient, ghLinks, td );
 }

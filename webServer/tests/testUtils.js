@@ -183,19 +183,24 @@ async function getLinks( installClient, ghLinks, query ) {
     return ghLinks.getLinks( installClient, query );
 }
 
-async function findIssue( installClient, td, issueTitle ) {
+async function findIssue( installClient, td, issueId ) {
     let retVal = -1;
     let issues = await getIssues( installClient, td );
-    for( const issue of issues ) {
-	if( issue.title == issueTitle ){
-	    retVal = issue;
-	    break;
-	}
-    }
+    retVal = issues.find( issue => issue.id == issueId );
+    if( typeof retVal == 'undefined' ) { retVal = -1; }
     return retVal; 
 }
 
-async function getLoc( installClient, projId, projName, colName ) {
+// Prefer to use findIssue.  IssueNames are not unique.
+async function findIssueByName( installClient, td, issueName ) {
+    let retVal = -1;
+    let issues = await getIssues( installClient, td );
+    retVal = issues.find( issue => issue.name == issueName );
+    if( typeof retVal == 'undefined' ) { retVal = -1; }
+    return retVal; 
+}
+
+async function getFlatLoc( installClient, projId, projName, colName ) {
     const cols = await getColumns( installClient, projId );
     let col = cols.find(c => c.name == colName );
 
@@ -211,6 +216,14 @@ async function getLoc( installClient, projId, projName, colName ) {
     loc.colName  = col.name;
     loc.projSub  = [projName, colName];
     loc.peqType  = ptype; // XXX probably need to add alloc
+    
+    return loc;
+}
+
+async function getFullLoc( installClient, masterColName, projId, projName, colName ) {
+
+    let loc = await getFlatLoc( installClient, projId, projName, colName );
+    loc.projSub  = [masterColName, projName, colName];
     
     return loc;
 }
@@ -354,12 +367,14 @@ async function moveCard( installClient, cardId, columnId ) {
 }
 
 async function closeIssue( installClient, td, issueNumber ) {
+    console.log( "Closing", td.GHRepo, issueNumber );
     await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
 	.catch( e => { console.log( installClient[1], "Close issue failed.", e );	});
     await utils.sleep( MIN_DELAY );
 }
 
 async function reopenIssue( installClient, td, issueNumber ) {
+    console.log( "Opening", td.GHRepo, issueNumber );
     await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "open" })
 	.catch( e => { console.log( installClient[1], "Open issue failed.", e );	});
     await utils.sleep( MIN_DELAY );
@@ -430,9 +445,7 @@ async function checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, 
     console.log( "Check Untracked issue", issueData );
 
     // CHECK github issues
-    // let issue  = await findIssue( installClient, td, issueData[2] );
-    let issues = await getIssues( installClient, td );
-    let issue  = issues.find( iss => iss.title == issueData[2] );
+    let issue  = await findIssue( installClient, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, 0,                testStatus, "Issue label" );
@@ -522,10 +535,9 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     let muteIngested = specials !== undefined && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
 
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested );
+
     // CHECK github issues
-    // let meltIssue = await findIssue( installClient, td, issueData[2] );
-    let issues = await getIssues( installClient, td );
-    let issue  = issues.find( iss => iss.title == issueData[2] );
+    let issue  = await findIssue( installClient, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, 1,                testStatus, "Issue label" );
@@ -557,15 +569,15 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
-    
+
     testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );        
-    testStatus = checkEq( peq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
+    testStatus = checkEq( peq.GHProjectSub.length, loc.projSub.length, testStatus, "peq project sub len invalid" );
     testStatus = checkEq( peq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
     testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );      
     testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );    
     testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );      
     testStatus = checkEq( peq.Amount, 1000,                        testStatus, "peq amount" );
-    testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub invalid" );
+    testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub 0 invalid" );
     testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq unclaimed PID bad" );
     testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
 
@@ -578,7 +590,7 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     if( pacts.length <= 3 ) {
 	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
 	if( !pip.includes( loc.projSub[1] )) { 
-	    testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1], testStatus, "peq project sub invalid" );
+	    testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1], testStatus, "peq project sub 1 invalid" );
 	}
     }
     
@@ -653,7 +665,7 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueDa
     testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
     testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );       
-    testStatus = checkEq( peq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
+    testStatus = checkEq( peq.GHProjectSub.length, loc.projSub.length, testStatus, "peq project sub invalid" );
     testStatus = checkEq( peq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
     testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
     testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
@@ -693,9 +705,7 @@ async function checkAssignees( installClient, td, ass1, ass2, issueData, testSta
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
-    // let meltIssue = await findIssue( installClient, td, issueName );
-    let issues = await getIssues( installClient, td );
-    let issue  = issues.find( iss => iss.title == issueData[2] );
+    let issue  = await findIssue( installClient, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.assignees.length, 2,             testStatus, "Issue assignee count" );
@@ -783,7 +793,9 @@ exports.getColumns      = getColumns;
 exports.getCards        = getCards;
 exports.getLinks        = getLinks;
 exports.findIssue       = findIssue;
-exports.getLoc          = getLoc; 
+exports.findIssueByName = findIssueByName;
+exports.getFlatLoc      = getFlatLoc; 
+exports.getFullLoc      = getFullLoc; 
 
 exports.findCardForIssue = findCardForIssue;
 exports.setUnpopulated   = setUnpopulated;

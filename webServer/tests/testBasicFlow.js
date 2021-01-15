@@ -17,7 +17,7 @@ const ASSIGNEE2 = "codeequity";
 async function checkNewbornIssue( installClient, ghLinks, td, issueData, testStatus ) {
 
     // CHECK github issues
-    let meltIssue = await tu.findIssue( installClient, td, ISS_FLOW );
+    let meltIssue = await tu.findIssue( installClient, td, issueData[0] );
     testStatus = tu.checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     
@@ -49,7 +49,7 @@ async function checkNewbornIssue( installClient, ghLinks, td, issueData, testSta
 // But no card/column has been provided.  So, CE creates an unclaimed area for safe keeping.
 async function checkUnclaimedIssue( installClient, ghLinks, td, issueData, testStatus ) {
     // CHECK github issues
-    let meltIssue = await tu.findIssue( installClient, td, ISS_FLOW );
+    let meltIssue = await tu.findIssue( installClient, td, issueData[0] );
     testStatus = tu.checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.labels.length, 1,                testStatus, "Issue label" );
@@ -102,11 +102,11 @@ async function checkUnclaimedIssue( installClient, ghLinks, td, issueData, testS
 
 
 
-async function checkMove( installClient, ghLinks, td, title, colId, meltCard, testStatus ) {
+async function checkMove( installClient, ghLinks, td, issueData, colId, meltCard, testStatus ) {
 
     // CHECK github issues
     // id, num in linkage
-    let meltIssue = await tu.findIssue( installClient, td, title );
+    let meltIssue = await tu.findIssue( installClient, td, issueData[0] );
     testStatus = tu.checkEq( meltIssue.assignees.length, 2,                              testStatus, "Issue assignee count" );
     if     ( colId == td.dsPendID ) { testStatus = tu.checkEq( meltIssue.state, "closed",     testStatus, "Issue status" );  }
     else if( colId == td.dsAccrID ) { testStatus = tu.checkEq( meltIssue.state, "closed",     testStatus, "Issue status" );  }
@@ -131,7 +131,7 @@ async function checkMove( installClient, ghLinks, td, title, colId, meltCard, te
     let meltPeq = meltPeqs[0];
     testStatus = tu.checkEq( meltPeq.PeqType, "plan",                     testStatus, "peq type invalid" );
     testStatus = tu.checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
-    testStatus = tu.checkEq( meltPeq.GHIssueTitle, title,                 testStatus, "peq title is wrong" );
+    testStatus = tu.checkEq( meltPeq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
     testStatus = tu.checkEq( meltPeq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
     testStatus = tu.checkEq( meltPeq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
     testStatus = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );
@@ -182,7 +182,7 @@ async function checkMove( installClient, ghLinks, td, title, colId, meltCard, te
     let meltLink = ( links.filter((link) => link.GHIssueId == meltIssue.id ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
-    testStatus = tu.checkEq( meltLink.GHCardTitle, title,                  testStatus, "Linkage Card Title" );
+    testStatus = tu.checkEq( meltLink.GHCardTitle, issueData[2],           testStatus, "Linkage Card Title" );
     testStatus = tu.checkEq( meltLink.GHProjectName, td.dataSecTitle,      testStatus, "Linkage Project Title" );
     testStatus = tu.checkEq( meltLink.GHProjectId, td.dataSecPID,          testStatus, "Linkage project id" );
     testStatus = tu.checkEq( meltLink.GHColumnId, colId,                   testStatus, "Linkage Col Id" );
@@ -228,17 +228,17 @@ async function testStepByStep( installClient, ghLinks, td ) {
     // 5. move to prog
     await tu.moveCard( installClient, meltCard.id, td.dsProgID );
     await utils.sleep( 2000 );
-    testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW, td.dsProgID, meltCard, testStatus );
+    testStatus = await checkMove( installClient, ghLinks, td, meltData, td.dsProgID, meltCard, testStatus );
 	
     // 6. close
     await tu.closeIssue( installClient, td, meltData[1] );
     await utils.sleep( 2000 );
-    testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW,td.dsPendID, meltCard, testStatus );
+    testStatus = await checkMove( installClient, ghLinks, td, meltData, td.dsPendID, meltCard, testStatus );
 
     // 7. move to accr
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
     await utils.sleep( 2000 );
-    testStatus = await checkMove( installClient, ghLinks, td, ISS_FLOW, td.dsAccrID, meltCard, testStatus );
+    testStatus = await checkMove( installClient, ghLinks, td, meltData, td.dsAccrID, meltCard, testStatus );
     
     tu.testReport( testStatus, "Test Resolve" );
 }
