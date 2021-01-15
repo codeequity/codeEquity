@@ -533,6 +533,7 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
 async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
     let muteIngested = specials !== undefined && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
+    let issueState   = specials !== undefined && specials.hasOwnProperty( "state" )        ? specials.state        : false;
 
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested );
 
@@ -542,6 +543,8 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, 1,                testStatus, "Issue label" );
     testStatus = checkEq( issue.labels[0].name, "1000 PEQ",      testStatus, "Issue label" );
+
+    if( issueState ) { testStatus = checkEq( issue.state, issueState, testStatus, "Issue state" );  }
 
     // CHECK github location
     let cards = await getCards( installClient, td.unclaimCID );   
@@ -610,6 +613,8 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
 // Check last PAct
 async function checkNewlyClosedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
+    if( specials === undefined ) { specials = {}; }
+    if( !specials.state ) { specials.state = "closed"; }
     testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check Closed issue", loc.projName, loc.colName );
@@ -632,6 +637,8 @@ async function checkNewlyClosedIssue( installClient, ghLinks, td, loc, issueData
 // Check last PAct
 async function checkNewlyOpenedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
+    if( specials === undefined ) { specials = {}; }
+    if( !specials.state ) { specials.state = "open"; }
     testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check Opened issue", loc.projName, loc.colName );
@@ -655,6 +662,8 @@ async function checkNewlyOpenedIssue( installClient, ghLinks, td, loc, issueData
 
 async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
+    if( specials === undefined ) { specials = {}; }
+    if( !specials.state ) { specials.state = "open"; }
     testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check newly situated issue", loc.projName, loc.colName );

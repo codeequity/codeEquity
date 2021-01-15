@@ -18,8 +18,8 @@ class Linkage {
 
 
     async initOneRepo( installClient, fn, PAT ) {
-	let peqs        = await utils.getPeqs( installClient, { "GHRepo": fn } );
-	let peqIssueIds = peqs == -1 ? [] : peqs.map((peq) => peq.GHIssueId );
+	let peqs = await utils.getPeqs( installClient, { "GHRepo": fn } );
+	if( peqs == -1 ) { peqs = []; }
 	
 	let fnParts = fn.split('/');
 	
@@ -30,8 +30,9 @@ class Linkage {
 
 	// peq add: cardTitle, colId, colName, projName
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
-	for( const pid of peqIssueIds ) {
-	    let link = this.getUniqueLink( installClient, pid );
+	for( const peq of peqs ) {
+	    const iid = peq.GHIssueId;
+	    let link = this.getUniqueLink( installClient, iid );
 	    if( link == -1 ) { console.log( "Did you remove an issue without removing the corresponding PEQ?" ); }
 	    assert( link != -1 ); // peq without issue means badness
 
@@ -41,6 +42,7 @@ class Linkage {
 	    link.GHColumnId    = card.columnId.toString();
 	    link.GHProjectName = card.projectName;
 	    link.GHColumnName  = card.columnName;
+	    link.flatSource    = peq.GHProjectSub[ peq.GHProjectSub.length - 1 ];
 	    }
 	
 	return baseLinks; 
@@ -99,6 +101,10 @@ class Linkage {
 	link.GHColumnName  = colName;
 	link.GHCardId      = cardId.toString();
 	link.GHCardTitle   = issueTitle;   // XXX rename
+	link.flatSource    = link.GHColumnId;
+
+	// Do not track source col if is in full layout
+	if( config.PROJ_COLS.includes( link.GHColumnName ) ) { link.flatSource = -1; }
     }
 
     populateLinkage( installClient, fn, baseLinkData ) {
@@ -185,6 +191,7 @@ class Linkage {
 	link.GHColumnId    = -1;
 	link.GHColumnName  = config.EMPTY;
 	link.GHCardTitle   = config.EMPTY;
+	link.flatSource    = -1;
     }
 
     updateLinkage( installClient, issueId, cardId, newColId, newColName ) {
@@ -194,6 +201,9 @@ class Linkage {
 
 	link.GHColumnId   = newColId.toString();
 	link.GHColumnName = newColName;
+
+	// update, need to track specially
+	if( !config.PROJ_COLS.includes( newColName ) ) { link.flatSource = link.GHColumnId; }
 	return true;
     }
 
@@ -226,7 +236,9 @@ class Linkage {
 		     this.fill( "ColId", 10),
 		     this.fill("ColName", 20),
 		     this.fill( "ProjId", 10 ), 
-		     "ProjName" );
+		     this.fill( "ProjName", 15 ),
+		     this.fill( "sourceCol", 10 )
+		   );
 	
 	for( const [issueId, clinks] of Object.entries( this.links )) {
 	    for( const [_, link] of Object.entries( clinks )) {
@@ -238,7 +250,7 @@ class Linkage {
 			     this.fill( link.GHColumnName, 20 ),
 			     link.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHProjectId, 10 ),
 			     this.fill( link.GHProjectName, 15 ),
-			     this.fill( link.GHRepo )
+			     link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
 			   );
 	    }
 	}

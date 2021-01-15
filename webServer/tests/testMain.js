@@ -70,9 +70,6 @@ async function runTests() {
     // label, unlabel, label
 
     // add assignees, assignee
-
-    ghLinks.show();
-    
 }
 
 
