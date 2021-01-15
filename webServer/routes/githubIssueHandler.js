@@ -46,7 +46,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
 	// Should not get here from adding alloc card - that is a bot action.
-	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_PEND
+	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_ACCR
+	// PROJ_PEND label can be added during pend negotiation
 	// ... but it if is situated already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
@@ -106,8 +107,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	content.push( config.PDESC + pd.peqValue.toString() );
 	let retVal = await utils.processNewPEQ( installClient, ghLinks, pd, content, link );
 
-	// Attempted to label >= PEND.  GH has already applied it, so remove
-	// XXX This should no longer be possible, since carded issue can no longer move in.
+	// Attempted to label >= ACCR.  GH has already applied it, so remove
+	// XXX This should not be possible, as would be 2nd peq label since ACCR already has one
 	if( retVal == "removeLabel" ) {
 	    assert( false ); 
 	    console.log( "..removing GH label on ACCR card" );
@@ -128,9 +129,9 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
-	    if( newNameIndex > config.PROJ_PROG ) { 
+	    if( newNameIndex >= config.PROJ_ACCR ) { 
 		// XXX inform contribs of attempt to remove the peq label from an accrued issue
-		console.log( "WARNING.  Can't remove the peq label from a pending or accrued PEQ" );
+		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
 		// GH already removed this.  Put it back.
 		ghSafe.addLabel( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
 		return;
@@ -189,7 +190,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	break;
     case 'closed':
     case 'reopened':
-	console.log( "closed or reopened" );
+	console.log( installClient[1], "closed or reopened" );
 
 	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
@@ -215,8 +216,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		    // githubCardHandler:recordMove must handle many more options.  Choices here are limited.
 		    // Closed: 
 		    let verb = "propose";
-		    let action = "accrue";
-		    if( action == "reopened" ) { verb = "reject"; }   // XXX this will not be seen!!
+		    let paction = "accrue";
+		    if( action == "reopened" ) { verb = "reject"; }
 		    
 		    let subject = [ peqId.toString() ];
 		    utils.recordPEQAction(
@@ -225,7 +226,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 			sender,           // gh user name
 			pd.GHFullName,    // of the repo
 			verb,
-			action,
+			paction,
 			subject,          // subject
 			"",               // note
 			utils.getToday(), // entryDate

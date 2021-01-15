@@ -69,7 +69,7 @@ async function testPopulate( installClient, td ) {
     await tu.setUnpopulated( installClient, td );
 
     let popLabel    = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
-    let singleIssue = await tu.findIssue( installClient, td, ISS_SINREC );
+    let singleIssue = await tu.findIssueByName( installClient, td, ISS_SINREC );
     await tu.addLabel( installClient, td, singleIssue.number, popLabel.name );       // ready.. set... Go!
 
     await utils.sleep( 15000 );

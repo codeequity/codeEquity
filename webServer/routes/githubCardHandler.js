@@ -106,7 +106,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	await utils.processNewPEQ( installClient, ghLinks, pd, issue[1], -1 ); 
     }
     else if( action == "created" ) {
-	// In projects, creating a card that MAY have a human PEQ label in content.
+	// In projects, creating a card that MAY have a human PEQ label in content...  PNP will create issue and label it, rebuild card, etc.
 	// console.log( "New card created, unattached" );
 	let cardContent = pd.reqBody['project_card']['note'].split('\n');
 

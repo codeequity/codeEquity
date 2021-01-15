@@ -110,6 +110,17 @@ class TestData {
 	loc.peqType  = "plan";
 	return loc;
     }
+    // NOTE: peq type is not updated by ceServer, only ceFlutter.
+    getEggsLoc() {
+	let loc = {};
+	loc.projId   = this.flatPID;
+	loc.projName = this.flatTitle;
+	loc.colId    = this.col1ID;
+	loc.colName  = this.col1Title;
+	loc.projSub  = [this.flatTitle, this.col1Title];
+	loc.peqType  = "plan";
+	return loc;
+    }
     getUntrackLoc( pid ) {
 	let loc = {};
 	loc.projId   = pid;

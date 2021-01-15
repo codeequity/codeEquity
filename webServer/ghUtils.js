@@ -651,9 +651,39 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
 	utils.getToday(), // entryDate
 	pd.reqBody        // raw
     );
-    
-	   
 }
+
+// XXX
+/*
+// This is a peq issue being reopened.  Can't reopen into PEND, so where to put it?
+async function getCurCol( installClient, ghLinks, issueId ) {
+
+    let curCol  = -1;
+    // XXX expensive
+    const peq   = await utils.getPeq( installClient, issueId );
+    if( peq == -1 ) { return curCol; }
+    const pacts = await utils.getPActs( installClient, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
+
+    // Is psub out of date?
+    if( pacts != -1 ) {
+	for( const pact of pacts ) {
+	    const ignoreMe = ["notice", "accrue"];   // moves are notices (XXX overly broad), open close are accrue
+	    if( ignoreMe.includes( pact.Action )) { return curCol; }
+	}
+    }
+    
+    let curColName = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
+    let tmpCol = allColumns.find( col => col.name == curColName );
+    if( tmpCol !== undefined ) {
+	curCol = tmpCol.id;
+	console.log( "Will open issue back to col", curColName, curCol );
+    }
+    else { console.log( "Could not find original column." ); }
+
+    const link = ghLinks.getUniqueLink( installClient, issueId );
+    return parseInt( link.flatSource );
+}
+*/
 
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
 // If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
@@ -667,11 +697,16 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 
     let link = ghLinks.getUniqueLink( installClient, issueId );
 
+    // moves are only tracked for peq issues
     let projId = link == -1 ? link : parseInt( link['GHProjectId'] );
-    let curCol = link == -1 ? link : parseInt( link['GHColumnId'] );        // moves are only tracked for peq issues
+    let curCol = link == -1 ? link : parseInt( link['GHColumnId'] );        
 
-    // XXX curCol is good for first close issue.  But then, on reopen, curCol is the newly made PEND
-    
+    // PLAN and PROG are used as a home in which to reopen issue back to.
+    // If this is not a pure full project, try to reopen the issue back to where it started.
+    if( link != -1 && link.GHColumnName == config.PROJ_COLS[ config.PROJ_PEND ] ) {
+	curCol = parseInt( link.flatSource );
+    }
+
     console.log( installClient[1], "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
@@ -702,20 +737,31 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 	    console.log( installClient[1], "Validate CE Project Layout failed.", e );
 	});
 
+    
     // Make this project viable for PEQ tracking
-    if( missing ) {
-	// use PLAN or PROG if present
-	if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] != -1 ) {
-	    foundReqCol[config.PROJ_PLAN + 1] = foundReqCol[config.PROJ_PROG + 1];
-	}
-	if( foundReqCol[config.PROJ_PLAN + 1] != -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
-	    foundReqCol[config.PROJ_PROG + 1] = foundReqCol[config.PROJ_PLAN + 1];
-	}
-	// Use current if both are missing
-	if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
+    if( missing || curCol != -1 ) {
+
+	// first, use curCol if present
+	if( curCol != -1 ) {
 	    foundReqCol[config.PROJ_PLAN + 1] = curCol;
 	    foundReqCol[config.PROJ_PROG + 1] = curCol;
 	}
+	else { // else use PLAN or PROG if present, else make prog and use it
+	    if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] != -1 ) {
+		foundReqCol[config.PROJ_PLAN + 1] = foundReqCol[config.PROJ_PROG + 1];
+	    }
+	    if( foundReqCol[config.PROJ_PLAN + 1] != -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
+		foundReqCol[config.PROJ_PROG + 1] = foundReqCol[config.PROJ_PLAN + 1];
+	    }
+	    if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
+		const progName = config.PROJ_COLS[ config.PROJ_PROG]; 
+		console.log( "Creating new column:", progName );
+		await installClient[0].projects.createColumn({ project_id: projId, name: progName })
+		    .then((column) => { curCol = column.data.id; })
+		    .catch( e => { console.log( installClient[1], "Create column failed.", e ); });
+	    }
+	}
+
 	// Create PEND if missing
 	if( foundReqCol[config.PROJ_PEND + 1] == -1 ) {
 	    let pendName = config.PROJ_COLS[ config.PROJ_PEND ];
@@ -799,19 +845,24 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueData, ac
     let newColName = "";
     assert.notEqual( ceProjectLayout[0], -1 );
     let cardId = -1;
-    let oldColId = -1;
+    // let oldColId = -1;
     let pip = [ config.PROJ_PLAN, config.PROJ_PROG ];  
     let pac = [ config.PROJ_PEND, config.PROJ_ACCR ];  
     
     if( action == "closed" ) {
 
+	/*
+	// do NOT verify origination point.  Card can be closed from anywhere.  Will move all PEQ into PEND
 	// verify card is in the right place
 	for( let i = 0; i < 2; i++ ) {
 	    oldColId = ceProjectLayout[ pip[i]+1 ];
 	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueData[0], oldColId );
 	    if( cardId != -1 ) { break; }
 	}
-
+	*/
+	const link = ghLinks.getUniqueLink( installClient, issueData[0] );
+	cardId = link.GHCardId;
+	
 	// move card to "Pending PEQ Approval"
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
@@ -829,21 +880,22 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueData, ac
 	}
     }
     else if( action == "reopened" ) {
-
-	// XXX create In progress, if not exist
 	
-	// verify card is currently in the right place
-	for( let i = 0; i < 2; i++ ) {
-	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueData[0], ceProjectLayout[ pac[i]+1 ] );
-	    if( cardId != -1 ) { break; }
-	}
+	// This is a PEQ issue.  Verify card is currently in the right place, i.e. PEND ONLY (can't move out of ACCR)
+	cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueData[0], ceProjectLayout[ config.PROJ_PEND+1 ] );
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
-	    newColName = config.PROJ_COLS[ config.PROJ_PROG ]; 	    
+	    newColName = await getColumnName( installClient, newColId );
 	    success = moveCard( installClient, cardId, newColId );
+	}
+	else {
+	    // GH has opened this issue.  Close it back up.
+	    console.log( "WARNING.  Can not reopen an issue that has accrued." );
+	    await updateIssue( installClient, owner, repo, issueData[1], "closed" ); // reopen issue
+	    return false;
 	}
     }
 

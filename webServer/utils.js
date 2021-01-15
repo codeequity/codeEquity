@@ -568,13 +568,12 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 	let peqLabel = await gh.findOrCreateLabel( installClient, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
 	colName  = await gh.getColumnName( installClient, colId );
 	projName = await gh.getProjectName( installClient, pd.GHProjectId );
+	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 
-	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] || colName == config.PROJ_COLS[ config.PROJ_PEND ] ) {
+	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
 	    console.log( installClient[1], "WARNING.  Action not processed in CE.", colName, "is reserved, do not label or create cards here." );
 	    return "removeLabel";
 	}
-	
-	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 	
 	// issue->card:  issueId is available, but linkage has not yet been added
 	if( pd.GHIssueNum > -1 ) {
@@ -618,7 +617,7 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 }
 
 async function getRaw( installClient, pactId ) {
-    console.log( installClient[1], "Get raw PAction", pactId );
+    // console.log( installClient[1], "Get raw PAction", pactId );
 
     let shortName = "GetEntry";
     let query     = { "PEQRawId": pactId.toString() };
@@ -701,6 +700,18 @@ async function getFromQueue( ceJobs, installClient, fullName, sender ) {
     return ceJobs[fullName][sender].first;
 }
 
+
+// UNIT TESTING ONLY!!
+// Ingesting is a ceFlutter operation. 
+async function ingestPActs( installClient, pactIds ) {
+    console.log( installClient[1], "ingesting pacts TESTING ONLY", pactIds );
+
+    let shortName = "UpdatePAct";
+    let pd = { "Endpoint": shortName, "PactIds": pactIds }; 
+    return await wrappedPostIt( installClient, shortName, pd );
+}
+
+
 exports.randAlpha = randAlpha;
 exports.getTimeDiff = getTimeDiff;
 
@@ -733,3 +744,6 @@ exports.cleanDynamo = cleanDynamo;
 
 exports.checkQueue = checkQueue;
 exports.getFromQueue = getFromQueue;
+
+
+exports.ingestPActs = ingestPActs;       // TESTING ONLY
