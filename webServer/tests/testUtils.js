@@ -366,6 +366,12 @@ async function moveCard( installClient, cardId, columnId ) {
     await utils.sleep( MIN_DELAY );
 }
 
+async function remCard( installClient, cardId ) {
+    await installClient[0].projects.deleteCard( { card_id: cardId } )
+	.catch( e => console.log( installClient[1], "Remove card failed.", e ));
+    await utils.sleep( MIN_DELAY );
+}
+
 async function closeIssue( installClient, td, issueNumber ) {
     console.log( "Closing", td.GHRepo, issueNumber );
     await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
@@ -710,6 +716,62 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueDa
     return testStatus;
 }
 
+
+async function checkNewbornCard( installClient, ghLinks, td, loc, cardId, title, testStatus ) {
+
+    console.log( "Check Newborn Card", title, cardId );
+
+    // CHECK github issue
+    // no need, get content link below
+    
+    // CHECK github card
+    let cards  = await getCards( installClient, loc.colId );
+    let card   = cards.find( card => card.id == cardId );
+    const cardTitle = card.note.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+    testStatus = checkEq( card.hasOwnProperty( "content_url" ), false, testStatus, "Newbie has content" );
+    testStatus = checkEq( cardTitle, title,                            testStatus, "Newbie title" );
+
+    // CHECK linkage
+    let links  = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let link   = links.find( l => l.GHCardId == cardId );
+    testStatus = checkEq( typeof link, "undefined",                    testStatus, "Newbie link exists" );
+
+    // CHECK dynamo Peq.  inactive, if it exists
+    // Risky test - will fail if unrelated peqs with same title exist
+    let peqs = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+    testStatus = checkEq( peqs, -1,                                    testStatus, "Newbie peq exists" );
+
+    // CHECK dynamo Pact.. nothing to do here for newborn
+
+    return testStatus;
+}
+
+async function checkNoCard( installClient, ghLinks, td, loc, cardId, title, testStatus ) {
+
+    console.log( "Check No Card", title, cardId );
+
+    // CHECK github card
+    let cards  = await getCards( installClient, loc.colId );
+    if( cards != -1 ) { 
+	let card   = cards.find( card => card.id == cardId );
+	testStatus = checkEq( typeof card, "undefined",            testStatus, "Newbie card exists" );
+    }
+
+    // CHECK linkage
+    let links  = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let link   = links.find( l => l.GHCardId == cardId );
+    testStatus = checkEq( typeof link, "undefined",                testStatus, "Newbie link exists" );
+
+    // CHECK dynamo Peq.  inactive, if it exists
+    // Risky test - will fail if unrelated peqs with same title exist
+    let peqs = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+    testStatus = checkEq( peqs, -1,                                testStatus, "Newbie peq exists" );
+
+
+    return testStatus;
+}
+
+
 async function checkAssignees( installClient, td, ass1, ass2, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
@@ -791,6 +853,7 @@ exports.remLabel        = remLabel;
 exports.addAssignee     = addAssignee;
 exports.remAssignee     = remAssignee;
 exports.moveCard        = moveCard;
+exports.remCard         = remCard;
 exports.closeIssue      = closeIssue;
 exports.reopenIssue     = reopenIssue;
 
@@ -822,4 +885,6 @@ exports.checkNewlySituatedIssue = checkNewlySituatedIssue;
 exports.checkSituatedIssue      = checkSituatedIssue;
 exports.checkDemotedIssue       = checkDemotedIssue;
 exports.checkUntrackedIssue     = checkUntrackedIssue;
+exports.checkNewbornCard        = checkNewbornCard;
+exports.checkNoCard             = checkNoCard;
 exports.checkAssignees          = checkAssignees;

@@ -427,7 +427,7 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 
     const bacon      = td.getBaconLoc();
     const eggs       = td.getEggsLoc();
-/*
+
     {
 	console.log( "Open/close in flat" );
 	// 0. make peq in bacon
@@ -525,7 +525,6 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 
 	tu.testReport( testStatus, "K" );
     }	
-*/
 
     {
 	console.log( "Open/close in full++" );
@@ -608,33 +607,62 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 }
 
 
+// create in place?  Yes, major mode.  
+// PROG PEND ACCR create/delete newborn, carded, situated.
 async function testCreateDelete( installClient, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    /*
-    console.log( "Test Close Reopen" );
-    installClient[1] = "<TEST: Close Reopen>";
+    console.log( "Test Create Delete" );
+    installClient[1] = "<TEST: Create Delete>";
+    
+    const ISS_NEWB = "Newborn";
+    const ISS_CRDD = "Carded"; 
+    const ISS_SITU = "Situated"; 
 
     await tu.refreshRec( installClient, td );
     await tu.refreshFlat( installClient, td );
     await tu.refreshUnclaimed( installClient, td );
 
-    const bacon      = td.getBaconLoc();
-    const eggs       = td.getEggsLoc();
-
+    const stars      = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+    const stripes    = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+    
+    const ghoProg = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const ghoPend = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const ghoAccr = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    
     {
-	console.log( "Open/close in flat" );
-	// 0. make peq in bacon
-	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-	const issueData = await tu.makeIssue( installClient, td, ISS_LAB4, [label] );     // [id, number, title] 
-	const card      = await tu.makeProjectCard( installClient, bacon.colId, issueData[0] );
-	await utils.sleep( 5000 );
-	testStatus     = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	const ISS_FLAT = ISS_NEWB + " Flat";
+	const ISS_PROG = ISS_NEWB + " In Progress";
+	const ISS_PEND = ISS_NEWB + " Pending";
+	const ISS_ACCR = ISS_NEWB + " Accrued";
+
+	console.log( "Newborn testing" );
+	// 0. make newborns
+	const cardIdFlat  = await tu.makeNewbornCard( installClient, stars.colId, ISS_FLAT );
+	const cardIdProg  = await tu.makeNewbornCard( installClient, ghoProg.colId, ISS_PROG );
+	const cardIdPend  = await tu.makeNewbornCard( installClient, ghoPend.colId, ISS_PEND );
+	const cardIdAccr  = await tu.makeNewbornCard( installClient, ghoAccr.colId, ISS_ACCR );
+	await utils.sleep( 2000 );
+	testStatus     = await tu.checkNewbornCard( installClient, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
+	testStatus     = await tu.checkNewbornCard( installClient, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
+	tu.testReport( testStatus, "AA" );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoPend, cardIdPend, ISS_PEND, testStatus );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoAccr, cardIdAccr, ISS_ACCR, testStatus );
+
+	tu.testReport( testStatus, "A" );
+
+	// 2. remove them.
+	await tu.remCard( installClient, cardIdFlat );
+	await tu.remCard( installClient, cardIdProg );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
+
+	tu.testReport( testStatus, "B" );
     }
     
-    tu.testReport( testStatus, "Test Close Reopen" );
-    */
+    tu.testReport( testStatus, "Test Create Delete" );
+
 }
 
 async function cleanup( installClient, ghLinks, td ) {
@@ -650,10 +678,8 @@ async function runTests( installClient, ghLinks, td ) {
     // await testLabel( installClient, ghLinks, td ); 
     // await testLabelCarded( installClient, ghLinks, td );
 
-    await testCloseReopen( installClient, ghLinks, td ); 
+    // await testCloseReopen( installClient, ghLinks, td ); 
     
-    // create in place?  Yes, major mode.  Can detect and avoid abuse (i.e. creating newborns or carded issues in PEND)
-    // PROG PEND ACCR create/delete newborn, carded, situated.
     await testCreateDelete( installClient, ghLinks, td );
     
     await cleanup( installClient, ghLinks, td );

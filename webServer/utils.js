@@ -557,7 +557,16 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
     let projName   = "";
 
     if( pd.peqType == "end" ) {
-	assert( link == -1 );  
+	assert( link == -1 );
+
+	// If reserved column, remove the card.  Can't create newbies here.
+	colName = await gh.getColumnName( installClient, colId );
+	const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
+	if( reserved.includes( colName ) ) {
+	    console.log( "WARNING.  Can not create non-peq cards in codeEquity's reserved pending or accrued columns." );
+	    gh.removeCard( installClient, origCardId );
+	}
+	
 	if( pd.GHIssueId != -1 ) {
 	    let blank      = config.EMPTY;
 	    ghLinks.addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, blank , -1, blank, origCardId, blank );

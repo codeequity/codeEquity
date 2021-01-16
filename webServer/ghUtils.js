@@ -97,6 +97,10 @@ var githubUtils = {
 	return findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue );
     },
 
+    removeCard: function( installClient, cardId ) {
+	return removeCard( installClient, cardId );
+    },
+	
     rebuildCard: function( installClient, owner, repo, colId, origCardId, issueData ) {
 	return rebuildCard( installClient, owner, repo, colId, origCardId, issueData );
     },
@@ -517,6 +521,11 @@ async function populateCELinkage( installClient, ghLinks, pd )
 }
 
 
+async function removeCard( installClient, cardId ) {
+    await installClient[0].projects.deleteCard( { card_id: cardId } )
+	.catch( e => console.log( installClient[1], "Remove card failed.", e ));
+}
+
 // XXX alignment risk - card info could have moved on
 async function rebuildCard( installClient, owner, repo, colId, origCardId, issueData ) {
     assert( issueData.length == 2 );
@@ -537,7 +546,7 @@ async function rebuildCard( installClient, owner, repo, colId, origCardId, issue
     
     // remove orig card
     // Note: await waits for GH to finish - not for notification to be received by webserver.
-    await( installClient[0].projects.deleteCard( { card_id: origCardId } ));
+    removeCard( installClient, origCardId );
 
     return newCardId;
 }
