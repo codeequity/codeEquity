@@ -1,9 +1,13 @@
+var assert = require('assert');
+
+var config  = require('../config');
 const awsAuth = require( '../awsAuth' );
 const auth = require( "../auth");
+
 var utils = require('../utils');
 var ghUtils = require('../ghUtils');
-var config  = require('../config');
-var assert = require('assert');
+const tu = require('./testUtils');
+
 const peqData = require( '../peqData' );
 
 var gh     = ghUtils.githubUtils;
@@ -18,7 +22,7 @@ https://graphql.org/graphql-js/graphql-clients/
 */
 
 
-async function runTests() {
+async function runTests( ghLinks ) {
 
     console.log( "Clear testing environment" );
 
@@ -138,7 +142,8 @@ async function runTests() {
     await utils.cleanDynamo( installClient, "CEPEQs", peqIds );
 
     // Linkages
-    // no need, just restart ceServer
+    console.log( "Remove links" );
+    await tu.remLinks( installClient, ghLinks, pd.GHFullName );
     
     // Queue
     ceJobs = {};
@@ -158,4 +163,5 @@ async function runTests() {
 }
 
 
-runTests();
+// runTests();
+exports.runTests = runTests;

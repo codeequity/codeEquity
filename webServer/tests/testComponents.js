@@ -342,6 +342,8 @@ async function testAssignment( installClient, ghLinks, td ) {
     await tu.refreshFlat( installClient, td );
     await tu.refreshUnclaimed( installClient, td );
 
+    const assPlan = await tu.getFullLoc( installClient, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    
     // 1. Create PEQ issue, add to proj
     console.log( "Make newly situated issue" );
     let assData = await tu.makeIssue( installClient, td, ISS_ASS, [] );     // [id, number, title]  
@@ -351,7 +353,7 @@ async function testAssignment( installClient, ghLinks, td ) {
 
     let assCard  = await tu.makeProjectCard( installClient, td.dsPlanID, assData[0] );
     await utils.sleep( 4000 );
-    testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, ISS_ASS, assData, assCard, testStatus );
+    testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, assPlan, assData, assCard, testStatus );
 
     // 2. add assignee
     console.log( "Add assignees" );
@@ -632,7 +634,6 @@ async function testCreateDelete( installClient, ghLinks, td, PAT ) {
     const ghoPend = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
     const ghoAccr = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
-    /*
     {
 	console.log( "Newborn testing" );
 
@@ -700,8 +701,6 @@ async function testCreateDelete( installClient, ghLinks, td, PAT ) {
 
 	tu.testReport( testStatus, "B" );
     }
-    */
-    
     
     {
 	console.log( "Situated testing" );
@@ -744,13 +743,8 @@ async function testCreateDelete( installClient, ghLinks, td, PAT ) {
 	tu.testReport( testStatus, "B" );
     }
     
-    
-    
     tu.testReport( testStatus, "Test Create Delete" );
 
-}
-
-async function cleanup( installClient, ghLinks, td ) {
 }
 
 
@@ -758,18 +752,17 @@ async function runTests( installClient, ghLinks, td ) {
 
     const PAT   = await auth.getPAT( td.GHOwner );
 
-    console.log( "One-off tests =================" );
+    console.log( "Component tests =================" );
 
-    // await testAssignment( installClient, ghLinks, td );
+    await testAssignment( installClient, ghLinks, td );
 
-    // await testLabel( installClient, ghLinks, td ); 
-    // await testLabelCarded( installClient, ghLinks, td );
+    await testLabel( installClient, ghLinks, td ); 
+    await testLabelCarded( installClient, ghLinks, td );
 
-    // await testCloseReopen( installClient, ghLinks, td ); 
+    await testCloseReopen( installClient, ghLinks, td ); 
     
     await testCreateDelete( installClient, ghLinks, td, PAT );
     
-    await cleanup( installClient, ghLinks, td );
 }
 
 

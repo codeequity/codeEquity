@@ -290,7 +290,7 @@ async function runTests( installClient, ghLinks, td ) {
     console.log( "Preferred CE project structure =================" );
 
     await createPreferredCEProjects( installClient, ghLinks, td );
-    await utils.sleep( 15000 );
+    await utils.sleep( 7000 );
     await testPreferredCEProjects( installClient, ghLinks, td );
 
 }

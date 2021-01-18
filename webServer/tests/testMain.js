@@ -6,6 +6,7 @@ var config  = require('../config');
 var links     = require('../components/linkage.js');
 
 const tu             = require('./testUtils');
+const testDelete     = require( './testDelete' );
 const testSetup      = require( './testSetup' );
 const testFlat       = require( './testFlat' );
 const testPopulate   = require( './testPopulate' );
@@ -39,37 +40,43 @@ async function runTests() {
     const wakeyPID = await tu.makeProject( installClient, td, "ceServer wakey XYZZYXXK837598", "" );
     const pacts    = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
-    const mrp = pacts != 1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
+    const mrp = pacts != -1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
     if( utils.getToday() != mrp.EntryDate ) {
 	console.log( "Cold start?  Most recent pact", mrp.EntryDate );
 	await utils.sleep( 8000 );
     }
     tu.remProject( installClient, wakeyPID );
+
+
+    // TESTS
     
-    /*
+    await testDelete.runTests( ghLinks );
+    
     await testSetup.runTests( installClient, ghLinks, td );
+    console.log( "\n\nSetup test complete." );
     await utils.sleep( 10000 );
+
     await testFlat.runTests( installClient, ghLinks, td );
-    */
+    console.log( "\n\nFlat test complete." );
+    await utils.sleep( 10000 );
 
-    // Have already populated in setup, but will re-pop here.  No harm.
-    // NOTE: you must TURN OFF ceServer to construct part of this test, and turn it back on to execute it.
-    // XXX should break this into setup/test
-    // await testPopulate.runTests( installClient, ghLinks, td );
-
-    // await testBasicFlow.runTests( installClient, ghLinks, td );
-
+    await testBasicFlow.runTests( installClient, ghLinks, td );
+    console.log( "\n\nFlow test complete." );
+    await utils.sleep( 10000 );
 
     await testComponents.runTests( installClient, ghLinks, td );
-    
-    
-    // test add, peq, then add new card to peq issue.  unclaimed.  split issue with assignees?
-    
-    // test standard add, move, close, reopen, accrue
+    console.log( "\n\nComponents test complete." );
+    await utils.sleep( 10000 );
 
-    // label, unlabel, label
+    
+    // XXX test add, peq, then add new card to peq issue.  unclaimed.  split issue with assignees?
+    // XXX test standard add, move, close, reopen, accrue
 
-    // add assignees, assignee
+    
+    // NOTE: you must TURN OFF ceServer to construct part of this test, and turn it back on to execute it.
+    // Have already populated in setup, but will re-pop here.  No harm.  
+    // can't split current resolve test off without rewriting it to be incremental (i.e. can't generate 1:3 without server being off)
+    // await testPopulate.runTests( installClient, ghLinks, td );
 }
 
 

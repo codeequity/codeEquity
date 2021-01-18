@@ -12,6 +12,9 @@ async function handler( ghLinks, reqBody, res ) {
     if( reqBody.Request == "getLinks" ) {
 	retVal = ghLinks.links;
     }
+    else if( reqBody.Request == "purgeLinks" ) {
+	retVal = ghLinks.purge( reqBody.Repo );
+    }
 	
     return res
 	.status(201)

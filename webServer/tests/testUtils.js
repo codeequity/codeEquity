@@ -183,6 +183,13 @@ async function getLinks( installClient, ghLinks, query ) {
     return ghLinks.getLinks( installClient, query );
 }
 
+// Purge repo's links from ceServer
+async function remLinks( installClient, ghLinks, repo ) {
+    let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "Repo": repo };
+    let res = await utils.postCE( "Grog", JSON.stringify( postData ));
+    return res;
+}
+
 async function findIssue( installClient, td, issueId ) {
     let retVal = -1;
     let issues = await getIssues( installClient, td );
@@ -374,7 +381,6 @@ async function remCard( installClient, cardId ) {
 }
 
 async function closeIssue( installClient, td, issueNumber ) {
-    console.log( "Closing", td.GHRepo, issueNumber );
     await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
 	.catch( e => { console.log( installClient[1], "Close issue failed.", e );	});
     await utils.sleep( MIN_DELAY );
@@ -829,15 +835,16 @@ async function checkAssignees( installClient, td, ass1, ass2, issueData, testSta
 
     
     // CHECK Dynamo PAct
-    // Should show relevant change action
+    // Should show relevant change action.. last three are related to current entry - may be more for unclaimed
     let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
-    testStatus = checkEq( meltPacts.length, 3,                            testStatus, "PAct count" );
+    testStatus = checkGE( meltPacts.length, 3,                            testStatus, "PAct count" );
     
     meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let addMP  = meltPacts[0];   // add the issue
-    let addA1  = meltPacts[1];   // add assignee 1
-    let addA2  = meltPacts[2];   // add assignee 2
+    
+    let addMP  = meltPacts[ meltPacts.length - 3];   // add the issue
+    let addA1  = meltPacts[ meltPacts.length - 2];   // add assignee 1
+    let addA2  = meltPacts[ meltPacts.length - 1];   // add assignee 2
     for( const pact of [addMP, addA1, addA2] ) {
 	let hasraw = await hasRaw( installClient, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
@@ -891,6 +898,7 @@ exports.getProjects     = getProjects;
 exports.getColumns      = getColumns;
 exports.getCards        = getCards;
 exports.getLinks        = getLinks;
+exports.remLinks        = remLinks;
 exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
 exports.getFlatLoc      = getFlatLoc; 
