@@ -3,6 +3,7 @@ var utils = require('../utils');
 var config  = require('../config');
 var ghUtils = require('../ghUtils');
 var gh = ghUtils.githubUtils;
+const auth = require( '../auth' );
 
 const testData = require( './testData' );
 const tu = require('./testUtils');
@@ -609,7 +610,7 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 
 // create in place?  Yes, major mode.  
 // PROG PEND ACCR create/delete newborn, carded, situated.
-async function testCreateDelete( installClient, ghLinks, td ) {
+async function testCreateDelete( installClient, ghLinks, td, PAT ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
@@ -630,14 +631,16 @@ async function testCreateDelete( installClient, ghLinks, td ) {
     const ghoProg = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const ghoPend = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
     const ghoAccr = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
-    
+
+    /*
     {
+	console.log( "Newborn testing" );
+
 	const ISS_FLAT = ISS_NEWB + " Flat";
 	const ISS_PROG = ISS_NEWB + " In Progress";
 	const ISS_PEND = ISS_NEWB + " Pending";
 	const ISS_ACCR = ISS_NEWB + " Accrued";
 
-	console.log( "Newborn testing" );
 	// 0. make newborns
 	const cardIdFlat  = await tu.makeNewbornCard( installClient, stars.colId, ISS_FLAT );
 	const cardIdProg  = await tu.makeNewbornCard( installClient, ghoProg.colId, ISS_PROG );
@@ -646,11 +649,8 @@ async function testCreateDelete( installClient, ghLinks, td ) {
 	await utils.sleep( 2000 );
 	testStatus     = await tu.checkNewbornCard( installClient, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
 	testStatus     = await tu.checkNewbornCard( installClient, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
-	tu.testReport( testStatus, "AA" );
 	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoPend, cardIdPend, ISS_PEND, testStatus );
 	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoAccr, cardIdAccr, ISS_ACCR, testStatus );
-
-	tu.testReport( testStatus, "A" );
 
 	// 2. remove them.
 	await tu.remCard( installClient, cardIdFlat );
@@ -658,8 +658,93 @@ async function testCreateDelete( installClient, ghLinks, td ) {
 	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
 	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
 
+	tu.testReport( testStatus, "A" );
+    }
+    
+    {
+	// Note this leaves two newborn issues in place: ISS_PEND, ISS_ACCR
+	console.log( "Carded testing" );
+
+	const ISS_FLAT = ISS_CRDD + " Flat";
+	const ISS_PROG = ISS_CRDD + " In Progress";
+	const ISS_PEND = ISS_CRDD + " Pending";
+	const ISS_ACCR = ISS_CRDD + " Accrued";
+
+	// 0. make carded issues
+	const issDatFlat = await tu.makeIssue( installClient, td, ISS_FLAT, [] );     
+	const issDatProg = await tu.makeIssue( installClient, td, ISS_PROG, [] );
+	const issDatPend = await tu.makeIssue( installClient, td, ISS_PEND, [] );
+	const issDatAccr = await tu.makeIssue( installClient, td, ISS_ACCR, [] );
+
+	const flatCard   = await tu.makeProjectCard( installClient, stars.colId,   issDatFlat[0] );
+	const progCard   = await tu.makeProjectCard( installClient, ghoProg.colId, issDatProg[0] );
+	const pendCard   = await tu.makeProjectCard( installClient, ghoPend.colId, issDatPend[0] );
+	const accrCard   = await tu.makeProjectCard( installClient, ghoAccr.colId, issDatAccr[0] );
+
+	await utils.sleep( 2000 );
+	testStatus     = await tu.checkUntrackedIssue( installClient, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
+	testStatus     = await tu.checkUntrackedIssue( installClient, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoPend, pendCard.id, ISS_PEND, testStatus );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoAccr, accrCard.id, ISS_ACCR, testStatus );
+
+	tu.testReport( testStatus, "A" );
+
+	// 2. remove them.
+	await tu.remCard( installClient, flatCard.id );             // remove card, then issue
+	await tu.remIssue( installClient, td, issDatFlat[0], PAT );
+	await tu.remIssue( installClient, td, issDatProg[0], PAT ); // just remove issue
+	
+	await utils.sleep( 2000 );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, stars,   flatCard.id, ISS_FLAT, testStatus );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoProg, progCard.id, ISS_PROG, testStatus );
+
 	tu.testReport( testStatus, "B" );
     }
+    */
+    
+    
+    {
+	console.log( "Situated testing" );
+
+	const ISS_FLAT = ISS_SITU + " Flat";
+	const ISS_PROG = ISS_SITU + " In Progress";
+	const ISS_PEND = ISS_SITU + " Pending";
+	const ISS_ACCR = ISS_SITU + " Accrued";
+
+	// 0. make situated issues
+	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );	
+	const issDatFlat = await tu.makeIssue( installClient, td, ISS_FLAT, [label] );     
+	const issDatProg = await tu.makeIssue( installClient, td, ISS_PROG, [label] );
+	const issDatPend = await tu.makeIssue( installClient, td, ISS_PEND, [label] );
+	const issDatAccr = await tu.makeIssue( installClient, td, ISS_ACCR, [label] );
+
+	const flatCard   = await tu.makeProjectCard( installClient, stars.colId,   issDatFlat[0] );
+	const progCard   = await tu.makeProjectCard( installClient, ghoProg.colId, issDatProg[0] );
+	const pendCard   = await tu.makeProjectCard( installClient, ghoPend.colId, issDatPend[0] );
+	const accrCard   = await tu.makeProjectCard( installClient, ghoAccr.colId, issDatAccr[0] );
+
+	await utils.sleep( 8000 );
+	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
+	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
+	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, ghoPend, issDatPend, pendCard, testStatus );
+	testStatus = await tu.checkNoCard( installClient, ghLinks, td, ghoAccr, accrCard.id, ISS_ACCR, testStatus, {"peq": true} );
+
+	tu.testReport( testStatus, "A" );
+	
+	// 2. remove them.
+	await tu.remIssue( installClient, td, issDatFlat[0], PAT );
+	await tu.remIssue( installClient, td, issDatProg[0], PAT ); 
+	await tu.remIssue( installClient, td, issDatPend[0], PAT );
+	
+	await utils.sleep( 5000 );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, stars,   flatCard.id, ISS_FLAT, testStatus, {"peq": true} );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoProg, progCard.id, ISS_PROG, testStatus, {"peq": true} );
+	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoPend, pendCard.id, ISS_PEND, testStatus, {"peq": true} );
+
+	tu.testReport( testStatus, "B" );
+    }
+    
+    
     
     tu.testReport( testStatus, "Test Create Delete" );
 
@@ -671,6 +756,8 @@ async function cleanup( installClient, ghLinks, td ) {
 
 async function runTests( installClient, ghLinks, td ) {
 
+    const PAT   = await auth.getPAT( td.GHOwner );
+
     console.log( "One-off tests =================" );
 
     // await testAssignment( installClient, ghLinks, td );
@@ -680,7 +767,7 @@ async function runTests( installClient, ghLinks, td ) {
 
     // await testCloseReopen( installClient, ghLinks, td ); 
     
-    await testCreateDelete( installClient, ghLinks, td );
+    await testCreateDelete( installClient, ghLinks, td, PAT );
     
     await cleanup( installClient, ghLinks, td );
 }

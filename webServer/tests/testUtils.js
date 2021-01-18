@@ -223,7 +223,8 @@ async function getFlatLoc( installClient, projId, projName, colName ) {
 async function getFullLoc( installClient, masterColName, projId, projName, colName ) {
 
     let loc = await getFlatLoc( installClient, projId, projName, colName );
-    loc.projSub  = [masterColName, projName, colName];
+
+    loc.projSub  = config.PROJ_COLS.includes( colName ) ? [masterColName, projName] : [masterColName, projName, colName];
     
     return loc;
 }
@@ -386,6 +387,18 @@ async function reopenIssue( installClient, td, issueNumber ) {
     await utils.sleep( MIN_DELAY );
 }
 
+async function remIssue( installClient, td, issueId, PAT ) {
+
+    let issue     = await findIssue( installClient, td, issueId );
+    let endpoint  = "https://api.github.com/graphql";
+    let query     = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
+    let variables = {"id": issue.node_id };
+    query         = JSON.stringify({ query, variables });
+    
+    let res = await utils.postGH( PAT, endpoint, query );
+    console.log( res.data );
+}
+
 function checkEq( lhs, rhs, testStatus, msg ) {
     if( lhs == rhs ) {
 	testStatus[0]++;
@@ -445,6 +458,7 @@ function testReport( testStatus, component ) {
 }
 
 
+// Untracked issues have only partial entries in link table
 // Should work for carded issues that have never been peq.  Does NOT work for newborn.
 async function checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
 
@@ -746,26 +760,38 @@ async function checkNewbornCard( installClient, ghLinks, td, loc, cardId, title,
     return testStatus;
 }
 
-async function checkNoCard( installClient, ghLinks, td, loc, cardId, title, testStatus ) {
+async function checkNoCard( installClient, ghLinks, td, loc, cardId, title, testStatus, specials ) {
 
     console.log( "Check No Card", title, cardId );
+
+    if( specials === undefined ) { specials = {}; }
+    if( !specials.peq ) { specials.peq = false; }
 
     // CHECK github card
     let cards  = await getCards( installClient, loc.colId );
     if( cards != -1 ) { 
 	let card   = cards.find( card => card.id == cardId );
-	testStatus = checkEq( typeof card, "undefined",            testStatus, "Newbie card exists" );
+	testStatus = checkEq( typeof card, "undefined",            testStatus, "Card should not exist" );
     }
 
     // CHECK linkage
     let links  = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId );
-    testStatus = checkEq( typeof link, "undefined",                testStatus, "Newbie link exists" );
+    testStatus = checkEq( typeof link, "undefined",                testStatus, "Link should not exist" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     // Risky test - will fail if unrelated peqs with same title exist
+    // No card may have inactive peq
     let peqs = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
-    testStatus = checkEq( peqs, -1,                                testStatus, "Newbie peq exists" );
+    if( specials.peq ) {
+	let peq = peqs[0];
+	testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
+	testStatus = checkEq( peq.GHIssueTitle, title,              testStatus, "peq title is wrong" );
+	testStatus = checkEq( peq.CEGrantorId, config.EMPTY,        testStatus, "peq grantor wrong" );
+    }
+    else {
+	testStatus = checkEq( peqs, -1,                             testStatus, "Peq should not exist" );
+    }
 
 
     return testStatus;
@@ -856,6 +882,7 @@ exports.moveCard        = moveCard;
 exports.remCard         = remCard;
 exports.closeIssue      = closeIssue;
 exports.reopenIssue     = reopenIssue;
+exports.remIssue        = remIssue;
 
 exports.hasRaw          = hasRaw; 
 exports.getPeqLabels    = getPeqLabels;
@@ -882,9 +909,9 @@ exports.testReport      = testReport;
 exports.checkNewlyClosedIssue   = checkNewlyClosedIssue;
 exports.checkNewlyOpenedIssue   = checkNewlyOpenedIssue;
 exports.checkNewlySituatedIssue = checkNewlySituatedIssue;
-exports.checkSituatedIssue      = checkSituatedIssue;
-exports.checkDemotedIssue       = checkDemotedIssue;
-exports.checkUntrackedIssue     = checkUntrackedIssue;
-exports.checkNewbornCard        = checkNewbornCard;
+exports.checkSituatedIssue      = checkSituatedIssue;         // has active peq
+exports.checkDemotedIssue       = checkDemotedIssue;          // has inactive peq
+exports.checkUntrackedIssue     = checkUntrackedIssue;        // partial link table
+exports.checkNewbornCard        = checkNewbornCard;           // no issue
 exports.checkNoCard             = checkNoCard;
 exports.checkAssignees          = checkAssignees;

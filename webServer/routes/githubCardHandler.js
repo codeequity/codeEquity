@@ -99,7 +99,6 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// XXX low alignment risk here... exists in theory, hard to imagine any real damage in practice, dependent on ID only
 	let issue = await gh.getIssue( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );   // [ id, [content] ]
 	pd.GHIssueId = issue[0];
-	// console.log( "Found issue:", pd.GHIssueNum.toString(), issue[1] );
 
 	// Is underlying issue already linked to unclaimed?  if so, remove it.
 	await ghSafe.cleanUnclaimed( installClient, ghLinks, pd );
