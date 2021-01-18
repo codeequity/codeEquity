@@ -87,8 +87,6 @@ async function postGH( PAT, url, postData ) {
 
 
 async function postCE( shortName, postData ) {
-    console.log( "PostCE" );
-
     // XXX
     const ceServerTestingURL = "http://127.0.0.1:3000/github/testing";
 
@@ -557,8 +555,16 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
     let projName   = "";
 
     if( pd.peqType == "end" ) {
-	assert( link == -1 );  
-	if( pd.GHIssueId != -1 ) {
+	assert( link == -1 );
+
+	// If reserved column, remove the card.  Can't create newbies here.  Leave issue in place else work is lost.
+	colName = await gh.getColumnName( installClient, colId );
+	const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
+	if( reserved.includes( colName ) ) {
+	    console.log( "WARNING.", colName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue." );
+	    gh.removeCard( installClient, origCardId );
+	}
+	else if( pd.GHIssueId != -1 ) {
 	    let blank      = config.EMPTY;
 	    ghLinks.addLinkage( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, blank , -1, blank, origCardId, blank );
 	}
@@ -571,7 +577,9 @@ async function processNewPEQ( installClient, ghLinks, pd, issueCardContent, link
 	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
-	    console.log( installClient[1], "WARNING.  Action not processed in CE.", colName, "is reserved, do not label or create cards here." );
+	    console.log( installClient[1], "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
+	    gh.removeCard( installClient, origCardId );
+	    await ghSafe.removeLabel( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );	    
 	    return "removeLabel";
 	}
 	

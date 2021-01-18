@@ -213,6 +213,7 @@ class Linkage {
 	// cardId can be missing
 	
 	console.log( installClient[1], "Remove link", issueId, cardId );
+	
 	if( Object.keys( this.links[issueId] ).length == 0 )      { return; }
 	else if( Object.keys( this.links[issueId] ).length == 1 ) { delete this.links[issueId]; }
 	else                                                      { delete this.links[issueId][cardId]; }

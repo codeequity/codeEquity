@@ -167,7 +167,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    if( peq != -1 && peq.PeqType == "grant" ) {
 		// XXX inform contribs of attempt to remove an accrued issue
 		// XXX leaves discrepancy with GH in granted case
-		console.log( "Can't delete issue associated with an accrued PEQ" );
+		// XXX hmmmm.... gh will delete.  can I recreate?  placeholder?
+		console.log( "WARNING.  Can't delete issue associated with an accrued PEQ" );
 		return;
 	    }
 	    
