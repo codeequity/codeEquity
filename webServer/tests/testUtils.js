@@ -178,9 +178,24 @@ async function getCards( installClient, colId ) {
 // Get everything from ceServer
 async function getLinks( installClient, ghLinks, query ) {
     let postData = {"Endpoint": "Testing", "Request": "getLinks" };
-    let linkData = await utils.postCE( "Grog", JSON.stringify( postData ));
+    let linkData = await utils.postCE( "testHandler", JSON.stringify( postData ));
     ghLinks.fromJson( linkData );
     return ghLinks.getLinks( installClient, query );
+}
+
+// Purge repo's links from ceServer
+async function remLinks( installClient, ghLinks, repo ) {
+    let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "Repo": repo };
+    let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
+    return res;
+}
+
+// Purge ceJobs from ceServer
+async function purgeJobs( repo, owner ) {
+    let fullName = owner + "/" + repo;
+    let postData = {"Endpoint": "Testing", "Request": "purgeJobs", "FullName": fullName }; 
+    let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
+    return res;
 }
 
 async function findIssue( installClient, td, issueId ) {
@@ -374,7 +389,6 @@ async function remCard( installClient, cardId ) {
 }
 
 async function closeIssue( installClient, td, issueNumber ) {
-    console.log( "Closing", td.GHRepo, issueNumber );
     await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
 	.catch( e => { console.log( installClient[1], "Close issue failed.", e );	});
     await utils.sleep( MIN_DELAY );
@@ -455,6 +469,10 @@ function testReport( testStatus, component ) {
     for( const failure of testStatus[2] ) {
 	console.log( "   failed test:", failure );
     }
+}
+
+function mergeTests( t1, t2 ) {
+    return [t1[0] + t2[0], t1[1] + t2[1], t1[2].concat( t2[2] ) ];
 }
 
 
@@ -554,15 +572,19 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
 
     let muteIngested = specials !== undefined && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
     let issueState   = specials !== undefined && specials.hasOwnProperty( "state" )        ? specials.state        : false;
-
-    console.log( "Check situated issue", loc.projName, loc.colName, muteIngested );
+    let labelVal     = specials !== undefined && specials.hasOwnProperty( "label" )        ? specials.label        : false;
+    
+    console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal );
 
     // CHECK github issues
     let issue  = await findIssue( installClient, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, 1,                testStatus, "Issue label" );
-    testStatus = checkEq( issue.labels[0].name, "1000 PEQ",      testStatus, "Issue label" );
+
+    const lname = labelVal ? labelVal.toString() + " PEQ" : "1000 PEQ";
+    const lval  = labelVal ? labelVal                     : 1000;
+    testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label" );
 
     if( issueState ) { testStatus = checkEq( issue.state, issueState, testStatus, "Issue state" );  }
 
@@ -599,7 +621,7 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );      
     testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );    
     testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );      
-    testStatus = checkEq( peq.Amount, 1000,                        testStatus, "peq amount" );
+    testStatus = checkEq( peq.Amount, lval,                        testStatus, "peq amount" );
     testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub 0 invalid" );
     testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq unclaimed PID bad" );
     testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
@@ -829,15 +851,16 @@ async function checkAssignees( installClient, td, ass1, ass2, issueData, testSta
 
     
     // CHECK Dynamo PAct
-    // Should show relevant change action
+    // Should show relevant change action.. last three are related to current entry - may be more for unclaimed
     let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
-    testStatus = checkEq( meltPacts.length, 3,                            testStatus, "PAct count" );
+    testStatus = checkGE( meltPacts.length, 3,                            testStatus, "PAct count" );
     
     meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let addMP  = meltPacts[0];   // add the issue
-    let addA1  = meltPacts[1];   // add assignee 1
-    let addA2  = meltPacts[2];   // add assignee 2
+    
+    let addMP  = meltPacts[ meltPacts.length - 3];   // add the issue
+    let addA1  = meltPacts[ meltPacts.length - 2];   // add assignee 1
+    let addA2  = meltPacts[ meltPacts.length - 1];   // add assignee 2
     for( const pact of [addMP, addA1, addA2] ) {
 	let hasraw = await hasRaw( installClient, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
@@ -891,6 +914,8 @@ exports.getProjects     = getProjects;
 exports.getColumns      = getColumns;
 exports.getCards        = getCards;
 exports.getLinks        = getLinks;
+exports.remLinks        = remLinks;
+exports.purgeJobs       = purgeJobs;
 exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
 exports.getFlatLoc      = getFlatLoc; 
@@ -905,6 +930,7 @@ exports.checkGE         = checkGE;
 exports.checkLE         = checkLE;
 exports.checkAr         = checkAr;
 exports.testReport      = testReport;
+exports.mergeTests      = mergeTests;
 
 exports.checkNewlyClosedIssue   = checkNewlyClosedIssue;
 exports.checkNewlyOpenedIssue   = checkNewlyOpenedIssue;

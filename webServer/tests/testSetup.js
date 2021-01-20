@@ -278,6 +278,7 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
     if( unallocBus )  { testStatus = tu.checkEq( lBus,  td.boColID.toString(), testStatus, "Linkage Col Id" ); }
     
     tu.testReport( testStatus, "Create preferred CE Projects" );
+    return testStatus;
 }
 
 
@@ -289,10 +290,14 @@ async function runTests( installClient, ghLinks, td ) {
 
     console.log( "Preferred CE project structure =================" );
 
-    await createPreferredCEProjects( installClient, ghLinks, td );
-    await utils.sleep( 15000 );
-    await testPreferredCEProjects( installClient, ghLinks, td );
+    let testStatus = [ 0, 0, []];
 
+    await createPreferredCEProjects( installClient, ghLinks, td );
+    await utils.sleep( 8000 );
+    let t1 = await testPreferredCEProjects( installClient, ghLinks, td );
+
+    testStatus = tu.mergeTests( testStatus, t1 );
+    return testStatus;
 }
 
 //runTests();

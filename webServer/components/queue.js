@@ -11,8 +11,10 @@ class Queue {
 
     push(...args)  { return this.elements.push(...args);  }  // add
     shift(...args) { return this.elements.shift(...args); }  // get 0th
-    get length()   { return this.elements.length;         }
+    getAll()       { return this.elements; }
+    purge()        { this.elements = []; }
 
+    get length()   { return this.elements.length;         }
     get first()    { return this.elements.length > 0 ? this.elements[0] : -1; }
 }
 

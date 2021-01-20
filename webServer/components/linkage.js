@@ -219,6 +219,19 @@ class Linkage {
 	else                                                      { delete this.links[issueId][cardId]; }
     }
 
+    purge( repo ) {
+	console.log( "Removing links for", repo );
+	let killList = [];
+	for( const [iss,clink] of Object.entries( this.links )) {
+	    for( const [cid,link] of Object.entries( clink )) {
+		if( link.GHRepo == repo ) { killList.push( link.GHIssueId ); }
+	    }
+	}
+	// console.log( killList );
+	for( const id of killList ) { delete this.links[id]; }
+	return true;
+    }
+
     fill( val, num ) {
 	let retVal = "";
 	for( var i = 0; i < num; i++ ) {

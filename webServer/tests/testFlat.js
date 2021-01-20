@@ -98,6 +98,7 @@ async function testFlatProject( installClient, ghLinks, td ) {
     testStatus = tu.checkEq( bacCards.length, 1, testStatus, "Bacon col card count" );
 
     tu.testReport( testStatus, "Create preferred CE Projects" );
+    return testStatus;
 }
 
 
@@ -110,10 +111,14 @@ async function runTests( installClient, ghLinks ) {
 
     console.log( "Flat CE project structure =================" );
 
+    let testStatus = [ 0, 0, []];
+
     await createFlatProject( installClient, td );
     await utils.sleep( 1000 );
-    await testFlatProject( installClient, ghLinks, td );
+    let t1 = await testFlatProject( installClient, ghLinks, td );
 
+    testStatus = tu.mergeTests( testStatus, t1 );
+    return testStatus
 }
 
 

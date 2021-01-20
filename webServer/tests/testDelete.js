@@ -1,9 +1,13 @@
+var assert = require('assert');
+
+var config  = require('../config');
 const awsAuth = require( '../awsAuth' );
 const auth = require( "../auth");
+
 var utils = require('../utils');
 var ghUtils = require('../ghUtils');
-var config  = require('../config');
-var assert = require('assert');
+const tu = require('./testUtils');
+
 const peqData = require( '../peqData' );
 
 var gh     = ghUtils.githubUtils;
@@ -18,7 +22,7 @@ https://graphql.org/graphql-js/graphql-clients/
 */
 
 
-async function runTests() {
+async function runTests( ghLinks ) {
 
     console.log( "Clear testing environment" );
 
@@ -50,7 +54,9 @@ async function runTests() {
     let variables = {"number_of_repos": nrepo };
     */
 
-
+    // Queue
+    await tu.purgeJobs( pd.GHRepo, pd.GHOwner );
+    
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     console.log( "Removing all issues. " );
     let issues = [];
@@ -69,7 +75,8 @@ async function runTests() {
 	let res = await utils.postGH( PAT, endpoint, query );
 	console.log( res.data );
     }
-    
+
+    await utils.sleep( 3000 );
     
     // Get all existing projects in repo for deletion
     console.log( "Removing all Projects. " );
@@ -114,22 +121,13 @@ async function runTests() {
     assert( pd.GHFullName == "rmusick2000/CodeEquityTester" );
 
     // PActions raw and otherwise
-    // Note: clean both bot and GHOwner pacts
-    let pacts = await utils.getPActs( installClient, {"GHUserName": config.TESTER_BOT, "GHRepo": pd.GHFullName} );
+    // Note: bot, ceServer and GHOwner may have pacts.  Just clean out all.
+    let pacts = await utils.getPActs( installClient, {"GHRepo": pd.GHFullName} );
     let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
     console.log( "Dynamo bot PActIds", pactIds );
     await utils.cleanDynamo( installClient, "CEPEQActions", pactIds );
     await utils.cleanDynamo( installClient, "CEPEQRaw", pactIds );
 
-    await utils.sleep( 3000 );
-    
-    pacts = await utils.getPActs( installClient, {"GHUserName": pd.GHOwner, "GHRepo": pd.GHFullName} );
-    pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
-    console.log( "Dynamo owner PActIds", pactIds );
-    await utils.cleanDynamo( installClient, "CEPEQActions", pactIds );
-    await utils.cleanDynamo( installClient, "CEPEQRaw", pactIds );
-
-    await utils.sleep( 3000 );
 
     // PEQs
     let peqs =  await utils.getPeqs( installClient, { "GHRepo": pd.GHFullName });
@@ -138,16 +136,13 @@ async function runTests() {
     await utils.cleanDynamo( installClient, "CEPEQs", peqIds );
 
     // Linkages
-    // no need, just restart ceServer
+    // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
+    console.log( "Remove links" );
+    await tu.remLinks( installClient, ghLinks, pd.GHFullName );
+    let links  = await tu.getLinks( installClient, ghLinks, { "repo": pd.GHFullName } );
+    if( links != -1 ) { console.log( links ); }
+    assert( links == -1 );
     
-    // Queue
-    ceJobs = {};
-    /*
-    let notes = await utils.getQueue( installClient, pd.GHRepo );
-    let noteIds = notes == -1 ? [] : notes.map(( note ) => [note.QueueId] );
-    console.log( "Dynamo queue ids", noteIds );
-    await utils.cleanDynamo( installClient, "CEQueue", noteIds );
-    */
     
     // RepoStatus
     let status = await utils.getRepoStatus( installClient, pd.GHFullName );
@@ -158,4 +153,5 @@ async function runTests() {
 }
 
 
-runTests();
+// runTests();
+exports.runTests = runTests;
