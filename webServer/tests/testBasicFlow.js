@@ -253,6 +253,7 @@ async function testStepByStep( installClient, ghLinks, td ) {
     testStatus = await checkMove( installClient, ghLinks, td, meltData, td.dsAccrID, meltCard, testStatus );
     
     tu.testReport( testStatus, "Test Basic flow" );
+    return testStatus;
 }
 
 async function testEndpoint( installClient, ghLinks, td ) {
@@ -294,11 +295,12 @@ async function testEndpoint( installClient, ghLinks, td ) {
     // 7. move to accr
     await tu.moveCard( installClient, meltCard.id, td.dsAccrID );
 
-    await utils.sleep( 3000 );
+    await utils.sleep( 2000 );
 
     testStatus = await checkMove( installClient, ghLinks, td, meltData, td.dsAccrID, meltCard, testStatus );
 
     tu.testReport( testStatus, "Test lifecycles" );
+    return testStatus;
 }
 
 
@@ -307,11 +309,17 @@ async function runTests( installClient, ghLinks, td ) {
 
     console.log( "Basic Flow tests =================" );
 
+    let testStatus = [ 0, 0, []];
+
     // Stop and check each step
-    await testStepByStep( installClient, ghLinks, td );
+    let t1 = await testStepByStep( installClient, ghLinks, td );
 
     // Blast through, check the end
-    await testEndpoint( installClient, ghLinks, td );
+    let t2 = await testEndpoint( installClient, ghLinks, td );
+
+    testStatus = tu.mergeTests( testStatus, t1 );
+    testStatus = tu.mergeTests( testStatus, t2 );
+    return testStatus
 }
 
 

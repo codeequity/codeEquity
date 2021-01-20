@@ -463,6 +463,10 @@ function testReport( testStatus, component ) {
     }
 }
 
+function mergeTests( t1, t2 ) {
+    return [t1[0] + t2[0], t1[1] + t2[1], t1[2].concat( t2[2] ) ];
+}
+
 
 // Untracked issues have only partial entries in link table
 // Should work for carded issues that have never been peq.  Does NOT work for newborn.
@@ -560,15 +564,19 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
 
     let muteIngested = specials !== undefined && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
     let issueState   = specials !== undefined && specials.hasOwnProperty( "state" )        ? specials.state        : false;
-
-    console.log( "Check situated issue", loc.projName, loc.colName, muteIngested );
+    let labelVal     = specials !== undefined && specials.hasOwnProperty( "label" )        ? specials.label        : false;
+    
+    console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal );
 
     // CHECK github issues
     let issue  = await findIssue( installClient, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, 1,                testStatus, "Issue label" );
-    testStatus = checkEq( issue.labels[0].name, "1000 PEQ",      testStatus, "Issue label" );
+
+    const lname = labelVal ? labelVal.toString() + " PEQ" : "1000 PEQ";
+    const lval  = labelVal ? labelVal                     : 1000;
+    testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label" );
 
     if( issueState ) { testStatus = checkEq( issue.state, issueState, testStatus, "Issue state" );  }
 
@@ -605,7 +613,7 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );      
     testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );    
     testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );      
-    testStatus = checkEq( peq.Amount, 1000,                        testStatus, "peq amount" );
+    testStatus = checkEq( peq.Amount, lval,                        testStatus, "peq amount" );
     testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub 0 invalid" );
     testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq unclaimed PID bad" );
     testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
@@ -913,6 +921,7 @@ exports.checkGE         = checkGE;
 exports.checkLE         = checkLE;
 exports.checkAr         = checkAr;
 exports.testReport      = testReport;
+exports.mergeTests      = mergeTests;
 
 exports.checkNewlyClosedIssue   = checkNewlyClosedIssue;
 exports.checkNewlyOpenedIssue   = checkNewlyOpenedIssue;

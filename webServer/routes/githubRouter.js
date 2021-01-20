@@ -108,6 +108,8 @@ router.post('/:location?', async function (req, res) {
     notificationCount++;
     if( notificationCount % 20 == 0 ) { ghLinks.show(); }
 
+    /*
+    // biggest issues seem to be a stamp labeling issue within GH - maybe different clocks?
     // Look for out of order GH notifications.  Note the timestamp is only to within 1 second...
     let tdiff = utils.getTimeDiff( lastEvent, newStamp );  
     if( tdiff < 0 ) {
@@ -115,6 +117,7 @@ router.post('/:location?', async function (req, res) {
 	console.log( "Out of order notification, diff", tdiff );
 	console.log( "!!!!!!!!!!!!!\n\n\n" );
     }
+    */
     
     // installClient is pent [installationAccessToken, creationSource, apiPath, cognitoIdToken, jobId]
     // this first jobId is set by getNext to reflect the proposed next job.

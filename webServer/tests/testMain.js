@@ -49,25 +49,33 @@ async function runTests() {
 
 
     // TESTS
-    
+
+    let testStatus = [ 0, 0, []];
+    let subTest = "";
+
     await testDelete.runTests( ghLinks );
-    
-    await testSetup.runTests( installClient, ghLinks, td );
+
+    subTest = await testSetup.runTests( installClient, ghLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 10000 );
+    testStatus = tu.mergeTests( testStatus, subTest );
 
-    await testFlat.runTests( installClient, ghLinks, td );
+    subTest = await testFlat.runTests( installClient, ghLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 10000 );
+    testStatus = tu.mergeTests( testStatus, subTest );
 
-    await testBasicFlow.runTests( installClient, ghLinks, td );
+    subTest = await testBasicFlow.runTests( installClient, ghLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 10000 );
-
-    await testComponents.runTests( installClient, ghLinks, td );
+    testStatus = tu.mergeTests( testStatus, subTest );
+    
+    subTest = await testComponents.runTests( installClient, ghLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 10000 );
+    testStatus = tu.mergeTests( testStatus, subTest );
 
+    tu.testReport( testStatus, "================= Testing complete =================" );
     
     // XXX test add, peq, then add new card to peq issue.  unclaimed.  split issue with assignees?
     // XXX test standard add, move, close, reopen, accrue

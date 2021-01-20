@@ -222,11 +222,12 @@ class Linkage {
     purge( repo ) {
 	console.log( "Removing links for", repo );
 	let killList = [];
-	for( const iss of Object.keys( this.links )) {
-	    for( const link of Object.keys( iss )) {
+	for( const [iss,clink] of Object.entries( this.links )) {
+	    for( const [cid,link] of Object.entries( clink )) {
 		if( link.GHRepo == repo ) { killList.push( link.GHIssueId ); }
 	    }
 	}
+	// console.log( killList );
 	for( const id of killList ) { delete this.links[id]; }
 	return true;
     }

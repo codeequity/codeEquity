@@ -108,7 +108,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// In projects, creating a card that MAY have a human PEQ label in content...  PNP will create issue and label it, rebuild card, etc.
 	// console.log( "New card created, unattached" );
 	let cardContent = pd.reqBody['project_card']['note'].split('\n');
-
+	cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
+	
 	await utils.processNewPEQ( installClient, ghLinks, pd, cardContent, -1 );
     }
     else if( action == "converted" ) {

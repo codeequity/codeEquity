@@ -53,8 +53,7 @@ async function runTests( ghLinks ) {
     let query = "query($number_of_repos:Int!) { viewer {name repositories(last: $number_of_repos) { nodes { name } }  } }" ;
     let variables = {"number_of_repos": nrepo };
     */
-
-
+    
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     console.log( "Removing all issues. " );
     let issues = [];
@@ -118,22 +117,13 @@ async function runTests( ghLinks ) {
     assert( pd.GHFullName == "rmusick2000/CodeEquityTester" );
 
     // PActions raw and otherwise
-    // Note: clean both bot and GHOwner pacts
-    let pacts = await utils.getPActs( installClient, {"GHUserName": config.TESTER_BOT, "GHRepo": pd.GHFullName} );
+    // Note: bot, ceServer and GHOwner may have pacts.  Just clean out all.
+    let pacts = await utils.getPActs( installClient, {"GHRepo": pd.GHFullName} );
     let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
     console.log( "Dynamo bot PActIds", pactIds );
     await utils.cleanDynamo( installClient, "CEPEQActions", pactIds );
     await utils.cleanDynamo( installClient, "CEPEQRaw", pactIds );
 
-    await utils.sleep( 3000 );
-    
-    pacts = await utils.getPActs( installClient, {"GHUserName": pd.GHOwner, "GHRepo": pd.GHFullName} );
-    pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
-    console.log( "Dynamo owner PActIds", pactIds );
-    await utils.cleanDynamo( installClient, "CEPEQActions", pactIds );
-    await utils.cleanDynamo( installClient, "CEPEQRaw", pactIds );
-
-    await utils.sleep( 3000 );
 
     // PEQs
     let peqs =  await utils.getPeqs( installClient, { "GHRepo": pd.GHFullName });
@@ -142,8 +132,12 @@ async function runTests( ghLinks ) {
     await utils.cleanDynamo( installClient, "CEPEQs", peqIds );
 
     // Linkages
+    // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
     console.log( "Remove links" );
     await tu.remLinks( installClient, ghLinks, pd.GHFullName );
+    let links  = await tu.getLinks( installClient, ghLinks, { "repo": pd.GHFullName } );
+    if( links != -1 ) { console.log( links ); }
+    assert( links == -1 );
     
     // Queue
     ceJobs = {};
