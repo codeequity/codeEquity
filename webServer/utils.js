@@ -692,10 +692,32 @@ function checkQueue( ceJobs, installClient, handler, sender, reqBody, tag ) {
     
     ceJobs[fullName][sender].push( jobData );
 
-    // console.log("Check q after push", ceJobs[fullName][sender] );
+    console.log( "ceJobs, after push" );
+    for( const job of ceJobs[fullName][sender].getAll() ) {
+	console.log( job.QueueId, job.GHOwner, job.GHRepo, job.Action, job.Tag );
+    }
     
     return ceJobs[fullName][sender].first;
 }
+
+function purgeQueue( ceJobs, fullName ) {
+
+    console.log( "Purging ceJobs for", fullName );
+
+    // XXX
+    console.log( ceJobs );
+    
+    if( ceJobs.hasOwnProperty( fullName ) ) {
+	for( let [sender, jobQ] of Object.entries( ceJobs[fullName] ) ) {
+	    console.log( "jobQ for", sender );
+	    for( const job of jobQ.getAll() ) {
+		console.log( job.QueueId, job.GHOwner, job.GHRepo, job.Action, job.Tag );
+	    }
+	    jobQ.purge();
+	}
+    }
+}
+
 
 // Remove top of queue, get next top.
 async function getFromQueue( ceJobs, installClient, fullName, sender ) {
@@ -751,6 +773,7 @@ exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;
 
 exports.checkQueue = checkQueue;
+exports.purgeQueue = purgeQueue;
 exports.getFromQueue = getFromQueue;
 
 

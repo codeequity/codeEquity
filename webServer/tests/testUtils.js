@@ -178,7 +178,7 @@ async function getCards( installClient, colId ) {
 // Get everything from ceServer
 async function getLinks( installClient, ghLinks, query ) {
     let postData = {"Endpoint": "Testing", "Request": "getLinks" };
-    let linkData = await utils.postCE( "Grog", JSON.stringify( postData ));
+    let linkData = await utils.postCE( "testHandler", JSON.stringify( postData ));
     ghLinks.fromJson( linkData );
     return ghLinks.getLinks( installClient, query );
 }
@@ -186,7 +186,15 @@ async function getLinks( installClient, ghLinks, query ) {
 // Purge repo's links from ceServer
 async function remLinks( installClient, ghLinks, repo ) {
     let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "Repo": repo };
-    let res = await utils.postCE( "Grog", JSON.stringify( postData ));
+    let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
+    return res;
+}
+
+// Purge ceJobs from ceServer
+async function purgeJobs( repo, owner ) {
+    let fullName = owner + "/" + repo;
+    let postData = {"Endpoint": "Testing", "Request": "purgeJobs", "FullName": fullName }; 
+    let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }
 
@@ -907,6 +915,7 @@ exports.getColumns      = getColumns;
 exports.getCards        = getCards;
 exports.getLinks        = getLinks;
 exports.remLinks        = remLinks;
+exports.purgeJobs       = purgeJobs;
 exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
 exports.getFlatLoc      = getFlatLoc; 

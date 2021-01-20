@@ -55,7 +55,7 @@ async function initAuth( installClient, owner, repo ) {
 router.post('/:location?', async function (req, res) {
 
     // invisible, mostly
-    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, req.body, res ); }
     
     console.log( "" );
     let event    = req.headers['x-github-event'];
@@ -150,9 +150,8 @@ router.post('/:location?', async function (req, res) {
 	getNextJob( installClient, pd, sender );	
     }
     else {
-	retVal = res.json({
-	    status: 400,
-	});
+	retVal = res.json({ status: 400 });
+	getNextJob( installClient, pd, sender );	
     }
 
     // avoid socket hangup error, response undefined

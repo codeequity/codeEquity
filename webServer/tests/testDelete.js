@@ -53,6 +53,9 @@ async function runTests( ghLinks ) {
     let query = "query($number_of_repos:Int!) { viewer {name repositories(last: $number_of_repos) { nodes { name } }  } }" ;
     let variables = {"number_of_repos": nrepo };
     */
+
+    // Queue
+    await tu.purgeJobs( pd.GHRepo, pd.GHOwner );
     
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     console.log( "Removing all issues. " );
@@ -72,7 +75,8 @@ async function runTests( ghLinks ) {
 	let res = await utils.postGH( PAT, endpoint, query );
 	console.log( res.data );
     }
-    
+
+    await utils.sleep( 3000 );
     
     // Get all existing projects in repo for deletion
     console.log( "Removing all Projects. " );
@@ -139,14 +143,6 @@ async function runTests( ghLinks ) {
     if( links != -1 ) { console.log( links ); }
     assert( links == -1 );
     
-    // Queue
-    ceJobs = {};
-    /*
-    let notes = await utils.getQueue( installClient, pd.GHRepo );
-    let noteIds = notes == -1 ? [] : notes.map(( note ) => [note.QueueId] );
-    console.log( "Dynamo queue ids", noteIds );
-    await utils.cleanDynamo( installClient, "CEQueue", noteIds );
-    */
     
     // RepoStatus
     let status = await utils.getRepoStatus( installClient, pd.GHFullName );

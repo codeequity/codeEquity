@@ -293,7 +293,7 @@ async function runTests( installClient, ghLinks, td ) {
     let testStatus = [ 0, 0, []];
 
     await createPreferredCEProjects( installClient, ghLinks, td );
-    await utils.sleep( 7000 );
+    await utils.sleep( 8000 );
     let t1 = await testPreferredCEProjects( installClient, ghLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );
