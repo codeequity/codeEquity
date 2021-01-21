@@ -692,7 +692,7 @@ function checkQueue( ceJobs, installClient, handler, sender, reqBody, tag ) {
     
     ceJobs[fullName][sender].push( jobData );
 
-    console.log( "ceJobs, after push" );
+    console.log( "\nceJobs, after push" );
     for( const job of ceJobs[fullName][sender].getAll() ) {
 	console.log( job.QueueId, job.GHOwner, job.GHRepo, job.Action, job.Tag );
     }
@@ -704,7 +704,7 @@ function purgeQueue( ceJobs, fullName ) {
 
     console.log( "Purging ceJobs for", fullName );
 
-    // XXX
+    // XXX  Note, this should not be necessary.
     console.log( ceJobs );
     
     if( ceJobs.hasOwnProperty( fullName ) ) {

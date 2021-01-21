@@ -142,14 +142,17 @@ router.post('/:location?', async function (req, res) {
     pd.GHFullName   = req.body['repository']['full_name'];
 
     if( event == "issues" ) {
-	retVal = await issues.handler( installClient, ghLinks, pd, action, tag );
+	retVal = await issues.handler( installClient, ghLinks, pd, action, tag )
+	    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
 	getNextJob( installClient, pd, sender );	
     }
     else if( event == "project_card" ) {
-	retVal = await cards.handler( installClient, ghLinks, pd, action, tag );
+	retVal = await cards.handler( installClient, ghLinks, pd, action, tag )
+	    .catch( e => console.log( "Error.  Card Handler failed.", e ));
 	getNextJob( installClient, pd, sender );	
     }
     else {
+	console.log( "Event unhandled", event );
 	retVal = res.json({ status: 400 });
 	getNextJob( installClient, pd, sender );	
     }
@@ -178,8 +181,14 @@ async function getNextJob( installClient, pdOld, sender ) {
 	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
 	console.log( "\n\n\n", installClient[1], "Got next job:", ic[1] );
 
-	if     ( jobData.Handler == "issues" )       { await issues.handler( ic, ghLinks, pd, jobData.Action, jobData.Tag ); }
-	else if( jobData.Handler == "project_card" ) { await cards.handler( ic, ghLinks, pd, jobData.Action, jobData.Tag );  }
+	if( jobData.Handler == "issues" ) {
+	    await issues.handler( ic, ghLinks, pd, jobData.Action, jobData.Tag )
+	    	.catch( e => console.log( "Error.  Issue Handler failed.", e ));
+	}
+	else if( jobData.Handler == "project_card" ) {
+	    await cards.handler( ic, ghLinks, pd, jobData.Action, jobData.Tag )
+	    	.catch( e => console.log( "Error.  Card Handler failed.", e ));
+	}
 	else                                         { assert( false ); }
 
 	getNextJob( ic, pd, sender );

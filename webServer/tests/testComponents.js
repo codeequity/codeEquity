@@ -456,7 +456,6 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 	
 	tu.testReport( testStatus, "C" );
 
-	// XXX
 	// Erm.  Simulate ceFlutter processing to ingest propose:accrue, else won't see bacon col in step 3
 	// await tu.ingestPActs( installClient, issueData );
 	
@@ -492,10 +491,6 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 	await tu.reopenIssue( installClient, td, issueData[1] );
 	await utils.sleep( 2000 );
 
-	// XXX
-	// get new cols/locs PROG
-	// const flatProg = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PROG] );
-	
 	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, eggs, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "H" );

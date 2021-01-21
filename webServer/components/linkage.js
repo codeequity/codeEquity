@@ -31,9 +31,15 @@ class Linkage {
 	// peq add: cardTitle, colId, colName, projName
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
 	for( const peq of peqs ) {
+	    if( peq.Active == "false" ) {
+		console.log( installClient[1], "Skipping inactive peq", peq.GHIssueTitle );
+		continue;
+	    }
 	    const iid = peq.GHIssueId;
 	    let link = this.getUniqueLink( installClient, iid );
-	    if( link == -1 ) { console.log( "Did you remove an issue without removing the corresponding PEQ?" ); }
+	    if( link == -1 ) {
+		console.log( "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.GHIssueTitle );
+	    }
 	    assert( link != -1 ); // peq without issue means badness
 
 	    let card = baseLinks.find( datum => datum.cardId == link.GHCardId );

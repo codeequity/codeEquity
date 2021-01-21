@@ -63,7 +63,6 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// more than 1 peq?  remove it.
 	let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
 	if( pd.peqValue <= 0 && curVal > 0 ) {
-	    // XXX 
 	    console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	    await ghSafe.removeLabel( installClient, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
 	    return;
@@ -80,8 +79,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	assert( links == -1 || links.length == 1 );
 	let link = links == -1 ? links : links[0];
 
-	// Newborn PEQ issue.  Create card in unclaimed... need to maintain promise of linkage in dynamo.
-	// but can't create card without column_id.  No project, or column_id without triage.
+	// Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
+	// since can't create card without column_id.  No project, or column_id without triage.
 	if( link == -1 || link.GHColumnId == -1) {
 	    if( link == -1 ) {    
 		link = {};
@@ -129,10 +128,10 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
+
+	    // GH already removed this.  Put it back.
 	    if( newNameIndex >= config.PROJ_ACCR ) { 
-		// XXX inform contribs of attempt to remove the peq label from an accrued issue
 		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
-		// GH already removed this.  Put it back.
 		ghSafe.addLabel( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
 		return;
 	    }
@@ -156,18 +155,13 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    );
 	}
 	break;
-    case 'edited':
-	// XXX what happens to push this notice?
-	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
     case 'deleted':
 	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	{
 	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
 	    if( peq != -1 && peq.PeqType == "grant" ) {
-		// XXX inform contribs of attempt to remove an accrued issue
-		// XXX leaves discrepancy with GH in granted case
-		// XXX hmmmm.... gh will delete.  can I recreate?  placeholder?
+		// XXX GH has deleted.  Must recreate, after ingest.  Start with placeholder
 		console.log( "WARNING.  Can't delete issue associated with an accrued PEQ" );
 		return;
 	    }
@@ -238,15 +232,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    else { console.log( "Unable to complete move of issue card.  No action taken" ); }
 	}
 	break;
-    case 'transferred':
-	// XXX Need to handle confirm add/delete here if peq
-	//     Optionally, revisit and try to handle xfer automatically if between PEQ projects.
-	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
-	break;
     case 'assigned': 
 	{
-	    // XXX assign a closed peq issue?  Move to pending.  THis is an 'oops i forgot to assign it' recovery
-	    
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
 	    console.log( installClient[1], "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 	    
@@ -304,6 +291,19 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		pd.reqBody        // raw
 	    );
 	}
+	break;
+    case 'edited':
+	// XXX what happens to push this notice?
+	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
+	break;
+    case 'transferred':
+	// IN or OUT:     
+	// Transfer out: open issue in new repo, delete project card, transfer issue
+	// note - labels are not brought along, no matter if they exist in both
+
+	// XXX Need to handle delete here if peq
+	// XXX besides delete, for starters, don't do anything.  accept it as newborn issue.
+	await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
 	break;
     case 'opened':	        // Do nothing.
 	// Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle in cards.
