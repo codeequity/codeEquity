@@ -13,6 +13,7 @@ import 'package:ceFlutter/utils.dart';
 
 //    confirm:relocate         to most, not all cols
 //    {prop,conf,rej}:change   assignees
+//    reject:delete            delete accr
 
 // Note: 
 // Move to "pending peq" col is 'close'.

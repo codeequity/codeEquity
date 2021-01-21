@@ -394,6 +394,8 @@ async function recordPeqData( installClient, pd, checkDup ) {
 	getToday(),       // entryDate
 	pd.reqBody        // raw
     );
+
+    return newPEQId;
 }
 
 function rebuildLinkage( installClient, ghLinks, link, issueData, newCardId, newTitle ) {
@@ -754,6 +756,7 @@ exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
 exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
+exports.recordPeqData = recordPeqData;
 exports.recordPEQTodo = recordPEQTodo;
 exports.removePEQ = removePEQ;
 exports.getPeq = getPeq;

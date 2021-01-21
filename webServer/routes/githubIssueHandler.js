@@ -160,23 +160,47 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	{
 	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
-	    if( peq != -1 && peq.PeqType == "grant" ) {
-		// XXX GH has deleted.  Must recreate, after ingest.  Start with placeholder
-		console.log( "WARNING.  Can't delete issue associated with an accrued PEQ" );
-		return;
+	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
+	    let link = links == -1 ? links : links[0];
+	    let verb = "confirm";
+	    let subject = [ peq.PEQId ];
+
+	    // peq may be out of date (no ingest).  Must rely on linkage table
+	    if( link != -1 && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+		// the entire issue has been given to us here.  Recreate it.
+		console.log( "WARNING.  Can't delete issue associated with an accrued PEQ.  Rebuilding.." );
+
+		const msg = "Accrued PEQ issues can not be deleted.  CodeEquity has rebuilt it.";
+		const issueData = await ghSafe.rebuildIssue( installClient, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
+		const cardId    = await ghSafe.createProjectCard( installClient, link.GHColumnId, issueData[0], true );
+
+		await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
+		ghLinks.rebuildLinkage( installClient, link, issueData, cardId );
+
+		// issueId is new, we need a new peq.  create that here, then create a 'reject delete' pact below while deactivating the old one.
+		pd.GHAssignees  = peq.GHHolderId;
+		pd.peqType      = peq.PeqType;
+		pd.peqValue     = peq.Amount;
+		pd.projSub      = peq.GHProjectSub;
+		pd.GHProjectId  = peq.GHProjectId;
+		pd.GHIssueId    = issueData[0].toString();
+		pd.GHIssueTitle = peq.GHIssueTitle;
+		
+		let newPEQId = await utils.recordPeqData( installClient, pd, false );
+		subject.push( newPEQId );
+		verb = "reject";
 	    }
-	    
-	    console.log( "Issue deleted" );
-	    ghLinks.removeLinkage({"installClient": installClient, "issueId": pd.GHIssueId });  
+	    else { ghLinks.removeLinkage({"installClient": installClient, "issueId": pd.GHIssueId }); }
+
 	    utils.removePEQ( installClient, peq.PEQId );
 	    utils.recordPEQAction(
 		installClient,
 		config.EMPTY,     // CE UID
 		pd.GHCreator,     // gh user name
 		pd.GHFullName,    // of the repo
-		"confirm",        // verb
+		verb,
 		"delete",         // action
-		[ peq.PEQId ],    // subject
+		subject,
 		"delete",        // note
 		utils.getToday(), // entryDate
 		pd.reqBody        // raw
@@ -316,7 +340,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     case 'demilestoned':     	// Do nothing.
 	break;
     default:
-	console.log( "Unrecognized action" );
+	console.log( "Unrecognized action (issues)" );
 	break;
     }
     

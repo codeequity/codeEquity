@@ -24,12 +24,14 @@ class Linkage {
 	let fnParts = fn.split('/');
 	
 	let baseLinks = [];
-	await gh.getBasicLinkDataGQL( PAT, fnParts[0], fnParts[1], baseLinks, -1 );
+	await gh.getBasicLinkDataGQL( PAT, fnParts[0], fnParts[1], baseLinks, -1 )
+	    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
 
 	this.populateLinkage( installClient, fn, baseLinks );
 
 	// peq add: cardTitle, colId, colName, projName
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
+	let badPeq = false;
 	for( const peq of peqs ) {
 	    if( peq.Active == "false" ) {
 		console.log( installClient[1], "Skipping inactive peq", peq.GHIssueTitle );
@@ -39,8 +41,9 @@ class Linkage {
 	    let link = this.getUniqueLink( installClient, iid );
 	    if( link == -1 ) {
 		console.log( "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.GHIssueTitle );
+		badPeq = true;
+		continue;
 	    }
-	    assert( link != -1 ); // peq without issue means badness
 
 	    let card = baseLinks.find( datum => datum.cardId == link.GHCardId );
 	    
@@ -49,8 +52,9 @@ class Linkage {
 	    link.GHProjectName = card.projectName;
 	    link.GHColumnName  = card.columnName;
 	    link.flatSource    = peq.GHProjectSub[ peq.GHProjectSub.length - 1 ];
-	    }
-	
+	}
+
+	assert( !badPeq );  // will be caught.
 	return baseLinks; 
     }
 
@@ -70,7 +74,8 @@ class Linkage {
 	for( const entry of fullNames ) {
 	    let fn = entry.GHRepo;
 	    console.log( ".. working on", fn );
-	    await this.initOneRepo( installClient, fn, PAT );
+	    await this.initOneRepo( installClient, fn, PAT )
+		.catch( e => console.log( "Error.  Init Linkage failed.", e ));
 	}
 	// console.log( this.links );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
@@ -89,12 +94,15 @@ class Linkage {
 	}
     }
     
-    addLinkage( installClient, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle ) {
+    addLinkage( installClient, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle, source ) {
 
 	// console.log( installClient[1], "add link", issueId, cardId, colName, colId, issueTitle );
 
 	if( !this.links.hasOwnProperty( issueId ) )         { this.links[issueId] = {}; }
 	if( !this.links[issueId].hasOwnProperty( cardId ) ) { this.links[issueId][cardId] = {}; }
+
+	let haveSource = false;
+	if( typeof source !== 'undefined' ) { haveSource = true; }
 
 	let link = this.links[issueId][cardId];
 	// issuedId, cardId doubly-stored for convenience
@@ -107,10 +115,10 @@ class Linkage {
 	link.GHColumnName  = colName;
 	link.GHCardId      = cardId.toString();
 	link.GHCardTitle   = issueTitle;   // XXX rename
-	link.flatSource    = link.GHColumnId;
+	link.flatSource    = haveSource ? source : link.GHColumnId;
 
 	// Do not track source col if is in full layout
-	if( config.PROJ_COLS.includes( link.GHColumnName ) ) { link.flatSource = -1; }
+	if( !haveSource && config.PROJ_COLS.includes( link.GHColumnName ) ) { link.flatSource = -1; }
     }
 
     populateLinkage( installClient, fn, baseLinkData ) {
@@ -213,13 +221,30 @@ class Linkage {
 	return true;
     }
 
+    // primary keys have changed.
+    rebuildLinkage( installClient, oldLink, issueData, cardId ) {
+	console.log( installClient[1], "Rebuild linkage", oldLink.GHIssueNum, "->", issueData[0] );
+	this.addLinkage( installClient,
+			 oldLink.GHRepo,
+			 issueData[0].toString(), issueData[1].toString(),
+			 oldLink.GHProjectId, oldLink.GHProjectName,
+			 oldLink.GHColumnId, oldLink.GHColumnName,
+			 cardId.toString(),
+			 oldLink.GHCardTitle, oldLink.flatSource );
+
+	this.removeLinkage( { "installClient": installClient, "issueId": oldLink.GHIssueId, "cardId": oldLink.GHCardId } );
+
+	return true;
+    }
+
     removeLinkage({ installClient, issueId, cardId }) {
 	if( !installClient ) { console.log( "missing installClient" ); return; }
 	if( !issueId )       { console.log( "missing issueId" ); return; }
 	// cardId can be missing
 	
 	console.log( installClient[1], "Remove link", issueId, cardId );
-	
+
+	if( !this.links.hasOwnProperty( issueId ))                { return; }  // may see multiple deletes
 	if( Object.keys( this.links[issueId] ).length == 0 )      { return; }
 	else if( Object.keys( this.links[issueId] ).length == 1 ) { delete this.links[issueId]; }
 	else                                                      { delete this.links[issueId][cardId]; }

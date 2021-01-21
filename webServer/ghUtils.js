@@ -56,6 +56,10 @@ var githubSafe = {
 	return splitIssue( installClient, owner, repo, issue, splitTag );
     },
 
+    rebuildIssue: function( installClient, owner, repo, issue, msg ) {
+	return rebuildIssue( installClient, owner, repo, issue, msg );
+    },
+
     cleanUnclaimed: function( installClient, ghLinks, pd ) {
 	return cleanUnclaimed( installClient, ghLinks, pd );
     },
@@ -285,6 +289,33 @@ async function splitIssue( installClient, owner, repo, issue, splitTag ) {
     return issueData;
 }
 
+async function rebuildIssue( installClient, owner, repo, issue, msg ) {
+    console.log( "Rebuilding issue" );
+    let issueData = [-1,-1];  // issue id, num
+
+    await installClient[0].issues.create( {
+	owner:     owner,
+	repo:      repo,
+	title:     issue.title,
+	body:      issue.body,
+	milestone: issue.milestone,
+	labels:    issue.labels,
+	assignees: issue.assignees.map( person => person.login )
+    })
+	.then( issue => {
+	    issueData[0] = issue['data']['id'];
+	    issueData[1] = issue['data']['number'];
+	})
+	.catch( e => console.log( installClient[1], "Error.  Create issue failed.", e ));
+
+    let comment = utils.getToday().toString() + ": " + msg;
+    
+    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
+	.catch( e =>  console.log( installClient[1], "Error.  Create issue comment failed.", e ));
+    
+    return issueData;
+}
+
 async function updateIssue( installClient, owner, repo, issueNum, newState ) {
     let retVal = false;
     if( issueNum == -1 ) { return retVal; }
@@ -440,6 +471,11 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 	assert( !cards.pageInfo.hasNextPage && !labels.hasNextPage );
 
 	for( const card of cards.edges ) {
+	    // console.log( card.node.project.name, issue.title );
+	    if( !card.node.column ) {
+		console.log( "Warning. Skipping issue:card for", issue.title, "which is awaiting triage." );
+		continue;
+	    }
 	    console.log( card.node.project.name, ",", card.node.column.databaseId );
 	    let datum = {};
 	    datum.issueId     = issue.databaseId;
