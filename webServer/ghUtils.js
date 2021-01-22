@@ -287,7 +287,7 @@ async function splitIssue( installClient, owner, repo, issue, splitTag ) {
 	body:      issue.body,
 	milestone: issue.milestone,
 	labels:    issue.labels,
-	assignees: issue.assignees
+	assignees: issue.assignees.map( person => person.login )
     } ))
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
@@ -756,7 +756,8 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
     assert( link.GHColumnName != config.EMPTY );
 
     console.log( "Found unclaimed" );
-    await installClient[0].projects.deleteCard( { card_id: link.GHCardId } );
+    await installClient[0].projects.deleteCard( { card_id: link.GHCardId } )
+	.catch( e => console.log( "Error.  Card not deleted", e ));
     
     // Remove turds, report.  
     ghLinks.removeLinkage({ "installClient": installClient, "issueId": pd.GHIssueId, "cardId": link.GHCardId });

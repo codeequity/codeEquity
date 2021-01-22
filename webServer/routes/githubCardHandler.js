@@ -194,6 +194,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// Note: Unclaimed card - try to uncheck it directly from column bar gives: cardHander move within same column.  Check stays.
 	//       Need to click on projects, then on pd.GHRepo, then can check/uncheck successfully.  Get cardHandler:card deleted
 	// NOTE turn this off, otherwise can't detect delete in reserved column
+	// NOTE this notification can be sent if, during issue creation, after peq label, choose a project before unclaimed is created.
 	/*
 	{
 	    // Carded?
@@ -203,10 +204,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	}
 	*/
 	break;
-    case 'edited' :
-	{
-	    await( utils.recordPEQTodo( "XXX TBD. Content may be from issue, or card." , -1 ));	
-	}
+
+    case 'edited' :  // do nothing
     default:
 	console.log( "Unrecognized action (cards)" );
 	break;
