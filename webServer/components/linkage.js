@@ -32,7 +32,6 @@ class Linkage {
 	let cols = [];
 	await gh.getRepoColsGQL( PAT, fnParts[0], fnParts[1], cols, -1 )
 	    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
-	console.log( cols );
 	
 	this.populateLinkage( installClient, fn, baseLinks );
 
@@ -235,6 +234,15 @@ class Linkage {
 
 	// update, need to track specially
 	if( !config.PROJ_COLS.includes( newColName ) ) { link.flatSource = link.GHColumnId; }
+	return true;
+    }
+
+    updateTitle( installClient, linkData, newTitle ) {
+	let link = this.links[linkData.GHIssueId][linkData.GHCardId];
+	assert( link !== 'undefined' );
+
+	link.GHCardTitle  = newTitle;
+
 	return true;
     }
 

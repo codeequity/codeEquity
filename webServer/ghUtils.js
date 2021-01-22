@@ -45,6 +45,10 @@ var githubSafe = {
 	return removeLabel( installClient, owner, repo, issueNum, label );
     },
 
+    updateTitle: function( installClient, owner, repo, issueNum, title ) {
+	return updateTitle( installClient, owner, repo, issueNum, title );
+    },
+
     addLabel: function( installClient, owner, repo, issueNum, label ) {
 	return addLabel( installClient, owner, repo, issueNum, label );
     },
@@ -666,6 +670,11 @@ async function rebuildCard( installClient, owner, repo, colId, origCardId, issue
     removeCard( installClient, origCardId );
 
     return newCardId;
+}
+
+async function updateTitle( installClient, owner, repo, issueNum, title ) {
+    await installClient[0].issues.update({ owner: owner, repo: repo, issue_number: issueNum, title: title  } )
+	.catch( e => console.log( installClient[1], "Error.  Update title failed.", e ));
 }
 
 async function removeLabel( installClient, owner, repo, issueNum, label ) {

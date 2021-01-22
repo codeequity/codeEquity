@@ -71,8 +71,6 @@ async function deleteIssue( installClient, ghLinks, pd ) {
 }
 
 
-
-
 // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
 //          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
 // Note: issue:opened         notification after 'submit' is pressed.
@@ -322,12 +320,46 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'edited':
-	// XXX yes edit title
-	// no edit label, add comment
-	// yes edit description
+	// Only need to catch title edits, and only for situated.  
 	{
-	    console.log( "EDIT TITLE", pd.reqBody );
-	    await( utils.recordPEQTodo( pd.GHIssueTitle, pd.peqValue ));
+	    if( pd.reqBody.changes.hasOwnProperty( 'title' ) && 
+		pd.reqBody.changes.title.hasOwnProperty( 'from' )) {
+
+		const newTitle = pd.reqBody.issue.title;
+		let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+		let link = links == -1 ? links : links[0]; 
+
+		if( link != -1 && link.GHCardTitle != config.EMPTY) {
+
+		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
+		    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
+			ghSafe.updateTitle( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, link.GHCardTitle );
+		    }
+		    else {
+			assert( pd.reqBody.changes.title.from == link.GHCardTitle );
+			console.log( "Title changed from", link.GHCardTitle, "to", newTitle );
+			
+			// if link has title, we have situated card.
+			ghLinks.updateTitle( installClient, link, newTitle );
+			let peq = await utils.getPeq( installClient, pd.GHIssueId );
+			assert( peq != -1 );  
+			const subject = [ peq.PEQId, newTitle ]; 
+			utils.recordPEQAction(
+			    installClient,
+			    config.EMPTY,     // CE UID
+			    sender,           // gh user name
+			    pd.GHFullName,    // of the repo
+			    "confirm",
+			    "change",
+			    subject,          
+			    "Change title",   // note
+			    utils.getToday(), // entryDate
+			    pd.reqBody        // raw
+			);
+		    }
+		}
+	    }
 	}
 	break;
     case 'transferred':
@@ -336,7 +368,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// Transfer OUT: Peq?  remove.  (open issue in new repo, delete project card, transfer issue)
 	{
 	    if( pd.reqBody.changes.new_repository.full_name != pd.GHRepo ) {
-		console.log( "Transfer out.  Cleanup." );
+		console.log( installClient[1], "Transfer out.  Cleanup." );
 		await deleteIssue( installClient, ghLinks, pd );
 	    }
 	}
