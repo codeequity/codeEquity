@@ -1,4 +1,5 @@
 /*
+https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects#repository
 https://octokit.github.io/rest.js
 https://developer.github.com/webhooks/event-payloads/#issues
 https://developer.github.com/v3/issues/#create-an-issue
@@ -44,6 +45,10 @@ var githubSafe = {
 	return removeLabel( installClient, owner, repo, issueNum, label );
     },
 
+    updateTitle: function( installClient, owner, repo, issueNum, title ) {
+	return updateTitle( installClient, owner, repo, issueNum, title );
+    },
+
     addLabel: function( installClient, owner, repo, issueNum, label ) {
 	return addLabel( installClient, owner, repo, issueNum, label );
     },
@@ -54,6 +59,10 @@ var githubSafe = {
 
     splitIssue: function( installClient, owner, repo, issue, splitTag ) {
 	return splitIssue( installClient, owner, repo, issue, splitTag );
+    },
+
+    rebuildIssue: function( installClient, owner, repo, issue, msg ) {
+	return rebuildIssue( installClient, owner, repo, issue, msg );
     },
 
     cleanUnclaimed: function( installClient, ghLinks, pd ) {
@@ -89,6 +98,10 @@ var githubUtils = {
 	return getCard( installClient, cardId );
     },
 
+    getColumns: function( installClient, projId ) {
+	return getColumns( installClient, projId );
+    },
+
     getFullIssue: function( installClient, owner, repo, issueNum ) {
 	return getFullIssue( installClient, owner, repo, issueNum );
     },
@@ -111,6 +124,10 @@ var githubUtils = {
 
     getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
 	return getBasicLinkDataGQL( PAT, owner, repo, data, cursor );
+    },
+
+    getRepoColsGQL: function( PAT, owner, repo, data, cursor ) {
+	return getRepoColsGQL( PAT, owner, repo, data, cursor );
     },
 
     populateCELinkage: function( installClient, ghLinks, pd ) {
@@ -251,6 +268,16 @@ async function getCard( installClient, cardId ) {
     return retCard;
 }
 
+async function getColumns( installClient, projId ) {
+    let cols = "";
+
+    await( installClient[0].projects.listColumns( { project_id: projId }))
+	.then( allcols => { cols = allcols['data']; })
+	.catch( e => { console.log( installClient[1], "list columns failed.", e ); });
+
+    return cols;
+}
+
 
 async function splitIssue( installClient, owner, repo, issue, splitTag ) {
     console.log( "Split issue" );
@@ -264,7 +291,7 @@ async function splitIssue( installClient, owner, repo, issue, splitTag ) {
 	body:      issue.body,
 	milestone: issue.milestone,
 	labels:    issue.labels,
-	assignees: issue.assignees
+	assignees: issue.assignees.map( person => person.login )
     } ))
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
@@ -281,6 +308,33 @@ async function splitIssue( installClient, owner, repo, issue, splitTag ) {
 	.catch( e => {
 	    console.log( installClient[1], "Create issue comment failed.", e );
 	});
+    
+    return issueData;
+}
+
+async function rebuildIssue( installClient, owner, repo, issue, msg ) {
+    console.log( "Rebuilding issue" );
+    let issueData = [-1,-1];  // issue id, num
+
+    await installClient[0].issues.create( {
+	owner:     owner,
+	repo:      repo,
+	title:     issue.title,
+	body:      issue.body,
+	milestone: issue.milestone,
+	labels:    issue.labels,
+	assignees: issue.assignees.map( person => person.login )
+    })
+	.then( issue => {
+	    issueData[0] = issue['data']['id'];
+	    issueData[1] = issue['data']['number'];
+	})
+	.catch( e => console.log( installClient[1], "Error.  Create issue failed.", e ));
+
+    let comment = utils.getToday().toString() + ": " + msg;
+    
+    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
+	.catch( e =>  console.log( installClient[1], "Error.  Create issue comment failed.", e ));
     
     return issueData;
 }
@@ -428,7 +482,7 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => console.log( "GQL issue", e ));
+	.catch( e => console.log( "Error. GQL links issue", e ));
 
     const issues = res.data.repository.issues;
     for( let i = 0; i < issues.edges.length; i++ ) {
@@ -440,6 +494,11 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 	assert( !cards.pageInfo.hasNextPage && !labels.hasNextPage );
 
 	for( const card of cards.edges ) {
+	    // console.log( card.node.project.name, issue.title );
+	    if( !card.node.column ) {
+		console.log( "Warning. Skipping issue:card for", issue.title, "which is awaiting triage." );
+		continue;
+	    }
 	    console.log( card.node.project.name, ",", card.node.column.databaseId );
 	    let datum = {};
 	    datum.issueId     = issue.databaseId;
@@ -462,6 +521,68 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 
     if( issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
 }
+
+
+// GraphQL to get all columns in repo 
+async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
+
+    // XXX move these
+    const query1 = `
+    query baseConnection($owner: String!, $repo: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    projects(first: 100) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node {
+		    databaseId number name
+		    columns(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { databaseId name }}}
+		}}}}}`;
+    
+    const queryN = `
+    query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    projects(first: 100 after: $cursor) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node {
+		    databaseId number name
+		    columns(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { databaseId name }}
+		}}}}}}`;
+    
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => console.log( "Error.  GQL cols issue", e ));
+
+    const projects = res.data.repository.projects;
+    for( let i = 0; i < projects.edges.length; i++ ) {
+	const project = projects.edges[i].node;
+	const cols    = project.columns;
+
+	// XXX Over 100 cols for 1 project?  Warn here.
+	assert( !cols.pageInfo.hasNextPage );
+
+	for( const col of cols.edges ) {
+	    // console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
+	    let datum = {};
+	    datum.projectName = project.name;
+	    datum.projectId   = project.databaseId;
+	    datum.columnName  = col.node.name;
+	    datum.columnId    = col.node.databaseId;
+	    data.push( datum );
+	}
+    }
+
+    if( projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
+}
+
+
 
 // Add linkage data for all carded issues in a project.
 // 
@@ -549,6 +670,11 @@ async function rebuildCard( installClient, owner, repo, colId, origCardId, issue
     removeCard( installClient, origCardId );
 
     return newCardId;
+}
+
+async function updateTitle( installClient, owner, repo, issueNum, title ) {
+    await installClient[0].issues.update({ owner: owner, repo: repo, issue_number: issueNum, title: title  } )
+	.catch( e => console.log( installClient[1], "Error.  Update title failed.", e ));
 }
 
 async function removeLabel( installClient, owner, repo, issueNum, label ) {
@@ -639,7 +765,8 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
     assert( link.GHColumnName != config.EMPTY );
 
     console.log( "Found unclaimed" );
-    await installClient[0].projects.deleteCard( { card_id: link.GHCardId } );
+    await installClient[0].projects.deleteCard( { card_id: link.GHCardId } )
+	.catch( e => console.log( "Error.  Card not deleted", e ));
     
     // Remove turds, report.  
     ghLinks.removeLinkage({ "installClient": installClient, "issueId": pd.GHIssueId, "cardId": link.GHCardId });

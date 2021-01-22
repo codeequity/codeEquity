@@ -77,10 +77,6 @@ async function runTests() {
 
     tu.testReport( testStatus, "================= Testing complete =================" );
     
-    // XXX test add, peq, then add new card to peq issue.  unclaimed.  split issue with assignees?
-    // XXX test standard add, move, close, reopen, accrue
-
-    
     // NOTE: you must TURN OFF ceServer to construct part of this test, and turn it back on to execute it.
     // Have already populated in setup, but will re-pop here.  No harm.  
     // can't split current resolve test off without rewriting it to be incremental (i.e. can't generate 1:3 without server being off)

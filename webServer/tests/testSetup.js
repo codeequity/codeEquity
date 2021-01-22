@@ -282,10 +282,6 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 }
 
 
-// XXX Waiting for things to settle
-//     this does have some merit - CE is built for human hands, and hands + native github delay means human
-//     operations are far slower than the test execution above.  However, this is still pretty darned slow ATM
-
 async function runTests( installClient, ghLinks, td ) {
 
     console.log( "Preferred CE project structure =================" );

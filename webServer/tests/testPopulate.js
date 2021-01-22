@@ -168,7 +168,7 @@ async function testPopulate( installClient, td ) {
     }
 
 
-    // XXX test setup runs this portion - not top of the list to implement
+    // test setup runs this portion - not top of the list to implement
     // Check DYNAMO PAct
     // Check DYNAMO RepoStatus
     // Check DYNAMO linkage
@@ -190,8 +190,6 @@ async function testResolve( installClient, ghLinks, td ) {
     await tu.refreshRec( installClient, td );
     await tu.refreshFlat( installClient, td );
 
-
-    // XXX try adding assignees
     // First add a few normal labels
     // At the start, will have 3 triprecs, non are peq
     let tripleIssue = await tu.findIssue( installClient, td, ISS_TRIPREC );
