@@ -1,4 +1,5 @@
 /*
+https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects#repository
 https://octokit.github.io/rest.js
 https://developer.github.com/webhooks/event-payloads/#issues
 https://developer.github.com/v3/issues/#create-an-issue
@@ -93,6 +94,10 @@ var githubUtils = {
 	return getCard( installClient, cardId );
     },
 
+    getColumns: function( installClient, projId ) {
+	return getColumns( installClient, projId );
+    },
+
     getFullIssue: function( installClient, owner, repo, issueNum ) {
 	return getFullIssue( installClient, owner, repo, issueNum );
     },
@@ -115,6 +120,10 @@ var githubUtils = {
 
     getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
 	return getBasicLinkDataGQL( PAT, owner, repo, data, cursor );
+    },
+
+    getRepoColsGQL: function( PAT, owner, repo, data, cursor ) {
+	return getRepoColsGQL( PAT, owner, repo, data, cursor );
     },
 
     populateCELinkage: function( installClient, ghLinks, pd ) {
@@ -253,6 +262,16 @@ async function getCard( installClient, cardId ) {
 	.then((card) => {  retCard = card.data; } )
 	.catch( e => { console.log( installClient[1], "Get card failed.", e ); });
     return retCard;
+}
+
+async function getColumns( installClient, projId ) {
+    let cols = "";
+
+    await( installClient[0].projects.listColumns( { project_id: projId }))
+	.then( allcols => { cols = allcols['data']; })
+	.catch( e => { console.log( installClient[1], "list columns failed.", e ); });
+
+    return cols;
 }
 
 
@@ -459,7 +478,7 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => console.log( "GQL issue", e ));
+	.catch( e => console.log( "Error. GQL links issue", e ));
 
     const issues = res.data.repository.issues;
     for( let i = 0; i < issues.edges.length; i++ ) {
@@ -498,6 +517,68 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 
     if( issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
 }
+
+
+// GraphQL to get all columns in repo 
+async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
+
+    // XXX move these
+    const query1 = `
+    query baseConnection($owner: String!, $repo: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    projects(first: 100) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node {
+		    databaseId number name
+		    columns(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { databaseId name }}}
+		}}}}}`;
+    
+    const queryN = `
+    query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    projects(first: 100 after: $cursor) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node {
+		    databaseId number name
+		    columns(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { databaseId name }}
+		}}}}}}`;
+    
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => console.log( "Error.  GQL cols issue", e ));
+
+    const projects = res.data.repository.projects;
+    for( let i = 0; i < projects.edges.length; i++ ) {
+	const project = projects.edges[i].node;
+	const cols    = project.columns;
+
+	// XXX Over 100 cols for 1 project?  Warn here.
+	assert( !cols.pageInfo.hasNextPage );
+
+	for( const col of cols.edges ) {
+	    // console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
+	    let datum = {};
+	    datum.projectName = project.name;
+	    datum.projectId   = project.databaseId;
+	    datum.columnName  = col.node.name;
+	    datum.columnId    = col.node.databaseId;
+	    data.push( datum );
+	}
+    }
+
+    if( projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
+}
+
+
 
 // Add linkage data for all carded issues in a project.
 // 

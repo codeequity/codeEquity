@@ -27,11 +27,19 @@ class Linkage {
 	await gh.getBasicLinkDataGQL( PAT, fnParts[0], fnParts[1], baseLinks, -1 )
 	    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
 
+	// XXX Could save a good number of calls to GH with this data
+	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
+	let cols = [];
+	await gh.getRepoColsGQL( PAT, fnParts[0], fnParts[1], cols, -1 )
+	    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
+	console.log( cols );
+	
 	this.populateLinkage( installClient, fn, baseLinks );
 
 	// peq add: cardTitle, colId, colName, projName
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
 	let badPeq = false;
+	let badSource = false;
 	for( const peq of peqs ) {
 	    if( peq.Active == "false" ) {
 		console.log( installClient[1], "Skipping inactive peq", peq.GHIssueTitle );
@@ -51,10 +59,19 @@ class Linkage {
 	    link.GHColumnId    = card.columnId.toString();
 	    link.GHProjectName = card.projectName;
 	    link.GHColumnName  = card.columnName;
+
+	    // need a name here
 	    link.flatSource    = peq.GHProjectSub[ peq.GHProjectSub.length - 1 ];
+	    if( config.PROJ_COLS.includes( link.flatSource )) { link.flatSource = -1; }
+	    // XXX could make this faster if cols use gets broader.
+	    if( link.flatSource != -1 ) {
+		const colData = cols.find( col => col.projectId == link.GHProjectId && col.columnName == link.flatSource );
+		if( typeof colData !== 'undefined' ) { link.flatSource = colData.columnId.toString(); }
+		else { link.flatSource = -1; }   // e.g. projSub is (master)[softCont, dataSec]
+	    }
 	}
 
-	assert( !badPeq );  // will be caught.
+	assert( !badPeq  );  // will be caught.
 	return baseLinks; 
     }
 
