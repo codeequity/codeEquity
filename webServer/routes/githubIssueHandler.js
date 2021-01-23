@@ -22,16 +22,25 @@ var ghSafe = ghUtils.githubSafe;
 
 
 async function deleteIssue( installClient, ghLinks, pd ) {
-    let peq = await utils.getPeq( installClient, pd.GHIssueId );
+    // Carded, at least?
     let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
-    let link = links == -1 ? links : links[0];
+    if( links == -1 ) return;
+    
+    let peq = -1;
+    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+    if( pd.peqValue > 0 ) {
+	peq = await utils.getPeq( installClient, pd.GHIssueId );
+    }
+
+    let link = links[0];
     let verb = "confirm";
-    let subject = [ peq.PEQId ];
+    let subject = peq == -1 ? [] : [ peq.PEQId ];
     
     // peq may be out of date (no ingest).  Must rely on linkage table
-    if( link != -1 && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 	// the entire issue has been given to us here.  Recreate it.
 	console.log( "WARNING.  Can't delete issue associated with an accrued PEQ.  Rebuilding.." );
+	assert( peq != -1 );
 	
 	const msg = "Accrued PEQ issues can not be deleted.  CodeEquity has rebuilt it.";
 	const issueData = await ghSafe.rebuildIssue( installClient, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
@@ -54,20 +63,22 @@ async function deleteIssue( installClient, ghLinks, pd ) {
 	verb = "reject";
     }
     else { ghLinks.removeLinkage({"installClient": installClient, "issueId": pd.GHIssueId }); }
-    
-    utils.removePEQ( installClient, peq.PEQId );
-    utils.recordPEQAction(
-	installClient,
-	config.EMPTY,     // CE UID
-	pd.GHCreator,     // gh user name
-	pd.GHFullName,    // of the repo
-	verb,
-	"delete",         // action
-	subject,
-	"delete",        // note
-	utils.getToday(), // entryDate
-	pd.reqBody        // raw
-    );
+
+    if( peq != -1 ) {
+	utils.removePEQ( installClient, peq.PEQId );
+	utils.recordPEQAction(
+	    installClient,
+	    config.EMPTY,     // CE UID
+	    pd.GHCreator,     // gh user name
+	    pd.GHFullName,    // of the repo
+	    verb,
+	    "delete",         // action
+	    subject,
+	    "delete",        // note
+	    utils.getToday(), // entryDate
+	    pd.reqBody        // raw
+	);
+    }
 }
 
 

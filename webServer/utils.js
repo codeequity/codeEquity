@@ -150,8 +150,9 @@ async function wrappedPostIt( installClient, shortName, postData ) {
     }
     else {
 	console.log("Unhandled status code:", response['status'] );
-	// let body = await response.json();
-	// console.log(installClient[1], "Body:", body);
+	let body = await response.json();
+	console.log(installClient[1], "Body:", body);
+	assert( false );
 	return -1;
     }
 }

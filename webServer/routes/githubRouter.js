@@ -12,6 +12,9 @@ var links     = require('../components/linkage.js');
 
 var issues    = require('./githubIssueHandler');
 var cards     = require('./githubCardHandler');
+var projects  = require('./githubProjectHandler');
+var columns   = require('./githubColumnHandler');
+var labels    = require('./githubLabelHandler');
 var testing   = require('./githubTestHandler');
 
 // CE Job Queue  {fullName:  {sender1: fifoQ1, sender2: fifoQ2 }}
@@ -51,6 +54,52 @@ async function initAuth( installClient, owner, repo ) {
 }
 
 
+
+
+async function switcher( installClient, ghLinks, pd, sender, event, action, tag, res ) {
+    switch( event ) {
+    case 'issue' :
+	{
+	    retVal = await issues.handler( installClient, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
+	}
+	break;
+    case 'project_card' :
+	{
+	    retVal = await cards.handler( installClient, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Card Handler failed.", e ));
+	}
+	break;
+    case 'project' :
+	{
+	    retVal = await projects.handler( installClient, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Project Handler failed.", e ));
+	}
+	break;
+    case 'project_column' :
+	{
+	    retVal = await columns.handler( installClient, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Column Handler failed.", e ));
+	}
+	break;
+    case 'label' :
+	{
+	    retVal = await labels.handler( installClient, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Label Handler failed.", e ));
+	}
+	break;
+    default:
+	{
+	    console.log( "Event unhandled", event );
+	    retVal = res.json({ status: 400 });
+	    break;
+	}
+    }
+    getNextJob( installClient, pd, sender, res );	
+}
+
+
+
 // Notifications from GH webhooks
 router.post('/:location?', async function (req, res) {
 
@@ -58,9 +107,11 @@ router.post('/:location?', async function (req, res) {
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, req.body, res ); }
     
     console.log( "" );
-    let event    = req.headers['x-github-event'];
     let action   = req.body['action'];
+    let event    = req.headers['x-github-event'];
+    if( event == "issues" ) { event = "issue"; }
     
+
     let sender  = req.body['sender']['login'];
     if( sender == config.CE_BOT) {
 	console.log( "Notification for", event, action, "Bot-sent, skipping." );
@@ -74,7 +125,7 @@ router.post('/:location?', async function (req, res) {
 
     let tag = "";
     let source = "<";
-    if( event == "issues" )    {
+    if( event == "issue" )    {
 	tag = (req.body['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
 	source += "issue:";
     }
@@ -91,26 +142,29 @@ router.post('/:location?', async function (req, res) {
 	}
 	tag = tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
     }
+    else {
+	source += event + ":";
+
+	console.log( event );
+	if( !req.body.hasOwnProperty( event ) ) { console.log( req.body ); }
+
+	// XXX will this interfere with gh lookups by name? esp for label?
+	req.body[event].name.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+	tag = req.body[event].name;
+    }
     source += action+" "+tag+"> ";
     let jobId = utils.randAlpha(10);
-
-    let newStamp = "";
-    if     ( req.body.hasOwnProperty( 'project_card' ) ) { newStamp = req.body.project_card.updated_at; }
-    else if( req.body.hasOwnProperty( 'issue' ))         { newStamp = req.body.issue.updated_at; }
-    else if( req.body.hasOwnProperty( 'project' ))       { newStamp = req.body.project.updated_at; }
-    else { console.log( "XXX New event, update_at exists?", event, req.body ); }
-    
-    console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
-
-    // leave early for events not handled here
-    if( event == "project" ) { return res.end(); }
 
     notificationCount++;
     if( notificationCount % 20 == 0 ) { ghLinks.show(); }
 
+    let newStamp = req.body[event].updated_at;
+    if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }      // label create doesn't have this
+    console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
+
     /*
-    // biggest issues seem to be a stamp labeling issue within GH - maybe different clocks?
-    // Look for out of order GH notifications.  Note the timestamp is only to within 1 second...
+    // Look for out of order GH notifications.  Note the timestamp is only to within 1 second. 
+    // Unfortunately, GH timestamps can vary by up to 8s.. different clocks?
     let tdiff = utils.getTimeDiff( lastEvent, newStamp );  
     if( tdiff < 0 ) {
 	console.log( "\n\n\n!!!!!!!!!!!!!" );
@@ -141,22 +195,8 @@ router.post('/:location?', async function (req, res) {
     pd.reqBody      = req.body;
     pd.GHFullName   = req.body['repository']['full_name'];
 
-    if( event == "issues" ) {
-	retVal = await issues.handler( installClient, ghLinks, pd, action, tag )
-	    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
-	getNextJob( installClient, pd, sender );	
-    }
-    else if( event == "project_card" ) {
-	retVal = await cards.handler( installClient, ghLinks, pd, action, tag )
-	    .catch( e => console.log( "Error.  Card Handler failed.", e ));
-	getNextJob( installClient, pd, sender );	
-    }
-    else {
-	console.log( "Event unhandled", event );
-	retVal = res.json({ status: 400 });
-	getNextJob( installClient, pd, sender );	
-    }
-
+    await switcher( installClient, ghLinks, pd, sender, event, action, tag, res );
+    
     // avoid socket hangup error, response undefined
     // return retVal;
     return res.end();
@@ -165,7 +205,7 @@ router.post('/:location?', async function (req, res) {
 
 // Without this call, incoming non-bot jobs that were delayed would not get executed.
 // Only this call will remove from the queue before getting next.  
-async function getNextJob( installClient, pdOld, sender ) {
+async function getNextJob( installClient, pdOld, sender, res ) {
     let jobData = await utils.getFromQueue( ceJobs, installClient, pdOld.GHFullName, sender );
     if( jobData != -1 ) {
 
@@ -181,17 +221,9 @@ async function getNextJob( installClient, pdOld, sender ) {
 	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
 	console.log( "\n\n\n", installClient[1], "Got next job:", ic[1] );
 
-	if( jobData.Handler == "issues" ) {
-	    await issues.handler( ic, ghLinks, pd, jobData.Action, jobData.Tag )
-	    	.catch( e => console.log( "Error.  Issue Handler failed.", e ));
-	}
-	else if( jobData.Handler == "project_card" ) {
-	    await cards.handler( ic, ghLinks, pd, jobData.Action, jobData.Tag )
-	    	.catch( e => console.log( "Error.  Card Handler failed.", e ));
-	}
-	else                                         { assert( false ); }
+	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res );
 
-	getNextJob( ic, pd, sender );
+	getNextJob( ic, pd, sender, res );
     }
     else {
 	console.log( installClient[1], "jobs done" );
