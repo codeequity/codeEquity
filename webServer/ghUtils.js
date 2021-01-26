@@ -58,7 +58,7 @@ var githubSafe = {
     },
 
     addComment: function( installClient, owner, repo, issueNum, msg ) {
-	return addLabel( installClient, owner, repo, issueNum, msg );
+	return addComment( installClient, owner, repo, issueNum, msg );
     },
 
     rebuildLabel: function( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
@@ -96,6 +96,10 @@ var githubUtils = {
 
     getAssignees: function( installClient, owner, repo, issueNum ) {
 	return getAssignees( installClient, owner, repo, issueNum );
+    },
+
+    checkIssue: function( installClient, owner, repo, issueNum ) {
+	return checkIssue( installClient, owner, repo, issueNum );  
     },
 
     getIssue: function( installClient, owner, repo, issueNum ) {
@@ -227,21 +231,31 @@ async function getAssignees( installClient, owner, repo, issueNum )
 		}
 	    }
 	})
-	.catch( e => {
-	    console.log( installClient[1], "Problem in getAssignees", e );
-	});
+	.catch( e => console.log( installClient[1], "Problem in getAssignees", e ));
     return retVal;
+}
+
+async function checkIssue( installClient, owner, repo, issueNum ) {
+    let issueExists = false;
+    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+	.then( issue => issueExists = true )
+	.catch( e => {
+	    if( e.status == 410 ) { console.log( installClient[1], "Issue", issueNum, "already gone" ); }
+	    else                  { console.log( installClient[1], "Problem in checkIssue", e );        }
+	});
+    
+    return issueExists;
 }
 
 // [id, content]
 // XXX alignment risk - card info could have moved on
 async function getIssue( installClient, owner, repo, issueNum )
 {
+    let retVal   = [];
     if( issueNum == -1 ) { return retVal; }
     
     let issue = await getFullIssue( installClient, owner, repo, issueNum ); 
     let retIssue = [];
-    let retVal   = [];
     
     retIssue.push( issue.id );
     retVal.push( issue.title );
@@ -255,7 +269,7 @@ async function getIssue( installClient, owner, repo, issueNum )
 // XXX alignment risk - card info could have moved on
 async function getFullIssue( installClient, owner, repo, issueNum )
 {
-    if( issueNum == -1 ) { return retVal; }
+    if( issueNum == -1 ) { return -1; }
     let retIssue = "";
 
     await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
@@ -691,9 +705,9 @@ async function removePeqLabel( installClient, owner, repo, issueNum ) {
 	.catch( e => console.log( installClient[1], "Get labels for issue failed.", e ));
 
     if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } // XXX paginate? grump grump }
-	
+
     let peqLabel = {};
-    for( const label of labels ) {
+    for( const label of labels.data ) {
 	const tval = parseLabelDescr( [label.description] );
 	if( tval > 0 ) { peqLabel = label; break; }
     }
@@ -755,7 +769,7 @@ async function createUnClaimedCard( installClient, owner, repo, issueId, accr )
 
 
     // Get, or create, unclaimed column id
-    let colName = makeAccrued ? config.PROJ_ACCR : unClaimed; 
+    let colName = makeAccrued ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed; 
     let unClaimedColId = -1;
     await installClient[0].paginate( installClient[0].projects.listColumns, { project_id: unClaimedProjId, per_page: 100 } )
 	.then((columns) => {
@@ -772,7 +786,7 @@ async function createUnClaimedCard( installClient, owner, repo, issueId, accr )
     
     assert( unClaimedProjId != -1 );
     assert( unClaimedColId != -1  );
-    
+
     // create card in unclaimed:unclaimed
     let card = await createProjectCard( installClient, unClaimedColId, issueId, false );
     return card;
@@ -785,7 +799,7 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
     let link = ghLinks.getUniqueLink( installClient, pd.GHIssueId );
     if( link == -1 ) { return; }
     let allowed = [ config.UNCLAIMED, config.PROJ_ACCR ];
-    if( !allowed.includes( link.GHColumnName ) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
+    if( !allowed.includes( link.GHColumnName )) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
 	
     assert( link.GHCardId != -1 );
 

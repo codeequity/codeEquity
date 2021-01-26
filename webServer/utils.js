@@ -354,6 +354,24 @@ function getTimeDiff( lastEvent, newStamp ) {
     return tdiff;
 }
 
+async function rebuildPeq( installClient, link, oldPeq ) {
+    let postData = {};
+    postData.PEQId        = -1;
+    postData.GHHolderId   = oldPeq.GHHolderId;
+    postData.PeqType      = oldPeq.PeqType;
+    postData.Amount       = oldPeq.Amount;
+    postData.GHRepo       = oldPeq.GHRepo;
+    postData.GHProjectSub = [ link.GHProjectName, link.GHColumnName ];
+    postData.GHProjectId  = link.GHProjectId; 
+    postData.GHIssueId    = link.GHIssueId;
+    postData.GHIssueTitle = link.GHCardTitle;   // XXX fix link name here.  cwazy
+    postData.Active       = "true";
+
+    newPEQId = await recordPEQ(	installClient, postData );
+    assert( newPEQId != -1 );
+    return newPEQId; 
+}
+
 // XXX dup check could occur in lambda handler, save a round trip
 async function recordPeqData( installClient, pd, checkDup ) {
     console.log( "Recording peq data for", pd.GHIssueTitle );	
@@ -756,6 +774,7 @@ exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
 exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
+exports.rebuildPeq = rebuildPeq;
 exports.recordPeqData = recordPeqData;
 exports.recordPEQTodo = recordPEQTodo;
 exports.removePEQ = removePEQ;

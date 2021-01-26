@@ -15,6 +15,7 @@ import 'package:ceFlutter/utils.dart';
 //    {prop,conf,rej}:change   assignees
 //    confirm:change           title   subject: [id, newtitle]
 //    reject:delete            delete accr
+//    confirm:change           recreate accr in unclaimed.  subject: [oldId, newId].  note: recreate 
 
 // Note: 
 // Move to "pending peq" col is 'close'.

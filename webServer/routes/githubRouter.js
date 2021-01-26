@@ -27,6 +27,10 @@ var ghLinks = new links.Linkage();
 // XXX temp, or add date
 var lastEvent = {"h": 0, "m": 0, "s": 0 };
 
+// Will contain parts of the last link that was deleted.
+// Add: delete card.  Clear: any notification != delete issue.
+// var justDeleted = {};
+
 
 var router = express.Router();
 
@@ -58,6 +62,10 @@ async function initAuth( installClient, owner, repo ) {
 
 async function switcher( installClient, ghLinks, pd, sender, event, action, tag, res ) {
     let retVal = "";
+
+    // clear justDeleted every time, unless possibly part of delete issue blast.
+    // if( event != 'issue' || action != 'deleted' ) { justDeleted = {}; }
+    
     switch( event ) {
     case 'issue' :
 	{

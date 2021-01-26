@@ -19,65 +19,47 @@ var ghSafe = ghUtils.githubSafe;
 //               and inclusion in linkage table.
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
-
-
 async function deleteIssue( installClient, ghLinks, pd ) {
-    // Carded, at least?
+
+    // Either not carded, or delete card already fired successfully.  No-op.
     let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
     if( links == -1 ) return;
-    
-    let peq = -1;
-    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
-    if( pd.peqValue > 0 ) {
-	peq = await utils.getPeq( installClient, pd.GHIssueId );
-    }
-
     let link = links[0];
-    let verb = "confirm";
-    let subject = peq == -1 ? [] : [ peq.PEQId ];
-    
-    // peq may be out of date (no ingest).  Must rely on linkage table
-    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+
+    // Just carded?  No-op.  Delete issue also sends delete card, which handles linkage.
+    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+    if( pd.peqValue <= 0 ) return;
+
+    // PEQ.  Card is gone, issue is gone.  Delete card will handle all but the one case below, in which case it leaves link intact.
+
+    // ACCR, not unclaimed, deleted issue.
+    if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+
 	// the entire issue has been given to us here.  Recreate it.
-	console.log( "WARNING.  Can't delete issue associated with an accrued PEQ.  Rebuilding.." );
-	assert( peq != -1 );
+	console.log( "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed." );
 	
-	const msg = "Accrued PEQ issues can not be deleted.  CodeEquity has rebuilt it.";
+	const peq = await utils.getPeq( installClient, link.GHIssueId );
+	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 	const issueData = await ghSafe.rebuildIssue( installClient, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
-	const cardId    = await ghSafe.createProjectCard( installClient, link.GHColumnId, issueData[0], true );
+	const card      = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, issueData[0], true );  
 	
 	await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
-	ghLinks.rebuildLinkage( installClient, link, issueData, cardId );
-	
-	// issueId is new, we need a new peq.  create that here, then create a 'reject delete' pact below while deactivating the old one.
-	pd.GHAssignees  = peq.GHHolderId;
-	pd.peqType      = peq.PeqType;
-	pd.peqValue     = peq.Amount;
-	pd.projSub      = peq.GHProjectSub;
-	pd.GHProjectId  = peq.GHProjectId;
-	pd.GHIssueId    = issueData[0].toString();
-	pd.GHIssueTitle = peq.GHIssueTitle;
-	
-	let newPEQId = await utils.recordPeqData( installClient, pd, false );
-	subject.push( newPEQId );
-	verb = "reject";
-    }
-    else { ghLinks.removeLinkage({"installClient": installClient, "issueId": pd.GHIssueId }); }
+	link = ghLinks.rebuildLinkage( installClient, link, issueData, card.id );
+	link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
+	link.GHProjectName = config.UNCLAIMED;
+	link.GHProjectId   = card.project_url.split('/').pop();
+	link.GHColumnId    = card.column_url.split('/').pop();
 
-    if( peq != -1 ) {
-	utils.removePEQ( installClient, peq.PEQId );
-	utils.recordPEQAction(
-	    installClient,
-	    config.EMPTY,     // CE UID
-	    pd.GHCreator,     // gh user name
-	    pd.GHFullName,    // of the repo
-	    verb,
-	    "delete",         // action
-	    subject,
-	    "delete",        // note
-	    utils.getToday(), // entryDate
-	    pd.reqBody        // raw
-	);
+	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
+	const newPeqId = await utils.rebuildPeq( installClient, link, peq );
+	
+	utils.removePEQ( installClient, peq.PEQId );	
+	utils.recordPEQAction( installClient, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+			       "confirm", "change", [peq.PEQId, newPeqId], "recreate",
+			       utils.getToday(), pd.reqBody );
+	utils.recordPEQAction( installClient, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+			       "confirm", "add", [newPeqId], "",
+			       utils.getToday(), pd.reqBody );
     }
 }
 

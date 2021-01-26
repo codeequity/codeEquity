@@ -135,6 +135,7 @@ class Linkage {
 
 	// Do not track source col if is in full layout
 	if( !haveSource && config.PROJ_COLS.includes( link.GHColumnName ) ) { link.flatSource = -1; }
+	return link;
     }
 
     populateLinkage( installClient, fn, baseLinkData ) {
@@ -249,30 +250,33 @@ class Linkage {
     // primary keys have changed.
     rebuildLinkage( installClient, oldLink, issueData, cardId ) {
 	console.log( installClient[1], "Rebuild linkage", oldLink.GHIssueNum, "->", issueData[0] );
-	this.addLinkage( installClient,
-			 oldLink.GHRepo,
-			 issueData[0].toString(), issueData[1].toString(),
-			 oldLink.GHProjectId, oldLink.GHProjectName,
-			 oldLink.GHColumnId, oldLink.GHColumnName,
-			 cardId.toString(),
-			 oldLink.GHCardTitle, oldLink.flatSource );
-
+	let link = this.addLinkage( installClient,
+				    oldLink.GHRepo,
+				    issueData[0].toString(), issueData[1].toString(),
+				    oldLink.GHProjectId, oldLink.GHProjectName,
+				    oldLink.GHColumnId, oldLink.GHColumnName,
+				    cardId.toString(),
+				    oldLink.GHCardTitle, oldLink.flatSource );
+	
 	this.removeLinkage( { "installClient": installClient, "issueId": oldLink.GHIssueId, "cardId": oldLink.GHCardId } );
 
-	return true;
+	return link;
     }
 
     removeLinkage({ installClient, issueId, cardId }) {
-	if( !installClient ) { console.log( "missing installClient" ); return; }
-	if( !issueId )       { console.log( "missing issueId" ); return; }
+	let retVal = false;
+	if( !installClient ) { console.log( "missing installClient" ); return retVal; }
+	if( !issueId )       { console.log( "missing issueId" ); return retVal; }
 	// cardId can be missing
-	
-	console.log( installClient[1], "Remove link", issueId, cardId );
 
-	if( !this.links.hasOwnProperty( issueId ))                { return; }  // may see multiple deletes
-	if( Object.keys( this.links[issueId] ).length == 0 )      { return; }
+	console.log( installClient[1], "Remove link for issueId:", issueId );
+
+	if( !this.links.hasOwnProperty( issueId ))                { return retVal; }  // may see multiple deletes
+	if( Object.keys( this.links[issueId] ).length == 0 )      { return retVal; }
 	else if( Object.keys( this.links[issueId] ).length == 1 ) { delete this.links[issueId]; }
 	else                                                      { delete this.links[issueId][cardId]; }
+	retVal = true;
+	return retVal;
     }
 
     purge( repo ) {

@@ -192,18 +192,19 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	break;
     case 'deleted' :
 	// Source of notification: delete card, delete (carded) issue, delete col, delete proj, xfer
-	// From here, can't tell which source, or which order of arrival.
-
-	// Every action here is as though this is sourced from a simple delete card.
+	// From here, can't tell which source, or which order of arrival, just know GH has already deleted the card, and maybe the issue.
+	// No matter the source, delete card must manage linkage, peq, pact, etc.
 
 	// XXX SPURIOUS: this notification can be sent if, during issue creation, after peq label, choose a project before unclaimed is created.
 	{
-	    // Not carded?  no-op.
+	    // Not carded?  no-op.  or maybe delete issue arrived first.
 	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "cardId": pd.reqBody.project_card.id } );
 	    if( links == -1 ) { return; }
 
-	    let link = links[0];
-	    const accr = link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR];
+	    let link    = links[0];
+	    const accr  = link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR];
+	    let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card was deleted.";
+	    comment    += " PEQ issues require a 1:1 mapping between issues and cards.";
 
 	    // Carded, untracked?   Just remove linkage, since GH removed card.
 	    if( link.GHColumnId == -1 ) {
@@ -211,50 +212,53 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    // XXX if this updates link, then recheck linkage:update funcs.  probably unnecessary.
-	    // Peq, not in unclaimed.  Recreate card in unclaimed, rebuild link, send pact.  If issue delete, issue will handle.  Else,
-	    // intention may not have been to remove peq-ness of issue.. retain it to avoid loss of work.
-	    if( link.GHProjectName != config.UNCLAIMED ) {
-		console.log( "Notice.  Peq issue card deleted.  Recreating card in Unclaimed." );
-		let card = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId, accr );  
-		link.GHCardId      = card.id
+	    // PEQ.  Card is gone, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
+	    const peq = await utils.getPeq( installClient, link.GHIssueId );
+
+	    // Is the source a delete issue or transfer?  XXX verify transfer
+	    let issueExists = await gh.checkIssue( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
+
+	    // Regular peq?  or ACCR already in unclaimed?  remove it no matter what.
+	    if( !accr || link.GHProjectName == config.UNCLAIMED ) {
+		console.log( installClient[1], "Removing peq", accr, issueExists );
+		if( issueExists ) {
+		    await ghSafe.removePeqLabel( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
+		    await ghSafe.addComment( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment );
+		}
+		ghLinks.removeLinkage({"installClient": installClient, "issueId": link.GHIssueId });
+		// no need to wait
+		utils.removePEQ( installClient, peq.PEQId );
+		let action = accr ? "notice"  : "delete";
+		let note   = accr ? "Disconnected issue" : "";
+		utils.recordPEQAction( installClient, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+				       "confirm", action, [peq.PEQId], note,
+				       utils.getToday(), pd.reqBody );
+	    }
+	    // ACCR, not in unclaimed.  
+	    else if( issueExists ) {
+		console.log( installClient[1], "Moving ACCR", accr, issueExists, link.GHIssueId );
+		let card = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, parseInt( link.GHIssueId ), accr );  
+		link.GHCardId      = card.id.toString();
 		link.GHProjectId   = card.project_url.split('/').pop();
 		link.GHProjectName = config.UNCLAIMED;
 		link.GHColumnId    = card.column_url.split('/').pop();
-		link.GHColumnName  = accr ? config.PROJ_ACCR : config.UNCLAIMED;
+		link.GHColumnName  = accr ? config.PROJ_COLS[config.PROJ_ACCR] : config.UNCLAIMED;
 
 		const psub = [ link.GHProjectName, link.GHColumnName ];
-		const peq = await utils.getPeq( installClient, link.GHIssueId );
 
 		// No need to wait
 		utils.updatePEQPSub( installClient, peq.PEQId, psub );
-		utils.recordPEQAction( installClient, config.EMPTY, reqBody['sender']['login'], pd.GHFullName,
+		utils.recordPEQAction( installClient, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 				       "confirm", "relocate", [peq.PEQId, link.GHProjectId, link.GHColumnId], "",
-				       utils.getToday(), reqBody );
-		return;
+				       utils.getToday(), pd.reqBody );
+		
 	    }
-
-	    // Peq, already in unclaimed.
-	    //     accr no? remove peq label & comment.  update linkage. deactivate peq.  pact.
-	    //     accr y?  remove peq label & comment.  update linkage.  no peq action.  pact notice disconnect underlying issue.
-	    let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card in Unclaimed was deleted";
-	    comment    += " in order to maintain a 1:1 mapping between issues and cards.";
-
-	    await ghSafe.removePeqLabel( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
-	    await ghSafe.addComment( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment );
-	    ghLinks.removeLinkage({"installClient": installClient, "issueId": link.GHIssueId });
-
-	    // No need to wait
-	    let action = accr ? "notice"  : "delete";
-	    let note   = accr ? "Disconnected issue" : "";
-	    if( !accr ) { utils.removePEQ( installClient, peq.PEQId ); }
-	    utils.recordPEQAction( installClient, config.EMPTY, reqBody['sender']['login'], pd.GHFullName,
-				   "confirm", action, [peq.PEQId], note,
-				   utils.getToday(), reqBody );
+	    // ACCR, not unclaimed, but issue deleted.  Delete issue must handle this since we don't have label, allocation.
+	    else {
+		console.log( installClient[1], "Delete issue will recreate ACCR in unclaimed", accr, issueExists );
+	    }
 	}
-
 	break;
-
     case 'edited' :  // do nothing
     default:
 	console.log( "Unrecognized action (cards)" );
