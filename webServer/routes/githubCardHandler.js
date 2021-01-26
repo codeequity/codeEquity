@@ -12,13 +12,13 @@ https://octokit.github.io/rest.js/v18#projects-delete-card
 https://developer.github.com/v3/issues/#create-an-issue
 */
 
+// Move WITHIN project
 // The implied action of an underlying move out of a column depends on the originating PEQType.
 // PeqType:GRANT  Illegal       There are no 'takebacks' when it comes to provisional equity grants
 //                              This type only exists for cards/issues in the 'Accrued' column... can not move out 
 // PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
-// PeqType:LIMB  do nothing
 async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghCard ) { 
 
     // XXX inform all contributors of this failure
@@ -31,6 +31,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 
     let verb   = "";
     let action = "";
+    // Note, eggs and bacon fall into this group
     if( peq['PeqType'] == "allocation" ||
 	( oldCol <= config.PROJ_PROG && newCol <= config.PROJ_PROG ) ) {
 	// moving between plan, and in-progress has no impact on peq summary
@@ -57,7 +58,6 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 	assert( false );
     }
 
-    let subject = [ peq['PEQId'] ];
     await( utils.recordPEQAction(
 	installClient,
 	config.EMPTY,     // CE UID
@@ -65,7 +65,7 @@ async function recordMove( installClient, reqBody, fullName, oldCol, newCol, ghC
 	fullName,         // gh repo
 	verb, 
 	action, 
-	subject,          // subject
+	[peq.PEQId],          // subject
 	"",               // note
 	utils.getToday(), // entryDate
 	reqBody           // raw
@@ -158,7 +158,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    // allocations have issues
 	    let issueId = link['GHIssueId'];
 	    assert( issueId != -1 );
-	    
+
+	    // XXX don't assert here out of accr.  Put it back.  move between accr is done via delete
 	    let oldNameIndex = config.PROJ_COLS.indexOf( link['GHColumnName'] );
 	    assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.
 	    assert( cardId       == link['GHCardId'] );
@@ -189,20 +190,69 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    recordMove( installClient, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, link );
 	}
 	break;
-    case 'deleted' :   // do nothing
-	// Note, if action source is issue-delete, linked card is deleted first.  Watch recording.
-	// Note: Unclaimed card - try to uncheck it directly from column bar gives: cardHander move within same column.  Check stays.
-	//       Need to click on projects, then on pd.GHRepo, then can check/uncheck successfully.  Get cardHandler:card deleted
-	// NOTE turn this off, otherwise can't detect delete in reserved column
-	// NOTE this notification can be sent if, during issue creation, after peq label, choose a project before unclaimed is created.
-	/*
+    case 'deleted' :
+	// Source of notification: delete card, delete (carded) issue, delete col, delete proj, xfer
+	// From here, can't tell which source, or which order of arrival.
+
+	// Every action here is as though this is sourced from a simple delete card.
+
+	// XXX SPURIOUS: this notification can be sent if, during issue creation, after peq label, choose a project before unclaimed is created.
 	{
-	    // Carded?
-	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "cardId": pd.reqBody['project_card']['id'] } );
-	    let link = links == -1 ? links : links[0]; 
-	    if( link != -1 ) {  ghLinks.removeLinkage({"installClient": installClient, "issueId": link['GHIssueId'] }); }
+	    // Not carded?  no-op.
+	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "cardId": pd.reqBody.project_card.id } );
+	    if( links == -1 ) { return; }
+
+	    let link = links[0];
+	    const accr = link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR];
+
+	    // Carded, untracked?   Just remove linkage, since GH removed card.
+	    if( link.GHColumnId == -1 ) {
+		ghLinks.removeLinkage({"installClient": installClient, "issueId": link.GHIssueId });
+		return;
+	    }
+
+	    // XXX if this updates link, then recheck linkage:update funcs.  probably unnecessary.
+	    // Peq, not in unclaimed.  Recreate card in unclaimed, rebuild link, send pact.  If issue delete, issue will handle.  Else,
+	    // intention may not have been to remove peq-ness of issue.. retain it to avoid loss of work.
+	    if( link.GHProjectName != config.UNCLAIMED ) {
+		console.log( "Notice.  Peq issue card deleted.  Recreating card in Unclaimed." );
+		let card = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId, accr );  
+		link.GHCardId      = card.id
+		link.GHProjectId   = card.project_url.split('/').pop();
+		link.GHProjectName = config.UNCLAIMED;
+		link.GHColumnId    = card.column_url.split('/').pop();
+		link.GHColumnName  = accr ? config.PROJ_ACCR : config.UNCLAIMED;
+
+		const psub = [ link.GHProjectName, link.GHColumnName ];
+		const peq = await utils.getPeq( installClient, link.GHIssueId );
+
+		// No need to wait
+		utils.updatePEQPSub( installClient, peq.PEQId, psub );
+		utils.recordPEQAction( installClient, config.EMPTY, reqBody['sender']['login'], pd.GHFullName,
+				       "confirm", "relocate", [peq.PEQId, link.GHProjectId, link.GHColumnId], "",
+				       utils.getToday(), reqBody );
+		return;
+	    }
+
+	    // Peq, already in unclaimed.
+	    //     accr no? remove peq label & comment.  update linkage. deactivate peq.  pact.
+	    //     accr y?  remove peq label & comment.  update linkage.  no peq action.  pact notice disconnect underlying issue.
+	    let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card in Unclaimed was deleted";
+	    comment    += " in order to maintain a 1:1 mapping between issues and cards.";
+
+	    await ghSafe.removePeqLabel( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
+	    await ghSafe.addComment( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment );
+	    ghLinks.removeLinkage({"installClient": installClient, "issueId": link.GHIssueId });
+
+	    // No need to wait
+	    let action = accr ? "notice"  : "delete";
+	    let note   = accr ? "Disconnected issue" : "";
+	    if( !accr ) { utils.removePEQ( installClient, peq.PEQId ); }
+	    utils.recordPEQAction( installClient, config.EMPTY, reqBody['sender']['login'], pd.GHFullName,
+				   "confirm", action, [peq.PEQId], note,
+				   utils.getToday(), reqBody );
 	}
-	*/
+
 	break;
 
     case 'edited' :  // do nothing

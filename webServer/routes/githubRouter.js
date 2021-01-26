@@ -57,6 +57,7 @@ async function initAuth( installClient, owner, repo ) {
 
 
 async function switcher( installClient, ghLinks, pd, sender, event, action, tag, res ) {
+    let retVal = "";
     switch( event ) {
     case 'issue' :
 	{
@@ -109,8 +110,8 @@ router.post('/:location?', async function (req, res) {
     console.log( "" );
     let action   = req.body['action'];
     let event    = req.headers['x-github-event'];
-    if( event == "issues" ) { event = "issue"; }
-    
+
+    if( event == "issues" )  { event = "issue"; }
 
     let sender  = req.body['sender']['login'];
     if( sender == config.CE_BOT) {
@@ -121,7 +122,6 @@ router.post('/:location?', async function (req, res) {
     let fullName = req.body['repository']['full_name'];
     let repo     = req.body['repository']['name'];
     let owner    = req.body['repository']['owner']['login'];
-    let retVal   = "";
 
     let tag = "";
     let source = "<";

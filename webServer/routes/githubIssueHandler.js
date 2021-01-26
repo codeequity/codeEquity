@@ -217,6 +217,9 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'deleted':
+	// Delete card of carded issue sends 1 notification.  Delete issue of carded issue sends two: card, issue, in random order.
+	// This must be robust given differnet notification order of { delIssue, delCard} 
+	
 	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	await deleteIssue( installClient, ghLinks, pd );

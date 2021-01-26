@@ -45,12 +45,20 @@ var githubSafe = {
 	return removeLabel( installClient, owner, repo, issueNum, label );
     },
 
+    removePeqLabel: function( installClient, owner, repo, issueNum ) {
+	return removePeqLabel( installClient, owner, repo, issueNum );
+    },
+
     updateTitle: function( installClient, owner, repo, issueNum, title ) {
 	return updateTitle( installClient, owner, repo, issueNum, title );
     },
 
     addLabel: function( installClient, owner, repo, issueNum, label ) {
 	return addLabel( installClient, owner, repo, issueNum, label );
+    },
+
+    addComment: function( installClient, owner, repo, issueNum, msg ) {
+	return addLabel( installClient, owner, repo, issueNum, msg );
     },
 
     rebuildLabel: function( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
@@ -118,8 +126,8 @@ var githubUtils = {
 	return rebuildCard( installClient, owner, repo, colId, origCardId, issueData );
     },
 
-    createUnClaimedCard: function( installClient, owner, repo, issueId ) {
-	return createUnClaimedCard( installClient, owner, repo, issueId );
+    createUnClaimedCard: function( installClient, owner, repo, issueId, accr ) {
+	return createUnClaimedCard( installClient, owner, repo, issueId, accr );
     },
 
     getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
@@ -303,12 +311,8 @@ async function splitIssue( installClient, owner, repo, issue, splitTag ) {
 
     let comment = "CodeEquity duplicated this new issue from issue id:" + issue.id.toString() + " on " + utils.getToday().toString();
     comment += " in order to maintain a 1:1 mapping between issues and cards."
-    
-    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
-	.catch( e => {
-	    console.log( installClient[1], "Create issue comment failed.", e );
-	});
-    
+
+    await addComment( installClient, owner, repo, issueData[1], comment );
     return issueData;
 }
 
@@ -682,9 +686,28 @@ async function removeLabel( installClient, owner, repo, issueNum, label ) {
 	.catch( e => { console.log( installClient[1], "Remove label from issue failed.", e ); });
 }
 
+async function removePeqLabel( installClient, owner, repo, issueNum ) {
+    let labels = await installClient[0].issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
+	.catch( e => console.log( installClient[1], "Get labels for issue failed.", e ));
+
+    if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } // XXX paginate? grump grump }
+	
+    let peqLabel = {};
+    for( const label of labels ) {
+	const tval = parseLabelDescr( [label.description] );
+	if( tval > 0 ) { peqLabel = label; break; }
+    }
+    await removeLabel( installClient, owner, repo, issueNum, peqLabel );
+}
+
 async function addLabel( installClient, owner, repo, issueNum, label ) {
     await installClient[0].issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [label.name] })
 	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
+}
+
+async function addComment( installClient, owner, repo, issueNum, msg ) {
+    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueNum, body: msg } ))
+	.catch( e => console.log( installClient[1], "Create issue comment failed.", e ));
 }
 
 async function rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
@@ -707,10 +730,11 @@ async function createProjectCard( installClient, columnId, issueId, justId )
 
 
 // XXX alignment risk
-// XXX could look in linkage for unclaimed proj / col ids .. ?
-async function createUnClaimedCard( installClient, owner, repo, issueId )
+// XXX could look in linkage for unclaimed proj / col ids .. ?  Could use proj/cols data in linkage.
+async function createUnClaimedCard( installClient, owner, repo, issueId, accr )
 {
     let unClaimedProjId = -1;
+    const makeAccrued = (typeof accr === 'undefined') ? false : true; 
     const unClaimed = config.UNCLAIMED;
 
     // Get, or create, unclaimed project id
@@ -731,38 +755,39 @@ async function createUnClaimedCard( installClient, owner, repo, issueId )
 
 
     // Get, or create, unclaimed column id
+    let colName = makeAccrued ? config.PROJ_ACCR : unClaimed; 
     let unClaimedColId = -1;
     await installClient[0].paginate( installClient[0].projects.listColumns, { project_id: unClaimedProjId, per_page: 100 } )
 	.then((columns) => {
 	    for( column of columns ) {
-		if( column.name == unClaimed ) { unClaimedColId = column.id; }
+		if( column.name == colName ) { unClaimedColId = column.id; }
 	    }})
     	.catch( e => { console.log( installClient[1], "List Columns failed.", e ); });
     if( unClaimedColId == -1 ) {
 	console.log( "Creating UnClaimed column" );
-	await installClient[0].projects.createColumn({ project_id: unClaimedProjId, name: unClaimed })
+	await installClient[0].projects.createColumn({ project_id: unClaimedProjId, name: colName })
 	    .then((column) => { unClaimedColId = column.data.id; })
 	    .catch( e => { console.log( installClient[1], "Create unclaimed column failed.", e ); });
     }
-
+    
     assert( unClaimedProjId != -1 );
     assert( unClaimedColId != -1  );
-    // console.log( "unclaimed p,c", unClaimedProjId, unClaimedColId );
     
     // create card in unclaimed:unclaimed
     let card = await createProjectCard( installClient, unClaimedColId, issueId, false );
     return card;
 }
 
+// NOTE: ONLY call during new situated card.  This is the only means to move accr out of unclaimed safely.
 // Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
 async function cleanUnclaimed( installClient, ghLinks, pd ) {
     console.log( installClient[1], "cleanUnclaimed", pd.GHIssueId );
     let link = ghLinks.getUniqueLink( installClient, pd.GHIssueId );
     if( link == -1 ) { return; }
-    if( link.GHColumnName != config.UNCLAIMED ) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
+    let allowed = [ config.UNCLAIMED, config.PROJ_ACCR ];
+    if( !allowed.includes( link.GHColumnName ) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
 	
     assert( link.GHCardId != -1 );
-    assert( link.GHColumnName != config.EMPTY );
 
     console.log( "Found unclaimed" );
     await installClient[0].projects.deleteCard( { card_id: link.GHCardId } )
@@ -770,7 +795,9 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
     
     // Remove turds, report.  
     ghLinks.removeLinkage({ "installClient": installClient, "issueId": pd.GHIssueId, "cardId": link.GHCardId });
-    
+
+
+    // XXX This is unnecessary - confusing & wasteful even.  Leftover from changing issueId here.
     // do not delete peq - set it inactive.
     let daPEQ = await utils.getPeq( installClient, pd.GHIssueId );
     await utils.removePEQ( installClient, daPEQ.PEQId );
@@ -1149,7 +1176,7 @@ function parseLabelDescr( labelDescr ) {
 function theOnePEQ( labels ) {
     let peqValue = 0;
 
-    for( label of labels ) {
+    for( const label of labels ) {
 	let content = label['description'];
 	let tval = parseLabelDescr( [content] );
 
