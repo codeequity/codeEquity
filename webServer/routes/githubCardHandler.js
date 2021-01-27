@@ -19,13 +19,13 @@ https://developer.github.com/v3/issues/#create-an-issue
 // PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
-async function recordMove( authData, reqBody, fullName, oldCol, newCol, ghCard ) { 
+async function recordMove( authData, reqBody, fullName, oldCol, newCol, link ) { 
 
     // XXX inform all contributors of this failure
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
-    let peq = await( ghSafe.validatePEQ( authData, fullName, ghCard['GHIssueId'], ghCard['GHCardTitle'], ghCard['GHProjectId'] ));
+    let peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHCardTitle, link.GHProjectId );
     
     assert( peq['PeqType'] != "grant" );
 
@@ -104,7 +104,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    
 	    // Is underlying issue already linked to unclaimed?  if so, remove it.
 	    await ghSafe.cleanUnclaimed( authData, ghLinks, pd );
-	    await utils.processNewPEQ( authData, ghLinks, pd, issue[1], -1 ); 
+	    await utils.processNewPEQ( authData, ghLinks, pd, issue[1], -1, "relocate" ); 
 	}
 	else {
 	    // In projects, creating a card that MAY have a human PEQ label in content...  PNP will create issue and label it, rebuild card, etc.

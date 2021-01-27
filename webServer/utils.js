@@ -373,13 +373,12 @@ async function rebuildPeq( authData, link, oldPeq ) {
 }
 
 // XXX dup check could occur in lambda handler, save a round trip
-async function recordPeqData( authData, pd, checkDup ) {
+async function recordPeqData( authData, pd, checkDup, specials ) {
     console.log( "Recording peq data for", pd.GHIssueTitle );	
-    let newPEQ   = -1;
     let newPEQId = -1;
     if( checkDup ) { 
 	// Only 1 peq per issueId. Might be moving a card here
-	let newPEQ = await getPeq( authData, pd.GHIssueId, false );
+	const newPEQ = await getPeq( authData, pd.GHIssueId, false );
 	if( newPEQ != -1 ) { newPEQId = newPEQ.PEQId; }
     }
 
@@ -398,20 +397,17 @@ async function recordPeqData( authData, pd, checkDup ) {
     newPEQId = await recordPEQ(	authData, postData );
     assert( newPEQId != -1 );
     
-    // no need to wait
+    let action = "add";
     let subject = [ newPEQId ];
-    recordPEQAction(
-	authData,
-	config.EMPTY,     // CE UID
-	pd.GHCreator,     // gh user name
-	pd.GHFullName,    // gh repo
-	"confirm",        // verb
-	"add",            // action
-	subject,          // subject
-	"",               // note
-	getToday(),       // entryDate
-	pd.reqBody        // raw
-    );
+    if( typeof specials !== 'undefined' && specials == "relocate" ) {
+	action = "relocate";
+	subject = [ newPEQId, pd.GHProjectId, pd.GHColumnId ];
+    }
+	
+    // no need to wait
+    recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
+		     "confirm", action,	subject, "",
+		     getToday(), pd.reqBody );
 
     return newPEQId;
 }
@@ -553,7 +549,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 
 // XXX this function can be sped up, especially when animating an unclaimed
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
-async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link ) {
+async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, specials ) {
     pd.GHIssueTitle = issueCardContent[0];
     
     // normal for card -> issue.  odd but legal for issue -> card
@@ -599,7 +595,12 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link ) {
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
 	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
 	    gh.removeCard( authData, origCardId );
-	    await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );	    
+	    await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
+	    // chances are, an unclaimed PEQ exists.  deactivate it.
+	    if( pd.GHIssueId != -1 ) {
+		const daPEQ = await getPeq( authData, pd.GHIssueId );
+		utils.removePEQ( authData, daPEQ.PEQId );
+	    }
 	    return "removeLabel";
 	}
 	
@@ -640,7 +641,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link ) {
     if( !gotSplit && pd.peqType != "end" ) {
 	pd.projSub = await getProjectSubs( authData, ghLinks, pd.GHFullName, projName, colName );
 	// Need to wait here - occasionally rapid fire testing creates a card before peq is finished recording
-	await recordPeqData( authData, pd, true );
+	await recordPeqData( authData, pd, true, specials );
     }
 }
 

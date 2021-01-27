@@ -728,15 +728,15 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
 
     // CHECK dynamo Pact
-    // label carded issue?  1 pact.  attach labeled issue to proj col?  3 pact.
+    // label carded issue?  1 pact.  attach labeled issue to proj col?  2 pact.
     let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );         
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let addUncl  = pacts.length >= 3 ? pacts[0] : {"Action": "add" };
-    let remUncl  = pacts.length >= 3 ? pacts[1] : {"Action": "delete" };
-    let pact = pacts.length >= 3 ? pacts[2] : pacts[0];
+    let addUncl  = pacts.length >= 2 ? pacts[0] : {"Action": "add" };
+    let relUncl  = pacts.length >= 2 ? pacts[1] : {"Action": "relocate" };
+    let pact     = pacts.length >= 2 ? pacts[1] : pacts[0];
     for( const pact of pacts ) {
 	let hasraw = await hasRaw( authData, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
@@ -746,8 +746,9 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
     }
     testStatus = checkEq( addUncl.Action, "add",                       testStatus, "PAct Verb"); 
-    testStatus = checkEq( remUncl.Action, "delete",                    testStatus, "PAct Verb"); 
-    testStatus = checkEq( pact.Action, "add",                          testStatus, "PAct Verb"); 
+    testStatus = checkEq( relUncl.Action, "relocate",                  testStatus, "PAct Verb");
+    const source = pact.Action == "add" || pact.Action == "relocate";
+    testStatus = checkEq( source, true,                                testStatus, "PAct Verb"); 
 
     return testStatus;
 }
@@ -858,7 +859,7 @@ async function checkAssignees( authData, td, ass1, ass2, issueData, testStatus )
     
     meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     
-    let addMP  = meltPacts[ meltPacts.length - 3];   // add the issue
+    let addMP  = meltPacts[ meltPacts.length - 3];   // add the issue (relocate)
     let addA1  = meltPacts[ meltPacts.length - 2];   // add assignee 1
     let addA2  = meltPacts[ meltPacts.length - 1];   // add assignee 2
     for( const pact of [addMP, addA1, addA2] ) {
@@ -869,7 +870,7 @@ async function checkAssignees( authData, td, ass1, ass2, issueData, testStatus )
 	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
 	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
     }
-    testStatus = checkEq( addMP.Action, "add",                         testStatus, "PAct Verb"); 
+    testStatus = checkEq( addMP.Action, "relocate",                    testStatus, "PAct Verb"); 
     testStatus = checkEq( addA1.Action, "change",                      testStatus, "PAct Verb"); 
     testStatus = checkEq( addA2.Action, "change",                      testStatus, "PAct Verb"); 
     testStatus = checkEq( addA1.Subject[1], ass1,                      testStatus, "PAct Verb"); 

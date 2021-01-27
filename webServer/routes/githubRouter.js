@@ -20,6 +20,7 @@ var testing   = require('./githubTestHandler');
 // CE Job Queue  {fullName:  {sender1: fifoQ1, sender2: fifoQ2 }}
 var ceJobs = {};
 var notificationCount = 0;
+var authData = {};
 
 // GH Linkage table
 var ghLinks = new links.Linkage();
@@ -42,7 +43,6 @@ initGH();
 // XXX sys-wide init like this needs sys-wide ceServer auth for all GH apps
 //     worst case, init on first call
 async function initGH() {
-    let authData = {};
     authData.ic  = -1;                // installation client for octokit    0
     authData.who = "CE SERVER INIT";  // which event is underway            1
     authData.api = -1;                // api path for aws                   2
@@ -236,7 +236,7 @@ async function getNextJob( authData, pdOld, sender, res ) {
 	ic.pat = authData.pat;
 	ic.job = jobData.QueueId;
 
-	console.log( "\n\n\n", authData.who, "Got next job:", ic[1] );
+	console.log( "\n\n\n", authData.who, "Got next job:", ic.who );
 
 	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res );
 

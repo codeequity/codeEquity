@@ -810,8 +810,8 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId });
 
 
-    // XXX This is unnecessary - confusing & wasteful even.  Leftover from changing issueId here.
-    // do not delete peq - set it inactive.
+    // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
+    /*
     let daPEQ = await utils.getPeq( authData, pd.GHIssueId );
     await utils.removePEQ( authData, daPEQ.PEQId );
 
@@ -827,6 +827,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
 	utils.getToday(), // entryDate
 	pd.reqBody        // raw
     );
+    */
 }
 
 // XXX
@@ -965,20 +966,14 @@ async function validatePEQ( authData, repo, issueId, title, projId ) {
     let peq = -1;
 
     let peqType = "";
-    if( issueId == -1 ) {
-	peqType = "allocation";
-	peq = await( utils.getPeqFromTitle( authData, repo, projId, title ));
-    }
-    else {
-	peqType = "plan";
-	peq = await( utils.getPeq( authData, issueId ));
-    }
+    assert( issueId != -1 );
+    peq = await utils.getPeq( authData, issueId );
 
-    if( peq != -1 && peq['GHIssueTitle'] == title && peq['PeqType'] == peqType && peq['GHRepo'] == repo)  {
+    if( peq != -1 && peq.GHIssueTitle == title && peq.GHRepo == repo && peq.GHProjectId == projId )  {
 	console.log( authData.who, "validatePeq success" );
     }
     else {
-	console.log( "... oops", peq['GHIssueTitle'], title, peq['PeqType'], "plan", peq['GHRepo'], repo );
+	console.log( "Error.  Peq not valid.", peq.GHIssueTitle, title, peq.GHRepo, repo, peq.GHProjectId, projId );
     }
     return peq;
 }

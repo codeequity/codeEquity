@@ -13,7 +13,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
-    console.log( authData.job, pd.reqBody.label.updated_at, "label name:", pd.reqBody.label.name, action );
+    console.log( authData.job, "label name:", pd.reqBody.label.name, action );
     
     switch( action ) {
     case 'created':
