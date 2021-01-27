@@ -42,25 +42,30 @@ initGH();
 // XXX sys-wide init like this needs sys-wide ceServer auth for all GH apps
 //     worst case, init on first call
 async function initGH() {
-    let installClient = [-1, "CE SERVER INIT", -1, -1, -1];
+    let authData = {};
+    authData.ic  = -1;                // installation client for octokit    0
+    authData.who = "CE SERVER INIT";  // which event is underway            1
+    authData.api = -1;                // api path for aws                   2
+    authData.cog = -1;                // cognito id token                   3
+    authData.pat = -1;                // personal access token for gh       -
+    authData.job = -1;                // currently active job id            4
 
     // XXX Generally, will not be testOwner, testRepo
-    await initAuth( installClient, config.TEST_OWNER, config.TEST_REPO  );
-    ghLinks.init( installClient, config.TEST_OWNER );
+    await initAuth( authData, config.TEST_OWNER, config.TEST_REPO  );
+    ghLinks.init( authData, config.TEST_OWNER );
 }
 
-// XXX can reduce amount of work - auths are re-acquired willy-nilly here.
-async function initAuth( installClient, owner, repo ) {
-    assert( installClient.length == 5 );
-    installClient[0] = await auth.getInstallationClient( owner, repo, config.CE_USER );
-    installClient[2] = await utils.getAPIPath() + "/find";
-    installClient[3] = await awsAuth.getCogIDToken();
+async function initAuth( authData, owner, repo ) {
+    authData.ic  = await auth.getInstallationClient( owner, repo, config.CE_USER );
+    authData.api = await utils.getAPIPath() + "/find";
+    authData.cog = await awsAuth.getCogIDToken();
+    authData.pat = await auth.getPAT( config.TEST_OWNER );
 }
 
 
 
 
-async function switcher( installClient, ghLinks, pd, sender, event, action, tag, res ) {
+async function switcher( authData, ghLinks, pd, sender, event, action, tag, res ) {
     let retVal = "";
 
     // clear justDeleted every time, unless possibly part of delete issue blast.
@@ -69,31 +74,31 @@ async function switcher( installClient, ghLinks, pd, sender, event, action, tag,
     switch( event ) {
     case 'issue' :
 	{
-	    retVal = await issues.handler( installClient, ghLinks, pd, action, tag )
+	    retVal = await issues.handler( authData, ghLinks, pd, action, tag )
 		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
 	}
 	break;
     case 'project_card' :
 	{
-	    retVal = await cards.handler( installClient, ghLinks, pd, action, tag )
+	    retVal = await cards.handler( authData, ghLinks, pd, action, tag )
 		.catch( e => console.log( "Error.  Card Handler failed.", e ));
 	}
 	break;
     case 'project' :
 	{
-	    retVal = await projects.handler( installClient, ghLinks, pd, action, tag )
+	    retVal = await projects.handler( authData, ghLinks, pd, action, tag )
 		.catch( e => console.log( "Error.  Project Handler failed.", e ));
 	}
 	break;
     case 'project_column' :
 	{
-	    retVal = await columns.handler( installClient, ghLinks, pd, action, tag )
+	    retVal = await columns.handler( authData, ghLinks, pd, action, tag )
 		.catch( e => console.log( "Error.  Column Handler failed.", e ));
 	}
 	break;
     case 'label' :
 	{
-	    retVal = await labels.handler( installClient, ghLinks, pd, action, tag )
+	    retVal = await labels.handler( authData, ghLinks, pd, action, tag )
 		.catch( e => console.log( "Error.  Label Handler failed.", e ));
 	}
 	break;
@@ -104,7 +109,7 @@ async function switcher( installClient, ghLinks, pd, sender, event, action, tag,
 	    break;
 	}
     }
-    getNextJob( installClient, pd, sender, res );	
+    getNextJob( authData, pd, sender, res );	
 }
 
 
@@ -181,21 +186,19 @@ router.post('/:location?', async function (req, res) {
     }
     */
     
-    // installClient is pent [installationAccessToken, creationSource, apiPath, cognitoIdToken, jobId]
     // this first jobId is set by getNext to reflect the proposed next job.
-    // let installClient = [-1, source, apiPath, idToken, jobId]; 
-    let installClient = [-1, source, -1, -1, jobId];
-    await initAuth( installClient, owner, repo );
+    authData.who = source;
+    authData.job = jobId;
 
     // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
-    let jobData = utils.checkQueue( ceJobs, installClient, event, sender, req.body, tag );
+    let jobData = utils.checkQueue( ceJobs, authData, event, sender, req.body, tag );
     assert( jobData != -1 );
-    if( installClient[4] != jobData.QueueId ) {
-	console.log( installClient[1], "Sender busy with job#", jobData.QueueId );
+    if( authData.job != jobData.QueueId ) {
+	console.log( authData.who, "Sender busy with job#", jobData.QueueId );
 	return res.end();
     }
-    console.log( installClient[1], "job Q clean, start-er-up" );
+    console.log( authData.who, "job Q clean, start-er-up" );
     
     let pd          = new peqData.PeqData();
     pd.GHOwner      = owner;
@@ -203,7 +206,7 @@ router.post('/:location?', async function (req, res) {
     pd.reqBody      = req.body;
     pd.GHFullName   = req.body['repository']['full_name'];
 
-    await switcher( installClient, ghLinks, pd, sender, event, action, tag, res );
+    await switcher( authData, ghLinks, pd, sender, event, action, tag, res );
     
     // avoid socket hangup error, response undefined
     // return retVal;
@@ -213,8 +216,8 @@ router.post('/:location?', async function (req, res) {
 
 // Without this call, incoming non-bot jobs that were delayed would not get executed.
 // Only this call will remove from the queue before getting next.  
-async function getNextJob( installClient, pdOld, sender, res ) {
-    let jobData = await utils.getFromQueue( ceJobs, installClient, pdOld.GHFullName, sender );
+async function getNextJob( authData, pdOld, sender, res ) {
+    let jobData = await utils.getFromQueue( ceJobs, authData, pdOld.GHFullName, sender );
     if( jobData != -1 ) {
 
 	// New job, new pd
@@ -224,17 +227,23 @@ async function getNextJob( installClient, pdOld, sender, res ) {
 	pd.reqBody      = jobData.ReqBody;
 	pd.GHFullName   = jobData.ReqBody['repository']['full_name'];
 	
-	// Need a new installClient, else source for non-awaited actions is overwritten
-	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId ];
-	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "\n\n\n", installClient[1], "Got next job:", ic[1] );
+	// Need a new authData, else source for non-awaited actions is overwritten
+	let ic = {};
+	ic.ic  = authData.ic;
+	ic.who = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	ic.api = authData.api;
+	ic.cog = authData.cog;
+	ic.pat = authData.pat;
+	ic.job = jobData.QueueId;
+
+	console.log( "\n\n\n", authData.who, "Got next job:", ic[1] );
 
 	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res );
 
 	getNextJob( ic, pd, sender, res );
     }
     else {
-	console.log( installClient[1], "jobs done" );
+	console.log( authData.who, "jobs done" );
 	ghLinks.show();	
     }
     return;

@@ -9,29 +9,29 @@ const tu = require('./testUtils');
 const FLAT_PROJ = "A Pre-Existing Project";
 
 
-async function createFlatProject( installClient, td ) {
+async function createFlatProject( authData, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
-    td.masterPID  = await tu.makeProject( installClient, td, FLAT_PROJ, "" );
+    td.masterPID  = await tu.makeProject( authData, td, FLAT_PROJ, "" );
 
-    let mastCol1  = await tu.makeColumn( installClient, td.masterPID, "Eggs" );
-    let mastCol2  = await tu.makeColumn( installClient, td.masterPID, "Bacon" );
+    let mastCol1  = await tu.makeColumn( authData, td.masterPID, "Eggs" );
+    let mastCol2  = await tu.makeColumn( authData, td.masterPID, "Bacon" );
 
-    await tu.makeNewbornCard( installClient, mastCol1, "Parsley" );
-    await tu.makeNewbornCard( installClient, mastCol2, "Rosemary" );
-    await tu.makeNewbornCard( installClient, mastCol1, "Sage" );
+    await tu.makeNewbornCard( authData, mastCol1, "Parsley" );
+    await tu.makeNewbornCard( authData, mastCol2, "Rosemary" );
+    await tu.makeNewbornCard( authData, mastCol1, "Sage" );
     
 }
 
-async function testFlatProject( installClient, ghLinks, td ) {
+async function testFlatProject( authData, ghLinks, td ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    await tu.refresh( installClient, td, FLAT_PROJ );
+    await tu.refresh( authData, td, FLAT_PROJ );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
-    let links = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let foundFlat = false;
     for( const link of links ) {
 	if( link.GHProjectName == FLAT_PROJ    ||
@@ -50,7 +50,7 @@ async function testFlatProject( installClient, ghLinks, td ) {
     
     
     // Check GITHUB Issues... weak test - only verify herbs were not issue-ified.
-    let issues = await tu.getIssues( installClient, td );
+    let issues = await tu.getIssues( authData, td );
     let foundIss = false;
     for( const issue of issues ) {
 	if( issues.title == "Parlsey" || issues.title == "Rosemary" || issues.title == "Sage" ) {
@@ -62,7 +62,7 @@ async function testFlatProject( installClient, ghLinks, td ) {
 
 
     // Check GITHUB Projects
-    let projects = await tu.getProjects( installClient, td );
+    let projects = await tu.getProjects( authData, td );
     testStatus = tu.checkGE( projects.length, 1,     testStatus, "Project count" );
     let foundProj = 0;
     for( const proj of projects ) {
@@ -75,7 +75,7 @@ async function testFlatProject( installClient, ghLinks, td ) {
 
     
     // Check GITHUB Columns
-    let mastCols   = await tu.getColumns( installClient, td.masterPID  );
+    let mastCols   = await tu.getColumns( authData, td.masterPID  );
     testStatus = tu.checkEq( mastCols.length, 2,   testStatus, "Master proj col count" );
 
     let colNames = mastCols.map((col) => col.name );
@@ -91,8 +91,8 @@ async function testFlatProject( installClient, ghLinks, td ) {
 
 
     // Check GITHUB Cards
-    let eggCards = await tu.getCards( installClient, eggsId );
-    let bacCards = await tu.getCards( installClient, baconId );
+    let eggCards = await tu.getCards( authData, eggsId );
+    let bacCards = await tu.getCards( authData, baconId );
 
     testStatus = tu.checkEq( eggCards.length, 2, testStatus, "Egg col card count" );
     testStatus = tu.checkEq( bacCards.length, 1, testStatus, "Bacon col card count" );
@@ -102,7 +102,7 @@ async function testFlatProject( installClient, ghLinks, td ) {
 }
 
 
-async function runTests( installClient, ghLinks ) {
+async function runTests( authData, ghLinks ) {
 
     let td = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
@@ -113,9 +113,9 @@ async function runTests( installClient, ghLinks ) {
 
     let testStatus = [ 0, 0, []];
 
-    await createFlatProject( installClient, td );
+    await createFlatProject( authData, td );
     await utils.sleep( 1000 );
-    let t1 = await testFlatProject( installClient, ghLinks, td );
+    let t1 = await testFlatProject( authData, ghLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );
     return testStatus

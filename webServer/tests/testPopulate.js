@@ -17,42 +17,42 @@ const ISS_SINFLAT  = "single in Flatworld";
 const ISS_DUBMIX   = "doubly in Flat-Recommended mix";
 
 
-async function makePrePopulateData( installClient, td ) {
+async function makePrePopulateData( authData, td ) {
     console.log( "Setting up for populate test" );
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
 
     // !!!!!!!!!!!
     // NOTE: you must TURN OFF ceServer to construct this test.
     // !!!!!!!!!!!
 
     // This is for a recommended project structure
-    let nbi0 = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_NEWBIE, [], false );
+    let nbi0 = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, ISS_NEWBIE, [], false );
     
-    let nbi1   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_SINREC, [], false );
-    let card11 = await ghSafe.createProjectCard( installClient, td.scColID, nbi1[0] );
+    let nbi1   = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, ISS_SINREC, [], false );
+    let card11 = await ghSafe.createProjectCard( authData, td.scColID, nbi1[0] );
 	
-    let nbi2   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_DUBREC, [], false );
-    let card21 = await ghSafe.createProjectCard( installClient, td.boColID, nbi2[0] );
-    let card22 = await ghSafe.createProjectCard( installClient, td.dsPlanID, nbi2[0] );
+    let nbi2   = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, ISS_DUBREC, [], false );
+    let card21 = await ghSafe.createProjectCard( authData, td.boColID, nbi2[0] );
+    let card22 = await ghSafe.createProjectCard( authData, td.dsPlanID, nbi2[0] );
 
     // GH allows multiple same-title cards per project.  But only 1 issue-card per project.
-    let nbi3   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_TRIPREC, [], false );
-    let card31 = await ghSafe.createProjectCard( installClient, td.scColID, nbi3[0] );
-    let card32 = await ghSafe.createProjectCard( installClient, td.dsPlanID, nbi3[0] );
-    let card33 = await ghSafe.createProjectCard( installClient, td.ghProgID, nbi3[0] );
+    let nbi3   = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, ISS_TRIPREC, [], false );
+    let card31 = await ghSafe.createProjectCard( authData, td.scColID, nbi3[0] );
+    let card32 = await ghSafe.createProjectCard( authData, td.dsPlanID, nbi3[0] );
+    let card33 = await ghSafe.createProjectCard( authData, td.ghProgID, nbi3[0] );
     
     // Now add a flat project structure in
-    let nbi4   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_SINFLAT, [], false );
-    let card41 = await ghSafe.createProjectCard( installClient, td.col1ID, nbi4[0] );
+    let nbi4   = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, ISS_SINFLAT, [], false );
+    let card41 = await ghSafe.createProjectCard( authData, td.col1ID, nbi4[0] );
 	
-    let nbi5   = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, ISS_DUBMIX, [], false );
-    let card51 = await ghSafe.createProjectCard( installClient, td.col2ID, nbi5[0] );
-    let card52 = await ghSafe.createProjectCard( installClient, td.dsPlanID, nbi5[0] );
+    let nbi5   = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, ISS_DUBMIX, [], false );
+    let card51 = await ghSafe.createProjectCard( authData, td.col2ID, nbi5[0] );
+    let card52 = await ghSafe.createProjectCard( authData, td.dsPlanID, nbi5[0] );
 }
 
-async function testPopulate( installClient, td ) {
+async function testPopulate( authData, td ) {
 
     // !!!!!!!!!!!
     // NOTE: you must TURN ON ceServer to run this test.
@@ -61,16 +61,16 @@ async function testPopulate( installClient, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
 
     // TRIGGER
     // Unset 'populated' flag
-    await tu.setUnpopulated( installClient, td );
+    await tu.setUnpopulated( authData, td );
 
-    let popLabel    = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
-    let singleIssue = await tu.findIssueByName( installClient, td, ISS_SINREC );
-    await tu.addLabel( installClient, td, singleIssue.number, popLabel.name );       // ready.. set... Go!
+    let popLabel    = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
+    let singleIssue = await tu.findIssueByName( authData, td, ISS_SINREC );
+    await tu.addLabel( authData, td, singleIssue.number, popLabel.name );       // ready.. set... Go!
 
     await utils.sleep( 15000 );
 
@@ -81,7 +81,7 @@ async function testPopulate( installClient, td ) {
 
     // Check GITHUB issues & labels
     let allNames = [ ISS_NEWBIE, ISS_SINREC, ISS_DUBREC, ISS_TRIPREC, ISS_SINFLAT, ISS_DUBMIX ]; 
-    let issues = await tu.getIssues( installClient, td );
+    let issues = await tu.getIssues( authData, td );
     
     let counts = [0,0,0,0,0,0];
     for( let i = 0; i < allNames.length; i++ ) {
@@ -101,12 +101,12 @@ async function testPopulate( installClient, td ) {
 
     
     // Check GITHUB card distribution
-    let softContCards = await tu.getCards( installClient, td.scColID );
-    let busOpsCards   = await tu.getCards( installClient, td.boColID );
-    let dsPlanCards   = await tu.getCards( installClient, td.dsPlanID );
-    let ghProgCards   = await tu.getCards( installClient, td.ghProgID );
-    let eggCards      = await tu.getCards( installClient, td.col1ID );
-    let baconCards    = await tu.getCards( installClient, td.col2ID );
+    let softContCards = await tu.getCards( authData, td.scColID );
+    let busOpsCards   = await tu.getCards( authData, td.boColID );
+    let dsPlanCards   = await tu.getCards( authData, td.dsPlanID );
+    let ghProgCards   = await tu.getCards( authData, td.ghProgID );
+    let eggCards      = await tu.getCards( authData, td.col1ID );
+    let baconCards    = await tu.getCards( authData, td.col2ID );
 
     let issueMap = tu.buildIssueMap( issues ); // {issue_num: {<issue>} }
 
@@ -161,7 +161,7 @@ async function testPopulate( installClient, td ) {
 
     
     // Check DYNAMO PEQ
-    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     for( const name of allNames ) {
 	let fpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( name ));
 	testStatus = tu.checkEq( fpeqs.length, 0,   testStatus, "Bad peq created" );
@@ -176,7 +176,7 @@ async function testPopulate( installClient, td ) {
     tu.testReport( testStatus, "Create preferred CE Projects" );
 }
 
-async function testResolve( installClient, ghLinks, td ) {
+async function testResolve( authData, ghLinks, td ) {
 
     // !!!!!!!!!!!
     // NOTE: you must TURN ON ceServer to run this test.
@@ -187,17 +187,17 @@ async function testResolve( installClient, ghLinks, td ) {
 
     console.log( "Test Resolve, as part of populate" );
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
 
     // First add a few normal labels
     // At the start, will have 3 triprecs, non are peq
-    let tripleIssue = await tu.findIssue( installClient, td, ISS_TRIPREC );
-    await tu.addLabel( installClient, td, tripleIssue.number, "bug" );       
-    await tu.addLabel( installClient, td, tripleIssue.number, "enhancement" );       
+    let tripleIssue = await tu.findIssue( authData, td, ISS_TRIPREC );
+    await tu.addLabel( authData, td, tripleIssue.number, "bug" );       
+    await tu.addLabel( authData, td, tripleIssue.number, "enhancement" );       
 
     // Add a peq label
-    let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
 
     // Trigger resolve by adding a new card.  Note - do not catch the return here, as it will be resolved away.
     // NOTE: no sleep?  Perfectly bad notification interleaving can mean both issue and card PNP see an issue to split.
@@ -205,10 +205,10 @@ async function testResolve( installClient, ghLinks, td ) {
     //       triage.  Adds a (bigger than this) delay.
     // Note: test setup has 2 random delays.  1: local -> gh rest time.  2: gh -> local.   by-hand has 1.
     console.log( "Send add label" );
-    await tu.addLabel( installClient, td, tripleIssue.number, newLabel.name );       
+    await tu.addLabel( authData, td, tripleIssue.number, newLabel.name );       
 
     console.log( "Send create card" );
-    await ghSafe.createProjectCard( installClient, td.dsPlanID, tripleIssue.id, false );  // ready.. set... Go!
+    await ghSafe.createProjectCard( authData, td.dsPlanID, tripleIssue.id, false );  // ready.. set... Go!
 
     await utils.sleep( 10000 );
 
@@ -218,7 +218,7 @@ async function testResolve( installClient, ghLinks, td ) {
 
     // Check GITHUB issues & labels
     let allNames = [ ISS_NEWBIE, ISS_SINREC, ISS_DUBREC, ISS_TRIPREC, ISS_SINFLAT, ISS_DUBMIX ]; 
-    let issues = await tu.getIssues( installClient, td );
+    let issues = await tu.getIssues( authData, td );
 
 
     let tripIssues = [];
@@ -250,12 +250,12 @@ async function testResolve( installClient, ghLinks, td ) {
 
     
     // Check trip GITHUB card distribution
-    let softContCards = await tu.getCards( installClient, td.scColID );
-    let busOpsCards   = await tu.getCards( installClient, td.boColID );
-    let dsPlanCards   = await tu.getCards( installClient, td.dsPlanID );
-    let ghProgCards   = await tu.getCards( installClient, td.ghProgID );
-    let eggCards      = await tu.getCards( installClient, td.col1ID );
-    let baconCards    = await tu.getCards( installClient, td.col2ID );
+    let softContCards = await tu.getCards( authData, td.scColID );
+    let busOpsCards   = await tu.getCards( authData, td.boColID );
+    let dsPlanCards   = await tu.getCards( authData, td.dsPlanID );
+    let ghProgCards   = await tu.getCards( authData, td.ghProgID );
+    let eggCards      = await tu.getCards( authData, td.col1ID );
+    let baconCards    = await tu.getCards( authData, td.col2ID );
 
     let issueMap = tu.buildIssueMap( issues ); // {issue_num: {<issue>} }
 
@@ -282,7 +282,7 @@ async function testResolve( installClient, ghLinks, td ) {
 
 
     // Check DYNAMO PEQ
-    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
 
     for( const name of [ ISS_NEWBIE, ISS_SINREC, ISS_DUBREC, ISS_SINFLAT, ISS_DUBMIX ] ) {
 	let fpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( name ));
@@ -324,7 +324,7 @@ async function testResolve( installClient, ghLinks, td ) {
 
 
     // Check DYNAMO PAct
-    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let masPeq = tpeqs.filter((peq) => peq.GHProjectId == td.masterPID.toString() );
     let dsPeq  = tpeqs.filter((peq) => peq.GHProjectId == td.dataSecPID.toString() );
     testStatus = tu.checkGE( pacts.length, 3,         testStatus, "Number of PActs" );
@@ -334,7 +334,7 @@ async function testResolve( installClient, ghLinks, td ) {
     let f3 = 0;
     for( pact of pacts ) {
 	if( pact.Subject[0] == masPeq[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,         testStatus, "PAct user name" ); 
@@ -344,7 +344,7 @@ async function testResolve( installClient, ghLinks, td ) {
 	    else if( pact.Action == "change" ) { f2 = 1; }
 	}
 	else if( pact.Subject[0] == dsPeq[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
@@ -357,13 +357,13 @@ async function testResolve( installClient, ghLinks, td ) {
 
 
     // Check DYNAMO RepoStatus
-    let pop = await utils.checkPopulated( installClient, td.GHFullName );
+    let pop = await utils.checkPopulated( authData, td.GHFullName );
     testStatus = tu.checkEq( pop, "true", testStatus, "Repo status wrt populated" );
 
 
     // Check DYNAMO linkage
     // note.. newbie will not be here.. expect 10/11.
-    let links = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 10, testStatus, "Linkage count" );
     let tripPeqIds = tripIssues.map((iss) => iss.id.toString() );
     let othPeqIds  = othIssues.map((iss) => iss.id.toString() );
@@ -430,23 +430,23 @@ async function testResolve( installClient, ghLinks, td ) {
 
 
 
-async function runTests( installClient, ghLinks, td ) {
+async function runTests( authData, ghLinks, td ) {
 
     console.log( "Populate - add a repo to CE =================" );
 
     // *** these two tests are siblings (below)
     // TURN OFF ceServer
-    //await makePrePopulateData( installClient, td );
+    //await makePrePopulateData( authData, td );
     
     // TURN ON ceServer
     // NOTE this test is flawed in concept, in that the current state of ceServer may already have
     //      PEQ issues, but populate assumes a binary none then some.  ghLinks.initOneRepo handles this flaw,
     //      but is slower than need be.
-    // await testPopulate( installClient, td );
+    // await testPopulate( authData, td );
     // *** these two tests are siblings (above)
 
     // Normal - leave it on.  A separate resolve test, run only after above 2.
-    await testResolve( installClient, ghLinks, td );
+    await testResolve( authData, ghLinks, td );
 
 }
 

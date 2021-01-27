@@ -18,18 +18,18 @@ const ASSIGNEE2 = "codeequity";
 
 
 
-async function checkNoAssignees( installClient, td, ass1, ass2, issueData, testStatus ) {
+async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
-    let meltIssue = await tu.findIssue( installClient, td, issueData[0] );
+    let meltIssue = await tu.findIssue( authData, td, issueData[0] );
     testStatus = tu.checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.assignees.length, 0,             testStatus, "Issue assignee count" );
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -48,7 +48,7 @@ async function checkNoAssignees( installClient, td, ass1, ass2, issueData, testS
     
     // CHECK Dynamo PAct
     // Should show relevant change action
-    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     testStatus = tu.checkGE( meltPacts.length, 5,                            testStatus, "PAct count" );
     
@@ -60,7 +60,7 @@ async function checkNoAssignees( installClient, td, ass1, ass2, issueData, testS
     let remA1  = meltPacts[len-2];   // rem assignee 1
     let remA2  = meltPacts[len-1];   // rem assignee 2
     for( const pact of [addMP, addA1, addA2, remA1, remA2] ) {
-	let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
+	let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
 	testStatus = tu.checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
 	testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
@@ -78,24 +78,24 @@ async function checkNoAssignees( installClient, td, ass1, ass2, issueData, testS
     return testStatus;
 }
 
-async function checkProgAssignees( installClient, td, ass1, ass2, issueData, testStatus ) {
+async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
-    let meltIssue = await tu.findIssue( installClient, td, issueData[0] );
+    let meltIssue = await tu.findIssue( authData, td, issueData[0] );
     testStatus = tu.checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( meltIssue.assignees.length, 2,             testStatus, "Issue assignee count" );
 
     // CHECK Dynamo PEQ  .. no change already verified
-    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltPeqs.length, 1, testStatus, "Peq count" );
     let meltPeq = meltPeqs[0];
     
     // CHECK Dynamo PAct
     // Check new relevant actions
-    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     testStatus = tu.checkGE( meltPacts.length, 8, testStatus, "PAct count" );
     
@@ -106,7 +106,7 @@ async function checkProgAssignees( installClient, td, ass1, ass2, issueData, tes
     let addA2  = meltPacts[len-2];   // add assignee 2
     let note1  = meltPacts[len-1];   // move to Prog
     for( const pact of [note1, addA1, addA2] ) {
-	let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
+	let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
 	testStatus = tu.checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
 	testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
@@ -124,10 +124,10 @@ async function checkProgAssignees( installClient, td, ass1, ass2, issueData, tes
     return testStatus;
 }
 
-async function checkDubLabel( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkDubLabel( authData, ghLinks, td, loc, issueData, card, testStatus ) {
 
     // CHECK github issues
-    let issue = await tu.findIssue( installClient, td, issueData[0] );
+    let issue = await tu.findIssue( authData, td, issueData[0] );
     testStatus = tu.checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( issue.labels.length, 2,                testStatus, "Issue label" );
@@ -136,12 +136,12 @@ async function checkDubLabel( installClient, ghLinks, td, loc, issueData, card, 
     testStatus = tu.checkEq( labels0 || labels1, true,              testStatus, "Issue label" );
 
     // CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
-    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     peqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
 
-    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = tu.checkEq( pacts.length, 3,                         testStatus, "PAct count" );     
     
@@ -149,16 +149,16 @@ async function checkDubLabel( installClient, ghLinks, td, loc, issueData, card, 
 }
 
 
-async function testLabel( installClient, ghLinks, td ) {
+async function testLabel( authData, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
     console.log( "Test Label" );
-    installClient[1] = "<TEST: Label>";
+    authData.who = "<TEST: Label>";
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
-    await tu.refreshUnclaimed( installClient, td );
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+    await tu.refreshUnclaimed( authData, td );
 
     const dsPlan = td.getDSPlanLoc();
     const dsProg = td.getDSProgLoc();
@@ -173,51 +173,51 @@ async function testLabel( installClient, ghLinks, td ) {
 
 	// 1. create peq issue in dsplan
 	console.log( "Make newly situated issue in dsplan" );
-	let issueData = await tu.makeIssue( installClient, td, ISS_LAB, [] );     // [id, number, title]  
-	let label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-	await tu.addLabel( installClient, td, issueData[1], label.name );
+	let issueData = await tu.makeIssue( authData, td, ISS_LAB, [] );     // [id, number, title]  
+	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	await tu.addLabel( authData, td, issueData[1], label.name );
 	
-	let card  = await tu.makeProjectCard( installClient, td.dsPlanID, issueData[0] );
+	let card  = await tu.makeProjectCard( authData, td.dsPlanID, issueData[0] );
 	await utils.sleep( 6000 );
-	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 1" );
 	
 	// 2. unlabel
-	await tu.remLabel( installClient, td, issueData[1], label );
+	await tu.remLabel( authData, td, issueData[1], label );
 	await utils.sleep( 1000 );
-	testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "A" );
 	
 	// 3. move to accr (untracked), watch it bounce back
-	await tu.moveCard( installClient, card.id, td.dsAccrID );        
-	testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+	await tu.moveCard( authData, card.id, td.dsAccrID );        
+	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 3" );
 	
 	// 4. move to pend, bounce
-	await tu.moveCard( installClient, card.id, td.dsPendID );
-	testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, dsPlan, issueData, card, testStatus );
+	await tu.moveCard( authData, card.id, td.dsPendID );
+	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 4" );
 	
 	// 5. move to prog (untracked), label
-	await tu.moveCard( installClient, card.id, td.dsProgID );
-	await tu.addLabel( installClient, td, issueData[1], label.name );
+	await tu.moveCard( authData, card.id, td.dsProgID );
+	await tu.addLabel( authData, td, issueData[1], label.name );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsProg, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 5" );
 	
 	// 6. unlabel, label
-	await tu.remLabel( installClient, td, issueData[1], label );
-	await tu.addLabel( installClient, td, issueData[1], label.name ); 
+	await tu.remLabel( authData, td, issueData[1], label );
+	await tu.addLabel( authData, td, issueData[1], label.name ); 
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsProg, issueData, card, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsProg, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 6" );
 	
 	// 7. move to accr, unlabel (fail)
-	await tu.addAssignee( installClient, td, issueData[1], ASSIGNEE1 );   // can't ACCR without this.    
-	await tu.moveCard( installClient, card.id, td.dsAccrID );
-	await tu.remLabel( installClient, td, issueData[1], label );          // will be added back
+	await tu.addAssignee( authData, td, issueData[1], ASSIGNEE1 );   // can't ACCR without this.    
+	await tu.moveCard( authData, card.id, td.dsAccrID );
+	await tu.remLabel( authData, td, issueData[1], label );          // will be added back
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, dsAccr, issueData, card, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsAccr, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 7" );
     }	
 
@@ -227,27 +227,27 @@ async function testLabel( installClient, ghLinks, td ) {
 
 	// 1. create 1k peq issue in bacon
 	console.log( "Make newly situated issue in bacon" );
-	let issueData = await tu.makeIssue( installClient, td, ISS_LAB2, [] );     // [id, number, title] 
-	let label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-	await tu.addLabel( installClient, td, issueData[1], label.name );
-	let card  = await tu.makeProjectCard( installClient, bacon.colId, issueData[0] );
+	let issueData = await tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, title] 
+	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	await tu.addLabel( authData, td, issueData[1], label.name );
+	let card  = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 
 	await utils.sleep( 6000 );
-	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 1" );
 	
 	// 2. add "documentation" twice (fail - will not receive 2nd notification)
-	let docLabel  = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "documentation", -1 );	
-	await tu.addLabel( installClient, td, issueData[1], docLabel.name );
-	await tu.addLabel( installClient, td, issueData[1], docLabel.name );
-	testStatus = await checkDubLabel( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	let docLabel  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "documentation", -1 );	
+	await tu.addLabel( authData, td, issueData[1], docLabel.name );
+	await tu.addLabel( authData, td, issueData[1], docLabel.name );
+	testStatus = await checkDubLabel( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 2" );
 	
 	// 3. add 500 peq (fail)
-	let label500  = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "500 PEQ", 500 );	
-	await tu.addLabel( installClient, td, issueData[1], label500.name );
+	let label500  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "500 PEQ", 500 );	
+	await tu.addLabel( authData, td, issueData[1], label500.name );
 	await utils.sleep( 2000 );
-	testStatus = await checkDubLabel( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus = await checkDubLabel( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 3" );	
 
 	console.log( "Double-labels done." );
@@ -257,40 +257,40 @@ async function testLabel( installClient, ghLinks, td ) {
 	console.log( "\nTest label/unlabel in flat projects structure" );
 	
 	// 1. unlabel
-	await tu.remLabel( installClient, td, issueData[1], docLabel );    
-	await tu.remLabel( installClient, td, issueData[1], label );
+	await tu.remLabel( authData, td, issueData[1], docLabel );    
+	await tu.remLabel( authData, td, issueData[1], label );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 1" );
 	
 	// 2. label
-	await tu.addLabel( installClient, td, issueData[1], label.name );    
+	await tu.addLabel( authData, td, issueData[1], label.name );    
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 2" );
 
 	// 3. close (should create pend/accr cols) (fail, no assignee)
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 3" );
 	
 	// 4. assign and close
-	await tu.addAssignee( installClient, td, issueData[1], ASSIGNEE1 );   // can't PEND without this.
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.addAssignee( authData, td, issueData[1], ASSIGNEE1 );   // can't PEND without this.
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
 	
 	// get new cols/locs pend/accr
-	const flatPend = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
-	const flatAccr = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+	const flatPend = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
+	const flatAccr = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 	
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 4" );
 	
 	// 5. unlabel (OK here, negotiating)
-	await tu.remLabel( installClient, td, issueData[1], label );    
+	await tu.remLabel( authData, td, issueData[1], label );    
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkDemotedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 5" );
 
 	// PEQ is rebuilt below, when it is re-activated.
@@ -298,16 +298,16 @@ async function testLabel( installClient, ghLinks, td ) {
 	flatAccr.projSub = [ td.flatTitle ];
 
 	// 5. relabel (OK here, negotiating)
-	await tu.addLabel( installClient, td, issueData[1], label500.name );    
+	await tu.addLabel( authData, td, issueData[1], label500.name );    
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus, {"label": 500 } );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus, {"label": 500 } );
 	await utils.sleep( 2000 );
 	tu.testReport( testStatus, "Label flat 6" );
 	
 	// 6. move to accr
-	await tu.moveCard( installClient, card.id, flatAccr.colId );
+	await tu.moveCard( authData, card.id, flatAccr.colId );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, flatAccr, issueData, card, testStatus, {"label": 500 } );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {"label": 500 } );
 	tu.testReport( testStatus, "Label flat 7" );
     }
 
@@ -315,61 +315,61 @@ async function testLabel( installClient, ghLinks, td ) {
     return testStatus;
 }
 
-async function testAssignment( installClient, ghLinks, td ) {
+async function testAssignment( authData, ghLinks, td ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
     console.log( "Test Assignment" );
-    installClient[1] = "<TEST: Assign>";
+    authData.who = "<TEST: Assign>";
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
-    await tu.refreshUnclaimed( installClient, td );
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+    await tu.refreshUnclaimed( authData, td );
 
     const VERBOSE = true;
-    const assPlan = await tu.getFullLoc( installClient, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const assPlan = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     
     // 1. Create PEQ issue, add to proj
     console.log( "Make newly situated issue" );
-    let assData = await tu.makeIssue( installClient, td, ISS_ASS, [] );     // [id, number, title]  
+    let assData = await tu.makeIssue( authData, td, ISS_ASS, [] );     // [id, number, title]  
 
-    let newLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-    await tu.addLabel( installClient, td, assData[1], newLabel.name );
+    let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    await tu.addLabel( authData, td, assData[1], newLabel.name );
 
-    let assCard  = await tu.makeProjectCard( installClient, td.dsPlanID, assData[0] );
+    let assCard  = await tu.makeProjectCard( authData, td.dsPlanID, assData[0] );
     await utils.sleep( 6000 );
-    testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, assPlan, assData, assCard, testStatus );
+    testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, assPlan, assData, assCard, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "A" ); }
 
     // 2. add assignee
     console.log( "Add assignees" );
-    await tu.addAssignee( installClient, td, assData[1], ASSIGNEE1 );
-    await tu.addAssignee( installClient, td, assData[1], ASSIGNEE2 );
+    await tu.addAssignee( authData, td, assData[1], ASSIGNEE1 );
+    await tu.addAssignee( authData, td, assData[1], ASSIGNEE2 );
     await utils.sleep( 2000 );
-    testStatus = await tu.checkAssignees( installClient, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
+    testStatus = await tu.checkAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
 
     // 3. remove assignees
     console.log( "Rem assignees" );
-    await tu.remAssignee( installClient, td, assData[1], ASSIGNEE1 );
-    await tu.remAssignee( installClient, td, assData[1], ASSIGNEE2 );
+    await tu.remAssignee( authData, td, assData[1], ASSIGNEE1 );
+    await tu.remAssignee( authData, td, assData[1], ASSIGNEE2 );
     await utils.sleep( 2000 );
-    testStatus = await checkNoAssignees( installClient, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
+    testStatus = await checkNoAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "C" ); }
     
     // 4. add assignees
     console.log( "Add assignees" );
-    await tu.addAssignee( installClient, td, assData[1], ASSIGNEE1 );
-    await tu.addAssignee( installClient, td, assData[1], ASSIGNEE2 );
+    await tu.addAssignee( authData, td, assData[1], ASSIGNEE1 );
+    await tu.addAssignee( authData, td, assData[1], ASSIGNEE2 );
 
     // 5. move to Prog
-    await tu.moveCard( installClient, assCard.id, td.dsProgID );
+    await tu.moveCard( authData, assCard.id, td.dsProgID );
     await utils.sleep( 2000 );
-    testStatus = await checkProgAssignees( installClient, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
+    testStatus = await checkProgAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
 
     // There is no further relevant logic.  
     
@@ -377,16 +377,16 @@ async function testAssignment( installClient, ghLinks, td ) {
     return testStatus;
 }
 
-async function testLabelCarded( installClient, ghLinks, td ) {
+async function testLabelCarded( authData, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
     console.log( "Test Label Carded" );
-    installClient[1] = "<TEST: Label Carded>";
+    authData.who = "<TEST: Label Carded>";
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
-    await tu.refreshUnclaimed( installClient, td );
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+    await tu.refreshUnclaimed( authData, td );
 
     const bacon       = td.getBaconLoc();
 
@@ -395,32 +395,32 @@ async function testLabelCarded( installClient, ghLinks, td ) {
 
 	// 1. make carded issue in bacon
 	console.log( "Make carded issue" );
-	const issueData = await tu.makeIssue( installClient, td, ISS_LAB3, [] );     // [id, number, title] 
-	const card      = await tu.makeProjectCard( installClient, bacon.colId, issueData[0] );
+	const issueData = await tu.makeIssue( authData, td, ISS_LAB3, [] );     // [id, number, title] 
+	const card      = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 	await utils.sleep( 2000 );
-	testStatus     = await tu.checkUntrackedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus     = await tu.checkUntrackedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 
 	// 2. add label
-	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-	await tu.addLabel( installClient, td, issueData[1], label.name );
+	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	await tu.addLabel( authData, td, issueData[1], label.name );
 	await utils.sleep( 3000 );
-	testStatus     = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
     }	
 
     tu.testReport( testStatus, "Test Label Carded" );
     return testStatus;
 }
 
-async function testCloseReopen( installClient, ghLinks, td ) {
+async function testCloseReopen( authData, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
     console.log( "Test Close Reopen" );
-    installClient[1] = "<TEST: Close Reopen>";
+    authData.who = "<TEST: Close Reopen>";
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
-    await tu.refreshUnclaimed( installClient, td );
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+    await tu.refreshUnclaimed( authData, td );
 
     const bacon      = td.getBaconLoc();
     const eggs       = td.getEggsLoc();
@@ -428,92 +428,92 @@ async function testCloseReopen( installClient, ghLinks, td ) {
     {
 	console.log( "Open/close in flat" );
 	// 0. make peq in bacon
-	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-	const issueData = await tu.makeIssue( installClient, td, ISS_LAB4, [label] );     // [id, number, title] 
-	const card      = await tu.makeProjectCard( installClient, bacon.colId, issueData[0] );
+	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	const issueData = await tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
+	const card      = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 	await utils.sleep( 5000 );
-	testStatus     = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "A" );
 	
 	// 1. close
-	await tu.addAssignee( installClient, td, issueData[1], ASSIGNEE1 );	
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.addAssignee( authData, td, issueData[1], ASSIGNEE1 );	
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
 
 	// get new cols/locs pend/accr
-	const flatPend = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
-	const flatAccr = await tu.getFlatLoc( installClient, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+	const flatPend = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
+	const flatAccr = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 	
-	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "B" );
 	
 	// 2. close again (no change - looks like notification never sent)
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "C" );
 
 	// Erm.  Simulate ceFlutter processing to ingest propose:accrue, else won't see bacon col in step 3
-	// await tu.ingestPActs( installClient, issueData );
+	// await tu.ingestPActs( authData, issueData );
 	
 	// 3. Reopen
-	await tu.reopenIssue( installClient, td, issueData[1] );
+	await tu.reopenIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyOpenedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "D" );
 
 	// 4. Reopen again (fail)
-	await tu.reopenIssue( installClient, td, issueData[1] );
+	await tu.reopenIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyOpenedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "E" );
 
 	// 5. move to eggs
-	await tu.moveCard( installClient, card.id, eggs.colId );
+	await tu.moveCard( authData, card.id, eggs.colId );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, eggs, issueData, card, testStatus, {"state": "open" } );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, eggs, issueData, card, testStatus, {"state": "open" } );
 
 	tu.testReport( testStatus, "F" );
 	
 	// 6. close
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "G" );
 
 	// 7. reopen
-	await tu.reopenIssue( installClient, td, issueData[1] );
+	await tu.reopenIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
 
-	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, eggs, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyOpenedIssue( authData, ghLinks, td, eggs, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "H" );
 
 	// 8. close
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "I" );
 
 	// 9. move to accr
-	await tu.moveCard( installClient, card.id, flatAccr.colId );
+	await tu.moveCard( authData, card.id, flatAccr.colId );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
 
 	tu.testReport( testStatus, "J" );
 	
 
 	// 10. reopen (fail)
-	await tu.reopenIssue( installClient, td, issueData[1] );
+	await tu.reopenIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
 
 	tu.testReport( testStatus, "K" );
     }	
@@ -521,79 +521,79 @@ async function testCloseReopen( installClient, ghLinks, td ) {
     {
 	console.log( "\n\nOpen/close in full++" );
 
-	await tu.makeColumn( installClient, td.githubOpsPID, "Stars" );	
-	await tu.makeColumn( installClient, td.githubOpsPID, "Stripes" );
+	await tu.makeColumn( authData, td.githubOpsPID, "Stars" );	
+	await tu.makeColumn( authData, td.githubOpsPID, "Stripes" );
 
-	const stars      = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
-	const stripes    = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+	const stars      = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+	const stripes    = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
 
-	const ghoProg = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
-	const ghoPend = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
-	const ghoAccr = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+	const ghoProg = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+	const ghoPend = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+	const ghoAccr = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
 	// peqs are out of date (need ingesting) by the time these are used.
 	ghoPend.projSub = stars.projSub;
 	ghoAccr.projSub = stars.projSub;
 	
 	// 0. make peq in stars
-	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
-	const issueData = await tu.makeIssue( installClient, td, ISS_LAB4, [label] );     // [id, number, title] 
-	const card      = await tu.makeProjectCard( installClient, stars.colId, issueData[0] );
+	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	const issueData = await tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
+	const card      = await tu.makeProjectCard( authData, stars.colId, issueData[0] );
 	await utils.sleep( 5000 );
-	testStatus     = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, stars, issueData, card, testStatus );
+	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, stars, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "A" );
 	
 	// 1. close
-	await tu.addAssignee( installClient, td, issueData[1], ASSIGNEE1 );	
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.addAssignee( authData, td, issueData[1], ASSIGNEE1 );	
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, ghoPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, ghoPend, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "B" );
 
 	// 2  Simulate ceFlutter processing to ingest propose:accrue, else won't see stars col in step 3
-	// await tu.ingestPActs( installClient, issueData );
+	// await tu.ingestPActs( authData, issueData );
 	
 	// 3. Reopen
-	await tu.reopenIssue( installClient, td, issueData[1] );
+	await tu.reopenIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, stars, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyOpenedIssue( authData, ghLinks, td, stars, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "C" );
 
 	// 4. move to stripes
-	await tu.moveCard( installClient, card.id, stripes.colId );
+	await tu.moveCard( authData, card.id, stripes.colId );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, stripes, issueData, card, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, stripes, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "D" );
 	
 	// 5. close
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, ghoPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, ghoPend, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "E" );
 
 	// 6. reopen
-	await tu.reopenIssue( installClient, td, issueData[1] );
+	await tu.reopenIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyOpenedIssue( installClient, ghLinks, td, stripes, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyOpenedIssue( authData, ghLinks, td, stripes, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "F" );
 
 	// 7. close
-	await tu.closeIssue( installClient, td, issueData[1] );
+	await tu.closeIssue( authData, td, issueData[1] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkNewlyClosedIssue( installClient, ghLinks, td, ghoPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, ghoPend, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "G" );
 
 	// 8. move to accr
-	await tu.moveCard( installClient, card.id, ghoAccr.colId );
+	await tu.moveCard( authData, card.id, ghoAccr.colId );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( installClient, ghLinks, td, ghoAccr, issueData, card, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, ghoAccr, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "H" );
     }
@@ -606,27 +606,27 @@ async function testCloseReopen( installClient, ghLinks, td ) {
 
 // create in place?  Yes, major mode.  
 // PROG PEND ACCR create/delete newborn, carded, situated.
-async function testCreateDelete( installClient, ghLinks, td, PAT ) {
+async function testCreateDelete( authData, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
     console.log( "Test Create Delete" );
-    installClient[1] = "<TEST: Create Delete>";
+    authData.who = "<TEST: Create Delete>";
     
     const ISS_NEWB = "Newborn";
     const ISS_CRDD = "Carded"; 
     const ISS_SITU = "Situated"; 
 
-    await tu.refreshRec( installClient, td );
-    await tu.refreshFlat( installClient, td );
-    await tu.refreshUnclaimed( installClient, td );
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+    await tu.refreshUnclaimed( authData, td );
 
-    const stars      = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
-    const stripes    = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+    const stars      = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+    const stripes    = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
     
-    const ghoProg = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const ghoPend = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
-    const ghoAccr = await tu.getFullLoc( installClient, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const ghoProg = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const ghoPend = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const ghoAccr = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
     {
 	console.log( "\nNewborn testing" );
@@ -637,21 +637,21 @@ async function testCreateDelete( installClient, ghLinks, td, PAT ) {
 	const ISS_ACCR = ISS_NEWB + " Accrued";
 
 	// 0. make newborns
-	const cardIdFlat  = await tu.makeNewbornCard( installClient, stars.colId, ISS_FLAT );
-	const cardIdProg  = await tu.makeNewbornCard( installClient, ghoProg.colId, ISS_PROG );
-	const cardIdPend  = await tu.makeNewbornCard( installClient, ghoPend.colId, ISS_PEND );
-	const cardIdAccr  = await tu.makeNewbornCard( installClient, ghoAccr.colId, ISS_ACCR );
+	const cardIdFlat  = await tu.makeNewbornCard( authData, stars.colId, ISS_FLAT );
+	const cardIdProg  = await tu.makeNewbornCard( authData, ghoProg.colId, ISS_PROG );
+	const cardIdPend  = await tu.makeNewbornCard( authData, ghoPend.colId, ISS_PEND );
+	const cardIdAccr  = await tu.makeNewbornCard( authData, ghoAccr.colId, ISS_ACCR );
 	await utils.sleep( 2000 );
-	testStatus     = await tu.checkNewbornCard( installClient, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
-	testStatus     = await tu.checkNewbornCard( installClient, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoPend, cardIdPend, ISS_PEND, testStatus );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoAccr, cardIdAccr, ISS_ACCR, testStatus );
+	testStatus     = await tu.checkNewbornCard( authData, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
+	testStatus     = await tu.checkNewbornCard( authData, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoPend, cardIdPend, ISS_PEND, testStatus );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoAccr, cardIdAccr, ISS_ACCR, testStatus );
 
 	// 2. remove them.
-	await tu.remCard( installClient, cardIdFlat );
-	await tu.remCard( installClient, cardIdProg );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
+	await tu.remCard( authData, cardIdFlat );
+	await tu.remCard( authData, cardIdProg );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
 
 	tu.testReport( testStatus, "newborn A" );
     }
@@ -666,32 +666,32 @@ async function testCreateDelete( installClient, ghLinks, td, PAT ) {
 	const ISS_ACCR = ISS_CRDD + " Accrued";
 
 	// 0. make carded issues
-	const issDatFlat = await tu.makeIssue( installClient, td, ISS_FLAT, [] );     
-	const issDatProg = await tu.makeIssue( installClient, td, ISS_PROG, [] );
-	const issDatPend = await tu.makeIssue( installClient, td, ISS_PEND, [] );
-	const issDatAccr = await tu.makeIssue( installClient, td, ISS_ACCR, [] );
+	const issDatFlat = await tu.makeIssue( authData, td, ISS_FLAT, [] );     
+	const issDatProg = await tu.makeIssue( authData, td, ISS_PROG, [] );
+	const issDatPend = await tu.makeIssue( authData, td, ISS_PEND, [] );
+	const issDatAccr = await tu.makeIssue( authData, td, ISS_ACCR, [] );
 
-	const flatCard   = await tu.makeProjectCard( installClient, stars.colId,   issDatFlat[0] );
-	const progCard   = await tu.makeProjectCard( installClient, ghoProg.colId, issDatProg[0] );
-	const pendCard   = await tu.makeProjectCard( installClient, ghoPend.colId, issDatPend[0] );
-	const accrCard   = await tu.makeProjectCard( installClient, ghoAccr.colId, issDatAccr[0] );
+	const flatCard   = await tu.makeProjectCard( authData, stars.colId,   issDatFlat[0] );
+	const progCard   = await tu.makeProjectCard( authData, ghoProg.colId, issDatProg[0] );
+	const pendCard   = await tu.makeProjectCard( authData, ghoPend.colId, issDatPend[0] );
+	const accrCard   = await tu.makeProjectCard( authData, ghoAccr.colId, issDatAccr[0] );
 
 	await utils.sleep( 2000 );
-	testStatus     = await tu.checkUntrackedIssue( installClient, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
-	testStatus     = await tu.checkUntrackedIssue( installClient, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoPend, pendCard.id, ISS_PEND, testStatus );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoAccr, accrCard.id, ISS_ACCR, testStatus );
+	testStatus     = await tu.checkUntrackedIssue( authData, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
+	testStatus     = await tu.checkUntrackedIssue( authData, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoPend, pendCard.id, ISS_PEND, testStatus );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoAccr, accrCard.id, ISS_ACCR, testStatus );
 
 	tu.testReport( testStatus, "carded A" );
 
 	// 2. remove them.
-	await tu.remCard( installClient, flatCard.id );             // remove card, then issue
-	await tu.remIssue( installClient, td, issDatFlat[0], PAT );
-	await tu.remIssue( installClient, td, issDatProg[0], PAT ); // just remove issue
+	await tu.remCard( authData, flatCard.id );             // remove card, then issue
+	await tu.remIssue( authData, td, issDatFlat[0] );
+	await tu.remIssue( authData, td, issDatProg[0] ); // just remove issue
 	
 	await utils.sleep( 2000 );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, stars,   flatCard.id, ISS_FLAT, testStatus );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoProg, progCard.id, ISS_PROG, testStatus );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, stars,   flatCard.id, ISS_FLAT, testStatus );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoProg, progCard.id, ISS_PROG, testStatus );
 
 	tu.testReport( testStatus, "carded B" );
     }
@@ -705,34 +705,34 @@ async function testCreateDelete( installClient, ghLinks, td, PAT ) {
 	const ISS_ACCR = ISS_SITU + " Accrued";
 
 	// 0. make situated issues
-	const label     = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );	
-	const issDatFlat = await tu.makeIssue( installClient, td, ISS_FLAT, [label] );     
-	const issDatProg = await tu.makeIssue( installClient, td, ISS_PROG, [label] );
-	const issDatPend = await tu.makeIssue( installClient, td, ISS_PEND, [label] );
-	const issDatAccr = await tu.makeIssue( installClient, td, ISS_ACCR, [label] );
+	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );	
+	const issDatFlat = await tu.makeIssue( authData, td, ISS_FLAT, [label] );     
+	const issDatProg = await tu.makeIssue( authData, td, ISS_PROG, [label] );
+	const issDatPend = await tu.makeIssue( authData, td, ISS_PEND, [label] );
+	const issDatAccr = await tu.makeIssue( authData, td, ISS_ACCR, [label] );
 
-	const flatCard   = await tu.makeProjectCard( installClient, stars.colId,   issDatFlat[0] );
-	const progCard   = await tu.makeProjectCard( installClient, ghoProg.colId, issDatProg[0] );
-	const pendCard   = await tu.makeProjectCard( installClient, ghoPend.colId, issDatPend[0] );
-	const accrCard   = await tu.makeProjectCard( installClient, ghoAccr.colId, issDatAccr[0] );
+	const flatCard   = await tu.makeProjectCard( authData, stars.colId,   issDatFlat[0] );
+	const progCard   = await tu.makeProjectCard( authData, ghoProg.colId, issDatProg[0] );
+	const pendCard   = await tu.makeProjectCard( authData, ghoPend.colId, issDatPend[0] );
+	const accrCard   = await tu.makeProjectCard( authData, ghoAccr.colId, issDatAccr[0] );
 
 	await utils.sleep( 8000 );
-	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
-	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
-	testStatus = await tu.checkNewlySituatedIssue( installClient, ghLinks, td, ghoPend, issDatPend, pendCard, testStatus );
-	testStatus = await tu.checkNoCard( installClient, ghLinks, td, ghoAccr, accrCard.id, ISS_ACCR, testStatus, {"peq": true} );
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPend, issDatPend, pendCard, testStatus );
+	testStatus = await tu.checkNoCard( authData, ghLinks, td, ghoAccr, accrCard.id, ISS_ACCR, testStatus, {"peq": true} );
 
 	tu.testReport( testStatus, "situated A" );
 	
 	// 2. remove them.
-	await tu.remIssue( installClient, td, issDatFlat[0], PAT );
-	await tu.remIssue( installClient, td, issDatProg[0], PAT ); 
-	await tu.remIssue( installClient, td, issDatPend[0], PAT );
+	await tu.remIssue( authData, td, issDatFlat[0] );
+	await tu.remIssue( authData, td, issDatProg[0] ); 
+	await tu.remIssue( authData, td, issDatPend[0] );
 	
 	await utils.sleep( 5000 );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, stars,   flatCard.id, ISS_FLAT, testStatus, {"peq": true} );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoProg, progCard.id, ISS_PROG, testStatus, {"peq": true} );
-	testStatus     = await tu.checkNoCard( installClient, ghLinks, td, ghoPend, pendCard.id, ISS_PEND, testStatus, {"peq": true} );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, stars,   flatCard.id, ISS_FLAT, testStatus, {"peq": true} );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoProg, progCard.id, ISS_PROG, testStatus, {"peq": true} );
+	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoPend, pendCard.id, ISS_PEND, testStatus, {"peq": true} );
 
 	tu.testReport( testStatus, "situated B" );
     }
@@ -743,31 +743,30 @@ async function testCreateDelete( installClient, ghLinks, td, PAT ) {
 }
 
 
-async function runTests( installClient, ghLinks, td ) {
+async function runTests( authData, ghLinks, td ) {
 
-    const PAT   = await auth.getPAT( td.GHOwner );
 
     console.log( "Component tests =================" );
 
     let testStatus = [ 0, 0, []];
 
-    let t1 = await testAssignment( installClient, ghLinks, td );
+    let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 10000 );
     
-    let t2 = await testLabel( installClient, ghLinks, td ); 
+    let t2 = await testLabel( authData, ghLinks, td ); 
     console.log( "\n\nLabel test complete." );
     await utils.sleep( 10000 );
 
-    let t3 = await testLabelCarded( installClient, ghLinks, td );
+    let t3 = await testLabelCarded( authData, ghLinks, td );
     console.log( "\n\nLabel Carded complete." );
     await utils.sleep( 10000 );
 
-    let t4 = await testCloseReopen( installClient, ghLinks, td ); 
+    let t4 = await testCloseReopen( authData, ghLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
     await utils.sleep( 10000 );
     
-    let t5 = await testCreateDelete( installClient, ghLinks, td, PAT );
+    let t5 = await testCreateDelete( authData, ghLinks, td );
     console.log( "\n\nCreate / Delete complete." );
     // await utils.sleep( 10000 );
     

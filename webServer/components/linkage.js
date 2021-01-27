@@ -17,23 +17,23 @@ class Linkage {
     }
 
 
-    async initOneRepo( installClient, fn, PAT ) {
-	let peqs = await utils.getPeqs( installClient, { "GHRepo": fn } );
+    async initOneRepo( authData, fn ) {
+	let peqs = await utils.getPeqs( authData, { "GHRepo": fn } );
 	if( peqs == -1 ) { peqs = []; }
 	
 	let fnParts = fn.split('/');
 	
 	let baseLinks = [];
-	await gh.getBasicLinkDataGQL( PAT, fnParts[0], fnParts[1], baseLinks, -1 )
+	await gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
 	    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
 
 	// XXX Could save a good number of calls to GH with this data
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
 	let cols = [];
-	await gh.getRepoColsGQL( PAT, fnParts[0], fnParts[1], cols, -1 )
+	await gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], cols, -1 )
 	    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
 	
-	this.populateLinkage( installClient, fn, baseLinks );
+	this.populateLinkage( authData, fn, baseLinks );
 
 	// peq add: cardTitle, colId, colName, projName
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
@@ -41,11 +41,11 @@ class Linkage {
 	let badSource = false;
 	for( const peq of peqs ) {
 	    if( peq.Active == "false" ) {
-		console.log( installClient[1], "Skipping inactive peq", peq.GHIssueTitle );
+		console.log( authData.who, "Skipping inactive peq", peq.GHIssueTitle );
 		continue;
 	    }
 	    const iid = peq.GHIssueId;
-	    let link = this.getUniqueLink( installClient, iid );
+	    let link = this.getUniqueLink( authData, iid );
 	    if( link == -1 ) {
 		console.log( "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.GHIssueTitle );
 		badPeq = true;
@@ -78,19 +78,16 @@ class Linkage {
     // XXX Fix cold start.  This should occur at startup, in order of most active repos.
     // populateCEServer migrates a project into CE.  lots of extra checks.
     // init here is to handle a server restart, only 'remembers' official CE projects.
-    async init( installClient, owner ) {
+    async init( authData, owner ) {
 	let tstart = Date.now();
 	console.log( "Init linkages" );
 
-	// XXX review  Need one per repo?
-	let PAT = await auth.getPAT( owner );
-	
-	let fullNames = await utils.getRepoStatus( installClient, -1 );   // get all repos
+	let fullNames = await utils.getRepoStatus( authData, -1 );   // get all repos
 	if( fullNames == -1 ) { return; }
 	for( const entry of fullNames ) {
 	    let fn = entry.GHRepo;
 	    console.log( ".. working on", fn );
-	    await this.initOneRepo( installClient, fn, PAT )
+	    await this.initOneRepo( authData, fn )
 		.catch( e => console.log( "Error.  Init Linkage failed.", e ));
 	}
 	// console.log( this.links );
@@ -110,9 +107,9 @@ class Linkage {
 	}
     }
     
-    addLinkage( installClient, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle, source ) {
+    addLinkage( authData, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle, source ) {
 
-	// console.log( installClient[1], "add link", issueId, cardId, colName, colId, issueTitle );
+	// console.log( authData.who, "add link", issueId, cardId, colName, colId, issueTitle );
 
 	if( !this.links.hasOwnProperty( issueId ) )         { this.links[issueId] = {}; }
 	if( !this.links[issueId].hasOwnProperty( cardId ) ) { this.links[issueId][cardId] = {}; }
@@ -138,23 +135,23 @@ class Linkage {
 	return link;
     }
 
-    populateLinkage( installClient, fn, baseLinkData ) {
-	console.log( installClient[1], "Populate linkage" );
+    populateLinkage( authData, fn, baseLinkData ) {
+	console.log( authData.who, "Populate linkage" );
 	for( const elt of baseLinkData ) {
-	    this.addLinkage( installClient, fn, elt.issueId, elt.issueNum, elt.projectId, config.EMPTY, -1, config.EMPTY, elt.cardId, config.EMPTY );
+	    this.addLinkage( authData, fn, elt.issueId, elt.issueNum, elt.projectId, config.EMPTY, -1, config.EMPTY, elt.cardId, config.EMPTY );
 	}
     }
     
 
-    getUniqueLink( installClient, issueId ) {
+    getUniqueLink( authData, issueId ) {
 
-	console.log( installClient[1], "Get unique link", issueId );
+	console.log( authData.who, "Get unique link", issueId );
 	let retVal = -1;
 	if( this.links.hasOwnProperty( issueId )) {
 	    let issueLinks = Object.entries( this.links[issueId] );  // [ [cardId, link], [cardId, link] ...]
 	    
-	    if      ( issueLinks.length < 1 ) { console.log(installClient[1], "Link not found.", issueId ); }  // 204
-	    else if ( issueLinks.length > 1 ) { console.log(installClient[1], "Semantic error.  More items found than expected.", issueId ); } // 422
+	    if      ( issueLinks.length < 1 ) { console.log(authData.who, "Link not found.", issueId ); }  // 204
+	    else if ( issueLinks.length > 1 ) { console.log(authData.who, "Semantic error.  More items found than expected.", issueId ); } // 422
 	    else                              { retVal = issueLinks[0][1]; }
 	}
 	return retVal;
@@ -163,9 +160,9 @@ class Linkage {
 
     // issueId:cardId 1:m  cardId:issueId 1:1
     // XXX down the road, will want to index by repo - too many otherwise.
-    getLinks( installClient, query ) {
+    getLinks( authData, query ) {
 
-	console.log( installClient[1], "get Links", query );
+	console.log( authData.who, "get Links", query );
 	let issueId   = query.hasOwnProperty( "issueId" )   ? query.issueId.toString() : -1;
 	let cardId    = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
 	let repo      = query.hasOwnProperty( "repo" )      ? query.repo               : config.EMPTY;
@@ -212,8 +209,8 @@ class Linkage {
     //  3. no linkage in dynamo, only card in GH,     No.  Need a linkage in order to add to linkage table.
     //
     // Write repo, projId, cardId, issueNum.    issueId is much more expensive to find, not justified speculatively.
-    rebaseLinkage( installClient, issueId ) {
-	console.log( installClient[1], "Rebasing link for", issueId );
+    rebaseLinkage( authData, issueId ) {
+	console.log( authData.who, "Rebasing link for", issueId );
 	let cLinks = this.links[issueId];
 	assert( Object.keys( cLinks ).length == 1 );
 	let [_, link] = Object.entries( cLinks )[0];
@@ -225,8 +222,8 @@ class Linkage {
 	link.flatSource    = -1;
     }
 
-    updateLinkage( installClient, issueId, cardId, newColId, newColName ) {
-	console.log( installClient[1], "Update linkage for", issueId, cardId, newColId );
+    updateLinkage( authData, issueId, cardId, newColId, newColName ) {
+	console.log( authData.who, "Update linkage for", issueId, cardId, newColId );
 	let link = this.links[issueId][cardId];
 	assert( link !== 'undefined' );
 
@@ -238,7 +235,7 @@ class Linkage {
 	return true;
     }
 
-    updateTitle( installClient, linkData, newTitle ) {
+    updateTitle( authData, linkData, newTitle ) {
 	let link = this.links[linkData.GHIssueId][linkData.GHCardId];
 	assert( link !== 'undefined' );
 
@@ -248,9 +245,9 @@ class Linkage {
     }
 
     // primary keys have changed.
-    rebuildLinkage( installClient, oldLink, issueData, cardId ) {
-	console.log( installClient[1], "Rebuild linkage", oldLink.GHIssueNum, "->", issueData[0] );
-	let link = this.addLinkage( installClient,
+    rebuildLinkage( authData, oldLink, issueData, cardId ) {
+	console.log( authData.who, "Rebuild linkage", oldLink.GHIssueNum, "->", issueData[0] );
+	let link = this.addLinkage( authData,
 				    oldLink.GHRepo,
 				    issueData[0].toString(), issueData[1].toString(),
 				    oldLink.GHProjectId, oldLink.GHProjectName,
@@ -258,18 +255,18 @@ class Linkage {
 				    cardId.toString(),
 				    oldLink.GHCardTitle, oldLink.flatSource );
 	
-	this.removeLinkage( { "installClient": installClient, "issueId": oldLink.GHIssueId, "cardId": oldLink.GHCardId } );
+	this.removeLinkage( { "authData": authData, "issueId": oldLink.GHIssueId, "cardId": oldLink.GHCardId } );
 
 	return link;
     }
 
-    removeLinkage({ installClient, issueId, cardId }) {
+    removeLinkage({ authData, issueId, cardId }) {
 	let retVal = false;
-	if( !installClient ) { console.log( "missing installClient" ); return retVal; }
+	if( !authData ) { console.log( "missing authData" ); return retVal; }
 	if( !issueId )       { console.log( "missing issueId" ); return retVal; }
 	// cardId can be missing
 
-	console.log( installClient[1], "Remove link for issueId:", issueId );
+	console.log( authData.who, "Remove link for issueId:", issueId );
 
 	if( !this.links.hasOwnProperty( issueId ))                { return retVal; }  // may see multiple deletes
 	if( Object.keys( this.links[issueId] ).length == 0 )      { return retVal; }

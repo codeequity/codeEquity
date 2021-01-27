@@ -19,10 +19,10 @@ var ghSafe = ghUtils.githubSafe;
 //               and inclusion in linkage table.
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
-async function deleteIssue( installClient, ghLinks, pd ) {
+async function deleteIssue( authData, ghLinks, pd ) {
 
     // Either not carded, or delete card already fired successfully.  No-op.
-    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
+    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
     if( links == -1 ) return;
     let link = links[0];
 
@@ -38,26 +38,26 @@ async function deleteIssue( installClient, ghLinks, pd ) {
 	// the entire issue has been given to us here.  Recreate it.
 	console.log( "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed." );
 	
-	const peq = await utils.getPeq( installClient, link.GHIssueId );
+	const peq = await utils.getPeq( authData, link.GHIssueId );
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
-	const issueData = await ghSafe.rebuildIssue( installClient, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
-	const card      = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, issueData[0], true );  
+	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
+	const card      = await gh.createUnClaimedCard( authData, pd.GHOwner, pd.GHRepo, issueData[0], true );  
 	
-	await ghSafe.updateIssue( installClient, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
-	link = ghLinks.rebuildLinkage( installClient, link, issueData, card.id );
+	await ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
+	link = ghLinks.rebuildLinkage( authData, link, issueData, card.id );
 	link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	link.GHProjectName = config.UNCLAIMED;
 	link.GHProjectId   = card.project_url.split('/').pop();
 	link.GHColumnId    = card.column_url.split('/').pop();
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
-	const newPeqId = await utils.rebuildPeq( installClient, link, peq );
+	const newPeqId = await utils.rebuildPeq( authData, link, peq );
 	
-	utils.removePEQ( installClient, peq.PEQId );	
-	utils.recordPEQAction( installClient, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+	utils.removePEQ( authData, peq.PEQId );	
+	utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 			       "confirm", "change", [peq.PEQId, newPeqId], "recreate",
 			       utils.getToday(), pd.reqBody );
-	utils.recordPEQAction( installClient, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+	utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 			       "confirm", "add", [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }
@@ -69,11 +69,11 @@ async function deleteIssue( installClient, ghLinks, pd ) {
 // Note: issue:opened         notification after 'submit' is pressed.
 //       issue:labeled        notification after click out of label section
 //       project_card:created notification after submit, then projects:triage to pick column.
-async function handler( installClient, ghLinks, pd, action, tag ) {
+async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
-    console.log( installClient[4], pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
+    console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 
@@ -83,7 +83,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     pd.GHCreator    = pd.reqBody['issue']['user']['login'];
     pd.GHIssueTitle = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
-    // await gh.checkRateLimit(installClient);
+    // await gh.checkRateLimit(authData);
 
     switch( action ) {
     case 'labeled':
@@ -97,7 +97,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 
 	// XXXX XXXXX This will go away with ceFlutter
 	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
-	    await gh.populateCELinkage( installClient, ghLinks, pd );
+	    await gh.populateCELinkage( authData, ghLinks, pd );
 	    return;
 	}
 	
@@ -107,7 +107,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
 	if( pd.peqValue <= 0 && curVal > 0 ) {
 	    console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
-	    await ghSafe.removeLabel( installClient, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
+	    await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
 	    return;
 	}
 
@@ -118,7 +118,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	}
 	
 	// Was this a carded issue?  Get linkage
-	let links = ghLinks.getLinks( installClient, { "issueId": pd.GHIssueId } );
+	let links = ghLinks.getLinks( authData, { "issueId": pd.GHIssueId } );
 	assert( links == -1 || links.length == 1 );
 	let link = links == -1 ? links : links[0];
 
@@ -127,7 +127,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	if( link == -1 || link.GHColumnId == -1) {
 	    if( link == -1 ) {    
 		link = {};
-		let card = await gh.createUnClaimedCard( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueId );
+		let card = await gh.createUnClaimedCard( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueId );
 		let issueURL = card.content_url.split('/');
 		assert( issueURL.length > 0 );
 		link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );  // XXX already have this
@@ -136,18 +136,18 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		link.GHColumnId  = card.column_url.split('/').pop();
 	    }
 	    else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
-		let card = await gh.getCard( installClient, link.GHCardId );
+		let card = await gh.getCard( authData, link.GHCardId );
 		link.GHColumnId  = card.column_url.split('/').pop();
 	    }
 	}
 
 	pd.updateFromLink( link );
-	console.log( installClient[1], "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
+	console.log( authData.who, "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
 
 	let content = [];
 	content.push( pd.GHIssueTitle );
 	content.push( config.PDESC + pd.peqValue.toString() );
-	let retVal = await utils.processNewPEQ( installClient, ghLinks, pd, content, link );
+	let retVal = await utils.processNewPEQ( authData, ghLinks, pd, content, link );
 
 	// Attempted to label >= ACCR.  GH has already applied it, so remove
 	// XXX This should not be possible, as would be 2nd peq label since ACCR already has one
@@ -155,7 +155,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    assert( false ); 
 	    console.log( "..removing GH label on ACCR card" );
 	    link.GHColumnId = -1;
-	    await ghSafe.removeLabel( installClient, pd.GHOwner, pd.GHRepo, link.GHIssueNum, pd.reqBody.label );
+	    await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, pd.reqBody.label );
 	}
 	break;
     case 'unlabeled':
@@ -168,24 +168,24 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		console.log( "Not a PEQ label, no action taken." );
 		return;
 	    }
-	    let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
 
 	    // GH already removed this.  Put it back.
 	    if( newNameIndex >= config.PROJ_ACCR ) { 
 		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
-		ghSafe.addLabel( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
+		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
 		return;
 	    }
 	    
 	    // XXX Inform contributors that status is now UNTRACKED
-	    let peq = await utils.getPeq( installClient, pd.GHIssueId );	
+	    let peq = await utils.getPeq( authData, pd.GHIssueId );	
 	    console.log( "PEQ Issue unlabeled" );
-	    ghLinks.rebaseLinkage( installClient, pd.GHIssueId );   // setting various to -1, as it is now untracked
-	    utils.removePEQ( installClient, peq.PEQId );
+	    ghLinks.rebaseLinkage( authData, pd.GHIssueId );   // setting various to -1, as it is now untracked
+	    utils.removePEQ( authData, peq.PEQId );
 	    utils.recordPEQAction(
-		installClient,
+		authData,
 		config.EMPTY,     // CE UID
 		pd.GHCreator,     // gh user name
 		pd.GHFullName,    // of the repo
@@ -204,11 +204,11 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	
 	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
-	await deleteIssue( installClient, ghLinks, pd );
+	await deleteIssue( authData, ghLinks, pd );
 	break;
     case 'closed':
     case 'reopened':
-	console.log( installClient[1], "closed or reopened" );
+	console.log( authData.who, "closed or reopened" );
 
 	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
@@ -218,17 +218,17 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 
 	// Get array: [proj_id, col_idx4]
 	// XXX getLayout and moveIssue both call getGHCard
-	let ceProjectLayout = await gh.getCEProjectLayout( installClient, ghLinks, pd.GHIssueId );
+	let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd.GHIssueId );
 	if( ceProjectLayout[0] == -1 ) {
 	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	}
 	else {
-	    let success = await gh.moveIssueCard( installClient, ghLinks, pd.GHOwner, pd.GHRepo, [pd.GHIssueId, pd.GHIssueNum], action, ceProjectLayout ); 
+	    let success = await gh.moveIssueCard( authData, ghLinks, pd.GHOwner, pd.GHRepo, [pd.GHIssueId, pd.GHIssueNum], action, ceProjectLayout ); 
 	    if( success ) {
-		console.log( installClient[1], "Find & validate PEQ" );
-		let peqId = ( await( ghSafe.validatePEQ( installClient, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
+		console.log( authData.who, "Find & validate PEQ" );
+		let peqId = ( await( ghSafe.validatePEQ( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
 		if( peqId == -1 ) {
-		    console.log( installClient[1], "Could not find or verify associated PEQ.  Trouble in paradise." );
+		    console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		}
 		else {
 		    // githubCardHandler:recordMove must handle many more options.  Choices here are limited.
@@ -239,7 +239,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		    
 		    let subject = [ peqId.toString() ];
 		    utils.recordPEQAction(
-			installClient,
+			authData,
 			config.EMPTY,     // CE UID
 			sender,           // gh user name
 			pd.GHFullName,    // of the repo
@@ -258,7 +258,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
     case 'assigned': 
 	{
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
-	    console.log( installClient[1], "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
+	    console.log( authData.who, "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 	    
 	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
@@ -267,13 +267,13 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // Peq issues only.  PEQ tracks assignees from ceFlutter.  Just send PAct upstream.
-	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
+	    let peq = await utils.getPeq( authData, pd.GHIssueId );
 	    let assignee = pd.reqBody.assignee.login;
 	    let verb = "confirm";
 	    let action = "change";
 	    let subject = [peq.PEQId.toString(), assignee];
 	    utils.recordPEQAction(
-		installClient,
+		authData,
 		config.EMPTY,     // CE UID
 		sender,           // gh user name
 		pd.GHFullName,    // of the repo
@@ -296,13 +296,13 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    
-	    let peq = await utils.getPeq( installClient, pd.GHIssueId );
+	    let peq = await utils.getPeq( authData, pd.GHIssueId );
 	    let assignee = pd.reqBody.assignee.login;
 	    let verb = "confirm";
 	    let action = "change";
 	    let subject = [peq.PEQId.toString(), assignee];
 	    utils.recordPEQAction(
-		installClient,
+		authData,
 		config.EMPTY,     // CE UID
 		sender,           // gh user name
 		pd.GHFullName,    // of the repo
@@ -322,7 +322,7 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		pd.reqBody.changes.title.hasOwnProperty( 'from' )) {
 
 		const newTitle = pd.reqBody.issue.title;
-		let links = ghLinks.getLinks( installClient, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 		let link = links == -1 ? links : links[0]; 
 
 		if( link != -1 && link.GHCardTitle != config.EMPTY) {
@@ -330,19 +330,19 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
 		    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
-			ghSafe.updateTitle( installClient, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, link.GHCardTitle );
+			ghSafe.updateTitle( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, link.GHCardTitle );
 		    }
 		    else {
 			assert( pd.reqBody.changes.title.from == link.GHCardTitle );
 			console.log( "Title changed from", link.GHCardTitle, "to", newTitle );
 			
 			// if link has title, we have situated card.
-			ghLinks.updateTitle( installClient, link, newTitle );
-			let peq = await utils.getPeq( installClient, pd.GHIssueId );
+			ghLinks.updateTitle( authData, link, newTitle );
+			let peq = await utils.getPeq( authData, pd.GHIssueId );
 			assert( peq != -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
 			utils.recordPEQAction(
-			    installClient,
+			    authData,
 			    config.EMPTY,     // CE UID
 			    sender,           // gh user name
 			    pd.GHFullName,    // of the repo
@@ -364,8 +364,8 @@ async function handler( installClient, ghLinks, pd, action, tag ) {
 	// Transfer OUT: Peq?  remove.  (open issue in new repo, delete project card, transfer issue)
 	{
 	    if( pd.reqBody.changes.new_repository.full_name != pd.GHRepo ) {
-		console.log( installClient[1], "Transfer out.  Cleanup." );
-		await deleteIssue( installClient, ghLinks, pd );
+		console.log( authData.who, "Transfer out.  Cleanup." );
+		await deleteIssue( authData, ghLinks, pd );
 	    }
 	}
 	break;

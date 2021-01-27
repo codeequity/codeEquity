@@ -10,52 +10,52 @@ var ghSafe = ghUtils.githubSafe;
 
 
 // Adding a small sleep in each tu.make* - GH seems to get confused if requests come in too fast
-async function createPreferredCEProjects( installClient, ghLinks, td ) {
+async function createPreferredCEProjects( authData, ghLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
     
     // Master: softwareContr, businessOps, unallocated
-    td.masterPID  = await tu.makeProject( installClient, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
-    let mastCol1  = await tu.makeColumn( installClient, td.masterPID, td.softContTitle );
-    let mastCol2  = await tu.makeColumn( installClient, td.masterPID, td.busOpsTitle );
-    let mastCol3  = await tu.makeColumn( installClient, td.masterPID, td.unallocTitle );
+    td.masterPID  = await tu.makeProject( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
+    let mastCol1  = await tu.makeColumn( authData, td.masterPID, td.softContTitle );
+    let mastCol2  = await tu.makeColumn( authData, td.masterPID, td.busOpsTitle );
+    let mastCol3  = await tu.makeColumn( authData, td.masterPID, td.unallocTitle );
 
     // dataSec: 4x
-    let dataPID  = await tu.makeProject( installClient, td, td.dataSecTitle, "Make PII safe" );
-    let dataCols = await tu.make4xCols( installClient, dataPID );
+    let dataPID  = await tu.makeProject( authData, td, td.dataSecTitle, "Make PII safe" );
+    let dataCols = await tu.make4xCols( authData, dataPID );
 
     // githubOPs: 4x
-    let ghOpPID  = await tu.makeProject( installClient, td, td.githubOpsTitle, "Make it giddy" );
-    let ghOpCols = await tu.make4xCols( installClient, ghOpPID );
+    let ghOpPID  = await tu.makeProject( authData, td, td.githubOpsTitle, "Make it giddy" );
+    let ghOpCols = await tu.make4xCols( authData, ghOpPID );
 
 
     // TRIGGER
-    let nbi1     = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, "A special populate issue", [], false );
-    let card11   = await ghSafe.createProjectCard( installClient, mastCol1, nbi1[0] );
-    let popLabel = await gh.findOrCreateLabel( installClient, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
-    await tu.addLabel( installClient, td, nbi1[1], popLabel.name );       // ready.. set... Go!
+    let nbi1     = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, "A special populate issue", [], false );
+    let card11   = await ghSafe.createProjectCard( authData, mastCol1, nbi1[0] );
+    let popLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
+    await tu.addLabel( authData, td, nbi1[1], popLabel.name );       // ready.. set... Go!
 
     console.log( "Waiting for populate" );
     await utils.sleep( 3000 );
     console.log( "Done waiting for populate" );
 
     // softCont: dataSecurity, githubOps, unallocated
-    let dsCardId = await tu.makeAllocCard( installClient, mastCol1, td.dataSecTitle, "1,000,000" );
-    let ghCardId = await tu.makeAllocCard( installClient, mastCol1, td.githubOpsTitle, "1,500,000" );
-    let usCardId = await tu.makeAllocCard( installClient, mastCol1, td.unallocTitle, "3,000,000" );
+    let dsCardId = await tu.makeAllocCard( authData, mastCol1, td.dataSecTitle, "1,000,000" );
+    let ghCardId = await tu.makeAllocCard( authData, mastCol1, td.githubOpsTitle, "1,500,000" );
+    let usCardId = await tu.makeAllocCard( authData, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    let ubCardId = await tu.makeAllocCard( installClient, mastCol2, td.unallocTitle, "1,000,000" );
+    let ubCardId = await tu.makeAllocCard( authData, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
-async function testPreferredCEProjects( installClient, ghLinks, td ) {
+async function testPreferredCEProjects( authData, ghLinks, td ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    await tu.refresh( installClient, td, config.MAIN_PROJ );
+    await tu.refresh( authData, td, config.MAIN_PROJ );
 
     // Check DYNAMO PEQ table
-    let ghPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": td.githubOpsTitle });
+    let ghPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
     testStatus = tu.checkEq( ghPeqs.length, 1,                           testStatus, "Number of githubOps peq objects" );
     testStatus = tu.checkEq( ghPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
@@ -63,12 +63,12 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
     testStatus = tu.checkAr( ghPeqs[0].GHProjectSub, [td.softContTitle], testStatus, "Project sub" );
     testStatus = tu.checkEq( ghPeqs[0].GHProjectId, td.masterPID,        testStatus, "Project ID" );  
     
-    let dsPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": td.dataSecTitle });
+    let dsPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.dataSecTitle });
     testStatus = tu.checkEq( dsPeqs.length, 1,                           testStatus, "Number of datasec peq objects" );
     testStatus = tu.checkEq( dsPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
     testStatus = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], testStatus, "Project sub" );
 
-    let unPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": td.unallocTitle });
+    let unPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.unallocTitle });
     testStatus = tu.checkEq( unPeqs.length, 2,                           testStatus, "Number of unalloc peq objects" );
     testStatus = tu.checkEq( unPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
 
@@ -77,12 +77,12 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 
     
     // Check DYNAMO PAct 
-    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     testStatus = tu.checkGE( pacts.length, 4,         testStatus, "Number of PActs" );
     let foundPActs = 0;
     for( pact of pacts ) {
 	if( pact.Subject[0] == ghPeqs[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
@@ -92,7 +92,7 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 	    foundPActs++;
 	}
 	else if( pact.Subject[0] == dsPeqs[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
@@ -100,7 +100,7 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 	    foundPActs++;
 	}
 	else if( pact.Subject[0] == unPeqs[0].PEQId ) {
-	    let hasRaw = await tu.hasRaw( installClient, pact.PEQActionId );
+	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( hasRaw,  true,                              testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
@@ -110,12 +110,12 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
     testStatus = tu.checkEq( foundPActs, 3 ,           testStatus, "Matched PActs with PEQs" );
 
     // Check DYNAMO RepoStatus
-    let pop = await utils.checkPopulated( installClient, td.GHFullName );
+    let pop = await utils.checkPopulated( authData, td.GHFullName );
     testStatus = tu.checkEq( pop, "true", testStatus, "Repo status wrt populated" );
     
 
     // Check GITHUB Labels
-    let peqLabels = await tu.getPeqLabels( installClient, td );
+    let peqLabels = await tu.getPeqLabels( authData, td );
     testStatus = tu.checkGE( peqLabels.length, 3,   testStatus, "Peq Label count" );
     let foundLabs = 0;
     for( label of peqLabels ) {
@@ -130,7 +130,7 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 
     
     // Check GITHUB Issues
-    let issues = await tu.getIssues( installClient, td );
+    let issues = await tu.getIssues( authData, td );
     testStatus = tu.checkGE( issues.length, 4,     testStatus, "Issue count" );
     let foundIss = 0;
     for( const issue of issues ) {
@@ -153,7 +153,7 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 
 
     // Check GITHUB Projects
-    let projects = await tu.getProjects( installClient, td );
+    let projects = await tu.getProjects( authData, td );
     testStatus = tu.checkGE( projects.length, 3,     testStatus, "Project count" );
     let foundProj = 0;
     for( const proj of projects ) {
@@ -175,9 +175,9 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
     
     // Check GITHUB Columns
     // td.show();
-    let mastCols = await tu.getColumns( installClient, td.masterPID  );
-    let dsCols   = await tu.getColumns( installClient, td.dataSecPID  );
-    let ghCols   = await tu.getColumns( installClient, td.githubOpsPID  );
+    let mastCols = await tu.getColumns( authData, td.masterPID  );
+    let dsCols   = await tu.getColumns( authData, td.dataSecPID  );
+    let ghCols   = await tu.getColumns( authData, td.githubOpsPID  );
 
     testStatus = tu.checkEq( mastCols.length, 3,   testStatus, "Master proj col count" );
     testStatus = tu.checkEq( dsCols.length, 4,     testStatus, "Data security proj col count" );
@@ -205,9 +205,9 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 
     // Check GITHUB Cards
     // Don't try checking names - they belong to & were already checked, in issues.
-    let scCards = await tu.getCards( installClient, td.scColID );
-    let boCards = await tu.getCards( installClient, td.boColID );
-    let noCards = await tu.getCards( installClient, td.unColID );
+    let scCards = await tu.getCards( authData, td.scColID );
+    let boCards = await tu.getCards( authData, td.boColID );
+    let noCards = await tu.getCards( authData, td.unColID );
 
     testStatus = tu.checkEq( scCards.length, 4, testStatus, "Soft cont col card count" );
     testStatus = tu.checkEq( boCards.length, 1, testStatus, "Bus ops col card count" );
@@ -219,12 +219,12 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
     console.log( "rands", rn2, rn4 );
     let cols = dsCols;
     if( rn2 == 1 )  { cols = ghCols; }
-    noCards = await tu.getCards( installClient, cols[rn4].id );
+    noCards = await tu.getCards( authData, cols[rn4].id );
     testStatus = tu.checkEq( noCards.length, 0, testStatus, "Unalloc col card count" );
 
 
     // Check DYNAMO Linkage
-    let links = await tu.getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 4, testStatus, "Linkage count" );
     let unallocSoft = false;   let lSoft = -1;
     let unallocBus  = false;   let lBus  = -1;
@@ -282,15 +282,15 @@ async function testPreferredCEProjects( installClient, ghLinks, td ) {
 }
 
 
-async function runTests( installClient, ghLinks, td ) {
+async function runTests( authData, ghLinks, td ) {
 
     console.log( "Preferred CE project structure =================" );
 
     let testStatus = [ 0, 0, []];
 
-    await createPreferredCEProjects( installClient, ghLinks, td );
+    await createPreferredCEProjects( authData, ghLinks, td );
     await utils.sleep( 8000 );
-    let t1 = await testPreferredCEProjects( installClient, ghLinks, td );
+    let t1 = await testPreferredCEProjects( authData, ghLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );
     return testStatus;

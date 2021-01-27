@@ -9,11 +9,11 @@ var ghSafe = ghUtils.githubSafe;
 
 
 // Actions: created, edited, or deleted
-async function handler( installClient, ghLinks, pd, action, tag ) {
+async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
-    console.log( installClient[4], pd.reqBody.label.updated_at, "label name:", pd.reqBody.label.name, action );
+    console.log( authData.job, pd.reqBody.label.updated_at, "label name:", pd.reqBody.label.name, action );
     
     switch( action ) {
     case 'created':

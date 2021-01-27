@@ -12,26 +12,26 @@ const MIN_DELAY = 1500;   // Make up for rest variance, and GH slowness.  Expect
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
 
 
-async function refresh( installClient, td, projName ){
+async function refresh( authData, td, projName ){
     if( td.masterPID != config.EMPTY ) { return; }
 
-    await installClient[0].projects.listForRepo({ owner: td.GHOwner, repo: td.GHRepo, state: "open" })
+    await authData.ic.projects.listForRepo({ owner: td.GHOwner, repo: td.GHRepo, state: "open" })
 	.then((projects) => {
 	    for( const project of projects.data ) {
 		if( project.name ==  projName ) { td.masterPID = project.id; }
 	    }
 	})
-	.catch( e => { console.log( installClient[1], "list projects failed.", e ); });
+	.catch( e => { console.log( authData.who, "list projects failed.", e ); });
 }
 
 // Refresh a recommended project layout.  This is useful when running tests piecemeal.
-async function refreshRec( installClient, td ) {
-    let projects = await getProjects( installClient, td );
+async function refreshRec( authData, td ) {
+    let projects = await getProjects( authData, td );
     for( const proj of projects ) {
 	if( proj.name == config.MAIN_PROJ ) {
 	    td.masterPID = proj.id;
 
-	    let columns = await getColumns( installClient, proj.id );
+	    let columns = await getColumns( authData, proj.id );
 	    for( const col of columns ) {
 		if( col.name == td.softContTitle ) { td.scColID = col.id; }
 		if( col.name == td.busOpsTitle )   { td.boColID = col.id; }
@@ -45,14 +45,14 @@ async function refreshRec( installClient, td ) {
     assert( td.dataSecPID != -1 );
     assert( td.githubOpsPID != -1 );
 
-    let columns = await getColumns( installClient, td.dataSecPID );
+    let columns = await getColumns( authData, td.dataSecPID );
     for( const col of columns ) {
 	if( col.name == config.PROJ_COLS[ config.PROJ_PLAN ] ) { td.dsPlanID = col.id; }
 	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.dsProgID = col.id; }
 	if( col.name == config.PROJ_COLS[ config.PROJ_PEND ] ) { td.dsPendID = col.id; }
 	if( col.name == config.PROJ_COLS[ config.PROJ_ACCR ] ) { td.dsAccrID = col.id; }
     }
-    columns = await getColumns( installClient, td.githubOpsPID );
+    columns = await getColumns( authData, td.githubOpsPID );
     for( const col of columns ) {
 	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.ghProgID = col.id; }
     }
@@ -60,13 +60,13 @@ async function refreshRec( installClient, td ) {
 }
 
 // Refresh a flat project layout.  This is useful when running tests piecemeal.
-async function refreshFlat( installClient, td ) {
-    let projects = await getProjects( installClient, td );
+async function refreshFlat( authData, td ) {
+    let projects = await getProjects( authData, td );
     for( const proj of projects ) {
 	if( proj.name == td.flatTitle ) {
 	    td.flatPID = proj.id;
 
-	    let columns = await getColumns( installClient, proj.id );
+	    let columns = await getColumns( authData, proj.id );
 	    for( const col of columns ) {
 		if( col.name == td.col1Title )  { td.col1ID = col.id; }
 		if( col.name == td.col2Title )  { td.col2ID = col.id; }
@@ -77,13 +77,13 @@ async function refreshFlat( installClient, td ) {
 }
 
 // Refresh unclaimed.
-async function refreshUnclaimed( installClient, td ) {
-    let projects = await getProjects( installClient, td );
+async function refreshUnclaimed( authData, td ) {
+    let projects = await getProjects( authData, td );
     for( const proj of projects ) {
 	if( proj.name == td.unclaimTitle ) {
 	    td.unclaimPID = proj.id;
 
-	    let columns = await getColumns( installClient, proj.id );
+	    let columns = await getColumns( authData, proj.id );
 	    for( const col of columns ) {
 		if( col.name == td.unclaimTitle )  { td.unclaimCID = col.id; }
 	    }
@@ -118,73 +118,73 @@ function makeTitleReducer( aStr ) {
 }
 
 
-async function hasRaw( installClient, pactId ) {
+async function hasRaw( authData, pactId ) {
     let retVal = false;
-    let praw = await utils.getRaw( installClient, pactId );
+    let praw = await utils.getRaw( authData, pactId );
     if( praw != -1 ) { retVal = true; }
     return retVal;
 }
 
-async function getPeqLabels( installClient, td ) {
+async function getPeqLabels( authData, td ) {
     let peqLabels = "";
 
-    await( installClient[0].issues.listLabelsForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
+    await( authData.ic.issues.listLabelsForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
 	.then( labels => { peqLabels = labels['data']; })
-	.catch( e => { console.log( installClient[1], "list projects failed.", e ); });
+	.catch( e => { console.log( authData.who, "list projects failed.", e ); });
 
     return peqLabels;
 }
 
-async function getIssues( installClient, td ) {
+async function getIssues( authData, td ) {
     let issues = "";
 
-    await( installClient[0].issues.listForRepo( { owner: td.GHOwner, repo: td.GHRepo, state: "all" }))
+    await( authData.ic.issues.listForRepo( { owner: td.GHOwner, repo: td.GHRepo, state: "all" }))
 	.then( allissues => { issues = allissues['data']; })
-	.catch( e => { console.log( installClient[1], "list issues failed.", e ); });
+	.catch( e => { console.log( authData.who, "list issues failed.", e ); });
 
     return issues;
 }
 
-async function getProjects( installClient, td ) {
+async function getProjects( authData, td ) {
     let projects = "";
 
-    await( installClient[0].projects.listForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
+    await( authData.ic.projects.listForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
 	.then( allproj => { projects = allproj['data']; })
-	.catch( e => { console.log( installClient[1], "list projects failed.", e ); });
+	.catch( e => { console.log( authData.who, "list projects failed.", e ); });
 
     return projects;
 }
 
-async function getColumns( installClient, projId ) {
+async function getColumns( authData, projId ) {
     let cols = "";
 
-    await( installClient[0].projects.listColumns( { project_id: projId }))
+    await( authData.ic.projects.listColumns( { project_id: projId }))
 	.then( allcols => { cols = allcols['data']; })
-	.catch( e => { console.log( installClient[1], "list columns failed.", e ); });
+	.catch( e => { console.log( authData.who, "list columns failed.", e ); });
 
     return cols;
 }
 
-async function getCards( installClient, colId ) {
+async function getCards( authData, colId ) {
     let cards = "";
 
-    await( installClient[0].projects.listCards( { column_id: colId }))
+    await( authData.ic.projects.listCards( { column_id: colId }))
 	.then( allcards => { cards = allcards['data']; })
-	.catch( e => { console.log( installClient[1], "list cards failed.", e ); });
+	.catch( e => { console.log( authData.who, "list cards failed.", e ); });
 
     return cards;
 }
 
 // Get everything from ceServer
-async function getLinks( installClient, ghLinks, query ) {
+async function getLinks( authData, ghLinks, query ) {
     let postData = {"Endpoint": "Testing", "Request": "getLinks" };
     let linkData = await utils.postCE( "testHandler", JSON.stringify( postData ));
     ghLinks.fromJson( linkData );
-    return ghLinks.getLinks( installClient, query );
+    return ghLinks.getLinks( authData, query );
 }
 
 // Purge repo's links from ceServer
-async function remLinks( installClient, ghLinks, repo ) {
+async function remLinks( authData, ghLinks, repo ) {
     let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "Repo": repo };
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
@@ -198,25 +198,25 @@ async function purgeJobs( repo, owner ) {
     return res;
 }
 
-async function findIssue( installClient, td, issueId ) {
+async function findIssue( authData, td, issueId ) {
     let retVal = -1;
-    let issues = await getIssues( installClient, td );
+    let issues = await getIssues( authData, td );
     retVal = issues.find( issue => issue.id == issueId );
     if( typeof retVal == 'undefined' ) { retVal = -1; }
     return retVal; 
 }
 
 // Prefer to use findIssue.  IssueNames are not unique.
-async function findIssueByName( installClient, td, issueName ) {
+async function findIssueByName( authData, td, issueName ) {
     let retVal = -1;
-    let issues = await getIssues( installClient, td );
+    let issues = await getIssues( authData, td );
     retVal = issues.find( issue => issue.name == issueName );
     if( typeof retVal == 'undefined' ) { retVal = -1; }
     return retVal; 
 }
 
-async function getFlatLoc( installClient, projId, projName, colName ) {
-    const cols = await getColumns( installClient, projId );
+async function getFlatLoc( authData, projId, projName, colName ) {
+    const cols = await getColumns( authData, projId );
     let col = cols.find(c => c.name == colName );
 
     let ptype = "plan";
@@ -235,9 +235,9 @@ async function getFlatLoc( installClient, projId, projName, colName ) {
     return loc;
 }
 
-async function getFullLoc( installClient, masterColName, projId, projName, colName ) {
+async function getFullLoc( authData, masterColName, projId, projName, colName ) {
 
-    let loc = await getFlatLoc( installClient, projId, projName, colName );
+    let loc = await getFlatLoc( authData, projId, projName, colName );
 
     loc.projSub  = config.PROJ_COLS.includes( colName ) ? [masterColName, projName] : [masterColName, projName, colName];
     
@@ -259,157 +259,157 @@ function findCardForIssue( cards, issueNum ) {
     return cardId;
 }
 
-async function setUnpopulated( installClient, td ) {
-    let status = await utils.getRepoStatus( installClient, td.GHFullName );
+async function setUnpopulated( authData, td ) {
+    let status = await utils.getRepoStatus( authData, td.GHFullName );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
-    await utils.cleanDynamo( installClient, "CERepoStatus", statusIds );
+    await utils.cleanDynamo( authData, "CERepoStatus", statusIds );
 }
 
 
-async function ingestPActs( installClient, issueData ) {
-    const peq   = await utils.getPeq( installClient, issueData[0] );    
-    const pacts = await utils.getPActs( installClient, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
+async function ingestPActs( authData, issueData ) {
+    const peq   = await utils.getPeq( authData, issueData[0] );    
+    const pacts = await utils.getPActs( authData, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
     const pactIds = pacts.map( pact => pact.PEQActionId );
-    await utils.ingestPActs( installClient, pactIds );
+    await utils.ingestPActs( authData, pactIds );
 }
 
 
 
-async function makeProject(installClient, td, name, body ) {
-    let pid = await installClient[0].projects.createForRepo({ owner: td.GHOwner, repo: td.GHRepo, name: name, body: body })
+async function makeProject(authData, td, name, body ) {
+    let pid = await authData.ic.projects.createForRepo({ owner: td.GHOwner, repo: td.GHRepo, name: name, body: body })
 	.then((project) => { return  project.data.id; })
-	.catch( e => { console.log( installClient[1], "Create project failed.", e ); });
+	.catch( e => { console.log( authData.who, "Create project failed.", e ); });
 
     console.log( "MakeProject:", name, pid );
     await utils.sleep( MIN_DELAY );
     return pid;
 }
 
-async function remProject( installClient, projId ) {
-    await ( installClient[0].projects.delete( {project_id: projId}) )
-	.catch( e => { console.log( installClient[1], "Problem in delete Project", e ); });
+async function remProject( authData, projId ) {
+    await ( authData.ic.projects.delete( {project_id: projId}) )
+	.catch( e => { console.log( authData.who, "Problem in delete Project", e ); });
     await utils.sleep( MIN_DELAY );
 }
 
 
-async function makeColumn( installClient, projId, name ) {
+async function makeColumn( authData, projId, name ) {
     
-    let cid = await installClient[0].projects.createColumn({ project_id: projId, name: name })
+    let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
 	.then((column) => { return column.data.id; })
-	.catch( e => { console.log( installClient[1], "Create column failed.", e ); });
+	.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 
     console.log( "MakeColumn:", name, cid );
     await utils.sleep( MIN_DELAY );
     return cid;
 }
 
-async function make4xCols( installClient, projId ) {
+async function make4xCols( authData, projId ) {
 
-    let plan = await makeColumn( installClient, projId, config.PROJ_COLS[ config.PROJ_PLAN ] );
-    let prog = await makeColumn( installClient, projId, config.PROJ_COLS[ config.PROJ_PROG ] );
-    let pend = await makeColumn( installClient, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
-    let accr = await makeColumn( installClient, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
+    let plan = await makeColumn( authData, projId, config.PROJ_COLS[ config.PROJ_PLAN ] );
+    let prog = await makeColumn( authData, projId, config.PROJ_COLS[ config.PROJ_PROG ] );
+    let pend = await makeColumn( authData, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
+    let accr = await makeColumn( authData, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
 	
     await utils.sleep( MIN_DELAY );
     return [prog, plan, pend, accr];
 }
 
-async function makeAllocCard( installClient, colId, title, amount ) {
+async function makeAllocCard( authData, colId, title, amount ) {
     let note = title + "\n<allocation, PEQ: " + amount + ">";
     
-    let cid = await installClient[0].projects.createCard({ column_id: colId, note: note })
+    let cid = await authData.ic.projects.createCard({ column_id: colId, note: note })
 	.then((card) => { return card.data.id; })
-	.catch( e => { console.log( installClient[1], "Create newborn card failed.", e ); });
+	.catch( e => { console.log( authData.who, "Create newborn card failed.", e ); });
 
     console.log( "MakeCard:", cid );
     await utils.sleep( MIN_DELAY );
     return cid;
 }
 
-async function makeNewbornCard( installClient, colId, title ) {
+async function makeNewbornCard( authData, colId, title ) {
     let note = title;
     
-    let cid = await installClient[0].projects.createCard({ column_id: colId, note: note })
+    let cid = await authData.ic.projects.createCard({ column_id: colId, note: note })
 	.then((card) => { return card.data.id; })
-	.catch( e => { console.log( installClient[1], "Create newborn card failed.", e ); });
+	.catch( e => { console.log( authData.who, "Create newborn card failed.", e ); });
 
     await utils.sleep( MIN_DELAY );
     return cid;
 }
 
-async function makeProjectCard( installClient, colId, issueId ) {
-    let card = await ghSafe.createProjectCard( installClient, colId, issueId );
+async function makeProjectCard( authData, colId, issueId ) {
+    let card = await ghSafe.createProjectCard( authData, colId, issueId );
     await utils.sleep( MIN_DELAY );
     return card;
 }
 
-async function makeIssue( installClient, td, title, labels ) {
-    let issue = await ghSafe.createIssue( installClient, td.GHOwner, td.GHRepo, title, labels, false );
+async function makeIssue( authData, td, title, labels ) {
+    let issue = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, title, labels, false );
     issue.push( title );
     await utils.sleep( MIN_DELAY );
     return issue;
 }
 
-async function addLabel( installClient, td, issueNumber, labelName ) {
-    await installClient[0].issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
-	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
+async function addLabel( authData, td, issueNumber, labelName ) {
+    await authData.ic.issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
+	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
     await utils.sleep( MIN_DELAY );
 }	
 
-async function remLabel( installClient, td, issueNumber, label ) {
+async function remLabel( authData, td, issueNumber, label ) {
     console.log( "Removing", label.name, "from issueNum", issueNumber );
-    await installClient[0].issues.removeLabel({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, name: label.name })
-	.catch( e => { console.log( installClient[1], "Remove label failed.", e ); });
+    await authData.ic.issues.removeLabel({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, name: label.name })
+	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
     await utils.sleep( MIN_DELAY );
 }
 
-async function addAssignee( installClient, td, issueNumber, assignee ) {
-    await installClient[0].issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
-	.catch( e => { console.log( installClient[1], "Add assignee failed.", e ); });
+async function addAssignee( authData, td, issueNumber, assignee ) {
+    await authData.ic.issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
+	.catch( e => { console.log( authData.who, "Add assignee failed.", e ); });
     await utils.sleep( MIN_DELAY );
 }
 
-async function remAssignee( installClient, td, issueNumber, assignee ) {
-    await installClient[0].issues.removeAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
-	.catch( e => { console.log( installClient[1], "Remove assignee failed.", e ); });
+async function remAssignee( authData, td, issueNumber, assignee ) {
+    await authData.ic.issues.removeAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
+	.catch( e => { console.log( authData.who, "Remove assignee failed.", e ); });
     await utils.sleep( MIN_DELAY );
 }
 
-async function moveCard( installClient, cardId, columnId ) {
-    await installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: columnId })
-	.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
+async function moveCard( authData, cardId, columnId ) {
+    await authData.ic.projects.moveCard({ card_id: cardId, position: "top", column_id: columnId })
+	.catch( e => { console.log( authData.who, "Move card failed.", e );	});
     await utils.sleep( MIN_DELAY );
 }
 
-async function remCard( installClient, cardId ) {
-    await installClient[0].projects.deleteCard( { card_id: cardId } )
-	.catch( e => console.log( installClient[1], "Remove card failed.", e ));
+async function remCard( authData, cardId ) {
+    await authData.ic.projects.deleteCard( { card_id: cardId } )
+	.catch( e => console.log( authData.who, "Remove card failed.", e ));
     await utils.sleep( MIN_DELAY );
 }
 
-async function closeIssue( installClient, td, issueNumber ) {
-    await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
-	.catch( e => { console.log( installClient[1], "Close issue failed.", e );	});
+async function closeIssue( authData, td, issueNumber ) {
+    await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
+	.catch( e => { console.log( authData.who, "Close issue failed.", e );	});
     await utils.sleep( MIN_DELAY );
 }
 
-async function reopenIssue( installClient, td, issueNumber ) {
+async function reopenIssue( authData, td, issueNumber ) {
     console.log( "Opening", td.GHRepo, issueNumber );
-    await installClient[0].issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "open" })
-	.catch( e => { console.log( installClient[1], "Open issue failed.", e );	});
+    await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "open" })
+	.catch( e => { console.log( authData.who, "Open issue failed.", e );	});
     await utils.sleep( MIN_DELAY );
 }
 
-async function remIssue( installClient, td, issueId, PAT ) {
+async function remIssue( authData, td, issueId ) {
 
-    let issue     = await findIssue( installClient, td, issueId );
+    let issue     = await findIssue( authData, td, issueId );
     let endpoint  = "https://api.github.com/graphql";
     let query     = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
     let variables = {"id": issue.node_id };
     query         = JSON.stringify({ query, variables });
     
-    let res = await utils.postGH( PAT, endpoint, query );
+    let res = await utils.postGH( authData.pat, endpoint, query );
     console.log( res.data );
 }
 
@@ -478,18 +478,18 @@ function mergeTests( t1, t2 ) {
 
 // Untracked issues have only partial entries in link table
 // Should work for carded issues that have never been peq.  Does NOT work for newborn.
-async function checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card, testStatus ) {
 
     console.log( "Check Untracked issue", issueData );
 
     // CHECK github issues
-    let issue  = await findIssue( installClient, td, issueData[0] );
+    let issue  = await findIssue( authData, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, 0,                testStatus, "Issue label" );
 
     // CHECK linkage
-    let links  = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
@@ -500,7 +500,7 @@ async function checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, 
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );     // XXX tracking this??
 
     // CHECK dynamo Peq.  inactive, if it exists
-    let peqs      = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let peqs      = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     testStatus = checkLE( issuePeqs.length, 1,                      testStatus, "Peq count" );
     if( issuePeqs.length > 0 ) {
@@ -516,19 +516,19 @@ async function checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, 
 }
 
 // Used for previously situated issues that were unlabeled
-async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, testStatus ) {
 
     console.log( "Check demotedissue", loc.projName, loc.colName );
 
     // For issues, linkage
-    testStatus = await checkUntrackedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus );
+    testStatus = await checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card, testStatus );
 	
      // CHECK github location
-    let cards  = await getCards( installClient, td.unclaimCID );   
+    let cards  = await getCards( authData, td.unclaimCID );   
     let tCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( tCard.length, 0,                       testStatus, "No unclaimed" );
     
-    cards      = await getCards( installClient, loc.colId );   
+    cards      = await getCards( authData, loc.colId );   
     let mCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( mCard.length, 1,                       testStatus, "Card claimed" );
     testStatus = checkEq( mCard[0].id, card.id,                  testStatus, "Card claimed" );
@@ -537,7 +537,7 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
     // CHECK dynamo Peq.  inactive
     // Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
     // Unclaimed may not have happened if peq'd a carded issue
-    let peqs      = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let peqs      = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     testStatus = checkEq( issuePeqs.length, 1,                      testStatus, "Peq count" );
     for( const peq of issuePeqs ) {
@@ -549,14 +549,14 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
     
     
     // CHECK dynamo Pact
-    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let issuePacts = pacts.filter((pact) => pact.Subject[0] == peqId );
 
     // Must have been a PEQ before. Depeq'd with unlabel, or delete.
     issuePacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     let lastPact = issuePacts[ issuePacts.length - 1 ];
     
-    let hasraw = await hasRaw( installClient, lastPact.PEQActionId );
+    let hasraw = await hasRaw( authData, lastPact.PEQActionId );
     testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
     testStatus = checkEq( lastPact.Verb, "confirm",                testStatus, "PAct Verb"); 
     testStatus = checkEq( lastPact.Action, "delete",               testStatus, "PAct Verb"); 
@@ -568,7 +568,7 @@ async function checkDemotedIssue( installClient, ghLinks, td, loc, issueData, ca
 }
 
 // Remember, PEQ is largely not updated once created.  So don't look for types, PEND or ACCR in subs
-async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
+async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
     let muteIngested = specials !== undefined && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
     let issueState   = specials !== undefined && specials.hasOwnProperty( "state" )        ? specials.state        : false;
@@ -577,7 +577,7 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal );
 
     // CHECK github issues
-    let issue  = await findIssue( installClient, td, issueData[0] );
+    let issue  = await findIssue( authData, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, 1,                testStatus, "Issue label" );
@@ -589,17 +589,17 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     if( issueState ) { testStatus = checkEq( issue.state, issueState, testStatus, "Issue state" );  }
 
     // CHECK github location
-    let cards = await getCards( installClient, td.unclaimCID );   
+    let cards = await getCards( authData, td.unclaimCID );   
     let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( tCard.length, 0,                           testStatus, "No unclaimed" );
 
-    cards = await getCards( installClient, loc.colId );
+    cards = await getCards( authData, loc.colId );
     let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( mCard.length, 1,                           testStatus, "Card claimed" );
     testStatus = checkEq( mCard[0].id, card.id,                      testStatus, "Card claimed" );
 
     // CHECK linkage
-    let links    = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
@@ -610,7 +610,7 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );
 
     // CHECK dynamo Peq
-    let allPeqs  =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let allPeqs  =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
@@ -627,7 +627,7 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
 
     // CHECK dynamo Pact
-    let allPacts  = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let allPacts  = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );  
 
@@ -641,7 +641,7 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
     
     // Could have been many operations on this.
     for( const pact of pacts ) {
-	let hasraw = await hasRaw( installClient, pact.PEQActionId );
+	let hasraw = await hasRaw( authData, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
 	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
 	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
@@ -653,20 +653,20 @@ async function checkSituatedIssue( installClient, ghLinks, td, loc, issueData, c
 }
 
 // Check last PAct
-async function checkNewlyClosedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
+async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
     if( specials === undefined ) { specials = {}; }
     if( !specials.state ) { specials.state = "closed"; }
-    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
+    testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check Closed issue", loc.projName, loc.colName );
     
-    const allPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    const allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     const peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     const peq = peqs[0];
 
     // CHECK dynamo Pact
-    const allPacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    const allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     const pact = pacts[ pacts.length - 1];
@@ -677,20 +677,20 @@ async function checkNewlyClosedIssue( installClient, ghLinks, td, loc, issueData
 }
 
 // Check last PAct
-async function checkNewlyOpenedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
+async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
     if( specials === undefined ) { specials = {}; }
     if( !specials.state ) { specials.state = "open"; }
-    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
+    testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check Opened issue", loc.projName, loc.colName );
     
-    const allPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    const allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     const peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     const peq = peqs[0];
 
     // CHECK dynamo Pact
-    const allPacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    const allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     const pact = pacts[ pacts.length - 1];
@@ -702,16 +702,16 @@ async function checkNewlyOpenedIssue( installClient, ghLinks, td, loc, issueData
 
 
 
-async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials ) {
+async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
     if( specials === undefined ) { specials = {}; }
     if( !specials.state ) { specials.state = "open"; }
-    testStatus = await checkSituatedIssue( installClient, ghLinks, td, loc, issueData, card, testStatus, specials );
+    testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check newly situated issue", loc.projName, loc.colName );
 
     // CHECK dynamo Peq
-    let allPeqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
@@ -729,7 +729,7 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueDa
 
     // CHECK dynamo Pact
     // label carded issue?  1 pact.  attach labeled issue to proj col?  3 pact.
-    let allPacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );         
     
@@ -738,7 +738,7 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueDa
     let remUncl  = pacts.length >= 3 ? pacts[1] : {"Action": "delete" };
     let pact = pacts.length >= 3 ? pacts[2] : pacts[0];
     for( const pact of pacts ) {
-	let hasraw = await hasRaw( installClient, pact.PEQActionId );
+	let hasraw = await hasRaw( authData, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
 	testStatus = checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
 	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
@@ -753,7 +753,7 @@ async function checkNewlySituatedIssue( installClient, ghLinks, td, loc, issueDa
 }
 
 
-async function checkNewbornCard( installClient, ghLinks, td, loc, cardId, title, testStatus ) {
+async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, testStatus ) {
 
     console.log( "Check Newborn Card", title, cardId );
 
@@ -761,20 +761,20 @@ async function checkNewbornCard( installClient, ghLinks, td, loc, cardId, title,
     // no need, get content link below
     
     // CHECK github card
-    let cards  = await getCards( installClient, loc.colId );
+    let cards  = await getCards( authData, loc.colId );
     let card   = cards.find( card => card.id == cardId );
     const cardTitle = card.note.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
     testStatus = checkEq( card.hasOwnProperty( "content_url" ), false, testStatus, "Newbie has content" );
     testStatus = checkEq( cardTitle, title,                            testStatus, "Newbie title" );
 
     // CHECK linkage
-    let links  = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId );
     testStatus = checkEq( typeof link, "undefined",                    testStatus, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     // Risky test - will fail if unrelated peqs with same title exist
-    let peqs = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+    let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
     testStatus = checkEq( peqs, -1,                                    testStatus, "Newbie peq exists" );
 
     // CHECK dynamo Pact.. nothing to do here for newborn
@@ -782,7 +782,7 @@ async function checkNewbornCard( installClient, ghLinks, td, loc, cardId, title,
     return testStatus;
 }
 
-async function checkNoCard( installClient, ghLinks, td, loc, cardId, title, testStatus, specials ) {
+async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatus, specials ) {
 
     console.log( "Check No Card", title, cardId );
 
@@ -790,21 +790,21 @@ async function checkNoCard( installClient, ghLinks, td, loc, cardId, title, test
     if( !specials.peq ) { specials.peq = false; }
 
     // CHECK github card
-    let cards  = await getCards( installClient, loc.colId );
+    let cards  = await getCards( authData, loc.colId );
     if( cards != -1 ) { 
 	let card   = cards.find( card => card.id == cardId );
 	testStatus = checkEq( typeof card, "undefined",            testStatus, "Card should not exist" );
     }
 
     // CHECK linkage
-    let links  = await getLinks( installClient, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId );
     testStatus = checkEq( typeof link, "undefined",                testStatus, "Link should not exist" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     // Risky test - will fail if unrelated peqs with same title exist
     // No card may have inactive peq
-    let peqs = await utils.getPeqs( installClient, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+    let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
     if( specials.peq ) {
 	let peq = peqs[0];
 	testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
@@ -820,11 +820,11 @@ async function checkNoCard( installClient, ghLinks, td, loc, cardId, title, test
 }
 
 
-async function checkAssignees( installClient, td, ass1, ass2, issueData, testStatus ) {
+async function checkAssignees( authData, td, ass1, ass2, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
-    let issue  = await findIssue( installClient, td, issueData[0] );
+    let issue  = await findIssue( authData, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.assignees.length, 2,             testStatus, "Issue assignee count" );
@@ -833,7 +833,7 @@ async function checkAssignees( installClient, td, ass1, ass2, issueData, testSta
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await utils.getPeqs( installClient, { "GHRepo": td.GHFullName });
+    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     testStatus = checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -852,7 +852,7 @@ async function checkAssignees( installClient, td, ass1, ass2, issueData, testSta
     
     // CHECK Dynamo PAct
     // Should show relevant change action.. last three are related to current entry - may be more for unclaimed
-    let pacts = await utils.getPActs( installClient, {"GHRepo": td.GHFullName} );
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     testStatus = checkGE( meltPacts.length, 3,                            testStatus, "PAct count" );
     
@@ -862,7 +862,7 @@ async function checkAssignees( installClient, td, ass1, ass2, issueData, testSta
     let addA1  = meltPacts[ meltPacts.length - 2];   // add assignee 1
     let addA2  = meltPacts[ meltPacts.length - 1];   // add assignee 2
     for( const pact of [addMP, addA1, addA2] ) {
-	let hasraw = await hasRaw( installClient, pact.PEQActionId );
+	let hasraw = await hasRaw( authData, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
 	testStatus = checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
 	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
