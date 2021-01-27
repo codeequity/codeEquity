@@ -12,17 +12,25 @@ var links     = require('../components/linkage.js');
 
 var issues    = require('./githubIssueHandler');
 var cards     = require('./githubCardHandler');
+var projects  = require('./githubProjectHandler');
+var columns   = require('./githubColumnHandler');
+var labels    = require('./githubLabelHandler');
 var testing   = require('./githubTestHandler');
 
 // CE Job Queue  {fullName:  {sender1: fifoQ1, sender2: fifoQ2 }}
 var ceJobs = {};
 var notificationCount = 0;
+var authData = {};
 
 // GH Linkage table
 var ghLinks = new links.Linkage();
 
 // XXX temp, or add date
 var lastEvent = {"h": 0, "m": 0, "s": 0 };
+
+// Will contain parts of the last link that was deleted.
+// Add: delete card.  Clear: any notification != delete issue.
+// var justDeleted = {};
 
 
 var router = express.Router();
@@ -35,20 +43,75 @@ initGH();
 // XXX sys-wide init like this needs sys-wide ceServer auth for all GH apps
 //     worst case, init on first call
 async function initGH() {
-    let installClient = [-1, "CE SERVER INIT", -1, -1, -1];
+    authData.ic  = -1;                // installation client for octokit    0
+    authData.who = "CE SERVER INIT";  // which event is underway            1
+    authData.api = -1;                // api path for aws                   2
+    authData.cog = -1;                // cognito id token                   3
+    authData.pat = -1;                // personal access token for gh       -
+    authData.job = -1;                // currently active job id            4
 
     // XXX Generally, will not be testOwner, testRepo
-    await initAuth( installClient, config.TEST_OWNER, config.TEST_REPO  );
-    ghLinks.init( installClient, config.TEST_OWNER );
+    await initAuth( authData, config.TEST_OWNER, config.TEST_REPO  );
+    ghLinks.init( authData, config.TEST_OWNER );
 }
 
-// XXX can reduce amount of work - auths are re-acquired willy-nilly here.
-async function initAuth( installClient, owner, repo ) {
-    assert( installClient.length == 5 );
-    installClient[0] = await auth.getInstallationClient( owner, repo, config.CE_USER );
-    installClient[2] = await utils.getAPIPath() + "/find";
-    installClient[3] = await awsAuth.getCogIDToken();
+async function initAuth( authData, owner, repo ) {
+    authData.ic  = await auth.getInstallationClient( owner, repo, config.CE_USER );
+    authData.api = await utils.getAPIPath() + "/find";
+    authData.cog = await awsAuth.getCogIDToken();
+    authData.pat = await auth.getPAT( config.TEST_OWNER );
 }
+
+
+
+
+async function switcher( authData, ghLinks, pd, sender, event, action, tag, res ) {
+    let retVal = "";
+
+    // clear justDeleted every time, unless possibly part of delete issue blast.
+    // if( event != 'issue' || action != 'deleted' ) { justDeleted = {}; }
+    
+    switch( event ) {
+    case 'issue' :
+	{
+	    retVal = await issues.handler( authData, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
+	}
+	break;
+    case 'project_card' :
+	{
+	    retVal = await cards.handler( authData, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Card Handler failed.", e ));
+	}
+	break;
+    case 'project' :
+	{
+	    retVal = await projects.handler( authData, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Project Handler failed.", e ));
+	}
+	break;
+    case 'project_column' :
+	{
+	    retVal = await columns.handler( authData, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Column Handler failed.", e ));
+	}
+	break;
+    case 'label' :
+	{
+	    retVal = await labels.handler( authData, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Label Handler failed.", e ));
+	}
+	break;
+    default:
+	{
+	    console.log( "Event unhandled", event );
+	    retVal = res.json({ status: 400 });
+	    break;
+	}
+    }
+    getNextJob( authData, pd, sender, res );	
+}
+
 
 
 // Notifications from GH webhooks
@@ -58,9 +121,11 @@ router.post('/:location?', async function (req, res) {
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, req.body, res ); }
     
     console.log( "" );
-    let event    = req.headers['x-github-event'];
     let action   = req.body['action'];
-    
+    let event    = req.headers['x-github-event'];
+
+    if( event == "issues" )  { event = "issue"; }
+
     let sender  = req.body['sender']['login'];
     if( sender == config.CE_BOT) {
 	console.log( "Notification for", event, action, "Bot-sent, skipping." );
@@ -70,11 +135,10 @@ router.post('/:location?', async function (req, res) {
     let fullName = req.body['repository']['full_name'];
     let repo     = req.body['repository']['name'];
     let owner    = req.body['repository']['owner']['login'];
-    let retVal   = "";
 
     let tag = "";
     let source = "<";
-    if( event == "issues" )    {
+    if( event == "issue" )    {
 	tag = (req.body['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
 	source += "issue:";
     }
@@ -91,26 +155,29 @@ router.post('/:location?', async function (req, res) {
 	}
 	tag = tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
     }
+    else {
+	source += event + ":";
+
+	console.log( event );
+	if( !req.body.hasOwnProperty( event ) ) { console.log( req.body ); }
+
+	// XXX will this interfere with gh lookups by name? esp for label?
+	req.body[event].name.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+	tag = req.body[event].name;
+    }
     source += action+" "+tag+"> ";
     let jobId = utils.randAlpha(10);
-
-    let newStamp = "";
-    if     ( req.body.hasOwnProperty( 'project_card' ) ) { newStamp = req.body.project_card.updated_at; }
-    else if( req.body.hasOwnProperty( 'issue' ))         { newStamp = req.body.issue.updated_at; }
-    else if( req.body.hasOwnProperty( 'project' ))       { newStamp = req.body.project.updated_at; }
-    else { console.log( "XXX New event, update_at exists?", event, req.body ); }
-    
-    console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
-
-    // leave early for events not handled here
-    if( event == "project" ) { return res.end(); }
 
     notificationCount++;
     if( notificationCount % 20 == 0 ) { ghLinks.show(); }
 
+    let newStamp = req.body[event].updated_at;
+    if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }      // label create doesn't have this
+    console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
+
     /*
-    // biggest issues seem to be a stamp labeling issue within GH - maybe different clocks?
-    // Look for out of order GH notifications.  Note the timestamp is only to within 1 second...
+    // Look for out of order GH notifications.  Note the timestamp is only to within 1 second. 
+    // Unfortunately, GH timestamps can vary by up to 8s.. different clocks?
     let tdiff = utils.getTimeDiff( lastEvent, newStamp );  
     if( tdiff < 0 ) {
 	console.log( "\n\n\n!!!!!!!!!!!!!" );
@@ -119,21 +186,19 @@ router.post('/:location?', async function (req, res) {
     }
     */
     
-    // installClient is pent [installationAccessToken, creationSource, apiPath, cognitoIdToken, jobId]
     // this first jobId is set by getNext to reflect the proposed next job.
-    // let installClient = [-1, source, apiPath, idToken, jobId]; 
-    let installClient = [-1, source, -1, -1, jobId];
-    await initAuth( installClient, owner, repo );
+    authData.who = source;
+    authData.job = jobId;
 
     // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
-    let jobData = utils.checkQueue( ceJobs, installClient, event, sender, req.body, tag );
+    let jobData = utils.checkQueue( ceJobs, authData, event, sender, req.body, tag );
     assert( jobData != -1 );
-    if( installClient[4] != jobData.QueueId ) {
-	console.log( installClient[1], "Sender busy with job#", jobData.QueueId );
+    if( authData.job != jobData.QueueId ) {
+	console.log( authData.who, "Sender busy with job#", jobData.QueueId );
 	return res.end();
     }
-    console.log( installClient[1], "job Q clean, start-er-up" );
+    console.log( authData.who, "job Q clean, start-er-up" );
     
     let pd          = new peqData.PeqData();
     pd.GHOwner      = owner;
@@ -141,22 +206,8 @@ router.post('/:location?', async function (req, res) {
     pd.reqBody      = req.body;
     pd.GHFullName   = req.body['repository']['full_name'];
 
-    if( event == "issues" ) {
-	retVal = await issues.handler( installClient, ghLinks, pd, action, tag )
-	    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
-	getNextJob( installClient, pd, sender );	
-    }
-    else if( event == "project_card" ) {
-	retVal = await cards.handler( installClient, ghLinks, pd, action, tag )
-	    .catch( e => console.log( "Error.  Card Handler failed.", e ));
-	getNextJob( installClient, pd, sender );	
-    }
-    else {
-	console.log( "Event unhandled", event );
-	retVal = res.json({ status: 400 });
-	getNextJob( installClient, pd, sender );	
-    }
-
+    await switcher( authData, ghLinks, pd, sender, event, action, tag, res );
+    
     // avoid socket hangup error, response undefined
     // return retVal;
     return res.end();
@@ -165,8 +216,8 @@ router.post('/:location?', async function (req, res) {
 
 // Without this call, incoming non-bot jobs that were delayed would not get executed.
 // Only this call will remove from the queue before getting next.  
-async function getNextJob( installClient, pdOld, sender ) {
-    let jobData = await utils.getFromQueue( ceJobs, installClient, pdOld.GHFullName, sender );
+async function getNextJob( authData, pdOld, sender, res ) {
+    let jobData = await utils.getFromQueue( ceJobs, authData, pdOld.GHFullName, sender );
     if( jobData != -1 ) {
 
 	// New job, new pd
@@ -176,25 +227,23 @@ async function getNextJob( installClient, pdOld, sender ) {
 	pd.reqBody      = jobData.ReqBody;
 	pd.GHFullName   = jobData.ReqBody['repository']['full_name'];
 	
-	// Need a new installClient, else source for non-awaited actions is overwritten
-	let ic = [installClient[0], "", installClient[2], installClient[3], jobData.QueueId ];
-	ic[1] = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	console.log( "\n\n\n", installClient[1], "Got next job:", ic[1] );
+	// Need a new authData, else source for non-awaited actions is overwritten
+	let ic = {};
+	ic.ic  = authData.ic;
+	ic.who = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	ic.api = authData.api;
+	ic.cog = authData.cog;
+	ic.pat = authData.pat;
+	ic.job = jobData.QueueId;
 
-	if( jobData.Handler == "issues" ) {
-	    await issues.handler( ic, ghLinks, pd, jobData.Action, jobData.Tag )
-	    	.catch( e => console.log( "Error.  Issue Handler failed.", e ));
-	}
-	else if( jobData.Handler == "project_card" ) {
-	    await cards.handler( ic, ghLinks, pd, jobData.Action, jobData.Tag )
-	    	.catch( e => console.log( "Error.  Card Handler failed.", e ));
-	}
-	else                                         { assert( false ); }
+	console.log( "\n\n\n", authData.who, "Got next job:", ic.who );
 
-	getNextJob( ic, pd, sender );
+	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res );
+
+	getNextJob( ic, pd, sender, res );
     }
     else {
-	console.log( installClient[1], "jobs done" );
+	console.log( authData.who, "jobs done" );
 	ghLinks.show();	
     }
     return;

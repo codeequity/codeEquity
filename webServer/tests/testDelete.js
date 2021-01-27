@@ -31,14 +31,12 @@ async function runTests( ghLinks ) {
     pd.GHRepo       = config.TEST_REPO;
     pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
 
-    let token = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
-    let PAT   = await auth.getPAT( pd.GHOwner );
-    let source = "<TEST: Delete> ";
-
-    // installClient is quad [installationAccessToken, creationSource, apiPath, cognitoIdToken]
-    let apiPath = utils.getAPIPath() + "/find";
-    let idToken = await awsAuth.getCogIDToken();
-    let installClient = [token, source, apiPath, idToken];
+    let authData = {};
+    authData.ic  = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
+    authData.pat = await auth.getPAT( pd.GHOwner );
+    authData.who = "<TEST: Delete> ";
+    authData.api = await( utils.getAPIPath() ) + "/find";
+    authData.cog = await awsAuth.getCogIDToken();
 
     // Delete all issues, cards, projects, columns, labels.
     // Eeek.  This works a little too well.  Make sure the repo is expected.
@@ -60,9 +58,9 @@ async function runTests( ghLinks ) {
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     console.log( "Removing all issues. " );
     let issues = [];
-    await installClient[0].paginate( installClient[0].issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
+    await authData.ic.paginate( authData.ic.issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
 	.then( results  => { issues = results.map((res) => res.node_id ); })
-	.catch( e => { console.log( installClient[1], "Problem in listIssues", e ); });
+	.catch( e => { console.log( authData.who, "Problem in listIssues", e ); });
     console.log( "Issue nodeIds", issues );
 
     // XXX Could probably do this in one fel swoop, but for now
@@ -72,7 +70,7 @@ async function runTests( ghLinks ) {
 	let variables = {"id": nodeId };
 	query = JSON.stringify({ query, variables });
 
-	let res = await utils.postGH( PAT, endpoint, query );
+	let res = await utils.postGH( authData.pat, endpoint, query );
 	console.log( res.data );
     }
 
@@ -81,14 +79,14 @@ async function runTests( ghLinks ) {
     // Get all existing projects in repo for deletion
     console.log( "Removing all Projects. " );
     let projIds = [];
-    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
+    await authData.ic.paginate( authData.ic.projects.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
 	.then((projects) => { projIds = projects.map((project) => project.id ); })
-	.catch( e => { console.log( installClient[1], "Problem in listProjects", e ); });
+	.catch( e => { console.log( authData.who, "Problem in listProjects", e ); });
     console.log( "ProjIds", projIds );
     
     for( const projId of projIds ) {
-	await ( installClient[0].projects.delete( {project_id: projId}) )
-	    .catch( e => { console.log( installClient[1], "Problem in delete Project", e ); });
+	await ( authData.ic.projects.delete( {project_id: projId}) )
+	    .catch( e => { console.log( authData.who, "Problem in delete Project", e ); });
     }
 
     await utils.sleep( 3000 );
@@ -96,19 +94,19 @@ async function runTests( ghLinks ) {
     // Get all peq labels in repo for deletion
     console.log( "Removing all PEQ Labels. " );
     let labelNames = [];
-    await installClient[0].paginate( installClient[0].issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
+    await authData.ic.paginate( authData.ic.issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
 	.then((labels) => {
 	    for( const label of labels ) {
 		if( ghSafe.parseLabelDescr( [label.description] ) > 0 ) { labelNames.push( label.name ); }
 		else if( label.name == config.POPULATE )                { labelNames.push( label.name ); }
 	    }
 	})
-	.catch( e => { console.log( installClient[1], "Problem in listLabels", e ); });
+	.catch( e => { console.log( authData.who, "Problem in listLabels", e ); });
     console.log( "Labels", labelNames );
 
     for( const label of labelNames ) {
-	await ( installClient[0].issues.deleteLabel( { owner: pd.GHOwner, repo: pd.GHRepo, name: label }) )
-	    .catch( e => { console.log( installClient[1], "Problem in delete label", e ); });
+	await ( authData.ic.issues.deleteLabel( { owner: pd.GHOwner, repo: pd.GHRepo, name: label }) )
+	    .catch( e => { console.log( authData.who, "Problem in delete label", e ); });
     }
 
 
@@ -122,33 +120,33 @@ async function runTests( ghLinks ) {
 
     // PActions raw and otherwise
     // Note: bot, ceServer and GHOwner may have pacts.  Just clean out all.
-    let pacts = await utils.getPActs( installClient, {"GHRepo": pd.GHFullName} );
+    let pacts = await utils.getPActs( authData, {"GHRepo": pd.GHFullName} );
     let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
     console.log( "Dynamo bot PActIds", pactIds );
-    await utils.cleanDynamo( installClient, "CEPEQActions", pactIds );
-    await utils.cleanDynamo( installClient, "CEPEQRaw", pactIds );
+    await utils.cleanDynamo( authData, "CEPEQActions", pactIds );
+    await utils.cleanDynamo( authData, "CEPEQRaw", pactIds );
 
 
     // PEQs
-    let peqs =  await utils.getPeqs( installClient, { "GHRepo": pd.GHFullName });
+    let peqs =  await utils.getPeqs( authData, { "GHRepo": pd.GHFullName });
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
     console.log( "Dynamo PEQ ids", peqIds );
-    await utils.cleanDynamo( installClient, "CEPEQs", peqIds );
+    await utils.cleanDynamo( authData, "CEPEQs", peqIds );
 
     // Linkages
     // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
     console.log( "Remove links" );
-    await tu.remLinks( installClient, ghLinks, pd.GHFullName );
-    let links  = await tu.getLinks( installClient, ghLinks, { "repo": pd.GHFullName } );
+    await tu.remLinks( authData, ghLinks, pd.GHFullName );
+    let links  = await tu.getLinks( authData, ghLinks, { "repo": pd.GHFullName } );
     if( links != -1 ) { console.log( links ); }
     assert( links == -1 );
     
     
     // RepoStatus
-    let status = await utils.getRepoStatus( installClient, pd.GHFullName );
+    let status = await utils.getRepoStatus( authData, pd.GHFullName );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
-    await utils.cleanDynamo( installClient, "CERepoStatus", statusIds );
+    await utils.cleanDynamo( authData, "CERepoStatus", statusIds );
 
 }
 

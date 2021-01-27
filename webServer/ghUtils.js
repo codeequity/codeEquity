@@ -29,48 +29,56 @@ var githubSafe = {
 	return theOnePEQ( labels );
     },
 
-    validatePEQ: function( installClient, repo, issueId, title, projId ) {
-	return validatePEQ( installClient, repo, issueId, title, projId );
+    validatePEQ: function( authData, repo, issueId, title, projId ) {
+	return validatePEQ( authData, repo, issueId, title, projId );
     },
 
-    createIssue: function( installClient, owner, repo, title, labels, allocation ) {
-	return createIssue( installClient, owner, repo, title, labels, allocation );
+    createIssue: function( authData, owner, repo, title, labels, allocation ) {
+	return createIssue( authData, owner, repo, title, labels, allocation );
     },
 
-    createProjectCard: function( installClient, columnId, issueId, justId ) {
-	return createProjectCard( installClient, columnId, issueId, justId );
+    createProjectCard: function( authData, columnId, issueId, justId ) {
+	return createProjectCard( authData, columnId, issueId, justId );
     },
 
-    removeLabel: function( installClient, owner, repo, issueNum, label ) {
-	return removeLabel( installClient, owner, repo, issueNum, label );
+    removeLabel: function( authData, owner, repo, issueNum, label ) {
+	return removeLabel( authData, owner, repo, issueNum, label );
     },
 
-    updateTitle: function( installClient, owner, repo, issueNum, title ) {
-	return updateTitle( installClient, owner, repo, issueNum, title );
+    removePeqLabel: function( authData, owner, repo, issueNum ) {
+	return removePeqLabel( authData, owner, repo, issueNum );
     },
 
-    addLabel: function( installClient, owner, repo, issueNum, label ) {
-	return addLabel( installClient, owner, repo, issueNum, label );
+    updateTitle: function( authData, owner, repo, issueNum, title ) {
+	return updateTitle( authData, owner, repo, issueNum, title );
     },
 
-    rebuildLabel: function( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
-	return rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel );
+    addLabel: function( authData, owner, repo, issueNum, label ) {
+	return addLabel( authData, owner, repo, issueNum, label );
     },
 
-    splitIssue: function( installClient, owner, repo, issue, splitTag ) {
-	return splitIssue( installClient, owner, repo, issue, splitTag );
+    addComment: function( authData, owner, repo, issueNum, msg ) {
+	return addComment( authData, owner, repo, issueNum, msg );
     },
 
-    rebuildIssue: function( installClient, owner, repo, issue, msg ) {
-	return rebuildIssue( installClient, owner, repo, issue, msg );
+    rebuildLabel: function( authData, owner, repo, issueNum, oldLabel, newLabel ) {
+	return rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel );
     },
 
-    cleanUnclaimed: function( installClient, ghLinks, pd ) {
-	return cleanUnclaimed( installClient, ghLinks, pd );
+    splitIssue: function( authData, owner, repo, issue, splitTag ) {
+	return splitIssue( authData, owner, repo, issue, splitTag );
+    },
+
+    rebuildIssue: function( authData, owner, repo, issue, msg ) {
+	return rebuildIssue( authData, owner, repo, issue, msg );
+    },
+
+    cleanUnclaimed: function( authData, ghLinks, pd ) {
+	return cleanUnclaimed( authData, ghLinks, pd );
     },
     
-    updateIssue: function( installClient, owner, repo, issueNum, newState ) {
-	return updateIssue( installClient, owner, repo, issueNum, newState );
+    updateIssue: function( authData, owner, repo, issueNum, newState ) {
+	return updateIssue( authData, owner, repo, issueNum, newState );
     },
     
 }
@@ -78,48 +86,52 @@ var githubSafe = {
 
 var githubUtils = {
 
-    checkRateLimit: function( installClient ) {
-	return checkRateLimit( installClient );
+    checkRateLimit: function( authData ) {
+	return checkRateLimit( authData );
     },
 
-    checkIssueExists: function( installClient, owner, repo, title ) {
-	return checkIssueExists( installClient, owner, repo, title );
+    checkIssueExists: function( authData, owner, repo, title ) {
+	return checkIssueExists( authData, owner, repo, title );
     },
 
-    getAssignees: function( installClient, owner, repo, issueNum ) {
-	return getAssignees( installClient, owner, repo, issueNum );
+    getAssignees: function( authData, owner, repo, issueNum ) {
+	return getAssignees( authData, owner, repo, issueNum );
     },
 
-    getIssue: function( installClient, owner, repo, issueNum ) {
-	return getIssue( installClient, owner, repo, issueNum );
+    checkIssue: function( authData, owner, repo, issueNum ) {
+	return checkIssue( authData, owner, repo, issueNum );  
     },
 
-    getCard: function( installClient, cardId ) {
-	return getCard( installClient, cardId );
+    getIssue: function( authData, owner, repo, issueNum ) {
+	return getIssue( authData, owner, repo, issueNum );
     },
 
-    getColumns: function( installClient, projId ) {
-	return getColumns( installClient, projId );
+    getCard: function( authData, cardId ) {
+	return getCard( authData, cardId );
     },
 
-    getFullIssue: function( installClient, owner, repo, issueNum ) {
-	return getFullIssue( installClient, owner, repo, issueNum );
+    getColumns: function( authData, projId ) {
+	return getColumns( authData, projId );
     },
 
-    findOrCreateLabel: function( installClient, owner, repo, allocation, peqHumanLabelName, peqValue ) {
-	return findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue );
+    getFullIssue: function( authData, owner, repo, issueNum ) {
+	return getFullIssue( authData, owner, repo, issueNum );
     },
 
-    removeCard: function( installClient, cardId ) {
-	return removeCard( installClient, cardId );
+    findOrCreateLabel: function( authData, owner, repo, allocation, peqHumanLabelName, peqValue ) {
+	return findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue );
+    },
+
+    removeCard: function( authData, cardId ) {
+	return removeCard( authData, cardId );
     },
 	
-    rebuildCard: function( installClient, owner, repo, colId, origCardId, issueData ) {
-	return rebuildCard( installClient, owner, repo, colId, origCardId, issueData );
+    rebuildCard: function( authData, owner, repo, colId, origCardId, issueData ) {
+	return rebuildCard( authData, owner, repo, colId, origCardId, issueData );
     },
 
-    createUnClaimedCard: function( installClient, owner, repo, issueId ) {
-	return createUnClaimedCard( installClient, owner, repo, issueId );
+    createUnClaimedCard: function( authData, owner, repo, issueId, accr ) {
+	return createUnClaimedCard( authData, owner, repo, issueId, accr );
     },
 
     getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
@@ -130,63 +142,63 @@ var githubUtils = {
 	return getRepoColsGQL( PAT, owner, repo, data, cursor );
     },
 
-    populateCELinkage: function( installClient, ghLinks, pd ) {
-	return populateCELinkage( installClient, ghLinks, pd );
+    populateCELinkage: function( authData, ghLinks, pd ) {
+	return populateCELinkage( authData, ghLinks, pd );
     },
 
     populateRequest: function( labels ) {
 	return populateRequest( labels );
     },
 
-    getCEProjectLayout: function( installClient, ghLinks, issueId ) {
-	return getCEProjectLayout( installClient, ghLinks, issueId );
+    getCEProjectLayout: function( authData, ghLinks, issueId ) {
+	return getCEProjectLayout( authData, ghLinks, issueId );
     },
     
-    moveCard: function( installClient, cardId, colId ) {
-	return moveCard( installClient, cardId, colId ); 
+    moveCard: function( authData, cardId, colId ) {
+	return moveCard( authData, cardId, colId ); 
     },
 
-    checkReserveSafe: function( installClient, owner, repo, issueNum, colNameIndex ) {
-	return checkReserveSafe( installClient, owner, repo, issueNum, colNameIndex );
+    checkReserveSafe: function( authData, owner, repo, issueNum, colNameIndex ) {
+	return checkReserveSafe( authData, owner, repo, issueNum, colNameIndex );
     },
     
-    moveIssueCard: function( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout ) {
-	return moveIssueCard( installClient, ghLinks, owner, repo, issueId, action, ceProjectLayout ); 
+    moveIssueCard: function( authData, ghLinks, owner, repo, issueId, action, ceProjectLayout ) {
+	return moveIssueCard( authData, ghLinks, owner, repo, issueId, action, ceProjectLayout ); 
     },
 
-    getProjectName: function( installClient, projId ) {
-	return getProjectName( installClient, projId ); 
+    getProjectName: function( authData, projId ) {
+	return getProjectName( authData, projId ); 
     },
 
-    getColumnName: function( installClient, colId ) {
-	return getColumnName( installClient, colId ); 
+    getColumnName: function( authData, colId ) {
+	return getColumnName( authData, colId ); 
     },
 
 };
 
 
-async function checkRateLimit( installClient ) {
+async function checkRateLimit( authData ) {
 
     // console.log( "Rate limit check currently off" );
     return;
     
-    await( installClient[0].rateLimit.get())
+    await( authData.ic.rateLimit.get())
 	.then( rl => {
 	    console.log( "Core:", rl['data']['resources']['core']['limit'], rl['data']['resources']['core']['remaining'] );
 	    console.log( "Search:", rl['data']['resources']['search']['limit'], rl['data']['resources']['search']['remaining'] );
 	    console.log( "Graphql:", rl['data']['resources']['graphql']['limit'], rl['data']['resources']['graphql']['remaining'] );
 	    console.log( "Integration:", rl['data']['resources']['integration_manifest']['limit'], rl['data']['resources']['integration_manifest']['remaining'] );
 	})
-	.catch( e => { console.log( installClient[1], "Problem in check Rate Limit", e );   });
+	.catch( e => { console.log( authData.who, "Problem in check Rate Limit", e );   });
 }
 
 // XXX paginate
-async function checkIssueExists( installClient, owner, repo, title )
+async function checkIssueExists( authData, owner, repo, title )
 {
     let retVal = false;
 
     // Issue with same title may already exist, in which case, check for label, then point to that issue.
-    await( installClient[0].issues.listForRepo( { owner: owner, repo: repo }))
+    await( authData.ic.issues.listForRepo( { owner: owner, repo: repo }))
 	.then( issues => {
 	    for( issue of issues['data'] ) {
 		if( issue['title'] == title ) {
@@ -196,7 +208,7 @@ async function checkIssueExists( installClient, owner, repo, title )
 	    }
 	})
 	.catch( e => {
-	    console.log( installClient[1], "Problem in checkIssueExists", e );
+	    console.log( authData.who, "Problem in checkIssueExists", e );
 	});
     return retVal;
 }
@@ -204,13 +216,13 @@ async function checkIssueExists( installClient, owner, repo, title )
 // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
 // there are no assignees for card-created issues.. they are added, or created directly from issues.
 // XXX alignment risk - card info could have moved on
-async function getAssignees( installClient, owner, repo, issueNum )
+async function getAssignees( authData, owner, repo, issueNum )
 {
     let retVal = [];
     if( issueNum == -1 ) { console.log( "getAssignees: bad issue number", issueNum ); return retVal; }
 
-    // console.log( installClient[1], "Getting assignees for", owner, repo, issueNum );
-    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+    // console.log( authData.who, "Getting assignees for", owner, repo, issueNum );
+    await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => {
 	    // console.log( issue['data'] );
 	    if( issue['data']['assignees'].length > 0 ) { 
@@ -219,21 +231,31 @@ async function getAssignees( installClient, owner, repo, issueNum )
 		}
 	    }
 	})
-	.catch( e => {
-	    console.log( installClient[1], "Problem in getAssignees", e );
-	});
+	.catch( e => console.log( authData.who, "Problem in getAssignees", e ));
     return retVal;
+}
+
+async function checkIssue( authData, owner, repo, issueNum ) {
+    let issueExists = false;
+    await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+	.then( issue => issueExists = true )
+	.catch( e => {
+	    if( e.status == 410 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
+	    else                  { console.log( authData.who, "Problem in checkIssue", e );        }
+	});
+    
+    return issueExists;
 }
 
 // [id, content]
 // XXX alignment risk - card info could have moved on
-async function getIssue( installClient, owner, repo, issueNum )
+async function getIssue( authData, owner, repo, issueNum )
 {
+    let retVal   = [];
     if( issueNum == -1 ) { return retVal; }
     
-    let issue = await getFullIssue( installClient, owner, repo, issueNum ); 
+    let issue = await getFullIssue( authData, owner, repo, issueNum ); 
     let retIssue = [];
-    let retVal   = [];
     
     retIssue.push( issue.id );
     retVal.push( issue.title );
@@ -245,46 +267,46 @@ async function getIssue( installClient, owner, repo, issueNum )
 }
 
 // XXX alignment risk - card info could have moved on
-async function getFullIssue( installClient, owner, repo, issueNum )
+async function getFullIssue( authData, owner, repo, issueNum )
 {
-    if( issueNum == -1 ) { return retVal; }
+    if( issueNum == -1 ) { return -1; }
     let retIssue = "";
 
-    await( installClient[0].issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+    await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => { retIssue = issue['data']; })
-	.catch( e => { console.log( installClient[1], "Problem in getIssueContent", e ); });
+	.catch( e => { console.log( authData.who, "Problem in getIssueContent", e ); });
     
     return retIssue;
 }
 
 // XXX alignment risk - card info could have moved on
-async function getCard( installClient, cardId ) {
+async function getCard( authData, cardId ) {
     let retCard = -1;
     if( cardId == -1 ) { return retCard; }
     
-    await( installClient[0].projects.getCard( { card_id: cardId } ))
+    await( authData.ic.projects.getCard( { card_id: cardId } ))
 	.then((card) => {  retCard = card.data; } )
-	.catch( e => { console.log( installClient[1], "Get card failed.", e ); });
+	.catch( e => { console.log( authData.who, "Get card failed.", e ); });
     return retCard;
 }
 
-async function getColumns( installClient, projId ) {
+async function getColumns( authData, projId ) {
     let cols = "";
 
-    await( installClient[0].projects.listColumns( { project_id: projId }))
+    await( authData.ic.projects.listColumns( { project_id: projId }))
 	.then( allcols => { cols = allcols['data']; })
-	.catch( e => { console.log( installClient[1], "list columns failed.", e ); });
+	.catch( e => { console.log( authData.who, "list columns failed.", e ); });
 
     return cols;
 }
 
 
-async function splitIssue( installClient, owner, repo, issue, splitTag ) {
+async function splitIssue( authData, owner, repo, issue, splitTag ) {
     console.log( "Split issue" );
     let issueData = [-1,-1];  // issue id, num
     let title = issue.title + " split: " + splitTag;
     
-    await( installClient[0].issues.create( {
+    await( authData.ic.issues.create( {
 	owner:     owner,
 	repo:      repo,
 	title:     title,
@@ -298,25 +320,21 @@ async function splitIssue( installClient, owner, repo, issue, splitTag ) {
 	    issueData[1] = issue['data']['number'];
 	})
 	.catch( e => {
-	    console.log( installClient[1], "Create issue failed.", e );
+	    console.log( authData.who, "Create issue failed.", e );
 	});
 
     let comment = "CodeEquity duplicated this new issue from issue id:" + issue.id.toString() + " on " + utils.getToday().toString();
     comment += " in order to maintain a 1:1 mapping between issues and cards."
-    
-    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
-	.catch( e => {
-	    console.log( installClient[1], "Create issue comment failed.", e );
-	});
-    
+
+    await addComment( authData, owner, repo, issueData[1], comment );
     return issueData;
 }
 
-async function rebuildIssue( installClient, owner, repo, issue, msg ) {
+async function rebuildIssue( authData, owner, repo, issue, msg ) {
     console.log( "Rebuilding issue" );
     let issueData = [-1,-1];  // issue id, num
 
-    await installClient[0].issues.create( {
+    await authData.ic.issues.create( {
 	owner:     owner,
 	repo:      repo,
 	title:     issue.title,
@@ -329,64 +347,64 @@ async function rebuildIssue( installClient, owner, repo, issue, msg ) {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
 	})
-	.catch( e => console.log( installClient[1], "Error.  Create issue failed.", e ));
+	.catch( e => console.log( authData.who, "Error.  Create issue failed.", e ));
 
     let comment = utils.getToday().toString() + ": " + msg;
     
-    await( installClient[0].issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
-	.catch( e =>  console.log( installClient[1], "Error.  Create issue comment failed.", e ));
+    await( authData.ic.issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
+	.catch( e =>  console.log( authData.who, "Error.  Create issue comment failed.", e ));
     
     return issueData;
 }
 
-async function updateIssue( installClient, owner, repo, issueNum, newState ) {
+async function updateIssue( authData, owner, repo, issueNum, newState ) {
     let retVal = false;
     if( issueNum == -1 ) { return retVal; }
 
-    await( installClient[0].issues.update( { owner: owner, repo: repo, issue_number: issueNum, state: newState }))
+    await( authData.ic.issues.update( { owner: owner, repo: repo, issue_number: issueNum, state: newState }))
 	.then( update => {
-	    console.log( installClient[1], "updateIssue done" );
+	    console.log( authData.who, "updateIssue done" );
 	    retVal = true;
 	})
 	.catch( e => {
-	    console.log( installClient[1], "Problem in updateIssue", e );
+	    console.log( authData.who, "Problem in updateIssue", e );
 	});
     return retVal;
 }
 
 
 // XXX (very) low risk for alignment trouble. warn if see same label create/delete on job queue.
-async function findOrCreateLabel( installClient, owner, repo, allocation, peqHumanLabelName, peqValue )
+async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue )
 {
     // does label exist 
     let peqLabel = "";
     let status = 200;
-    await( installClient[0].issues.getLabel( { owner: owner, repo: repo, name: peqHumanLabelName }))
+    await( authData.ic.issues.getLabel( { owner: owner, repo: repo, name: peqHumanLabelName }))
 	.then( label => {
 	    peqLabel = label['data'];
 	})
 	.catch( e => {
 	    status = e['status'];
 	    if( status != 404 ) {
-		console.log( installClient[1], "Get label failed.", e );
+		console.log( authData.who, "Get label failed.", e );
 	    }
 	});
     
     // if not, create
     if( status == 404 ) {
-	console.log( installClient[1], "Label not found, creating.." );
+	console.log( authData.who, "Label not found, creating.." );
 
 	if( peqHumanLabelName == config.POPULATE ) {
-	await( installClient[0].issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
+	await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
 	    .then( label => { peqLabel = label['data']; })
-	    .catch( e => { console.log( installClient[1], "Create label failed.", e );  });
+	    .catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
 	else {
 	    let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
 	    let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
-	    await( installClient[0].issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
+	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
 		.then( label => { peqLabel = label['data']; })
-		.catch( e => { console.log( installClient[1], "Create label failed.", e ); });
+		.catch( e => { console.log( authData.who, "Create label failed.", e ); });
 	}
     }
 
@@ -396,9 +414,9 @@ async function findOrCreateLabel( installClient, owner, repo, allocation, peqHum
 
 
 // New information being pushed into GH - alignment safe.
-async function createIssue( installClient, owner, repo, title, labels, allocation )
+async function createIssue( authData, owner, repo, title, labels, allocation )
 {
-    console.log( installClient[1], "Creating issue, from alloc?", allocation );
+    console.log( authData.who, "Creating issue, from alloc?", allocation );
     let issueData = [-1,-1];  // issue id, num
 
     let body = "";
@@ -410,13 +428,13 @@ async function createIssue( installClient, owner, repo, title, labels, allocatio
     }
     
     // NOTE: will see several notifications are pending here, like issue:open, issue:labelled
-    await( installClient[0].issues.create( { owner: owner, repo: repo, title: title, labels: labels, body: body } ))
+    await( authData.ic.issues.create( { owner: owner, repo: repo, title: title, labels: labels, body: body } ))
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
 	})
 	.catch( e => {
-	    console.log( installClient[1], "Create issue failed.", e );
+	    console.log( authData.who, "Create issue failed.", e );
 	});
     
     return issueData;
@@ -597,14 +615,13 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 // Would be soooo much better if Octokit/Github had reverse link from issue to card.
 // newborn issues not populated.  newborn cards not populated.  Just linkages.
 // XXX something like this really needs graphQL
-async function populateCELinkage( installClient, ghLinks, pd )
+async function populateCELinkage( authData, ghLinks, pd )
 {
-    console.log( installClient[1], "Populate CE Linkage start" );
-    assert( !utils.checkPopulated( installClient, pd.GHFullName ) != -1);
+    console.log( authData.who, "Populate CE Linkage start" );
+    assert( !utils.checkPopulated( authData, pd.GHFullName ) != -1);
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    let PAT     = await auth.getPAT( pd.GHOwner );
-    let linkage = await ghLinks.initOneRepo( installClient, pd.GHFullName, PAT );
+    let linkage = await ghLinks.initOneRepo( authData, pd.GHFullName );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
@@ -633,22 +650,22 @@ async function populateCELinkage( installClient, ghLinks, pd )
     for( const link of one2Many ) {
 	pd.GHIssueId  = link[3];
 	pd.GHIssueNum = link[2];
-	await utils.resolve( installClient, ghLinks, pd, "???" );
+	await utils.resolve( authData, ghLinks, pd, "???" );
     }
     
-    await utils.setPopulated( installClient, pd.GHFullName );
-    console.log( installClient[1], "Populate CE Linkage Done" );
+    await utils.setPopulated( authData, pd.GHFullName );
+    console.log( authData.who, "Populate CE Linkage Done" );
     return true;
 }
 
 
-async function removeCard( installClient, cardId ) {
-    await installClient[0].projects.deleteCard( { card_id: cardId } )
-	.catch( e => console.log( installClient[1], "Remove card failed.", e ));
+async function removeCard( authData, cardId ) {
+    await authData.ic.projects.deleteCard( { card_id: cardId } )
+	.catch( e => console.log( authData.who, "Remove card failed.", e ));
 }
 
 // XXX alignment risk - card info could have moved on
-async function rebuildCard( installClient, owner, repo, colId, origCardId, issueData ) {
+async function rebuildCard( authData, owner, repo, colId, origCardId, issueData ) {
     assert( issueData.length == 2 );
     let issueId  = issueData[0];
     let issueNum = issueData[1];
@@ -657,49 +674,68 @@ async function rebuildCard( installClient, owner, repo, colId, origCardId, issue
     // If card has not been tracked, colId could be wrong.  relocate.
     // Note: do not try to avoid this step during populateCE - creates a false expectation (i.e. ce is tracking) for any simple carded issue.
     if( colId == -1 ) {
-	let projCard = await getCard( installClient, origCardId ); 
+	let projCard = await getCard( authData, origCardId ); 
 	colId = projCard.column_url.split('/').pop();
     }
     
     // create issue-linked project_card, requires id not num
-    let newCardId = await createProjectCard( installClient, colId, issueId, true );
+    let newCardId = await createProjectCard( authData, colId, issueId, true );
     assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
     
     // remove orig card
     // Note: await waits for GH to finish - not for notification to be received by webserver.
-    removeCard( installClient, origCardId );
+    removeCard( authData, origCardId );
 
     return newCardId;
 }
 
-async function updateTitle( installClient, owner, repo, issueNum, title ) {
-    await installClient[0].issues.update({ owner: owner, repo: repo, issue_number: issueNum, title: title  } )
-	.catch( e => console.log( installClient[1], "Error.  Update title failed.", e ));
+async function updateTitle( authData, owner, repo, issueNum, title ) {
+    await authData.ic.issues.update({ owner: owner, repo: repo, issue_number: issueNum, title: title  } )
+	.catch( e => console.log( authData.who, "Error.  Update title failed.", e ));
 }
 
-async function removeLabel( installClient, owner, repo, issueNum, label ) {
-    await installClient[0].issues.removeLabel({ owner: owner, repo: repo, issue_number: issueNum, name: label.name  } )
-	.catch( e => { console.log( installClient[1], "Remove label from issue failed.", e ); });
+async function removeLabel( authData, owner, repo, issueNum, label ) {
+    await authData.ic.issues.removeLabel({ owner: owner, repo: repo, issue_number: issueNum, name: label.name  } )
+	.catch( e => { console.log( authData.who, "Remove label from issue failed.", e ); });
 }
 
-async function addLabel( installClient, owner, repo, issueNum, label ) {
-    await installClient[0].issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [label.name] })
-	.catch( e => { console.log( installClient[1], "Add label failed.", e ); });
+async function removePeqLabel( authData, owner, repo, issueNum ) {
+    let labels = await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
+	.catch( e => console.log( authData.who, "Get labels for issue failed.", e ));
+
+    if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } // XXX paginate? grump grump }
+
+    let peqLabel = {};
+    for( const label of labels.data ) {
+	const tval = parseLabelDescr( [label.description] );
+	if( tval > 0 ) { peqLabel = label; break; }
+    }
+    await removeLabel( authData, owner, repo, issueNum, peqLabel );
 }
 
-async function rebuildLabel( installClient, owner, repo, issueNum, oldLabel, newLabel ) {
-    await removeLabel( installClient, owner, repo, issueNum, oldLabel );
-    await addLabel( installClient, owner, repo, issueNum, newLabel );
+async function addLabel( authData, owner, repo, issueNum, label ) {
+    await authData.ic.issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [label.name] })
+	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
+}
+
+async function addComment( authData, owner, repo, issueNum, msg ) {
+    await( authData.ic.issues.createComment( { owner: owner, repo: repo, issue_number: issueNum, body: msg } ))
+	.catch( e => console.log( authData.who, "Create issue comment failed.", e ));
+}
+
+async function rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel ) {
+    await removeLabel( authData, owner, repo, issueNum, oldLabel );
+    await addLabel( authData, owner, repo, issueNum, newLabel );
 }
 
 
-async function createProjectCard( installClient, columnId, issueId, justId )
+async function createProjectCard( authData, columnId, issueId, justId )
 {
     let newCard = -1;
 
-    await( installClient[0].projects.createCard({ column_id: columnId, content_id: issueId, content_type: 'Issue' }))
+    await( authData.ic.projects.createCard({ column_id: columnId, content_id: issueId, content_type: 'Issue' }))
 	.then( card => { newCard = card['data']; })
-	.catch( e => { console.log( installClient[1], "Create issue-linked project card failed.", e ); });
+	.catch( e => { console.log( authData.who, "Create issue-linked project card failed.", e ); });
 
     if( justId ) { return newCard['id']; }
     else         { return newCard; }
@@ -707,76 +743,80 @@ async function createProjectCard( installClient, columnId, issueId, justId )
 
 
 // XXX alignment risk
-// XXX could look in linkage for unclaimed proj / col ids .. ?
-async function createUnClaimedCard( installClient, owner, repo, issueId )
+// XXX could look in linkage for unclaimed proj / col ids .. ?  Could use proj/cols data in linkage.
+async function createUnClaimedCard( authData, owner, repo, issueId, accr )
 {
     let unClaimedProjId = -1;
+    const makeAccrued = (typeof accr === 'undefined') ? false : true; 
     const unClaimed = config.UNCLAIMED;
 
     // Get, or create, unclaimed project id
     // Note.  pagination removes .headers, .data and etc.
-    await installClient[0].paginate( installClient[0].projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
+    await authData.ic.paginate( authData.ic.projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
 	.then((projects) => {
 	    for( project of projects ) {
 		if( project.name == unClaimed ) { unClaimedProjId = project.id; }
 	    }})
-	.catch( e => { console.log( installClient[1], "List projects failed.", e ); });
+	.catch( e => { console.log( authData.who, "List projects failed.", e ); });
     if( unClaimedProjId == -1 ) {
 	console.log( "Creating UnClaimed project" );
 	let body = "Temporary storage for issues with cards that have not yet been assigned to a column (triage)";
-	await installClient[0].projects.createForRepo({ owner: owner, repo: repo, name: unClaimed, body: body })
+	await authData.ic.projects.createForRepo({ owner: owner, repo: repo, name: unClaimed, body: body })
 	    .then((project) => { unClaimedProjId = project.data.id; })
-	    .catch( e => { console.log( installClient[1], "Create unclaimed project failed.", e ); });
+	    .catch( e => { console.log( authData.who, "Create unclaimed project failed.", e ); });
     }
 
 
     // Get, or create, unclaimed column id
+    let colName = makeAccrued ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed; 
     let unClaimedColId = -1;
-    await installClient[0].paginate( installClient[0].projects.listColumns, { project_id: unClaimedProjId, per_page: 100 } )
+    await authData.ic.paginate( authData.ic.projects.listColumns, { project_id: unClaimedProjId, per_page: 100 } )
 	.then((columns) => {
 	    for( column of columns ) {
-		if( column.name == unClaimed ) { unClaimedColId = column.id; }
+		if( column.name == colName ) { unClaimedColId = column.id; }
 	    }})
-    	.catch( e => { console.log( installClient[1], "List Columns failed.", e ); });
+    	.catch( e => { console.log( authData.who, "List Columns failed.", e ); });
     if( unClaimedColId == -1 ) {
 	console.log( "Creating UnClaimed column" );
-	await installClient[0].projects.createColumn({ project_id: unClaimedProjId, name: unClaimed })
+	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
 	    .then((column) => { unClaimedColId = column.data.id; })
-	    .catch( e => { console.log( installClient[1], "Create unclaimed column failed.", e ); });
+	    .catch( e => { console.log( authData.who, "Create unclaimed column failed.", e ); });
     }
-
+    
     assert( unClaimedProjId != -1 );
     assert( unClaimedColId != -1  );
-    // console.log( "unclaimed p,c", unClaimedProjId, unClaimedColId );
-    
+
     // create card in unclaimed:unclaimed
-    let card = await createProjectCard( installClient, unClaimedColId, issueId, false );
+    let card = await createProjectCard( authData, unClaimedColId, issueId, false );
     return card;
 }
 
+// NOTE: ONLY call during new situated card.  This is the only means to move accr out of unclaimed safely.
 // Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
-async function cleanUnclaimed( installClient, ghLinks, pd ) {
-    console.log( installClient[1], "cleanUnclaimed", pd.GHIssueId );
-    let link = ghLinks.getUniqueLink( installClient, pd.GHIssueId );
+async function cleanUnclaimed( authData, ghLinks, pd ) {
+    console.log( authData.who, "cleanUnclaimed", pd.GHIssueId );
+    let link = ghLinks.getUniqueLink( authData, pd.GHIssueId );
     if( link == -1 ) { return; }
-    if( link.GHColumnName != config.UNCLAIMED ) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
+    let allowed = [ config.UNCLAIMED, config.PROJ_ACCR ];
+    if( !allowed.includes( link.GHColumnName )) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
 	
     assert( link.GHCardId != -1 );
-    assert( link.GHColumnName != config.EMPTY );
 
     console.log( "Found unclaimed" );
-    await installClient[0].projects.deleteCard( { card_id: link.GHCardId } )
+    await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
 	.catch( e => console.log( "Error.  Card not deleted", e ));
     
     // Remove turds, report.  
-    ghLinks.removeLinkage({ "installClient": installClient, "issueId": pd.GHIssueId, "cardId": link.GHCardId });
-    
-    // do not delete peq - set it inactive.
-    let daPEQ = await utils.getPeq( installClient, pd.GHIssueId );
-    await utils.removePEQ( installClient, daPEQ.PEQId );
+    ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId });
+
+
+    // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
+    /*
+    let daPEQ = await utils.getPeq( authData, pd.GHIssueId );
+    await utils.removePEQ( authData, daPEQ.PEQId );
 
     utils.recordPEQAction(
-	installClient,
+	authData,
 	config.EMPTY,     // CE UID
 	pd.GHCreator,     // gh user name
 	pd.GHFullName,        
@@ -787,18 +827,19 @@ async function cleanUnclaimed( installClient, ghLinks, pd ) {
 	utils.getToday(), // entryDate
 	pd.reqBody        // raw
     );
+    */
 }
 
 // XXX
 /*
 // This is a peq issue being reopened.  Can't reopen into PEND, so where to put it?
-async function getCurCol( installClient, ghLinks, issueId ) {
+async function getCurCol( authData, ghLinks, issueId ) {
 
     let curCol  = -1;
     // XXX expensive
-    const peq   = await utils.getPeq( installClient, issueId );
+    const peq   = await utils.getPeq( authData, issueId );
     if( peq == -1 ) { return curCol; }
-    const pacts = await utils.getPActs( installClient, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
+    const pacts = await utils.getPActs( authData, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
 
     // Is psub out of date?
     if( pacts != -1 ) {
@@ -816,7 +857,7 @@ async function getCurCol( installClient, ghLinks, issueId ) {
     }
     else { console.log( "Could not find original column." ); }
 
-    const link = ghLinks.getUniqueLink( installClient, issueId );
+    const link = ghLinks.getUniqueLink( authData, issueId );
     return parseInt( link.flatSource );
 }
 */
@@ -824,14 +865,14 @@ async function getCurCol( installClient, ghLinks, issueId ) {
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
 // If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
 // XXX alignment risk
-async function getCEProjectLayout( installClient, ghLinks, issueId )
+async function getCEProjectLayout( authData, ghLinks, issueId )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
     // XXX Revisit if ever decided to track cols, projects.
     // XXX may be hole in create card from isssue
 
-    let link = ghLinks.getUniqueLink( installClient, issueId );
+    let link = ghLinks.getUniqueLink( authData, issueId );
 
     // moves are only tracked for peq issues
     let projId = link == -1 ? link : parseInt( link['GHProjectId'] );
@@ -843,12 +884,12 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 	curCol = parseInt( link.flatSource );
     }
 
-    console.log( installClient[1], "Found project id: ", projId );
+    console.log( authData.who, "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
 
     let missing = true;
-    await( installClient[0].projects.listColumns({ project_id: projId, per_page: 100 }))
+    await( authData.ic.projects.listColumns({ project_id: projId, per_page: 100 }))
 	.then( columns => {
 	    let foundCount = 0;
 	    for( column of columns['data'] ) {
@@ -870,7 +911,7 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 	    }
 	})
 	.catch( e => {
-	    console.log( installClient[1], "Validate CE Project Layout failed.", e );
+	    console.log( authData.who, "Validate CE Project Layout failed.", e );
 	});
 
     
@@ -892,9 +933,9 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 	    if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
 		const progName = config.PROJ_COLS[ config.PROJ_PROG]; 
 		console.log( "Creating new column:", progName );
-		await installClient[0].projects.createColumn({ project_id: projId, name: progName })
+		await authData.ic.projects.createColumn({ project_id: projId, name: progName })
 		    .then((column) => { curCol = column.data.id; })
-		    .catch( e => { console.log( installClient[1], "Create column failed.", e ); });
+		    .catch( e => { console.log( authData.who, "Create column failed.", e ); });
 	    }
 	}
 
@@ -902,17 +943,17 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 	if( foundReqCol[config.PROJ_PEND + 1] == -1 ) {
 	    let pendName = config.PROJ_COLS[ config.PROJ_PEND ];
 	    console.log( "Creating new column:", pendName );
-	    await installClient[0].projects.createColumn({ project_id: projId, name: pendName })
+	    await authData.ic.projects.createColumn({ project_id: projId, name: pendName })
 		.then((column) => { foundReqCol[config.PROJ_PEND + 1] = column.data.id; })
-		.catch( e => { console.log( installClient[1], "Create column failed.", e ); });
+		.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 	}
 	// Create ACCR if missing
 	if( foundReqCol[config.PROJ_ACCR + 1] == -1 ) {
 	    let accrName = config.PROJ_COLS[ config.PROJ_ACCR ];
 	    console.log( "Creating new column:", accrName );
-	    await installClient[0].projects.createColumn({ project_id: projId, name: accrName })
+	    await authData.ic.projects.createColumn({ project_id: projId, name: accrName })
 		.then((column) => { foundReqCol[config.PROJ_ACCR + 1] = column.data.id; })
-		.catch( e => { console.log( installClient[1], "Create column failed.", e ); });
+		.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 	}
     }
     console.log( "Layout:", foundReqCol );
@@ -921,49 +962,43 @@ async function getCEProjectLayout( installClient, ghLinks, issueId )
 
     
 // issueId?  then verify "plan".  no issueId?  then verify "allocation".  No legal move of accrue.
-async function validatePEQ( installClient, repo, issueId, title, projId ) {
+async function validatePEQ( authData, repo, issueId, title, projId ) {
     let peq = -1;
 
     let peqType = "";
-    if( issueId == -1 ) {
-	peqType = "allocation";
-	peq = await( utils.getPeqFromTitle( installClient, repo, projId, title ));
-    }
-    else {
-	peqType = "plan";
-	peq = await( utils.getPeq( installClient, issueId ));
-    }
+    assert( issueId != -1 );
+    peq = await utils.getPeq( authData, issueId );
 
-    if( peq != -1 && peq['GHIssueTitle'] == title && peq['PeqType'] == peqType && peq['GHRepo'] == repo)  {
-	console.log( installClient[1], "validatePeq success" );
+    if( peq != -1 && peq.GHIssueTitle == title && peq.GHRepo == repo && peq.GHProjectId == projId )  {
+	console.log( authData.who, "validatePeq success" );
     }
     else {
-	console.log( "... oops", peq['GHIssueTitle'], title, peq['PeqType'], "plan", peq['GHRepo'], repo );
+	console.log( "Error.  Peq not valid.", peq.GHIssueTitle, title, peq.GHRepo, repo, peq.GHProjectId, projId );
     }
     return peq;
 }
 
-async function findCardInColumn( installClient, ghLinks, owner, repo, issueId, colId ) {
+async function findCardInColumn( authData, ghLinks, owner, repo, issueId, colId ) {
 
     let cardId = -1;
-    let link = ghLinks.getUniqueLink( installClient, issueId );
+    let link = ghLinks.getUniqueLink( authData, issueId );
 	
     if( link != -1 && parseInt( link['GHColumnId'] ) == colId ) { cardId = parseInt( link['GHCardId'] ); }
 
-    console.log( installClient[1], "find card in col", issueId, colId, "found?", cardId );
+    console.log( authData.who, "find card in col", issueId, colId, "found?", cardId );
     return cardId;
 }
 
-async function moveCard( installClient, cardId, colId ) {
-    return await( installClient[0].projects.moveCard({ card_id: cardId, position: "top", column_id: colId }))
-	.catch( e => { console.log( installClient[1], "Move card failed.", e );	});
+async function moveCard( authData, cardId, colId ) {
+    return await( authData.ic.projects.moveCard({ card_id: cardId, position: "top", column_id: colId }))
+	.catch( e => { console.log( authData.who, "Move card failed.", e );	});
 }
 
 
-async function checkReserveSafe( installClient, owner, repo, issueNum, colNameIndex ) {
+async function checkReserveSafe( authData, owner, repo, issueNum, colNameIndex ) {
     let retVal = true;
     if( colNameIndex > config.PROJ_PROG ) { 
-	let assignees = await getAssignees( installClient, owner, repo, issueNum );
+	let assignees = await getAssignees( authData, owner, repo, issueNum );
 	if( assignees.length == 0  ) {
 	    console.log( "WARNING.  Update card failed - no assignees" );   // can't propose grant without a grantee
 	    retVal = false;
@@ -973,7 +1008,7 @@ async function checkReserveSafe( installClient, owner, repo, issueNum, colNameIn
 }
 
 // XXX alignment risk if card moves in the middle of this
-async function moveIssueCard( installClient, ghLinks, owner, repo, issueData, action, ceProjectLayout )
+async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action, ceProjectLayout )
 {
     console.log( "Moving issue card", issueData );
     let success    = false;
@@ -992,11 +1027,11 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueData, ac
 	// verify card is in the right place
 	for( let i = 0; i < 2; i++ ) {
 	    oldColId = ceProjectLayout[ pip[i]+1 ];
-	    cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueData[0], oldColId );
+	    cardId = await findCardInColumn( authData, ghLinks, owner, repo, issueData[0], oldColId );
 	    if( cardId != -1 ) { break; }
 	}
 	*/
-	const link = ghLinks.getUniqueLink( installClient, issueData[0] );
+	const link = ghLinks.getUniqueLink( authData, issueData[0] );
 	cardId = link.GHCardId;
 	
 	// move card to "Pending PEQ Approval"
@@ -1005,38 +1040,38 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueData, ac
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ];
 	    
-	    success = await checkReserveSafe( installClient, owner, repo, issueData[1], config.PROJ_PEND );
+	    success = await checkReserveSafe( authData, owner, repo, issueData[1], config.PROJ_PEND );
 	    if( !success ) {
 		// no need to put card back - didn't move it.
-		await updateIssue( installClient, owner, repo, issueData[1], "open" ); // reopen issue
+		await updateIssue( authData, owner, repo, issueData[1], "open" ); // reopen issue
 		return false;
 	    }
 
-	    success = await moveCard( installClient, cardId, newColId );
+	    success = await moveCard( authData, cardId, newColId );
 	}
     }
     else if( action == "reopened" ) {
 	
 	// This is a PEQ issue.  Verify card is currently in the right place, i.e. PEND ONLY (can't move out of ACCR)
-	cardId = await findCardInColumn( installClient, ghLinks, owner, repo, issueData[0], ceProjectLayout[ config.PROJ_PEND+1 ] );
+	cardId = await findCardInColumn( authData, ghLinks, owner, repo, issueData[0], ceProjectLayout[ config.PROJ_PEND+1 ] );
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
-	    newColName = await getColumnName( installClient, newColId );
-	    success = moveCard( installClient, cardId, newColId );
+	    newColName = await getColumnName( authData, newColId );
+	    success = moveCard( authData, cardId, newColId );
 	}
 	else {
 	    // GH has opened this issue.  Close it back up.
 	    console.log( "WARNING.  Can not reopen an issue that has accrued." );
-	    await updateIssue( installClient, owner, repo, issueData[1], "closed" ); // reopen issue
+	    await updateIssue( authData, owner, repo, issueData[1], "closed" ); // reopen issue
 	    return false;
 	}
     }
 
     if( success ) {
-	success = ghLinks.updateLinkage( installClient, issueData[0], cardId, newColId, newColName );
+	success = ghLinks.updateLinkage( authData, issueData[0], cardId, newColId, newColName );
     }
 
     
@@ -1044,11 +1079,11 @@ async function moveIssueCard( installClient, ghLinks, owner, repo, issueData, ac
 }
 
 // XXX alignment risk
-async function getProjectName( installClient, projId ) {
+async function getProjectName( authData, projId ) {
 
-    let project = await( installClient[0].projects.get({ project_id: projId }))
+    let project = await( authData.ic.projects.get({ project_id: projId }))
 	.catch( e => {
-	    console.log( installClient[1], "Get Project failed.", e );
+	    console.log( authData.who, "Get Project failed.", e );
 	    return "";
 	});
 
@@ -1056,13 +1091,13 @@ async function getProjectName( installClient, projId ) {
 }
 
 // XXX alignment risk
-async function getColumnName( installClient, colId ) {
+async function getColumnName( authData, colId ) {
 
     if( colId == -1 ) { return -1; }
     
-    let column = await( installClient[0].projects.getColumn({ column_id: colId }))
+    let column = await( authData.ic.projects.getColumn({ column_id: colId }))
 	.catch( e => {
-	    console.log( installClient[1], "Get Column failed.", e );
+	    console.log( authData.who, "Get Column failed.", e );
 	    return "";
 	});
     
@@ -1149,7 +1184,7 @@ function parseLabelDescr( labelDescr ) {
 function theOnePEQ( labels ) {
     let peqValue = 0;
 
-    for( label of labels ) {
+    for( const label of labels ) {
 	let content = label['description'];
 	let tval = parseLabelDescr( [content] );
 
