@@ -140,6 +140,7 @@ class Linkage {
     }
 
     addLoc( authData, repo, projName, projId, colName, colId ) {
+	console.log( "addLoc", projName, colName );
 	colId = colId.toString();
 	projId = projId.toString();
 	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
@@ -337,6 +338,7 @@ class Linkage {
     }
 
     removeLocs({ authData, projId, colId }) {
+	console.log( "remLoc", projId, colId );
 	let retVal = false;
 	if( !authData ) { console.log( "missing authData" ); return retVal; }
 
@@ -353,7 +355,7 @@ class Linkage {
 	if( (!havePID && !haveCID) ||                                              // nothing specified
 	    (havePID && !this.locs.hasOwnProperty( projId )) ||                    // have pid, but already not in locs
 	    (havePID && haveCID && !this.locs[projId].hasOwnProperty( colId ))) {  // have pid & cid, but already not in locs
-	    return retval;
+	    return retVal;
 	}
 
 	if( havePID && this.locs.hasOwnProperty( projId )) {
@@ -451,6 +453,7 @@ class Linkage {
 			   );
 	    }
 	}
+	console.log( "\n" );
     }
     
 }

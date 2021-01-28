@@ -515,9 +515,9 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	// XXX This information could be passed down.. but save speedups for graphql
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
-	    links[i].GHProjectName = await gh.getProjectName( authData, links[i].GHProjectId );
+	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, links[i].GHProjectId );
 	    links[i].GHColumnId    = ( await gh.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].GHColumnName  = await gh.getColumnName( authData, links[i].GHColumnId );
+	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, links[i].GHColumnId );
 	}
 
 	let issueData   = await ghSafe.splitIssue( authData, pd.GHOwner, pd.GHRepo, issue, splitTag );  
@@ -574,7 +574,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	assert( link == -1 );
 
 	// If reserved column, remove the card.  Can't create newbies here.  Leave issue in place else work is lost.
-	colName = await gh.getColumnName( authData, colId );
+	colName = gh.getColumnName( authData, ghLinks, colId );
 	const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
 	if( reserved.includes( colName ) ) {
 	    console.log( "WARNING.", colName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue." );
@@ -588,8 +588,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     else {
 	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
 	let peqLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
-	colName  = await gh.getColumnName( authData, colId );
-	projName = await gh.getProjectName( authData, pd.GHProjectId );
+	colName  = gh.getColumnName( authData, ghLinks, colId );
+	projName = gh.getProjectName( authData, ghLinks, pd.GHProjectId );
 	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
@@ -599,7 +599,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	    // chances are, an unclaimed PEQ exists.  deactivate it.
 	    if( pd.GHIssueId != -1 ) {
 		const daPEQ = await getPeq( authData, pd.GHIssueId );
-		utils.removePEQ( authData, daPEQ.PEQId );
+		removePEQ( authData, daPEQ.PEQId );
 	    }
 	    return "removeLabel";
 	}
@@ -695,10 +695,10 @@ async function cleanDynamo( authData, tableName, ids ) {
 
 // XXX seems to belong elsewhere
 // Put the job.  Then return first on queue.  Do NOT delete first.
-function checkQueue( ceJobs, authData, handler, sender, reqBody, tag ) {
+function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
     // XXX handle aws, sam
     let jobData     = {};
-    jobData.QueueId = authData.job;
+    jobData.QueueId = jid;
     jobData.Handler = handler;
     jobData.GHOwner = reqBody['repository']['owner']['login'];
     jobData.GHRepo  = reqBody['repository']['name'];
@@ -715,7 +715,7 @@ function checkQueue( ceJobs, authData, handler, sender, reqBody, tag ) {
 
     console.log( "\nceJobs, after push" );
     for( const job of ceJobs[fullName][sender].getAll() ) {
-	console.log( job.QueueId, job.GHOwner, job.GHRepo, job.Action, job.Tag );
+	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag );
     }
     
     return ceJobs[fullName][sender].first;

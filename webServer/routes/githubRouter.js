@@ -186,18 +186,20 @@ router.post('/:location?', async function (req, res) {
     }
     */
     
+    // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
+    // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
+    let jobData = utils.checkQueue( ceJobs, jobId, event, sender, req.body, tag );
+    assert( jobData != -1 );
+    if( jobId != jobData.QueueId ) {
+	console.log( source, "Sender busy with job#", jobData.QueueId );
+	return res.end();
+    }
+
+    // Don't set this earlier - authData should only overwrite if it is being processed next.
     // this first jobId is set by getNext to reflect the proposed next job.
     authData.who = source;
     authData.job = jobId;
-
-    // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
-    // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
-    let jobData = utils.checkQueue( ceJobs, authData, event, sender, req.body, tag );
-    assert( jobData != -1 );
-    if( authData.job != jobData.QueueId ) {
-	console.log( authData.who, "Sender busy with job#", jobData.QueueId );
-	return res.end();
-    }
+    
     console.log( authData.who, "job Q clean, start-er-up" );
     
     let pd          = new peqData.PeqData();
@@ -239,8 +241,6 @@ async function getNextJob( authData, pdOld, sender, res ) {
 	console.log( "\n\n\n", authData.who, "Got next job:", ic.who );
 
 	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res );
-
-	getNextJob( ic, pd, sender, res );
     }
     else {
 	console.log( authData.who, "jobs done" );

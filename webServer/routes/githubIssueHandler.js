@@ -36,12 +36,12 @@ async function deleteIssue( authData, ghLinks, pd ) {
     if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 
 	// the entire issue has been given to us here.  Recreate it.
-	console.log( "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed." );
+	console.log( "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.", pd.GHIssueNum );
 	
 	const peq = await utils.getPeq( authData, link.GHIssueId );
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
-	const card      = await gh.createUnClaimedCard( authData, pd.GHOwner, pd.GHRepo, issueData[0], true );  
+	const card      = await gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );  
 	
 	await ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
 	link = ghLinks.rebuildLinkage( authData, link, issueData, card.id );
@@ -127,7 +127,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	if( link == -1 || link.GHColumnId == -1) {
 	    if( link == -1 ) {    
 		link = {};
-		let card = await gh.createUnClaimedCard( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueId );
+		let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.GHIssueId );
 		let issueURL = card.content_url.split('/');
 		assert( issueURL.length > 0 );
 		link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );  // XXX already have this
@@ -218,7 +218,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	// Get array: [proj_id, col_idx4]
 	// XXX getLayout and moveIssue both call getGHCard
-	let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd.GHIssueId );
+	let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
 	if( ceProjectLayout[0] == -1 ) {
 	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	}
