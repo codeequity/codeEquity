@@ -589,14 +589,25 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	for( const col of cols.edges ) {
 	    // console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
 	    let datum = {};
-	    datum.projectName = project.name;
-	    datum.projectId   = project.databaseId;
-	    datum.columnName  = col.node.name;
-	    datum.columnId    = col.node.databaseId;
+	    datum.GHProjectName = project.name;
+	    datum.GHProjectId   = project.databaseId.toString();
+	    datum.GHColumnName  = col.node.name;
+	    datum.GHColumnId    = col.node.databaseId.toString();
+	    data.push( datum );
+	}
+
+	// Add project even if it has no cols
+	if( cols.edges.length == 0 ) {
+	    let datum = {};
+	    datum.GHProjectName = project.name;
+	    datum.GHProjectId   = project.databaseId.toString();
+	    datum.GHColumnName  = config.EMPTY;
+	    datum.GHColumnId    = "-1";
 	    data.push( datum );
 	}
     }
 
+    
     if( projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
 }
 

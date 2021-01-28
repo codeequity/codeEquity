@@ -13,7 +13,8 @@ var ghSafe  = ghUtils.githubSafe;
 class Linkage {
 
     constructor( ) {
-	this.links  = {};
+	this.links = {};   // { issueId: { cardId: {link}}}
+	this.locs  = {};   // { projId: { colId: {loc}}}
     }
 
 
@@ -27,14 +28,17 @@ class Linkage {
 	await gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
 	    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
 
-	// XXX Could save a good number of calls to GH with this data
-	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
-	let cols = [];
-	await gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], cols, -1 )
+	let locData = [];
+	await gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
 	    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
+
+	for( const loc of locData ) {
+	    this.addLoc( authData, fn, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId );
+	}
 	
 	this.populateLinkage( authData, fn, baseLinks );
 
+	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
 	// peq add: cardTitle, colId, colName, projName
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
 	let badPeq = false;
@@ -64,8 +68,8 @@ class Linkage {
 	    if( config.PROJ_COLS.includes( link.flatSource )) { link.flatSource = -1; }
 	    // XXX could make this faster if cols use gets broader.
 	    if( link.flatSource != -1 ) {
-		const colData = cols.find( col => col.projectId == link.GHProjectId && col.columnName == link.flatSource );
-		if( typeof colData !== 'undefined' ) { link.flatSource = colData.columnId.toString(); }
+		const loc = locData.find( loc => loc.GHProjectId == link.GHProjectId && loc.GHColumnName == link.flatSource );
+		if( typeof loc !== 'undefined' ) { link.flatSource = loc.GHColumnId; }
 		else { link.flatSource = -1; }   // e.g. projSub is (master)[softCont, dataSec]
 	    }
 	}
@@ -100,7 +104,7 @@ class Linkage {
 	console.log( "Creating ghLinks from json data" );
 	for( const [_, clinks] of Object.entries( linkData ) ) {
 	    for( const [_, link] of Object.entries( clinks ) ) {
-		this.addLinkage( ["", "fromJson"], link.GHRepo, link.GHIssueId, link.GHIssueNum,
+		this.addLinkage( {}, link.GHRepo, link.GHIssueId, link.GHIssueNum,
 				 link.GHProjectId, link.GHProjectName, link.GHColumnId, link.GHColumnName,
 				 link.GHCardId, link.GHCardTitle );
 	    }
@@ -135,6 +139,24 @@ class Linkage {
 	return link;
     }
 
+    addLoc( authData, repo, projName, projId, colName, colId ) {
+	colId = colId.toString();
+	projId = projId.toString();
+	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
+	if( !this.locs[projId].hasOwnProperty( colId )) { this.locs[projId][colId] = {}; }
+	
+	let loc = this.locs[projId][colId];
+
+	loc.GHRepo        = repo;
+	loc.GHProjectId   = projId;
+	loc.GHProjectName = projName;
+	loc.GHColumnId    = colId;
+	loc.GHColumnName  = colName;
+
+	this.showLocs();
+	return loc;
+    }
+    
     populateLinkage( authData, fn, baseLinkData ) {
 	console.log( authData.who, "Populate linkage" );
 	for( const elt of baseLinkData ) {
@@ -198,6 +220,44 @@ class Linkage {
 	return links;
     }
 
+    getLocs( authData, query ) {
+
+	console.log( authData.who, "get Locs", query );
+	let projId    = query.hasOwnProperty( "projId" )   ? query.projId.toString() : -1;
+	let colId     = query.hasOwnProperty( "colId" )    ? query.colId.toString()  : -1;
+	let repo      = query.hasOwnProperty( "repo" )     ? query.repo              : config.EMPTY;
+	let projName  = query.hasOwnProperty( "projName" ) ? query.projName          : config.EMPTY;
+	let colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
+	
+	// Is at least one condition active
+	if( projId == -1 &&
+	    colId == -1  &&
+	    repo == config.EMPTY &&
+	    projName == config.EMPTY &&
+	    colName == config.EMPTY
+	  ) {
+	    return -1;
+	}
+
+	let locs = [];
+	for( const [_, clocs] of Object.entries( this.locs ) ) { 
+	    for( const [_, loc] of Object.entries( clocs ) ) {
+		let match = true;
+		match = projId == -1             ? match : match && (loc.GHProjectId   == projId);
+		match = colId == -1              ? match : match && (loc.GHColumnId    == colId);
+		match = repo == config.EMPTY     ? match : match && (loc.GHRepo        == repo);
+		match = projName == config.EMPTY ? match : match && (loc.GHProjectName == projName );
+		match = colName == config.EMPTY  ? match : match && (loc.GHColumnName  == colName );
+		
+		if( match ) { locs.push( loc ); }
+	    }
+	}
+
+	if( locs.length == 0 ) { locs = -1; }
+	return locs;
+    }
+
+    
     // Use only with known PEQ issues, 1:1
     // Zero out fields in linkage table no longer being tracked
     // Base linkage is for issue-cards that are not in validated CE project structure.
@@ -276,16 +336,62 @@ class Linkage {
 	return retVal;
     }
 
+    removeLocs({ authData, projId, colId }) {
+	let retVal = false;
+	if( !authData ) { console.log( "missing authData" ); return retVal; }
+
+
+	if( colId )       { console.log( authData.who, "Remove loc for colId:", colId ); }    // one delete
+	else if( projId ) { console.log( authData.who, "Remove locs for projId:", projId ); } // many deletes
+
+	retVal = true;
+
+	let havePID = typeof projId !== 'undefined';
+	let haveCID = typeof colId  !== 'undefined';
+	
+	// Easy cases, already do not exist
+	if( (!havePID && !haveCID) ||                                              // nothing specified
+	    (havePID && !this.locs.hasOwnProperty( projId )) ||                    // have pid, but already not in locs
+	    (havePID && haveCID && !this.locs[projId].hasOwnProperty( colId ))) {  // have pid & cid, but already not in locs
+	    return retval;
+	}
+
+	if( havePID && this.locs.hasOwnProperty( projId )) {
+	    if( haveCID && this.locs[projId].hasOwnProperty( colId ))  { delete this.locs[projId][colId];  return retVal; }
+	    if( !haveCID )                                             { delete this.locs[projId];  return retVal; }
+	}
+	// I don't have PID, but I do have CID
+	else {  
+	    for( const [proj,cloc] of Object.entries( this.locs )) {
+		if( cloc.hasOwnProperty( colId )) {
+		    delete this.locs[proj][colId];
+		    break;
+		}
+	    }
+	}
+	
+    	this.showLocs();
+	retVal = true;
+	return retVal;
+    }
+
     purge( repo ) {
-	console.log( "Removing links for", repo );
+	console.log( "Removing links, locs for", repo );
 	let killList = [];
 	for( const [iss,clink] of Object.entries( this.links )) {
 	    for( const [cid,link] of Object.entries( clink )) {
 		if( link.GHRepo == repo ) { killList.push( link.GHIssueId ); }
 	    }
 	}
-	// console.log( killList );
 	for( const id of killList ) { delete this.links[id]; }
+
+	for( const [proj,cloc] of Object.entries( this.locs )) {
+	    for( const [col,lloc] of Object.entries( cloc )) {
+		if( loc.GHRepo == repo ) { killList.push( loc.GHProjectId ); }
+	    }
+	}
+	for( const id of killList ) { delete this.locs[id]; }
+	
 	return true;
     }
 
@@ -326,6 +432,27 @@ class Linkage {
 	    }
 	}
     }
+
+    showLocs() {
+	console.log( this.fill( "Repo", 20 ),
+		     this.fill( "ProjId", 10 ), 
+		     this.fill( "ProjName", 15 ),
+		     this.fill( "ColId", 10),
+		     this.fill( "ColName", 20)
+		   );
+	
+	for( const [_, clocs] of Object.entries( this.locs )) {
+	    for( const [_, loc] of Object.entries( clocs )) {
+		console.log( this.fill( loc.GHRepo, 20 ),
+			     loc.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.GHProjectId, 10 ),
+			     this.fill( loc.GHProjectName, 15 ),
+			     loc.GHColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.GHColumnId, 10 ),
+			     this.fill( loc.GHColumnName, 20 ),
+			   );
+	    }
+	}
+    }
+    
 }
 
 exports.Linkage = Linkage;
