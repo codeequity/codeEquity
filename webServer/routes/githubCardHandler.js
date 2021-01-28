@@ -140,7 +140,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let newColId  = pd.reqBody['project_card']['column_id'];
 	    let newProjId = pd.reqBody['project_card']['project_url'].split('/').pop();
 	    
-	    let newColName = await gh.getColumnName( authData, newColId );
+	    let newColName = gh.getColumnName( authData, ghLinks, newColId );
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	    
 	    // Ignore newborn cards.
@@ -240,7 +240,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( authData.who, "Moving ACCR", accr, issueExists, link.GHIssueId );
 		// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
 		//           card creation can fail, and results can be uncertain at this point.  
-		let card = await gh.createUnClaimedCard( authData, pd.GHOwner, pd.GHRepo, parseInt( link.GHIssueId ), accr );  
+		let card = await gh.createUnClaimedCard( authData, ghLinks, pd, parseInt( link.GHIssueId ), accr );  
 		link.GHCardId      = card.id.toString();
 		link.GHProjectId   = card.project_url.split('/').pop();
 		link.GHProjectName = config.UNCLAIMED;

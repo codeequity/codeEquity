@@ -110,8 +110,8 @@ var githubUtils = {
 	return getCard( authData, cardId );
     },
 
-    getColumns: function( authData, projId ) {
-	return getColumns( authData, projId );
+    getColumns: function( authData, ghLinks, projId ) {
+	return getColumns( authData, ghLinks, projId );
     },
 
     getFullIssue: function( authData, owner, repo, issueNum ) {
@@ -130,8 +130,8 @@ var githubUtils = {
 	return rebuildCard( authData, owner, repo, colId, origCardId, issueData );
     },
 
-    createUnClaimedCard: function( authData, owner, repo, issueId, accr ) {
-	return createUnClaimedCard( authData, owner, repo, issueId, accr );
+    createUnClaimedCard: function( authData, ghLinks, pd, issueId, accr ) {
+	return createUnClaimedCard( authData, ghLinks, pd, issueId, accr );
     },
 
     getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
@@ -150,8 +150,8 @@ var githubUtils = {
 	return populateRequest( labels );
     },
 
-    getCEProjectLayout: function( authData, ghLinks, issueId ) {
-	return getCEProjectLayout( authData, ghLinks, issueId );
+    getCEProjectLayout: function( authData, ghLinks, pd ) {
+	return getCEProjectLayout( authData, ghLinks, pd );
     },
     
     moveCard: function( authData, cardId, colId ) {
@@ -166,12 +166,12 @@ var githubUtils = {
 	return moveIssueCard( authData, ghLinks, owner, repo, issueId, action, ceProjectLayout ); 
     },
 
-    getProjectName: function( authData, projId ) {
-	return getProjectName( authData, projId ); 
+    getProjectName: function( authData, ghLinks, projId ) {
+	return getProjectName( authData, ghLinks, projId ); 
     },
 
-    getColumnName: function( authData, colId ) {
-	return getColumnName( authData, colId ); 
+    getColumnName: function( authData, ghLinks, colId ) {
+	return getColumnName( authData, ghLinks, colId ); 
     },
 
 };
@@ -290,13 +290,18 @@ async function getCard( authData, cardId ) {
     return retCard;
 }
 
-async function getColumns( authData, projId ) {
+function getColumns( authData, ghLinks, projId ) {
     let cols = "";
 
+    let locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": projId } );
+    cols = locs.map( loc => loc.GHColumnId );
+    
+    /*
     await( authData.ic.projects.listColumns( { project_id: projId }))
 	.then( allcols => { cols = allcols['data']; })
 	.catch( e => { console.log( authData.who, "list columns failed.", e ); });
-
+    */
+    
     return cols;
 }
 
@@ -589,14 +594,25 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	for( const col of cols.edges ) {
 	    // console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
 	    let datum = {};
-	    datum.projectName = project.name;
-	    datum.projectId   = project.databaseId;
-	    datum.columnName  = col.node.name;
-	    datum.columnId    = col.node.databaseId;
+	    datum.GHProjectName = project.name;
+	    datum.GHProjectId   = project.databaseId.toString();
+	    datum.GHColumnName  = col.node.name;
+	    datum.GHColumnId    = col.node.databaseId.toString();
+	    data.push( datum );
+	}
+
+	// Add project even if it has no cols
+	if( cols.edges.length == 0 ) {
+	    let datum = {};
+	    datum.GHProjectName = project.name;
+	    datum.GHProjectId   = project.databaseId.toString();
+	    datum.GHColumnName  = config.EMPTY;
+	    datum.GHColumnId    = "-1";
 	    data.push( datum );
 	}
     }
 
+    
     if( projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
 }
 
@@ -743,13 +759,44 @@ async function createProjectCard( authData, columnId, issueId, justId )
 
 
 // XXX alignment risk
-// XXX could look in linkage for unclaimed proj / col ids .. ?  Could use proj/cols data in linkage.
-async function createUnClaimedCard( authData, owner, repo, issueId, accr )
+// Don't care about state:open/closed.  unclaimed need not be visible.
+async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
 {
-    let unClaimedProjId = -1;
-    const makeAccrued = (typeof accr === 'undefined') ? false : true; 
+    const makeAccrued = (typeof accr === 'undefined') ? false : true;
     const unClaimed = config.UNCLAIMED;
 
+    let unClaimedProjId = -1;
+    let locs = ghLinks.getLocs( authData, { "projName": unClaimed } );
+    unClaimedProjId = locs == -1 ? locs : locs[0].GHProjectId;
+    if( unClaimedProjId == -1 ) {
+	console.log( "Creating UnClaimed project" );
+	let body = "Temporary storage for issues with cards that have not yet been assigned to a column (triage)";
+	await authData.ic.projects.createForRepo({ owner: pd.GHOwner, repo: pd.GHRepo, name: unClaimed, body: body })
+	    .then((project) => {
+		unClaimedProjId = project.data.id;
+		ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, config.EMPTY, -1 );		
+	    })
+	    .catch( e => { console.log( authData.who, "Create unclaimed project failed.", e ); });
+    }
+
+    let unClaimedColId = -1;
+    const colName = makeAccrued ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed; 
+    locs = ghLinks.getLocs( authData, { "projName": unClaimed } );
+    assert( unClaimedProjId == locs[0].GHProjectId );
+
+    const loc = locs.find( loc => loc.GHColumnName == colName );
+    if( typeof loc !== 'undefined' ) { unClaimedColId = loc.GHColumnId; }
+    if( unClaimedColId == -1 ) {
+	console.log( "Creating UnClaimed column" );
+	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
+	    .then((column) => {
+		unClaimedColId = column.data.id;
+		ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, colName, unClaimedColId );		
+	    })
+	    .catch( e => { console.log( authData.who, "Create unclaimed column failed.", e ); });
+    }
+
+    /*
     // Get, or create, unclaimed project id
     // Note.  pagination removes .headers, .data and etc.
     await authData.ic.paginate( authData.ic.projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
@@ -782,6 +829,7 @@ async function createUnClaimedCard( authData, owner, repo, issueId, accr )
 	    .then((column) => { unClaimedColId = column.data.id; })
 	    .catch( e => { console.log( authData.who, "Create unclaimed column failed.", e ); });
     }
+    */
     
     assert( unClaimedProjId != -1 );
     assert( unClaimedColId != -1  );
@@ -865,13 +913,13 @@ async function getCurCol( authData, ghLinks, issueId ) {
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
 // If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
 // XXX alignment risk
-async function getCEProjectLayout( authData, ghLinks, issueId )
+async function getCEProjectLayout( authData, ghLinks, pd )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
     // XXX Revisit if ever decided to track cols, projects.
     // XXX may be hole in create card from isssue
-
+    let issueId = pd.GHIssueId;
     let link = ghLinks.getUniqueLink( authData, issueId );
 
     // moves are only tracked for peq issues
@@ -887,6 +935,9 @@ async function getCEProjectLayout( authData, ghLinks, issueId )
     console.log( authData.who, "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
+    const locs = ghLinks.getLocs( authData, { "projId": projId } );
+    assert( locs != -1 );
+    assert( link.GHProjectName == locs[0].GHProjectName );
 
     let missing = true;
     await( authData.ic.projects.listColumns({ project_id: projId, per_page: 100 }))
@@ -934,7 +985,10 @@ async function getCEProjectLayout( authData, ghLinks, issueId )
 		const progName = config.PROJ_COLS[ config.PROJ_PROG]; 
 		console.log( "Creating new column:", progName );
 		await authData.ic.projects.createColumn({ project_id: projId, name: progName })
-		    .then((column) => { curCol = column.data.id; })
+		    .then((column) => {
+			curCol = column.data.id;
+			ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, progName, curCol );			
+		    })
 		    .catch( e => { console.log( authData.who, "Create column failed.", e ); });
 	    }
 	}
@@ -944,7 +998,11 @@ async function getCEProjectLayout( authData, ghLinks, issueId )
 	    let pendName = config.PROJ_COLS[ config.PROJ_PEND ];
 	    console.log( "Creating new column:", pendName );
 	    await authData.ic.projects.createColumn({ project_id: projId, name: pendName })
-		.then((column) => { foundReqCol[config.PROJ_PEND + 1] = column.data.id; })
+		.then((column) => {
+		    foundReqCol[config.PROJ_PEND + 1] = column.data.id;
+		    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, pendName, column.data.id );			
+		    
+		})
 		.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 	}
 	// Create ACCR if missing
@@ -952,7 +1010,10 @@ async function getCEProjectLayout( authData, ghLinks, issueId )
 	    let accrName = config.PROJ_COLS[ config.PROJ_ACCR ];
 	    console.log( "Creating new column:", accrName );
 	    await authData.ic.projects.createColumn({ project_id: projId, name: accrName })
-		.then((column) => { foundReqCol[config.PROJ_ACCR + 1] = column.data.id; })
+		.then((column) => {
+		    foundReqCol[config.PROJ_ACCR + 1] = column.data.id;
+		    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, accrName, column.data.id );			
+		})
 		.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 	}
     }
@@ -1059,7 +1120,7 @@ async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action,
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
-	    newColName = await getColumnName( authData, newColId );
+	    newColName = getColumnName( authData, ghLinks, newColId );
 	    success = moveCard( authData, cardId, newColId );
 	}
 	else {
@@ -1079,8 +1140,16 @@ async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action,
 }
 
 // XXX alignment risk
-async function getProjectName( authData, projId ) {
+function getProjectName( authData, ghLinks, projId ) {
 
+    if( projId == -1 ) { return -1; }
+
+    const locs = ghLinks.getLocs( authData, { "projId": projId } );
+
+    const projName = locs == -1 ? locs : locs[0].GHProjectName;
+    return projName
+    
+    /*
     let project = await( authData.ic.projects.get({ project_id: projId }))
 	.catch( e => {
 	    console.log( authData.who, "Get Project failed.", e );
@@ -1088,13 +1157,22 @@ async function getProjectName( authData, projId ) {
 	});
 
     return project['data']['name'];
+    */
 }
 
+// XXX add repo to all these queries?
 // XXX alignment risk
-async function getColumnName( authData, colId ) {
+function getColumnName( authData, ghLinks, colId ) {
 
     if( colId == -1 ) { return -1; }
-    
+
+    const locs = ghLinks.getLocs( authData, { "colId": colId } );
+    assert( locs == -1 || locs.length == 1 );
+
+    const colName = locs == -1 ? locs : locs[0].GHColumnName;
+    return colName;
+
+    /*
     let column = await( authData.ic.projects.getColumn({ column_id: colId }))
 	.catch( e => {
 	    console.log( authData.who, "Get Column failed.", e );
@@ -1102,6 +1180,7 @@ async function getColumnName( authData, colId ) {
 	});
     
     return column['data']['name'];
+    */
 }
 
 

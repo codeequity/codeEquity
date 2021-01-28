@@ -18,7 +18,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     switch( action ) {
     case 'created':
 	{
-	    
 	}
 	break;
     case 'edited':
