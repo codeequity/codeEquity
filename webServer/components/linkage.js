@@ -140,7 +140,6 @@ class Linkage {
     }
 
     addLoc( authData, repo, projName, projId, colName, colId ) {
-	console.log( "addLoc", projName, colName );
 	colId = colId.toString();
 	projId = projId.toString();
 	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
@@ -154,7 +153,7 @@ class Linkage {
 	loc.GHColumnId    = colId;
 	loc.GHColumnName  = colName;
 
-	this.showLocs();
+	// this.showLocs();
 	return loc;
     }
     
@@ -338,7 +337,6 @@ class Linkage {
     }
 
     removeLocs({ authData, projId, colId }) {
-	console.log( "remLoc", projId, colId );
 	let retVal = false;
 	if( !authData ) { console.log( "missing authData" ); return retVal; }
 
@@ -372,7 +370,7 @@ class Linkage {
 	    }
 	}
 	
-    	this.showLocs();
+    	// this.showLocs();
 	retVal = true;
 	return retVal;
     }

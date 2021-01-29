@@ -212,7 +212,7 @@ async function testStepByStep( authData, ghLinks, td ) {
     // 2. add peq label
     let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
     await tu.addLabel( authData, td, meltData[1], newLabel.name );
-    await utils.sleep( 3000 );  // dynamo cold start, this can be slow
+    await utils.sleep( 1000 );  
     await tu.refreshUnclaimed( authData, td );
     testStatus = await checkUnclaimedIssue( authData, ghLinks, td, meltData, testStatus );
     
@@ -220,7 +220,7 @@ async function testStepByStep( authData, ghLinks, td ) {
 
     // 3. Add to project
     let meltCard  = await tu.makeProjectCard( authData, td.dsPlanID, meltData[0] );
-    await utils.sleep( 3000 );
+    await utils.sleep( 1000 );
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, flowPlan, meltData, meltCard, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "C" ); }
@@ -228,28 +228,28 @@ async function testStepByStep( authData, ghLinks, td ) {
     // 4. add assignee
     await tu.addAssignee( authData, td, meltData[1], ASSIGNEE1 );
     await tu.addAssignee( authData, td, meltData[1], ASSIGNEE2 );
-    await utils.sleep( 2000 );
+    await utils.sleep( 1000 );
     testStatus = await tu.checkAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, meltData, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "D" ); }
 
     // 5. move to prog
     await tu.moveCard( authData, meltCard.id, td.dsProgID );
-    await utils.sleep( 2000 );
+    await utils.sleep( 1000 );
     testStatus = await checkMove( authData, ghLinks, td, meltData, td.dsProgID, meltCard, testStatus );
 	
     if( VERBOSE ) { tu.testReport( testStatus, "E" ); }
 
     // 6. close
     await tu.closeIssue( authData, td, meltData[1] );
-    await utils.sleep( 2000 );
+    await utils.sleep( 1000 );
     testStatus = await checkMove( authData, ghLinks, td, meltData, td.dsPendID, meltCard, testStatus );
 
     tu.testReport( testStatus, "F" );
 
     // 7. move to accr
     await tu.moveCard( authData, meltCard.id, td.dsAccrID );
-    await utils.sleep( 2000 );
+    await utils.sleep( 1000 );
     testStatus = await checkMove( authData, ghLinks, td, meltData, td.dsAccrID, meltCard, testStatus );
     
     tu.testReport( testStatus, "Test Basic flow" );
@@ -295,7 +295,7 @@ async function testEndpoint( authData, ghLinks, td ) {
     // 7. move to accr
     await tu.moveCard( authData, meltCard.id, td.dsAccrID );
 
-    await utils.sleep( 2000 );
+    await utils.sleep( 1000 );
 
     testStatus = await checkMove( authData, ghLinks, td, meltData, td.dsAccrID, meltCard, testStatus );
 

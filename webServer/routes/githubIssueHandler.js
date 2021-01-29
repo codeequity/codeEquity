@@ -36,12 +36,13 @@ async function deleteIssue( authData, ghLinks, pd ) {
     if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 
 	// the entire issue has been given to us here.  Recreate it.
-	console.log( "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.", pd.GHIssueNum );
+	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.", pd.GHIssueNum );
 	
 	const peq = await utils.getPeq( authData, link.GHIssueId );
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
 	const card      = await gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );  
+	console.log( authData.who, "created card from new issue" );
 	
 	await ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
 	link = ghLinks.rebuildLinkage( authData, link, issueData, card.id );
@@ -49,6 +50,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	link.GHProjectName = config.UNCLAIMED;
 	link.GHProjectId   = card.project_url.split('/').pop();
 	link.GHColumnId    = card.column_url.split('/').pop();
+	console.log( authData.who, "rebuilt link" );
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
 	const newPeqId = await utils.rebuildPeq( authData, link, peq );

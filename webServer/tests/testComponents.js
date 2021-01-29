@@ -178,7 +178,7 @@ async function testLabel( authData, ghLinks, td ) {
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	
 	let card  = await tu.makeProjectCard( authData, td.dsPlanID, issueData[0] );
-	await utils.sleep( 4000 );
+	await utils.sleep( 3000 );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 1" );
 	
@@ -232,7 +232,7 @@ async function testLabel( authData, ghLinks, td ) {
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	let card  = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 
-	await utils.sleep( 4000 );
+	await utils.sleep( 3000 );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 1" );
 	
@@ -403,7 +403,7 @@ async function testLabelCarded( authData, ghLinks, td ) {
 	// 2. add label
 	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
 	await tu.addLabel( authData, td, issueData[1], label.name );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
     }	
 
@@ -431,7 +431,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
 	const issueData = await tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
 	const card      = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "A" );
@@ -461,7 +461,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	
 	// 3. Reopen
 	await tu.reopenIssue( authData, td, issueData[1] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkNewlyOpenedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	
 	tu.testReport( testStatus, "D" );
@@ -539,7 +539,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
 	const issueData = await tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
 	const card      = await tu.makeProjectCard( authData, stars.colId, issueData[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, stars, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "A" );
@@ -716,7 +716,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	const pendCard   = await tu.makeProjectCard( authData, ghoPend.colId, issDatPend[0] );
 	const accrCard   = await tu.makeProjectCard( authData, ghoAccr.colId, issDatAccr[0] );
 
-	await utils.sleep( 5000 );
+	await utils.sleep( 4000 );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPend, issDatPend, pendCard, testStatus );
@@ -729,7 +729,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await tu.remIssue( authData, td, issDatProg[0] ); 
 	await tu.remIssue( authData, td, issDatPend[0] );
 	
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus     = await tu.checkNoCard( authData, ghLinks, td, stars,   flatCard.id, ISS_FLAT, testStatus, {"peq": true} );
 	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoProg, progCard.id, ISS_PROG, testStatus, {"peq": true} );
 	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoPend, pendCard.id, ISS_PEND, testStatus, {"peq": true} );

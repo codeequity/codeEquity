@@ -194,8 +194,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Source of notification: delete card, delete (carded) issue, delete col, delete proj, xfer
 	// From here, can't tell which source, or which order of arrival, just know GH has already deleted the card, and maybe the issue.
 	// No matter the source, delete card must manage linkage, peq, pact, etc.
-
-	// XXX SPURIOUS: this notification can be sent if, during issue creation, after peq label, choose a project before unclaimed is created.
 	{
 	    // Not carded?  no-op.  or maybe delete issue arrived first.
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": pd.reqBody.project_card.id } );
@@ -258,7 +256,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    // ACCR, not unclaimed, but issue deleted.  Delete issue must handle this since we don't have label, allocation.
 	    else {
-		console.log( authData.who, "Delete issue will recreate ACCR in unclaimed", accr, issueExists );
+		console.log( authData.who, "Issue handler will recreate ACCR in unclaimed", accr, issueExists );
 	    }
 	}
 	break;
