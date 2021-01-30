@@ -410,7 +410,11 @@ async function remIssue( authData, td, issueId ) {
     query         = JSON.stringify({ query, variables });
     
     let res = await utils.postGH( authData.pat, endpoint, query );
-    console.log( res.data );
+
+    console.log( "remIssue query", query );
+    console.log( "remIssue res", res.data );
+    
+    await utils.sleep( MIN_DELAY );
 }
 
 function checkEq( lhs, rhs, testStatus, msg ) {
@@ -785,23 +789,14 @@ async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, ca
 // construct data from new issue and new card as needed.
 async function checkUnclaimedAccr( authData, ghLinks, td, loc, issueDataOld, issueDataNew, cardNew, testStatus, source ) {
 
-    console.log( "Check unclaimed accrued issue", loc.projName, loc.colName, issueDataOld );
-
-    // delete card means GH still has issue.  handler makes a new card for old issue.
-    if( source == "card" ) { assert( issueDataOld[0] == issueDataNew[0] ); }
-    else if( source == "issue" ) {
-	const newIss = await findIssueByName( authData, td, issueDataOld[2] );
-	issueDataNew = [newIss.id, newIss.number, newIss.title];
-	console.log( "issNew", issueDataNew );
-    }
-    let uCards = await getCards( authData, loc.colId );
-    cardNew = uCards.find( card => card.content_url.split('/').pop() == issueDataNew[1].toString() );
-    console.log( "Cardnew inside", cardNew.id );
-
     // Don't check peq projectID for card delete.  Issue is old issue, peq is behind.  Pact knows all.  
     let skip = source == "card" ? true : false; 
+    if( source == "card" ) { assert( issueDataOld[0] == issueDataNew[0] ); }
+
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueDataNew, cardNew, testStatus, { "skipPeqPID": skip });
 
+    console.log( "Check unclaimed accrued issue", loc.projName, loc.colName, issueDataOld );
+    
     // CHECK dynamo Peq
     let allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueDataNew[0].toString() );
@@ -909,8 +904,11 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
 
     console.log( "Check No Card", title, cardId );
 
-    if( specials === undefined ) { specials = {}; }
-    if( !specials.peq ) { specials.peq = false; }
+    // default is -1 peq
+    // Send skipAll if peq exists, is active, and checked elsewhere.
+    // send checkpeq if peq is inactive.
+    let checkPeq   = specials !== undefined && specials.hasOwnProperty( "peq" )        ? specials.peq     : false;    
+    let skipAllPeq = specials !== undefined && specials.hasOwnProperty( "skipAllPeq" ) ? specials.skipAllPeq : false;    
 
     // CHECK github card
     let cards  = await getCards( authData, loc.colId );
@@ -925,19 +923,39 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     testStatus = checkEq( typeof link, "undefined",                testStatus, "Link should not exist" );
 
     // CHECK dynamo Peq.  inactive, if it exists
-    // Risky test - will fail if unrelated peqs with same title exist
-    // No card may have inactive peq
-    let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
-    if( specials.peq ) {
-	let peq = peqs[0];
-	testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
-	testStatus = checkEq( peq.GHIssueTitle, title,              testStatus, "peq title is wrong" );
-	testStatus = checkEq( peq.CEGrantorId, config.EMPTY,        testStatus, "peq grantor wrong" );
-    }
-    else {
-	testStatus = checkEq( peqs, -1,                             testStatus, "Peq should not exist" );
+    if( !skipAllPeq ) {
+	// Risky test - will fail if unrelated peqs with same title exist
+	// No card may have inactive peq
+	let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+	if( checkPeq ) {
+	    let peq = peqs[0];
+	    testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
+	    testStatus = checkEq( peq.GHIssueTitle, title,              testStatus, "peq title is wrong" );
+	    testStatus = checkEq( peq.CEGrantorId, config.EMPTY,        testStatus, "peq grantor wrong" );
+	}
+	else {
+	    testStatus = checkEq( peqs, -1,                             testStatus, "Peq should not exist" );
+	}
     }
 
+    return testStatus;
+}
+
+async function checkPact( authData, ghLinks, td, title, verb, action, note, testStatus ) {
+
+    console.log( "Check PAct" );
+
+    // Risky test - will fail if unrelated peqs with same title exist.  Do not use with remIssue/rebuildIssue
+    // No card may have inactive peq
+    let peqs     = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+    let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peqs[0].PEQId );
+    pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
+    let pact     = pacts[ pacts.length - 1];
+    testStatus = checkGE( pacts.length, 1,                     testStatus, "PAct count" );
+    testStatus = checkEq( pact.Verb, verb,                     testStatus, "pact verb" );
+    testStatus = checkEq( pact.Action, action,                 testStatus, "pact action" );
+    testStatus = checkEq( pact.Note, note,                     testStatus, "pact note" );
 
     return testStatus;
 }
@@ -1082,5 +1100,6 @@ exports.checkNewbornCard        = checkNewbornCard;           // no issue
 exports.checkNewbornIssue       = checkNewbornIssue;          // no card
 exports.checkUnclaimedAccr      = checkUnclaimedAccr;
 exports.checkNoCard             = checkNoCard;
+exports.checkPact               = checkPact;
 exports.checkNoIssue            = checkNoIssue;
 exports.checkAssignees          = checkAssignees;

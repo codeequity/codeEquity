@@ -624,7 +624,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
     const ghoProg = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const ghoPend = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
     const ghoAccr = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
-/*
+
     const stars      = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
     const stripes    = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
     
@@ -736,14 +736,13 @@ async function testCreateDelete( authData, ghLinks, td ) {
 
 	tu.testReport( testStatus, "situated B" );
     }
-*/
     
     // XXX pending never fully created (didn't close) above.
     {
 	console.log( "Delete Accrued testing" );
 
-	const ISS_AGHO1 = ""+ISS_SITU + " Accrued card1st";
-	const ISS_AGHO2 = ""+ISS_SITU + " Accrued iss1st";
+	const ISS_AGHO1 = ISS_SITU + " Accrued card1st";
+	const ISS_AGHO2 = ISS_SITU + " Accrued iss1st";
 
 	// 0. make situated issues
 	const label      = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );	
@@ -768,7 +767,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 
 	await utils.sleep( 2000 );
  	// XXX not needed during full run.  checkSituated uses this.
-	await tu.refreshUnclaimed( authData, td );
+	// await tu.refreshUnclaimed( authData, td );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho1, aghoCard1, testStatus );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho2, aghoCard2, testStatus );
 
@@ -779,39 +778,36 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await tu.remIssue( authData, td, issDatAgho2[0] );
 
 	await utils.sleep( 4000 );
-	let aghoCard1New = {};
-	let aghoCard2New = {};
-	let aghoIss2New  = {};
-	const uncAccr = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.PROJ_COLS[config.PROJ_ACCR] );
 
-	// XXX rebuild issue - apparently not sender
-	// XXX get the new stuff here
+	// get newly created issue, cards.   card only for remCard, issue and card for remIssue
+	const uncAccr = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.PROJ_COLS[config.PROJ_ACCR] );
+	const newIss = await tu.findIssueByName( authData, td, issDatAgho2[2] );
+	const aghoIss2New = [newIss.id, newIss.number, newIss.title];
+	let uCards = await tu.getCards( authData, uncAccr.colId );
+	aghoCard1New = uCards.find( card => card.content_url.split('/').pop() == issDatAgho1[1].toString() );
+	aghoCard2New = uCards.find( card => card.content_url.split('/').pop() == aghoIss2New[1].toString() );
 	
 	// card: old issue, new card.  issue: new issue, new card
 	testStatus = await tu.checkUnclaimedAccr( authData, ghLinks, td, uncAccr, issDatAgho1, issDatAgho1, aghoCard1New, testStatus, "card" );
-	tu.testReport( testStatus, "accrued B1" );
 	testStatus = await tu.checkUnclaimedAccr( authData, ghLinks, td, uncAccr, issDatAgho2, aghoIss2New, aghoCard2New, testStatus, "issue" );  
-	tu.testReport( testStatus, "accrued B2" );
 
-	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard1.id, ISS_AGHO1, testStatus );
-	tu.testReport( testStatus, "accrued B3" );
+	// peq for remCard is active for old issue.  peq for remIssue is active for new issue.
+	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard1.id, ISS_AGHO1, testStatus, {"skipAllPeq": true} );  
 	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issDatAgho2, testStatus );
-	tu.testReport( testStatus, "accrued B4" );
-	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard2.id, ISS_AGHO2, testStatus );
+	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard2.id, ISS_AGHO2, testStatus, {"peq": true} ); 
 	tu.testReport( testStatus, "accrued B" );
 
 	// 3. Remove one more time
-	console.log( "newCard", aghoCard1New.id );  
 	await tu.remCard( authData, aghoCard1New.id );      // newborn
-	await tu.remIssue( authData, td, issDatAgho2[0] );  // gone
+	await tu.remIssue( authData, td, aghoIss2New[0]);  // gone
 
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkNewbornIssue( authData, ghLinks, td, issDatAgho1, testStatus );
 	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard1New.id, ISS_AGHO1, testStatus, {"peq": true} );
+	testStatus = await tu.checkPact( authData, ghLinks, td, ISS_AGHO1, "confirm", "notice", "Disconnected issue", testStatus );
 
 	testStatus = await tu.checkNoIssue( authData, ghLinks, td, aghoIss2New, testStatus );
 	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard2New.id, ISS_AGHO2, testStatus, {"peq": true} );
-	
 	tu.testReport( testStatus, "accrued C" );
     }
     
@@ -828,7 +824,6 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
-    /*
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 10000 );
@@ -844,7 +839,6 @@ async function runTests( authData, ghLinks, td ) {
     let t4 = await testCloseReopen( authData, ghLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
     await utils.sleep( 10000 );
-    */
     
     let t5 = await testCreateDelete( authData, ghLinks, td );
     console.log( "\n\nCreate / Delete complete." );

@@ -40,7 +40,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	
 	const peq = await utils.getPeq( authData, link.GHIssueId );
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
-	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, pd.reqBody['sender']['login'], msg );
+	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
 	const card      = await gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );  
 	console.log( authData.who, "created card from new issue" );
 	
@@ -56,10 +56,10 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	const newPeqId = await utils.rebuildPeq( authData, link, peq );
 	
 	utils.removePEQ( authData, peq.PEQId );	
-	utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
 			       "confirm", "change", [peq.PEQId, newPeqId], "recreate",
 			       utils.getToday(), pd.reqBody );
-	utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
 			       "confirm", "add", [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }

@@ -60,7 +60,6 @@ async function runTests() {
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    /*
     subTest = await testFlat.runTests( authData, ghLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 10000 );
@@ -70,7 +69,6 @@ async function runTests() {
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-    */
     
     subTest = await testComponents.runTests( authData, ghLinks, td );
     console.log( "\n\nComponents test complete." );

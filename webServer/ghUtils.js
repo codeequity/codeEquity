@@ -69,8 +69,8 @@ var githubSafe = {
 	return splitIssue( authData, owner, repo, issue, splitTag );
     },
 
-    rebuildIssue: function( authData, owner, repo, issue, actor, msg ) {
-	return rebuildIssue( authData, owner, repo, issue, actor, msg );
+    rebuildIssue: function( authData, owner, repo, issue, msg ) {
+	return rebuildIssue( authData, owner, repo, issue, msg );
     },
 
     cleanUnclaimed: function( authData, ghLinks, pd ) {
@@ -329,12 +329,12 @@ async function splitIssue( authData, owner, repo, issue, splitTag ) {
     return issueData;
 }
 
-async function rebuildIssue( authData, owner, repo, issue, actor, msg ) {
+async function rebuildIssue( authData, owner, repo, issue, msg ) {
     console.log( authData.who, "Rebuilding issue" );
     let issueData = [-1,-1];  // issue id, num
 
     await authData.ic.issues.create( {
-	owner:     actor,
+	owner:     owner,
 	repo:      repo,
 	title:     issue.title,
 	body:      issue.body,

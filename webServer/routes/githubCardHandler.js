@@ -225,8 +225,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		}
 		ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
 
-		// no need to wait
-		if( !accr ) { utils.removePEQ( authData, peq.PEQId ); }
+		// no need to wait.
+		// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
+		// XXX all vebs, actions, notes should be in config.
+		utils.removePEQ( authData, peq.PEQId );
 		let action = accr ? "notice"  : "delete";
 		let note   = accr ? "Disconnected issue" : "";
 		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
