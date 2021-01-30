@@ -35,7 +35,7 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     await tu.addLabel( authData, td, nbi1[1], popLabel.name );       // ready.. set... Go!
 
     console.log( "Waiting for populate" );
-    await utils.sleep( 3000 );
+    await utils.sleep( 1000 );
     console.log( "Done waiting for populate" );
 
     // softCont: dataSecurity, githubOps, unallocated
@@ -289,7 +289,7 @@ async function runTests( authData, ghLinks, td ) {
     let testStatus = [ 0, 0, []];
 
     await createPreferredCEProjects( authData, ghLinks, td );
-    await utils.sleep( 5000 );
+    await utils.sleep( 4000 );
     let t1 = await testPreferredCEProjects( authData, ghLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );

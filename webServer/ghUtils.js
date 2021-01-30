@@ -296,12 +296,6 @@ function getColumns( authData, ghLinks, projId ) {
     let locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": projId } );
     cols = locs.map( loc => loc.GHColumnId );
     
-    /*
-    await( authData.ic.projects.listColumns( { project_id: projId }))
-	.then( allcols => { cols = allcols['data']; })
-	.catch( e => { console.log( authData.who, "list columns failed.", e ); });
-    */
-    
     return cols;
 }
 
@@ -336,7 +330,7 @@ async function splitIssue( authData, owner, repo, issue, splitTag ) {
 }
 
 async function rebuildIssue( authData, owner, repo, issue, msg ) {
-    console.log( "Rebuilding issue" );
+    console.log( authData.who, "Rebuilding issue" );
     let issueData = [-1,-1];  // issue id, num
 
     await authData.ic.issues.create( {
@@ -534,12 +528,6 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 	    datum.columnId    = card.node.column.databaseId;
 	    data.push( datum );
 	}
-	// XXX Unused
-	/*
-	for( const label of labels.edges ) {
-	    console.log( label.node.name, ",", label.node.description );
-	}
-	*/
     }
 
     if( issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
@@ -780,14 +768,15 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
     }
 
     let unClaimedColId = -1;
-    const colName = makeAccrued ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed; 
+    const colName = makeAccrued ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
+    // Get locs again, to update after creation above
     locs = ghLinks.getLocs( authData, { "projName": unClaimed } );
     assert( unClaimedProjId == locs[0].GHProjectId );
 
     const loc = locs.find( loc => loc.GHColumnName == colName );
     if( typeof loc !== 'undefined' ) { unClaimedColId = loc.GHColumnId; }
     if( unClaimedColId == -1 ) {
-	console.log( "Creating UnClaimed column" );
+	console.log( authData.who, "Creating UnClaimed column" );
 	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
 	    .then((column) => {
 		unClaimedColId = column.data.id;
@@ -795,41 +784,6 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
 	    })
 	    .catch( e => { console.log( authData.who, "Create unclaimed column failed.", e ); });
     }
-
-    /*
-    // Get, or create, unclaimed project id
-    // Note.  pagination removes .headers, .data and etc.
-    await authData.ic.paginate( authData.ic.projects.listForRepo, { owner: owner, repo: repo, state: "open" } )
-	.then((projects) => {
-	    for( project of projects ) {
-		if( project.name == unClaimed ) { unClaimedProjId = project.id; }
-	    }})
-	.catch( e => { console.log( authData.who, "List projects failed.", e ); });
-    if( unClaimedProjId == -1 ) {
-	console.log( "Creating UnClaimed project" );
-	let body = "Temporary storage for issues with cards that have not yet been assigned to a column (triage)";
-	await authData.ic.projects.createForRepo({ owner: owner, repo: repo, name: unClaimed, body: body })
-	    .then((project) => { unClaimedProjId = project.data.id; })
-	    .catch( e => { console.log( authData.who, "Create unclaimed project failed.", e ); });
-    }
-
-
-    // Get, or create, unclaimed column id
-    let colName = makeAccrued ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed; 
-    let unClaimedColId = -1;
-    await authData.ic.paginate( authData.ic.projects.listColumns, { project_id: unClaimedProjId, per_page: 100 } )
-	.then((columns) => {
-	    for( column of columns ) {
-		if( column.name == colName ) { unClaimedColId = column.id; }
-	    }})
-    	.catch( e => { console.log( authData.who, "List Columns failed.", e ); });
-    if( unClaimedColId == -1 ) {
-	console.log( "Creating UnClaimed column" );
-	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
-	    .then((column) => { unClaimedColId = column.data.id; })
-	    .catch( e => { console.log( authData.who, "Create unclaimed column failed.", e ); });
-    }
-    */
     
     assert( unClaimedProjId != -1 );
     assert( unClaimedColId != -1  );
@@ -878,37 +832,6 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     */
 }
 
-// XXX
-/*
-// This is a peq issue being reopened.  Can't reopen into PEND, so where to put it?
-async function getCurCol( authData, ghLinks, issueId ) {
-
-    let curCol  = -1;
-    // XXX expensive
-    const peq   = await utils.getPeq( authData, issueId );
-    if( peq == -1 ) { return curCol; }
-    const pacts = await utils.getPActs( authData, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
-
-    // Is psub out of date?
-    if( pacts != -1 ) {
-	for( const pact of pacts ) {
-	    const ignoreMe = ["notice", "accrue"];   // moves are notices (XXX overly broad), open close are accrue
-	    if( ignoreMe.includes( pact.Action )) { return curCol; }
-	}
-    }
-    
-    let curColName = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
-    let tmpCol = allColumns.find( col => col.name == curColName );
-    if( tmpCol !== undefined ) {
-	curCol = tmpCol.id;
-	console.log( "Will open issue back to col", curColName, curCol );
-    }
-    else { console.log( "Could not find original column." ); }
-
-    const link = ghLinks.getUniqueLink( authData, issueId );
-    return parseInt( link.flatSource );
-}
-*/
 
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
 // If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
@@ -939,31 +862,23 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     assert( locs != -1 );
     assert( link.GHProjectName == locs[0].GHProjectName );
 
-    let missing = true;
-    await( authData.ic.projects.listColumns({ project_id: projId, per_page: 100 }))
-	.then( columns => {
-	    let foundCount = 0;
-	    for( column of columns['data'] ) {
-		// console.log( "checking", column );
-		let colName = column['name'];
-		for( let i = 0; i < 4; i++ ) {
-		    if( colName == config.PROJ_COLS[i] ) {
-			if( foundReqCol[i+1] == -1 ) { foundCount++; }
-			else {
-			    console.log( "Validate CE Project Layout found column repeat: ", config.PROJ_COLS[i] );
-			    assert( false );
-			}
-			foundReqCol[i+1] = column['id'];
-			break;
-		    }
+    let foundCount = 0;
+    for( loc of locs ) {
+	let colName = loc.GHColumnName;
+	for( let i = 0; i < 4; i++ ) {
+	    if( colName == config.PROJ_COLS[i] ) {
+		if( foundReqCol[i+1] == -1 ) { foundCount++; }
+		else {
+		    console.log( "Validate CE Project Layout found column repeat: ", config.PROJ_COLS[i] );
+		    assert( false );
 		}
-		// no need to check every col when required are found
-		if( foundCount == 4 ) { missing = false; break; }
+		foundReqCol[i+1] = loc.GHColumnId;
+		break;
 	    }
-	})
-	.catch( e => {
-	    console.log( authData.who, "Validate CE Project Layout failed.", e );
-	});
+	}
+	// no need to check every col when required are found
+	if( foundCount == 4 ) { missing = false; break; }
+    }
 
     
     // Make this project viable for PEQ tracking
@@ -1051,6 +966,7 @@ async function findCardInColumn( authData, ghLinks, owner, repo, issueId, colId 
 }
 
 async function moveCard( authData, cardId, colId ) {
+    colId = parseInt( colId );
     return await( authData.ic.projects.moveCard({ card_id: cardId, position: "top", column_id: colId }))
 	.catch( e => { console.log( authData.who, "Move card failed.", e );	});
 }
@@ -1083,15 +999,6 @@ async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action,
     
     if( action == "closed" ) {
 
-	/*
-	// do NOT verify origination point.  Card can be closed from anywhere.  Will move all PEQ into PEND
-	// verify card is in the right place
-	for( let i = 0; i < 2; i++ ) {
-	    oldColId = ceProjectLayout[ pip[i]+1 ];
-	    cardId = await findCardInColumn( authData, ghLinks, owner, repo, issueData[0], oldColId );
-	    if( cardId != -1 ) { break; }
-	}
-	*/
 	const link = ghLinks.getUniqueLink( authData, issueData[0] );
 	cardId = link.GHCardId;
 	

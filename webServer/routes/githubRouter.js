@@ -158,7 +158,6 @@ router.post('/:location?', async function (req, res) {
     else {
 	source += event + ":";
 
-	console.log( event );
 	if( !req.body.hasOwnProperty( event ) ) { console.log( req.body ); }
 
 	// XXX will this interfere with gh lookups by name? esp for label?
@@ -244,7 +243,8 @@ async function getNextJob( authData, pdOld, sender, res ) {
     }
     else {
 	console.log( authData.who, "jobs done" );
-	ghLinks.show();	
+	// ghLinks.showLocs();	
+	ghLinks.show( 5 );	
     }
     return;
 }
