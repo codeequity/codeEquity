@@ -243,8 +243,8 @@ async function getNextJob( authData, pdOld, sender, res ) {
     }
     else {
 	console.log( authData.who, "jobs done" );
-	ghLinks.showLocs();	
-	ghLinks.show();	
+	// ghLinks.showLocs();	
+	ghLinks.show( 5 );	
     }
     return;
 }

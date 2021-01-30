@@ -405,31 +405,40 @@ class Linkage {
     }
 
     // XXX stringiness vs. intyness of link is bass ackwards.
-    show() {
+    show( count ) {
 	console.log( "IssueId",
 		     "IssueNum",
 		     this.fill( "CardId", 7),
 		     this.fill( "Title", 35 ),
 		     this.fill( "ColId", 10),
-		     this.fill("ColName", 20),
+		     this.fill( "ColName", 20),
 		     this.fill( "ProjId", 10 ), 
 		     this.fill( "ProjName", 15 ),
 		     this.fill( "sourceCol", 10 )
 		   );
-	
+
+	let printables = [];
 	for( const [issueId, clinks] of Object.entries( this.links )) {
 	    for( const [_, link] of Object.entries( clinks )) {
-		console.log( link.GHIssueId,
-			     link.GHIssueNum,
-			     this.fill( link.GHCardId, 10 ),
-			     this.fill( link.GHCardTitle, 35 ),
-			     link.GHColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHColumnId, 10 ),
-			     this.fill( link.GHColumnName, 20 ),
-			     link.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHProjectId, 10 ),
-			     this.fill( link.GHProjectName, 15 ),
-			     link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
-			   );
-	    }
+		printables.push( link );
+	    }}
+
+	let start = 0;
+	if( typeof count !== 'undefined' ) { start = printables.length - count; }
+	start = start < 0 ? 0 : start;
+	
+	for( let i = start; i < printables.length; i++ ) {
+	    let link = printables[i]; 
+	    console.log( link.GHIssueId,
+			 link.GHIssueNum,
+			 this.fill( link.GHCardId, 10 ),
+			 this.fill( link.GHCardTitle, 35 ),
+			 link.GHColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHColumnId, 10 ),
+			 this.fill( link.GHColumnName, 20 ),
+			 link.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHProjectId, 10 ),
+			 this.fill( link.GHProjectName, 15 ),
+			 link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
+		       );
 	}
     }
 
