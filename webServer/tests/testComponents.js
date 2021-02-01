@@ -697,6 +697,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
     }
     
     {
+	// note: pend never closes here (not assigned).  But, there is no PEND delete logic in the handlers.
 	console.log( "Situated testing" );
 
 	const ISS_FLAT = ISS_SITU + " Flat";
@@ -737,7 +738,6 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "situated B" );
     }
     
-    // XXX pending never fully created (didn't close) above.
     {
 	console.log( "Delete Accrued testing" );
 

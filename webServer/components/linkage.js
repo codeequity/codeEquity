@@ -184,12 +184,13 @@ class Linkage {
     // XXX down the road, will want to index by repo - too many otherwise.
     getLinks( authData, query ) {
 
-	console.log( authData.who, "get Links", query );
 	let issueId   = query.hasOwnProperty( "issueId" )   ? query.issueId.toString() : -1;
 	let cardId    = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
 	let repo      = query.hasOwnProperty( "repo" )      ? query.repo               : config.EMPTY;
 	let projName  = query.hasOwnProperty( "projName" )  ? query.projName           : config.EMPTY;
 	let cardTitle = query.hasOwnProperty( "cardTitle" ) ? query.cardTitle          : config.EMPTY;
+
+	console.log( authData.who, "get Links", issueId, cardId, projName, cardTitle );
 	
 	// Is at least one condition active
 	if( issueId == -1 &&

@@ -42,16 +42,6 @@ async function runTests( ghLinks ) {
     // Eeek.  This works a little too well.  Make sure the repo is expected.
     assert( pd.GHRepo == "CodeEquityTester" );
 
-    /* 
-    // Example delete issue 
-    // let query = {query: "mutation { deleteIssue( input:{ issueId: \"MDU6SXNzdWU3NTk1NDY1NjE=\" }) { clientMutationId } }"  };
-
-    // Example query with variables.  
-    let nrepo = 3;
-    let query = "query($number_of_repos:Int!) { viewer {name repositories(last: $number_of_repos) { nodes { name } }  } }" ;
-    let variables = {"number_of_repos": nrepo };
-    */
-
     // Queue
     await tu.purgeJobs( pd.GHRepo, pd.GHOwner );
     
@@ -64,6 +54,7 @@ async function runTests( ghLinks ) {
     console.log( "Issue nodeIds", issues );
 
     // XXX Could probably do this in one fel swoop, but for now
+    // XXX Note the awaits here wait for GH to complete, not for CE to complete.
     let endpoint = "https://api.github.com/graphql";
     for( const nodeId of issues) {
 	let query = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
@@ -71,6 +62,8 @@ async function runTests( ghLinks ) {
 	query = JSON.stringify({ query, variables });
 
 	let res = await utils.postGH( authData.pat, endpoint, query );
+	// Option 1: big sleep at end.  This option: space things out a bit.
+	await utils.sleep( 500 );
 	console.log( res.data );
     }
 
@@ -87,6 +80,8 @@ async function runTests( ghLinks ) {
     for( const projId of projIds ) {
 	await ( authData.ic.projects.delete( {project_id: projId}) )
 	    .catch( e => { console.log( authData.who, "Problem in delete Project", e ); });
+	// Option 1: big sleep at end.  This option: space things out a bit.
+	await utils.sleep( 500 );
     }
 
     await utils.sleep( 3000 );
@@ -126,7 +121,6 @@ async function runTests( ghLinks ) {
     await utils.cleanDynamo( authData, "CEPEQActions", pactIds );
     await utils.cleanDynamo( authData, "CEPEQRaw", pactIds );
 
-
     // PEQs
     let peqs =  await utils.getPeqs( authData, { "GHRepo": pd.GHFullName });
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
@@ -140,7 +134,6 @@ async function runTests( ghLinks ) {
     let links  = await tu.getLinks( authData, ghLinks, { "repo": pd.GHFullName } );
     if( links != -1 ) { console.log( links ); }
     assert( links == -1 );
-    
     
     // RepoStatus
     let status = await utils.getRepoStatus( authData, pd.GHFullName );

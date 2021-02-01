@@ -183,7 +183,7 @@ async function getLinks( authData, ghLinks, query ) {
     return ghLinks.getLinks( authData, query );
 }
 
-// Purge repo's links from ceServer
+// Purge repo's links n locs from ceServer
 async function remLinks( authData, ghLinks, repo ) {
     let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "Repo": repo };
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));

@@ -118,6 +118,18 @@ var githubUtils = {
 	return getFullIssue( authData, owner, repo, issueNum );
     },
 
+    updateLabel: function( authData, owner, repo, name, newName, desc ) {
+	return updateLabel( authData, owner, repo, name, newName, desc );
+    }
+
+    createLabel: function( authData, owner, repo, name, color, desc ) {
+	return createLabel( authData, owner, repo, name, color, desc );
+    }
+
+    createPeqLabel: function( authData, owner, repo, allocation, peqValue ) {
+	return createPeqLabel( authData, owner, repo, allocation, peqValue );
+    }
+
     findOrCreateLabel: function( authData, owner, repo, allocation, peqHumanLabelName, peqValue ) {
 	return findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue );
     },
@@ -371,6 +383,27 @@ async function updateIssue( authData, owner, repo, issueNum, newState ) {
     return retVal;
 }
 
+async function updateLabel( authData, owner, repo, name, newName, desc ) {
+    await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: descr }))
+	.catch( e => console.log( authData.who, "Update label failed.", e ));
+}
+
+async function createLabel( authData, owner, repo, name, color, desc );
+    let label = {};
+    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: name, color: color, description: descr }))
+	.then( l => label = l['data'] )
+	.catch( e => { console.log( authData.who, "Create label failed.", e ); });
+    return label;
+}
+
+async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
+    let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
+    let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
+    let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
+    let label = await createLabel( authData, owner, repo, name, color, desc );
+    return label;
+}
+
 
 // XXX (very) low risk for alignment trouble. warn if see same label create/delete on job queue.
 async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue )
@@ -398,13 +431,7 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
 	    .then( label => { peqLabel = label['data']; })
 	    .catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
-	else {
-	    let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
-	    let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
-	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
-		.then( label => { peqLabel = label['data']; })
-		.catch( e => { console.log( authData.who, "Create label failed.", e ); });
-	}
+	else { peqLabel = createPeqLabel( authData, owner, repo, allocation, peqValue ); }
     }
 
     assert.notStrictEqual( peqLabel, undefined, "Did not manage to find or create the PEQ label" );
@@ -703,10 +730,12 @@ async function removeLabel( authData, owner, repo, issueNum, label ) {
 	.catch( e => { console.log( authData.who, "Remove label from issue failed.", e ); });
 }
 
+// XXX Note this can fail without being an error if issue is already gone.  'Note' instead of 'Error'
 async function removePeqLabel( authData, owner, repo, issueNum ) {
     let labels = await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
 	.catch( e => console.log( authData.who, "Get labels for issue failed.", e ));
 
+    if( typeof labels === 'undefined' ) { return; }
     if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } // XXX paginate? grump grump }
 
     let peqLabel = {};
