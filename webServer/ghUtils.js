@@ -25,6 +25,10 @@ var githubSafe = {
 	return parseLabelDescr( labelDescr );
     },
 	
+    parseLabelName: function( name ) {
+	return parseLabelName( name );
+    },
+	
     theOnePEQ: function( labels ) {
 	return theOnePEQ( labels );
     },
@@ -55,6 +59,18 @@ var githubSafe = {
 
     addLabel: function( authData, owner, repo, issueNum, label ) {
 	return addLabel( authData, owner, repo, issueNum, label );
+    },
+
+    createLabel: function( authData, owner, repo, name, color, desc ) {
+	return createLabel( authData, owner, repo, name, color, desc );
+    },
+
+    updateLabel: function( authData, owner, repo, name, newName, desc ) {
+	return updateLabel( authData, owner, repo, name, newName, desc );
+    },
+
+    createPeqLabel: function( authData, owner, repo, allocation, peqValue ) {
+	return createPeqLabel( authData, owner, repo, allocation, peqValue );
     },
 
     addComment: function( authData, owner, repo, issueNum, msg ) {
@@ -118,18 +134,10 @@ var githubUtils = {
 	return getFullIssue( authData, owner, repo, issueNum );
     },
 
-    updateLabel: function( authData, owner, repo, name, newName, desc ) {
-	return updateLabel( authData, owner, repo, name, newName, desc );
-    }
-
-    createLabel: function( authData, owner, repo, name, color, desc ) {
-	return createLabel( authData, owner, repo, name, color, desc );
-    }
-
-    createPeqLabel: function( authData, owner, repo, allocation, peqValue ) {
-	return createPeqLabel( authData, owner, repo, allocation, peqValue );
-    }
-
+    getLabel: function( authData, owner, repo, name ) {
+	return getLabel( authData, owner, repo, name );
+    },
+    
     findOrCreateLabel: function( authData, owner, repo, allocation, peqHumanLabelName, peqValue ) {
 	return findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue );
     },
@@ -152,6 +160,10 @@ var githubUtils = {
 
     getRepoColsGQL: function( PAT, owner, repo, data, cursor ) {
 	return getRepoColsGQL( PAT, owner, repo, data, cursor );
+    },
+
+    checkLabelExistsGQL: function( authData, nodeId ) {
+	return checkLabelExistsGQL( authData, nodeId );
     },
 
     populateCELinkage: function( authData, ghLinks, pd ) {
@@ -384,13 +396,13 @@ async function updateIssue( authData, owner, repo, issueNum, newState ) {
 }
 
 async function updateLabel( authData, owner, repo, name, newName, desc ) {
-    await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: descr }))
+    await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc }))
 	.catch( e => console.log( authData.who, "Update label failed.", e ));
 }
 
-async function createLabel( authData, owner, repo, name, color, desc );
+async function createLabel( authData, owner, repo, name, color, desc ) {
     let label = {};
-    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: name, color: color, description: descr }))
+    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: name, color: color, description: desc }))
 	.then( l => label = l['data'] )
 	.catch( e => { console.log( authData.who, "Create label failed.", e ); });
     return label;
@@ -398,32 +410,35 @@ async function createLabel( authData, owner, repo, name, color, desc );
 
 async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
     let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
-    let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
+    let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
-    let label = await createLabel( authData, owner, repo, name, color, desc );
+    let label = await createLabel( authData, owner, repo, peqHumanLabelName, pcolor, desc );
     return label;
 }
 
+
+async function getLabel( authData, owner, repo, name ) {
+    let labelRes = {}
+    labelRes.status = 200;
+    await( authData.ic.issues.getLabel( { owner: owner, repo: repo, name: name }))
+	.then( l => labelRes.label = l['data'] )
+	.catch( e => {
+	    labelRes.status = e['status'];
+	    if( labelRes.status != 404 ) { console.log( authData.who, "Get label failed.", e ); }
+	});
+    return labelRes;
+}
 
 // XXX (very) low risk for alignment trouble. warn if see same label create/delete on job queue.
 async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue )
 {
     // does label exist 
-    let peqLabel = "";
-    let status = 200;
-    await( authData.ic.issues.getLabel( { owner: owner, repo: repo, name: peqHumanLabelName }))
-	.then( label => {
-	    peqLabel = label['data'];
-	})
-	.catch( e => {
-	    status = e['status'];
-	    if( status != 404 ) {
-		console.log( authData.who, "Get label failed.", e );
-	    }
-	});
+
+    const labelRes = await getLabel( authData, owner, repo, peqHumanLabelName );
+    let   peqLabel = labelRes.label;
     
     // if not, create
-    if( status == 404 ) {
+    if( labelRes.status == 404 ) {
 	console.log( authData.who, "Label not found, creating.." );
 
 	if( peqHumanLabelName == config.POPULATE ) {
@@ -431,7 +446,7 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
 	    .then( label => { peqLabel = label['data']; })
 	    .catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
-	else { peqLabel = createPeqLabel( authData, owner, repo, allocation, peqValue ); }
+	else { peqLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue ); }
     }
 
     assert.notStrictEqual( peqLabel, undefined, "Did not manage to find or create the PEQ label" );
@@ -629,6 +644,28 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 
     
     if( projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
+}
+
+// Works, but unused so far
+async function checkLabelExistsGQL( authData, nodeId ) {
+    // XXX move these
+    // Note: node_ids are typed
+    let query = `
+    query ($nodeId: ID!)
+    {
+	node(id: $nodeId ) {
+        ... on Label { name }}}`;
+    
+    let variables = {"nodeId": nodeId };
+    query = JSON.stringify({ query, variables });
+
+    let res = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.catch( e => console.log( "Error.  GQL label exists issue", e ));
+    
+    let retVal = false;
+    if( typeof res.data.node !== 'undefined' && typeof res.data.node.name !== 'undefined' ) { retVal = true; }
+    console.log( authData.who, "Label node", nodeId, "exists?", retVal );
+    return retVal;
 }
 
 
@@ -1193,6 +1230,12 @@ function parseLabelDescr( labelDescr ) {
 	}
     }
 
+    return peqValue;
+}
+
+// '500 PEQ'  or '500 AllocPEQ'
+function parseLabelName( name ) {
+    const peqValue = parseInt( name.split(" ")[0] );
     return peqValue;
 }
 

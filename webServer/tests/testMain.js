@@ -52,7 +52,7 @@ async function runTests() {
 
     let testStatus = [ 0, 0, []];
     let subTest = "";
-
+    
     await testDelete.runTests( ghLinks );
 
     subTest = await testSetup.runTests( authData, ghLinks, td );
@@ -76,6 +76,7 @@ async function runTests() {
     testStatus = tu.mergeTests( testStatus, subTest );
 
     tu.testReport( testStatus, "================= Testing complete =================" );
+
     
     // NOTE: you must TURN OFF ceServer to construct part of this test, and turn it back on to execute it.
     // Have already populated in setup, but will re-pop here.  No harm.  
