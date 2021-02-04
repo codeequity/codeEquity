@@ -904,6 +904,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	lab1     = labelRes.label;
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "51 PEQ" );
 	lab51    = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	testStatus = await tu.checkLabel( authData, lab51, "51 PEQ", "PEQ value: 51", testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
@@ -916,6 +917,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	await tu.updateLabel( authData, td, lab1, {description: "PEQ value: 51"} );                                          
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
 	lab1     = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	
 	tu.testReport( testStatus, "Label mods E" );
@@ -927,6 +929,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	lab1     = labelRes.label;
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "52 PEQ" );
 	lab52    = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	testStatus = await tu.checkLabel( authData, lab52, "52 PEQ", "PEQ value: 52", testStatus );
 	
@@ -937,6 +940,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	await tu.delLabel( authData, td, lab1.name );
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
 	lab1     = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label delete attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
@@ -944,7 +948,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label mods G" );
 
 	// Clean
-	await tu.delLabel( authData, td, labNP1.name );    	
+	await tu.delLabel( authData, td, labNP1.name );
 	
     }
     

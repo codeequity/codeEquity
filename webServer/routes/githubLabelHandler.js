@@ -60,7 +60,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, name, pd.reqBody.label.color, descr );
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				   "confirm", "notice", [], "peq label edit",
+				   "confirm", "notice", [], "PEQ label edit attempt",
 				   utils.getToday(), pd.reqBody );
 	}
 	break;
@@ -95,7 +95,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				   "confirm", "notice", [], "peq label delete",
+				   "confirm", "notice", [], "PEQ label delete attempt",
 				   utils.getToday(), pd.reqBody );
 	}
 	break;

@@ -964,14 +964,22 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
 async function checkPact( authData, ghLinks, td, title, verb, action, note, testStatus ) {
 
     console.log( "Check PAct" );
-
-    // Risky test - will fail if unrelated peqs with same title exist.  Do not use with remIssue/rebuildIssue
-    // No card may have inactive peq
-    let peqs     = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+    let pact = {};
+    let pacts = {};
     let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peqs[0].PEQId );
+
+    // Either check last related to PEQ, or just find latest.
+
+    if( title != -1 ) {
+	// Risky test - will fail if unrelated peqs with same title exist.  Do not use with remIssue/rebuildIssue.  No card may have inactive peq
+	let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+	pacts    = allPacts.filter((pact) => pact.Subject[0] == peqs[0].PEQId );
+    }
+    else { pacts = allPacts; }
+    
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let pact     = pacts[ pacts.length - 1];
+    pact     = pacts[ pacts.length - 1];
+
     testStatus = checkGE( pacts.length, 1,                     testStatus, "PAct count" );
     testStatus = checkEq( pact.Verb, verb,                     testStatus, "pact verb" );
     testStatus = checkEq( pact.Action, action,                 testStatus, "pact action" );
