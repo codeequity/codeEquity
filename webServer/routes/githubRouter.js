@@ -210,7 +210,6 @@ router.post('/:location?', async function (req, res) {
     await switcher( authData, ghLinks, pd, sender, event, action, tag, res );
     
     // avoid socket hangup error, response undefined
-    // return retVal;
     return res.end();
 });
 
@@ -246,7 +245,7 @@ async function getNextJob( authData, pdOld, sender, res ) {
 	// ghLinks.showLocs();	
 	ghLinks.show( 5 );	
     }
-    return;
+    return res.end();
 }
 
 

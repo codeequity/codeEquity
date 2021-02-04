@@ -697,6 +697,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
     }
     
     {
+	// note: pend never closes here (not assigned).  But, there is no PEND delete logic in the handlers.
 	console.log( "Situated testing" );
 
 	const ISS_FLAT = ISS_SITU + " Flat";
@@ -737,7 +738,6 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "situated B" );
     }
     
-    // XXX pending never fully created (didn't close) above.
     {
 	console.log( "Delete Accrued testing" );
 
@@ -816,6 +816,149 @@ async function testCreateDelete( authData, ghLinks, td ) {
     return testStatus;
 }
 
+// edit, delete peq labels for open, pend and accr issues.  test a non-peq.
+async function testLabelMods( authData, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Test Label Mods" );
+    authData.who = "<TEST: Label Mods>";
+    
+    const ISS_NEWB = "LM Newborn";
+    const ISS_PLAN = "LM Open";
+    const ISS_PEND = "LM Pending";
+    const ISS_ACCR = "LM Accrued";
+
+    const LAB1     = "501 PEQ";
+    const LABNP1   = "nonPeq1";
+    const LABNP2   = "nonPeq2";
+    
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+
+    const ghoPlan = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const ghoPend = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const ghoAccr = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+
+    {
+	// 1. Setup
+	console.log( "\nMake labels, issues" );
+	let lab1   = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LAB1, 501 );
+	let labNP1 = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LABNP1, -1 );	
+	let labNP2 = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LABNP2, -1 );	
+
+	const issNewbDat = await tu.makeIssue( authData, td, ISS_NEWB, [labNP1] );                // [id, number, title] 
+	const issPlanDat = await tu.makeIssue( authData, td, ISS_PLAN, [LAB1, labNP1, labNP2] );  
+	const issPendDat = await tu.makeIssue( authData, td, ISS_PEND, [LAB1, labNP1, labNP2] );     
+	const issAccrDat = await tu.makeIssue( authData, td, ISS_ACCR, [LAB1, labNP1, labNP2] );     
+
+	// First unclaimed creation takes a sec
+	await utils.sleep( 1000 );
+	
+	// Need assignees for pend/accr. 
+	await tu.addAssignee( authData, td, issPendDat[1], ASSIGNEE1 );	
+	await tu.addAssignee( authData, td, issPendDat[1], ASSIGNEE2 );	
+	await tu.addAssignee( authData, td, issAccrDat[1], ASSIGNEE2 );
+
+	// Set up cards
+	const cardPlan = await tu.makeProjectCard( authData, ghoPlan.colId, issPlanDat[0] );
+	const cardPend = await tu.makeProjectCard( authData, ghoPlan.colId, issPendDat[0] );
+	const cardAccr = await tu.makeProjectCard( authData, ghoPlan.colId, issAccrDat[0] );
+
+	// Close & accrue
+	await tu.closeIssue( authData, td, issPendDat[1] );
+	await tu.closeIssue( authData, td, issAccrDat[1] );
+	await tu.moveCard( authData, cardAccr.id, ghoAccr.colId );
+
+	await utils.sleep( 2000 );	
+	testStatus = await tu.checkNewbornIssue( authData, ghLinks, td, issNewbDat, testStatus, {lblCount: 1} );
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 3} );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, ghoPend, issPendDat, cardPend, testStatus, {label: 501, lblCount: 3} );
+	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 3} );
+
+	tu.testReport( testStatus, "Label mods A" );
+
+	// 2. Mod newborn label, label should be as modded.
+	console.log( "Mod newborn label" );
+	let labelRes = {};
+	await tu.updateLabel( authData, td, labNP1, {name: "newName", description: "newDesc"} );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "newName" );
+	labNP1   = labelRes.label;
+	testStatus = await tu.checkLabel( authData, labNP1, "newName", "newDesc", testStatus ); 
+
+	tu.testReport( testStatus, "Label mods B" );
+	
+	// 3. delete np2, should no longer find it.
+	console.log( "Remove nonPeq(2) label" );
+	await tu.delLabel( authData, td, labNP2.name );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LABNP2 );
+	labNP2   = labelRes.label;
+	testStatus = await tu.checkLabel( authData, labNP2, -1, -1, testStatus );
+
+	tu.testReport( testStatus, "Label mods C" );
+
+	// 4. Edit lab1 name, fail and create new
+	console.log( "Mod peq label name" );
+	await tu.updateLabel( authData, td, lab1, {name: "51 PEQ"} );                                          
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
+	lab1     = labelRes.label;
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "51 PEQ" );
+	lab51    = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
+	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
+	testStatus = await tu.checkLabel( authData, lab51, "51 PEQ", "PEQ value: 51", testStatus );
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
+	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
+	
+	tu.testReport( testStatus, "Label mods D" );
+
+	// 5. Edit lab1 descr, fail
+	console.log( "Mod peq label descr" );
+	await tu.updateLabel( authData, td, lab1, {description: "PEQ value: 51"} );                                          
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
+	lab1     = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
+	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
+	
+	tu.testReport( testStatus, "Label mods E" );
+
+	// 6. Edit lab1 all, fail & create new
+	console.log( "Mod peq label name,descr" );
+	await tu.updateLabel( authData, td, lab1, {name: "52 PEQ",  description: "PEQ value: 52"} );                                          
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
+	lab1     = labelRes.label;
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "52 PEQ" );
+	lab52    = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
+	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
+	testStatus = await tu.checkLabel( authData, lab52, "52 PEQ", "PEQ value: 52", testStatus );
+	
+	tu.testReport( testStatus, "Label mods F" );
+
+	// 7. Delete lab1, fail
+	console.log( "Delete peq label" );
+	await tu.delLabel( authData, td, lab1.name );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
+	lab1     = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label delete attempt", testStatus );	
+	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
+	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
+	
+	tu.testReport( testStatus, "Label mods G" );
+
+	// Clean
+	await tu.delLabel( authData, td, labNP1.name );
+	
+    }
+    
+    
+    tu.testReport( testStatus, "Test Create Delete" );
+
+    return testStatus;
+}
+
+
 
 async function runTests( authData, ghLinks, td ) {
 
@@ -824,6 +967,9 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
+    
+    
+    /*
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 10000 );
@@ -849,6 +995,15 @@ async function runTests( authData, ghLinks, td ) {
     testStatus = tu.mergeTests( testStatus, t3 );
     testStatus = tu.mergeTests( testStatus, t4 );
     testStatus = tu.mergeTests( testStatus, t5 );
+    */
+
+    
+    let t6 = await testLabelMods( authData, ghLinks, td );
+    console.log( "\n\nLabel mods complete." );
+    await utils.sleep( 10000 );
+
+    testStatus = tu.mergeTests( testStatus, t6 );
+    
     return testStatus
 }
 

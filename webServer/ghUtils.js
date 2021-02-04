@@ -25,6 +25,10 @@ var githubSafe = {
 	return parseLabelDescr( labelDescr );
     },
 	
+    parseLabelName: function( name ) {
+	return parseLabelName( name );
+    },
+	
     theOnePEQ: function( labels ) {
 	return theOnePEQ( labels );
     },
@@ -55,6 +59,18 @@ var githubSafe = {
 
     addLabel: function( authData, owner, repo, issueNum, label ) {
 	return addLabel( authData, owner, repo, issueNum, label );
+    },
+
+    createLabel: function( authData, owner, repo, name, color, desc ) {
+	return createLabel( authData, owner, repo, name, color, desc );
+    },
+
+    updateLabel: function( authData, owner, repo, name, newName, desc ) {
+	return updateLabel( authData, owner, repo, name, newName, desc );
+    },
+
+    createPeqLabel: function( authData, owner, repo, allocation, peqValue ) {
+	return createPeqLabel( authData, owner, repo, allocation, peqValue );
     },
 
     addComment: function( authData, owner, repo, issueNum, msg ) {
@@ -118,6 +134,10 @@ var githubUtils = {
 	return getFullIssue( authData, owner, repo, issueNum );
     },
 
+    getLabel: function( authData, owner, repo, name ) {
+	return getLabel( authData, owner, repo, name );
+    },
+    
     findOrCreateLabel: function( authData, owner, repo, allocation, peqHumanLabelName, peqValue ) {
 	return findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue );
     },
@@ -140,6 +160,10 @@ var githubUtils = {
 
     getRepoColsGQL: function( PAT, owner, repo, data, cursor ) {
 	return getRepoColsGQL( PAT, owner, repo, data, cursor );
+    },
+
+    checkLabelExistsGQL: function( authData, nodeId ) {
+	return checkLabelExistsGQL( authData, nodeId );
     },
 
     populateCELinkage: function( authData, ghLinks, pd ) {
@@ -371,44 +395,67 @@ async function updateIssue( authData, owner, repo, issueNum, newState ) {
     return retVal;
 }
 
+async function updateLabel( authData, owner, repo, name, newName, desc ) {
+    await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc }))
+	.catch( e => console.log( authData.who, "Update label failed.", e ));
+}
+
+async function createLabel( authData, owner, repo, name, color, desc ) {
+    let label = {};
+    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: name, color: color, description: desc }))
+	.then( l => label = l['data'] )
+	.catch( e => { console.log( authData.who, "Create label failed.", e ); });
+    return label;
+}
+
+async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
+    let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
+    let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
+    let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
+    let label = await createLabel( authData, owner, repo, peqHumanLabelName, pcolor, desc );
+    return label;
+}
+
+
+async function getLabel( authData, owner, repo, name ) {
+    let labelRes = {}
+    labelRes.status = 200;
+    await( authData.ic.issues.getLabel( { owner: owner, repo: repo, name: name }))
+	.then( l => labelRes.label = l['data'] )
+	.catch( e => {
+	    labelRes.status = e['status'];
+	    if( labelRes.status != 404 ) { console.log( authData.who, "Get label failed.", e ); }
+	});
+    return labelRes;
+}
 
 // XXX (very) low risk for alignment trouble. warn if see same label create/delete on job queue.
 async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue )
 {
     // does label exist 
-    let peqLabel = "";
-    let status = 200;
-    await( authData.ic.issues.getLabel( { owner: owner, repo: repo, name: peqHumanLabelName }))
-	.then( label => {
-	    peqLabel = label['data'];
-	})
-	.catch( e => {
-	    status = e['status'];
-	    if( status != 404 ) {
-		console.log( authData.who, "Get label failed.", e );
-	    }
-	});
+
+    const labelRes = await getLabel( authData, owner, repo, peqHumanLabelName );
+    let   theLabel = labelRes.label;
     
     // if not, create
-    if( status == 404 ) {
+    if( labelRes.status == 404 ) {
 	console.log( authData.who, "Label not found, creating.." );
 
 	if( peqHumanLabelName == config.POPULATE ) {
 	await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
-	    .then( label => { peqLabel = label['data']; })
+	    .then( label => { theLabel = label['data']; })
 	    .catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
-	else {
-	    let descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
-	    let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
-	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: pcolor, description: descr }))
-		.then( label => { peqLabel = label['data']; })
-		.catch( e => { console.log( authData.who, "Create label failed.", e ); });
+	else if( peqValue < 0 ) {
+	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '654321', description: "Oi!" }))
+		.then( label => { theLabel = label['data']; })
+		.catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
+	else                    { theLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue ); }
     }
 
-    assert.notStrictEqual( peqLabel, undefined, "Did not manage to find or create the PEQ label" );
-    return peqLabel;
+    assert.notStrictEqual( theLabel, undefined, "Did not manage to find or create the PEQ label" );
+    return theLabel;
 }
 
 
@@ -604,6 +651,28 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
     if( projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
 }
 
+// Works, but unused so far
+async function checkLabelExistsGQL( authData, nodeId ) {
+    // XXX move these
+    // Note: node_ids are typed
+    let query = `
+    query ($nodeId: ID!)
+    {
+	node(id: $nodeId ) {
+        ... on Label { name }}}`;
+    
+    let variables = {"nodeId": nodeId };
+    query = JSON.stringify({ query, variables });
+
+    let res = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.catch( e => console.log( "Error.  GQL label exists issue", e ));
+    
+    let retVal = false;
+    if( typeof res.data.node !== 'undefined' && typeof res.data.node.name !== 'undefined' ) { retVal = true; }
+    console.log( authData.who, "Label node", nodeId, "exists?", retVal );
+    return retVal;
+}
+
 
 
 // Add linkage data for all carded issues in a project.
@@ -703,10 +772,12 @@ async function removeLabel( authData, owner, repo, issueNum, label ) {
 	.catch( e => { console.log( authData.who, "Remove label from issue failed.", e ); });
 }
 
+// XXX Note this can fail without being an error if issue is already gone.  'Note' instead of 'Error'
 async function removePeqLabel( authData, owner, repo, issueNum ) {
     let labels = await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
 	.catch( e => console.log( authData.who, "Get labels for issue failed.", e ));
 
+    if( typeof labels === 'undefined' ) { return; }
     if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } // XXX paginate? grump grump }
 
     let peqLabel = {};
@@ -1164,6 +1235,12 @@ function parseLabelDescr( labelDescr ) {
 	}
     }
 
+    return peqValue;
+}
+
+// '500 PEQ'  or '500 AllocPEQ'
+function parseLabelName( name ) {
+    const peqValue = parseInt( name.split(" ")[0] );
     return peqValue;
 }
 

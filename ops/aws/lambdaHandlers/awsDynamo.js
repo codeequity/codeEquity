@@ -234,7 +234,7 @@ async function getEntries( tableName, query ) {
     let props = [];
     switch( tableName ) {
     case "CEPEQs":
-	props = [ "PEQId", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
 	break;
     case "CEPEQActions":
 	props = [ "PEQActionId", "CEUID", "GHUserName", "GHRepo", "Verb", "Action", "Subject", "Ingested"];

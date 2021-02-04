@@ -118,7 +118,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
 	    return;
 	}
-	
+
 	// Was this a carded issue?  Get linkage
 	let links = ghLinks.getLinks( authData, { "issueId": pd.GHIssueId } );
 	assert( links == -1 || links.length == 1 );
@@ -165,17 +165,32 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Do not move card, would be confusing for user.
 	{
 	    // Unlabel'd label data is not located under issue.. parseLabel looks in arrays
-	    pd.peqValue = ghSafe.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
-	    if( pd.peqValue <= 0 ) {
-		console.log( "Not a PEQ label, no action taken." );
+	    if( typeof pd.reqBody.label !== 'undefined' ) {
+		pd.peqValue = ghSafe.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
+		if( pd.peqValue <= 0 ) {
+		    console.log( "Not a PEQ label, no action taken." );
+		    return;
+		}
+	    }
+	    else {
+		console.log( authData.who, "Label was deleted.  Stop, let labelHandler address this." );
 		return;
 	    }
+		
+	    /* // working, but not needed.  No label, action was delete.
+	    const exists = ghSafe.checkLabelExistsGQL( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.label.node_id );  
+	    if( !exists ) {
+		console.log( authData.who, "Label was deleted.  Stop, let labelHandler address this." );
+		return;
+	    }
+	    */
+	    
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
 
 	    // GH already removed this.  Put it back.
-	    if( newNameIndex >= config.PROJ_ACCR ) { 
+	    if( newNameIndex >= config.PROJ_ACCR ) {
 		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
 		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
 		return;

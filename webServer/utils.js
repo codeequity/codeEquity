@@ -303,10 +303,6 @@ async function recordPEQ( authData, postData ) {
     return await wrappedPostIt( authData, shortName, pd );
 }
 
-async function recordPEQTodo( blit, blot ) {
-    console.log( "Musta hava sum tingy here" );
-}
-
 function sleep(ms) {
     if( ms >= 1000 ) { console.log( "Sleeping for", ms / 1000, "seconds" ); }
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -777,7 +773,6 @@ exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
 exports.rebuildPeq = rebuildPeq;
 exports.recordPeqData = recordPeqData;
-exports.recordPEQTodo = recordPEQTodo;
 exports.removePEQ = removePEQ;
 exports.getPeq = getPeq;
 exports.getPeqFromTitle = getPeqFromTitle;
