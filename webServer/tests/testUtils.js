@@ -364,6 +364,25 @@ async function remLabel( authData, td, issueNumber, label ) {
     await utils.sleep( MIN_DELAY );
 }
 
+async function updateLabel( authData, td, label, updates ) {
+    console.log( "Updating", label.name );
+
+    let newName = updates.hasOwnProperty( "name" )        ? updates.name : label.name;
+    let newDesc = updates.hasOwnProperty( "description" ) ? updates.description : label.description;
+    
+    await( authData.ic.issues.updateLabel( { owner: td.GHOwner, repo: td.GHRepo, name: label.name, new_name: newName, description: newDesc }))
+	.catch( e => console.log( authData.who, "Update label failed.", e ));
+
+    await utils.sleep( MIN_DELAY );
+}
+
+async function delLabel( authData, td, name ) {
+    console.log( "Removing label:", name );
+    await authData.ic.issues.deleteLabel({ owner: td.GHOwner, repo: td.GHRepo, name: name })
+	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
+    await utils.sleep( MIN_DELAY );
+}
+
 async function addAssignee( authData, td, issueNumber, assignee ) {
     await authData.ic.issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
 	.catch( e => { console.log( authData.who, "Add assignee failed.", e ); });
@@ -577,6 +596,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let muteIngested = specials !== undefined && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
     let issueState   = specials !== undefined && specials.hasOwnProperty( "state" )        ? specials.state        : false;
     let labelVal     = specials !== undefined && specials.hasOwnProperty( "label" )        ? specials.label        : false;
+    let labelCnt     = specials !== undefined && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
     let skipPeqPID   = specials !== undefined && specials.hasOwnProperty( "skipPeqPID" )   ? specials.skipPeqPID   : false;
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal );
@@ -585,16 +605,16 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let issue  = await findIssue( authData, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
-    testStatus = checkEq( issue.labels.length, 1,                testStatus, "Issue label" );
+    testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label count" );
 
     const lname = labelVal ? labelVal.toString() + " PEQ" : "1000 PEQ";
     const lval  = labelVal ? labelVal                     : 1000;
-    testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label" );
+    testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label name" );
 
     if( issueState ) { testStatus = checkEq( issue.state, issueState, testStatus, "Issue state" );  }
 
     // CHECK github location
-    let cards = await getCards( authData, td.unclaimCID );   
+    let cards = td.unclaimCID == config.EMPTY ? [] : await getCards( authData, td.unclaimCID );   
     let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( tCard.length, 0,                           testStatus, "No unclaimed" );
 
@@ -728,7 +748,6 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
     testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
     testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );
-    testStatus = checkEq( peq.Amount, 1000,                        testStatus, "peq amount" );
     testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub invalid" );
     testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1],     testStatus, "peq project sub invalid" );  
     testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq PID bad" );
@@ -760,9 +779,9 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     return testStatus;
 }
 
-async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus );
+    testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check newly accrued issue", loc.projName, loc.colName );
 
@@ -867,16 +886,17 @@ async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, test
     return testStatus;
 }
 
-async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus ) {
+async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, specials ) {
 
     console.log( "Check Newborn Issue", issueData);
-
+    let labelCnt     = specials !== undefined && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
+    
     // CHECK github issue
     let issue  = await findIssue( authData, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.title, issueData[2],             testStatus, "Github issue troubles" );
-    testStatus = checkEq( issue.labels.length, 0,                testStatus, "Issue label" );
+    testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label" );
 
     // CHECK github card
     // no need, get content link below
@@ -1037,6 +1057,21 @@ async function checkAssignees( authData, td, ass1, ass2, issueData, testStatus )
     return testStatus;
 }
 
+async function checkLabel( authData, label, name, desc, testStatus ) {
+
+    if( name == -1 || desc == -1 ) {
+	testStatus = checkEq( typeof label, 'undefined',  testStatus, "Label should not exist" );
+	return testStatus;
+    }
+    
+    testStatus = checkEq( label.name, name,        testStatus, "Label name bad" );
+    testStatus = checkEq( label.description, desc, testStatus, "Label description bad" );
+    
+    return testStatus;
+}
+
+
+
 exports.refresh         = refresh;
 exports.refreshRec      = refreshRec;  
 exports.refreshFlat     = refreshFlat;
@@ -1056,6 +1091,8 @@ exports.makeIssue       = makeIssue;
 
 exports.addLabel        = addLabel;
 exports.remLabel        = remLabel;
+exports.updateLabel     = updateLabel;
+exports.delLabel        = delLabel;
 exports.addAssignee     = addAssignee;
 exports.remAssignee     = remAssignee;
 exports.moveCard        = moveCard;
@@ -1103,3 +1140,4 @@ exports.checkNoCard             = checkNoCard;
 exports.checkPact               = checkPact;
 exports.checkNoIssue            = checkNoIssue;
 exports.checkAssignees          = checkAssignees;
+exports.checkLabel              = checkLabel;

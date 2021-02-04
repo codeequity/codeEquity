@@ -104,6 +104,13 @@ async function runTests( ghLinks ) {
 	    .catch( e => { console.log( authData.who, "Problem in delete label", e ); });
     }
 
+    // Delete special label mod adds
+    let labelRes = await gh.getLabel( authData, pd.GHOwner, pd.GHRepo, "nonPeq1" );
+    if( typeof labelRes.label != 'undefined' ) { tu.delLabel( authData, pd, labelRes.label.name ); }
+    labelRes = await gh.getLabel( authData, pd.GHOwner, pd.GHRepo, "nonPeq2" );
+    if( typeof labelRes.label != 'undefined' ) { tu.delLabel( authData, pd, labelRes.label.name ); }
+    labelRes = await gh.getLabel( authData, pd.GHOwner, pd.GHRepo, "newName" );
+    if( typeof labelRes.label != 'undefined' ) { tu.delLabel( authData, pd, labelRes.label.name ); }
 
 
 

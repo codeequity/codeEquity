@@ -435,7 +435,7 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
     // does label exist 
 
     const labelRes = await getLabel( authData, owner, repo, peqHumanLabelName );
-    let   peqLabel = labelRes.label;
+    let   theLabel = labelRes.label;
     
     // if not, create
     if( labelRes.status == 404 ) {
@@ -443,14 +443,19 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
 
 	if( peqHumanLabelName == config.POPULATE ) {
 	await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
-	    .then( label => { peqLabel = label['data']; })
+	    .then( label => { theLabel = label['data']; })
 	    .catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
-	else { peqLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue ); }
+	else if( peqValue < 0 ) {
+	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '654321', description: "Oi!" }))
+		.then( label => { theLabel = label['data']; })
+		.catch( e => { console.log( authData.who, "Create label failed.", e );  });
+	}
+	else                    { theLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue ); }
     }
 
-    assert.notStrictEqual( peqLabel, undefined, "Did not manage to find or create the PEQ label" );
-    return peqLabel;
+    assert.notStrictEqual( theLabel, undefined, "Did not manage to find or create the PEQ label" );
+    return theLabel;
 }
 
 
