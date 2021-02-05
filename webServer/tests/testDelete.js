@@ -86,7 +86,21 @@ async function runTests( ghLinks ) {
 
     await utils.sleep( 3000 );
     
-    // Get all peq labels in repo for deletion
+
+    // Clean up dynamo.
+    // Note: awaits may not be needed here.  No dependencies... yet...
+    // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
+    // Eeek.  This works a little too well.  Make sure the repo is expected.
+    assert( pd.GHFullName == "rmusick2000/CodeEquityTester" );
+
+
+    // PEQs
+    let peqs =  await utils.getPeqs( authData, { "GHRepo": pd.GHFullName });
+    let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
+    console.log( "Dynamo PEQ ids", peqIds );
+    await utils.cleanDynamo( authData, "CEPEQs", peqIds );
+
+    // Get all peq labels in repo for deletion... dependent on peq removal first.
     console.log( "Removing all PEQ Labels. " );
     let labelNames = [];
     await authData.ic.paginate( authData.ic.issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
@@ -111,15 +125,7 @@ async function runTests( ghLinks ) {
     if( typeof labelRes.label != 'undefined' ) { tu.delLabel( authData, pd, labelRes.label.name ); }
     labelRes = await gh.getLabel( authData, pd.GHOwner, pd.GHRepo, "newName" );
     if( typeof labelRes.label != 'undefined' ) { tu.delLabel( authData, pd, labelRes.label.name ); }
-
-
-
-    // Clean up dynamo.
-    // Note: awaits may not be needed here.  No dependencies... yet...
-    // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
-    // Eeek.  This works a little too well.  Make sure the repo is expected.
-    assert( pd.GHFullName == "rmusick2000/CodeEquityTester" );
-
+    
     // PActions raw and otherwise
     // Note: bot, ceServer and GHOwner may have pacts.  Just clean out all.
     let pacts = await utils.getPActs( authData, {"GHRepo": pd.GHFullName} );
@@ -127,12 +133,6 @@ async function runTests( ghLinks ) {
     console.log( "Dynamo bot PActIds", pactIds );
     await utils.cleanDynamo( authData, "CEPEQActions", pactIds );
     await utils.cleanDynamo( authData, "CEPEQRaw", pactIds );
-
-    // PEQs
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": pd.GHFullName });
-    let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
-    console.log( "Dynamo PEQ ids", peqIds );
-    await utils.cleanDynamo( authData, "CEPEQs", peqIds );
 
     // Linkages
     // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.

@@ -96,6 +96,14 @@ var githubSafe = {
     updateIssue: function( authData, owner, repo, issueNum, newState ) {
 	return updateIssue( authData, owner, repo, issueNum, newState );
     },
+
+    updateColumn: function( authData, colId, newName ) {
+	return updateColumn( authData, colId, newName );
+    },
+
+    updateProject: function( authData, projId, newName ) {
+	return updateProject( authData, projId, newName );
+    },
     
 }
 
@@ -393,6 +401,16 @@ async function updateIssue( authData, owner, repo, issueNum, newState ) {
 	    console.log( authData.who, "Problem in updateIssue", e );
 	});
     return retVal;
+}
+
+async function updateColumn( authData, colId, newName ) {
+    await authData.ic.projects.updateColumn({ column_id: colId, name: newName })
+	.catch( e => console.log( authData.who, "Update column failed.", e ));
+}
+
+async function updateProject( authData, projId, newName ) {
+    await authData.ic.projects.update({ project_id: projId, name: newName })
+	.catch( e => console.log( authData.who, "Update project failed.", e ));
 }
 
 async function updateLabel( authData, owner, repo, name, newName, desc ) {
@@ -933,6 +951,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     assert( locs != -1 );
     assert( link.GHProjectName == locs[0].GHProjectName );
 
+    let missing = true;
     let foundCount = 0;
     for( loc of locs ) {
 	let colName = loc.GHColumnName;

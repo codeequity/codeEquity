@@ -16,6 +16,7 @@ import 'package:ceFlutter/utils.dart';
 //    confirm:change           title   subject: [id, newtitle]
 //    reject:delete            delete accr
 //    confirm:change           recreate accr in unclaimed.  subject: [oldId, newId].  note: recreate 
+//    confirm:change           mod proj / col name.  subject: [oldName, newName].  note: proj/col rename
 
 // Note: 
 // Move to "pending peq" col is 'close'.

@@ -953,7 +953,104 @@ async function testLabelMods( authData, ghLinks, td ) {
     }
     
     
-    tu.testReport( testStatus, "Test Create Delete" );
+    tu.testReport( testStatus, "Label Mod" );
+
+    return testStatus;
+}
+
+// edit proj / col names
+async function testProjColMods( authData, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Test ProjCol Mods" );
+    authData.who = "<TEST: ProjCol Mods>";
+    
+    const ISS_PLAN = "PC Open";
+    const ISS_PEND = "PC Pending";
+    const ISS_ACCR = "PC Accrued";
+    const PROJ_NAME = "ProjCol Proj";
+
+    const planName = config.PROJ_COLS[config.PROJ_PLAN];
+    const pendName = config.PROJ_COLS[config.PROJ_PEND];
+    const accrName = config.PROJ_COLS[config.PROJ_ACCR];
+
+    {
+	// 1. Setup.  New project. full cols. 1 peq issue each.
+	const projId    = await tu.makeProject( authData, td, PROJ_NAME, "" );
+	const planColId = await tu.makeColumn( authData, projId, planName );
+	const pendColId = await tu.makeColumn( authData, projId, pendName );
+	const accrColId = await tu.makeColumn( authData, projId, accrName );
+
+	const planLoc = await tu.getFlatLoc( authData, projId, PROJ_NAME, planName );
+	const pendLoc = await tu.getFlatLoc( authData, projId, PROJ_NAME, pendName );
+	const accrLoc = await tu.getFlatLoc( authData, projId, PROJ_NAME, accrName );
+
+	let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );	
+
+	const issPlanDat = await tu.makeIssue( authData, td, ISS_PLAN, [ label1k ] );
+	const issPendDat = await tu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
+	const issAccrDat = await tu.makeIssue( authData, td, ISS_ACCR, [ label1k ] );
+
+	// First unclaimed creation takes a sec
+	await utils.sleep( 1000 );
+	
+	// Need assignees for pend/accr. 
+	await tu.addAssignee( authData, td, issPendDat[1], ASSIGNEE2 );	
+	await tu.addAssignee( authData, td, issAccrDat[1], ASSIGNEE1 );
+
+	// Set up cards
+	const cardPlan = await tu.makeProjectCard( authData, planLoc.colId, issPlanDat[0] );
+	const cardPend = await tu.makeProjectCard( authData, planLoc.colId, issPendDat[0] );
+	const cardAccr = await tu.makeProjectCard( authData, planLoc.colId, issAccrDat[0] );
+
+	// Close & accrue
+	await tu.closeIssue( authData, td, issPendDat[1] );
+	await tu.closeIssue( authData, td, issAccrDat[1] );
+	await tu.moveCard( authData, cardAccr.id, accrLoc.colId );
+
+	await utils.sleep( 2000 );	
+	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus );
+	testStatus = await tu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
+
+	tu.testReport( testStatus, "ProjCol mods A" );
+
+	// 2. Edit plan column.
+	console.log( "Mod Plan col" );
+	await tu.updateColumn( authData, planLoc.colId, "New plan name" );
+	planLoc.colName = "New plan name";
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "change", "Column rename", testStatus, {sub:[planName, "New plan name" ]} );
+
+	tu.testReport( testStatus, "ProjCol mods B" );
+
+	// 3. Edit pend, accr column.  fail.
+	console.log( "Mod Pend col" );
+	await tu.updateColumn( authData, pendLoc.colId, "New pend name" );
+	await tu.updateColumn( authData, accrLoc.colId, "New accr name" );
+	// do not update locs, nothing should have changed.
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "Column rename attempted", testStatus, {sub:[accrName]} );	
+	
+	tu.testReport( testStatus, "ProjCol mods C" );
+
+	// 4. Edit proj name.
+	console.log( "Mod Proj Name" );
+	const newProjName = "New " + PROJ_NAME;
+	await tu.updateProject( authData, projId, newProjName );
+	planLoc.projName = newProjName;
+	pendLoc.projName = newProjName;
+	accrLoc.projName = newProjName;
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "change", "Project rename", testStatus, {sub:[PROJ_NAME, newProjName]} );	
+    }
+    
+    
+    tu.testReport( testStatus, "Test ProjCol Mod" );
 
     return testStatus;
 }
@@ -988,21 +1085,26 @@ async function runTests( authData, ghLinks, td ) {
     
     let t5 = await testCreateDelete( authData, ghLinks, td );
     console.log( "\n\nCreate / Delete complete." );
-    // await utils.sleep( 10000 );
+    await utils.sleep( 10000 );
+    
+    let t6 = await testLabelMods( authData, ghLinks, td );
+    console.log( "\n\nLabel mods complete." );
+    await utils.sleep( 10000 );
     
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );
     testStatus = tu.mergeTests( testStatus, t4 );
     testStatus = tu.mergeTests( testStatus, t5 );
+    testStatus = tu.mergeTests( testStatus, t6 );
+
     */
 
-    
-    let t6 = await testLabelMods( authData, ghLinks, td );
-    console.log( "\n\nLabel mods complete." );
+    let t7 = await testProjColMods( authData, ghLinks, td );
+    console.log( "\n\nProjCol mods complete." );
     await utils.sleep( 10000 );
 
-    testStatus = tu.mergeTests( testStatus, t6 );
+    testStatus = tu.mergeTests( testStatus, t7 );
     
     return testStatus
 }

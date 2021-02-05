@@ -158,9 +158,9 @@ router.post('/:location?', async function (req, res) {
     else {
 	source += event + ":";
 
-	if( !req.body.hasOwnProperty( event ) ) { console.log( req.body ); }
+	if     ( !req.body.hasOwnProperty( event ) ) { console.log( req.body ); }
+	else if( !req.body[event].hasOwnProperty( 'name' ) ) { console.log( req.body ); }
 
-	// XXX will this interfere with gh lookups by name? esp for label?
 	req.body[event].name.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
 	tag = req.body[event].name;
     }

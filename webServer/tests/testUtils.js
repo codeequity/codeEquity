@@ -223,15 +223,18 @@ async function getFlatLoc( authData, projId, projName, colName ) {
     // no.  ceFlutter makes this happen
     // if( colName == config.PROJ_COLS[config.PROJ_PEND] ) { ptype = "pending"; }
     // if( colName == config.PROJ_COLS[config.PROJ_ACCR] ) { ptype = "grant"; }
-    
+
+    let psub = [projName, colName];
+    if( config.PROJ_COLS.includes( colName ) ) { psub = [projName]; }
+	
     let loc = {};
     loc.projId   = projId;
     loc.projName = projName;
     loc.colId    = col.id;
     loc.colName  = col.name;
-    loc.projSub  = [projName, colName];
+    loc.projSub  = psub;
     loc.peqType  = ptype; // XXX probably need to add alloc
-    
+
     return loc;
 }
 
@@ -292,6 +295,16 @@ async function remProject( authData, projId ) {
     await utils.sleep( MIN_DELAY );
 }
 
+
+async function updateColumn( authData, colId, name ) {
+    await ghSafe.updateColumn( authData, colId, name );
+    await utils.sleep( MIN_DELAY);
+}
+
+async function updateProject( authData, projId, name ) {
+    await ghSafe.updateProject( authData, projId, name );
+    await utils.sleep( MIN_DELAY);
+}
 
 async function makeColumn( authData, projId, name ) {
     
@@ -659,7 +672,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );  
 
     // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
-    if( pacts.length <= 3 ) {
+    if( pacts.length <= 3 && loc.projSub.length > 1 ) {
 	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
 	if( !pip.includes( loc.projSub[1] )) { 
 	    testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1], testStatus, "peq project sub 1 invalid" );
@@ -678,6 +691,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 
     return testStatus;
 }
+
 
 // Check last PAct
 async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
@@ -749,7 +763,9 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
     testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );
     testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub invalid" );
-    testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1],     testStatus, "peq project sub invalid" );  
+    if( loc.projSub.length > 1 ) {
+	testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1], testStatus, "peq project sub invalid" );
+    }
     testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq PID bad" );
     testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
 
@@ -961,9 +977,11 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     return testStatus;
 }
 
-async function checkPact( authData, ghLinks, td, title, verb, action, note, testStatus ) {
-
+async function checkPact( authData, ghLinks, td, title, verb, action, note, testStatus, specials ) {
     console.log( "Check PAct" );
+
+    let subject = specials !== undefined && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
+
     let pact = {};
     let pacts = {};
     let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
@@ -984,6 +1002,13 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
     testStatus = checkEq( pact.Verb, verb,                     testStatus, "pact verb" );
     testStatus = checkEq( pact.Action, action,                 testStatus, "pact action" );
     testStatus = checkEq( pact.Note, note,                     testStatus, "pact note" );
+
+    if( subject != -1 ) {
+	testStatus = checkEq( pact.Subject.length, subject.length,       testStatus, "pact subject" );
+	for( let i = 0; i < subject.length; i++ ) {
+	    testStatus = checkEq( pact.Subject[i], subject[i],           testStatus, "pact subject" );
+	}
+    }
 
     return testStatus;
 }
@@ -1091,6 +1116,8 @@ exports.makeTitleReducer = makeTitleReducer;
 exports.makeProject     = makeProject;
 exports.remProject      = remProject;
 exports.makeColumn      = makeColumn;
+exports.updateColumn    = updateColumn;
+exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
 exports.makeAllocCard   = makeAllocCard;
 exports.makeNewbornCard = makeNewbornCard;
