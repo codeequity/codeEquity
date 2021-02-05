@@ -188,16 +188,18 @@ class Linkage {
 	let cardId    = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
 	let repo      = query.hasOwnProperty( "repo" )      ? query.repo               : config.EMPTY;
 	let projName  = query.hasOwnProperty( "projName" )  ? query.projName           : config.EMPTY;
+	let colName   = query.hasOwnProperty( "colName" )   ? query.colName            : config.EMPTY;
 	let cardTitle = query.hasOwnProperty( "cardTitle" ) ? query.cardTitle          : config.EMPTY;
 
-	console.log( authData.who, "get Links", issueId, cardId, projName, cardTitle );
+	console.log( authData.who, "get Links", issueId, cardId, projName, colName, cardTitle );
 	
 	// Is at least one condition active
 	if( issueId == -1 &&
 	    cardId == -1  &&
 	    repo == config.EMPTY &&
 	    projName == config.EMPTY &&
-	    cardTitle == config.EMPTY
+	    colName == config.EMPTY &&
+	    cardTitle == config.EMPTY 
 	  ) {
 	    return -1;
 	}
@@ -211,6 +213,7 @@ class Linkage {
 		match = cardId == -1              ? match : match && (link.GHCardId  == cardId);
 		match = repo == config.EMPTY      ? match : match && (link.GHRepo    == repo);
 		match = projName == config.EMPTY  ? match : match && (link.GHProjectName == projName );
+		match = colName == config.EMPTY   ? match : match && (link.GHColumnName == colName );
 		match = cardTitle == config.EMPTY ? match : match && (link.GHCardTitle == cardTitle );
 		
 		if( match ) { links.push( link ); }
