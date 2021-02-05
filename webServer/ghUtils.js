@@ -104,6 +104,14 @@ var githubSafe = {
     updateProject: function( authData, projId, newName ) {
 	return updateProject( authData, projId, newName );
     },
+
+    addAssignee: function( authData, owner, repo, issueNumber, assignee ) {
+	return addAssignee( authData, owner, repo, issueNumber, assignee );
+    },
+    
+    remAssignee: function( authData, owner, repo, issueNumber, assignee ) {
+	return remAssignee( authData, owner, repo, issueNumber, assignee );
+    },
     
 }
 
@@ -411,6 +419,16 @@ async function updateColumn( authData, colId, newName ) {
 async function updateProject( authData, projId, newName ) {
     await authData.ic.projects.update({ project_id: projId, name: newName })
 	.catch( e => console.log( authData.who, "Update project failed.", e ));
+}
+
+async function addAssignee( authData, owner, repo, issueNumber, assignee ) {
+    await authData.ic.issues.addAssignees({ owner: owner, repo: repo, issue_number: issueNumber, assignees: [assignee] })
+	.catch( e => { console.log( authData.who, "Add assignee failed.", e ); });
+}
+
+async function remAssignee( authData, owner, repo, issueNumber, assignee ) {
+    await authData.ic.issues.removeAssignees({ owner: owner, repo: repo, issue_number: issueNumber, assignees: [assignee] })
+	.catch( e => { console.log( authData.who, "Remove assignee failed.", e ); });
 }
 
 async function updateLabel( authData, owner, repo, name, newName, desc ) {
@@ -1242,6 +1260,9 @@ function parseLabelDescr( labelDescr ) {
     let aDescLen = config.ADESC.length;
 
     for( const line of labelDescr ) {
+	// malformed labels can have a null entry here
+	if( !line ) { return peqValue; }
+	
 	if( line.indexOf( config.PDESC ) == 0 ) {
 	    //console.log( "Found peq val in", line.substring( pDescLen ) );
 	    peqValue = parseInt( line.substring( pDescLen ) );

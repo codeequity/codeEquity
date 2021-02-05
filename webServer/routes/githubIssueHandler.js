@@ -273,9 +273,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'assigned': 
+    case 'unassigned':
 	{
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
-	    console.log( authData.who, "Assign", pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
+	    console.log( authData.who, action, pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 	    
 	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
@@ -287,49 +288,23 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let peq = await utils.getPeq( authData, pd.GHIssueId );
 	    let assignee = pd.reqBody.assignee.login;
 	    let verb = "confirm";
-	    let action = "change";
-	    let subject = [peq.PEQId.toString(), assignee];
-	    utils.recordPEQAction(
-		authData,
-		config.EMPTY,     // CE UID
-		sender,           // gh user name
-		pd.GHFullName,    // of the repo
-		verb,
-		action,
-		subject,          // subject
-		"add assignee",   // note
-		utils.getToday(), // entryDate
-		pd.reqBody        // raw
-	    );
-	}
-	break;
-    case 'unassigned':
-	{
-	    console.log( "Unassign", pd.reqBody.assignee.login, "from issue", pd.GHIssueId );
-	    
-	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
-	    if( pd.peqValue <= 0 ) {
-		console.log( "Not a PEQ issue, no action taken." );
-		return;
+	    let paction = "change";
+	    let note = ( action == "assigned" ? "add" : "remove" ) + " assignee";
+
+	    // Not if ACCR
+	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
+	    if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+		console.log( "WARNING.", links[0].GHColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
+		paction = "notice";
+		note = "Bad assignment attempted";
+		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, assignee ); }
+		else                       { ghSafe.addAssignee( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, assignee ); }
 	    }
 	    
-	    let peq = await utils.getPeq( authData, pd.GHIssueId );
-	    let assignee = pd.reqBody.assignee.login;
-	    let verb = "confirm";
-	    let action = "change";
 	    let subject = [peq.PEQId.toString(), assignee];
-	    utils.recordPEQAction(
-		authData,
-		config.EMPTY,     // CE UID
-		sender,           // gh user name
-		pd.GHFullName,    // of the repo
-		verb,
-		action,
-		subject,          // subject
-		"remove assignee",   // note
-		utils.getToday(), // entryDate
-		pd.reqBody        // raw
-	    );
+	    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+				   verb, paction, subject, note,
+				   utils.getToday(), pd.reqBody );
 	}
 	break;
     case 'edited':

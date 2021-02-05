@@ -47,27 +47,30 @@ async function runTests( ghLinks ) {
     
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     console.log( "Removing all issues. " );
-    let issues = [];
-    await authData.ic.paginate( authData.ic.issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
-	.then( results  => { issues = results.map((res) => res.node_id ); })
-	.catch( e => { console.log( authData.who, "Problem in listIssues", e ); });
-    console.log( "Issue nodeIds", issues );
+    let issues = await authData.ic.paginate( authData.ic.issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
+	.catch( e => console.log( authData.who, "Problem in listIssues", e ));
 
+    let allLinks = await tu.getLinks( authData, ghLinks, { "repo": pd.GHFullName } );
+    
     // XXX Could probably do this in one fel swoop, but for now
-    // XXX Note the awaits here wait for GH to complete, not for CE to complete.
+    // XXX Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
     let endpoint = "https://api.github.com/graphql";
-    for( const nodeId of issues) {
+    for( const issue of issues) {
+	const nodeId = issue.node_id;
 	let query = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
 	let variables = {"id": nodeId };
 	query = JSON.stringify({ query, variables });
 
-	let res = await utils.postGH( authData.pat, endpoint, query );
-	// Option 1: big sleep at end.  This option: space things out a bit.
-	await utils.sleep( 500 );
-	console.log( res.data );
+	res = await utils.postGH( authData.pat, endpoint, query );
+	let link = allLinks == -1 ? allLinks : allLinks.find(link => link.GHIssueId == issue.id.toString());
+	if( link != -1 && typeof link != 'undefined' && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) { await utils.sleep( 1500 ); }
+	else                                                                                                      { await utils.sleep( 400 ); }
+	console.log( res );
     }
-
-    await utils.sleep( 3000 );
+    
+    // Some deleted issues get recreated in unclaimed.  Wait for them to finish, otherwise
+    // del proj then create in proj is a problem.
+    await utils.sleep( 4000 );
     
     // Get all existing projects in repo for deletion
     console.log( "Removing all Projects. " );
@@ -81,10 +84,10 @@ async function runTests( ghLinks ) {
 	await ( authData.ic.projects.delete( {project_id: projId}) )
 	    .catch( e => { console.log( authData.who, "Problem in delete Project", e ); });
 	// Option 1: big sleep at end.  This option: space things out a bit.
-	await utils.sleep( 500 );
+	await utils.sleep( 1000 );
     }
 
-    await utils.sleep( 3000 );
+    await utils.sleep( 4000 );
     
 
     // Clean up dynamo.
@@ -106,8 +109,8 @@ async function runTests( ghLinks ) {
     await authData.ic.paginate( authData.ic.issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
 	.then((labels) => {
 	    for( const label of labels ) {
-		if( ghSafe.parseLabelDescr( [label.description] ) > 0 ) { labelNames.push( label.name ); }
-		else if( label.name == config.POPULATE )                { labelNames.push( label.name ); }
+		if( ghSafe.parseLabelName( label.name ) > 0 ) { labelNames.push( label.name ); }
+		else if( label.name == config.POPULATE )        { labelNames.push( label.name ); }
 	    }
 	})
 	.catch( e => { console.log( authData.who, "Problem in listLabels", e ); });

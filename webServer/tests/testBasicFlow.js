@@ -229,8 +229,9 @@ async function testStepByStep( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, meltData[1], ASSIGNEE1 );
     await tu.addAssignee( authData, td, meltData[1], ASSIGNEE2 );
     await utils.sleep( 1000 );
-    testStatus = await tu.checkAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, meltData, testStatus );
-
+    testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1, ASSIGNEE2], meltData, testStatus );
+    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_FLOW, "confirm", "change", "add assignee", testStatus );
+    
     if( VERBOSE ) { tu.testReport( testStatus, "D" ); }
 
     // 5. move to prog

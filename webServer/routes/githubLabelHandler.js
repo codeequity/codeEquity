@@ -72,6 +72,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // All work done here.
 	    // Issue handler gets notifications for open issues.  It will do nothing if the label still exists.
 	    const desc = pd.reqBody.label.description;
+	    if( !desc ) { return; } // bad label
 	    const lVal = ghSafe.parseLabelDescr( [ desc ] );
 	    let   tVal = ghSafe.getAllocated( [ desc ] );
 	    tVal = tVal ? "allocation" : "plan";                     // XXX config

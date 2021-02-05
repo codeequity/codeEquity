@@ -245,9 +245,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		link.GHProjectId   = card.project_url.split('/').pop();
 		link.GHProjectName = config.UNCLAIMED;
 		link.GHColumnId    = card.column_url.split('/').pop();
-		link.GHColumnName  = accr ? config.PROJ_COLS[config.PROJ_ACCR] : config.UNCLAIMED;
+		link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 
-		const psub = [ link.GHProjectName, link.GHColumnName ];
+		const psub = [ link.GHProjectName ];
 
 		// No need to wait
 		utils.updatePEQPSub( authData, peq.PEQId, psub );
@@ -262,7 +262,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	}
 	break;
-    case 'edited' :  // do nothing
+    case 'edited' :
+	// Only newborn can be edited.   Track issue-free creation above.
+	{
+	    let cardContent = pd.reqBody['project_card']['note'].split('\n');
+	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
+	    
+	    await utils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
+	}
+	break;
     default:
 	console.log( "Unrecognized action (cards)" );
 	break;
