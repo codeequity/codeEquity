@@ -1030,16 +1030,17 @@ async function checkNoIssue( authData, ghLinks, td, issueData, testStatus ) {
 }
 
 
-async function checkAssignees( authData, td, ass1, ass2, issueData, testStatus ) {
+async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
     let issue  = await findIssue( authData, td, issueData[0] );
-    testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
-    testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
-    testStatus = checkEq( issue.assignees.length, 2,             testStatus, "Issue assignee count" );
-    testStatus = checkEq( issue.assignees[0].login, ass1,        testStatus, "assignee1" );
-    testStatus = checkEq( issue.assignees[1].login, ass2,        testStatus, "assignee2" );
+    testStatus = checkEq( issue.id, issueData[0].toString(),      testStatus, "Github issue troubles" );
+    testStatus = checkEq( issue.number, issueData[1].toString(),  testStatus, "Github issue troubles" );
+    testStatus = checkEq( issue.assignees.length, assigns.length, testStatus, "Issue assignee count" );
+    for( let i = 0; i < assigns.length; i++ ) {
+	testStatus = checkEq( issue.assignees[i].login, assigns[i], testStatus, "assignee1" );
+    }
 
     // CHECK Dynamo PEQ
     // Should be no change
@@ -1068,24 +1069,13 @@ async function checkAssignees( authData, td, ass1, ass2, issueData, testStatus )
     
     meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     
-    let addMP  = meltPacts[ meltPacts.length - 3];   // add the issue (relocate)
-    let addA1  = meltPacts[ meltPacts.length - 2];   // add assignee 1
-    let addA2  = meltPacts[ meltPacts.length - 1];   // add assignee 2
-    for( const pact of [addMP, addA1, addA2] ) {
+    for( const pact of meltPacts ) {
 	let hasraw = await hasRaw( authData, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
-	testStatus = checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
 	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
 	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
 	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
     }
-    testStatus = checkEq( addMP.Action, "relocate",                    testStatus, "PAct Verb"); 
-    testStatus = checkEq( addA1.Action, "change",                      testStatus, "PAct Verb"); 
-    testStatus = checkEq( addA2.Action, "change",                      testStatus, "PAct Verb"); 
-    testStatus = checkEq( addA1.Subject[1], ass1,                      testStatus, "PAct Verb"); 
-    testStatus = checkEq( addA2.Subject[1], ass2,                      testStatus, "PAct Verb"); 
-    testStatus = checkEq( addA1.Note, "add assignee",                  testStatus, "PAct Verb"); 
-    testStatus = checkEq( addA2.Note, "add assignee",                  testStatus, "PAct Verb"); 
     
     return testStatus;
 }

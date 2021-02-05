@@ -363,6 +363,8 @@ async function rebuildPeq( authData, link, oldPeq ) {
     postData.GHIssueTitle = link.GHCardTitle;   // XXX fix link name here.  cwazy
     postData.Active       = "true";
 
+    if( config.PROJ_COLS.includes( link.GHColumnName ) ) { postData.GHProjectSub = [ link.GHProjectName ]; }
+    
     newPEQId = await recordPEQ(	authData, postData );
     assert( newPEQId != -1 );
     return newPEQId; 
@@ -566,6 +568,15 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     let colName    = "";
     let projName   = "";
 
+    const links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+
+    // Bail, if this create is an add-on to an ACCR 
+    if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+	console.log( authData.who, "WARNING.", links[0].GHColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
+	gh.removeCard( authData, origCardId );
+	return;
+    }
+
     if( pd.peqType == "end" ) {
 	assert( link == -1 );
 
@@ -591,11 +602,15 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
 	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
 	    gh.removeCard( authData, origCardId );
-	    await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
-	    // chances are, an unclaimed PEQ exists.  deactivate it.
-	    if( pd.GHIssueId != -1 ) {
-		const daPEQ = await getPeq( authData, pd.GHIssueId );
-		removePEQ( authData, daPEQ.PEQId );
+
+	    // If already exists, will be in links.  Do not destroy it
+	    if( links == -1 ) {
+		await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
+		// chances are, an unclaimed PEQ exists.  deactivate it.
+		if( pd.GHIssueId != -1 ) {
+		    const daPEQ = await getPeq( authData, pd.GHIssueId );
+		    removePEQ( authData, daPEQ.PEQId );
+		}
 	    }
 	    return "removeLabel";
 	}

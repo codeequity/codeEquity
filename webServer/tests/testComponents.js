@@ -178,7 +178,7 @@ async function testLabel( authData, ghLinks, td ) {
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	
 	let card  = await tu.makeProjectCard( authData, td.dsPlanID, issueData[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 1" );
 	
@@ -232,7 +232,7 @@ async function testLabel( authData, ghLinks, td ) {
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	let card  = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 1" );
 	
@@ -283,6 +283,9 @@ async function testLabel( authData, ghLinks, td ) {
 	// get new cols/locs pend/accr
 	const flatPend = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
 	const flatAccr = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+	// psub will be set when re-labeled in bacon above
+	flatPend.projSub = [ td.flatTitle, td.col2Title ];
+	flatAccr.projSub = [ td.flatTitle, td.col2Title ];
 	
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 4" );
@@ -348,7 +351,8 @@ async function testAssignment( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, assData[1], ASSIGNEE1 );
     await tu.addAssignee( authData, td, assData[1], ASSIGNEE2 );
     await utils.sleep( 1000 );
-    testStatus = await tu.checkAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
+    testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1, ASSIGNEE2], assData, testStatus );
+    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, "confirm", "change", "add assignee", testStatus );    
 
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
 
@@ -371,7 +375,20 @@ async function testAssignment( authData, ghLinks, td ) {
     await utils.sleep( 1000 );
     testStatus = await checkProgAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
 
-    // There is no further relevant logic.  
+    // 6. test ACCR
+    await tu.remAssignee( authData, td, assData[1], ASSIGNEE2 );
+    await tu.closeIssue( authData, td, assData[1] );
+    await tu.moveCard( authData, assCard.id, td.dsAccrID );
+    // Add, fail
+    await tu.addAssignee( authData, td, assData[1], ASSIGNEE2 );
+    await utils.sleep( 1000 );
+    testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1], assData, testStatus );
+    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, "confirm", "notice", "Bad assignment attempted", testStatus );
+    // Rem, fail
+    await tu.remAssignee( authData, td, assData[1], ASSIGNEE1 );
+    await utils.sleep( 1000 );
+    testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1], assData, testStatus );
+    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, "confirm", "notice", "Bad assignment attempted", testStatus );
     
     tu.testReport( testStatus, "Test Assign" );
     return testStatus;
@@ -444,6 +461,9 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	// get new cols/locs pend/accr
 	const flatPend = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] );
 	const flatAccr = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+	// psub will be set when re-labeled in bacon above
+	flatPend.projSub = [ td.flatTitle, td.col2Title ];
+	flatAccr.projSub = [ td.flatTitle, td.col2Title ];
 	
 	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	
@@ -1065,8 +1085,6 @@ async function runTests( authData, ghLinks, td ) {
     let testStatus = [ 0, 0, []];
 
     
-    
-    /*
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 10000 );
@@ -1091,19 +1109,16 @@ async function runTests( authData, ghLinks, td ) {
     console.log( "\n\nLabel mods complete." );
     await utils.sleep( 10000 );
     
+    let t7 = await testProjColMods( authData, ghLinks, td );
+    console.log( "\n\nProjCol mods complete." );
+    // await utils.sleep( 10000 );
+
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );
     testStatus = tu.mergeTests( testStatus, t4 );
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
-
-    */
-
-    let t7 = await testProjColMods( authData, ghLinks, td );
-    console.log( "\n\nProjCol mods complete." );
-    await utils.sleep( 10000 );
-
     testStatus = tu.mergeTests( testStatus, t7 );
     
     return testStatus
