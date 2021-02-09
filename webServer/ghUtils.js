@@ -275,16 +275,63 @@ async function getAssignees( authData, owner, repo, issueNum )
     return retVal;
 }
 
+
+async function checkExistsGQL( authData, nodeId, nodeType ) {
+
+    let issue    = nodeType !== 'undefined' && nodeType.hasOwnProperty( "issue" )   ? nodeType.issue  : false;
+    let label    = nodeType !== 'undefined' && nodeType.hasOwnProperty( "label" )   ? nodeType.label  : false;
+    assert( issue ); // XXX future fix
+
+    // Note: node_ids are typed
+    let query = `
+    query ($nodeId: ID!)
+    {
+	node(id: $nodeId ) {
+        ... on Issue { title }}}`;
+    
+    let variables = {"nodeId": nodeId };
+    query = JSON.stringify({ query, variables });
+
+    let res = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.catch( e => console.log( "Error.  GQL node exists troubles", e ));
+
+    // console.log( query );
+    // console.log( res );
+    let retVal = false;
+    if( typeof res.data.node !== 'undefined' && typeof res.data.node.title !== 'undefined' ) { retVal = true; }
+    console.log( authData.who, "Issue node", nodeId, "exists?", retVal );
+    return retVal;
+}
+
+
+// Depending on timing, GH will return status 410 (correct) or 404 (too bad) if issue is deleted first
 async function checkIssue( authData, owner, repo, issueNum ) {
+
+    let issue = -1;
+    await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+	.then( iss => issue = iss.data )
+	.catch( e => {
+	    if     ( e.status == 410 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
+	    else if( e.status == 404 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
+	    else                       { console.log( authData.who, "Problem in checkIssue", e );        }
+	});
+
+    if( issue == -1 ) { return false; }
+    return await checkExistsGQL( authData, issue.node_id, {issue: true} );
+    
+    /*
+    // XXX This has been shaky - timing with multiple deletes is too tight.  First, try GQL global nodeID assist.  Second, brute force sleep.
     let issueExists = false;
     await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => issueExists = true )
 	.catch( e => {
-	    if( e.status == 410 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
-	    else                  { console.log( authData.who, "Problem in checkIssue", e );        }
+	    if     ( e.status == 410 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
+	    else if( e.status == 404 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
+	    else                       { console.log( authData.who, "Problem in checkIssue", e );        }
 	});
     
     return issueExists;
+    */
 }
 
 // [id, content]

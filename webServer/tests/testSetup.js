@@ -26,6 +26,8 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     // githubOPs: 4x
     let ghOpPID  = await tu.makeProject( authData, td, td.githubOpsTitle, "Make it giddy" );
     let ghOpCols = await tu.make4xCols( authData, ghOpPID );
+    await tu.makeColumn( authData, ghOpPID, "Stars" );	
+    await tu.makeColumn( authData, ghOpPID, "Stripes" );
 
 
     // TRIGGER
@@ -181,7 +183,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 
     testStatus = tu.checkEq( mastCols.length, 3,   testStatus, "Master proj col count" );
     testStatus = tu.checkEq( dsCols.length, 4,     testStatus, "Data security proj col count" );
-    testStatus = tu.checkEq( ghCols.length, 4,     testStatus, "Github ops proj col count" );
+    testStatus = tu.checkEq( ghCols.length, 6,     testStatus, "Github ops proj col count" );
 
     let colNames = mastCols.map((col) => col.name );
     testStatus = tu.checkEq( colNames.includes( td.softContTitle ), true,   testStatus, "Master col names" );

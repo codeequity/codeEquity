@@ -541,9 +541,6 @@ async function testCloseReopen( authData, ghLinks, td ) {
     {
 	console.log( "\n\nOpen/close in full++" );
 
-	await tu.makeColumn( authData, td.githubOpsPID, "Stars" );	
-	await tu.makeColumn( authData, td.githubOpsPID, "Stripes" );
-
 	const stars      = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
 	const stripes    = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
 
@@ -786,8 +783,8 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await tu.moveCard( authData, aghoCard2.id, ghoAccr.colId );
 
 	await utils.sleep( 2000 );
- 	// XXX not needed during full run.  checkSituated uses this.
-	// await tu.refreshUnclaimed( authData, td );
+	// Often unneeded, but useful if doing this as a one-off test
+	await tu.refreshUnclaimed( authData, td );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho1, aghoCard1, testStatus );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho2, aghoCard2, testStatus );
 
@@ -808,13 +805,14 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	aghoCard2New = uCards.find( card => card.content_url.split('/').pop() == aghoIss2New[1].toString() );
 	
 	// card: old issue, new card.  issue: new issue, new card
+	// peq for remCard is active for old issue.  peq for remIssue is active for new issue.
 	testStatus = await tu.checkUnclaimedAccr( authData, ghLinks, td, uncAccr, issDatAgho1, issDatAgho1, aghoCard1New, testStatus, "card" );
 	testStatus = await tu.checkUnclaimedAccr( authData, ghLinks, td, uncAccr, issDatAgho2, aghoIss2New, aghoCard2New, testStatus, "issue" );  
 
-	// peq for remCard is active for old issue.  peq for remIssue is active for new issue.
+	// Old stuff should not be here
 	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard1.id, ISS_AGHO1, testStatus, {"skipAllPeq": true} );  
 	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issDatAgho2, testStatus );
-	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard2.id, ISS_AGHO2, testStatus, {"peq": true} ); 
+	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard2.id, ISS_AGHO2, testStatus, {"skipAllPeq": true} );  
 	tu.testReport( testStatus, "accrued B" );
 
 	// 3. Remove one more time
@@ -949,6 +947,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	lab1     = labelRes.label;
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "52 PEQ" );
 	lab52    = labelRes.label;
+	await utils.sleep( 1000 );
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	testStatus = await tu.checkLabel( authData, lab52, "52 PEQ", "PEQ value: 52", testStatus );
@@ -1084,7 +1083,6 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
-    
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 10000 );
@@ -1100,7 +1098,7 @@ async function runTests( authData, ghLinks, td ) {
     let t4 = await testCloseReopen( authData, ghLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
     await utils.sleep( 10000 );
-    
+
     let t5 = await testCreateDelete( authData, ghLinks, td );
     console.log( "\n\nCreate / Delete complete." );
     await utils.sleep( 10000 );
@@ -1117,6 +1115,7 @@ async function runTests( authData, ghLinks, td ) {
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );
     testStatus = tu.mergeTests( testStatus, t4 );
+
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
     testStatus = tu.mergeTests( testStatus, t7 );

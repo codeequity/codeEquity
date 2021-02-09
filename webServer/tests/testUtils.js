@@ -6,7 +6,10 @@ var ghUtils = require('../ghUtils');
 var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
-const MIN_DELAY = 1500;   // Make up for rest variance, and GH slowness.  Expect 500-1000
+// Make up for rest variance, and GH slowness.  Expect 500-1000
+// const MIN_DELAY = 1500;
+// For sleep mode
+const MIN_DELAY = 2500;     
 
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
@@ -114,7 +117,7 @@ function getQuad( card, issueMap ) {
 
 function makeTitleReducer( aStr ) {
     // return ( acc, cur ) => ( console.log( cur, acc, aStr) || acc || cur.includes( aStr ) ); 
-    return ( acc, cur ) => ( acc || cur.includes( aStr ) ); 
+    return ( accumulator, cur ) => ( accumulator || cur.includes( aStr ) ); 
 }
 
 
@@ -126,7 +129,7 @@ async function hasRaw( authData, pactId ) {
 }
 
 async function getPeqLabels( authData, td ) {
-    let peqLabels = "";
+    let peqLabels = -1;
 
     await( authData.ic.issues.listLabelsForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
 	.then( labels => { peqLabels = labels['data']; })
@@ -136,7 +139,7 @@ async function getPeqLabels( authData, td ) {
 }
 
 async function getIssues( authData, td ) {
-    let issues = "";
+    let issues = -1;
 
     await( authData.ic.issues.listForRepo( { owner: td.GHOwner, repo: td.GHRepo, state: "all" }))
 	.then( allissues => { issues = allissues['data']; })
@@ -146,7 +149,7 @@ async function getIssues( authData, td ) {
 }
 
 async function getProjects( authData, td ) {
-    let projects = "";
+    let projects = -1;
 
     await( authData.ic.projects.listForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
 	.then( allproj => { projects = allproj['data']; })
@@ -156,7 +159,7 @@ async function getProjects( authData, td ) {
 }
 
 async function getColumns( authData, projId ) {
-    let cols = "";
+    let cols = -1;
 
     await( authData.ic.projects.listColumns( { project_id: projId }))
 	.then( allcols => { cols = allcols['data']; })
@@ -166,7 +169,7 @@ async function getColumns( authData, projId ) {
 }
 
 async function getCards( authData, colId ) {
-    let cards = "";
+    let cards = -1;
 
     await( authData.ic.projects.listCards( { column_id: colId }))
 	.then( allcards => { cards = allcards['data']; })
@@ -174,6 +177,22 @@ async function getCards( authData, colId ) {
 
     return cards;
 }
+
+async function getCard( authData, cardId ) {
+    let card = await gh.getCard( authData, cardId );
+    return card;
+}
+
+async function getComments( authData, td, issueNum ) {
+    let comments = -1;
+
+    await authData.ic.issues.listComments( { owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNum })
+	.then( allcom => { comments = allcom['data']; })
+	.catch( e => { console.log( authData.who, "list comments failed.", e ); });
+
+    return comments
+}
+
 
 // Get everything from ceServer
 async function getLinks( authData, ghLinks, query ) {
@@ -514,7 +533,9 @@ function mergeTests( t1, t2 ) {
 
 // Untracked issues have only partial entries in link table
 // Should work for carded issues that have never been peq.  Does NOT work for newborn.
-async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card, testStatus ) {
+async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
+
+    let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
 
     console.log( "Check Untracked issue", issueData );
 
@@ -522,7 +543,7 @@ async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card,
     let issue  = await findIssue( authData, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
-    testStatus = checkEq( issue.labels.length, 0,                testStatus, "Issue label" );
+    testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label" );
 
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
@@ -606,11 +627,11 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
 // Remember, PEQ is largely not updated once created.  So don't look for types, PEND or ACCR in subs
 async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    let muteIngested = specials !== undefined && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
-    let issueState   = specials !== undefined && specials.hasOwnProperty( "state" )        ? specials.state        : false;
-    let labelVal     = specials !== undefined && specials.hasOwnProperty( "label" )        ? specials.label        : false;
-    let labelCnt     = specials !== undefined && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
-    let skipPeqPID   = specials !== undefined && specials.hasOwnProperty( "skipPeqPID" )   ? specials.skipPeqPID   : false;
+    let muteIngested = typeof specials !== 'undefined' && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
+    let issueState   = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )        ? specials.state        : false;
+    let labelVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
+    let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
+    let skipPeqPID   = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipPeqPID" )   ? specials.skipPeqPID   : false;
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal );
 
@@ -696,7 +717,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 // Check last PAct
 async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    if( specials === undefined ) { specials = {}; }
+    if( typeof specials === 'undefined' ) { specials = {}; }
     if( !specials.state ) { specials.state = "closed"; }
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
@@ -720,7 +741,7 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, car
 // Check last PAct
 async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    if( specials === undefined ) { specials = {}; }
+    if( typeof specials === 'undefined' ) { specials = {}; }
     if( !specials.state ) { specials.state = "open"; }
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
@@ -745,8 +766,8 @@ async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, car
 
 async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    if( specials === undefined ) { specials = {}; }
-    if( !specials.state ) { specials.state = "open"; }
+    if( typeof specials === 'undefined' ) { specials = {}; }
+    if( !specials.hasOwnProperty( "state" ) ) { specials.state = "open"; }
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check newly situated issue", loc.projName, loc.colName );
@@ -771,14 +792,15 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 
     // CHECK dynamo Pact
     // label carded issue?  1 pact.  attach labeled issue to proj col?  2 pact.
+    // Could be any number.  add (unclaimed).  change (assign) x n.  relocate (peqify)
     let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );         
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     let addUncl  = pacts.length >= 2 ? pacts[0] : {"Action": "add" };
-    let relUncl  = pacts.length >= 2 ? pacts[1] : {"Action": "relocate" };
-    let pact     = pacts.length >= 2 ? pacts[1] : pacts[0];
+    let relUncl  = pacts.length >= 2 ? pacts[ pacts.length -1 ] : {"Action": "relocate" };
+    let pact     = pacts.length >= 2 ? pacts[ pacts.length -1 ] : pacts[0];
     for( const pact of pacts ) {
 	let hasraw = await hasRaw( authData, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
@@ -787,10 +809,10 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
 	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
     }
-    testStatus = checkEq( addUncl.Action, "add",                       testStatus, "PAct Verb"); 
-    testStatus = checkEq( relUncl.Action, "relocate",                  testStatus, "PAct Verb");
+    testStatus = checkEq( addUncl.Action, "add",                       testStatus, "PAct Action"); 
+    testStatus = checkEq( relUncl.Action, "relocate",                  testStatus, "PAct Action");
     const source = pact.Action == "add" || pact.Action == "relocate";
-    testStatus = checkEq( source, true,                                testStatus, "PAct Verb"); 
+    testStatus = checkEq( source, true,                                testStatus, "PAct Action"); 
 
     return testStatus;
 }
@@ -905,7 +927,7 @@ async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, test
 async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, specials ) {
 
     console.log( "Check Newborn Issue", issueData);
-    let labelCnt     = specials !== undefined && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
+    let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
     
     // CHECK github issue
     let issue  = await findIssue( authData, td, issueData[0] );
@@ -936,6 +958,86 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
     return testStatus;
 }
 
+async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials ) {
+    let situated   = typeof specials !== 'undefined' && specials.hasOwnProperty( "peq" )        ? specials.peq        : false;
+    let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
+    let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
+
+    console.log( "Check Split", issDat[2], origLoc.colName, newLoc.colName );
+
+    // Get new issue
+    let issues   = await getIssues( authData, td );
+    let issue    = await findIssue( authData, td, issDat[0] );    
+    let splitIss = issues.find( issue => issue.title.includes( issDat[2] + " split" ));
+    const splitDat = typeof splitIss == 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    assert( splitDat[0] != -1 );
+    
+    // Get cards
+    let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
+    let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
+    let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
+
+    if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
+	
+    assert( typeof issLink !== 'undefined' );
+    assert( typeof splitLink !== 'undefined' );
+    const card      = await getCard( authData, issLink.GHCardId );
+    const splitCard = await getCard( authData, splitLink.GHCardId );
+
+    if( situated ) {
+	let lval = origVal / 2;
+	testStatus = await checkSituatedIssue( authData, ghLinks, td, origLoc, issDat,   card,      testStatus, {label: lval, lblCount: labelCnt} );
+	testStatus = await checkSituatedIssue( authData, ghLinks, td, newLoc,  splitDat, splitCard, testStatus, {label: lval, lblCount: labelCnt } );
+    }
+    else {
+	testStatus = await checkUntrackedIssue( authData, ghLinks, td, origLoc, issDat,   card,      testStatus, {lblCount: labelCnt} );
+	testStatus = await checkUntrackedIssue( authData, ghLinks, td, newLoc,  splitDat, splitCard, testStatus, {lblCount: labelCnt } );
+    }
+    testStatus = checkEq( issue.state, splitIss.state,    testStatus, "Issues have different state" );
+    
+    // check assign
+    testStatus = checkEq( issue.assignees.length, assignCnt,    testStatus, "Issue assignee count" );
+    testStatus = checkEq( splitIss.assignees.length, assignCnt, testStatus, "Issue assignee count" );
+
+    // Check comment on splitIss
+    const comments = await getComments( authData, td, splitDat[1] );
+    testStatus = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   testStatus, "Comment bad" );
+    
+    return testStatus;
+}
+
+async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, testStatus ) {
+    
+    console.log( "Check No Split", issDat[2], newLoc.colName );
+
+    const splitName = issDat[2] + " split";
+    
+    // Check issue
+    let issues   = await getIssues( authData, td );
+    let splitIss = issues.find( issue => issue.title.includes( splitName ));
+				
+    testStatus = checkEq( typeof splitIss, 'undefined', testStatus, "Split issue should not exist" );
+				
+    // Check card
+    let colCards = await getCards( authData, newLoc.colId );
+    let noCard = true;
+    if( colCards != -1 ) {
+	const card = colCards.find( c => c.note && c.note.includes( splitName ));
+	if( typeof card !== 'undefined' ) { noCard = false; }
+    }
+    testStatus = checkEq( noCard, true,                  testStatus, "Split card should not exist" );
+
+    // Check peq
+    let allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peq = allPeqs.find( peq => peq.GHIssueTitle.includes( splitName ));
+    testStatus = checkEq( typeof peq, 'undefined',       testStatus, "Peq should not exist" );
+
+    // Linkage, id search.
+    testStatus = checkNoCard( authData, ghLinks, td, newLoc, cardId, issDat[2], testStatus, {skipAllPeq: true} );
+    
+    return testStatus;
+}
+
 async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatus, specials ) {
 
     console.log( "Check No Card", title, cardId );
@@ -943,8 +1045,8 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     // default is -1 peq
     // Send skipAll if peq exists, is active, and checked elsewhere.
     // send checkpeq if peq is inactive.
-    let checkPeq   = specials !== undefined && specials.hasOwnProperty( "peq" )        ? specials.peq     : false;    
-    let skipAllPeq = specials !== undefined && specials.hasOwnProperty( "skipAllPeq" ) ? specials.skipAllPeq : false;    
+    let checkPeq   = typeof specials !== 'undefined' && specials.hasOwnProperty( "peq" )        ? specials.peq     : false;    
+    let skipAllPeq = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipAllPeq" ) ? specials.skipAllPeq : false;    
 
     // CHECK github card
     let cards  = await getCards( authData, loc.colId );
@@ -955,7 +1057,7 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
 
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    let link   = links.find( l => l.GHCardId == cardId );
+    let link   = links.find( l => l.GHCardId == cardId.toString() );
     testStatus = checkEq( typeof link, "undefined",                testStatus, "Link should not exist" );
 
     // CHECK dynamo Peq.  inactive, if it exists
@@ -980,7 +1082,7 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
 async function checkPact( authData, ghLinks, td, title, verb, action, note, testStatus, specials ) {
     console.log( "Check PAct" );
 
-    let subject = specials !== undefined && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
+    let subject = typeof specials !== 'undefined' && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
 
     let pact = {};
     let pacts = {};
@@ -1132,7 +1234,9 @@ exports.getIssues       = getIssues;
 exports.getProjects     = getProjects;
 exports.getColumns      = getColumns;
 exports.getCards        = getCards;
+exports.getCard         = getCard;
 exports.getLinks        = getLinks;
+exports.getComments     = getComments;
 exports.remLinks        = remLinks;
 exports.purgeJobs       = purgeJobs;
 exports.findIssue       = findIssue;
@@ -1160,6 +1264,8 @@ exports.checkDemotedIssue       = checkDemotedIssue;          // has inactive pe
 exports.checkUntrackedIssue     = checkUntrackedIssue;        // partial link table
 exports.checkNewbornCard        = checkNewbornCard;           // no issue
 exports.checkNewbornIssue       = checkNewbornIssue;          // no card
+exports.checkSplit              = checkSplit;                 // result of incremental resolve
+exports.checkNoSplit            = checkNoSplit;               // no corresponding split issue
 exports.checkUnclaimedAccr      = checkUnclaimedAccr;
 exports.checkNoCard             = checkNoCard;
 exports.checkPact               = checkPact;

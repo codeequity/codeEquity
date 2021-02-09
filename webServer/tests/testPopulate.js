@@ -429,9 +429,163 @@ async function testResolve( authData, ghLinks, td ) {
 }
 
 
+// During normal operation, when a second card is added to a carded or situated issue, it is immediately split
+async function testIncrementalResolve( authData, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Test Incremental Resolve" );
+    authData.who = "<TEST: Incr Resolve>";
+
+    const ASSIGNEE1 = "rmusick2000";
+    const ASSIGNEE2 = "codeequity";
+
+    const ISS_MOON = "IR Moons";
+    const ISS_PLAN = "IR Plan";
+    const ISS_PROG = "IR Prog";
+    const ISS_PEND = "IR Pending";
+    const ISS_ACCR = "IR Accrued";
+
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+
+    // 1. Setup.
+    let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    let labelDoc = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "documentation", -1 );
+    let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
+
+    const issMoonDat = await tu.makeIssue( authData, td, ISS_MOON, [ labelBug, labelDoc ] );
+    const issPlanDat = await tu.makeIssue( authData, td, ISS_PLAN, [ label1k, labelDoc, labelBug ] );
+    const issProgDat = await tu.makeIssue( authData, td, ISS_PROG, [ label1k, labelDoc ] );
+    const issPendDat = await tu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
+    const issAccrDat = await tu.makeIssue( authData, td, ISS_ACCR, [ label1k, labelDoc, labelBug ] );
+
+    await tu.makeColumn( authData, td.githubOpsPID, "Moons" );	    
+
+    // From
+    const moonLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Moons" );
+    const planLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const progLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const pendLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const accrLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    
+    // To
+    const toBacnLoc = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
+    const toProgLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const toPendLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const toAccrLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    
+    // Need assignees for pend/accr. 
+    await tu.addAssignee( authData, td, issMoonDat[1], ASSIGNEE1 );	
+    await tu.addAssignee( authData, td, issPlanDat[1], ASSIGNEE1 );	
+    await tu.addAssignee( authData, td, issProgDat[1], ASSIGNEE2 );	
+    await tu.addAssignee( authData, td, issPendDat[1], ASSIGNEE1 );	
+    await tu.addAssignee( authData, td, issPendDat[1], ASSIGNEE2 );	
+    await tu.addAssignee( authData, td, issAccrDat[1], ASSIGNEE1 );
+
+    // Set up first cards
+    const cardMoon = await tu.makeProjectCard( authData, moonLoc.colId, issMoonDat[0] );
+    const cardPlan = await tu.makeProjectCard( authData, planLoc.colId, issPlanDat[0] );
+    const cardProg = await tu.makeProjectCard( authData, progLoc.colId, issProgDat[0] );
+    const cardPend = await tu.makeProjectCard( authData, planLoc.colId, issPendDat[0] );
+    const cardAccr = await tu.makeProjectCard( authData, planLoc.colId, issAccrDat[0] );
+
+    // Close & accrue
+    await tu.closeIssue( authData, td, issPendDat[1] );
+    await tu.closeIssue( authData, td, issAccrDat[1] );
+    await tu.moveCard( authData, cardAccr.id, accrLoc.colId );
+
+    await utils.sleep( 2000 );	
+    testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
+    testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus, {peq: true, lblCount: 3 } );
+    testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {peq: true, lblCount: 2 } );
+    testStatus = await tu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {peq: true, lblCount: 1 } );
+    testStatus = await tu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {peq: true, lblCount: 3 } );
+    
+    tu.testReport( testStatus, "Incremental resolve setup" );
+
+    // Can't add 2nd card within same project - needs to be cross project.
+    // Use datasec & bacon
+    
+    // Plan += Bacon  (add new plan card to bacon column)
+    {
+	const cardNew = await tu.makeProjectCard( authData, toBacnLoc.colId, issPlanDat[0] );
+	await utils.sleep( 4000 );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, testStatus, {peq: true, lblCount: 3 } );
+
+	tu.testReport( testStatus, "Incremental resolve A" );
+    }
+
+    // Plan += Pend 
+    {
+	// At this point, plan lval is 500
+	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issPlanDat[0] );
+	await utils.sleep( 3000 );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, testStatus, {peq: true, lblCount: 3 } );
+
+	tu.testReport( testStatus, "Incremental resolve B" );
+    }
+
+    // Moon += Pend .. Fail not peq.
+    {
+	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issMoonDat[0] );
+	await utils.sleep( 3000 );
+	testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
+	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issMoonDat, toPendLoc, cardNew.id, testStatus );
+
+	tu.testReport( testStatus, "Incremental resolve C" );
+    }
+    
+    // Moon += Prog 
+    {
+	const cardNew = await tu.makeProjectCard( authData, toProgLoc.colId, issMoonDat[0] );
+	await utils.sleep( 3000 );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, testStatus, {peq: false, lblCount: 2 } );
+
+	tu.testReport( testStatus, "Incremental resolve D" );
+    }
+
+    // Prog += Accr  .. Fail no create in accr
+    {
+	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issProgDat[0] );
+	await utils.sleep( 3000 );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
+	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issProgDat, toAccrLoc, cardNew.id, testStatus );
+	
+	tu.testReport( testStatus, "Incremental resolve E" );
+    }
+
+    
+    // Pend += Accr  .. Fail no create in accr
+    {
+	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issPendDat[0] );
+	await utils.sleep( 3000 );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
+	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issPendDat, toAccrLoc, cardNew.id, testStatus );
+
+	tu.testReport( testStatus, "Incremental resolve F" );
+    }
+
+    // Accr += Pend  .. Fail no modify accr
+    {
+	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issAccrDat[0] );
+	await utils.sleep( 3000 );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {lblCount: 3 } );
+	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAccrDat, toPendLoc, cardNew.id, testStatus );
+
+	tu.testReport( testStatus, "Incremental resolve G" );
+    }
+    
+    tu.testReport( testStatus, "Test ProjCol Mod" );
+
+    return testStatus;
+}
+
 
 async function runTests( authData, ghLinks, td ) {
 
+    /*  
+    // Old tests, pre-dating most testUtil infras.  Hand massaging required.
     console.log( "Populate - add a repo to CE =================" );
 
     // *** these two tests are siblings (below)
@@ -447,6 +601,19 @@ async function runTests( authData, ghLinks, td ) {
 
     // Normal - leave it on.  A separate resolve test, run only after above 2.
     await testResolve( authData, ghLinks, td );
+    */
+
+    console.log( "Resolve tests =================" );
+
+    let testStatus = [ 0, 0, []];
+    
+    let t1 = await testIncrementalResolve( authData, ghLinks, td );
+    console.log( "\n\nIncremental resolve complete." );
+    await utils.sleep( 10000 );
+
+    testStatus = tu.mergeTests( testStatus, t1 );
+
+    return testStatus;
 
 }
 

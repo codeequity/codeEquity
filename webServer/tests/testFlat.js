@@ -20,7 +20,6 @@ async function createFlatProject( authData, td ) {
     await tu.makeNewbornCard( authData, mastCol1, "Parsley" );
     await tu.makeNewbornCard( authData, mastCol2, "Rosemary" );
     await tu.makeNewbornCard( authData, mastCol1, "Sage" );
-    
 }
 
 async function testFlatProject( authData, ghLinks, td ) {
