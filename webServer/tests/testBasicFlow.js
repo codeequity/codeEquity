@@ -262,7 +262,7 @@ async function testEndpoint( authData, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    console.log( "\nTest basic lifecycle of an issue, fastest speed" );
+    console.log( "\nTest basic lifecycle of an issue, endpoint check" );
 
     await tu.refreshRec( authData, td );
     await tu.refreshFlat( authData, td );

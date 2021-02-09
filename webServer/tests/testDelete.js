@@ -75,7 +75,7 @@ async function runTests( ghLinks ) {
     await remIssues( authData, ghLinks, pd );
     await utils.sleep( 4000 );
     await remIssues( authData, ghLinks, pd );
-    await utils.sleep( 1000 );
+    await utils.sleep( 2000 );
 
 
     // Get all existing projects in repo for deletion

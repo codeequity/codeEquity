@@ -789,15 +789,15 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 
     // CHECK dynamo Pact
     // label carded issue?  1 pact.  attach labeled issue to proj col?  2 pact.
-    // Could be up to 4
+    // Could be any number.  add (unclaimed).  change (assign) x n.  relocate (peqify)
     let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );         
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     let addUncl  = pacts.length >= 2 ? pacts[0] : {"Action": "add" };
-    let relUncl  = pacts.length >= 2 ? pacts[1] : {"Action": "relocate" };
-    let pact     = pacts.length >= 2 ? pacts[1] : pacts[0];
+    let relUncl  = pacts.length >= 2 ? pacts[ pacts.length -1 ] : {"Action": "relocate" };
+    let pact     = pacts.length >= 2 ? pacts[ pacts.length -1 ] : pacts[0];
     for( const pact of pacts ) {
 	let hasraw = await hasRaw( authData, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
@@ -993,12 +993,12 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
     testStatus = checkEq( issue.state, splitIss.state,    testStatus, "Issues have different state" );
     
     // check assign
-    testStatus = checkEq( issue.assignees.length, assignCount,    testStatus, "Issue assignee count" );
-    testStatus = checkEq( splitIss.assignees.length, assignCount, testStatus, "Issue assignee count" );
+    testStatus = checkEq( issue.assignees.length, assignCnt,    testStatus, "Issue assignee count" );
+    testStatus = checkEq( splitIss.assignees.length, assignCnt, testStatus, "Issue assignee count" );
 
     // Check comment on splitIss
-    const comments = await tu.getComments( authData, td, splitDat[1] );
-    console.log( "COMMENTS", comments );
+    const comments = await getComments( authData, td, splitDat[1] );
+    testStatus = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   testStatus, "Comment bad" );
     
     return testStatus;
 }
@@ -1019,7 +1019,7 @@ async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, test
     let colCards = await getCards( authData, newLoc.colId );
     let noCard = true;
     if( colCards != -1 ) {
-	const card = colCards.find( c => c.note.includes( splitName ));
+	const card = colCards.find( c => c.note && c.note.includes( splitName ));
 	if( typeof card !== 'undefined' ) { noCard = false; }
     }
     testStatus = checkEq( noCard, true,                  testStatus, "Split card should not exist" );

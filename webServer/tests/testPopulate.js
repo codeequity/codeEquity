@@ -497,13 +497,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 
     await utils.sleep( 2000 );	
     testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
-    tu.testReport( testStatus, "Incremental resolve AA" );
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus, {peq: true, lblCount: 3 } );
-    tu.testReport( testStatus, "Incremental resolve AB" );
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {peq: true, lblCount: 2 } );
-    tu.testReport( testStatus, "Incremental resolve AC" );
     testStatus = await tu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {peq: true, lblCount: 1 } );
-    tu.testReport( testStatus, "Incremental resolve AD" );
     testStatus = await tu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {peq: true, lblCount: 3 } );
     
     tu.testReport( testStatus, "Incremental resolve setup" );
@@ -524,7 +520,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     {
 	// At this point, plan lval is 500
 	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issPlanDat[0] );
-	await utils.sleep( 1000 );
+	await utils.sleep( 3000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, testStatus, {peq: true, lblCount: 3 } );
 
 	tu.testReport( testStatus, "Incremental resolve B" );
@@ -533,19 +529,17 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Moon += Pend .. Fail not peq.
     {
 	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issMoonDat[0] );
-	await utils.sleep( 1000 );
+	await utils.sleep( 3000 );
 	testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issMoonDat, toPendLoc, cardNew.id, testStatus );
 
-	// XXX check pact ?
-	
 	tu.testReport( testStatus, "Incremental resolve C" );
     }
     
     // Moon += Prog 
     {
 	const cardNew = await tu.makeProjectCard( authData, toProgLoc.colId, issMoonDat[0] );
-	await utils.sleep( 1000 );
+	await utils.sleep( 3000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, testStatus, {peq: false, lblCount: 2 } );
 
 	tu.testReport( testStatus, "Incremental resolve D" );
@@ -554,11 +548,10 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Prog += Accr  .. Fail no create in accr
     {
 	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issProgDat[0] );
-	await utils.sleep( 1000 );
+	await utils.sleep( 3000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issProgDat, toAccrLoc, cardNew.id, testStatus );
 	
-	// XXX check pact ?
 	tu.testReport( testStatus, "Incremental resolve E" );
     }
 
@@ -566,22 +559,20 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Pend += Accr  .. Fail no create in accr
     {
 	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issPendDat[0] );
-	await utils.sleep( 1000 );
+	await utils.sleep( 3000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issPendDat, toAccrLoc, cardNew.id, testStatus );
-	
-	// XXX check pact ?
+
 	tu.testReport( testStatus, "Incremental resolve F" );
     }
 
     // Accr += Pend  .. Fail no modify accr
     {
 	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issAccrDat[0] );
-	await utils.sleep( 1000 );
+	await utils.sleep( 3000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {lblCount: 3 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAccrDat, toPendLoc, cardNew.id, testStatus );
-	
-	// XXX check pact ?
+
 	tu.testReport( testStatus, "Incremental resolve G" );
     }
     

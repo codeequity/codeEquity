@@ -428,24 +428,15 @@ function rebuildLinkage( authData, ghLinks, link, issueData, newCardId, newTitle
 }
 
 // The only critical component here for interleaving is getting the ID.
-async function rebuildPEQ( authData, pd, peqVal ) {
+async function changeReportPeqVal( authData, pd, peqVal ) {
     console.log( "rebuild existing peq for issue:", pd.GHIssueId );
     let newPEQ = await getPeq( authData, pd.GHIssueId );
     console.log( "Updating peq", newPEQ.PEQId, peqVal );
     updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
-    recordPEQAction(
-	authData,
-	config.EMPTY,     // CE UID
-	pd.GHCreator,     // gh user name
-	pd.GHFullName,    // gh repo
-	"confirm",        // verb
-	"change",         // action
-	[newPEQ.PEQId],   // subject
-	"peq val update", // note
-	getToday(),       // entryDate
-	pd.reqBody        // raw
-    );
+    recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
+		     "confirm",	"change", [newPEQ.PEQId], "peq val update", 
+		     getToday(), pd.reqBody );
 }
 
 
@@ -500,7 +491,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    pd.peqValue = peqVal;
 
 	    await ghSafe.rebuildLabel( authData, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
-	    await rebuildPEQ( authData, pd, peqVal );
+	    await changeReportPeqVal( authData, pd, peqVal );
 	    break;
 	}
 	idx += 1;
