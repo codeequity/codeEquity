@@ -65,6 +65,12 @@ async function runTests() {
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
+    subTest = await testPopulate.runTests( authData, ghLinks, td );
+    console.log( "\n\nResolve test complete." );
+    await utils.sleep( 10000 );
+    testStatus = tu.mergeTests( testStatus, subTest );
+
+    /*
     subTest = await testBasicFlow.runTests( authData, ghLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 10000 );
@@ -74,14 +80,10 @@ async function runTests() {
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-
+    */
+    
     tu.testReport( testStatus, "================= Testing complete =================" );
 
-    
-    // NOTE: you must TURN OFF ceServer to construct part of this test, and turn it back on to execute it.
-    // Have already populated in setup, but will re-pop here.  No harm.  
-    // can't split current resolve test off without rewriting it to be incremental (i.e. can't generate 1:3 without server being off)
-    // await testPopulate.runTests( authData, ghLinks, td );
 }
 
 

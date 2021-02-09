@@ -32,7 +32,7 @@ class TestData {
 	this.ghProgID         = config.EMPTY;
 
 	// XXX used?
-	this.githubOpsIss     = config.EMPTY;  // [ id, num ]
+	this.githubOpsIss     = config.EMPTY;  // [ id, num ] 
 	this.dataSecIss       = config.EMPTY;
 	this.unallocIss1      = config.EMPTY;
 	this.unallocIss2      = config.EMPTY;

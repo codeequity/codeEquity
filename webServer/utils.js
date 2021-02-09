@@ -442,7 +442,7 @@ async function rebuildPEQ( authData, pd, peqVal ) {
 	"confirm",        // verb
 	"change",         // action
 	[newPEQ.PEQId],   // subject
-	"",               // note
+	"peq val update", // note
 	getToday(),       // entryDate
 	pd.reqBody        // raw
     );
@@ -463,9 +463,9 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     if( links == -1 || links.length < 2 ) { console.log("Resolve: early return" ); return gotSplit; }
     gotSplit = true;
 
-    // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to peq issue.
+    // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
     // For case b, ensure ordering such that pd element (the current card-link) is acted on below - i.e. is not in position 0
-    //             since the peq issue has already been acted on earlier.
+    //             since the carded issue has already been acted on earlier.
     if( pd.peqType != "end" && links[0].GHColumnId == pd.GHColumnId ) {
 	console.log( "Ping" );
 	[links[0], links[1]] = [links[1], links[0]];
@@ -639,7 +639,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     //       Remember, this is only called for PEQs, not for initial populate
     // if( pd.peqType != "end" ) { pd.GHAssignees = await gh.getAssignees( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum ); }
 
-    // Resolve splits issues to ensure a 1:1 mapping issue:card, record peq data for all newly created issue:card(s)
+    // Resolve splits issues to ensure a 1:1 mapping issue:card, record data for all newly created issue:card(s)
     let gotSplit = await resolve( authData, ghLinks, pd, allocation );
 
     // record peq data for the original issue:card

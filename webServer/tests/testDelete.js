@@ -22,6 +22,31 @@ https://graphql.org/graphql-js/graphql-clients/
 */
 
 
+async function remIssues( authData, ghLinks, pd ) {
+    // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
+    console.log( "Removing all issues. " );
+    let issues = await authData.ic.paginate( authData.ic.issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
+	.catch( e => console.log( authData.who, "Problem in listIssues", e ));
+    
+    let allLinks = await tu.getLinks( authData, ghLinks, { "repo": pd.GHFullName } );
+    
+    // XXX Could probably do this in one fel swoop, but for now
+    // XXX Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
+    let endpoint = "https://api.github.com/graphql";
+    for( const issue of issues) {
+	const nodeId = issue.node_id;
+	let query = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
+	let variables = {"id": nodeId };
+	query = JSON.stringify({ query, variables });
+
+	res = await utils.postGH( authData.pat, endpoint, query );
+	let link = allLinks == -1 ? allLinks : allLinks.find(link => link.GHIssueId == issue.id.toString());
+	if( link != -1 && typeof link != 'undefined' && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) { await utils.sleep( 1500 ); }
+	else                                                                                                      { await utils.sleep( 400 ); }
+	console.log( res );
+    }
+}
+
 async function runTests( ghLinks ) {
 
     console.log( "Clear testing environment" );
@@ -44,34 +69,15 @@ async function runTests( ghLinks ) {
 
     // Queue
     await tu.purgeJobs( pd.GHRepo, pd.GHOwner );
-    
-    // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
-    console.log( "Removing all issues. " );
-    let issues = await authData.ic.paginate( authData.ic.issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
-	.catch( e => console.log( authData.who, "Problem in listIssues", e ));
 
-    let allLinks = await tu.getLinks( authData, ghLinks, { "repo": pd.GHFullName } );
-    
-    // XXX Could probably do this in one fel swoop, but for now
-    // XXX Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
-    let endpoint = "https://api.github.com/graphql";
-    for( const issue of issues) {
-	const nodeId = issue.node_id;
-	let query = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
-	let variables = {"id": nodeId };
-	query = JSON.stringify({ query, variables });
-
-	res = await utils.postGH( authData.pat, endpoint, query );
-	let link = allLinks == -1 ? allLinks : allLinks.find(link => link.GHIssueId == issue.id.toString());
-	if( link != -1 && typeof link != 'undefined' && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) { await utils.sleep( 1500 ); }
-	else                                                                                                      { await utils.sleep( 400 ); }
-	console.log( res );
-    }
-    
-    // Some deleted issues get recreated in unclaimed.  Wait for them to finish, otherwise
-    // del proj then create in proj is a problem.
+    // Issues.
+    // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
+    await remIssues( authData, ghLinks, pd );
     await utils.sleep( 4000 );
-    
+    await remIssues( authData, ghLinks, pd );
+    await utils.sleep( 1000 );
+
+
     // Get all existing projects in repo for deletion
     console.log( "Removing all Projects. " );
     let projIds = [];
@@ -102,6 +108,8 @@ async function runTests( ghLinks ) {
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
     console.log( "Dynamo PEQ ids", peqIds );
     await utils.cleanDynamo( authData, "CEPEQs", peqIds );
+
+    await utils.sleep( 6000 );
 
     // Get all peq labels in repo for deletion... dependent on peq removal first.
     console.log( "Removing all PEQ Labels. " );

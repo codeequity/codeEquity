@@ -275,13 +275,15 @@ async function getAssignees( authData, owner, repo, issueNum )
     return retVal;
 }
 
+// Depending on timing, GH will return status 410 (correct) or 404 (too bad) if issue is deleted first
 async function checkIssue( authData, owner, repo, issueNum ) {
     let issueExists = false;
     await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue => issueExists = true )
 	.catch( e => {
-	    if( e.status == 410 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
-	    else                  { console.log( authData.who, "Problem in checkIssue", e );        }
+	    if     ( e.status == 410 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
+	    else if( e.status == 404 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
+	    else                       { console.log( authData.who, "Problem in checkIssue", e );        }
 	});
     
     return issueExists;
