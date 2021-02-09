@@ -6,7 +6,10 @@ var ghUtils = require('../ghUtils');
 var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
-const MIN_DELAY = 1500;   // Make up for rest variance, and GH slowness.  Expect 500-1000
+// Make up for rest variance, and GH slowness.  Expect 500-1000
+// const MIN_DELAY = 1500;
+// For sleep mode
+const MIN_DELAY = 2500;     
 
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
@@ -532,7 +535,7 @@ function mergeTests( t1, t2 ) {
 // Should work for carded issues that have never been peq.  Does NOT work for newborn.
 async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    let labelCnt     = specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
+    let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
 
     console.log( "Check Untracked issue", issueData );
 
@@ -624,11 +627,11 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
 // Remember, PEQ is largely not updated once created.  So don't look for types, PEND or ACCR in subs
 async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    let muteIngested = specials !== 'undefined' && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
-    let issueState   = specials !== 'undefined' && specials.hasOwnProperty( "state" )        ? specials.state        : false;
-    let labelVal     = specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
-    let labelCnt     = specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
-    let skipPeqPID   = specials !== 'undefined' && specials.hasOwnProperty( "skipPeqPID" )   ? specials.skipPeqPID   : false;
+    let muteIngested = typeof specials !== 'undefined' && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
+    let issueState   = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )        ? specials.state        : false;
+    let labelVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
+    let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
+    let skipPeqPID   = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipPeqPID" )   ? specials.skipPeqPID   : false;
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal );
 
@@ -714,7 +717,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 // Check last PAct
 async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    if( specials === 'undefined' ) { specials = {}; }
+    if( typeof specials === 'undefined' ) { specials = {}; }
     if( !specials.state ) { specials.state = "closed"; }
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
@@ -738,7 +741,7 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, car
 // Check last PAct
 async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    if( specials === 'undefined' ) { specials = {}; }
+    if( typeof specials === 'undefined' ) { specials = {}; }
     if( !specials.state ) { specials.state = "open"; }
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
@@ -763,8 +766,8 @@ async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, car
 
 async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
-    if( specials === 'undefined' ) { specials = {}; }
-    if( !specials.state ) { specials.state = "open"; }
+    if( typeof specials === 'undefined' ) { specials = {}; }
+    if( !specials.hasOwnProperty( "state" ) ) { specials.state = "open"; }
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check newly situated issue", loc.projName, loc.colName );
@@ -924,7 +927,7 @@ async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, test
 async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, specials ) {
 
     console.log( "Check Newborn Issue", issueData);
-    let labelCnt     = specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
+    let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
     
     // CHECK github issue
     let issue  = await findIssue( authData, td, issueData[0] );
@@ -956,9 +959,9 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
 }
 
 async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials ) {
-    let situated   = specials !== 'undefined' && specials.hasOwnProperty( "peq" )        ? specials.peq        : false;
-    let labelCnt   = specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
-    let assignCnt  = specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
+    let situated   = typeof specials !== 'undefined' && specials.hasOwnProperty( "peq" )        ? specials.peq        : false;
+    let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
+    let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
 
     console.log( "Check Split", issDat[2], origLoc.colName, newLoc.colName );
 
@@ -1042,8 +1045,8 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     // default is -1 peq
     // Send skipAll if peq exists, is active, and checked elsewhere.
     // send checkpeq if peq is inactive.
-    let checkPeq   = specials !== 'undefined' && specials.hasOwnProperty( "peq" )        ? specials.peq     : false;    
-    let skipAllPeq = specials !== 'undefined' && specials.hasOwnProperty( "skipAllPeq" ) ? specials.skipAllPeq : false;    
+    let checkPeq   = typeof specials !== 'undefined' && specials.hasOwnProperty( "peq" )        ? specials.peq     : false;    
+    let skipAllPeq = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipAllPeq" ) ? specials.skipAllPeq : false;    
 
     // CHECK github card
     let cards  = await getCards( authData, loc.colId );
@@ -1079,7 +1082,7 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
 async function checkPact( authData, ghLinks, td, title, verb, action, note, testStatus, specials ) {
     console.log( "Check PAct" );
 
-    let subject = specials !== 'undefined' && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
+    let subject = typeof specials !== 'undefined' && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
 
     let pact = {};
     let pacts = {};
