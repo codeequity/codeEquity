@@ -1234,27 +1234,23 @@ function getColumnName( authData, ghLinks, colId ) {
     const colName = locs == -1 ? locs : locs[0].GHColumnName;
     return colName;
 
-    /*
-    let column = await( authData.ic.projects.getColumn({ column_id: colId }))
-	.catch( e => {
-	    console.log( authData.who, "Get Column failed.", e );
-	    return "";
-	});
-    
-    return column['data']['name'];
-    */
 }
 
 
+// XXX Revisit allowed input?
+// Allow:
+// <allocation, PEQ: 1000>      typical by hand description
+// <allocation, PEQ: 1,000>
+// <allocation, PEQ: 1,000>
+// Allocation PEQ value         typical by resolve description & existing label description
 function getAllocated( content ) {
     let res = false;
     for( const line of content ) {
-	let s =  line.indexOf( config.PALLOC );
+	let s = line.indexOf( config.ADESC );  // existing label desc
+	if( s > -1 ){ res = true; break; }
 
-	if( s > -1 ){
-	    res = true;
-	    break;
-	}
+	s = line.indexOf( config.PALLOC );      // by hand entry
+	if( s > -1 ){ res = true; break; }
     }
     return res;
 }

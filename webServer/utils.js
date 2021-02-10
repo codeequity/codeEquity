@@ -540,7 +540,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
 async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, specials ) {
     pd.GHIssueTitle = issueCardContent[0];
-    
+
     // normal for card -> issue.  odd but legal for issue -> card
     let allocation = ghSafe.getAllocated( issueCardContent );
 
@@ -556,7 +556,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
     let colId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
     pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
-    let colName    = "";
+    let colName    = gh.getColumnName( authData, ghLinks, colId );
     let projName   = "";
 
     const links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
@@ -568,11 +568,19 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	return;
     }
 
+    // Bail, if this is alloc in x4
+    if( allocation && config.PROJ_COLS.includes( colName )) {
+	// remove card, leave issue & label in place.
+	console.log( authData.who, "WARNING.", "Allocations are only useful in summarization cards and columns.  Removing card from", colName );
+	gh.removeCard( authData, origCardId );
+	return;
+    }
+	
+
     if( pd.peqType == "end" ) {
 	assert( link == -1 );
 
 	// If reserved column, remove the card.  Can't create newbies here.  Leave issue in place else work is lost.
-	colName = gh.getColumnName( authData, ghLinks, colId );
 	const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
 	if( reserved.includes( colName ) ) {
 	    console.log( "WARNING.", colName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue." );
@@ -586,7 +594,6 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     else {
 	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
 	let peqLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
-	colName  = gh.getColumnName( authData, ghLinks, colId );
 	projName = gh.getProjectName( authData, ghLinks, pd.GHProjectId );
 	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 

@@ -6,10 +6,9 @@ var ghUtils = require('../ghUtils');
 var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
-// Make up for rest variance, and GH slowness.  Expect 500-1000
-// const MIN_DELAY = 1500;
-// For sleep mode
-const MIN_DELAY = 2500;     
+// Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
+const MIN_DELAY = 1500;
+//const MIN_DELAY = 2500;     
 
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
@@ -624,7 +623,76 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
     return testStatus;
 }
 
-// Remember, PEQ is largely not updated once created.  So don't look for types, PEND or ACCR in subs
+async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
+
+    let labelVal    = typeof specials !== 'undefined' && specials.hasOwnProperty( "val" )       ? specials.val         : 1000000;
+    let labelCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )  ? specials.lblCount    : 1;
+    let assignCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" ) ? specials.assignees   : false;
+    
+    console.log( "Check Allocation", loc.projName, loc.colName, labelVal );
+
+    // CHECK github issues
+    let issue  = await findIssue( authData, td, issueData[0] );
+    testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
+    testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
+    testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label count" );
+
+    const lname = labelVal.toString() + " AllocPEQ";
+    testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label name" );
+
+    // CHECK github location
+    cards = await getCards( authData, loc.colId );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+    testStatus = checkEq( mCard.length, 1,                           testStatus, "Card claimed" );
+    testStatus = checkEq( mCard[0].id, card.id,                      testStatus, "Card claimed" );
+
+    // CHECK linkage
+    let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+    testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
+    testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
+    testStatus = checkEq( link.GHColumnName, loc.colName,           testStatus, "Linkage Col name" );
+    testStatus = checkEq( link.GHCardTitle, issueData[2],           testStatus, "Linkage Card Title" );
+    testStatus = checkEq( link.GHProjectName, loc.projName,         testStatus, "Linkage Project Title" );
+    testStatus = checkEq( link.GHColumnId, loc.colId,               testStatus, "Linkage Col Id" );
+    testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );
+
+    // CHECK dynamo Peq
+    let allPeqs  =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
+    let peq = peqs[0];
+
+    testStatus = checkEq( peq.PeqType, "allocation",               testStatus, "peq type invalid" );        
+    testStatus = checkEq( peq.GHProjectSub.length, loc.projSub.length, testStatus, "peq project sub len invalid" );
+    testStatus = checkEq( peq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
+    testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );      
+    testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );    
+    testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );      
+    testStatus = checkEq( peq.Amount, labelVal,                    testStatus, "peq amount" );
+    testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
+    testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq project id bad" );
+    for( let i = 0; i < loc.projSub.length; i++ ) {
+	testStatus = checkEq( peq.GHProjectSub[i], loc.projSub[i], testStatus, "peq project sub bad" );
+    }
+
+    // CHECK dynamo Pact
+    let allPacts  = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+    testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );  
+    
+    // Could have been many operations on this.
+    for( const pact of pacts ) {
+	let hasraw = await hasRaw( authData, pact.PEQActionId );
+	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
+	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
+	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
+	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
+    }
+
+    return testStatus;
+}
+
 async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
     let muteIngested = typeof specials !== 'undefined' && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
@@ -1006,6 +1074,48 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
     return testStatus;
 }
 
+
+async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials ) {
+    let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
+    let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
+
+    console.log( "Check Alloc Split", issDat[2], origLoc.colName, newLoc.colName );
+
+    // Get new issue
+    let issues   = await getIssues( authData, td );
+    let issue    = await findIssue( authData, td, issDat[0] );    
+    let splitIss = issues.find( issue => issue.title.includes( issDat[2] + " split" ));
+    const splitDat = typeof splitIss == 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    assert( splitDat[0] != -1 );
+    
+    // Get cards
+    let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
+    let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
+    let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
+
+    if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
+	
+    assert( typeof issLink !== 'undefined' );
+    assert( typeof splitLink !== 'undefined' );
+    const card      = await getCard( authData, issLink.GHCardId );
+    const splitCard = await getCard( authData, splitLink.GHCardId );
+
+    let lval = origVal / 2;
+    testStatus = await checkAlloc( authData, ghLinks, td, origLoc, issDat,   card,      testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+    testStatus = await checkAlloc( authData, ghLinks, td, newLoc,  splitDat, splitCard, testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+    testStatus = checkEq( issue.state, splitIss.state,    testStatus, "Issues have different state" );
+    
+    // check assign
+    testStatus = checkEq( issue.assignees.length, assignCnt,    testStatus, "Issue assignee count" );
+    testStatus = checkEq( splitIss.assignees.length, assignCnt, testStatus, "Issue assignee count" );
+
+    // Check comment on splitIss
+    const comments = await getComments( authData, td, splitDat[1] );
+    testStatus = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   testStatus, "Comment bad" );
+    
+    return testStatus;
+}
+
 async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, testStatus ) {
     
     console.log( "Check No Split", issDat[2], newLoc.colName );
@@ -1259,12 +1369,14 @@ exports.checkNewlyClosedIssue   = checkNewlyClosedIssue;
 exports.checkNewlyOpenedIssue   = checkNewlyOpenedIssue;
 exports.checkNewlySituatedIssue = checkNewlySituatedIssue;
 exports.checkNewlyAccruedIssue  = checkNewlyAccruedIssue;
+exports.checkAlloc              = checkAlloc;                 // allocated issue
 exports.checkSituatedIssue      = checkSituatedIssue;         // has active peq
 exports.checkDemotedIssue       = checkDemotedIssue;          // has inactive peq
 exports.checkUntrackedIssue     = checkUntrackedIssue;        // partial link table
 exports.checkNewbornCard        = checkNewbornCard;           // no issue
 exports.checkNewbornIssue       = checkNewbornIssue;          // no card
 exports.checkSplit              = checkSplit;                 // result of incremental resolve
+exports.checkAllocSplit         = checkAllocSplit;            // result of incremental resolve
 exports.checkNoSplit            = checkNoSplit;               // no corresponding split issue
 exports.checkUnclaimedAccr      = checkUnclaimedAccr;
 exports.checkNoCard             = checkNoCard;

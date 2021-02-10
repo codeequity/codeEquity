@@ -92,9 +92,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'created' :
 	if( pd.reqBody['project_card']['content_url'] != null ) {
 	    // In issues, add to project, triage to add to column.  May or may not be PEQ.  
-	    // console.log( "new card created from issue" );
-	    
-	    // e.g. content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
+	    // content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
 	    let issueURL = pd.reqBody['project_card']['content_url'].split('/');
 	    assert( issueURL.length > 0 );
 	    pd.GHIssueNum = parseInt( issueURL[issueURL.length - 1] );

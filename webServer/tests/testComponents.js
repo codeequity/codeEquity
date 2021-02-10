@@ -809,7 +809,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	testStatus = await tu.checkUnclaimedAccr( authData, ghLinks, td, uncAccr, issDatAgho1, issDatAgho1, aghoCard1New, testStatus, "card" );
 	testStatus = await tu.checkUnclaimedAccr( authData, ghLinks, td, uncAccr, issDatAgho2, aghoIss2New, aghoCard2New, testStatus, "issue" );  
 
-	// Old stuff should not be here
+	// Old stuff wont be present
 	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard1.id, ISS_AGHO1, testStatus, {"skipAllPeq": true} );  
 	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issDatAgho2, testStatus );
 	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard2.id, ISS_AGHO2, testStatus, {"skipAllPeq": true} );  

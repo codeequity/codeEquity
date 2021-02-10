@@ -148,7 +148,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	let content = [];
 	content.push( pd.GHIssueTitle );
-	content.push( config.PDESC + pd.peqValue.toString() );
+	content.push( config.PDESC + pd.peqValue.toString() ); 
 	let retVal = await utils.processNewPEQ( authData, ghLinks, pd, content, link );
 
 	// Attempted to label >= ACCR.  GH has already applied it, so remove
