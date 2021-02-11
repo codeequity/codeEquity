@@ -626,7 +626,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toProgLoc, cardNew.id, testStatus );
 
-	tu.testReport( testStatus, "Split Alloc B" );
+	tu.testReport( testStatus, "Split Alloc A" );
     }
 
     // += Accr.  Fail.  No create into x4
@@ -636,7 +636,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toAccrLoc, cardNew.id, testStatus );
 
-	tu.testReport( testStatus, "Split Alloc C" );
+	tu.testReport( testStatus, "Split Alloc B" );
     }
 
     // += Bacon
@@ -646,7 +646,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
 	await utils.sleep( 4000 );
 	testStatus = await tu.checkAllocSplit( authData, ghLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { assginees: 1, lblCount: 2 } );
 
-	tu.testReport( testStatus, "Split Alloc A" );
+	tu.testReport( testStatus, "Split Alloc C" );
     }
     
     tu.testReport( testStatus, "Test Split Alloc" );
@@ -680,16 +680,16 @@ async function runTests( authData, ghLinks, td ) {
     console.log( "Resolve tests =================" );
 
     let testStatus = [ 0, 0, []];
-/*    
+
     let t1 = await testIncrementalResolve( authData, ghLinks, td );
     console.log( "\n\nIncremental resolve complete." );
     await utils.sleep( 10000 );
-*/
+
     let t2 = await testSplitAlloc( authData, ghLinks, td );
     console.log( "\n\nSplit Alloc complete." );
     await utils.sleep( 10000 );
 
-//    testStatus = tu.mergeTests( testStatus, t1 );
+    testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
 
     return testStatus;

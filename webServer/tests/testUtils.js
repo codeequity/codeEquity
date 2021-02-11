@@ -628,6 +628,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     let labelVal    = typeof specials !== 'undefined' && specials.hasOwnProperty( "val" )       ? specials.val         : 1000000;
     let labelCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )  ? specials.lblCount    : 1;
     let assignCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" ) ? specials.assignees   : false;
+    let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : "open";
     
     console.log( "Check Allocation", loc.projName, loc.colName, labelVal );
 
@@ -636,6 +637,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label count" );
+    testStatus = checkEq( issue.state, state,                    testStatus, "Issue state" );
 
     const lname = labelVal.toString() + " AllocPEQ";
     testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label name" );

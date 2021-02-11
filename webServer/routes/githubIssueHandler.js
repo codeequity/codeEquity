@@ -27,7 +27,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
     let link = links[0];
 
     // Just carded?  No-op.  Delete issue also sends delete card, which handles linkage.
-    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+    [pd.peqValue, _] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
     if( pd.peqValue <= 0 ) return;
 
     // PEQ.  Card is gone, issue is gone.  Delete card will handle all but the one case below, in which case it leaves link intact.
@@ -103,7 +103,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    return;
 	}
 	
-	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody.issue.labels );
+	[pd.peqValue,_] = ghSafe.theOnePEQ( pd.reqBody.issue.labels );
 
 	// more than 1 peq?  remove it.
 	let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
@@ -227,7 +227,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'reopened':
 	console.log( authData.who, "closed or reopened" );
 
-	pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+	[pd.peqValue,_] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	if( pd.peqValue <= 0 ) {
 	    console.log( "Not a PEQ issue, no action taken." );
 	    return;
@@ -255,18 +255,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    if( action == "reopened" ) { verb = "reject"; }
 		    
 		    let subject = [ peqId.toString() ];
-		    utils.recordPEQAction(
-			authData,
-			config.EMPTY,     // CE UID
-			sender,           // gh user name
-			pd.GHFullName,    // of the repo
-			verb,
-			paction,
-			subject,          // subject
-			"",               // note
-			utils.getToday(), // entryDate
-			pd.reqBody        // raw
-		    );
+		    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+					   verb, paction, subject, "",
+					   utils.getToday(), pd.reqBody );
 		}
 	    }
 	    else { console.log( "Unable to complete move of issue card.  No action taken" ); }
@@ -277,10 +268,17 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	{
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
 	    console.log( authData.who, action, pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
-	    
-	    pd.peqValue = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+
+	    let allocation = false;
+	    [pd.peqValue, allocation] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
+		return;
+	    }
+
+	    // Allocations are simply closed/reopened.  No special activity.
+	    if( allocation ) {
+		console.log( "Allocation", action, "no other action taken" );
 		return;
 	    }
 	    

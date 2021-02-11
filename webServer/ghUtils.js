@@ -1323,28 +1323,41 @@ function parseLabelDescr( labelDescr ) {
 
 // '500 PEQ'  or '500 AllocPEQ'
 function parseLabelName( name ) {
-    const peqValue = parseInt( name.split(" ")[0] );
-    return peqValue;
+    let peqValue = 0;
+    let alloc = false;
+    let splits = name.split(" ");
+    if( splits.length == 2 && ( splits[1] == "AllocPEQ" || splits[1] == "PEQ" )) {   // XXX config
+	peqValue = parseInt( splits[0] );
+	alloc = splits[1] == "AllocPEQ";
+    }
+    
+    return [peqValue, alloc];
 }
 
 function theOnePEQ( labels ) {
     let peqValue = 0;
+    let alloc = false;
 
     for( const label of labels ) {
 	let content = label['description'];
 	let tval = parseLabelDescr( [content] );
+	let talloc = getAllocated( [content] );
 
 	if( tval > 0 ) {
 	    if( peqValue > 0 ) {
 		console.log( "Two PEQ labels detected for this issue!!" );
 		peqValue = 0;
+		alloc = false;
 		break;
 	    }
-	    else { peqValue = tval; }
+	    else {
+		peqValue = tval;
+		alloc = talloc;
+	    }
 	}
     }
 
-    return peqValue;
+    return [peqValue, alloc];
 }
 
 exports.githubUtils = githubUtils;

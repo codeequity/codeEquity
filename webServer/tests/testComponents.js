@@ -1075,6 +1075,177 @@ async function testProjColMods( authData, ghLinks, td ) {
 }
 
 
+// Alloc basic create from card or issue, assign, split with x4 prevent tested in setup and populate.
+// Here, check  move, dubLabel, label mods, close/reopen, create/delete
+async function testAlloc( authData, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Test Alloc" );
+    authData.who = "<TEST: Alloc>";
+    
+    const ISS_ALLOC = "Component Alloc";
+    const ASSIGNEE2 = "codeequity";
+
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+
+    // 1. Setup.
+    let label1m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "1000000 AllocPEQ", 1000000 );
+    let label2m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "2000000 AllocPEQ", 2000000 );
+    let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
+
+    const issAllocDat = await tu.makeIssue( authData, td, ISS_ALLOC, [ label1m ] );
+
+    const starLoc   = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+    const stripeLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+    const progLoc   = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const accrLoc   = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+
+    await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
+    const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
+
+    await utils.sleep( 2000 ); 
+    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1, val: 1000000} );
+    
+    tu.testReport( testStatus, "Alloc setup" );
+
+    
+    // Move to stripe OK, not prog/accr
+    {
+	await tu.moveCard( authData, cardAlloc.id, stripeLoc.colId );
+
+	// Peq is now out of date.  Change stripeLoc psub to fit.
+	stripeLoc.projSub[2] = "Stars";
+	
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+
+	await tu.moveCard( authData, cardAlloc.id, progLoc.colId );   // FAIL
+	await utils.sleep( 1000 );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+
+	await tu.moveCard( authData, cardAlloc.id, accrLoc.colId );   // FAIL
+	await utils.sleep( 1000 );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+
+	tu.testReport( testStatus, "Alloc A" );
+    }
+
+    // Dub label
+    {
+	await tu.addLabel( authData, td, issAllocDat[1], labelBug.name );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	
+	await tu.addLabel( authData, td, issAllocDat[1], label2m.name );  // FAIL
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+
+	await tu.addLabel( authData, td, issAllocDat[1], label1k.name );  // FAIL
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+
+	tu.testReport( testStatus, "Alloc B" );
+    }
+
+    // Label mods
+    {
+	// Mod label2m, success
+	let labelRes = {};
+	await tu.updateLabel( authData, td, label2m, {name: "100 AllocPEQ" });
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "100 AllocPEQ" );
+	testStatus = await tu.checkLabel( authData, labelRes.label, "100 AllocPEQ", "Allocation PEQ value: 100", testStatus ); 	
+	    
+	// delete label2m, good
+	await tu.delLabel( authData, td, labelRes.label.name );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "100 AllocPEQ" );
+	testStatus = await tu.checkLabel( authData, labelRes.label, -1, -1, testStatus );
+	
+	// Mod label1m, fail and create
+	await tu.updateLabel( authData, td, label1m, {name: "2000 AllocPEQ" });
+	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, label1m.name );
+	let lOrig = labelRes.label;
+	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "2000 AllocPEQ" );
+	let lNew  = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );
+	testStatus = await tu.checkLabel( authData, lOrig, "1000000 AllocPEQ", "Allocation PEQ value: 1000000", testStatus );
+	testStatus = await tu.checkLabel( authData, lNew, "2000 AllocPEQ", "Allocation PEQ value: 2000", testStatus );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
+
+	// Delete label1m, fail
+	await tu.delLabel( authData, td, label1m.name );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "1000000 AllocPEQ" );
+	lOrig = labelRes.label;
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );
+	testStatus = await tu.checkLabel( authData, lOrig, "1000000 AllocPEQ", "Allocation PEQ value: 1000000", testStatus );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
+	
+	tu.testReport( testStatus, "Alloc C" );
+    }
+
+    // Close/reopen
+    {
+	// Should stay in stripe, allocs don't move.
+	await tu.closeIssue( authData, td, issAllocDat[1] );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2, state: "closed"} );
+
+	await tu.reopenIssue( authData, td, issAllocDat[1] );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	
+	tu.testReport( testStatus, "Alloc D" );
+    }
+
+    // Create/delete good column
+    {
+	// Create from card 
+	const starCard1   = await tu.makeAllocCard( authData, starLoc.colId, "Alloc star 1", "1,000,000" );
+	await utils.sleep( 1000 );
+	let issues        = await tu.getIssues( authData, td );
+	const issStarDat1 = issues.find( issue => issue.title == "Alloc star 1" );
+	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat1, starCard1, testStatus, {assignees: 0, lblCount: 1} );
+
+	// Create from issue
+	const issStarDat2 = await tu.makeIssue( authData, td, "Alloc star 2", [ label1m ] );
+	const starCard2   = await tu.makeProjectCard( authData, starLoc.colId, issStarDat2[0] );
+	await utils.sleep( 1000 );
+	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat2, starCard2, testStatus, {assignees: 0, lblCount: 1} );
+
+	// Delete 2 ways
+	await tu.remCard( authData, starCard1.id );            // card, then issue
+	await tu.remIssue( authData, td, issStarDat1[0] ); 
+	await tu.remIssue( authData, td, issStarDat2[0] );     // just issue
+
+	testStatus = await tu.checkNoCard( authData, ghLinks, td, starLoc, starCard1.id, "Alloc star 1", testStatus, {"peq": true} );	
+	testStatus = await tu.checkNoCard( authData, ghLinks, td, starLoc, starCard2.id, "Alloc star 2", testStatus, {"peq": true} );	
+	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issStarDat1, testStatus );
+	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issStarDat2, testStatus );
+	
+	tu.testReport( testStatus, "Alloc E" );
+    }
+
+    // Create/delete x4 column
+    {
+	// Create from card 
+	const progCard = await tu.makeAllocCard( authData, progLoc.colId, "Alloc prog", "1,000,000" );
+	const accrCard = await tu.makeAllocCard( authData, accrLoc.colId, "Alloc accr", "1,000,000" );
+	await utils.sleep( 1000 );
+	let issues        = await tu.getIssues( authData, td );
+	const issProgDat = issues.find( issue => issue.title == "Alloc prog" );
+	const issAccrDat = issues.find( issue => issue.title == "Alloc accr" );
+
+	testStatus = await tu.checkNoCard( authData, ghLinks, td, progLoc, progCard.id, "Alloc prog", testStatus, {"peq": true} );	
+	testStatus = await tu.checkNoCard( authData, ghLinks, td, accrLoc, accrCard.id, "Alloc accr", testStatus, {"peq": true} );	
+	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issProgDat, testStatus );
+	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issAccrDat, testStatus );
+	
+	tu.testReport( testStatus, "Alloc F" );
+    }
+    
+    tu.testReport( testStatus, "Test Alloc" );
+
+    return testStatus;
+}
+
+
+
 
 async function runTests( authData, ghLinks, td ) {
 
@@ -1083,6 +1254,7 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
+    /*
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 10000 );
@@ -1109,16 +1281,23 @@ async function runTests( authData, ghLinks, td ) {
     
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
+    await utils.sleep( 10000 );
+    */
+    
+    let t8 = await testAlloc( authData, ghLinks, td );
+    console.log( "\n\nAlloc complete." );
     // await utils.sleep( 10000 );
 
+    /*
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );
     testStatus = tu.mergeTests( testStatus, t4 );
-
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
     testStatus = tu.mergeTests( testStatus, t7 );
+*/
+    testStatus = tu.mergeTests( testStatus, t8 );
     
     return testStatus
 }

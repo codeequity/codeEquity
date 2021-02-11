@@ -571,7 +571,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     // Bail, if this is alloc in x4
     if( allocation && config.PROJ_COLS.includes( colName )) {
 	// remove card, leave issue & label in place.
-	console.log( authData.who, "WARNING.", "Allocations are only useful in summarization cards and columns.  Removing card from", colName );
+	console.log( authData.who, "WARNING.", "Allocations are not useful in config's PROJ_COLS columns.  Removing card from", colName );
 	gh.removeCard( authData, origCardId );
 	return;
     }
@@ -665,7 +665,7 @@ async function getRaw( authData, pactId ) {
 }
 
 async function getPActs( authData, query ) {
-    console.log( authData.who, "Get PEQActions:", query );
+    // console.log( authData.who, "Get PEQActions:", query );
 
     let shortName = "GetEntries";
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQActions", "query": query };

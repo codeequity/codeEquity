@@ -70,18 +70,17 @@ async function runTests() {
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-*/
     
     subTest = await testPopulate.runTests( authData, ghLinks, td );
     console.log( "\n\nResolve test complete." );
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-/*
+*/
     subTest = await testComponents.runTests( authData, ghLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-*/    
+
     tu.testReport( testStatus, "================= Testing complete =================" );
 
 }
