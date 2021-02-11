@@ -1106,7 +1106,7 @@ async function testAlloc( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
     const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
 
-    await utils.sleep( 2000 ); 
+    await utils.sleep( 1000 ); 
     testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1, val: 1000000} );
     
     tu.testReport( testStatus, "Alloc setup" );
@@ -1122,11 +1122,9 @@ async function testAlloc( authData, ghLinks, td ) {
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
 
 	await tu.moveCard( authData, cardAlloc.id, progLoc.colId );   // FAIL
-	await utils.sleep( 1000 );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
 
 	await tu.moveCard( authData, cardAlloc.id, accrLoc.colId );   // FAIL
-	await utils.sleep( 1000 );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
 
 	tu.testReport( testStatus, "Alloc A" );
@@ -1171,10 +1169,10 @@ async function testAlloc( authData, ghLinks, td ) {
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
 
 	// Delete label1m, fail
-	await tu.delLabel( authData, td, label1m.name );
+	await tu.delLabel( authData, td, label1m.name );  	
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "1000000 AllocPEQ" );
 	lOrig = labelRes.label;
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label delete attempt", testStatus );
 	testStatus = await tu.checkLabel( authData, lOrig, "1000000 AllocPEQ", "Allocation PEQ value: 1000000", testStatus );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
 	
@@ -1195,14 +1193,16 @@ async function testAlloc( authData, ghLinks, td ) {
 
     // Create/delete good column
     {
-	// Create from card 
-	const starCard1   = await tu.makeAllocCard( authData, starLoc.colId, "Alloc star 1", "1,000,000" );
-	await utils.sleep( 1000 );
-	let issues        = await tu.getIssues( authData, td );
-	const issStarDat1 = issues.find( issue => issue.title == "Alloc star 1" );
+	// Create from card .. 
+	await tu.makeAllocCard( authData, starLoc.colId, "Alloc star 1", "1,000,000" );     // NOTE!  card is rebuilt to point to issue.  Re-find it.
+	await utils.sleep( 2000 );
+	const links       = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+	const link        = links.find( link => link.GHCardTitle == "Alloc star 1" );
+	const starCard1   = await tu.getCard( authData, link.GHCardId );
+	const issStarDat1 = [link.GHIssueId, link.GHIssueNum, link.GHCardTitle];
 	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat1, starCard1, testStatus, {assignees: 0, lblCount: 1} );
 
-	// Create from issue
+	// Create from issue  ... should be makeAllocIssue to create comment, but not testing that here
 	const issStarDat2 = await tu.makeIssue( authData, td, "Alloc star 2", [ label1m ] );
 	const starCard2   = await tu.makeProjectCard( authData, starLoc.colId, issStarDat2[0] );
 	await utils.sleep( 1000 );
@@ -1224,17 +1224,15 @@ async function testAlloc( authData, ghLinks, td ) {
     // Create/delete x4 column
     {
 	// Create from card 
-	const progCard = await tu.makeAllocCard( authData, progLoc.colId, "Alloc prog", "1,000,000" );
-	const accrCard = await tu.makeAllocCard( authData, accrLoc.colId, "Alloc accr", "1,000,000" );
-	await utils.sleep( 1000 );
-	let issues        = await tu.getIssues( authData, td );
-	const issProgDat = issues.find( issue => issue.title == "Alloc prog" );
-	const issAccrDat = issues.find( issue => issue.title == "Alloc accr" );
+	await tu.makeAllocCard( authData, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
+	await tu.makeAllocCard( authData, accrLoc.colId, "Alloc accr", "1,000,000" );
+	await utils.sleep( 2000 );
+	const links      = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+	const linkProg   = links.find( link => link.GHCardTitle == "Alloc prog" );
+	const linkAccr   = links.find( link => link.GHCardTitle == "Alloc accr" );
 
-	testStatus = await tu.checkNoCard( authData, ghLinks, td, progLoc, progCard.id, "Alloc prog", testStatus, {"peq": true} );	
-	testStatus = await tu.checkNoCard( authData, ghLinks, td, accrLoc, accrCard.id, "Alloc accr", testStatus, {"peq": true} );	
-	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issProgDat, testStatus );
-	testStatus = await tu.checkNoIssue( authData, ghLinks, td, issAccrDat, testStatus );
+	testStatus = tu.checkEq( typeof linkProg, 'undefined',     testStatus, "link should not exist" );
+	testStatus = tu.checkEq( typeof linkAccr, 'undefined',     testStatus, "link should not exist" );
 	
 	tu.testReport( testStatus, "Alloc F" );
     }

@@ -492,6 +492,7 @@ async function createLabel( authData, owner, repo, name, color, desc ) {
 }
 
 async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
+    console.log( "Creating label", allocation, peqValue );
     let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
@@ -525,16 +526,18 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
 	console.log( authData.who, "Label not found, creating.." );
 
 	if( peqHumanLabelName == config.POPULATE ) {
-	await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
-	    .then( label => { theLabel = label['data']; })
-	    .catch( e => { console.log( authData.who, "Create label failed.", e );  });
+	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
+		.then( label => { theLabel = label['data']; })
+		.catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
 	else if( peqValue < 0 ) {
 	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '654321', description: "Oi!" }))
 		.then( label => { theLabel = label['data']; })
 		.catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
-	else                    { theLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue ); }
+	else {
+	    theLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue );
+	}
     }
 
     assert.notStrictEqual( theLabel, undefined, "Did not manage to find or create the PEQ label" );

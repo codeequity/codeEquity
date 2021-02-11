@@ -346,16 +346,17 @@ async function make4xCols( authData, projId ) {
     return [prog, plan, pend, accr];
 }
 
+
+// do NOT return card or id here.  card is rebuilt to be driven from issue.
 async function makeAllocCard( authData, colId, title, amount ) {
     let note = title + "\n<allocation, PEQ: " + amount + ">";
     
-    let cid = await authData.ic.projects.createCard({ column_id: colId, note: note })
-	.then((card) => { return card.data.id; })
-	.catch( e => { console.log( authData.who, "Create newborn card failed.", e ); });
+    let card = await authData.ic.projects.createCard({ column_id: colId, note: note })
+	.then( c => c.data )
+	.catch( e => console.log( authData.who, "Create alloc card failed.", e ));
 
-    console.log( "MakeCard:", cid );
+    console.log( "Made AllocCard:", card.id, "but this will be deleted to make room for issue-card" );
     await utils.sleep( MIN_DELAY );
-    return cid;
 }
 
 async function makeNewbornCard( authData, colId, title ) {
@@ -395,6 +396,7 @@ async function remLabel( authData, td, issueNumber, label ) {
     await utils.sleep( MIN_DELAY );
 }
 
+// NOTE - this ignores color... 
 async function updateLabel( authData, td, label, updates ) {
     console.log( "Updating", label.name );
 

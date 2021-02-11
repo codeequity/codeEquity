@@ -98,12 +98,19 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // remake label.  inform.
 	    let label = await ghSafe.createPeqLabel( authData, pd.GHOwner, pd.GHRepo, tVal == "allocation", lVal );
 	    
-	    // add label to all.  No need to wait.
+	    // add label to all.  recreate card.  peq was not modified.
 	    console.log( "WARNING.  Active Peq labels can not be deleted.  To delete, remove them from issues first. Recreating." );
 	    for( const peq of peqs ) {
 		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": peq.GHIssueId });
 		assert( links.length == 1 );
+		// await ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
 		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
+
+		/*
+		// XXX wait.  if peq not modified, why was card deleted?  should just be carded.
+		let cardId = await ghSafe.createProjectCard( authData, unClaimedColId, issueId, true );		
+		ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle);
+		*/
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 				   "confirm", "notice", [], "PEQ label delete attempt",

@@ -90,74 +90,66 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
-	// Should not get here from adding alloc card - that is a bot action.
 	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_ACCR
 	// PROJ_PEND label can be added during pend negotiation
 	// ... but it if is situated already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
-
-	// XXXX XXXXX This will go away with ceFlutter
-	if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
-	    await gh.populateCELinkage( authData, ghLinks, pd );
-	    return;
-	}
-	
-	[pd.peqValue,_] = ghSafe.theOnePEQ( pd.reqBody.issue.labels );
-
-	// more than 1 peq?  remove it.
-	let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
-	if( pd.peqValue <= 0 && curVal > 0 ) {
-	    console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
-	    await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
-	    return;
-	}
-
-	// Current notification not for peq label?
-	if( pd.peqValue <= 0 || curVal <= 0 ) {
-	    console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
-	    return;
-	}
-
-	// Was this a carded issue?  Get linkage
-	let links = ghLinks.getLinks( authData, { "issueId": pd.GHIssueId } );
-	assert( links == -1 || links.length == 1 );
-	let link = links == -1 ? links : links[0];
-
-	// Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
-	// since can't create card without column_id.  No project, or column_id without triage.
-	if( link == -1 || link.GHColumnId == -1) {
-	    if( link == -1 ) {    
-		link = {};
-		let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.GHIssueId );
-		let issueURL = card.content_url.split('/');
-		assert( issueURL.length > 0 );
-		link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );  // XXX already have this
-		link.GHCardId    = card.id
-		link.GHProjectId = card.project_url.split('/').pop();
-		link.GHColumnId  = card.column_url.split('/').pop();
+	{
+	    // XXXX XXXXX This will go away with ceFlutter
+	    if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
+		await gh.populateCELinkage( authData, ghLinks, pd );
+		return;
 	    }
-	    else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
-		let card = await gh.getCard( authData, link.GHCardId );
-		link.GHColumnId  = card.column_url.split('/').pop();
+	    
+	    // Zero's peqval if 2 found
+	    [pd.peqValue,_] = ghSafe.theOnePEQ( pd.reqBody.issue.labels );  
+	    
+	    // more than 1 peq?  remove it.
+	    let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
+	    if( pd.peqValue <= 0 && curVal > 0 ) {
+		console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
+		await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
+		return;
 	    }
-	}
-
-	pd.updateFromLink( link );
-	console.log( authData.who, "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
-
-	let content = [];
-	content.push( pd.GHIssueTitle );
-	content.push( config.PDESC + pd.peqValue.toString() ); 
-	let retVal = await utils.processNewPEQ( authData, ghLinks, pd, content, link );
-
-	// Attempted to label >= ACCR.  GH has already applied it, so remove
-	// XXX This should not be possible, as would be 2nd peq label since ACCR already has one
-	if( retVal == "removeLabel" ) {
-	    assert( false ); 
-	    console.log( "..removing GH label on ACCR card" );
-	    link.GHColumnId = -1;
-	    await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, pd.reqBody.label );
+	    
+	    // Current notification not for peq label?
+	    if( pd.peqValue <= 0 || curVal <= 0 ) {
+		console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
+		return;
+	    }
+	    
+	    // Was this a carded issue?  Get linkage
+	    let links = ghLinks.getLinks( authData, { "issueId": pd.GHIssueId } );
+	    assert( links == -1 || links.length == 1 );
+	    let link = links == -1 ? links : links[0];
+	    
+	    // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
+	    // since can't create card without column_id.  No project, or column_id without triage.
+	    if( link == -1 || link.GHColumnId == -1) {
+		if( link == -1 ) {    
+		    link = {};
+		    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.GHIssueId );
+		    let issueURL = card.content_url.split('/');
+		    assert( issueURL.length > 0 );
+		    link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );  // XXX already have this
+		    link.GHCardId    = card.id
+		    link.GHProjectId = card.project_url.split('/').pop();
+		    link.GHColumnId  = card.column_url.split('/').pop();
+		}
+		else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
+		    let card = await gh.getCard( authData, link.GHCardId );
+		    link.GHColumnId  = card.column_url.split('/').pop();
+		}
+	    }
+	    
+	    pd.updateFromLink( link );
+	    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
+	    
+	    let content = [];
+	    content.push( pd.GHIssueTitle );
+	    content.push( pd.reqBody.label.description );
+	    let retVal = await utils.processNewPEQ( authData, ghLinks, pd, content, link );
 	}
 	break;
     case 'unlabeled':
@@ -225,42 +217,49 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	break;
     case 'closed':
     case 'reopened':
-	console.log( authData.who, "closed or reopened" );
+	{
+	    console.log( authData.who, "closed or reopened" );
 
-	[pd.peqValue,_] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
-	if( pd.peqValue <= 0 ) {
-	    console.log( "Not a PEQ issue, no action taken." );
-	    return;
-	}
-
-	// Get array: [proj_id, col_idx4]
-	// XXX getLayout and moveIssue both call getGHCard
-	let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
-	if( ceProjectLayout[0] == -1 ) {
-	    console.log( "Project does not have recognizable CE column layout.  No action taken." );
-	}
-	else {
-	    let success = await gh.moveIssueCard( authData, ghLinks, pd.GHOwner, pd.GHRepo, [pd.GHIssueId, pd.GHIssueNum], action, ceProjectLayout ); 
-	    if( success ) {
-		console.log( authData.who, "Find & validate PEQ" );
-		let peqId = ( await( ghSafe.validatePEQ( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
-		if( peqId == -1 ) {
-		    console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
-		}
-		else {
-		    // githubCardHandler:recordMove must handle many more options.  Choices here are limited.
-		    // Closed: 
-		    let verb = "propose";
-		    let paction = "accrue";
-		    if( action == "reopened" ) { verb = "reject"; }
-		    
-		    let subject = [ peqId.toString() ];
-		    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
-					   verb, paction, subject, "",
-					   utils.getToday(), pd.reqBody );
-		}
+	    let allocation = false;
+	    [pd.peqValue,allocation] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    if( pd.peqValue <= 0 ) {
+		console.log( "Not a PEQ issue, no action taken." );
+		return;
 	    }
-	    else { console.log( "Unable to complete move of issue card.  No action taken" ); }
+	    if( allocation ) {
+		console.log( "Allocation, no action taken." );
+		return;
+	    }
+	    
+	    // Get array: [proj_id, col_idx4]
+	    // XXX getLayout and moveIssue both call getGHCard
+	    let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
+	    if( ceProjectLayout[0] == -1 ) {
+		console.log( "Project does not have recognizable CE column layout.  No action taken." );
+	    }
+	    else {
+		let success = await gh.moveIssueCard( authData, ghLinks, pd.GHOwner, pd.GHRepo, [pd.GHIssueId, pd.GHIssueNum], action, ceProjectLayout ); 
+		if( success ) {
+		    console.log( authData.who, "Find & validate PEQ" );
+		    let peqId = ( await( ghSafe.validatePEQ( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
+		    if( peqId == -1 ) {
+			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
+		    }
+		    else {
+			// githubCardHandler:recordMove must handle many more options.  Choices here are limited.
+			// Closed: 
+			let verb = "propose";
+			let paction = "accrue";
+			if( action == "reopened" ) { verb = "reject"; }
+			
+			let subject = [ peqId.toString() ];
+			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+					       verb, paction, subject, "",
+					       utils.getToday(), pd.reqBody );
+		    }
+		}
+		else { console.log( "Unable to complete move of issue card.  No action taken" ); }
+	    }
 	}
 	break;
     case 'assigned': 

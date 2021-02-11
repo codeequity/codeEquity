@@ -41,12 +41,12 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     console.log( "Done waiting for populate" );
 
     // softCont: dataSecurity, githubOps, unallocated
-    let dsCardId = await tu.makeAllocCard( authData, mastCol1, td.dataSecTitle, "1,000,000" );
-    let ghCardId = await tu.makeAllocCard( authData, mastCol1, td.githubOpsTitle, "1,500,000" );
-    let usCardId = await tu.makeAllocCard( authData, mastCol1, td.unallocTitle, "3,000,000" );
+    await tu.makeAllocCard( authData, mastCol1, td.dataSecTitle, "1,000,000" );
+    await tu.makeAllocCard( authData, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await tu.makeAllocCard( authData, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    let ubCardId = await tu.makeAllocCard( authData, mastCol2, td.unallocTitle, "1,000,000" );
+    await tu.makeAllocCard( authData, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
 async function testPreferredCEProjects( authData, ghLinks, td ) {
