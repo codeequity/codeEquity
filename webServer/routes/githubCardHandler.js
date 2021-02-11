@@ -92,9 +92,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'created' :
 	if( pd.reqBody['project_card']['content_url'] != null ) {
 	    // In issues, add to project, triage to add to column.  May or may not be PEQ.  
-	    // console.log( "new card created from issue" );
-	    
-	    // e.g. content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
+	    // content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
 	    let issueURL = pd.reqBody['project_card']['content_url'].split('/');
 	    assert( issueURL.length > 0 );
 	    pd.GHIssueNum = parseInt( issueURL[issueURL.length - 1] );
@@ -142,7 +140,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    
 	    let newColName = gh.getColumnName( authData, ghLinks, newColId );
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
-	    
+
 	    // Ignore newborn cards.
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": cardId } );
 	    if( links == -1 || links[0].GHColumnId == -1 ) {
@@ -154,11 +152,19 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
-	    
+
 	    // allocations have issues
-	    let issueId = link['GHIssueId'];
+	    let issueId = link.GHIssueId;
 	    assert( issueId != -1 );
 
+	    const fullIssue = await gh.getFullIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );   
+	    let [_, allocation] = ghSafe.theOnePEQ( fullIssue.labels );
+	    if( allocation && config.PROJ_COLS.includes( newColName )) {
+		console.log( authData.who, "WARNING.", "Allocations are not useful in config's PROJ_COLS columns.  Moving card back." );
+		await gh.moveCard( authData, cardId, oldColId );
+		return;
+	    }
+	    
 	    // XXX don't assert here out of accr.  Put it back.  move between accr is done via delete
 	    let oldNameIndex = config.PROJ_COLS.indexOf( link['GHColumnName'] );
 	    assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.

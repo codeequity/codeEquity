@@ -27,27 +27,39 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( typeof pd.reqBody.changes.name === 'undefined' && typeof pd.reqBody.changes.description === 'undefined' ) {
 		return;
 	    }
-	    
+
+	    const name = pd.reqBody.label.name;
 	    let origDesc = pd.reqBody.label.description;
-	    let origName = pd.reqBody.label.name;
+	    let origName = name;
 	    if( typeof pd.reqBody.changes.description !== 'undefined' ) { origDesc = pd.reqBody.changes.description.from; }
 	    if( typeof pd.reqBody.changes.name !== 'undefined' )        { origName = pd.reqBody.changes.name.from; }
 	    
 	    const lVal     = ghSafe.parseLabelDescr( [ origDesc ] );
 	    let allocation = ghSafe.getAllocated( [ origDesc ] );
 	    tVal = allocation ? "allocation" : "plan";
-	    
-	    // Only proceed if there are active peqs with this label
+
+	    // Allow, if no active peqs
 	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: lVal, PeqType: tVal };
 	    const peqs  = await utils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs with this edited label" );
+		// Just make sure description is consistent with name, if it is a peq label
+		const [newNVal,alloc] = ghSafe.parseLabelName( name );
+		if( newNVal <= 0 ) { return; }
+
+		const newDVal  = ghSafe.parseLabelDescr( [pd.reqBody.label.description] );
+		const desc     = ( alloc ? config.ADESC : config.PDESC ) + newNVal.toString();
+
+		// Name drives description
+		if( newNVal != newDVal || desc != pd.reqBody.label.description ) {
+		    console.log( "WARNING.  Modified PEQ label description not consistent with name.  Updating." );
+		    ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, name, desc );		    
+		}
 		return;
 	    }
 
 	    // XXX need to warn .. card be good
 	    // undo current edits.
-	    const name = pd.reqBody.label.name;
 	    console.log( authData.who, "Undoing label edit, back to", origName, origDesc );
 	    await ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, origName, origDesc );
 
@@ -55,7 +67,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // make new label, iff the name changed.  If only descr, we are done already.  This need not be peq.
 	    if( origName != name ) {
 		console.log( "Making new label to contain the edit" );
-		const peqValue = ghSafe.parseLabelName( name );
+		const [peqValue,_] = ghSafe.parseLabelName( name );
 		const descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
 		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, name, pd.reqBody.label.color, descr );
 	    }
@@ -88,12 +100,19 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // remake label.  inform.
 	    let label = await ghSafe.createPeqLabel( authData, pd.GHOwner, pd.GHRepo, tVal == "allocation", lVal );
 	    
-	    // add label to all.  No need to wait.
+	    // add label to all.  recreate card.  peq was not modified.
 	    console.log( "WARNING.  Active Peq labels can not be deleted.  To delete, remove them from issues first. Recreating." );
 	    for( const peq of peqs ) {
 		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": peq.GHIssueId });
 		assert( links.length == 1 );
+		// await ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
 		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
+
+		/*
+		// XXX wait.  if peq not modified, why was card deleted?  should just be carded.
+		let cardId = await ghSafe.createProjectCard( authData, unClaimedColId, issueId, true );		
+		ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle);
+		*/
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 				   "confirm", "notice", [], "PEQ label delete attempt",

@@ -576,10 +576,84 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Incremental resolve G" );
     }
     
-    tu.testReport( testStatus, "Test ProjCol Mod" );
+    tu.testReport( testStatus, "Test Incremental resolve" );
 
     return testStatus;
 }
+
+async function testSplitAlloc( authData, ghLinks, td ) {
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "Split Alloc" );
+    authData.who = "<TEST: Split Alloc>";
+
+    const ASSIGNEE2 = "codeequity";
+
+    const ISS_ALLOC = "IR Alloc";
+
+    await tu.refreshRec( authData, td );
+    await tu.refreshFlat( authData, td );
+
+    // 1. Setup.
+    let label1m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "1000000 AllocPEQ", 1000000 );
+    let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
+
+    const issAllocDat = await tu.makeIssue( authData, td, ISS_ALLOC, [ labelBug, label1m ] );
+
+    // From
+    const starLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+    
+    // To
+    const toBacnLoc = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
+    const toProgLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const toAccrLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+
+    await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
+    
+    // Set up first card
+    const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
+    await utils.sleep( 2000 ); 
+    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2, val: 1000000} );
+    
+    tu.testReport( testStatus, "Split Alloc setup" );
+
+    // += Prog.  Fail.  No create into x4
+    {
+	// At this point, lval is 500k
+	const cardNew = await tu.makeProjectCard( authData, toProgLoc.colId, issAllocDat[0] );
+	await utils.sleep( 3000 );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toProgLoc, cardNew.id, testStatus );
+
+	tu.testReport( testStatus, "Split Alloc A" );
+    }
+
+    // += Accr.  Fail.  No create into x4
+    {
+	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issAllocDat[0] );
+	await utils.sleep( 3000 );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toAccrLoc, cardNew.id, testStatus );
+
+	tu.testReport( testStatus, "Split Alloc B" );
+    }
+
+    // += Bacon
+    // Note - this must be last, else will cause issue to be found in checkNoSplit
+    {
+	const cardNew = await tu.makeProjectCard( authData, toBacnLoc.colId, issAllocDat[0] );
+	await utils.sleep( 4000 );
+	testStatus = await tu.checkAllocSplit( authData, ghLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { assginees: 1, lblCount: 2 } );
+
+	tu.testReport( testStatus, "Split Alloc C" );
+    }
+    
+    tu.testReport( testStatus, "Test Split Alloc" );
+
+    return testStatus;
+}
+
 
 
 async function runTests( authData, ghLinks, td ) {
@@ -606,12 +680,17 @@ async function runTests( authData, ghLinks, td ) {
     console.log( "Resolve tests =================" );
 
     let testStatus = [ 0, 0, []];
-    
+
     let t1 = await testIncrementalResolve( authData, ghLinks, td );
     console.log( "\n\nIncremental resolve complete." );
     await utils.sleep( 10000 );
 
+    let t2 = await testSplitAlloc( authData, ghLinks, td );
+    console.log( "\n\nSplit Alloc complete." );
+    await utils.sleep( 10000 );
+
     testStatus = tu.mergeTests( testStatus, t1 );
+    testStatus = tu.mergeTests( testStatus, t2 );
 
     return testStatus;
 

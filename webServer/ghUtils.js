@@ -492,6 +492,7 @@ async function createLabel( authData, owner, repo, name, color, desc ) {
 }
 
 async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
+    console.log( "Creating label", allocation, peqValue );
     let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
@@ -525,16 +526,18 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
 	console.log( authData.who, "Label not found, creating.." );
 
 	if( peqHumanLabelName == config.POPULATE ) {
-	await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
-	    .then( label => { theLabel = label['data']; })
-	    .catch( e => { console.log( authData.who, "Create label failed.", e );  });
+	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
+		.then( label => { theLabel = label['data']; })
+		.catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
 	else if( peqValue < 0 ) {
 	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '654321', description: "Oi!" }))
 		.then( label => { theLabel = label['data']; })
 		.catch( e => { console.log( authData.who, "Create label failed.", e );  });
 	}
-	else                    { theLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue ); }
+	else {
+	    theLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue );
+	}
     }
 
     assert.notStrictEqual( theLabel, undefined, "Did not manage to find or create the PEQ label" );
@@ -1234,27 +1237,23 @@ function getColumnName( authData, ghLinks, colId ) {
     const colName = locs == -1 ? locs : locs[0].GHColumnName;
     return colName;
 
-    /*
-    let column = await( authData.ic.projects.getColumn({ column_id: colId }))
-	.catch( e => {
-	    console.log( authData.who, "Get Column failed.", e );
-	    return "";
-	});
-    
-    return column['data']['name'];
-    */
 }
 
 
+// XXX Revisit allowed input?
+// Allow:
+// <allocation, PEQ: 1000>      typical by hand description
+// <allocation, PEQ: 1,000>
+// <allocation, PEQ: 1,000>
+// Allocation PEQ value         typical by resolve description & existing label description
 function getAllocated( content ) {
     let res = false;
     for( const line of content ) {
-	let s =  line.indexOf( config.PALLOC );
+	let s = line.indexOf( config.ADESC );  // existing label desc
+	if( s > -1 ){ res = true; break; }
 
-	if( s > -1 ){
-	    res = true;
-	    break;
-	}
+	s = line.indexOf( config.PALLOC );      // by hand entry
+	if( s > -1 ){ res = true; break; }
     }
     return res;
 }
@@ -1327,28 +1326,41 @@ function parseLabelDescr( labelDescr ) {
 
 // '500 PEQ'  or '500 AllocPEQ'
 function parseLabelName( name ) {
-    const peqValue = parseInt( name.split(" ")[0] );
-    return peqValue;
+    let peqValue = 0;
+    let alloc = false;
+    let splits = name.split(" ");
+    if( splits.length == 2 && ( splits[1] == "AllocPEQ" || splits[1] == "PEQ" )) {   // XXX config
+	peqValue = parseInt( splits[0] );
+	alloc = splits[1] == "AllocPEQ";
+    }
+    
+    return [peqValue, alloc];
 }
 
 function theOnePEQ( labels ) {
     let peqValue = 0;
+    let alloc = false;
 
     for( const label of labels ) {
 	let content = label['description'];
 	let tval = parseLabelDescr( [content] );
+	let talloc = getAllocated( [content] );
 
 	if( tval > 0 ) {
 	    if( peqValue > 0 ) {
 		console.log( "Two PEQ labels detected for this issue!!" );
 		peqValue = 0;
+		alloc = false;
 		break;
 	    }
-	    else { peqValue = tval; }
+	    else {
+		peqValue = tval;
+		alloc = talloc;
+	    }
 	}
     }
 
-    return peqValue;
+    return [peqValue, alloc];
 }
 
 exports.githubUtils = githubUtils;
