@@ -1252,7 +1252,6 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
-    /*
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 10000 );
@@ -1280,13 +1279,11 @@ async function runTests( authData, ghLinks, td ) {
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
     await utils.sleep( 10000 );
-    */
     
     let t8 = await testAlloc( authData, ghLinks, td );
     console.log( "\n\nAlloc complete." );
     // await utils.sleep( 10000 );
 
-    /*
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );
@@ -1294,7 +1291,6 @@ async function runTests( authData, ghLinks, td ) {
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
     testStatus = tu.mergeTests( testStatus, t7 );
-*/
     testStatus = tu.mergeTests( testStatus, t8 );
     
     return testStatus

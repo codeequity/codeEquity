@@ -43,10 +43,12 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    const peqs  = await utils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs with this edited label" );
-		// Just make sure description is consistent with name
+		// Just make sure description is consistent with name, if it is a peq label
 		const [newNVal,alloc] = ghSafe.parseLabelName( name );
-		const newDVal         = ghSafe.parseLabelDescr( [pd.reqBody.label.description] );
-		const desc            = ( alloc ? config.ADESC : config.PDESC ) + newNVal.toString();
+		if( newNVal <= 0 ) { return; }
+
+		const newDVal  = ghSafe.parseLabelDescr( [pd.reqBody.label.description] );
+		const desc     = ( alloc ? config.ADESC : config.PDESC ) + newNVal.toString();
 
 		// Name drives description
 		if( newNVal != newDVal || desc != pd.reqBody.label.description ) {
