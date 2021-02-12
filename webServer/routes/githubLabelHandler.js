@@ -8,6 +8,23 @@ var gh     = ghUtils.githubUtils;
 var ghSafe = ghUtils.githubSafe;
 
 
+async function nameDrivesLabel( authData, pd, name, description ) {
+    const [nameVal,alloc] = ghSafe.parseLabelName( name );
+    if( nameVal <= 0 ) { return; }
+    
+    const descrVal  = ghSafe.parseLabelDescr( [description] );
+    const consistentDescr     = ( alloc ? config.ADESC : config.PDESC ) + nameVal.toString();
+    
+    // Name drives description.  This will allow different color, if naming/descr is correct.
+    if( nameVal != descrVal || consistentDescr != description ) {
+	console.log( "WARNING.  Modified PEQ label description not consistent with name.  Updating." );
+	const color = alloc ? config.APEQ_COLOR : config.PEQ_COLOR;
+	await ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, name, consistentDescr, color );		    
+    }
+    return;
+}
+
+
 // Actions: created, edited, or deleted
 async function handler( authData, ghLinks, pd, action, tag ) {
 
@@ -43,18 +60,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    const peqs  = await utils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs with this edited label" );
-		// Just make sure description is consistent with name, if it is a peq label
-		const [newNVal,alloc] = ghSafe.parseLabelName( name );
-		if( newNVal <= 0 ) { return; }
-
-		const newDVal  = ghSafe.parseLabelDescr( [pd.reqBody.label.description] );
-		const desc     = ( alloc ? config.ADESC : config.PDESC ) + newNVal.toString();
-
-		// Name drives description
-		if( newNVal != newDVal || desc != pd.reqBody.label.description ) {
-		    console.log( "WARNING.  Modified PEQ label description not consistent with name.  Updating." );
-		    ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, name, desc );		    
-		}
+		// Just make sure description is consistent with name, if it is a peq label.  No need to wait.
+		nameDrivesLabel( authData, pd, pd.reqBody.label.name, pd.reqBody.label.description );
 		return;
 	    }
 
@@ -120,7 +127,11 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'created':  // do nothing
-	// GH doesn't allow labels with same name in repo.  No need to check.
+	// GH doesn't allow labels with same name in repo.
+	// Protect PEQ or Alloc label name format, to avoid confusion.  No need to wait.
+	{
+	    nameDrivesLabel( authData, pd, pd.reqBody.label.name, pd.reqBody.label.description );
+	}
 	break;
     default:
 	console.log( "Unrecognized action (label)" );

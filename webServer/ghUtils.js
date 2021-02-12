@@ -65,8 +65,8 @@ var githubSafe = {
 	return createLabel( authData, owner, repo, name, color, desc );
     },
 
-    updateLabel: function( authData, owner, repo, name, newName, desc ) {
-	return updateLabel( authData, owner, repo, name, newName, desc );
+    updateLabel: function( authData, owner, repo, name, newName, desc, color ) {
+	return updateLabel( authData, owner, repo, name, newName, desc, color );
     },
 
     createPeqLabel: function( authData, owner, repo, allocation, peqValue ) {
@@ -478,9 +478,16 @@ async function remAssignee( authData, owner, repo, issueNumber, assignee ) {
 	.catch( e => { console.log( authData.who, "Remove assignee failed.", e ); });
 }
 
-async function updateLabel( authData, owner, repo, name, newName, desc ) {
-    await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc }))
-	.catch( e => console.log( authData.who, "Update label failed.", e ));
+async function updateLabel( authData, owner, repo, name, newName, desc, color ) {
+    let lColor = typeof color !== 'undefined' ? color : false;
+    if( lColor ) {
+	await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc, color: lColor }))
+	    .catch( e => console.log( authData.who, "Update label failed.", e ));
+    }
+    else {
+	await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc }))
+	    .catch( e => console.log( authData.who, "Update label failed.", e ));
+    }
 }
 
 async function createLabel( authData, owner, repo, name, color, desc ) {
@@ -968,25 +975,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     // Remove turds, report.  
     ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId });
 
-
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
-    /*
-    let daPEQ = await utils.getPeq( authData, pd.GHIssueId );
-    await utils.removePEQ( authData, daPEQ.PEQId );
-
-    utils.recordPEQAction(
-	authData,
-	config.EMPTY,     // CE UID
-	pd.GHCreator,     // gh user name
-	pd.GHFullName,        
-	"confirm",        // verb
-	"delete",         // action
-	[daPEQ.PEQId],    // subject
-	"unclaimed",      // note
-	utils.getToday(), // entryDate
-	pd.reqBody        // raw
-    );
-    */
 }
 
 

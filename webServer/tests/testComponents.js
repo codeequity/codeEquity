@@ -529,13 +529,19 @@ async function testCloseReopen( authData, ghLinks, td ) {
 
 	tu.testReport( testStatus, "J" );
 	
-
 	// 10. reopen (fail)
 	await tu.reopenIssue( authData, td, issueData[1] );
 	await utils.sleep( 1000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
 
 	tu.testReport( testStatus, "K" );
+
+	// 10. move to PEND (fail)
+	await tu.moveCard( authData, card.id, flatPend.colId );
+	await utils.sleep( 1000 );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
+
+	tu.testReport( testStatus, "L" );
     }	
 
     {
@@ -966,6 +972,16 @@ async function testLabelMods( authData, ghLinks, td ) {
 	
 	tu.testReport( testStatus, "Label mods G" );
 
+	// 8. Make partial peq label
+	console.log( "Make partial peq label" );
+	await tu.updateLabel( authData, td, labNP1, {name: "105 PEQ", description: "newDesc"} );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "105 PEQ" );
+	labNP1   = labelRes.label;
+	testStatus = await tu.checkLabel( authData, labNP1, "105 PEQ", "PEQ value: 105", testStatus ); 
+
+	tu.testReport( testStatus, "Label mods B" );
+
+	
 	// Clean
 	await tu.delLabel( authData, td, labNP1.name );
 	
