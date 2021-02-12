@@ -305,6 +305,105 @@ async function testEndpoint( authData, ghLinks, td ) {
 }
 
 
+// Run several blasts, since incoming order is variable.
+async function testBlast( authData, ghLinks, td ) {
+
+    // [pass, fail, msgs]
+    let testStatus = [ 0, 0, []];
+
+    console.log( "\nTest Blast issue" );
+
+    await tu.refreshRec( authData, td );
+
+    const LAB1     = "604 PEQ";
+    const LABNP1   = "nutty1";
+    const LABNP2   = "nutty2";
+
+    const ASSIGNEE1 = "rmusick2000";
+    const ASSIGNEE2 = "codeequity";
+    
+    let lab1   = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LAB1, 604 );
+    let labNP1 = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LABNP1, -1 );	
+    let labNP2 = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LABNP2, -1 );	
+
+    // 1. Simple blast
+    let issDat = await tu.blastIssue( authData, td, "Blast 1", [LAB1], [ASSIGNEE1] );               
+
+    await utils.sleep( 2000 );
+    await tu.refreshUnclaimed( authData, td );    
+    const uncLoc = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
+    
+    let links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let link   = links.find( link => link.GHCardTitle == "Blast 1" );
+    let card   = await tu.getCard( authData, link.GHCardId );
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1});
+
+    tu.testReport( testStatus, "Test Blast A" );    
+
+    // 2. blast  
+    issDat = await tu.blastIssue( authData, td, "Blast 2", [LABNP1, LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );               
+    await utils.sleep( 2000 );
+    links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    link   = links.find( link => link.GHCardTitle == "Blast 2" );
+    card   = await tu.getCard( authData, link.GHCardId );
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3});
+
+    tu.testReport( testStatus, "Test Blast B" );    
+
+    // 3. blast  
+    issDat = await tu.blastIssue( authData, td, "Blast 3", [LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );               
+    await utils.sleep( 2000 );
+    links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    link   = links.find( link => link.GHCardTitle == "Blast 3" );
+    card   = await tu.getCard( authData, link.GHCardId );
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2});
+
+    tu.testReport( testStatus, "Test Blast C" );    
+
+    // 4. blast  
+    issDat = await tu.blastIssue( authData, td, "Blast 4", [LABNP1, LAB1], [ASSIGNEE1, ASSIGNEE2] );               
+    await utils.sleep( 2000 );
+    links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    link   = links.find( link => link.GHCardTitle == "Blast 4" );
+    card   = await tu.getCard( authData, link.GHCardId );
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2});
+
+    tu.testReport( testStatus, "Test Blast D" );    
+
+    // 5. blast  
+    issDat = await tu.blastIssue( authData, td, "Blast 5", [LABNP1, LABNP2, LAB1], [ASSIGNEE2, ASSIGNEE1] );               
+    await utils.sleep( 2000 );
+    links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    link   = links.find( link => link.GHCardTitle == "Blast 5" );
+    card   = await tu.getCard( authData, link.GHCardId );
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3});
+
+    tu.testReport( testStatus, "Test Blast E" );    
+
+    // 6. blast, undo
+    issDat = await tu.blastIssue( authData, td, "Blast 6", [LAB1, LABNP1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );
+    await utils.sleep( 2000 );
+    await tu.remAssignee( authData, td, issDat[1], ASSIGNEE2 );
+    await tu.remAssignee( authData, td, issDat[1], ASSIGNEE1 );
+    await tu.remLabel( authData, td, issDat[1], labNP1 );    
+    await tu.remLabel( authData, td, issDat[1], labNP2 );    
+    
+    links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    link   = links.find( link => link.GHCardTitle == "Blast 6" );
+    card   = await tu.getCard( authData, link.GHCardId );
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1});
+
+    tu.testReport( testStatus, "Test Blast F" );    
+
+    // Clean
+    await tu.delLabel( authData, td, labNP1.name );
+    await tu.delLabel( authData, td, labNP2.name );
+    
+    tu.testReport( testStatus, "Test Blast" );
+    return testStatus;
+}
+
+
 
 async function runTests( authData, ghLinks, td ) {
 
@@ -312,16 +411,23 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
+    /*
     // Stop and check each step
     let t1 = await testStepByStep( authData, ghLinks, td );
 
-    // Blast through, check the end
+    // Endpoint only, no waiting 
     let t2 = await testEndpoint( authData, ghLinks, td );
-
+*/
+    // Blast tests
+    let t3 = await testBlast( authData, ghLinks, td );
+    
     // Basic flow alloc already done in setup.  Basically, create.  Period.
 
+    /*
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
+*/
+    testStatus = tu.mergeTests( testStatus, t3 );
     return testStatus
 }
 

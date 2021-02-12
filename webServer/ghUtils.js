@@ -298,7 +298,8 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
     // console.log( query );
     // console.log( res );
     let retVal = false;
-    if( typeof res.data.node !== 'undefined' && typeof res.data.node.title !== 'undefined' ) { retVal = true; }
+    // Hmm node was occasionally null here, then failing on title
+    if( typeof res.data.node !== 'undefined' && res.data.node && typeof res.data.node.title !== 'undefined' ) { retVal = true; }
     console.log( authData.who, "Issue node", nodeId, "exists?", retVal );
     return retVal;
 }
