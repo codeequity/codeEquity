@@ -65,7 +65,41 @@ async function initAuth( authData, owner, repo ) {
 
 
 
-async function switcher( authData, ghLinks, pd, sender, event, action, tag, res ) {
+// Without this call, incoming non-bot jobs that were delayed would not get executed.
+// Only this call will remove from the queue before getting next.  
+async function getNextJob( authData, pdOld, sender, res ) {
+    let jobData = await utils.getFromQueue( ceJobs, authData, pdOld.GHFullName, sender );
+    if( jobData != -1 ) {
+
+	// New job, new pd
+	let pd          = new peqData.PeqData();
+	pd.GHOwner      = jobData.GHOwner;
+	pd.GHRepo       = jobData.GHRepo;
+	pd.reqBody      = jobData.ReqBody;
+	pd.GHFullName   = jobData.ReqBody['repository']['full_name'];
+	
+	// Need a new authData, else source for non-awaited actions is overwritten
+	let ic = {};
+	ic.ic  = authData.ic;
+	ic.who = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
+	ic.api = authData.api;
+	ic.cog = authData.cog;
+	ic.pat = authData.pat;
+	ic.job = jobData.QueueId;
+
+	console.log( "\n\n\n", authData.who, "Got next job:", ic.who );
+
+	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res, jobData.DelayCount );
+    }
+    else {
+	console.log( authData.who, "jobs done" );
+	// ghLinks.showLocs();	
+	ghLinks.show( 5 );	
+    }
+    return res.end();
+}
+
+async function switcher( authData, ghLinks, pd, sender, event, action, tag, res, delayCount ) {
     let retVal = "";
 
     // clear justDeleted every time, unless possibly part of delete issue blast.
@@ -108,6 +142,11 @@ async function switcher( authData, ghLinks, pd, sender, event, action, tag, res 
 	    retVal = res.json({ status: 400 });
 	    break;
 	}
+    }
+    if( retVal == "postpone" ) {
+	// add current job back into queue.
+	console.log( authData.who, "Delaying this job." );
+	await utils.demoteJob( ceJobs, pd, authData.job, event, sender, tag, delayCount );
     }
     getNextJob( authData, pd, sender, res );	
 }
@@ -174,17 +213,6 @@ router.post('/:location?', async function (req, res) {
     if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }      // label create doesn't have this
     console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
 
-    /*
-    // Look for out of order GH notifications.  Note the timestamp is only to within 1 second. 
-    // Unfortunately, GH timestamps can vary by up to 8s.. different clocks?
-    let tdiff = utils.getTimeDiff( lastEvent, newStamp );  
-    if( tdiff < 0 ) {
-	console.log( "\n\n\n!!!!!!!!!!!!!" );
-	console.log( "Out of order notification, diff", tdiff );
-	console.log( "!!!!!!!!!!!!!\n\n\n" );
-    }
-    */
-    
     // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
     let jobData = utils.checkQueue( ceJobs, jobId, event, sender, req.body, tag );
@@ -207,46 +235,11 @@ router.post('/:location?', async function (req, res) {
     pd.reqBody      = req.body;
     pd.GHFullName   = req.body['repository']['full_name'];
 
-    await switcher( authData, ghLinks, pd, sender, event, action, tag, res );
+    await switcher( authData, ghLinks, pd, sender, event, action, tag, res, 0 );
     
     // avoid socket hangup error, response undefined
     return res.end();
 });
-
-
-// Without this call, incoming non-bot jobs that were delayed would not get executed.
-// Only this call will remove from the queue before getting next.  
-async function getNextJob( authData, pdOld, sender, res ) {
-    let jobData = await utils.getFromQueue( ceJobs, authData, pdOld.GHFullName, sender );
-    if( jobData != -1 ) {
-
-	// New job, new pd
-	let pd          = new peqData.PeqData();
-	pd.GHOwner      = jobData.GHOwner;
-	pd.GHRepo       = jobData.GHRepo;
-	pd.reqBody      = jobData.ReqBody;
-	pd.GHFullName   = jobData.ReqBody['repository']['full_name'];
-	
-	// Need a new authData, else source for non-awaited actions is overwritten
-	let ic = {};
-	ic.ic  = authData.ic;
-	ic.who = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
-	ic.api = authData.api;
-	ic.cog = authData.cog;
-	ic.pat = authData.pat;
-	ic.job = jobData.QueueId;
-
-	console.log( "\n\n\n", authData.who, "Got next job:", ic.who );
-
-	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res );
-    }
-    else {
-	console.log( authData.who, "jobs done" );
-	// ghLinks.showLocs();	
-	ghLinks.show( 5 );	
-    }
-    return res.end();
-}
 
 
 module.exports = router;

@@ -90,9 +90,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
-	// Can peq-label any type of issue (newborn, carded, situated) that is not >= PROJ_ACCR
-	// PROJ_PEND label can be added during pend negotiation
-	// ... but it if is situated already, adding a second peq label is ignored.
+	// Can peq-label newborn and carded issues that are not >= PROJ_PEND
+	// PROJ_PEND label can be added during pend negotiation, but it if is situated already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
@@ -266,6 +265,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'unassigned':
 	{
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
+	    // NOTE: blast create issue (fill in all values, then submit), assign notification may arrive before label notification.
+	    //       in this case, peq is not yet created, so peq.PEQId is bad.  
 	    console.log( authData.who, action, pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 
 	    let allocation = false;
@@ -283,6 +284,13 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    
 	    // Peq issues only.  PEQ tracks assignees from ceFlutter.  Just send PAct upstream.
 	    let peq = await utils.getPeq( authData, pd.GHIssueId );
+
+	    // This should only happen during blast-issue creation.
+	    if( peq == -1 ) {
+		console.log( "Assignment to peq issue, but peq doesn't exist (yet).  Reshuffle." );
+		return "postpone"; 
+	    }
+	    
 	    let assignee = pd.reqBody.assignee.login;
 	    let verb = "confirm";
 	    let paction = "change";
