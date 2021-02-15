@@ -138,7 +138,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let newColId  = pd.reqBody['project_card']['column_id'];
 	    let newProjId = pd.reqBody['project_card']['project_url'].split('/').pop();
 	    
-	    let newColName = gh.getColumnName( authData, ghLinks, newColId );
+	    let newColName = gh.getColumnName( authData, ghLinks, pd.GHFullName, newColId );
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 
 	    // Ignore newborn cards.

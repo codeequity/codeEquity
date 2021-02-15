@@ -411,22 +411,19 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
-    /*
     // Stop and check each step
     let t1 = await testStepByStep( authData, ghLinks, td );
 
     // Endpoint only, no waiting 
     let t2 = await testEndpoint( authData, ghLinks, td );
-*/
+
     // Blast tests
     let t3 = await testBlast( authData, ghLinks, td );
     
     // Basic flow alloc already done in setup.  Basically, create.  Period.
 
-    /*
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
-*/
     testStatus = tu.mergeTests( testStatus, t3 );
     return testStatus
 }

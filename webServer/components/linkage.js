@@ -228,13 +228,18 @@ class Linkage {
     }
 
     getLocs( authData, query ) {
-
 	console.log( authData.who, "get Locs", query );
-	let projId    = query.hasOwnProperty( "projId" )   ? query.projId.toString() : -1;
-	let colId     = query.hasOwnProperty( "colId" )    ? query.colId.toString()  : -1;
-	let repo      = query.hasOwnProperty( "repo" )     ? query.repo              : config.EMPTY;
-	let projName  = query.hasOwnProperty( "projName" ) ? query.projName          : config.EMPTY;
-	let colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
+
+	if( typeof query.repo === 'undefined' ) {
+	    console.log( "Error.  Repo was not defined in Locs query." );
+	    assert( false );
+	}
+
+	const repo = query.repo;
+	const projId    = query.hasOwnProperty( "projId" )   ? query.projId.toString() : -1;
+	const colId     = query.hasOwnProperty( "colId" )    ? query.colId.toString()  : -1;
+	const projName  = query.hasOwnProperty( "projName" ) ? query.projName          : config.EMPTY;
+	const colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
 	
 	// Is at least one condition active
 	if( projId == -1 &&

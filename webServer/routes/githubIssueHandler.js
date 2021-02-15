@@ -237,7 +237,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	    }
 	    else {
-		let success = await gh.moveIssueCard( authData, ghLinks, pd.GHOwner, pd.GHRepo, [pd.GHIssueId, pd.GHIssueNum], action, ceProjectLayout ); 
+		let success = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( success ) {
 		    console.log( authData.who, "Find & validate PEQ" );
 		    let peqId = ( await( ghSafe.validatePEQ( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];

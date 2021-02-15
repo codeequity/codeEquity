@@ -142,8 +142,8 @@ var githubUtils = {
 	return getCard( authData, cardId );
     },
 
-    getColumns: function( authData, ghLinks, projId ) {
-	return getColumns( authData, ghLinks, projId );
+    getColumns: function( authData, ghLinks, fullName, projId ) {
+	return getColumns( authData, ghLinks, fullName, projId );
     },
 
     getFullIssue: function( authData, owner, repo, issueNum ) {
@@ -202,16 +202,16 @@ var githubUtils = {
 	return checkReserveSafe( authData, owner, repo, issueNum, colNameIndex );
     },
     
-    moveIssueCard: function( authData, ghLinks, owner, repo, issueId, action, ceProjectLayout ) {
-	return moveIssueCard( authData, ghLinks, owner, repo, issueId, action, ceProjectLayout ); 
+    moveIssueCard: function( authData, ghLinks, pd, action, ceProjectLayout ) {
+	return moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
     },
 
-    getProjectName: function( authData, ghLinks, projId ) {
-	return getProjectName( authData, ghLinks, projId ); 
+    getProjectName: function( authData, ghLinks, fullName, projId ) {
+	return getProjectName( authData, ghLinks, fullName, projId ); 
     },
 
-    getColumnName: function( authData, ghLinks, colId ) {
-	return getColumnName( authData, ghLinks, colId ); 
+    getColumnName: function( authData, ghLinks, fullName, colId ) {
+	return getColumnName( authData, ghLinks, fullName, colId ); 
     },
 
 };
@@ -378,10 +378,11 @@ async function getCard( authData, cardId ) {
     return retCard;
 }
 
-function getColumns( authData, ghLinks, projId ) {
+// XXX unused?
+function getColumns( authData, ghLinks, fullName, projId ) {
     let cols = "";
 
-    let locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": projId } );
+    let locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );
     cols = locs.map( loc => loc.GHColumnId );
     
     return cols;
@@ -919,7 +920,7 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
     const unClaimed = config.UNCLAIMED;
 
     let unClaimedProjId = -1;
-    let locs = ghLinks.getLocs( authData, { "projName": unClaimed } );
+    let locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projName": unClaimed } );
     unClaimedProjId = locs == -1 ? locs : locs[0].GHProjectId;
     if( unClaimedProjId == -1 ) {
 	console.log( "Creating UnClaimed project" );
@@ -935,7 +936,7 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
     let unClaimedColId = -1;
     const colName = makeAccrued ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
     // Get locs again, to update after creation above
-    locs = ghLinks.getLocs( authData, { "projName": unClaimed } );
+    locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projName": unClaimed } );
     assert( unClaimedProjId == locs[0].GHProjectId );
 
     const loc = locs.find( loc => loc.GHColumnName == colName );
@@ -1005,7 +1006,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     console.log( authData.who, "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
-    const locs = ghLinks.getLocs( authData, { "projId": projId } );
+    const locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": projId } );
     assert( locs != -1 );
     assert( link.GHProjectName == locs[0].GHProjectName );
 
@@ -1133,7 +1134,7 @@ async function checkReserveSafe( authData, owner, repo, issueNum, colNameIndex )
 }
 
 // XXX alignment risk if card moves in the middle of this
-async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action, ceProjectLayout )
+async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 {
     console.log( "Moving issue card", issueData );
     let success    = false;
@@ -1147,7 +1148,7 @@ async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action,
     
     if( action == "closed" ) {
 
-	const link = ghLinks.getUniqueLink( authData, issueData[0] );
+	const link = ghLinks.getUniqueLink( authData, pd.GHIssueId );
 	cardId = link.GHCardId;
 	
 	// move card to "Pending PEQ Approval"
@@ -1156,10 +1157,10 @@ async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action,
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ];
 	    
-	    success = await checkReserveSafe( authData, owner, repo, issueData[1], config.PROJ_PEND );
+	    success = await checkReserveSafe( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, config.PROJ_PEND );
 	    if( !success ) {
 		// no need to put card back - didn't move it.
-		await updateIssue( authData, owner, repo, issueData[1], "open" ); // reopen issue
+		await updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "open" ); // reopen issue
 		return false;
 	    }
 
@@ -1169,25 +1170,25 @@ async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action,
     else if( action == "reopened" ) {
 	
 	// This is a PEQ issue.  Verify card is currently in the right place, i.e. PEND ONLY (can't move out of ACCR)
-	cardId = await findCardInColumn( authData, ghLinks, owner, repo, issueData[0], ceProjectLayout[ config.PROJ_PEND+1 ] );
+	cardId = await findCardInColumn( authData, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHIssueId, ceProjectLayout[ config.PROJ_PEND+1 ] );
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
-	    newColName = getColumnName( authData, ghLinks, newColId );
+	    newColName = getColumnName( authData, ghLinks, pd.GHFullName, newColId );
 	    success = moveCard( authData, cardId, newColId );
 	}
 	else {
 	    // GH has opened this issue.  Close it back up.
 	    console.log( "WARNING.  Can not reopen an issue that has accrued." );
-	    await updateIssue( authData, owner, repo, issueData[1], "closed" ); // reopen issue
+	    await updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "closed" ); // reopen issue
 	    return false;
 	}
     }
 
     if( success ) {
-	success = ghLinks.updateLinkage( authData, issueData[0], cardId, newColId, newColName );
+	success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName );
     }
 
     
@@ -1195,11 +1196,11 @@ async function moveIssueCard( authData, ghLinks, owner, repo, issueData, action,
 }
 
 // XXX alignment risk
-function getProjectName( authData, ghLinks, projId ) {
+function getProjectName( authData, ghLinks, fullName, projId ) {
 
     if( projId == -1 ) { return -1; }
 
-    const locs = ghLinks.getLocs( authData, { "projId": projId } );
+    const locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );
 
     const projName = locs == -1 ? locs : locs[0].GHProjectName;
     return projName
@@ -1217,11 +1218,11 @@ function getProjectName( authData, ghLinks, projId ) {
 
 // XXX add repo to all these queries?
 // XXX alignment risk
-function getColumnName( authData, ghLinks, colId ) {
+function getColumnName( authData, ghLinks, fullName, colId ) {
 
     if( colId == -1 ) { return -1; }
 
-    const locs = ghLinks.getLocs( authData, { "colId": colId } );
+    const locs = ghLinks.getLocs( authData, { "repo": fullName, "colId": colId } );
     assert( locs == -1 || locs.length == 1 );
 
     const colName = locs == -1 ? locs : locs[0].GHColumnName;

@@ -484,9 +484,9 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	// XXX This information could be passed down.. but save speedups for graphql
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
-	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, links[i].GHProjectId );
+	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, pd.GHFullName, links[i].GHProjectId );
 	    links[i].GHColumnId    = ( await gh.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, links[i].GHColumnId );
+	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, pd.GHFullName, links[i].GHColumnId );
 	}
 
 	let issueData   = await ghSafe.splitIssue( authData, pd.GHOwner, pd.GHRepo, issue, splitTag );  
@@ -536,7 +536,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
     let colId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
     pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
-    let colName    = gh.getColumnName( authData, ghLinks, colId );
+    let colName    = gh.getColumnName( authData, ghLinks, pd.GHFullName, colId );
     let projName   = "";
 
     const links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
@@ -574,7 +574,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     else {
 	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
 	let peqLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
-	projName = gh.getProjectName( authData, ghLinks, pd.GHProjectId );
+	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
 	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
