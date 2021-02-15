@@ -329,26 +329,6 @@ function randAlpha(length) {
    return result;
 }
 
-function getTimeDiff( lastEvent, newStamp ) {
-    // lastEvent: {h, m, s}
-    // newstamp: "2020-12-23T20:55:27Z"
-    assert( newStamp.length >= 20 );
-    let h = parseInt( newStamp.substr(11,2) );
-    let m = parseInt( newStamp.substr(14,2) );
-    let s = parseInt( newStamp.substr(17,2) );
-
-    let newTime = h * 3600 + m * 60 + s;
-    let oldTime = lastEvent.h * 3600 + lastEvent.m * 60 + lastEvent.s;
-    let tdiff = newTime - oldTime;
-
-    if( tdiff < 0 ) { console.log( "Old event:", lastEvent, "New timestamp", h, m, s ); }
-
-    lastEvent.h = h;
-    lastEvent.m = m;
-    lastEvent.s = s;
-
-    return tdiff;
-}
 
 async function rebuildPeq( authData, link, oldPeq ) {
     let postData = {};
@@ -450,7 +430,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
     console.log( authData.who, "resolve" );
     // on first call from populate, list may be large.  Afterwards, max 2.
-    let links = ghLinks.getLinks( authData, { "issueId": pd.GHIssueId } );
+    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
     if( links == -1 || links.length < 2 ) { console.log("Resolve: early return" ); return gotSplit; }
     gotSplit = true;
 
@@ -504,9 +484,9 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	// XXX This information could be passed down.. but save speedups for graphql
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
-	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, links[i].GHProjectId );
+	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, pd.GHFullName, links[i].GHProjectId );
 	    links[i].GHColumnId    = ( await gh.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, links[i].GHColumnId );
+	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, pd.GHFullName, links[i].GHColumnId );
 	}
 
 	let issueData   = await ghSafe.splitIssue( authData, pd.GHOwner, pd.GHRepo, issue, splitTag );  
@@ -556,7 +536,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
     let colId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
     pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
-    let colName    = gh.getColumnName( authData, ghLinks, colId );
+    let colName    = gh.getColumnName( authData, ghLinks, pd.GHFullName, colId );
     let projName   = "";
 
     const links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
@@ -594,7 +574,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     else {
 	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
 	let peqLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
-	projName = gh.getProjectName( authData, ghLinks, pd.GHProjectId );
+	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
 	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
@@ -702,18 +682,93 @@ async function cleanDynamo( authData, tableName, ids ) {
     return await wrappedPostIt( authData, shortName, postData );
 }
 
+// XXX unused?
+function getTimeDiff( lastEvent, newStamp ) {
+    // lastEvent: {h, m, s}
+    // newstamp: "2020-12-23T20:55:27Z"
+    assert( newStamp.length >= 20 );
+    let h = parseInt( newStamp.substr(11,2) );
+    let m = parseInt( newStamp.substr(14,2) );
+    let s = parseInt( newStamp.substr(17,2) );
+
+    let newTime = h * 3600 + m * 60 + s;
+    let oldTime = lastEvent.h * 3600 + lastEvent.m * 60 + lastEvent.s;
+    let tdiff = newTime - oldTime;
+
+    if( tdiff < 0 ) { console.log( "Old event:", lastEvent, "New timestamp", h, m, s ); }
+
+    lastEvent.h = h;
+    lastEvent.m = m;
+    lastEvent.s = s;
+
+    return tdiff;
+}
+
+function makeStamp( newStamp ) {
+    // newstamp: "2020-12-23T20:55:27Z"
+    assert( newStamp.length >= 20 );
+    const h = parseInt( newStamp.substr(11,2) );
+    const m = parseInt( newStamp.substr(14,2) );
+    const s = parseInt( newStamp.substr(17,2) );
+
+    return h * 3600 + m * 60 + s;
+}
+
+function makeJobData( jid, handler, sender, reqBody, tag, delayCount ) {
+    let jobData        = {};
+    jobData.QueueId    = jid;
+    jobData.Handler    = handler;
+    jobData.GHOwner    = reqBody['repository']['owner']['login'];
+    jobData.GHRepo     = reqBody['repository']['name'];
+    jobData.Action     = reqBody['action'];
+    jobData.ReqBody    = reqBody;
+    jobData.Tag        = tag;
+    jobData.DelayCount = delayCount;
+
+    let newStamp = reqBody[handler].updated_at;
+    if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }   
+    jobData.Stamp = makeStamp( newStamp );
+    
+    return jobData;
+}
+
+// Do not remove top, that is getNextJob's sole perogative
+// add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
+async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
+    console.log( "Demoting", jobId, delayCount );
+    const newJob   = makeJobData( jobId, event, sender, pd.reqBody, tag, delayCount+1 );
+    const fullName = pd.reqBody['repository']['full_name'];
+
+    assert( delayCount < 5 );
+    
+    // get splice index
+    let spliceIndex = 1;
+    let jobs = ceJobs[fullName][sender].getAll();
+    
+    // If nothing else is here yet, delay
+    if( jobs.length <= 1 ) { console.log( "... empty queue, sleep" );  await sleep( 300 ); }
+    else {
+	for( let i = 1; i < jobs.length; i++ ) {
+	    if( jobs[i].Stamp - newJob.Stamp > 1 )     { break;  }
+	    if( newJob.Stamp - jobs[i].Stamp > 86398 ) { break;  }  // looped
+	    spliceIndex = i+1;
+	}
+    }
+
+    console.log( "Got splice index of", spliceIndex );
+    jobs.splice( spliceIndex, 0, newJob );
+
+    console.log( "\nceJobs, after delay" );
+    for( const job of ceJobs[fullName][sender].getAll() ) {
+	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag, job.Stamp, job.DelayCount );
+    }
+}
+
 // XXX seems to belong elsewhere
 // Put the job.  Then return first on queue.  Do NOT delete first.
 function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
     // XXX handle aws, sam
-    let jobData     = {};
-    jobData.QueueId = jid;
-    jobData.Handler = handler;
-    jobData.GHOwner = reqBody['repository']['owner']['login'];
-    jobData.GHRepo  = reqBody['repository']['name'];
-    jobData.Action  = reqBody['action'];
-    jobData.ReqBody = reqBody;
-    jobData.Tag     = tag;
+    const jobData = makeJobData( jid, handler, sender, reqBody, tag, 0 );
 
     // Get or create fifoQ
     let fullName = reqBody['repository']['full_name'];
@@ -724,7 +779,7 @@ function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
 
     console.log( "\nceJobs, after push" );
     for( const job of ceJobs[fullName][sender].getAll() ) {
-	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag );
+	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag, job.Stamp, job.DelayCount );
     }
     
     return ceJobs[fullName][sender].first;
@@ -806,6 +861,6 @@ exports.cleanDynamo = cleanDynamo;
 exports.checkQueue = checkQueue;
 exports.purgeQueue = purgeQueue;
 exports.getFromQueue = getFromQueue;
-
+exports.demoteJob = demoteJob;
 
 exports.ingestPActs = ingestPActs;       // TESTING ONLY

@@ -138,20 +138,26 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let newColId  = pd.reqBody['project_card']['column_id'];
 	    let newProjId = pd.reqBody['project_card']['project_url'].split('/').pop();
 	    
-	    let newColName = gh.getColumnName( authData, ghLinks, newColId );
+	    let newColName = gh.getColumnName( authData, ghLinks, pd.GHFullName, newColId );
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 
 	    // Ignore newborn cards.
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": cardId } );
 	    if( links == -1 || links[0].GHColumnId == -1 ) {
-		console.log( "Moved card is untracked (carded or newborn).  Move not processed.", cardId );
-		// Trying to move untracked card into reserved column?  Move back.
+		console.log( "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		if( newNameIndex > config.PROJ_PROG ) {
 		    await gh.moveCard( authData, cardId, oldColId );
 		}
 		return;
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
+
+	    // Do no allow move out of ACCR
+	    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+		console.log( "WARNING.  Can't move Accrued issue.  Move not processed.", cardId );
+		gh.moveCard( authData, cardId, oldColId );
+		return;
+	    }
 
 	    // allocations have issues
 	    let issueId = link.GHIssueId;
@@ -165,10 +171,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    
-	    // XXX don't assert here out of accr.  Put it back.  move between accr is done via delete
-	    let oldNameIndex = config.PROJ_COLS.indexOf( link['GHColumnName'] );
-	    assert( oldNameIndex != config.PROJ_ACCR );                   // can't move out of accrue.
-	    assert( cardId       == link['GHCardId'] );
+	    let oldNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );
+	    assert( cardId == link.GHCardId );
 	    
 	    // In speed mode, GH doesn't keep up - the changes_from column is a step behind.
 	    // assert( oldColId     == link['GHColumnId'] );

@@ -383,6 +383,24 @@ async function makeIssue( authData, td, title, labels ) {
     return issue;
 }
 
+async function blastIssue( authData, td, title, labels, assignees ) {
+    let issueData = [-1,-1];  // issue id, num
+
+    const body = "Hola";
+    await( authData.ic.issues.create( { owner: td.GHOwner, repo: td.GHRepo, title: title, labels: labels, body: body, assignees: assignees } ))
+	.then( issue => {
+	    issueData[0] = issue['data']['id'];
+	    issueData[1] = issue['data']['number'];
+	})
+	.catch( e => {
+	    console.log( authData.who, "Create Blast issue failed.", e );
+	});
+    
+    issueData.push( title );
+    await utils.sleep( MIN_DELAY );
+    return issueData;
+}
+
 async function addLabel( authData, td, issueNumber, labelName ) {
     await authData.ic.issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
 	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
@@ -525,6 +543,7 @@ function testReport( testStatus, component ) {
     for( const failure of testStatus[2] ) {
 	console.log( "   failed test:", failure );
     }
+    console.log( "" );
 }
 
 function mergeTests( t1, t2 ) {
@@ -780,6 +799,84 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
 
 	if( !muteIngested ) { testStatus = checkEq( pact.Ingested, "false", testStatus, "PAct ingested" ); }
+    }
+
+    return testStatus;
+}
+
+
+async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
+
+    let labelVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
+    let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
+    
+    console.log( "Check unclaimed issue", loc.projName, loc.colName, labelVal );
+
+    // CHECK github issues
+    let issue  = await findIssue( authData, td, issueData[0] );
+    testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
+    testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
+    testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label count" );
+    
+    const lname = labelVal ? labelVal.toString() + " PEQ" : "1000 PEQ";
+    const lval  = labelVal ? labelVal                     : 1000;
+    testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label name" );
+    testStatus = checkEq( issue.state, "open",                   testStatus, "Issue state" ); 
+
+    // CHECK github location
+    let cards = td.unclaimCID == config.EMPTY ? [] : await getCards( authData, td.unclaimCID );   
+    let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+    testStatus = checkEq( tCard.length, 1,                        testStatus, "No unclaimed" );
+    testStatus = checkEq( tCard[0].id, card.id,                   testStatus, "Card id" );
+    
+    // CHECK linkage
+    let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+    testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
+    testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
+    testStatus = checkEq( link.GHColumnName, loc.colName,           testStatus, "Linkage Col name" );
+    testStatus = checkEq( link.GHCardTitle, issueData[2],           testStatus, "Linkage Card Title" );
+    testStatus = checkEq( link.GHProjectName, loc.projName,         testStatus, "Linkage Project Title" );
+    testStatus = checkEq( link.GHColumnId, loc.colId,               testStatus, "Linkage Col Id" );
+    testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );
+
+    // CHECK dynamo Peq
+    let allPeqs  =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
+    let peq = peqs[0];
+
+    testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );        
+    testStatus = checkEq( peq.GHProjectSub.length, loc.projSub.length, testStatus, "peq project sub len invalid" );
+    testStatus = checkEq( peq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
+    testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );      
+    testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );    
+    testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );      
+    testStatus = checkEq( peq.Amount, lval,                        testStatus, "peq amount" );
+    testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub 0 invalid" );
+    testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
+    testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq project id bad" );
+
+    // CHECK dynamo Pact
+    let allPacts  = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+    testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );  
+
+    // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
+    if( pacts.length <= 3 && loc.projSub.length > 1 ) {
+	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
+	if( !pip.includes( loc.projSub[1] )) { 
+	    testStatus = checkEq( peq.GHProjectSub[1], loc.projSub[1], testStatus, "peq project sub 1 invalid" );
+	}
+    }
+    
+    // Could have been many operations on this.
+    for( const pact of pacts ) {
+	let hasraw = await hasRaw( authData, pact.PEQActionId );
+	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
+	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
+	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
+	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
     }
 
     return testStatus;
@@ -1329,6 +1426,7 @@ exports.makeAllocCard   = makeAllocCard;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;
+exports.blastIssue      = blastIssue;
 
 exports.addLabel        = addLabel;
 exports.remLabel        = remLabel;
@@ -1382,6 +1480,7 @@ exports.checkNewbornIssue       = checkNewbornIssue;          // no card
 exports.checkSplit              = checkSplit;                 // result of incremental resolve
 exports.checkAllocSplit         = checkAllocSplit;            // result of incremental resolve
 exports.checkNoSplit            = checkNoSplit;               // no corresponding split issue
+exports.checkUnclaimedIssue     = checkUnclaimedIssue;        // has active peq, unc:unc
 exports.checkUnclaimedAccr      = checkUnclaimedAccr;
 exports.checkNoCard             = checkNoCard;
 exports.checkPact               = checkPact;
