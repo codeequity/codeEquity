@@ -1199,6 +1199,7 @@ async function testAlloc( authData, ghLinks, td ) {
     {
 	// Should stay in stripe, allocs don't move.
 	await tu.closeIssue( authData, td, issAllocDat[1] );
+	await utils.sleep( 500 );  // seems a little slow sometimes?
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2, state: "closed"} );
 
 	await tu.reopenIssue( authData, td, issAllocDat[1] );

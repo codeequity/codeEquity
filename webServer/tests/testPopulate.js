@@ -687,7 +687,7 @@ async function runTests( authData, ghLinks, td ) {
 
     let t2 = await testSplitAlloc( authData, ghLinks, td );
     console.log( "\n\nSplit Alloc complete." );
-    await utils.sleep( 10000 );
+    // await utils.sleep( 10000 );
 
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );

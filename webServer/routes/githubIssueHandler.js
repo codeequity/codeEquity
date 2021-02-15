@@ -119,7 +119,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // Was this a carded issue?  Get linkage
-	    let links = ghLinks.getLinks( authData, { "issueId": pd.GHIssueId } );
+	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 	    assert( links == -1 || links.length == 1 );
 	    let link = links == -1 ? links : links[0];
 	    

@@ -1136,7 +1136,7 @@ async function checkReserveSafe( authData, owner, repo, issueNum, colNameIndex )
 // XXX alignment risk if card moves in the middle of this
 async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 {
-    console.log( "Moving issue card", issueData );
+    console.log( "Moving issue card", pd.GHIssueId, pd.GHIssueNum );
     let success    = false;
     let newColId   = -1;
     let newColName = "";

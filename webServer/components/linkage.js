@@ -184,28 +184,21 @@ class Linkage {
     // XXX down the road, will want to index by repo - too many otherwise.
     getLinks( authData, query ) {
 
-	let issueId   = query.hasOwnProperty( "issueId" )   ? query.issueId.toString() : -1;
-	let cardId    = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
-	let projId    = query.hasOwnProperty( "projId" )    ? query.projId             : -1;
-	let repo      = query.hasOwnProperty( "repo" )      ? query.repo               : config.EMPTY;
-	let projName  = query.hasOwnProperty( "projName" )  ? query.projName           : config.EMPTY;
-	let colName   = query.hasOwnProperty( "colName" )   ? query.colName            : config.EMPTY;
-	let cardTitle = query.hasOwnProperty( "cardTitle" ) ? query.cardTitle          : config.EMPTY;
+	if( typeof query.repo === 'undefined' ) {
+	    console.log( "Error.  Repo was not defined in Links query." );
+	    assert( false );
+	}
+
+	const repo = query.repo;
+	const issueId   = query.hasOwnProperty( "issueId" )   ? query.issueId.toString() : -1;
+	const cardId    = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
+	const projId    = query.hasOwnProperty( "projId" )    ? query.projId             : -1;
+	const projName  = query.hasOwnProperty( "projName" )  ? query.projName           : config.EMPTY;
+	const colName   = query.hasOwnProperty( "colName" )   ? query.colName            : config.EMPTY;
+	const cardTitle = query.hasOwnProperty( "cardTitle" ) ? query.cardTitle          : config.EMPTY;
 
 	console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, cardTitle );
 	
-	// Is at least one condition active
-	if( issueId == -1 &&
-	    cardId == -1  &&
-	    projId == -1  &&
-	    repo == config.EMPTY &&
-	    projName == config.EMPTY &&
-	    colName == config.EMPTY &&
-	    cardTitle == config.EMPTY 
-	  ) {
-	    return -1;
-	}
-
 	let links = [];
 	for( const [key, clinks] of Object.entries( this.links ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
 	    // Note, during initial resolve, this may NOT be 1:1 issue:card
@@ -241,16 +234,6 @@ class Linkage {
 	const projName  = query.hasOwnProperty( "projName" ) ? query.projName          : config.EMPTY;
 	const colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
 	
-	// Is at least one condition active
-	if( projId == -1 &&
-	    colId == -1  &&
-	    repo == config.EMPTY &&
-	    projName == config.EMPTY &&
-	    colName == config.EMPTY
-	  ) {
-	    return -1;
-	}
-
 	let locs = [];
 	for( const [_, clocs] of Object.entries( this.locs ) ) { 
 	    for( const [_, loc] of Object.entries( clocs ) ) {

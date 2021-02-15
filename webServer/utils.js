@@ -430,7 +430,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
     console.log( authData.who, "resolve" );
     // on first call from populate, list may be large.  Afterwards, max 2.
-    let links = ghLinks.getLinks( authData, { "issueId": pd.GHIssueId } );
+    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
     if( links == -1 || links.length < 2 ) { console.log("Resolve: early return" ); return gotSplit; }
     gotSplit = true;
 
