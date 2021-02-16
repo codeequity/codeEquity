@@ -160,7 +160,7 @@ async function wrappedPostIt( authData, shortName, postData ) {
 async function getPeq( authData, issueId, checkActive ) {
     console.log( authData.who, "Get PEQ from issueId:", issueId );
     let active = true;
-    if( checkActive !== undefined ) { active = checkActive; }
+    if( typeof checkActive !== 'undefined' ) { active = checkActive; }
 
     let shortName = "GetEntry";
     let query     = active ? { "GHIssueId": issueId.toString(), "Active": "true" } : { "GHIssueId": issueId.toString() }; 
@@ -379,7 +379,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     let subject = [ newPEQId ];
     if( typeof specials !== 'undefined' && specials == "relocate" ) {
 	action = "relocate";
-	subject = [ newPEQId, pd.GHProjectId, pd.GHColumnId ];
+	subject = [ newPEQId, pd.GHProjectId, pd.GHColumnId.toString() ];
     }
 	
     // no need to wait
@@ -534,9 +534,9 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
-    let colId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
+    pd.GHColumnId  = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
     pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
-    let colName    = gh.getColumnName( authData, ghLinks, pd.GHFullName, colId );
+    let colName    = gh.getColumnName( authData, ghLinks, pd.GHFullName, pd.GHColumnId );
     let projName   = "";
 
     const links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
@@ -575,7 +575,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
 	let peqLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
 	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
-	assert( colName != -1 ); // XXX baseGH + label - link is colId-1
+	assert( colName != -1 ); // XXX baseGH + label - link is pd.GHColumnId-1
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
 	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
@@ -595,7 +595,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	
 	// issue->card:  issueId is available, but linkage has not yet been added
 	if( pd.GHIssueNum > -1 ) {
-	    ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, origCardId, issueCardContent[0] );
+	    ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName,
+				pd.GHColumnId, colName, origCardId, issueCardContent[0] );
 	}
 	// card -> issue..  exactly one linkage.
 	else {
@@ -603,13 +604,14 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	    
 	    // create new issue, rebuild card
 	    let issueData = await ghSafe.createIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
-	    let newCardId = await gh.rebuildCard( authData, pd.GHOwner, pd.GHRepo, colId, origCardId, issueData );
+	    let newCardId = await gh.rebuildCard( authData, pd.GHOwner, pd.GHRepo, pd.GHColumnId, origCardId, issueData );
 
 	    pd.GHIssueId  = issueData[0];
 	    pd.GHIssueNum = issueData[1];
 	    
 	    // Add card issue linkage
-	    ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle);
+	    ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName,
+				pd.GHColumnId, colName, newCardId, pd.GHIssueTitle);
 	}
     }
 
@@ -777,7 +779,7 @@ function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
     
     ceJobs[fullName][sender].push( jobData );
 
-    console.log( "\nceJobs, after push" );
+    console.log( "\n[" + fullName + "] ceJobs, after push" );
     for( const job of ceJobs[fullName][sender].getAll() ) {
 	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag, job.Stamp, job.DelayCount );
     }

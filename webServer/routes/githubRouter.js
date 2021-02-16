@@ -93,8 +93,9 @@ async function getNextJob( authData, pdOld, sender, res ) {
     }
     else {
 	console.log( authData.who, "jobs done" );
-	// ghLinks.showLocs();	
 	ghLinks.show( 5 );	
+	// ghLinks.showLocs( 10 );
+	console.log( "\n" );
     }
     return res.end();
 }
@@ -227,7 +228,7 @@ router.post('/:location?', async function (req, res) {
     authData.who = source;
     authData.job = jobId;
     
-    console.log( authData.who, "job Q clean, start-er-up" );
+    console.log( authData.who, "job Q [" + fullName + "] clean, start-er-up" );
     
     let pd          = new peqData.PeqData();
     pd.GHOwner      = owner;

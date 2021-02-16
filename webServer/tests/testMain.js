@@ -12,6 +12,7 @@ const testFlat       = require( './testFlat' );
 const testPopulate   = require( './testPopulate' );
 const testBasicFlow  = require( './testBasicFlow' );
 const testComponents = require( './testComponents' );
+const testCross      = require( './testCross' );
 
 const testData = require( './testData' );
 
@@ -78,6 +79,11 @@ async function runTests() {
     subTest = await testComponents.runTests( authData, ghLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 10000 );
+    testStatus = tu.mergeTests( testStatus, subTest );
+
+    subTest = await testCross.runTests( authData, ghLinks, td );
+    console.log( "\n\nCross Repo test complete." );
+    //await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     tu.testReport( testStatus, "================= Testing complete =================" );

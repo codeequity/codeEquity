@@ -47,15 +47,9 @@ async function remIssues( authData, ghLinks, pd ) {
     }
 }
 
-async function runTests( ghLinks ) {
 
-    console.log( "Clear testing environment" );
-
-    let pd = new peqData.PeqData();
-    pd.GHOwner      = config.TEST_OWNER;
-    pd.GHRepo       = config.TEST_REPO;
-    pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
-
+async function clearRepo( ghLinks, pd ) {
+    console.log( "\nClearing", pd.GHFullName );
     let authData = {};
     authData.ic  = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
     authData.pat = await auth.getPAT( pd.GHOwner );
@@ -65,7 +59,7 @@ async function runTests( ghLinks ) {
 
     // Delete all issues, cards, projects, columns, labels.
     // Eeek.  This works a little too well.  Make sure the repo is expected.
-    assert( pd.GHRepo == "CodeEquityTester" );
+    assert( pd.GHRepo == config.TEST_REPO || pd.GHRepo == config.CROSS_TEST_REPO );
 
     // Queue
     await tu.purgeJobs( pd.GHRepo, pd.GHOwner );
@@ -99,9 +93,6 @@ async function runTests( ghLinks ) {
     // Clean up dynamo.
     // Note: awaits may not be needed here.  No dependencies... yet...
     // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
-    // Eeek.  This works a little too well.  Make sure the repo is expected.
-    assert( pd.GHFullName == "rmusick2000/CodeEquityTester" );
-
 
     // PEQs
     let peqs =  await utils.getPeqs( authData, { "GHRepo": pd.GHFullName });
@@ -158,6 +149,25 @@ async function runTests( ghLinks ) {
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
     await utils.cleanDynamo( authData, "CERepoStatus", statusIds );
+}
+
+
+async function runTests( ghLinks ) {
+
+    console.log( "Clear testing environment" );
+
+    let pd = new peqData.PeqData();
+    pd.GHOwner      = config.TEST_OWNER;
+    pd.GHRepo       = config.TEST_REPO;
+    pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
+
+    await clearRepo( ghLinks, pd );
+
+    
+    pd.GHRepo       = config.CROSS_TEST_REPO;
+    pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
+
+    await clearRepo( ghLinks, pd );
 
 }
 

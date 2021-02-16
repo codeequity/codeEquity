@@ -230,8 +230,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( !accr || link.GHProjectName == config.UNCLAIMED ) {
 		console.log( authData.who, "Removing peq", accr, issueExists );
 		if( issueExists ) {
-		    await ghSafe.removePeqLabel( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
-		    await ghSafe.addComment( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment );
+		    let success = await ghSafe.removePeqLabel( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
+		    if( success ) { await ghSafe.addComment( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment ); }
 		}
 		ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
 

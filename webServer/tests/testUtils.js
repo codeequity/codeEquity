@@ -233,6 +233,24 @@ async function findIssueByName( authData, td, issueName ) {
     return retVal; 
 }
 
+async function findProject( authData, td, projId ) {
+    let retVal = -1;
+    const projects = await getProjects( authData, td );
+    retVal = projects.find( proj => proj.id == projId );
+    if( typeof retVal == 'undefined' ) { retVal = -1; }
+    return retVal; 
+}
+
+async function findRepo( authData, td ) {
+    let repo = -1;
+
+    await( authData.ic.repos.get( { owner: td.GHOwner, repo: td.GHRepo }))
+	.then( r => { repo = r['data']; })
+	.catch( e => { console.log( authData.who, "Get repo failed.", e ); });
+
+    return repo;
+}
+
 async function getFlatLoc( authData, projId, projName, colName ) {
     const cols = await getColumns( authData, projId );
     let col = cols.find(c => c.name == colName );
@@ -1294,6 +1312,7 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
     console.log( "Check PAct" );
 
     let subject = typeof specials !== 'undefined' && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
+    let depth   = typeof specials !== 'undefined' && specials.hasOwnProperty( "depth" ) ? specials.depth : 1;
 
     let pact = {};
     let pacts = {};
@@ -1309,20 +1328,26 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
     else { pacts = allPacts; }
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    pact     = pacts[ pacts.length - 1];
-
-    testStatus = checkGE( pacts.length, 1,                     testStatus, "PAct count" );
-    testStatus = checkEq( pact.Verb, verb,                     testStatus, "pact verb" );
-    testStatus = checkEq( pact.Action, action,                 testStatus, "pact action" );
-    testStatus = checkEq( pact.Note, note,                     testStatus, "pact note" );
-
-    if( subject != -1 ) {
-	testStatus = checkEq( pact.Subject.length, subject.length,       testStatus, "pact subject" );
-	for( let i = 0; i < subject.length; i++ ) {
-	    testStatus = checkEq( pact.Subject[i], subject[i],           testStatus, "pact subject" );
+    let foundPAct = false;
+    for( let i = pacts.length - depth; i < pacts.length; i++ ) {
+	const pact = pacts[i];
+	// console.log( i, pact );
+	foundPAct = true;
+	foundPAct = foundPAct && pacts.length >= 1; 
+	foundPAct = foundPAct && pact.Verb == verb;
+	foundPAct = foundPAct && pact.Action == action;
+	foundPAct = foundPAct && pact.Note == note;
+	
+	if( subject != -1 ) {
+	    foundPAct = foundPAct && pact.Subject.length == subject.length;
+	    for( let i = 0; i < subject.length; i++ ) {
+		foundPAct = foundPAct && pact.Subject[i] == subject[i];
+	    }
 	}
+	// console.log( verb, action, note, subject, depth, foundPAct );
+	if( foundPAct ) { break; }
     }
-
+    testStatus = checkEq( foundPAct, true,                     testStatus, "pact bad" );
     return testStatus;
 }
 
@@ -1453,6 +1478,8 @@ exports.remLinks        = remLinks;
 exports.purgeJobs       = purgeJobs;
 exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
+exports.findProject     = findProject;
+exports.findRepo        = findRepo;
 exports.getFlatLoc      = getFlatLoc; 
 exports.getFullLoc      = getFullLoc; 
 
