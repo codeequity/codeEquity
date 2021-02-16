@@ -429,7 +429,10 @@ async function changeReportPeqVal( authData, pd, peqVal ) {
 async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
     console.log( authData.who, "resolve" );
+
     // on first call from populate, list may be large.  Afterwards, max 2.
+    if( pd.GHIssueId == -1 )              { console.log("Resolve: early return" ); return gotSplit; }
+
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
     if( links == -1 || links.length < 2 ) { console.log("Resolve: early return" ); return gotSplit; }
     gotSplit = true;
@@ -534,7 +537,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
-    pd.GHColumnId  = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
+    pd.GHColumnId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
     pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
     let colName    = gh.getColumnName( authData, ghLinks, pd.GHFullName, pd.GHColumnId );
     let projName   = "";
