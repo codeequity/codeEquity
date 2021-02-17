@@ -23,19 +23,48 @@ async function runTests() {
     // GH Linkage table
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
     let ghLinks = new links.Linkage();
-    
+
+    // TEST_REPO auth
     let td = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
     td.GHRepo       = config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
     let authData = {};
-    authData.ic  = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
     authData.who = "<TEST: Main> ";
+    authData.ic  = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
     authData.api = utils.getAPIPath() + "/find";
     authData.cog = await awsAuth.getCogIDToken();
     authData.pat = await auth.getPAT( td.GHOwner );
 
+    // CROSS_TEST_REPO auth
+    let tdX = new testData.TestData();
+    tdX.GHOwner    = config.CROSS_TEST_OWNER;
+    tdX.GHRepo     = config.CROSS_TEST_REPO;
+    tdX.GHFullName = tdX.GHOwner + "/" + tdX.GHRepo;
+    
+    let authDataX = {};
+    authDataX.ic  = await auth.getInstallationClient( tdX.GHOwner, tdX.GHRepo, tdX.GHOwner );
+    authDataX.who = authData.who;
+    authDataX.api = authData.api;
+    authDataX.cog = authData.cog;
+    authDataX.pat = await auth.getPAT( tdX.GHOwner );
+
+    // MULTI_TEST_REPO auth
+    let tdM = new testData.TestData();
+    tdM.GHOwner    = config.MULTI_TEST_OWNER;
+    tdM.GHRepo     = config.MULTI_TEST_REPO;
+    tdM.GHFullName = tdM.GHOwner + "/" + tdM.GHRepo;
+    
+    let authDataM = {};
+    authDataM.ic  = await auth.getInstallationClient( tdM.GHOwner, tdM.GHRepo, tdM.GHOwner );
+    authDataM.who = authData.who;
+    authDataM.api = authData.api;
+    authDataM.cog = authData.cog;
+    authDataM.pat = await auth.getPAT( tdM.GHOwner );
+
+
+    
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up
     const wakeyPID = await tu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
@@ -54,12 +83,14 @@ async function runTests() {
     let testStatus = [ 0, 0, []];
     let subTest = "";
     
-    await testDelete.runTests( ghLinks );
+    await testDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
 
     subTest = await testSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
+
+    /*
 
     subTest = await testFlat.runTests( authData, ghLinks, td );
     console.log( "\n\nFlat test complete." );
@@ -80,8 +111,10 @@ async function runTests() {
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
+    */
 
-    subTest = await testCross.runTests( authData, ghLinks, td );
+    
+    subTest = await testCross.runTests( authData, authDataX, ghLinks, td, tdX );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );

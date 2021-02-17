@@ -311,7 +311,7 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
 
 // Depending on timing, GH will return status 410 (correct) or 404 (too bad) if issue is deleted first
 async function checkIssue( authData, owner, repo, issueNum ) {
-
+    
     let issue = -1;
     await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( iss => issue = iss.data )
@@ -662,7 +662,7 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 		console.log( "Warning. Skipping issue:card for", issue.title, "which is awaiting triage." );
 		continue;
 	    }
-	    console.log( card.node.project.name, ",", card.node.column.databaseId );
+	    // console.log( card.node.project.name, card.node.column.databaseId );
 	    let datum = {};
 	    datum.issueId     = issue.databaseId;
 	    datum.issueNum    = issue.number;

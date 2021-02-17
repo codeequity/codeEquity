@@ -141,7 +141,7 @@ async function wrappedPostIt( authData, shortName, postData ) {
 	return body;
     }
     else if (response['status'] == 204) {
-	console.log(authData.who, tableName, "Not found.", response['status'] );
+	if( tableName != "CEPEQs" ) { console.log(authData.who, tableName, "Not found.", response['status'] ); }
 	return -1;
     }
     else if (response['status'] == 422) {
@@ -537,7 +537,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
-    pd.GHColumnId      = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
+    pd.GHColumnId  = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
     pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
     let colName    = gh.getColumnName( authData, ghLinks, pd.GHFullName, pd.GHColumnId );
     let projName   = "";
@@ -578,6 +578,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
 	let peqLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
 	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
+
+	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
 	assert( colName != -1 ); // XXX baseGH + label - link is pd.GHColumnId-1
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {

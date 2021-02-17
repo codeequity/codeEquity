@@ -20,7 +20,10 @@ var testing   = require('./githubTestHandler');
 // CE Job Queue  {fullName:  {sender1: fifoQ1, sender2: fifoQ2 }}
 var ceJobs = {};
 var notificationCount = 0;
-var authData = {};
+
+var authData       = {};
+var octokitClients = {};
+var githubPATs     = {};
 
 // GH Linkage table
 var ghLinks = new links.Linkage();
@@ -40,8 +43,6 @@ var router = express.Router();
 console.log( "*** GH Link Data init ***" );
 initGH();
 
-// XXX sys-wide init like this needs sys-wide ceServer auth for all GH apps
-//     worst case, init on first call
 async function initGH() {
     authData.ic  = -1;                // installation client for octokit    0
     authData.who = "CE SERVER INIT";  // which event is underway            1
@@ -50,18 +51,68 @@ async function initGH() {
     authData.pat = -1;                // personal access token for gh       -
     authData.job = -1;                // currently active job id            4
 
-    // XXX Generally, will not be testOwner, testRepo
+    // XXX Generally, PAT will not be testOwner, testRepo.  Need CE-wide
     await initAuth( authData, config.TEST_OWNER, config.TEST_REPO  );
-    ghLinks.init( authData, config.TEST_OWNER );
+    ghLinks.init( authData );  
 }
 
+// Need installation client from octokit for every owner/repo/jwt triplet.  
+//   jwt is per app install, 1 codeEquity for all.
+//   owner and repo can switch with notification.  need multiple.
 async function initAuth( authData, owner, repo ) {
-    authData.ic  = await auth.getInstallationClient( owner, repo, config.CE_USER );
     authData.api = await utils.getAPIPath() + "/find";
     authData.cog = await awsAuth.getCogIDToken();
-    authData.pat = await auth.getPAT( config.TEST_OWNER );
+
+    // XXX NOTE this step needed for Linkage init, which needs PAT.  Would prefer alt solution.
+    await getGHAuths( authData, owner, repo );
 }
 
+// CE_USER used for app-wide jwt
+// owner, repo needed for octokit installation client.
+// owner needed for personal access token
+async function getGHAuths( authData, owner, repo ) {
+    /*
+    let promises = [];
+    if( !octokitClients.hasOwnProperty( owner ) ) { octokitClients[owner] = {}; }
+
+    promises.push( 
+	if( !octokitClients[owner].hasOwnProperty( repo )) {
+	    console.log( authData.who, "get octo", owner, repo );
+	    octokitClients[owner][repo] = await auth.getInstallationClient( owner, repo, config.CE_USER );
+	}.promise()
+    );
+
+    promises.push( 
+	if( !githubPATs.hasOwnProperty( owner )) {
+	    console.log( authData.who, "get PAT", owner );
+	    githubPATs[owner] = await auth.getPAT( owner );
+	}.promise()
+    );
+
+    await Promise.all( promises );
+
+    authData.ic  = octokitClients[owner][repo];
+    authData.pat = githubPATs[owner];
+    return;
+    */
+
+
+    if( !octokitClients.hasOwnProperty( owner ) ) { octokitClients[owner] = {}; }
+    
+    if( !octokitClients[owner].hasOwnProperty( repo )) {
+	console.log( authData.who, "get octo", owner, repo );
+	octokitClients[owner][repo] = await auth.getInstallationClient( owner, repo, config.CE_USER );
+    }
+
+    if( !githubPATs.hasOwnProperty( owner )) {
+	githubPATs[owner] = await auth.getPAT( owner );
+    }
+    
+    authData.ic  = octokitClients[owner][repo];
+    authData.pat = githubPATs[owner];
+    return;
+
+}
 
 
 
@@ -80,7 +131,6 @@ async function getNextJob( authData, pdOld, sender, res ) {
 	
 	// Need a new authData, else source for non-awaited actions is overwritten
 	let ic = {};
-	ic.ic  = authData.ic;
 	ic.who = "<"+jobData.Handler+": "+jobData.Action+" "+jobData.Tag+"> ";
 	ic.api = authData.api;
 	ic.cog = authData.cog;
@@ -105,6 +155,8 @@ async function switcher( authData, ghLinks, pd, sender, event, action, tag, res,
 
     // clear justDeleted every time, unless possibly part of delete issue blast.
     // if( event != 'issue' || action != 'deleted' ) { justDeleted = {}; }
+
+    await getGHAuths( authData, pd.GHOwner, pd.GHRepo );
     
     switch( event ) {
     case 'issue' :
@@ -204,6 +256,7 @@ router.post('/:location?', async function (req, res) {
 	req.body[event].name.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
 	tag = req.body[event].name;
     }
+
     source += action+" "+tag+"> ";
     let jobId = utils.randAlpha(10);
 

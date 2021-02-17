@@ -48,18 +48,12 @@ async function remIssues( authData, ghLinks, pd ) {
 }
 
 
-async function clearRepo( ghLinks, pd ) {
+async function clearRepo( authData, ghLinks, pd ) {
     console.log( "\nClearing", pd.GHFullName );
-    let authData = {};
-    authData.ic  = await auth.getInstallationClient( pd.GHOwner, pd.GHRepo );
-    authData.pat = await auth.getPAT( pd.GHOwner );
-    authData.who = "<TEST: Delete> ";
-    authData.api = await( utils.getAPIPath() ) + "/find";
-    authData.cog = await awsAuth.getCogIDToken();
 
     // Delete all issues, cards, projects, columns, labels.
     // Eeek.  This works a little too well.  Make sure the repo is expected.
-    assert( pd.GHRepo == config.TEST_REPO || pd.GHRepo == config.CROSS_TEST_REPO );
+    assert( pd.GHRepo == config.TEST_REPO || pd.GHRepo == config.CROSS_TEST_REPO || pd.GHRepo == config.MULTI_TEST_REPO );
 
     // Queue
     await tu.purgeJobs( pd.GHRepo, pd.GHOwner );
@@ -152,23 +146,13 @@ async function clearRepo( ghLinks, pd ) {
 }
 
 
-async function runTests( ghLinks ) {
+async function runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM ) {
 
     console.log( "Clear testing environment" );
 
-    let pd = new peqData.PeqData();
-    pd.GHOwner      = config.TEST_OWNER;
-    pd.GHRepo       = config.TEST_REPO;
-    pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
-
-    await clearRepo( ghLinks, pd );
-
-    
-    pd.GHRepo       = config.CROSS_TEST_REPO;
-    pd.GHFullName   = pd.GHOwner + "/" + pd.GHRepo;
-
-    await clearRepo( ghLinks, pd );
-
+    await clearRepo( authData, ghLinks, td   );
+    await clearRepo( authDataX, ghLinks, tdX );
+    await clearRepo( authDataM, ghLinks, tdM );
 }
 
 
