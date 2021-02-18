@@ -765,7 +765,7 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     console.log( "Got splice index of", spliceIndex );
     jobs.splice( spliceIndex, 0, newJob );
 
-    console.log( "\nceJobs, after delay" );
+    console.log( "\nceJobs, after demotion" );
     for( const job of ceJobs[fullName][sender].getAll() ) {
 	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag, job.Stamp, job.DelayCount );
     }

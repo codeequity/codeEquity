@@ -223,6 +223,10 @@ router.post('/:location?', async function (req, res) {
 	console.log( "Notification for", event, action, "Bot-sent, skipping." );
 	return res.end();
     }
+    if( action == "synchronize" ) {
+	console.log( "Notification for Pull Request.  CodeEquity does not require these.  Skipping." );
+	return res.end();
+    }
 
     let fullName = req.body['repository']['full_name'];
     let repo     = req.body['repository']['name'];
