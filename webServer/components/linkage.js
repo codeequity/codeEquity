@@ -45,7 +45,7 @@ class Linkage {
 	let badSource = false;
 	for( const peq of peqs ) {
 	    if( peq.Active == "false" ) {
-		console.log( authData.who, "Skipping inactive peq", peq.GHIssueTitle );
+		// console.log( authData.who, "Skipping inactive peq", peq.GHIssueTitle );
 		continue;
 	    }
 	    const iid = peq.GHIssueId;
@@ -82,7 +82,7 @@ class Linkage {
     // XXX Fix cold start.  This should occur at startup, in order of most active repos.
     // populateCEServer migrates a project into CE.  lots of extra checks.
     // init here is to handle a server restart, only 'remembers' official CE projects.
-    async init( authData, owner ) {
+    async init( authData ) {
 	let tstart = Date.now();
 	console.log( "Init linkages" );
 
@@ -97,6 +97,7 @@ class Linkage {
 	// console.log( this.links );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
 	this.show();
+	this.showLocs();
     }
 
     fromJson( linkData ) {
@@ -153,7 +154,6 @@ class Linkage {
 	loc.GHColumnId    = colId;
 	loc.GHColumnName  = colName;
 
-	// this.showLocs();
 	return loc;
     }
     
@@ -167,7 +167,7 @@ class Linkage {
 
     getUniqueLink( authData, issueId ) {
 
-	console.log( authData.who, "Get unique link", issueId );
+	// console.log( authData.who, "Get unique link", issueId );
 	let retVal = -1;
 	if( this.links.hasOwnProperty( issueId )) {
 	    let issueLinks = Object.entries( this.links[issueId] );  // [ [cardId, link], [cardId, link] ...]
@@ -381,7 +381,7 @@ class Linkage {
 	for( const id of killList ) { delete this.links[id]; }
 
 	for( const [proj,cloc] of Object.entries( this.locs )) {
-	    for( const [col,lloc] of Object.entries( cloc )) {
+	    for( const [col,loc] of Object.entries( cloc )) {
 		if( loc.GHRepo == repo ) { killList.push( loc.GHProjectId ); }
 	    }
 	}
@@ -392,9 +392,11 @@ class Linkage {
 
     fill( val, num ) {
 	let retVal = "";
-	for( var i = 0; i < num; i++ ) {
-	    if( val.length > i ) { retVal = retVal.concat( val[i] ); }
-	    else                 { retVal = retVal.concat( " " ); }
+	if( typeof val !== 'undefined' ) {
+	    for( var i = 0; i < num; i++ ) {
+		if( val.length > i ) { retVal = retVal.concat( val[i] ); }
+		else                 { retVal = retVal.concat( " " ); }
+	    }
 	}
 	return retVal
     }
@@ -437,27 +439,35 @@ class Linkage {
 	}
     }
 
-    showLocs() {
+    showLocs( count ) {
 	console.log( this.fill( "Repo", 20 ),
 		     this.fill( "ProjId", 10 ), 
 		     this.fill( "ProjName", 15 ),
 		     this.fill( "ColId", 10),
 		     this.fill( "ColName", 20)
 		   );
-	
+
+	let printables = [];
 	for( const [_, clocs] of Object.entries( this.locs )) {
 	    for( const [_, loc] of Object.entries( clocs )) {
-		console.log( this.fill( loc.GHRepo, 20 ),
-			     loc.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.GHProjectId, 10 ),
-			     this.fill( loc.GHProjectName, 15 ),
-			     loc.GHColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.GHColumnId, 10 ),
-			     this.fill( loc.GHColumnName, 20 ),
-			   );
+		printables.push( loc );
 	    }
 	}
-	console.log( "\n" );
+
+	let start = 0;
+	if( typeof count !== 'undefined' ) { start = printables.length - count; }
+	start = start < 0 ? 0 : start;
+
+	for( let i = start; i < printables.length; i++ ) {
+	    const loc = printables[i];
+	    console.log( this.fill( loc.GHRepo, 20 ),
+			 loc.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.GHProjectId, 10 ),
+			 this.fill( loc.GHProjectName, 15 ),
+			 loc.GHColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.GHColumnId, 10 ),
+			 this.fill( loc.GHColumnName, 20 ),
+		       );
+	}
     }
-    
 }
 
 exports.Linkage = Linkage;

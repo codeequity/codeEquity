@@ -35,10 +35,7 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     let card11   = await ghSafe.createProjectCard( authData, mastCol1, nbi1[0] );
     let popLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
     await tu.addLabel( authData, td, nbi1[1], popLabel.name );       // ready.. set... Go!
-
-    console.log( "Waiting for populate" );
     await utils.sleep( 1000 );
-    console.log( "Done waiting for populate" );
 
     // softCont: dataSecurity, githubOps, unallocated
     await tu.makeAllocCard( authData, mastCol1, td.dataSecTitle, "1,000,000" );
@@ -291,7 +288,7 @@ async function runTests( authData, ghLinks, td ) {
     let testStatus = [ 0, 0, []];
 
     await createPreferredCEProjects( authData, ghLinks, td );
-    await utils.sleep( 2000 );
+    await utils.sleep( 4000 );
     let t1 = await testPreferredCEProjects( authData, ghLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );

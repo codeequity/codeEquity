@@ -41,8 +41,11 @@ async function getInstallationClient(owner, repo, source) {
     // the codeEquity app contains the webServer - use those credentials for posting to GH, otherwise secondary notification filtering
     // doesn't work (i.e. we filter sender:codeequity[bot] notifications, but can't filter cetester[bot] notifications.  The name of the
     // sender, for bot posts, appears to be drawn from the installed app name.
+    // Use ceTester creds for testing, codeEquity for everything else
     let credPath = config.CREDS_PATH;
-    if( source != config.CE_USER && owner == config.TEST_OWNER && repo == config.TEST_REPO ) {
+    if( source != config.CE_USER &&
+	( owner == config.TEST_OWNER || owner == config.CROSS_TEST_OWNER || owner == config.MULTI_TEST_OWNER ) &&
+	( repo == config.TEST_REPO   || repo == config.CROSS_TEST_REPO   || owner == config.MULTI_TEST_OWNER )) {
 	credPath = config.CREDS_TPATH;
     }
     
@@ -65,11 +68,13 @@ async function getInstallationClient(owner, repo, source) {
 
 async function getPAT( owner ) {
     let PAT = "";
-    if( owner == config.TEST_OWNER ) {
-	let fname = config.PAT_PATH;
-	try { PAT = fs.readFileSync(fname, 'utf8'); }
-	catch(e) { console.log('Error:', e.stack); }
-    }
+    let fname = "";
+    if( owner == config.TEST_OWNER )            { fname = config.PAT_PATH; }
+    else if( owner == config.MULTI_TEST_OWNER ) { fname = config.MULTI_PAT_PATH; }
+    
+    try { PAT = fs.readFileSync(fname, 'utf8'); }
+    catch(e) { console.log('Error:', e.stack); }
+
     return PAT.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
 }
 

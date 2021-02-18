@@ -9,9 +9,30 @@ var ghSafe  = ghUtils.githubSafe;
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
 //const MIN_DELAY = 1500;
 const MIN_DELAY = 2500;     
+const MAKE_DELAY = 400;
 
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
+
+
+// Fisher-yates (knuth) https://github.com/coolaj86/knuth-shuffle
+function shuffle(arr) {
+    var temporaryValue, randomIndex;
+    var currentIndex = arr.length;
+    
+    // While there remain elements to shuffle...
+    while (0 !== currentIndex) {
+	
+	randomIndex = Math.floor(Math.random() * currentIndex);
+	currentIndex -= 1;
+	
+	temporaryValue = arr[currentIndex];
+	arr[currentIndex] = arr[randomIndex];
+	arr[randomIndex] = temporaryValue;
+    }
+    
+    return arr;
+}
 
 
 async function refresh( authData, td, projName ){
@@ -233,6 +254,24 @@ async function findIssueByName( authData, td, issueName ) {
     return retVal; 
 }
 
+async function findProject( authData, td, projId ) {
+    let retVal = -1;
+    const projects = await getProjects( authData, td );
+    retVal = projects.find( proj => proj.id == projId );
+    if( typeof retVal == 'undefined' ) { retVal = -1; }
+    return retVal; 
+}
+
+async function findRepo( authData, td ) {
+    let repo = -1;
+
+    await( authData.ic.repos.get( { owner: td.GHOwner, repo: td.GHRepo }))
+	.then( r => { repo = r['data']; })
+	.catch( e => { console.log( authData.who, "Get repo failed.", e ); });
+
+    return repo;
+}
+
 async function getFlatLoc( authData, projId, projName, colName ) {
     const cols = await getColumns( authData, projId );
     let col = cols.find(c => c.name == colName );
@@ -303,7 +342,7 @@ async function makeProject(authData, td, name, body ) {
 	.catch( e => { console.log( authData.who, "Create project failed.", e ); });
 
     console.log( "MakeProject:", name, pid );
-    await utils.sleep( MIN_DELAY );
+    await utils.sleep( MAKE_DELAY );
     return pid;
 }
 
@@ -331,7 +370,7 @@ async function makeColumn( authData, projId, name ) {
 	.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 
     console.log( "MakeColumn:", name, cid );
-    await utils.sleep( MIN_DELAY );
+    await utils.sleep( MAKE_DELAY );
     return cid;
 }
 
@@ -383,7 +422,9 @@ async function makeIssue( authData, td, title, labels ) {
     return issue;
 }
 
-async function blastIssue( authData, td, title, labels, assignees ) {
+async function blastIssue( authData, td, title, labels, assignees, specials ) {
+    let wait  = typeof specials !== 'undefined' && specials.hasOwnProperty( "wait" )   ? specials.wait   : true;
+
     let issueData = [-1,-1];  // issue id, num
 
     const body = "Hola";
@@ -397,7 +438,7 @@ async function blastIssue( authData, td, title, labels, assignees ) {
 	});
     
     issueData.push( title );
-    await utils.sleep( MIN_DELAY );
+    if( wait ) { await utils.sleep( MIN_DELAY ); }
     return issueData;
 }
 
@@ -723,6 +764,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let labelVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
     let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
     let skipPeqPID   = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipPeqPID" )   ? specials.skipPeqPID   : false;
+    let assignCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assign" )       ? specials.assign       : false; 
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal );
 
@@ -732,16 +774,23 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label count" );
 
+    if( assignCnt ) { testStatus = checkEq( issue.assignees.length, assignCnt, testStatus, "Assignee count" ); }
+    
     const lname = labelVal ? labelVal.toString() + " PEQ" : "1000 PEQ";
     const lval  = labelVal ? labelVal                     : 1000;
     testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label name" );
 
     if( issueState ) { testStatus = checkEq( issue.state, issueState, testStatus, "Issue state" );  }
 
+    // XXX Crappy test.  many locs are not related to td.unclaim.  Can be situated and in unclaim.
+    //     Should kill this here, put in a handful in basic flow to ensure cleanUnclaimed when we know it should be.
+    //     Use of assignCnt to ignore is poor, but will do until this is rebuilt, only shows in testCross.
     // CHECK github location
-    let cards = td.unclaimCID == config.EMPTY ? [] : await getCards( authData, td.unclaimCID );   
-    let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
-    testStatus = checkEq( tCard.length, 0,                           testStatus, "No unclaimed" );
+    let cards = td.unclaimCID == config.EMPTY ? [] : await getCards( authData, td.unclaimCID );
+    if( !assignCnt ) {
+	let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+	testStatus = checkEq( tCard.length, 0,                           testStatus, "No unclaimed" );
+    }
 
     cards = await getCards( authData, loc.colId );
     let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
@@ -1294,6 +1343,7 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
     console.log( "Check PAct" );
 
     let subject = typeof specials !== 'undefined' && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
+    let depth   = typeof specials !== 'undefined' && specials.hasOwnProperty( "depth" ) ? specials.depth : 1;
 
     let pact = {};
     let pacts = {};
@@ -1309,20 +1359,26 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
     else { pacts = allPacts; }
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    pact     = pacts[ pacts.length - 1];
-
-    testStatus = checkGE( pacts.length, 1,                     testStatus, "PAct count" );
-    testStatus = checkEq( pact.Verb, verb,                     testStatus, "pact verb" );
-    testStatus = checkEq( pact.Action, action,                 testStatus, "pact action" );
-    testStatus = checkEq( pact.Note, note,                     testStatus, "pact note" );
-
-    if( subject != -1 ) {
-	testStatus = checkEq( pact.Subject.length, subject.length,       testStatus, "pact subject" );
-	for( let i = 0; i < subject.length; i++ ) {
-	    testStatus = checkEq( pact.Subject[i], subject[i],           testStatus, "pact subject" );
+    let foundPAct = false;
+    for( let i = pacts.length - depth; i < pacts.length; i++ ) {
+	const pact = pacts[i];
+	// console.log( i, pact );
+	foundPAct = true;
+	foundPAct = foundPAct && pacts.length >= 1; 
+	foundPAct = foundPAct && pact.Verb == verb;
+	foundPAct = foundPAct && pact.Action == action;
+	foundPAct = foundPAct && pact.Note == note;
+	
+	if( subject != -1 ) {
+	    foundPAct = foundPAct && pact.Subject.length == subject.length;
+	    for( let i = 0; i < subject.length; i++ ) {
+		foundPAct = foundPAct && pact.Subject[i] == subject[i];
+	    }
 	}
+	// console.log( verb, action, note, subject, depth, foundPAct );
+	if( foundPAct ) { break; }
     }
-
+    testStatus = checkEq( foundPAct, true,                     testStatus, "pact bad" );
     return testStatus;
 }
 
@@ -1407,7 +1463,7 @@ async function checkLabel( authData, label, name, desc, testStatus ) {
 }
 
 
-
+exports.shuffle         = shuffle;    // XXX utils
 exports.refresh         = refresh;
 exports.refreshRec      = refreshRec;  
 exports.refreshFlat     = refreshFlat;
@@ -1453,6 +1509,8 @@ exports.remLinks        = remLinks;
 exports.purgeJobs       = purgeJobs;
 exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
+exports.findProject     = findProject;
+exports.findRepo        = findRepo;
 exports.getFlatLoc      = getFlatLoc; 
 exports.getFullLoc      = getFullLoc; 
 

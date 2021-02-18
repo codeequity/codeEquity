@@ -182,6 +182,10 @@ var githubUtils = {
 	return checkLabelExistsGQL( authData, nodeId );
     },
 
+    transferIssueGQL: function( authData, issueId, toRepoId ) {
+	return transferIssueGQL( authData, issueId, toRepoId );
+    },
+
     populateCELinkage: function( authData, ghLinks, pd ) {
 	return populateCELinkage( authData, ghLinks, pd );
     },
@@ -307,7 +311,7 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
 
 // Depending on timing, GH will return status 410 (correct) or 404 (too bad) if issue is deleted first
 async function checkIssue( authData, owner, repo, issueNum ) {
-
+    
     let issue = -1;
     await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( iss => issue = iss.data )
@@ -658,7 +662,7 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 		console.log( "Warning. Skipping issue:card for", issue.title, "which is awaiting triage." );
 		continue;
 	    }
-	    console.log( card.node.project.name, ",", card.node.column.databaseId );
+	    // console.log( card.node.project.name, card.node.column.databaseId );
 	    let datum = {};
 	    datum.issueId     = issue.databaseId;
 	    datum.issueNum    = issue.number;
@@ -769,6 +773,24 @@ async function checkLabelExistsGQL( authData, nodeId ) {
 }
 
 
+// XXX move these
+async function transferIssueGQL( authData, issueId, toRepoId) {
+    // Note: node_ids are typed
+    let query = `mutation ($issueId: ID!, $repoId: ID!) { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId }) {clientMutationId}}`;
+    let variables = {"issueId": issueId, "repoId": toRepoId };
+    query = JSON.stringify({ query, variables });
+
+    console.log( query );
+
+    const res = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	  .catch( e => console.log( "Error.  GQL transfer issue problem", e ));
+
+    console.log( res );
+  
+    return res;
+}
+
+
 
 // Add linkage data for all carded issues in a project.
 // 
@@ -867,12 +889,16 @@ async function removeLabel( authData, owner, repo, issueNum, label ) {
 	.catch( e => { console.log( authData.who, "Remove label from issue failed.", e ); });
 }
 
-// XXX Note this can fail without being an error if issue is already gone.  'Note' instead of 'Error'
+// Note this can fail without being an error if issue is already gone.  'Note' instead of 'Error'
+// This seems to happen more with transfer, since issueDelete appears to be slower, which confuses checkIssue.  Not a real issue.
 async function removePeqLabel( authData, owner, repo, issueNum ) {
     let labels = await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
-	.catch( e => console.log( authData.who, "Get labels for issue failed.", e ));
+	.catch( e => {
+	    if( e.status == 403 ) { console.log( authData.who, "Issue", issueNum, "may already be gone, can't remove labels." ); }
+	    else                  { console.log( authData.who, "Get labels for issue failed.", e ); }
+	});
 
-    if( typeof labels === 'undefined' ) { return; }
+    if( typeof labels === 'undefined' ) { return false; }
     if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } // XXX paginate? grump grump }
 
     let peqLabel = {};
@@ -881,6 +907,7 @@ async function removePeqLabel( authData, owner, repo, issueNum ) {
 	if( tval > 0 ) { peqLabel = label; break; }
     }
     await removeLabel( authData, owner, repo, issueNum, peqLabel );
+    return true;
 }
 
 async function addLabel( authData, owner, repo, issueNum, label ) {

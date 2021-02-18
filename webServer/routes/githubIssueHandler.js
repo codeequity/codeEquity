@@ -338,31 +338,30 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			let peq = await utils.getPeq( authData, pd.GHIssueId );
 			assert( peq != -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
-			utils.recordPEQAction(
-			    authData,
-			    config.EMPTY,     // CE UID
-			    sender,           // gh user name
-			    pd.GHFullName,    // of the repo
-			    "confirm",
-			    "change",
-			    subject,          
-			    "Change title",   // note
-			    utils.getToday(), // entryDate
-			    pd.reqBody        // raw
-			);
+			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+					       "confirm", "change", subject, "Change title",
+					       utils.getToday(), pd.reqBody );
 		    }
 		}
 	    }
 	}
 	break;
     case 'transferred':
+	// (open issue in new repo, delete project card, transfer issue)
 	// Transfer IN:  do nothing.  comes as newborn issue, no matter what it was in previous repo
-
-	// Transfer OUT: Peq?  remove.  (open issue in new repo, delete project card, transfer issue)
+	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.
 	{
 	    if( pd.reqBody.changes.new_repository.full_name != pd.GHRepo ) {
 		console.log( authData.who, "Transfer out.  Cleanup." );
-		await deleteIssue( authData, ghLinks, pd );
+
+		// Only record PAct for peq.  PEQ may be removed, so don't require Active
+		let peq = await utils.getPeq( authData, pd.GHIssueId, false );
+		if( peq != -1 ) {
+		    const subject = [ peq.PEQId, pd.reqBody.changes.new_repository.full_name ];
+		    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+					   "confirm", "relocate", subject, "Transfer out",
+					   utils.getToday(), pd.reqBody );
+		}
 	    }
 	}
 	break;

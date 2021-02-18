@@ -11,7 +11,7 @@ import 'package:ceFlutter/utils.dart';
 //    confirm:         grant   down the road, could see rejecting this as well - voting support
 //    {prop,conf,rej}:update   peq or allocated peq amounts
 
-//    confirm:relocate         to most, not all cols.  subject: [id, projId, colId]  psub has names
+//    confirm:relocate         to most, not all cols.  subject: [id, projId, colId]  psub has names.  transfer?  [id, newRepoName]
 //    {prop,conf,rej}:change   assignees
 //    confirm:change           title   subject: [id, newtitle]
 //    reject:delete            delete accr
