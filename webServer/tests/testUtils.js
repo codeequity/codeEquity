@@ -230,9 +230,8 @@ async function remLinks( authData, ghLinks, repo ) {
 }
 
 // Purge ceJobs from ceServer
-async function purgeJobs( repo, owner ) {
-    let fullName = owner + "/" + repo;
-    let postData = {"Endpoint": "Testing", "Request": "purgeJobs", "FullName": fullName }; 
+async function purgeJobs( repo ) {
+    let postData = {"Endpoint": "Testing", "Request": "purgeJobs" }; 
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }

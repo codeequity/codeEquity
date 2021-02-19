@@ -13,7 +13,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
-    console.log( authData.job, pd.reqBody.project_column.updated_at, "column name:", pd.reqBody.project_column.name, action );
+    // console.log( authData.job, pd.reqBody.project_column.updated_at, "column name:", pd.reqBody.project_column.name, action );
+    console.log( authData.who, "start", authData.job );
 
     pd.GHColumnId    = pd.reqBody.project_column.id.toString();
     pd.GHColumnName  = pd.reqBody.project_column.name;

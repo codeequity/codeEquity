@@ -56,7 +56,7 @@ async function clearRepo( authData, ghLinks, pd ) {
     assert( pd.GHRepo == config.TEST_REPO || pd.GHRepo == config.CROSS_TEST_REPO || pd.GHRepo == config.MULTI_TEST_REPO );
 
     // Queue
-    await tu.purgeJobs( pd.GHRepo, pd.GHOwner );
+    await tu.purgeJobs( pd.GHRepo );
 
     // Issues.
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat

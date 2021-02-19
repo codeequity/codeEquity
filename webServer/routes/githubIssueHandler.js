@@ -75,7 +75,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
-    console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
+    // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
+    console.log( authData.who, "start", authData.job );
     
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 

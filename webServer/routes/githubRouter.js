@@ -17,8 +17,12 @@ var columns   = require('./githubColumnHandler');
 var labels    = require('./githubLabelHandler');
 var testing   = require('./githubTestHandler');
 
-// CE Job Queue  {fullName:  {sender1: fifoQ1, sender2: fifoQ2 }}
+// CE Job Queue  just fifoQ
 var ceJobs = {};
+ceJobs.jobs = new fifoQ.Queue();
+ceJobs.count = 0;
+ceJobs.delay = 0;
+
 var notificationCount = 0;
 
 var authData       = {};
@@ -119,7 +123,7 @@ async function getGHAuths( authData, owner, repo ) {
 // Without this call, incoming non-bot jobs that were delayed would not get executed.
 // Only this call will remove from the queue before getting next.  
 async function getNextJob( authData, pdOld, sender, res ) {
-    let jobData = await utils.getFromQueue( ceJobs, authData, pdOld.GHFullName, sender );
+    let jobData = await utils.getFromQueue( ceJobs );
     if( jobData != -1 ) {
 
 	// New job, new pd
@@ -137,7 +141,7 @@ async function getNextJob( authData, pdOld, sender, res ) {
 	ic.pat = authData.pat;
 	ic.job = jobData.QueueId;
 
-	console.log( "\n\n\n", authData.who, "Got next job:", ic.who );
+	console.log( "\n\n", authData.who, "Got next job:", ic.who );
 
 	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res, jobData.DelayCount );
     }

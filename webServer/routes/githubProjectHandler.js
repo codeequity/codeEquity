@@ -6,7 +6,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     // let sender   = pd.reqBody['sender']['login'];
-    console.log( authData.job, "project name:", pd.reqBody.project.name, action );
+    // console.log( authData.job, "project name:", pd.reqBody.project.name, action );
+    console.log( authData.who, "start", authData.job );
 
     pd.GHProjectId   = pd.reqBody.project.id;
     pd.GHProjectName = pd.reqBody.project.name;

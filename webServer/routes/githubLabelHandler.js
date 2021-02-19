@@ -30,7 +30,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
-    console.log( authData.job, "label name:", pd.reqBody.label.name, action );
+    // console.log( authData.job, "label name:", pd.reqBody.label.name, action );
+    console.log( authData.who, "start", authData.job );
 
     // Note: the peq table is the key source here.  We must assume most fields in the peq table are out of date.
     //       happily, the peq label is protected - there is only 1 ever, when unlabled the peq table entry is deactivated

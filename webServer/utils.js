@@ -428,13 +428,12 @@ async function changeReportPeqVal( authData, pd, peqVal ) {
 //  1: add another project card to situated issue
 async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
-    console.log( authData.who, "resolve" );
 
     // on first call from populate, list may be large.  Afterwards, max 2.
-    if( pd.GHIssueId == -1 )              { console.log("Resolve: early return" ); return gotSplit; }
+    if( pd.GHIssueId == -1 )              { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
 
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
-    if( links == -1 || links.length < 2 ) { console.log("Resolve: early return" ); return gotSplit; }
+    if( links == -1 || links.length < 2 ) { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
     gotSplit = true;
 
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
@@ -739,18 +738,27 @@ function makeJobData( jid, handler, sender, reqBody, tag, delayCount ) {
     return jobData;
 }
 
+function summarizeQueue( ceJobs, msg, limit ) {
+    console.log( msg, "current depth", ceJobs.jobs.length, "jobs. Count:", ceJobs.count, "Demotions:", ceJobs.delay, "Limit:", limit );
+    const jobs = ceJobs.jobs.getAll();
+    limit = ceJobs.jobs.length < limit ? ceJobs.jobs.length : limit;
+    for( let i = 0; i < limit; i++ ) {
+	console.log( "   ", jobs[i].GHOwner, jobs[i].GHRepo, jobs[i].QueueId, jobs[i].Handler, jobs[i].Action, jobs[i].Tag, jobs[i].Stamp, jobs[i].DelayCount );
+    }
+}
+
 // Do not remove top, that is getNextJob's sole perogative
 // add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
 async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     console.log( "Demoting", jobId, delayCount );
     const newJob   = makeJobData( jobId, event, sender, pd.reqBody, tag, delayCount+1 );
-    const fullName = pd.reqBody['repository']['full_name'];
 
     assert( delayCount < 5 );
+    ceJobs.delay++;
     
     // get splice index
     let spliceIndex = 1;
-    let jobs = ceJobs[fullName][sender].getAll();
+    let jobs = ceJobs.jobs.getAll();
     
     // If nothing else is here yet, delay
     if( jobs.length <= 1 ) { console.log( "... empty queue, sleep" );  await sleep( 300 ); }
@@ -765,61 +773,41 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     console.log( "Got splice index of", spliceIndex );
     jobs.splice( spliceIndex, 0, newJob );
 
-    console.log( "\nceJobs, after demotion" );
-    for( const job of ceJobs[fullName][sender].getAll() ) {
-	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag, job.Stamp, job.DelayCount );
-    }
+    summarizeQueue( ceJobs, "\nceJobs, after demotion", 3 );
 }
 
 // XXX seems to belong elsewhere
 // Put the job.  Then return first on queue.  Do NOT delete first.
 function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
-    // XXX handle aws, sam
     const jobData = makeJobData( jid, handler, sender, reqBody, tag, 0 );
 
-    // Get or create fifoQ
-    let fullName = reqBody['repository']['full_name'];
-    if( !ceJobs.hasOwnProperty( fullName ) )         { ceJobs[fullName] = {}; }
-    if( !ceJobs[fullName].hasOwnProperty( sender ) ) { ceJobs[fullName][sender] = new fifoQ.Queue(); }
-    
-    ceJobs[fullName][sender].push( jobData );
+    ceJobs.jobs.push( jobData );
+    ceJobs.count++;
 
-    console.log( "\n[" + fullName + "] ceJobs, after push" );
-    for( const job of ceJobs[fullName][sender].getAll() ) {
-	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag, job.Stamp, job.DelayCount );
-    }
+    summarizeQueue( ceJobs, "\nceJobs, after push", 3 );
     
-    return ceJobs[fullName][sender].first;
+    return ceJobs.jobs.first;
 }
 
-function purgeQueue( ceJobs, fullName ) {
+function purgeQueue( ceJobs ) {
 
-    console.log( "Purging ceJobs for", fullName );
+    console.log( "Purging ceJobs" )
+    ceJobs.count = 0;
+    ceJobs.delay = 0;
 
     // XXX  Note, this should not be necessary.
-    console.log( ceJobs );
-    
-    if( ceJobs.hasOwnProperty( fullName ) ) {
-	for( let [sender, jobQ] of Object.entries( ceJobs[fullName] ) ) {
-	    console.log( "jobQ for", sender );
-	    for( const job of jobQ.getAll() ) {
-		console.log( job.QueueId, job.GHOwner, job.GHRepo, job.Action, job.Tag );
-	    }
-	    jobQ.purge();
-	}
+    if( ceJobs.jobs.length > 0 ) { 
+	summarizeQueue( ceJobs, "Error.  Should not be jobs to purge.", 200 );
+	ceJobs.jobs.purge();
     }
 }
 
 
 // Remove top of queue, get next top.
-async function getFromQueue( ceJobs, authData, fullName, sender ) {
-    // console.log("Get from q at start", ceJobs[fullName][sender] );
-
-    assert( ceJobs.hasOwnProperty( fullName ) );
-    assert( ceJobs[fullName].hasOwnProperty( sender ) );
+async function getFromQueue( ceJobs ) {
     
-    ceJobs[fullName][sender].shift();
-    return ceJobs[fullName][sender].first;
+    ceJobs.jobs.shift();
+    return ceJobs.jobs.first;
 }
 
 

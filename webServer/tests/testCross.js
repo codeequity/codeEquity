@@ -188,7 +188,7 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
     console.log( issDat );
 
     // Promises have resolved.  Wait for CE to catch up to at least unclaimed
-    await utils.sleep( 7000 );  
+    await utils.sleep( 9000 );  
 
     // No moving, all cards appear in unclaimed.  This must be after promises, Unclaimed may not get created for a while.
     await tu.refreshUnclaimed( authData, td );
@@ -197,11 +197,11 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
 
     const uncLoc  = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
     const uncLocM = await tu.getFlatLoc( authDataM, uncProj.id, config.UNCLAIMED, config.UNCLAIMED );
+
+    // Let CE completely finish before testing... mainly finishing cards.
+    await utils.sleep( 6000 );  
     let allCards  = await tu.getCards( authData,  uncLoc.colId );
     let allCardsM = await tu.getCards( authDataM, uncLocM.colId );
-
-    // Let CE completely finish before testing
-    await utils.sleep( 4000 );  
 
     let c, cM = {};
     for( const i of callIndex ) {

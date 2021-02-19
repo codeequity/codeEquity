@@ -81,7 +81,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     let sender  = pd.reqBody['sender']['login'];
     // if( !reqBody.hasOwnProperty( 'project_card') || !reqBody.project_card.hasOwnProperty( 'updated_at')) { console.log( reqBody ); }
-    console.log( authData.job, pd.reqBody.project_card.updated_at, "Card", action );
+    // console.log( authData.job, pd.reqBody.project_card.updated_at, "Card", action );
+    console.log( authData.who, "start", authData.job );
 
     pd.GHCreator    = pd.reqBody['project_card']['creator']['login'];
     pd.GHFullName   = pd.reqBody['repository']['full_name'];

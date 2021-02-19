@@ -197,7 +197,7 @@ class Linkage {
 	const colName   = query.hasOwnProperty( "colName" )   ? query.colName            : config.EMPTY;
 	const cardTitle = query.hasOwnProperty( "cardTitle" ) ? query.cardTitle          : config.EMPTY;
 
-	console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, cardTitle );
+	// console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, cardTitle );
 	
 	let links = [];
 	for( const [key, clinks] of Object.entries( this.links ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
@@ -221,7 +221,7 @@ class Linkage {
     }
 
     getLocs( authData, query ) {
-	console.log( authData.who, "get Locs", query );
+	// console.log( authData.who, "get Locs", query );
 
 	if( typeof query.repo === 'undefined' ) {
 	    console.log( "Error.  Repo was not defined in Locs query." );

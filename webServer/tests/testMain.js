@@ -109,7 +109,7 @@ async function runTests() {
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 10000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-    
+
     subTest = await testCross.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 10000 );

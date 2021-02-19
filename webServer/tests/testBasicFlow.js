@@ -329,7 +329,7 @@ async function testBlast( authData, ghLinks, td ) {
     // 1. Simple blast
     let issDat = await tu.blastIssue( authData, td, "Blast 1", [LAB1], [ASSIGNEE1] );               
 
-    await utils.sleep( 2000 );
+    await utils.sleep( 2500 );
     await tu.refreshUnclaimed( authData, td );    
     const uncLoc = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
     
@@ -342,7 +342,7 @@ async function testBlast( authData, ghLinks, td ) {
 
     // 2. blast  
     issDat = await tu.blastIssue( authData, td, "Blast 2", [LABNP1, LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );               
-    await utils.sleep( 2000 );
+    await utils.sleep( 2500 );
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHCardTitle == "Blast 2" );
     card   = await tu.getCard( authData, link.GHCardId );
@@ -352,7 +352,7 @@ async function testBlast( authData, ghLinks, td ) {
 
     // 3. blast  
     issDat = await tu.blastIssue( authData, td, "Blast 3", [LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );               
-    await utils.sleep( 2000 );
+    await utils.sleep( 2500 );
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHCardTitle == "Blast 3" );
     card   = await tu.getCard( authData, link.GHCardId );
@@ -362,7 +362,7 @@ async function testBlast( authData, ghLinks, td ) {
 
     // 4. blast  
     issDat = await tu.blastIssue( authData, td, "Blast 4", [LABNP1, LAB1], [ASSIGNEE1, ASSIGNEE2] );               
-    await utils.sleep( 2000 );
+    await utils.sleep( 2500 );
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHCardTitle == "Blast 4" );
     card   = await tu.getCard( authData, link.GHCardId );
@@ -372,7 +372,7 @@ async function testBlast( authData, ghLinks, td ) {
 
     // 5. blast  
     issDat = await tu.blastIssue( authData, td, "Blast 5", [LABNP1, LABNP2, LAB1], [ASSIGNEE2, ASSIGNEE1] );               
-    await utils.sleep( 2000 );
+    await utils.sleep( 2500 );
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHCardTitle == "Blast 5" );
     card   = await tu.getCard( authData, link.GHCardId );
@@ -382,7 +382,7 @@ async function testBlast( authData, ghLinks, td ) {
 
     // 6. blast, undo
     issDat = await tu.blastIssue( authData, td, "Blast 6", [LAB1, LABNP1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );
-    await utils.sleep( 2000 );
+    await utils.sleep( 2500 );
     await tu.remAssignee( authData, td, issDat[1], ASSIGNEE2 );
     await tu.remAssignee( authData, td, issDat[1], ASSIGNEE1 );
     await tu.remLabel( authData, td, issDat[1], labNP1 );    
