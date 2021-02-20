@@ -65,10 +65,14 @@ async function initGH() {
 //   jwt is per app install, 1 codeEquity for all.
 //   owner and repo can switch with notification.  need multiple.
 async function initAuth( authData, owner, repo ) {
-    authData.api = await utils.getAPIPath() + "/find";
-    authData.cog = await awsAuth.getCogIDToken();
+    // Wait later
+    authData.api = utils.getAPIPath() + "/find";
+    authData.cog = awsAuth.getCogIDToken();
 
     // XXX NOTE this step needed for Linkage init, which needs PAT.  Would prefer alt solution.
+    authData.api = await authData.api;
+    authData.cog = await authData.cog;
+
     await getGHAuths( authData, owner, repo );
 }
 
@@ -76,43 +80,22 @@ async function initAuth( authData, owner, repo ) {
 // owner, repo needed for octokit installation client.
 // owner needed for personal access token
 async function getGHAuths( authData, owner, repo ) {
-    /*
-    let promises = [];
-    if( !octokitClients.hasOwnProperty( owner ) ) { octokitClients[owner] = {}; }
-
-    promises.push( 
-	if( !octokitClients[owner].hasOwnProperty( repo )) {
-	    console.log( authData.who, "get octo", owner, repo );
-	    octokitClients[owner][repo] = await auth.getInstallationClient( owner, repo, config.CE_USER );
-	}.promise()
-    );
-
-    promises.push( 
-	if( !githubPATs.hasOwnProperty( owner )) {
-	    console.log( authData.who, "get PAT", owner );
-	    githubPATs[owner] = await auth.getPAT( owner );
-	}.promise()
-    );
-
-    await Promise.all( promises );
-
-    authData.ic  = octokitClients[owner][repo];
-    authData.pat = githubPATs[owner];
-    return;
-    */
-
 
     if( !octokitClients.hasOwnProperty( owner ) ) { octokitClients[owner] = {}; }
     
     if( !octokitClients[owner].hasOwnProperty( repo )) {
 	console.log( authData.who, "get octo", owner, repo );
-	octokitClients[owner][repo] = await auth.getInstallationClient( owner, repo, config.CE_USER );
+	// Wait later
+	octokitClients[owner][repo] = auth.getInstallationClient( owner, repo, config.CE_USER );
     }
 
     if( !githubPATs.hasOwnProperty( owner )) {
-	githubPATs[owner] = await auth.getPAT( owner );
+	// Wait later
+	githubPATs[owner] = auth.getPAT( owner );
     }
-    
+
+    octokitClients[owner][repo] = await octokitClients[owner][repo];
+    githubPATs[owner] = await githubPATs[owner];
     authData.ic  = octokitClients[owner][repo];
     authData.pat = githubPATs[owner];
     return;

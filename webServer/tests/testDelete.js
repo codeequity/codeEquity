@@ -81,7 +81,7 @@ async function clearRepo( authData, ghLinks, pd ) {
 	await utils.sleep( 1000 );
     }
 
-    await utils.sleep( 4000 );
+    await utils.sleep( 2000 );
     
 
     // Clean up dynamo.

@@ -46,7 +46,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		if( oldName == config.PROJ_COLS[config.PROJ_PEND] || oldName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		    console.log( "WARNING.", oldName, "is a reserved column.  To change the name, modify your config file.  Reverting." );
-		    await ghSafe.updateColumn( authData, pd.reqBody.project_column.id, oldName );
+		    // Don't wait
+		    ghSafe.updateColumn( authData, pd.reqBody.project_column.id, oldName );
 
 		    // send 1 PAct to update any peq projSub.  don't wait.
 		    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,

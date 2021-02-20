@@ -19,7 +19,8 @@ async function nameDrivesLabel( authData, pd, name, description ) {
     if( nameVal != descrVal || consistentDescr != description ) {
 	console.log( "WARNING.  Modified PEQ label description not consistent with name.  Updating." );
 	const color = alloc ? config.APEQ_COLOR : config.PEQ_COLOR;
-	await ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, name, consistentDescr, color );		    
+	// Don't wait
+	ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, name, consistentDescr, color );		    
     }
     return;
 }
@@ -40,7 +41,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'edited':
 	// Check if this is in use.  If so, undo edit (preserves current peq issues) and create a new label for the edit.
 	{
-	    // pd.reqBody.label has new label.   pd.reqBody.changes has what changed.   W
+	    // pd.reqBody.label has new label.   pd.reqBody.changes has what changed.
 	    // First, check if changes are to name or description.  else, return.
 	    if( typeof pd.reqBody.changes.name === 'undefined' && typeof pd.reqBody.changes.description === 'undefined' ) {
 		return;
@@ -67,7 +68,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 
 	    // XXX need to warn .. card be good
-	    // undo current edits.
+	    // undo current edits, then make new.  Need to wait, else wont create label with same name
 	    console.log( authData.who, "Undoing label edit, back to", origName, origDesc );
 	    await ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, origName, origDesc );
 
@@ -113,14 +114,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    for( const peq of peqs ) {
 		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": peq.GHIssueId });
 		assert( links.length == 1 );
-		// await ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
 		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
-
-		/*
-		// XXX wait.  if peq not modified, why was card deleted?  should just be carded.
-		let cardId = await ghSafe.createProjectCard( authData, unClaimedColId, issueId, true );		
-		ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName, colId, colName, newCardId, pd.GHIssueTitle);
-		*/
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 				   "confirm", "notice", [], "PEQ label delete attempt",

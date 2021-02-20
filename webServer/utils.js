@@ -59,7 +59,6 @@ function getCEServer() {
 
 // XXX Gimme a fname
 async function getRemotePackageJSONObject(owner, repo, installationAccessToken) {
-    // const installationClient = await auth.getInstallationClient(installationAccessToken);
     const installationClient = await auth.getInstallationClient(owner, repo);
     const fileData = await installationClient.repos.getContents({
 	owner,
@@ -79,9 +78,7 @@ async function postGH( PAT, url, postData ) {
     };
 
     return fetch( url, params )
-	.then((res) => {
-	    return res.json();
-	})
+	.then(res => res.json())
 	.catch(err => console.log(err));
 }
 
@@ -98,7 +95,6 @@ async function postCE( shortName, postData ) {
     };
 
     let ret = await fetch( ceServerTestingURL, params )
-	.then ((res) => res )
 	.catch( err => console.log( err ));
 
     if( ret['status'] == 201 ) { 
@@ -122,9 +118,6 @@ async function postIt( authData, shortName, postData ) {
     };
 
     return fetch( authData.api, params )
-	.then((res) => {
-	    return res;
-	})
 	.catch(err => console.log(err));
 };
 
@@ -226,7 +219,7 @@ async function getProjectSubs( authData, ghLinks, repoName, projName, colName ) 
 	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
     }
 	    
-    console.log( "... returning", projSub.toString() );
+    // console.log( "... returning", projSub.toString() );
     return projSub;
 }
 
@@ -372,7 +365,9 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.GHIssueTitle = pd.GHIssueTitle;          // gh issue title
     postData.Active       = "true";
 
-    newPEQId = await recordPEQ(	authData, postData );
+    // Don't wait if already have Id
+    if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
+    else                 { recordPEQ( authData, postData ); }
     assert( newPEQId != -1 );
     
     let action = "add";
@@ -391,9 +386,6 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 }
 
 function rebuildLinkage( authData, ghLinks, link, issueData, newCardId, newTitle ) {
-
-    let tstart = Date.now();
-    
     // no need to wait for the deletion
     ghLinks.removeLinkage({ "authData": authData, "issueId": link.GHIssueId, "cardId": link.GHCardId });
 
@@ -402,9 +394,6 @@ function rebuildLinkage( authData, ghLinks, link, issueData, newCardId, newTitle
 
     ghLinks.addLinkage( authData, link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
 			link.GHColumnId, link.GHColumnName, newCardId, newTitle )
-    
-    
-    console.log( "millis", Date.now() - tstart );    
 }
 
 // The only critical component here for interleaving is getting the ID.
@@ -419,7 +408,7 @@ async function changeReportPeqVal( authData, pd, peqVal ) {
 		     getToday(), pd.reqBody );
 }
 
-
+// XXX here
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user

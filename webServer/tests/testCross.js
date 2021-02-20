@@ -242,11 +242,11 @@ async function runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM )
 
     let t1 = await testCrossRepo( authData, authDataX, ghLinks, td, tdX );
     console.log( "\n\nCross Repo test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
 
     let t2 = await testMultithread( authData, authDataM, ghLinks, td, tdM );
     console.log( "\n\nMultithread test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
 
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );

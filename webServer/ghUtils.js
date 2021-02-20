@@ -313,6 +313,7 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
 async function checkIssue( authData, owner, repo, issueNum ) {
     
     let issue = -1;
+    // Wait.  Without additional wait, timing with multiple deletes is too tight.  Can still fail on transfers..
     await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( iss => issue = iss.data )
 	.catch( e => {
@@ -323,20 +324,6 @@ async function checkIssue( authData, owner, repo, issueNum ) {
 
     if( issue == -1 ) { return false; }
     return await checkExistsGQL( authData, issue.node_id, {issue: true} );
-    
-    /*
-    // XXX This has been shaky - timing with multiple deletes is too tight.  First, try GQL global nodeID assist.  Second, brute force sleep.
-    let issueExists = false;
-    await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
-	.then( issue => issueExists = true )
-	.catch( e => {
-	    if     ( e.status == 410 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
-	    else if( e.status == 404 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
-	    else                       { console.log( authData.who, "Problem in checkIssue", e );        }
-	});
-    
-    return issueExists;
-    */
 }
 
 // [id, content]
@@ -418,7 +405,8 @@ async function splitIssue( authData, owner, repo, issue, splitTag ) {
     let comment = "CodeEquity duplicated this new issue from issue id:" + issue.id.toString() + " on " + utils.getToday().toString();
     comment += " in order to maintain a 1:1 mapping between issues and cards."
 
-    await addComment( authData, owner, repo, issueData[1], comment );
+    // Don't wait.
+    addComment( authData, owner, repo, issueData[1], comment );
     return issueData;
 }
 
@@ -442,8 +430,9 @@ async function rebuildIssue( authData, owner, repo, issue, msg ) {
 	.catch( e => console.log( authData.who, "Error.  Create issue failed.", e ));
 
     let comment = utils.getToday().toString() + ": " + msg;
-    
-    await( authData.ic.issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } ))
+
+    // Don't wait.
+    authData.ic.issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } )
 	.catch( e =>  console.log( authData.who, "Error.  Create issue comment failed.", e ));
     
     return issueData;
@@ -676,6 +665,7 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 	}
     }
 
+    // Wait.  Data is returned
     if( issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
 }
 
@@ -746,7 +736,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	}
     }
 
-    
+    // Wait.  Data.
     if( projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
 }
 
@@ -779,8 +769,6 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
     let query = `mutation ($issueId: ID!, $repoId: ID!) { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId }) {clientMutationId}}`;
     let variables = {"issueId": issueId, "repoId": toRepoId };
     query = JSON.stringify({ query, variables });
-
-    console.log( query );
 
     const res = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	  .catch( e => console.log( "Error.  GQL transfer issue problem", e ));
@@ -835,15 +823,16 @@ async function populateCELinkage( authData, ghLinks, pd )
     
     // [ [projId, cardId, issueNum, issueId], ... ]
     // Note - this can't be a promise.all - parallel execution with shared pd == big mess
-    //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql.
+    //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql.  XXX
     // Note - this mods values of pd, but exits immediately afterwards.
     for( const link of one2Many ) {
 	pd.GHIssueId  = link[3];
 	pd.GHIssueNum = link[2];
 	await utils.resolve( authData, ghLinks, pd, "???" );
     }
-    
-    await utils.setPopulated( authData, pd.GHFullName );
+
+    // Don't wait.
+    utils.setPopulated( authData, pd.GHFullName );
     console.log( authData.who, "Populate CE Linkage Done" );
     return true;
 }
@@ -921,7 +910,8 @@ async function addComment( authData, owner, repo, issueNum, msg ) {
 }
 
 async function rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel ) {
-    await removeLabel( authData, owner, repo, issueNum, oldLabel );
+    // Don't wait for delete, just for add
+    removeLabel( authData, owner, repo, issueNum, oldLabel );
     await addLabel( authData, owner, repo, issueNum, newLabel );
 }
 
@@ -998,7 +988,8 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     assert( link.GHCardId != -1 );
 
     console.log( "Found unclaimed" );
-    await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
+    // Don't wait - no dep. on GH card
+    authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
 	.catch( e => console.log( "Error.  Card not deleted", e ));
     
     // Remove turds, report.  
@@ -1059,7 +1050,11 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     
     // Make this project viable for PEQ tracking
     if( missing || curCol != -1 ) {
-
+	let progCol, pendCol, accrCol = false;
+	const progName = config.PROJ_COLS[ config.PROJ_PROG ]; 
+	const pendName = config.PROJ_COLS[ config.PROJ_PEND ];
+	const accrName = config.PROJ_COLS[ config.PROJ_ACCR ];
+	
 	// first, use curCol if present
 	if( curCol != -1 ) {
 	    foundReqCol[config.PROJ_PLAN + 1] = curCol;
@@ -1073,39 +1068,43 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 		foundReqCol[config.PROJ_PROG + 1] = foundReqCol[config.PROJ_PLAN + 1];
 	    }
 	    if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
-		const progName = config.PROJ_COLS[ config.PROJ_PROG]; 
 		console.log( "Creating new column:", progName );
-		await authData.ic.projects.createColumn({ project_id: projId, name: progName })
-		    .then((column) => {
-			curCol = column.data.id;
-			ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, progName, curCol );			
-		    })
+		// Wait later
+		progCol = authData.ic.projects.createColumn({ project_id: projId, name: progName })
 		    .catch( e => { console.log( authData.who, "Create column failed.", e ); });
 	    }
 	}
 
 	// Create PEND if missing
 	if( foundReqCol[config.PROJ_PEND + 1] == -1 ) {
-	    let pendName = config.PROJ_COLS[ config.PROJ_PEND ];
 	    console.log( "Creating new column:", pendName );
-	    await authData.ic.projects.createColumn({ project_id: projId, name: pendName })
-		.then((column) => {
-		    foundReqCol[config.PROJ_PEND + 1] = column.data.id;
-		    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, pendName, column.data.id );			
-		    
-		})
+	    // Wait later
+	    pendCol = authData.ic.projects.createColumn({ project_id: projId, name: pendName })
 		.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 	}
 	// Create ACCR if missing
 	if( foundReqCol[config.PROJ_ACCR + 1] == -1 ) {
-	    let accrName = config.PROJ_COLS[ config.PROJ_ACCR ];
 	    console.log( "Creating new column:", accrName );
-	    await authData.ic.projects.createColumn({ project_id: projId, name: accrName })
-		.then((column) => {
-		    foundReqCol[config.PROJ_ACCR + 1] = column.data.id;
-		    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, accrName, column.data.id );			
-		})
+	    // Wait later
+	    accrCol = authData.ic.projects.createColumn({ project_id: projId, name: accrName })
 		.catch( e => { console.log( authData.who, "Create column failed.", e ); });
+	}
+
+	if( progCol ) {
+	    progCol = await progCol;
+	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, progName, progCol.data.id );
+	}
+
+	if( pendCol ) {
+	    pendCol = await pendCol;
+	    foundReqCol[config.PROJ_PEND + 1] = pendCol.data.id;
+	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, pendName, pendCol.data.id );
+	}
+
+	if( accrCol ) {
+	    accrCol = await accrCol;
+	    foundReqCol[config.PROJ_ACCR + 1] = accrCol.data.id;
+	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, accrName, accrCol.data.id );			
 	}
     }
     console.log( "Layout:", foundReqCol );
@@ -1186,8 +1185,8 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 	    
 	    success = await checkReserveSafe( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, config.PROJ_PEND );
 	    if( !success ) {
-		// no need to put card back - didn't move it.
-		await updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "open" ); // reopen issue
+		// no need to put card back - didn't move it.  Don't wait.
+		updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "open" ); // reopen issue
 		return false;
 	    }
 
@@ -1204,16 +1203,19 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
 	    newColName = getColumnName( authData, ghLinks, pd.GHFullName, newColId );
-	    success = moveCard( authData, cardId, newColId );
+	    success = await moveCard( authData, cardId, newColId );
 	}
 	else {
 	    // GH has opened this issue.  Close it back up.
 	    console.log( "WARNING.  Can not reopen an issue that has accrued." );
-	    await updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "closed" ); // reopen issue
+	    // Don't wait.
+	    updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "closed" ); // reopen issue
 	    return false;
 	}
     }
 
+    // XXX updateLinkage should not occur unless successful.  Everywhere.  
+    //     Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
     if( success ) {
 	success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName );
     }
@@ -1232,15 +1234,6 @@ function getProjectName( authData, ghLinks, fullName, projId ) {
     const projName = locs == -1 ? locs : locs[0].GHProjectName;
     return projName
     
-    /*
-    let project = await( authData.ic.projects.get({ project_id: projId }))
-	.catch( e => {
-	    console.log( authData.who, "Get Project failed.", e );
-	    return "";
-	});
-
-    return project['data']['name'];
-    */
 }
 
 // XXX add repo to all these queries?

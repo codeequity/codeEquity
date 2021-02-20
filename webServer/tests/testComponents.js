@@ -251,7 +251,7 @@ async function testLabel( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label Dub 3" );	
 
 	console.log( "Double-labels done." );
-	await utils.sleep( 10000 );
+	await utils.sleep( 5000 );
 
 
 	console.log( "\nTest label/unlabel in flat projects structure" );

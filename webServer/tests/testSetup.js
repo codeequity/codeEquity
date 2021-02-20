@@ -288,7 +288,7 @@ async function runTests( authData, ghLinks, td ) {
     let testStatus = [ 0, 0, []];
 
     await createPreferredCEProjects( authData, ghLinks, td );
-    await utils.sleep( 4000 );
+    await utils.sleep( 2000 );
     let t1 = await testPreferredCEProjects( authData, ghLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );
