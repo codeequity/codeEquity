@@ -22,6 +22,7 @@ var ceJobs = {};
 ceJobs.jobs = new fifoQ.Queue();
 ceJobs.count = 0;
 ceJobs.delay = 0;
+ceJobs.maxDepth = 0;
 
 var notificationCount = 0;
 

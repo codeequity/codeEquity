@@ -7,6 +7,19 @@ var cookieParser = require('cookie-parser');
 
 var ceServer = express();
 
+process.on('SIGTERM', () => {
+    console.log('Closed out remaining connections');
+    // server.close();
+    process.exit(0);
+});
+
+// ctrl-c
+process.on('SIGINT', () => {
+    console.log('Closed out remaining connections');
+    // server.close();
+    process.exit(0);
+});
+
 ceServer.use(logger('combined', { skip: function (req, res) { return res.statusCode < 400 }}));
 ceServer.use(express.json());
 //ceServer.use(bodyParser.json());

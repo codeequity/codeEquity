@@ -739,7 +739,7 @@ function makeJobData( jid, handler, sender, reqBody, tag, delayCount ) {
 }
 
 function summarizeQueue( ceJobs, msg, limit ) {
-    console.log( msg, "current depth", ceJobs.jobs.length, "jobs. Count:", ceJobs.count, "Demotions:", ceJobs.delay, "Limit:", limit );
+    console.log( msg, " Depth", ceJobs.jobs.length, "Max depth", ceJobs.maxDepth, "Count:", ceJobs.count, "Demotions:", ceJobs.delay);
     const jobs = ceJobs.jobs.getAll();
     limit = ceJobs.jobs.length < limit ? ceJobs.jobs.length : limit;
     for( let i = 0; i < limit; i++ ) {
@@ -782,6 +782,8 @@ function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
     const jobData = makeJobData( jid, handler, sender, reqBody, tag, 0 );
 
     ceJobs.jobs.push( jobData );
+
+    if( ceJobs.jobs.length > ceJobs.maxDepth ) { ceJobs.maxDepth = ceJobs.jobs.length; }
     ceJobs.count++;
 
     summarizeQueue( ceJobs, "\nceJobs, after push", 3 );

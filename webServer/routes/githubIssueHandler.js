@@ -21,6 +21,7 @@ var ghSafe = ghUtils.githubSafe;
 
 async function deleteIssue( authData, ghLinks, pd ) {
 
+    let tstart = Date.now();
     // Either not carded, or delete card already fired successfully.  No-op.
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
     if( links == -1 ) return;
@@ -38,13 +39,18 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	// the entire issue has been given to us here.  Recreate it.
 	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.", pd.GHIssueNum );
 	
-	const peq = await utils.getPeq( authData, link.GHIssueId );
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
-	const card      = await gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );  
-	console.log( authData.who, "created card from new issue" );
-	
-	await ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
+
+	// Promises
+	console.log( authData.who, "creating card from new issue" );
+	let peq  = utils.getPeq( authData, link.GHIssueId );
+	let card = gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );
+
+	// Don't wait - closing the issue at GH, no dependence
+	ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
+
+	card = await card;
 	link = ghLinks.rebuildLinkage( authData, link, issueData, card.id );
 	link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	link.GHProjectName = config.UNCLAIMED;
@@ -53,6 +59,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	console.log( authData.who, "rebuilt link" );
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
+	peq = await peq;
 	const newPeqId = await utils.rebuildPeq( authData, link, peq );
 	
 	utils.removePEQ( authData, peq.PEQId );	
@@ -63,6 +70,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 			       "confirm", "add", [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }
+    console.log( "Delete", Date.now() - tstart );
 }
 
 
