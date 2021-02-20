@@ -87,32 +87,32 @@ async function runTests() {
 
     subTest = await testSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     subTest = await testFlat.runTests( authData, ghLinks, td );
     console.log( "\n\nFlat test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     subTest = await testBasicFlow.runTests( authData, ghLinks, td );
     console.log( "\n\nFlow test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     subTest = await testPopulate.runTests( authData, ghLinks, td );
     console.log( "\n\nResolve test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     subTest = await testComponents.runTests( authData, ghLinks, td );
     console.log( "\n\nComponents test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     subTest = await testCross.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
-    //await utils.sleep( 10000 );
+    //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     tu.testReport( testStatus, "================= Testing complete =================" );

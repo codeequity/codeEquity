@@ -4,8 +4,6 @@ var utils = require('../utils');
 
 async function handler( ghLinks, ceJobs, reqBody, res ) {
 
-    console.log( "Test Handler" );
-
     assert( reqBody.hasOwnProperty( "Request" ) );
 
     let retVal = -1;

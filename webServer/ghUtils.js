@@ -1122,7 +1122,7 @@ async function validatePEQ( authData, repo, issueId, title, projId ) {
     peq = await utils.getPeq( authData, issueId );
 
     if( peq != -1 && peq.GHIssueTitle == title && peq.GHRepo == repo && peq.GHProjectId == projId )  {
-	console.log( authData.who, "validatePeq success" );
+	// console.log( authData.who, "validatePeq success" );
     }
     else {
 	console.log( "Error.  Peq not valid.", peq.GHIssueTitle, title, peq.GHRepo, repo, peq.GHProjectId, projId );

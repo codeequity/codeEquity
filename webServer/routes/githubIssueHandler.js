@@ -117,7 +117,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
 	    if( pd.peqValue <= 0 && curVal > 0 ) {
 		console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
-		await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
+		// Don't wait, no dependence
+		ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
 		return;
 	    }
 	    
@@ -157,7 +158,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let content = [];
 	    content.push( pd.GHIssueTitle );
 	    content.push( pd.reqBody.label.description );
-	    let retVal = await utils.processNewPEQ( authData, ghLinks, pd, content, link );
+	    // Don't wait, no dependence
+	    utils.processNewPEQ( authData, ghLinks, pd, content, link );
 	}
 	break;
     case 'unlabeled':
@@ -177,14 +179,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 		
-	    /* // working, but not needed.  No label, action was delete.
-	    const exists = ghSafe.checkLabelExistsGQL( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.label.node_id );  
-	    if( !exists ) {
-		console.log( authData.who, "Label was deleted.  Stop, let labelHandler address this." );
-		return;
-	    }
-	    */
-	    
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
@@ -221,7 +215,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	
 	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
-	await deleteIssue( authData, ghLinks, pd );
+	// Wait or not here, no difference.  ceJobs holds things in place.
+	deleteIssue( authData, ghLinks, pd );
 	break;
     case 'closed':
     case 'reopened':
@@ -246,6 +241,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	    }
 	    else {
+		// Must wait.  Move card can fail if, say, no assignees
 		let success = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( success ) {
 		    console.log( authData.who, "Find & validate PEQ" );

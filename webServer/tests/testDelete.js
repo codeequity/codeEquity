@@ -61,7 +61,7 @@ async function clearRepo( authData, ghLinks, pd ) {
     // Issues.
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
     await remIssues( authData, ghLinks, pd );
-    await utils.sleep( 4000 );
+    await utils.sleep( 2000 );
     await remIssues( authData, ghLinks, pd );
     await utils.sleep( 2000 );
 

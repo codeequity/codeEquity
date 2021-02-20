@@ -1271,35 +1271,35 @@ async function runTests( authData, ghLinks, td ) {
 
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     
     let t2 = await testLabel( authData, ghLinks, td ); 
     console.log( "\n\nLabel test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
 
     let t3 = await testLabelCarded( authData, ghLinks, td );
     console.log( "\n\nLabel Carded complete." );
-    await utils.sleep( 10000 );
-
+    await utils.sleep( 5000 );
+    
     let t4 = await testCloseReopen( authData, ghLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
 
     let t5 = await testCreateDelete( authData, ghLinks, td );
     console.log( "\n\nCreate / Delete complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     
     let t6 = await testLabelMods( authData, ghLinks, td );
     console.log( "\n\nLabel mods complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     
     let t8 = await testAlloc( authData, ghLinks, td );
     console.log( "\n\nAlloc complete." );
-    // await utils.sleep( 10000 );
+    // await utils.sleep( 5000 );
 
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
