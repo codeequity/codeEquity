@@ -13,7 +13,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
-    console.log( authData.job, pd.reqBody.project_column.updated_at, "column name:", pd.reqBody.project_column.name, action );
+    // console.log( authData.job, pd.reqBody.project_column.updated_at, "column name:", pd.reqBody.project_column.name, action );
+    console.log( authData.who, "start", authData.job );
 
     pd.GHColumnId    = pd.reqBody.project_column.id.toString();
     pd.GHColumnName  = pd.reqBody.project_column.name;
@@ -45,7 +46,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		if( oldName == config.PROJ_COLS[config.PROJ_PEND] || oldName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		    console.log( "WARNING.", oldName, "is a reserved column.  To change the name, modify your config file.  Reverting." );
-		    await ghSafe.updateColumn( authData, pd.reqBody.project_column.id, oldName );
+		    // Don't wait
+		    ghSafe.updateColumn( authData, pd.reqBody.project_column.id, oldName );
 
 		    // send 1 PAct to update any peq projSub.  don't wait.
 		    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,

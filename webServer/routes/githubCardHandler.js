@@ -58,18 +58,10 @@ async function recordMove( authData, reqBody, fullName, oldCol, newCol, link ) {
 	assert( false );
     }
 
-    await( utils.recordPEQAction(
-	authData,
-	config.EMPTY,     // CE UID
-	reqBody['sender']['login'],   // gh actor
-	fullName,         // gh repo
-	verb, 
-	action, 
-	[peq.PEQId],          // subject
-	"",               // note
-	utils.getToday(), // entryDate
-	reqBody           // raw
-    ));
+    // Don't wait
+    utils.recordPEQAction( authData, config.EMPTY, reqBody['sender']['login'], fullName, 
+			   verb, action, [peq.PEQId], "", 
+			   utils.getToday(), reqBody );
 }
 
 
@@ -81,12 +73,11 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     let sender  = pd.reqBody['sender']['login'];
     // if( !reqBody.hasOwnProperty( 'project_card') || !reqBody.project_card.hasOwnProperty( 'updated_at')) { console.log( reqBody ); }
-    console.log( authData.job, pd.reqBody.project_card.updated_at, "Card", action );
+    // console.log( authData.job, pd.reqBody.project_card.updated_at, "Card", action );
+    console.log( authData.who, "start", authData.job );
 
     pd.GHCreator    = pd.reqBody['project_card']['creator']['login'];
     pd.GHFullName   = pd.reqBody['repository']['full_name'];
-
-    // await gh.checkRateLimit(authData);
 
     switch( action ) {
     case 'created' :
@@ -101,8 +92,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    pd.GHIssueId = issue[0];
 	    
 	    // Is underlying issue already linked to unclaimed?  if so, remove it.
+	    // Wait here, else unclaimed link may (?) impact PNP
 	    await ghSafe.cleanUnclaimed( authData, ghLinks, pd );
-	    await utils.processNewPEQ( authData, ghLinks, pd, issue[1], -1, "relocate" ); 
+	    // Don't wait.
+	    utils.processNewPEQ( authData, ghLinks, pd, issue[1], -1, "relocate" ); 
 	}
 	else {
 	    // In projects, creating a card that MAY have a human PEQ label in content...  PNP will create issue and label it, rebuild card, etc.
@@ -110,7 +103,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let cardContent = pd.reqBody['project_card']['note'].split('\n');
 	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
 	    
-	    await utils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
+	    utils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
 	}
 	break;
     case 'converted' :
@@ -146,7 +139,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( links == -1 || links[0].GHColumnId == -1 ) {
 		console.log( "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		if( newNameIndex > config.PROJ_PROG ) {
-		    await gh.moveCard( authData, cardId, oldColId );
+		    // Don't wait
+		    gh.moveCard( authData, cardId, oldColId );
 		}
 		return;
 	    }
@@ -167,7 +161,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let [_, allocation] = ghSafe.theOnePEQ( fullIssue.labels );
 	    if( allocation && config.PROJ_COLS.includes( newColName )) {
 		console.log( authData.who, "WARNING.", "Allocations are not useful in config's PROJ_COLS columns.  Moving card back." );
-		await gh.moveCard( authData, cardId, oldColId );
+		gh.moveCard( authData, cardId, oldColId );
 		return;
 	    }
 	    
@@ -193,10 +187,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
 	    
 	    if( newIssueState != "" ) {
-		await ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
+		// Don't wait
+		ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
 	    }
-	    
-	    // recordPAct
+	    // Don't wait
 	    recordMove( authData, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, link );
 	}
 	break;
@@ -221,7 +215,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 
 	    // PEQ.  Card is gone, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
-	    const peq = await utils.getPeq( authData, link.GHIssueId );
+	    // Wait later
+	    let peq = utils.getPeq( authData, link.GHIssueId );
 
 	    // Is the source a delete issue or transfer? 
 	    let issueExists = await gh.checkIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
@@ -230,14 +225,16 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( !accr || link.GHProjectName == config.UNCLAIMED ) {
 		console.log( authData.who, "Removing peq", accr, issueExists );
 		if( issueExists ) {
-		    let success = await ghSafe.removePeqLabel( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
-		    if( success ) { await ghSafe.addComment( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment ); }
+		    let success = await ghSafe.removePeqLabel( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );
+		    // Don't wait
+		    if( success ) { ghSafe.addComment( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment ); }
 		}
 		ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
 
 		// no need to wait.
 		// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
 		// XXX all vebs, actions, notes should be in config.
+		peq = await peq;
 		utils.removePEQ( authData, peq.PEQId );
 		let action = accr ? "notice"  : "delete";
 		let note   = accr ? "Disconnected issue" : "";
@@ -260,6 +257,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		const psub = [ link.GHProjectName ];
 
 		// No need to wait
+		peq = await peq;
 		utils.updatePEQPSub( authData, peq.PEQId, psub );
 		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 				       "confirm", "relocate", [peq.PEQId, link.GHProjectId, link.GHColumnId], "",
@@ -277,8 +275,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	{
 	    let cardContent = pd.reqBody['project_card']['note'].split('\n');
 	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
-	    
-	    await utils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
+
+	    // Don't wait
+	    utils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
 	}
 	break;
     default:

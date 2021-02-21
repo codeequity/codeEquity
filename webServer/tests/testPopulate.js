@@ -529,7 +529,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Moon += Pend .. Fail not peq.
     {
 	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issMoonDat[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issMoonDat, toPendLoc, cardNew.id, testStatus );
 
@@ -539,7 +539,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Moon += Prog 
     {
 	const cardNew = await tu.makeProjectCard( authData, toProgLoc.colId, issMoonDat[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, testStatus, {peq: false, lblCount: 2 } );
 
 	tu.testReport( testStatus, "Incremental resolve D" );
@@ -613,7 +613,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     
     // Set up first card
     const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
-    await utils.sleep( 2000 ); 
+    await utils.sleep( 1000 ); 
     testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2, val: 1000000} );
     
     tu.testReport( testStatus, "Split Alloc setup" );
@@ -622,7 +622,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     {
 	// At this point, lval is 500k
 	const cardNew = await tu.makeProjectCard( authData, toProgLoc.colId, issAllocDat[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toProgLoc, cardNew.id, testStatus );
 
@@ -632,7 +632,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     // += Accr.  Fail.  No create into x4
     {
 	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issAllocDat[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toAccrLoc, cardNew.id, testStatus );
 
@@ -683,11 +683,11 @@ async function runTests( authData, ghLinks, td ) {
 
     let t1 = await testIncrementalResolve( authData, ghLinks, td );
     console.log( "\n\nIncremental resolve complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
 
     let t2 = await testSplitAlloc( authData, ghLinks, td );
     console.log( "\n\nSplit Alloc complete." );
-    // await utils.sleep( 10000 );
+    // await utils.sleep( 5000 );
 
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );

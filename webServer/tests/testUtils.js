@@ -7,9 +7,10 @@ var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
-//const MIN_DELAY = 1500;
-const MIN_DELAY = 2500;     
-const MAKE_DELAY = 400;
+// Server is fast enough for sub 1s, but GH struggles.
+//const MIN_DELAY = 1000;  
+const MIN_DELAY = 2000;     
+const GH_DELAY = 400;
 
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
@@ -191,9 +192,11 @@ async function getColumns( authData, projId ) {
 async function getCards( authData, colId ) {
     let cards = -1;
 
-    await( authData.ic.projects.listCards( { column_id: colId }))
-	.then( allcards => { cards = allcards['data']; })
-	.catch( e => { console.log( authData.who, "list cards failed.", e ); });
+    if( colId != config.EMPTY ) {
+	await( authData.ic.projects.listCards( { column_id: colId }))
+	    .then( allcards => { cards = allcards['data']; })
+	    .catch( e => { console.log( authData.who, "list cards failed.", e ); });
+    }
 
     return cards;
 }
@@ -230,9 +233,8 @@ async function remLinks( authData, ghLinks, repo ) {
 }
 
 // Purge ceJobs from ceServer
-async function purgeJobs( repo, owner ) {
-    let fullName = owner + "/" + repo;
-    let postData = {"Endpoint": "Testing", "Request": "purgeJobs", "FullName": fullName }; 
+async function purgeJobs( repo ) {
+    let postData = {"Endpoint": "Testing", "Request": "purgeJobs" }; 
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }
@@ -342,7 +344,7 @@ async function makeProject(authData, td, name, body ) {
 	.catch( e => { console.log( authData.who, "Create project failed.", e ); });
 
     console.log( "MakeProject:", name, pid );
-    await utils.sleep( MAKE_DELAY );
+    await utils.sleep( GH_DELAY );
     return pid;
 }
 
@@ -370,7 +372,7 @@ async function makeColumn( authData, projId, name ) {
 	.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 
     console.log( "MakeColumn:", name, cid );
-    await utils.sleep( MAKE_DELAY );
+    await utils.sleep( GH_DELAY );
     return cid;
 }
 
@@ -768,6 +770,13 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal );
 
+    // Start promises
+    let cardsP = getCards( authData, loc.colId );
+    let cardsU = getCards( authData, td.unclaimCID );
+    let linksP = getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    
     // CHECK github issues
     let issue  = await findIssue( authData, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
@@ -786,20 +795,29 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     //     Should kill this here, put in a handful in basic flow to ensure cleanUnclaimed when we know it should be.
     //     Use of assignCnt to ignore is poor, but will do until this is rebuilt, only shows in testCross.
     // CHECK github location
-    let cards = td.unclaimCID == config.EMPTY ? [] : await getCards( authData, td.unclaimCID );
+    let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     if( !assignCnt ) {
 	let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
 	testStatus = checkEq( tCard.length, 0,                           testStatus, "No unclaimed" );
     }
 
-    cards = await getCards( authData, loc.colId );
+    cards = await cardsP;
     let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+
+    if( typeof mCard[0] === 'undefined' || typeof card === 'undefined' ) {
+	console.log( "uh oh" );
+	console.log( loc );
+	console.log( cards );
+	console.log( issueData );
+	console.log( card );
+    }
+    
     testStatus = checkEq( mCard.length, 1,                           testStatus, "Card claimed" );
     testStatus = checkEq( mCard[0].id, card.id,                      testStatus, "Card claimed" );
 
     // CHECK linkage
-    let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+    let links  = await linksP;
+    let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
     testStatus = checkEq( link.GHColumnName, loc.colName,           testStatus, "Linkage Col name" );
@@ -809,9 +827,9 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );
 
     // CHECK dynamo Peq
-    let allPeqs  =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
-    testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
+    let allPeqs = await peqsP;
+    let peqs    = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    testStatus  = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
 
     testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );        
@@ -828,9 +846,9 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     }
 
     // CHECK dynamo Pact
-    let allPacts  = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-    let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-    testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );  
+    let allPacts = await pactsP;
+    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+    testStatus   = checkGE( pacts.length, 1,                         testStatus, "PAct count" );  
 
     // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
     if( pacts.length <= 3 && loc.projSub.length > 1 ) {
@@ -861,6 +879,12 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     
     console.log( "Check unclaimed issue", loc.projName, loc.colName, labelVal );
 
+    // Start promises
+    let cardsU = getCards( authData, td.unclaimCID );
+    let linksP = getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    
     // CHECK github issues
     let issue  = await findIssue( authData, td, issueData[0] );
     testStatus = checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
@@ -873,14 +897,14 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     testStatus = checkEq( issue.state, "open",                   testStatus, "Issue state" ); 
 
     // CHECK github location
-    let cards = td.unclaimCID == config.EMPTY ? [] : await getCards( authData, td.unclaimCID );   
+    let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
     testStatus = checkEq( tCard.length, 1,                        testStatus, "No unclaimed" );
     testStatus = checkEq( tCard[0].id, card.id,                   testStatus, "Card id" );
     
     // CHECK linkage
-    let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+    let links  = await linksP;
+    let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
     testStatus = checkEq( link.GHColumnName, loc.colName,           testStatus, "Linkage Col name" );
@@ -890,9 +914,9 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );
 
     // CHECK dynamo Peq
-    let allPeqs  =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
-    testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
+    let allPeqs =  await peqsP;
+    let peqs    = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    testStatus  = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
 
     testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );        
@@ -907,7 +931,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq project id bad" );
 
     // CHECK dynamo Pact
-    let allPacts  = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let allPacts  = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );  
 
@@ -940,13 +964,17 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, car
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check Closed issue", loc.projName, loc.colName );
+
+    // Start promises
+    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName });
     
-    const allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    const allPeqs =  await peqsP;
     const peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     const peq = peqs[0];
 
     // CHECK dynamo Pact
-    const allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    const allPacts = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     const pact = pacts[ pacts.length - 1];
@@ -964,13 +992,17 @@ async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, car
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check Opened issue", loc.projName, loc.colName );
+
+    // Start promises
+    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName });
     
-    const allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    const allPeqs = await peqsP;
     const peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     const peq = peqs[0];
 
     // CHECK dynamo Pact
-    const allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    const allPacts = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     const pact = pacts[ pacts.length - 1];
@@ -990,8 +1022,12 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 
     console.log( "Check newly situated issue", loc.projName, loc.colName );
 
+    // Start promises
+    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    
     // CHECK dynamo Peq
-    let allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let allPeqs =  await peqsP;
     let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
@@ -1011,7 +1047,7 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     // CHECK dynamo Pact
     // label carded issue?  1 pact.  attach labeled issue to proj col?  2 pact.
     // Could be any number.  add (unclaimed).  change (assign) x n.  relocate (peqify)
-    let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let allPacts = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );         
     

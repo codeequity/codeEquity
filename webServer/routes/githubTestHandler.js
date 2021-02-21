@@ -4,8 +4,6 @@ var utils = require('../utils');
 
 async function handler( ghLinks, ceJobs, reqBody, res ) {
 
-    console.log( "Test Handler" );
-
     assert( reqBody.hasOwnProperty( "Request" ) );
 
     let retVal = -1;
@@ -17,7 +15,7 @@ async function handler( ghLinks, ceJobs, reqBody, res ) {
     }
     else if( reqBody.Request == "purgeJobs" ) {
 	// NOTE, this removes ALL pending jobs for FullName, including user, server and tester jobs.
-	utils.purgeQueue( ceJobs, reqBody.FullName );
+	utils.purgeQueue( ceJobs );
     }
 	
     return res

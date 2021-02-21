@@ -21,6 +21,7 @@ var ghSafe = ghUtils.githubSafe;
 
 async function deleteIssue( authData, ghLinks, pd ) {
 
+    let tstart = Date.now();
     // Either not carded, or delete card already fired successfully.  No-op.
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
     if( links == -1 ) return;
@@ -38,13 +39,18 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	// the entire issue has been given to us here.  Recreate it.
 	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.", pd.GHIssueNum );
 	
-	const peq = await utils.getPeq( authData, link.GHIssueId );
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
-	const card      = await gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );  
-	console.log( authData.who, "created card from new issue" );
-	
-	await ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
+
+	// Promises
+	console.log( authData.who, "creating card from new issue" );
+	let peq  = utils.getPeq( authData, link.GHIssueId );
+	let card = gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );
+
+	// Don't wait - closing the issue at GH, no dependence
+	ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
+
+	card = await card;
 	link = ghLinks.rebuildLinkage( authData, link, issueData, card.id );
 	link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	link.GHProjectName = config.UNCLAIMED;
@@ -53,6 +59,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	console.log( authData.who, "rebuilt link" );
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
+	peq = await peq;
 	const newPeqId = await utils.rebuildPeq( authData, link, peq );
 	
 	utils.removePEQ( authData, peq.PEQId );	
@@ -63,6 +70,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 			       "confirm", "add", [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }
+    console.log( "Delete", Date.now() - tstart );
 }
 
 
@@ -75,7 +83,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
-    console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
+    // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
+    console.log( authData.who, "start", authData.job );
     
     // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
 
@@ -108,7 +117,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
 	    if( pd.peqValue <= 0 && curVal > 0 ) {
 		console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
-		await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
+		// Don't wait, no dependence
+		ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
 		return;
 	    }
 	    
@@ -148,7 +158,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let content = [];
 	    content.push( pd.GHIssueTitle );
 	    content.push( pd.reqBody.label.description );
-	    let retVal = await utils.processNewPEQ( authData, ghLinks, pd, content, link );
+	    // Don't wait, no dependence
+	    utils.processNewPEQ( authData, ghLinks, pd, content, link );
 	}
 	break;
     case 'unlabeled':
@@ -168,14 +179,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 		
-	    /* // working, but not needed.  No label, action was delete.
-	    const exists = ghSafe.checkLabelExistsGQL( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.label.node_id );  
-	    if( !exists ) {
-		console.log( authData.who, "Label was deleted.  Stop, let labelHandler address this." );
-		return;
-	    }
-	    */
-	    
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
@@ -212,7 +215,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	
 	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
-	await deleteIssue( authData, ghLinks, pd );
+	// Wait or not here, no difference.  ceJobs holds things in place.
+	deleteIssue( authData, ghLinks, pd );
 	break;
     case 'closed':
     case 'reopened':
@@ -237,6 +241,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	    }
 	    else {
+		// Must wait.  Move card can fail if, say, no assignees
 		let success = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( success ) {
 		    console.log( authData.who, "Find & validate PEQ" );

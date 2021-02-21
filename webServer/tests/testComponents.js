@@ -186,15 +186,17 @@ async function testLabel( authData, ghLinks, td ) {
 	await tu.remLabel( authData, td, issueData[1], label );
 	await utils.sleep( 1000 );
 	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
-	tu.testReport( testStatus, "A" );
+	tu.testReport( testStatus, "Label 2" );
 	
 	// 3. move to accr (untracked), watch it bounce back
-	await tu.moveCard( authData, card.id, td.dsAccrID );        
+	await tu.moveCard( authData, card.id, td.dsAccrID );
+	await utils.sleep( tu.GH_DELAY );
 	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 3" );
 	
 	// 4. move to pend, bounce
 	await tu.moveCard( authData, card.id, td.dsPendID );
+	await utils.sleep( tu.GH_DELAY );
 	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 4" );
 	
@@ -251,7 +253,7 @@ async function testLabel( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label Dub 3" );	
 
 	console.log( "Double-labels done." );
-	await utils.sleep( 10000 );
+	await utils.sleep( 5000 );
 
 
 	console.log( "\nTest label/unlabel in flat projects structure" );
@@ -341,7 +343,7 @@ async function testAssignment( authData, ghLinks, td ) {
     await tu.addLabel( authData, td, assData[1], newLabel.name );
 
     let assCard  = await tu.makeProjectCard( authData, td.dsPlanID, assData[0] );
-    await utils.sleep( 4000 );
+    await utils.sleep( 2000 );
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, assPlan, assData, assCard, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "A" ); }
@@ -740,7 +742,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	const pendCard   = await tu.makeProjectCard( authData, ghoPend.colId, issDatPend[0] );
 	const accrCard   = await tu.makeProjectCard( authData, ghoAccr.colId, issDatAccr[0] );
 
-	await utils.sleep( 4000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPend, issDatPend, pendCard, testStatus );
@@ -788,7 +790,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await tu.moveCard( authData, aghoCard1.id, ghoAccr.colId );
 	await tu.moveCard( authData, aghoCard2.id, ghoAccr.colId );
 
-	await utils.sleep( 2000 );
+	await utils.sleep( 1000 );
 	// Often unneeded, but useful if doing this as a one-off test
 	await tu.refreshUnclaimed( authData, td );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho1, aghoCard1, testStatus );
@@ -800,7 +802,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await tu.remCard( authData, aghoCard1.id );
 	await tu.remIssue( authData, td, issDatAgho2[0] );
 
-	await utils.sleep( 4000 );
+	await utils.sleep( 2000 );
 
 	// get newly created issue, cards.   card only for remCard, issue and card for remIssue
 	const uncAccr = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.PROJ_COLS[config.PROJ_ACCR] );
@@ -1175,6 +1177,7 @@ async function testAlloc( authData, ghLinks, td ) {
 	
 	// Mod label1m, fail and create
 	await tu.updateLabel( authData, td, label1m, {name: "2000 AllocPEQ" });
+	await utils.sleep( 1000 );  // gh 
 	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, label1m.name );
 	let lOrig = labelRes.label;
 	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "2000 AllocPEQ" );
@@ -1271,35 +1274,35 @@ async function runTests( authData, ghLinks, td ) {
 
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     
     let t2 = await testLabel( authData, ghLinks, td ); 
     console.log( "\n\nLabel test complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
 
     let t3 = await testLabelCarded( authData, ghLinks, td );
     console.log( "\n\nLabel Carded complete." );
-    await utils.sleep( 10000 );
-
+    await utils.sleep( 5000 );
+    
     let t4 = await testCloseReopen( authData, ghLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
 
     let t5 = await testCreateDelete( authData, ghLinks, td );
     console.log( "\n\nCreate / Delete complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     
     let t6 = await testLabelMods( authData, ghLinks, td );
     console.log( "\n\nLabel mods complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
-    await utils.sleep( 10000 );
+    await utils.sleep( 5000 );
     
     let t8 = await testAlloc( authData, ghLinks, td );
     console.log( "\n\nAlloc complete." );
-    // await utils.sleep( 10000 );
+    // await utils.sleep( 5000 );
 
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );

@@ -59,7 +59,6 @@ function getCEServer() {
 
 // XXX Gimme a fname
 async function getRemotePackageJSONObject(owner, repo, installationAccessToken) {
-    // const installationClient = await auth.getInstallationClient(installationAccessToken);
     const installationClient = await auth.getInstallationClient(owner, repo);
     const fileData = await installationClient.repos.getContents({
 	owner,
@@ -79,9 +78,7 @@ async function postGH( PAT, url, postData ) {
     };
 
     return fetch( url, params )
-	.then((res) => {
-	    return res.json();
-	})
+	.then(res => res.json())
 	.catch(err => console.log(err));
 }
 
@@ -98,7 +95,6 @@ async function postCE( shortName, postData ) {
     };
 
     let ret = await fetch( ceServerTestingURL, params )
-	.then ((res) => res )
 	.catch( err => console.log( err ));
 
     if( ret['status'] == 201 ) { 
@@ -122,9 +118,6 @@ async function postIt( authData, shortName, postData ) {
     };
 
     return fetch( authData.api, params )
-	.then((res) => {
-	    return res;
-	})
 	.catch(err => console.log(err));
 };
 
@@ -226,7 +219,7 @@ async function getProjectSubs( authData, ghLinks, repoName, projName, colName ) 
 	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
     }
 	    
-    console.log( "... returning", projSub.toString() );
+    // console.log( "... returning", projSub.toString() );
     return projSub;
 }
 
@@ -372,7 +365,9 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.GHIssueTitle = pd.GHIssueTitle;          // gh issue title
     postData.Active       = "true";
 
-    newPEQId = await recordPEQ(	authData, postData );
+    // Don't wait if already have Id
+    if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
+    else                 { recordPEQ( authData, postData ); }
     assert( newPEQId != -1 );
     
     let action = "add";
@@ -391,9 +386,6 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 }
 
 function rebuildLinkage( authData, ghLinks, link, issueData, newCardId, newTitle ) {
-
-    let tstart = Date.now();
-    
     // no need to wait for the deletion
     ghLinks.removeLinkage({ "authData": authData, "issueId": link.GHIssueId, "cardId": link.GHCardId });
 
@@ -402,9 +394,6 @@ function rebuildLinkage( authData, ghLinks, link, issueData, newCardId, newTitle
 
     ghLinks.addLinkage( authData, link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
 			link.GHColumnId, link.GHColumnName, newCardId, newTitle )
-    
-    
-    console.log( "millis", Date.now() - tstart );    
 }
 
 // The only critical component here for interleaving is getting the ID.
@@ -419,7 +408,6 @@ async function changeReportPeqVal( authData, pd, peqVal ) {
 		     getToday(), pd.reqBody );
 }
 
-
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
@@ -428,13 +416,12 @@ async function changeReportPeqVal( authData, pd, peqVal ) {
 //  1: add another project card to situated issue
 async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
-    console.log( authData.who, "resolve" );
 
     // on first call from populate, list may be large.  Afterwards, max 2.
-    if( pd.GHIssueId == -1 )              { console.log("Resolve: early return" ); return gotSplit; }
+    if( pd.GHIssueId == -1 )              { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
 
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
-    if( links == -1 || links.length < 2 ) { console.log("Resolve: early return" ); return gotSplit; }
+    if( links == -1 || links.length < 2 ) { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
     gotSplit = true;
 
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
@@ -455,6 +442,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     // Can get here with blank slate from Populate, in which case no peq label to split.
     // Can get here with peq issue that just added new card, so will have peq label to split.
     // If peq label exists, recast it.  There can only be 0 or 1.
+    // Note: could make array of promises, but very low impact - rarely (never?) see more than 1 peq label
     let idx = 0;
     let newLabel = "";
     for( label of issue.labels ) {
@@ -474,7 +462,8 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    pd.peqValue = peqVal;
 
 	    await ghSafe.rebuildLabel( authData, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
-	    await changeReportPeqVal( authData, pd, peqVal );
+	    // Don't wait
+	    changeReportPeqVal( authData, pd, peqVal );
 	    break;
 	}
 	idx += 1;
@@ -531,7 +520,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     if( pd.GHIssueNum == -1 ) { pd.peqValue = ghSafe.parsePEQ( issueCardContent, allocation ); }
     else                      { pd.peqValue = ghSafe.parseLabelDescr( issueCardContent ); }
 
-    assert( await checkPopulated( authData, pd.GHFullName ) != -1 );
+    // Don't wait
+    checkPopulated( authData, pd.GHFullName ).then( res => assert( res != -1 ));
     
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; } 
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
@@ -576,7 +566,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     }
     else {
 	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
-	let peqLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
+	// Wait later, maybe
+	let peqLabel = gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
 	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
 
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
@@ -588,7 +579,9 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 
 	    // If already exists, will be in links.  Do not destroy it
 	    if( links == -1 ) {
-		await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
+		// Don't wait
+		peqLabel = await peqLabel;
+		ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
 		// chances are, an unclaimed PEQ exists.  deactivate it.
 		if( pd.GHIssueId != -1 ) {
 		    const daPEQ = await getPeq( authData, pd.GHIssueId );
@@ -608,6 +601,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	    pd.GHIssueTitle = issueCardContent[0];
 	    
 	    // create new issue, rebuild card
+	    peqLabel = await peqLabel; // peqHumanLabelName dep
 	    let issueData = await ghSafe.createIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
 	    let newCardId = await gh.rebuildCard( authData, pd.GHOwner, pd.GHRepo, pd.GHColumnId, origCardId, issueData );
 
@@ -636,8 +630,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( !gotSplit && pd.peqType != "end" ) {
 	pd.projSub = await getProjectSubs( authData, ghLinks, pd.GHFullName, projName, colName );
-	// Need to wait here - occasionally rapid fire testing creates a card before peq is finished recording
-	await recordPeqData( authData, pd, true, specials );
+	recordPeqData( authData, pd, true, specials );
     }
 }
 
@@ -739,18 +732,27 @@ function makeJobData( jid, handler, sender, reqBody, tag, delayCount ) {
     return jobData;
 }
 
+function summarizeQueue( ceJobs, msg, limit ) {
+    console.log( msg, " Depth", ceJobs.jobs.length, "Max depth", ceJobs.maxDepth, "Count:", ceJobs.count, "Demotions:", ceJobs.delay);
+    const jobs = ceJobs.jobs.getAll();
+    limit = ceJobs.jobs.length < limit ? ceJobs.jobs.length : limit;
+    for( let i = 0; i < limit; i++ ) {
+	console.log( "   ", jobs[i].GHOwner, jobs[i].GHRepo, jobs[i].QueueId, jobs[i].Handler, jobs[i].Action, jobs[i].Tag, jobs[i].Stamp, jobs[i].DelayCount );
+    }
+}
+
 // Do not remove top, that is getNextJob's sole perogative
 // add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
 async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     console.log( "Demoting", jobId, delayCount );
     const newJob   = makeJobData( jobId, event, sender, pd.reqBody, tag, delayCount+1 );
-    const fullName = pd.reqBody['repository']['full_name'];
 
     assert( delayCount < 5 );
+    ceJobs.delay++;
     
     // get splice index
     let spliceIndex = 1;
-    let jobs = ceJobs[fullName][sender].getAll();
+    let jobs = ceJobs.jobs.getAll();
     
     // If nothing else is here yet, delay
     if( jobs.length <= 1 ) { console.log( "... empty queue, sleep" );  await sleep( 300 ); }
@@ -765,61 +767,43 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     console.log( "Got splice index of", spliceIndex );
     jobs.splice( spliceIndex, 0, newJob );
 
-    console.log( "\nceJobs, after demotion" );
-    for( const job of ceJobs[fullName][sender].getAll() ) {
-	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag, job.Stamp, job.DelayCount );
-    }
+    summarizeQueue( ceJobs, "\nceJobs, after demotion", 3 );
 }
 
 // XXX seems to belong elsewhere
 // Put the job.  Then return first on queue.  Do NOT delete first.
 function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
-    // XXX handle aws, sam
     const jobData = makeJobData( jid, handler, sender, reqBody, tag, 0 );
 
-    // Get or create fifoQ
-    let fullName = reqBody['repository']['full_name'];
-    if( !ceJobs.hasOwnProperty( fullName ) )         { ceJobs[fullName] = {}; }
-    if( !ceJobs[fullName].hasOwnProperty( sender ) ) { ceJobs[fullName][sender] = new fifoQ.Queue(); }
-    
-    ceJobs[fullName][sender].push( jobData );
+    ceJobs.jobs.push( jobData );
 
-    console.log( "\n[" + fullName + "] ceJobs, after push" );
-    for( const job of ceJobs[fullName][sender].getAll() ) {
-	console.log( job.QueueId, job.GHRepo, job.Handler, job.Action, job.Tag, job.Stamp, job.DelayCount );
-    }
+    if( ceJobs.jobs.length > ceJobs.maxDepth ) { ceJobs.maxDepth = ceJobs.jobs.length; }
+    ceJobs.count++;
+
+    summarizeQueue( ceJobs, "\nceJobs, after push", 3 );
     
-    return ceJobs[fullName][sender].first;
+    return ceJobs.jobs.first;
 }
 
-function purgeQueue( ceJobs, fullName ) {
+function purgeQueue( ceJobs ) {
 
-    console.log( "Purging ceJobs for", fullName );
+    console.log( "Purging ceJobs" )
+    ceJobs.count = 0;
+    ceJobs.delay = 0;
 
     // XXX  Note, this should not be necessary.
-    console.log( ceJobs );
-    
-    if( ceJobs.hasOwnProperty( fullName ) ) {
-	for( let [sender, jobQ] of Object.entries( ceJobs[fullName] ) ) {
-	    console.log( "jobQ for", sender );
-	    for( const job of jobQ.getAll() ) {
-		console.log( job.QueueId, job.GHOwner, job.GHRepo, job.Action, job.Tag );
-	    }
-	    jobQ.purge();
-	}
+    if( ceJobs.jobs.length > 0 ) { 
+	summarizeQueue( ceJobs, "Error.  Should not be jobs to purge.", 200 );
+	ceJobs.jobs.purge();
     }
 }
 
 
 // Remove top of queue, get next top.
-async function getFromQueue( ceJobs, authData, fullName, sender ) {
-    // console.log("Get from q at start", ceJobs[fullName][sender] );
-
-    assert( ceJobs.hasOwnProperty( fullName ) );
-    assert( ceJobs[fullName].hasOwnProperty( sender ) );
+async function getFromQueue( ceJobs ) {
     
-    ceJobs[fullName][sender].shift();
-    return ceJobs[fullName][sender].first;
+    ceJobs.jobs.shift();
+    return ceJobs.jobs.first;
 }
 
 

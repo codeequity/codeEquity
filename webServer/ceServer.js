@@ -7,7 +7,20 @@ var cookieParser = require('cookie-parser');
 
 var ceServer = express();
 
-ceServer.use(logger('dev'));
+process.on('SIGTERM', () => {
+    console.log('Closed out remaining connections');
+    // server.close();
+    process.exit(0);
+});
+
+// ctrl-c
+process.on('SIGINT', () => {
+    console.log('Closed out remaining connections');
+    // server.close();
+    process.exit(0);
+});
+
+ceServer.use(logger('combined', { skip: function (req, res) { return res.statusCode < 400 }}));
 ceServer.use(express.json());
 //ceServer.use(bodyParser.json());
 ceServer.use(express.urlencoded({ extended: false }));
@@ -23,7 +36,7 @@ ceServer.use('/archive/github/card', githubRouter);
 ceServer.use('/github/testing', githubRouter);
 
 // XXX ??
-ceServer.use('/archive/github/merge', githubRouter);
+// ceServer.use('/archive/github/merge', githubRouter);
 
 // XXX in use? 
 var flutterRouter      = require('./routes/flutterRouter');
