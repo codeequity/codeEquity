@@ -408,7 +408,6 @@ async function changeReportPeqVal( authData, pd, peqVal ) {
 		     getToday(), pd.reqBody );
 }
 
-// XXX here
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
@@ -443,6 +442,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     // Can get here with blank slate from Populate, in which case no peq label to split.
     // Can get here with peq issue that just added new card, so will have peq label to split.
     // If peq label exists, recast it.  There can only be 0 or 1.
+    // Note: could make array of promises, but very low impact - rarely (never?) see more than 1 peq label
     let idx = 0;
     let newLabel = "";
     for( label of issue.labels ) {
@@ -462,7 +462,8 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    pd.peqValue = peqVal;
 
 	    await ghSafe.rebuildLabel( authData, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
-	    await changeReportPeqVal( authData, pd, peqVal );
+	    // Don't wait
+	    changeReportPeqVal( authData, pd, peqVal );
 	    break;
 	}
 	idx += 1;
@@ -519,7 +520,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     if( pd.GHIssueNum == -1 ) { pd.peqValue = ghSafe.parsePEQ( issueCardContent, allocation ); }
     else                      { pd.peqValue = ghSafe.parseLabelDescr( issueCardContent ); }
 
-    assert( await checkPopulated( authData, pd.GHFullName ) != -1 );
+    // Don't wait
+    checkPopulated( authData, pd.GHFullName ).then( res => assert( res != -1 ));
     
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; } 
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
@@ -564,7 +566,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     }
     else {
 	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
-	let peqLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
+	// Wait later, maybe
+	let peqLabel = gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
 	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
 
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
@@ -576,7 +579,9 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 
 	    // If already exists, will be in links.  Do not destroy it
 	    if( links == -1 ) {
-		await ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
+		// Don't wait
+		peqLabel = await peqLabel;
+		ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
 		// chances are, an unclaimed PEQ exists.  deactivate it.
 		if( pd.GHIssueId != -1 ) {
 		    const daPEQ = await getPeq( authData, pd.GHIssueId );
@@ -596,6 +601,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	    pd.GHIssueTitle = issueCardContent[0];
 	    
 	    // create new issue, rebuild card
+	    peqLabel = await peqLabel; // peqHumanLabelName dep
 	    let issueData = await ghSafe.createIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
 	    let newCardId = await gh.rebuildCard( authData, pd.GHOwner, pd.GHRepo, pd.GHColumnId, origCardId, issueData );
 
@@ -624,8 +630,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( !gotSplit && pd.peqType != "end" ) {
 	pd.projSub = await getProjectSubs( authData, ghLinks, pd.GHFullName, projName, colName );
-	// Need to wait here - occasionally rapid fire testing creates a card before peq is finished recording
-	await recordPeqData( authData, pd, true, specials );
+	recordPeqData( authData, pd, true, specials );
     }
 }
 

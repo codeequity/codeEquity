@@ -199,7 +199,7 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
     const uncLocM = await tu.getFlatLoc( authDataM, uncProj.id, config.UNCLAIMED, config.UNCLAIMED );
 
     // Let CE completely finish before testing... mainly finishing cards.
-    await utils.sleep( 6000 );  
+    await utils.sleep( 3000 );  
     let allCards  = await tu.getCards( authData,  uncLoc.colId );
     let allCardsM = await tu.getCards( authDataM, uncLocM.colId );
 

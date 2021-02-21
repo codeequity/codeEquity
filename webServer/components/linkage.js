@@ -19,23 +19,28 @@ class Linkage {
 
 
     async initOneRepo( authData, fn ) {
-	let peqs = await utils.getPeqs( authData, { "GHRepo": fn } );
-	if( peqs == -1 ) { peqs = []; }
 	
+	console.log( ".. working on", fn );
+
+	// Wait later
+	let peqs = utils.getPeqs( authData, { "GHRepo": fn } );
+
 	let fnParts = fn.split('/');
 	
 	let baseLinks = [];
-	await gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
+	let blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
 	    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
 
 	let locData = [];
-	await gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
+	let ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
 	    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
 
+	ldPromise = await ldPromise;  // no val here, just ensures locData is set
 	for( const loc of locData ) {
 	    this.addLoc( authData, fn, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId );
 	}
-	
+
+	blPromise = await blPromise;  // no val here, just ensures locData is set
 	this.populateLinkage( authData, fn, baseLinks );
 
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
@@ -43,6 +48,8 @@ class Linkage {
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
 	let badPeq = false;
 	let badSource = false;
+	peqs = await peqs;
+	if( peqs == -1 ) { peqs = []; }
 	for( const peq of peqs ) {
 	    if( peq.Active == "false" ) {
 		// console.log( authData.who, "Skipping inactive peq", peq.GHIssueTitle );
@@ -88,13 +95,13 @@ class Linkage {
 
 	let fullNames = await utils.getRepoStatus( authData, -1 );   // get all repos
 	if( fullNames == -1 ) { return; }
+	let promises = [];
 	for( const entry of fullNames ) {
 	    let fn = entry.GHRepo;
-	    console.log( ".. working on", fn );
-	    await this.initOneRepo( authData, fn )
-		.catch( e => console.log( "Error.  Init Linkage failed.", e ));
+	    promises.push( this.initOneRepo( authData, fn )
+			   .catch( e => console.log( "Error.  Init Linkage failed.", e )) );
 	}
-	// console.log( this.links );
+	await Promise.all( promises );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
 	this.show();
 	this.showLocs();

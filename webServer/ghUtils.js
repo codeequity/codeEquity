@@ -796,7 +796,7 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
 async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
-    assert( !utils.checkPopulated( authData, pd.GHFullName ) != -1);
+    utils.checkPopulated( authData, pd.GHFullName ).then( res => assert( !res ) );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
     let linkage = await ghLinks.initOneRepo( authData, pd.GHFullName );
