@@ -1,6 +1,11 @@
 const { App }     = require("@octokit/app");
 const { Octokit } = require("@octokit/rest");
 const { request } = require("@octokit/request");
+const { retry } = require("@octokit/plugin-retry");
+
+// Hmm.. this is looking very slow.  too bad.
+const OctokitRetry = Octokit.plugin(retry);
+
 
 const fetch = require("node-fetch");
 const dotenv = require("dotenv");
@@ -33,6 +38,7 @@ async function getInstallationAccessToken(owner, repo, app, jwt) {
 
 function getInstallationClientFromToken(installationAccessToken) {
     return new Octokit({ auth: `token ${installationAccessToken}` });
+    //return new OctokitRetry({ auth: `token ${installationAccessToken}` });
 }
 
 async function getInstallationClient(owner, repo, source) {

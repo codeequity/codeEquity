@@ -11,6 +11,7 @@ const auth = require( "./auth");
 var config  = require('./config');
 var utils = require('./utils');
 
+var handlerRetries;
 
 var githubSafe = {
     getAllocated: function( cardContent ) {
@@ -79,10 +80,6 @@ var githubSafe = {
 
     rebuildLabel: function( authData, owner, repo, issueNum, oldLabel, newLabel ) {
 	return rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel );
-    },
-
-    splitIssue: function( authData, owner, repo, issue, splitTag ) {
-	return splitIssue( authData, owner, repo, issue, splitTag );
     },
 
     rebuildIssue: function( authData, owner, repo, issue, msg ) {
@@ -221,6 +218,34 @@ var githubUtils = {
 };
 
 
+// XXX add random backoff delay - but need to delay entire chain.  
+async function errorHandler( source, e, func, ..params ) {
+    console.log( authData.who, "Problem in", source, e );
+    if( e.status == 401 ||       // XXX authorization
+	e.status == 500 ||       // internal server error, wait and retry
+	e.status == 502 )        // server error, please retry       
+    {
+
+	// manage retries
+	if( !handlerRetries.hasOwnProperty( source ) )       { handlerRetries[source] = {} }
+	
+	if( !handlerRetries[source].hasOwnProperty( stamp )) { handlerRetries[source].stamp = Date.now(); }
+	if( !handlerRetries[source].hasOwnProperty( count )) { handlerRetries[source].count = 0; }
+
+	if( Date.now() - handlerRetries[source].stamp > 5000 ) { handlerRetries[source].count = 0; }
+	
+	if( handlerRetries[source].count <= 4 ) {
+	    console.log( "Retrying", source, handlerRetries[source].count );
+	    handlerRetries[source].count++;
+	    handlerRetries[source].stamp = Date.now();	    
+	    return await func( ...params );
+	}
+	else { console.log( "Error.  Retries exhausted, command failed.  Please try again later." ); }
+    }
+}
+
+
+
 async function checkRateLimit( authData ) {
 
     // console.log( "Rate limit check currently off" );
@@ -233,7 +258,7 @@ async function checkRateLimit( authData ) {
 	    console.log( "Graphql:", rl['data']['resources']['graphql']['limit'], rl['data']['resources']['graphql']['remaining'] );
 	    console.log( "Integration:", rl['data']['resources']['integration_manifest']['limit'], rl['data']['resources']['integration_manifest']['remaining'] );
 	})
-	.catch( e => { console.log( authData.who, "Problem in check Rate Limit", e );   });
+	.catch( e => errorHandler( "checkRateLimit", e, checkRateLimit, authData ) );
 }
 
 // XXX paginate
@@ -242,7 +267,7 @@ async function checkIssueExists( authData, owner, repo, title )
     let retVal = false;
 
     // Issue with same title may already exist, in which case, check for label, then point to that issue.
-    await( authData.ic.issues.listForRepo( { owner: owner, repo: repo }))
+    await authData.ic.issues.listForRepo( { owner: owner, repo: repo })
 	.then( issues => {
 	    for( issue of issues['data'] ) {
 		if( issue['title'] == title ) {
@@ -251,9 +276,7 @@ async function checkIssueExists( authData, owner, repo, title )
 		}
 	    }
 	})
-	.catch( e => {
-	    console.log( authData.who, "Problem in checkIssueExists", e );
-	});
+	.catch( e => retVal = errorHandler( "checkIssueExists", e, checkIssueExists, authData, owner, repo, title));
     return retVal;
 }
 
@@ -275,11 +298,12 @@ async function getAssignees( authData, owner, repo, issueNum )
 		}
 	    }
 	})
-	.catch( e => console.log( authData.who, "Problem in getAssignees", e ));
+	.catch( e => retVal = errorHandler( "getAssignees", e, getAssignees, authData, owner, repo, issueNum));
     return retVal;
 }
 
 
+// XXX handler
 async function checkExistsGQL( authData, nodeId, nodeType ) {
 
     let issue    = nodeType !== 'undefined' && nodeType.hasOwnProperty( "issue" )   ? nodeType.issue  : false;
@@ -309,12 +333,13 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
 }
 
 
+// XXX handler
 // Depending on timing, GH will return status 410 (correct) or 404 (too bad) if issue is deleted first
 async function checkIssue( authData, owner, repo, issueNum ) {
     
     let issue = -1;
     // Wait.  Without additional wait, timing with multiple deletes is too tight.  Can still fail on transfers..
-    await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
+    await authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum })
 	.then( iss => issue = iss.data )
 	.catch( e => {
 	    if     ( e.status == 410 ) { console.log( authData.who, "Issue", issueNum, "already gone" ); }
@@ -352,8 +377,8 @@ async function getFullIssue( authData, owner, repo, issueNum )
     let retIssue = "";
 
     await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
-	.then( issue => { retIssue = issue['data']; })
-	.catch( e => { console.log( authData.who, "Problem in getIssueContent", e ); });
+	.then( issue =>  retIssue = issue['data'] )
+	.catch( e => retIssue = errorHandler( "getFullIssue", e, getFullIssue, authData, owner, repo, issueNum ));
     
     return retIssue;
 }
@@ -364,8 +389,9 @@ async function getCard( authData, cardId ) {
     if( cardId == -1 ) { return retCard; }
     
     await( authData.ic.projects.getCard( { card_id: cardId } ))
-	.then((card) => {  retCard = card.data; } )
-	.catch( e => { console.log( authData.who, "Get card failed.", e ); });
+	.then(card => retCard = card.data )
+	.catch( e => retCard = errorHandler( "getCard", e, getCard, authData, cardId ));
+
     return retCard;
 }
 
@@ -379,12 +405,13 @@ function getColumns( authData, ghLinks, fullName, projId ) {
     return cols;
 }
 
-
-async function splitIssue( authData, owner, repo, issue, splitTag ) {
-    console.log( "Split issue" );
+async function rebuildIssue( authData, owner, repo, issue, msg, splitTag ) { 
+    console.log( authData.who, "Rebuild issue" );
     let issueData = [-1,-1];  // issue id, num
-    let title = issue.title + " split: " + splitTag;
-    
+    let title = issue.title;
+    if( typeof splitTag !== 'undefined' ) { title = title + " split: " + splitTag; }
+
+    let success = false;
     await( authData.ic.issues.create( {
 	owner:     owner,
 	repo:      repo,
@@ -397,44 +424,21 @@ async function splitIssue( authData, owner, repo, issue, splitTag ) {
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
+	    success = true;
 	})
-	.catch( e => {
-	    console.log( authData.who, "Create issue failed.", e );
-	});
+	.catch( e => issueData = errorHandler( "rebuildIssue", e, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
 
-    let comment = "CodeEquity duplicated this new issue from issue id:" + issue.id.toString() + " on " + utils.getToday().toString();
-    comment += " in order to maintain a 1:1 mapping between issues and cards."
-
-    // Don't wait.
-    addComment( authData, owner, repo, issueData[1], comment );
-    return issueData;
-}
-
-async function rebuildIssue( authData, owner, repo, issue, msg ) {
-    console.log( authData.who, "Rebuilding issue" );
-    let issueData = [-1,-1];  // issue id, num
-
-    await authData.ic.issues.create( {
-	owner:     owner,
-	repo:      repo,
-	title:     issue.title,
-	body:      issue.body,
-	milestone: issue.milestone,
-	labels:    issue.labels,
-	assignees: issue.assignees.map( person => person.login )
-    })
-	.then( issue => {
-	    issueData[0] = issue['data']['id'];
-	    issueData[1] = issue['data']['number'];
-	})
-	.catch( e => console.log( authData.who, "Error.  Create issue failed.", e ));
-
-    let comment = utils.getToday().toString() + ": " + msg;
-
-    // Don't wait.
-    authData.ic.issues.createComment( { owner: owner, repo: repo, issue_number: issueData[1], body: comment } )
-	.catch( e =>  console.log( authData.who, "Error.  Create issue comment failed.", e ));
-    
+    if( success ) {
+	let comment = "";
+	if( typeof splitTag !== 'undefined' ) {
+	    comment = "CodeEquity duplicated this new issue from issue id:" + issue.id.toString() + " on " + utils.getToday().toString();
+	    comment += " in order to maintain a 1:1 mapping between issues and cards."
+	}
+	else { comment = utils.getToday().toString() + ": " + msg; }
+	    
+	// Don't wait.
+	addComment( authData, owner, repo, issueData[1], comment );
+    }
     return issueData;
 }
 
@@ -442,46 +446,43 @@ async function updateIssue( authData, owner, repo, issueNum, newState ) {
     let retVal = false;
     if( issueNum == -1 ) { return retVal; }
 
-    await( authData.ic.issues.update( { owner: owner, repo: repo, issue_number: issueNum, state: newState }))
-	.then( update => {
-	    console.log( authData.who, "updateIssue done" );
-	    retVal = true;
-	})
-	.catch( e => {
-	    console.log( authData.who, "Problem in updateIssue", e );
-	});
+    await authData.ic.issues.update( { owner: owner, repo: repo, issue_number: issueNum, state: newState })
+	.then( update => retVal = true )
+	.catch( e => retVal = errorHandler( "updateIssue", e, updateIssue, authData, owner, repo, issueNum, newState ));
+
+    if( retVal ) { console.log( authData.who, "updateIssue done" ); }
     return retVal;
 }
 
 async function updateColumn( authData, colId, newName ) {
     await authData.ic.projects.updateColumn({ column_id: colId, name: newName })
-	.catch( e => console.log( authData.who, "Update column failed.", e ));
+	.catch( e => errorHandler( "updateColumn", e, updateColumn, authData, colId, newName ));
 }
 
 async function updateProject( authData, projId, newName ) {
     await authData.ic.projects.update({ project_id: projId, name: newName })
-	.catch( e => console.log( authData.who, "Update project failed.", e ));
+	.catch( e => errorHandler( "updateProject", e, updateProject, authData, projId, newName ));
 }
 
 async function addAssignee( authData, owner, repo, issueNumber, assignee ) {
     await authData.ic.issues.addAssignees({ owner: owner, repo: repo, issue_number: issueNumber, assignees: [assignee] })
-	.catch( e => { console.log( authData.who, "Add assignee failed.", e ); });
+	.catch( e => errorHandler( "addAssignee", e, addAssignee, authData, owner, repo, issueNumber, assignee ));
 }
 
 async function remAssignee( authData, owner, repo, issueNumber, assignee ) {
     await authData.ic.issues.removeAssignees({ owner: owner, repo: repo, issue_number: issueNumber, assignees: [assignee] })
-	.catch( e => { console.log( authData.who, "Remove assignee failed.", e ); });
+	.catch( e => errorHandler( "remAssignee", e, remAssignee, authData, owner, repo, issueNumber, assignee ));
 }
 
 async function updateLabel( authData, owner, repo, name, newName, desc, color ) {
     let lColor = typeof color !== 'undefined' ? color : false;
     if( lColor ) {
 	await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc, color: lColor }))
-	    .catch( e => console.log( authData.who, "Update label failed.", e ));
+	    .catch( e => errorHandler( "updateLabel", e, updateLabel, authData, owner, repo, name, newName, desc, color ));
     }
     else {
 	await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc }))
-	    .catch( e => console.log( authData.who, "Update label failed.", e ));
+	    .catch( e => errorHandler( "updateLabel", e, updateLabel, authData, owner, repo, name, newName, desc, color ));
     }
 }
 
@@ -489,7 +490,7 @@ async function createLabel( authData, owner, repo, name, color, desc ) {
     let label = {};
     await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: name, color: color, description: desc }))
 	.then( l => label = l['data'] )
-	.catch( e => { console.log( authData.who, "Create label failed.", e ); });
+	.catch( e => label = errorHandler( "createLabel", e, createLabel, authData, owner, repo, name, color, desc ));
     return label;
 }
 
@@ -503,6 +504,7 @@ async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
 }
 
 
+// XXX handler
 async function getLabel( authData, owner, repo, name ) {
     let labelRes = {}
     labelRes.status = 200;
@@ -529,13 +531,13 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
 
 	if( peqHumanLabelName == config.POPULATE ) {
 	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
-		.then( label => { theLabel = label['data']; })
-		.catch( e => { console.log( authData.who, "Create label failed.", e );  });
+		.then( label => theLabel = label['data'] )
+		.catch( e => theLabel = errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, owner, repo, allocation, peqHumanLabelName, peqValue ));
 	}
 	else if( peqValue < 0 ) {
 	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '654321', description: "Oi!" }))
-		.then( label => { theLabel = label['data']; })
-		.catch( e => { console.log( authData.who, "Create label failed.", e );  });
+		.then( label => theLabel = label['data'] )
+		.catch( e => theLabel = errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, owner, repo, allocation, peqHumanLabelName, peqValue ));
 	}
 	else {
 	    theLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue );
@@ -548,8 +550,7 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
 
 
 // New information being pushed into GH - alignment safe.
-async function createIssue( authData, owner, repo, title, labels, allocation )
-{
+async function createIssue( authData, owner, repo, title, labels, allocation ) {
     console.log( authData.who, "Creating issue, from alloc?", allocation );
     let issueData = [-1,-1];  // issue id, num
 
@@ -562,14 +563,12 @@ async function createIssue( authData, owner, repo, title, labels, allocation )
     }
     
     // NOTE: will see several notifications are pending here, like issue:open, issue:labelled
-    await( authData.ic.issues.create( { owner: owner, repo: repo, title: title, labels: labels, body: body } ))
+    await authData.ic.issues.create( { owner: owner, repo: repo, title: title, labels: labels, body: body } )
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
 	})
-	.catch( e => {
-	    console.log( authData.who, "Create issue failed.", e );
-	});
+	.catch( e => issueData = errorHandler( "createIssue", e, createIssue, authData, owner, repo, title, labels, allocation ));
     
     return issueData;
 }
@@ -588,6 +587,7 @@ function populateRequest( labels ) {
     return retVal;
 }
 
+// XXX handler
 // GraphQL to init link table
 // XXX getting open only is probably a mistake.  what if added back?  does this get all?
 async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
@@ -670,6 +670,7 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 }
 
 
+// XXX handler
 // GraphQL to get all columns in repo 
 async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 
@@ -740,6 +741,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
     if( projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
 }
 
+// XXX handler
 // Works, but unused so far
 async function checkLabelExistsGQL( authData, nodeId ) {
     // XXX move these
@@ -770,12 +772,8 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
     let variables = {"issueId": issueId, "repoId": toRepoId };
     query = JSON.stringify({ query, variables });
 
-    const res = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	  .catch( e => console.log( "Error.  GQL transfer issue problem", e ));
-
-    console.log( res );
-  
-    return res;
+    await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "transferIssueGQL", e, transferIssueGQL, authData, issueId, toRepoId ));
 }
 
 
@@ -840,7 +838,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 
 async function removeCard( authData, cardId ) {
     await authData.ic.projects.deleteCard( { card_id: cardId } )
-	.catch( e => console.log( authData.who, "Remove card failed.", e ));
+	.catch( e => errorHandler( "removeCard", e, removeCard, authData, cardId ));
 }
 
 // XXX alignment risk - card info could have moved on
@@ -870,14 +868,15 @@ async function rebuildCard( authData, owner, repo, colId, origCardId, issueData 
 
 async function updateTitle( authData, owner, repo, issueNum, title ) {
     await authData.ic.issues.update({ owner: owner, repo: repo, issue_number: issueNum, title: title  } )
-	.catch( e => console.log( authData.who, "Error.  Update title failed.", e ));
+	.catch( e => errorHandler( "updateTitle", e, updateTitle, authData, owner, repo, issueNum, title ));
 }
 
 async function removeLabel( authData, owner, repo, issueNum, label ) {
     await authData.ic.issues.removeLabel({ owner: owner, repo: repo, issue_number: issueNum, name: label.name  } )
-	.catch( e => { console.log( authData.who, "Remove label from issue failed.", e ); });
+	.catch( e => errorHandler( "removeLabel", e, removeLabel, authData, owner, repo, issueNum, label ));
 }
 
+// XXX handler
 // Note this can fail without being an error if issue is already gone.  'Note' instead of 'Error'
 // This seems to happen more with transfer, since issueDelete appears to be slower, which confuses checkIssue.  Not a real issue.
 async function removePeqLabel( authData, owner, repo, issueNum ) {
@@ -901,12 +900,12 @@ async function removePeqLabel( authData, owner, repo, issueNum ) {
 
 async function addLabel( authData, owner, repo, issueNum, label ) {
     await authData.ic.issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [label.name] })
-	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
+	.catch( e => errorHandler( "addLabel", e, addLabel, authData, owner, repo, issueNum, label ));
 }
 
 async function addComment( authData, owner, repo, issueNum, msg ) {
     await( authData.ic.issues.createComment( { owner: owner, repo: repo, issue_number: issueNum, body: msg } ))
-	.catch( e => console.log( authData.who, "Create issue comment failed.", e ));
+	.catch( e => errorHandler( "addComment", e, addComment, authData, owner, repo, issueNum, msg ));
 }
 
 async function rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel ) {
@@ -916,6 +915,7 @@ async function rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel
 }
 
 
+// XXX handler
 async function createProjectCard( authData, columnId, issueId, justId )
 {
     let newCard = -1;
@@ -929,6 +929,7 @@ async function createProjectCard( authData, columnId, issueId, justId )
 }
 
 
+// XXX handler
 // XXX alignment risk
 // Don't care about state:open/closed.  unclaimed need not be visible.
 async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
@@ -988,17 +989,21 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     assert( link.GHCardId != -1 );
 
     console.log( "Found unclaimed" );
-    // Don't wait - no dep. on GH card
-    authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
-	.catch( e => console.log( "Error.  Card not deleted", e ));
     
+    // Don't wait - no dep. on GH card
+    let success = false;
+    authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
+	.then( r => success = true );
+	.catch( e => errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
+
     // Remove turds, report.  
-    ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId });
+    if( success ) { ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId }); }
 
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
 }
 
 
+// XXX handler
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
 // If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
 // XXX alignment risk
@@ -1142,8 +1147,8 @@ async function findCardInColumn( authData, ghLinks, owner, repo, issueId, colId 
 
 async function moveCard( authData, cardId, colId ) {
     colId = parseInt( colId );
-    return await( authData.ic.projects.moveCard({ card_id: cardId, position: "top", column_id: colId }))
-	.catch( e => { console.log( authData.who, "Move card failed.", e );	});
+    return await authData.ic.projects.moveCard({ card_id: cardId, position: "top", column_id: colId })
+	.catch( e => errorHandler( "moveCard", e, moveCard, authData, cardId, colId ));
 }
 
 

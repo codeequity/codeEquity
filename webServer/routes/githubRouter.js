@@ -49,12 +49,12 @@ console.log( "*** GH Link Data init ***" );
 initGH();
 
 async function initGH() {
-    authData.ic  = -1;                // installation client for octokit    0
-    authData.who = "CE SERVER INIT";  // which event is underway            1
-    authData.api = -1;                // api path for aws                   2
-    authData.cog = -1;                // cognito id token                   3
-    authData.pat = -1;                // personal access token for gh       -
-    authData.job = -1;                // currently active job id            4
+    authData.ic  = -1;                // installation client for octokit
+    authData.who = "CE SERVER INIT";  // which event is underway
+    authData.api = -1;                // api path for aws
+    authData.cog = -1;                // cognito id token
+    authData.pat = -1;                // personal access token for gh
+    authData.job = -1;                // currently active job id
 
     // XXX Generally, PAT will not be testOwner, testRepo.  Need CE-wide
     await initAuth( authData, config.TEST_OWNER, config.TEST_REPO  );
@@ -86,7 +86,9 @@ async function getGHAuths( authData, owner, repo ) {
     if( !octokitClients[owner].hasOwnProperty( repo )) {
 	console.log( authData.who, "get octo", owner, repo );
 	// Wait later
-	octokitClients[owner][repo] = auth.getInstallationClient( owner, repo, config.CE_USER );
+	octokitClients[owner][repo] = {}
+	octokitClients[owner][repo].auth = auth.getInstallationClient( owner, repo, config.CE_USER );
+	octokitClients[owner][repo].last = Date.now();
     }
 
     if( !githubPATs.hasOwnProperty( owner )) {
@@ -94,12 +96,29 @@ async function getGHAuths( authData, owner, repo ) {
 	githubPATs[owner] = auth.getPAT( owner );
     }
 
-    octokitClients[owner][repo] = await octokitClients[owner][repo];
+    
+    octokitClients[owner][repo].auth = await octokitClients[owner][repo].auth;
     githubPATs[owner] = await githubPATs[owner];
-    authData.ic  = octokitClients[owner][repo];
+    authData.ic  = octokitClients[owner][repo].auth;
     authData.pat = githubPATs[owner];
     return;
+}
 
+// Octokit using auth-token ATM, which expires every hour. Refresh as needed.
+// XXX Should switch to app-token with built-in refresh
+// XXX Looks like cognito expires at same rate
+async function refreshAuths( authData, owner, repo ) {
+
+    const stamp = Date.now();
+    if( stamp - octokitClients[owner][repo].last > 3500000 ) {
+	console.log( "********  Old octo auth.. refreshing." );
+	octokitClients[owner][repo].auth = await auth.getInstallationClient( owner, repo, config.CE_USER );
+	octokitClients[owner][repo].last = Date.now();
+	authData.ic  = octokitClients[owner][repo].auth;
+
+	authData.cog = await awsAuth.getCogIDToken();	
+    }
+    return;
 }
 
 
@@ -274,6 +293,7 @@ router.post('/:location?', async function (req, res) {
     authData.job = jobId;
     
     console.log( authData.who, "job Q [" + fullName + "] clean, start-er-up" );
+    await refreshAuths( authData, owner, repo );
     
     let pd          = new peqData.PeqData();
     pd.GHOwner      = owner;

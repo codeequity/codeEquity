@@ -143,8 +143,8 @@ async function wrappedPostIt( authData, shortName, postData ) {
     }
     else {
 	console.log("Unhandled status code:", response['status'] );
-	// let body = await response.json();
-	// console.log(authData.who, "Body:", body);
+	let body = await response.json();
+	console.log(authData.who, shortName, postData, "Body:", body);
 	return -1;
     }
 }
@@ -481,7 +481,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, pd.GHFullName, links[i].GHColumnId );
 	}
 
-	let issueData   = await ghSafe.splitIssue( authData, pd.GHOwner, pd.GHRepo, issue, splitTag );  
+	let issueData   = await ghSafe.splitIssue( authData, pd.GHOwner, pd.GHRepo, issue, "", splitTag );  
 	let newCardId   = await gh.rebuildCard( authData, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
 	pd.GHIssueId    = issueData[0];

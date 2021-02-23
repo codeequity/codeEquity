@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@octokit/app": "^4.2.0",
+        "@octokit/plugin-retry": "^3.0.7",
         "@octokit/rest": "^17.9.2",
         "amazon-cognito-identity-js": "^4.3.3",
         "cookie-parser": "^1.4.5",

@@ -1,3 +1,4 @@
+var assert = require('assert');
 const awsAuth = require( '../awsAuth' );
 const auth = require( "../auth");
 const utils = require( "../utils");
@@ -18,8 +19,70 @@ const testData = require( './testData' );
 
 
 
-async function runTests() {
+/*
+function nester( arg1 ) {
+    if( arg1 == 0 ) { eh( "zero", "basts", nester, arg1 ); }
+    else {            return [arg1]; }
+}
 
+
+function tester( arg1, arg2, arg3, arg4 ) {
+    if( arg1 == 0 ) { eh( "zero", "basts", tester, arg1, arg2, arg3, arg4 ); }
+    else {            return [arg1, arg2, arg3, arg4]; }
+}
+
+
+
+
+
+
+async function eh( a, b, func, a1, a2, ...params ) {
+    console.log( "Retry", a, b );
+    let x = await func( 1, a2, ...params );
+    console.log( "Eh sez:", x );
+    return x;
+}
+
+async function buster( arg1 ) {
+    await utils.sleep( 2000 );
+    assert( arg1 != 0 );
+}
+
+
+async function cester( arg1 ) {
+    let success = false;
+    let retVal = false;
+    
+    await buster( arg1 )
+	.then( rs => {
+	    console.log( "igor" );
+	    retVal = [2];
+	    success = true;
+	})
+	.catch( e => retVal = eh( "zero", "egg", cester, arg1 ));
+
+    if( success ) {
+	console.log( "go", arg1 );
+    }
+    return retVal;
+}
+*/
+
+
+async function runTests() {
+    // tester( 0, 1, 2, 3 );
+    // nester( 0 );
+    /*
+    console.log( "\nStart" );
+    let x = await cester( 0 );
+    console.log( "AAAYAYAA", x );
+    console.log( "\nStart" );
+    x = await cester( 1 );
+    console.log( "BBAYAYAA", x );
+
+    return;
+    */
+    
     // GH Linkage table
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
     let ghLinks = new links.Linkage();
