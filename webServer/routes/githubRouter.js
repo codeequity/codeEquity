@@ -95,12 +95,15 @@ async function getGHAuths( authData, owner, repo ) {
 	// Wait later
 	githubPATs[owner] = auth.getPAT( owner );
     }
-
     
     octokitClients[owner][repo].auth = await octokitClients[owner][repo].auth;
     githubPATs[owner] = await githubPATs[owner];
     authData.ic  = octokitClients[owner][repo].auth;
     authData.pat = githubPATs[owner];
+
+    // Might have gotten older auths above.  Check stamp and refresh as needed.
+    await refreshAuths( authData, owner, repo );
+    
     return;
 }
 
@@ -293,7 +296,6 @@ router.post('/:location?', async function (req, res) {
     authData.job = jobId;
     
     console.log( authData.who, "job Q [" + fullName + "] clean, start-er-up" );
-    await refreshAuths( authData, owner, repo );
     
     let pd          = new peqData.PeqData();
     pd.GHOwner      = owner;

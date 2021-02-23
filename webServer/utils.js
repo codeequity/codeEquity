@@ -481,7 +481,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, pd.GHFullName, links[i].GHColumnId );
 	}
 
-	let issueData   = await ghSafe.splitIssue( authData, pd.GHOwner, pd.GHRepo, issue, "", splitTag );  
+	let issueData   = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, issue, "", splitTag );  
 	let newCardId   = await gh.rebuildCard( authData, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
 	pd.GHIssueId    = issueData[0];

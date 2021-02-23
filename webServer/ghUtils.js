@@ -82,8 +82,8 @@ var githubSafe = {
 	return rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel );
     },
 
-    rebuildIssue: function( authData, owner, repo, issue, msg ) {
-	return rebuildIssue( authData, owner, repo, issue, msg );
+    rebuildIssue: function( authData, owner, repo, issue, msg, splitTag ) {
+	return rebuildIssue( authData, owner, repo, issue, msg, splitTag );
     },
 
     cleanUnclaimed: function( authData, ghLinks, pd ) {
@@ -218,8 +218,10 @@ var githubUtils = {
 };
 
 
-// XXX add random backoff delay - but need to delay entire chain.  
-async function errorHandler( source, e, func, ..params ) {
+// XXX add random backoff delay - but need to delay entire chain.
+// Ignore:
+//   422:  validation failed.  e.g. create failed name exists.. chances are, will continue to fail.
+async function errorHandler( source, e, func, ...params ) {
     console.log( authData.who, "Problem in", source, e );
     if( e.status == 401 ||       // XXX authorization
 	e.status == 500 ||       // internal server error, wait and retry
@@ -412,15 +414,14 @@ async function rebuildIssue( authData, owner, repo, issue, msg, splitTag ) {
     if( typeof splitTag !== 'undefined' ) { title = title + " split: " + splitTag; }
 
     let success = false;
-    await( authData.ic.issues.create( {
+    await authData.ic.issues.create( {
 	owner:     owner,
 	repo:      repo,
 	title:     title,
 	body:      issue.body,
 	milestone: issue.milestone,
 	labels:    issue.labels,
-	assignees: issue.assignees.map( person => person.login )
-    } ))
+	assignees: issue.assignees.map( person => person.login )})
 	.then( issue => {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
@@ -990,10 +991,10 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
 
     console.log( "Found unclaimed" );
     
-    // Don't wait - no dep. on GH card
+    // Must wait.  success creates dependence.
     let success = false;
-    authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
-	.then( r => success = true );
+    await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
+	.then( r => success = true )
 	.catch( e => errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
 
     // Remove turds, report.  
