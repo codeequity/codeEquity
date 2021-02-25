@@ -234,7 +234,7 @@ async function testLabel( authData, ghLinks, td ) {
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	let card  = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 
-	await utils.sleep( 2000 );
+	await utils.sleep( 1000 );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 1" );
 	

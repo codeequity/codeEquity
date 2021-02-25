@@ -548,7 +548,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Prog += Accr  .. Fail no create in accr
     {
 	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issProgDat[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issProgDat, toAccrLoc, cardNew.id, testStatus );
 	
@@ -559,7 +559,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Pend += Accr  .. Fail no create in accr
     {
 	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issPendDat[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issPendDat, toAccrLoc, cardNew.id, testStatus );
 
@@ -569,7 +569,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Accr += Pend  .. Fail no modify accr
     {
 	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issAccrDat[0] );
-	await utils.sleep( 3000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {lblCount: 3 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAccrDat, toPendLoc, cardNew.id, testStatus );
 
@@ -643,7 +643,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     // Note - this must be last, else will cause issue to be found in checkNoSplit
     {
 	const cardNew = await tu.makeProjectCard( authData, toBacnLoc.colId, issAllocDat[0] );
-	await utils.sleep( 4000 );
+	await utils.sleep( 2000 );
 	testStatus = await tu.checkAllocSplit( authData, ghLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { assginees: 1, lblCount: 2 } );
 
 	tu.testReport( testStatus, "Split Alloc C" );
