@@ -8,8 +8,8 @@ var ghSafe  = ghUtils.githubSafe;
 
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
 // Server is fast enough for sub 1s, but GH struggles.
-const MIN_DELAY = 1200;  
-//const MIN_DELAY = 2500;     
+//const MIN_DELAY = 1200;  
+const MIN_DELAY = 2500;     
 const GH_DELAY = 400;
 
 
