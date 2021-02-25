@@ -233,7 +233,7 @@ router.post('/:location?', async function (req, res) {
 	console.log( "Notification for", event, action, "Bot-sent, skipping." );
 	return res.end();
     }
-    if( action == "synchronize" ) {
+    if( action == "synchronize" || req.body.hasOwnProperty( "pull_request" )) {
 	console.log( "Notification for Pull Request.  CodeEquity does not require these.  Skipping." );
 	return res.end();
     }
@@ -277,8 +277,11 @@ router.post('/:location?', async function (req, res) {
     notificationCount++;
     if( notificationCount % 20 == 0 ) { ghLinks.show(); }
 
-    let newStamp = req.body[event].updated_at;
-    if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }      // label create doesn't have this
+    // GH stamps are totally unreliable. Maybe good to the minute, which is not useful.  Use server arrival time.
+    // let newStamp = req.body[event].updated_at;
+    // if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }      // label create doesn't have this
+
+    let newStamp = utils.getMillis();
     console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
 
     // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.

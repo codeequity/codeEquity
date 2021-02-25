@@ -1,6 +1,16 @@
 var fetch  = require('node-fetch');
 var assert = require('assert');
 
+// Ugly ugly hack to test error handler.  Turn this off for normal runs.
+const TEST_EH = true;
+
+// internal server error testing
+const FAKE_ISE = {  
+    status: 500,
+    body: JSON.stringify( "---" ),
+};
+
+
 const auth = require( './auth' );
 var config = require('./config');
 var fifoQ  = require('./components/queue.js');
@@ -77,9 +87,22 @@ async function postGH( PAT, url, postData ) {
 	body: postData 
     };
 
-    return fetch( url, params )
-	.then(res => res.json())
-	.catch(err => console.log(err));
+    if( TEST_EH ) {
+	// Don't bother with testing only queries
+	if( !postData.includes( "mutation" ) && Math.random() < .3 ) {
+	    console.log( "Error.  Fake internal server error for GQL.", postData );
+	    return FAKE_ISE;
+	}
+    }
+
+    // XXX haven't seen one yet, may not be compatible with test above.
+    let gotchya = false;
+    let ret = await fetch( url, params )
+	.catch( e => { gotchya = true; console.log(e); return e; });
+
+    if( gotchya ) { let x = await ret.json(); console.log( "Error.  XXXXXXXXXXXXXX got one!", x, ret ); }
+    
+    return await ret.json();
 }
 
 
@@ -299,6 +322,17 @@ async function recordPEQ( authData, postData ) {
 function sleep(ms) {
     if( ms >= 1000 ) { console.log( "Sleeping for", ms / 1000, "seconds" ); }
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getMillis() {
+    var millis = new Date();
+    var hh = String(millis.getHours()).padStart(2, '0');
+    var mm = String(millis.getMinutes()).padStart(2, '0');
+    var ii = String(millis.getMilliseconds());
+    
+    millis = hh + '.' + mm + '.' + ii;
+
+    return millis.toString();
 }
 
 function getToday() {
@@ -747,7 +781,11 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     console.log( "Demoting", jobId, delayCount );
     const newJob   = makeJobData( jobId, event, sender, pd.reqBody, tag, delayCount+1 );
 
-    assert( delayCount < 5 );
+    // This has failed one, during cross repo blast test, when 2 label notifications were sent out
+    // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
+    // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
+    
+    assert( delayCount < 10 );
     ceJobs.delay++;
     
     // get splice index
@@ -757,7 +795,8 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     // If nothing else is here yet, delay
     if( jobs.length <= 1 ) { console.log( "... empty queue, sleep" );  await sleep( 300 ); }
     else {
-	for( let i = 1; i < jobs.length; i++ ) {
+	// Have to push back at least once
+	for( let i = 2; i < jobs.length; i++ ) {
 	    if( jobs[i].Stamp - newJob.Stamp > 1 )     { break;  }
 	    if( newJob.Stamp - jobs[i].Stamp > 86398 ) { break;  }  // looped
 	    spliceIndex = i+1;
@@ -817,6 +856,12 @@ async function ingestPActs( authData, pactIds ) {
     return await wrappedPostIt( authData, shortName, pd );
 }
 
+// UNIT TESTING ONLY!!
+async function failHere( source ) {
+    console.log( "Error.  Fake internal server error for", source );
+    assert( false );
+}
+
 
 exports.randAlpha = randAlpha;
 exports.getTimeDiff = getTimeDiff;
@@ -839,6 +884,7 @@ exports.checkPopulated = checkPopulated;
 exports.setPopulated = setPopulated;
 exports.updatePEQPSub = updatePEQPSub;
 exports.sleep = sleep;
+exports.getMillis = getMillis;
 exports.getToday = getToday;
 exports.resolve = resolve;
 exports.processNewPEQ = processNewPEQ;
@@ -854,4 +900,8 @@ exports.purgeQueue = purgeQueue;
 exports.getFromQueue = getFromQueue;
 exports.demoteJob = demoteJob;
 
+// TESTING ONLY
 exports.ingestPActs = ingestPActs;       // TESTING ONLY
+exports.TEST_EH     = TEST_EH;           // TESTING ONLY
+exports.FAKE_ISE    = FAKE_ISE;          // TESTING ONLY
+exports.failHere    = failHere;          // TESTING ONLY
