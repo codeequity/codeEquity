@@ -217,16 +217,16 @@ var githubUtils = {
 // XXX add random backoff delay - but need to delay entire chain.
 // Ignore:
 //   422:  validation failed.  e.g. create failed name exists.. chances are, will continue to fail.
-async function errorHandler( source, e, func, authData, ...params ) {
+async function errorHandler( source, e, func, ...params ) {
     if( ( e.status == 404 && source == "checkIssue" ) ||    
 	( e.status == 410 && source == "checkIssue" ))
     {
-	console.log( authData.who, "Issue", arguments[6], "already gone" );  
+	console.log( source, "Issue", arguments[6], "already gone" );  
 	return false;
     }
     else if( e.status == 403 && source == "removePeqLabel" )
     {
-	console.log( authData.who, "Issue", arguments[6], "may already be gone, can't remove labels." );
+	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels." );
 	return false;
     }
     else if( e.status == 401 ||                             // XXX authorization
@@ -234,21 +234,26 @@ async function errorHandler( source, e, func, authData, ...params ) {
 	     e.status == 502 )                              // server error, please retry       
     {
 	// manage retries
-	if( !handlerRetries.hasOwnProperty( source ) )       { handlerRetries[source] = {} }
+	if( typeof handlerRetries === 'undefined' )            { handlerRetries = {}; }
+	if( !handlerRetries.hasOwnProperty( source ) )         { handlerRetries[source] = {}; }
 	
-	if( !handlerRetries[source].hasOwnProperty( stamp )) { handlerRetries[source].stamp = Date.now(); }
-	if( !handlerRetries[source].hasOwnProperty( count )) { handlerRetries[source].count = 0; }
+	if( !handlerRetries[source].hasOwnProperty( 'stamp' )) { handlerRetries[source].stamp = Date.now(); }
+	if( !handlerRetries[source].hasOwnProperty( 'count' )) { handlerRetries[source].count = 0; }
 
 	if( Date.now() - handlerRetries[source].stamp > 5000 ) { handlerRetries[source].count = 0; }
 	
 	if( handlerRetries[source].count <= 4 ) {
-	    console.log( authData.who, "Problem in", source, e );
+	    console.log( "Github server troubles with", source, e );
 	    console.log( "Retrying", source, handlerRetries[source].count );
 	    handlerRetries[source].count++;
-	    handlerRetries[source].stamp = Date.now();	    
+	    handlerRetries[source].stamp = Date.now();
+	    console.log( "Error Handler Status:", handlerRetries );
 	    return await func( ...params );
 	}
 	else { console.log( "Error.  Retries exhausted, command failed.  Please try again later." ); }
+    }
+    else {
+	console.log( "Error in errorHandler, unknown status code.", e );
     }
 }
 
@@ -257,7 +262,6 @@ async function errorHandler( source, e, func, authData, ...params ) {
 async function checkRateLimit( authData ) {
 
     // console.log( "Rate limit check currently off" );
-    return;
     
     await( authData.ic.rateLimit.get())
 	.then( rl => {
@@ -297,16 +301,25 @@ async function getAssignees( authData, owner, repo, issueNum )
     if( issueNum == -1 ) { console.log( "getAssignees: bad issue number", issueNum ); return retVal; }
 
     // console.log( authData.who, "Getting assignees for", owner, repo, issueNum );
-    await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
-	.then( issue => {
-	    // console.log( issue['data'] );
-	    if( issue['data']['assignees'].length > 0 ) { 
-		for( assignee of issue['data']['assignees'] ) {
-		    retVal.push( assignee['login'] );
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "getAssignees" )
+	    .catch( e => retVal = errorHandler( "getAssignees", utils.FAKE_ISE, getAssignees, authData, owner, repo, issueNum));
+    }
+    else {
+	await authData.ic.issues.get({ owner: owner, repo: repo, issue_number: issueNum }) 
+	    .then( issue => {
+		// console.log( issue['data'] );
+		if( issue['data']['assignees'].length > 0 ) { 
+		    for( assignee of issue['data']['assignees'] ) {
+			retVal.push( assignee['login'] );
+		    }
 		}
-	    }
-	})
-	.catch( e => retVal = errorHandler( "getAssignees", e, getAssignees, authData, owner, repo, issueNum));
+	    })
+	    .catch( e => retVal = errorHandler( "getAssignees", e, getAssignees, authData, owner, repo, issueNum));
+    }
+    
     return retVal;
 }
 
@@ -328,14 +341,19 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
     query = JSON.stringify({ query, variables });
 
     let retVal = false;
-    await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( res => {
-	    // Hmm node was occasionally null here, then failing on title
-	    if( typeof res.data.node !== 'undefined' && res.data.node && typeof res.data.node.title !== 'undefined' ) { retVal = true; }
-	    console.log( authData.who, "Issue node", nodeId, "exists?", retVal );
-	})
+    let res = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.catch( e => retVal = errorHandler( "checkExistsGQL", e, checkExistsGQL, authData, nodeId, nodeType ));
 
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	retVal = await errorHandler( "checkExistsGQL", res, checkExistsGQL, authData, nodeId, nodeType );
+    }
+    else {
+	// Hmm node was occasionally null here, then failing on title
+	if( typeof res.data.node !== 'undefined' && res.data.node && typeof res.data.node.title !== 'undefined' ) { retVal = true; }
+    }
+
+    console.log( authData.who, "Issue node", nodeId, "exists?", retVal );
     return retVal;
 }
 
@@ -347,9 +365,7 @@ async function checkIssue( authData, owner, repo, issueNum ) {
     let retVal = false;
     // Wait.  Without additional wait, timing with multiple deletes is too tight.  Can still fail on transfers..
     await authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum })
-	.then( iss => {
-	    issue = iss.data;
-	})
+	.then( iss => issue = iss.data )
 	.catch( e => retVal = errorHandler( "checkIssue", e, checkIssue, authData, owner, repo, issueNum ));
 
     if( issue != -1 ) { retVal = await checkExistsGQL( authData, issue.node_id, {issue: true} ); } 
@@ -417,20 +433,28 @@ async function rebuildIssue( authData, owner, repo, issue, msg, splitTag ) {
     if( typeof splitTag !== 'undefined' ) { title = title + " split: " + splitTag; }
 
     let success = false;
-    await authData.ic.issues.create( {
-	owner:     owner,
-	repo:      repo,
-	title:     title,
-	body:      issue.body,
-	milestone: issue.milestone,
-	labels:    issue.labels,
-	assignees: issue.assignees.map( person => person.login )})
-	.then( issue => {
-	    issueData[0] = issue['data']['id'];
-	    issueData[1] = issue['data']['number'];
-	    success = true;
-	})
-	.catch( e => issueData = errorHandler( "rebuildIssue", e, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "rebuildIssue" )
+	    .catch( e => issueData = errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
+    }
+    else {
+	await authData.ic.issues.create( {
+	    owner:     owner,
+	    repo:      repo,
+	    title:     title,
+	    body:      issue.body,
+	    milestone: issue.milestone,
+	    labels:    issue.labels,
+	    assignees: issue.assignees.map( person => person.login )})
+	    .then( issue => {
+		issueData[0] = issue['data']['id'];
+		issueData[1] = issue['data']['number'];
+		success = true;
+	    })
+	    .catch( e => issueData = errorHandler( "rebuildIssue", e, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
+    }
 
     if( success ) {
 	let comment = "";
@@ -469,8 +493,15 @@ async function updateProject( authData, projId, newName ) {
 }
 
 async function addAssignee( authData, owner, repo, issueNumber, assignee ) {
-    await authData.ic.issues.addAssignees({ owner: owner, repo: repo, issue_number: issueNumber, assignees: [assignee] })
-	.catch( e => errorHandler( "addAssignee", e, addAssignee, authData, owner, repo, issueNumber, assignee ));
+
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "addAssignee" )
+	    .catch( e => errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, owner, repo, issueNumber, assignee )); 
+    }
+    else {
+	await authData.ic.issues.addAssignees({ owner: owner, repo: repo, issue_number: issueNumber, assignees: [assignee] })
+	    .catch( e => errorHandler( "addAssignee", e, addAssignee, authData, owner, repo, issueNumber, assignee ));
+    }
 }
 
 async function remAssignee( authData, owner, repo, issueNumber, assignee ) {
@@ -593,7 +624,6 @@ function populateRequest( labels ) {
 // GraphQL to init link table
 // XXX getting open only is probably a mistake.  what if added back?  does this get all?
 async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
-
     // XXX move these
     const query1 = `
     query baseConnection($owner: String!, $repo: String!) 
@@ -636,41 +666,45 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
-    await utils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.then( res => {
-	    issues = res.data.repository.issues;
-	    for( let i = 0; i < issues.edges.length; i++ ) {
-		const issue  = issues.edges[i].node;
-		const cards  = issue.projectCards;
-		const labels = issue.labels;
-		
-		// XXX Over 100 cards or 100 labels for 1 issue?  Don't use CE.  Warn here.
-		assert( !cards.pageInfo.hasNextPage && !labels.hasNextPage );
-		
-		for( const card of cards.edges ) {
-		    // console.log( card.node.project.name, issue.title );
-		    if( !card.node.column ) {
-			console.log( "Warning. Skipping issue:card for", issue.title, "which is awaiting triage." );
-			continue;
-		    }
-		    // console.log( card.node.project.name, card.node.column.databaseId );
-		    let datum = {};
-		    datum.issueId     = issue.databaseId;
-		    datum.issueNum    = issue.number;
-		    datum.title       = issue.title;
-		    datum.cardId      = card.node.databaseId;
-		    datum.projectName = card.node.project.name;
-		    datum.projectId   = card.node.project.databaseId;
-		    datum.columnName  = card.node.column.name;
-		    datum.columnId    = card.node.column.databaseId;
-		    data.push( datum );
-		}
-	    }
-	})
-	.catch( e => errorHandler( "getBasicLinkDataGQL", e, getBasicLinkDataGQL, PAT, owner, repo, data, cursor ));
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "getBasicLinkDataGQL", e, getBasicLinkDataGQL, PAT, owner, repo, data, cursor ));  // probably never seen
 
-    // Wait.  Data is modified
-    if( issues != -1 && issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	await errorHandler( "getBasicLinkDataGQL", res, getBasicLinkDataGQL, PAT, owner, repo, data, cursor );
+    }
+    else {
+	issues = res.data.repository.issues;
+	for( let i = 0; i < issues.edges.length; i++ ) {
+	    const issue  = issues.edges[i].node;
+	    const cards  = issue.projectCards;
+	    const labels = issue.labels;
+	    
+	    // XXX Over 100 cards or 100 labels for 1 issue?  Don't use CE.  Warn here.
+	    assert( !cards.pageInfo.hasNextPage && !labels.hasNextPage );
+	    
+	    for( const card of cards.edges ) {
+		// console.log( card.node.project.name, issue.title );
+		if( !card.node.column ) {
+		    console.log( "Warning. Skipping issue:card for", issue.title, "which is awaiting triage." );
+		    continue;
+		}
+		// console.log( card.node.project.name, card.node.column.databaseId );
+		let datum = {};
+		datum.issueId     = issue.databaseId;
+		datum.issueNum    = issue.number;
+		datum.title       = issue.title;
+		datum.cardId      = card.node.databaseId;
+		datum.projectName = card.node.project.name;
+		datum.projectId   = card.node.project.databaseId;
+		datum.columnName  = card.node.column.name;
+		datum.columnId    = card.node.column.databaseId;
+		data.push( datum );
+	    }
+	}
+	// Wait.  Data is modified
+	if( issues != -1 && issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
+    }
 }
 
 // GraphQL to get all columns in repo 
@@ -678,7 +712,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 
     // XXX move these
     const query1 = `
-    query baseConnection($owner: String!, $repo: String!) 
+    query baseCols($owner: String!, $repo: String!) 
     {
 	repository(owner: $owner, name: $repo) {
 	    projects(first: 100) {
@@ -691,7 +725,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 		}}}}}`;
     
     const queryN = `
-    query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
+    query nthCols($owner: String!, $repo: String!, $cursor: String!) 
     {
 	repository(owner: $owner, name: $repo) {
 	    projects(first: 100 after: $cursor) {
@@ -708,46 +742,52 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let projects = -1;
-    await utils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.then( res => {
-	    projects = res.data.repository.projects;
-	    for( let i = 0; i < projects.edges.length; i++ ) {
-		const project = projects.edges[i].node;
-		const cols    = project.columns;
-		
-		// XXX Over 100 cols for 1 project?  Warn here.
-		assert( !cols.pageInfo.hasNextPage );
-		
-		for( const col of cols.edges ) {
-		    // console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
-		    let datum = {};
-		    datum.GHProjectName = project.name;
-		    datum.GHProjectId   = project.databaseId.toString();
-		    datum.GHColumnName  = col.node.name;
-		    datum.GHColumnId    = col.node.databaseId.toString();
-		    data.push( datum );
-		}
-		
-		// Add project even if it has no cols
-		if( cols.edges.length == 0 ) {
-		    let datum = {};
-		    datum.GHProjectName = project.name;
-		    datum.GHProjectId   = project.databaseId.toString();
-		    datum.GHColumnName  = config.EMPTY;
-		    datum.GHColumnId    = "-1";
-		    data.push( datum );
-		}
-	    }
-	})
-	.catch( e => errorHandler( "getRepoColsGQL", e, getRepoColsGQL, PAT, owner, repo, data, cursor ));
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "getRepoColsGQL", e, getRepoColsGQL, PAT, owner, repo, data, cursor ));  // this will probably never catch anything
 
-    // Wait.  Data.
-    if( projects != -1 && projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	await errorHandler( "getRepoColsGQL", res, getRepoColsGQL, PAT, owner, repo, data, cursor );
+    }
+    else {
+	projects = res.data.repository.projects;
+	for( let i = 0; i < projects.edges.length; i++ ) {
+	    const project = projects.edges[i].node;
+	    const cols    = project.columns;
+	    
+	    // XXX Over 100 cols for 1 project?  Warn here.
+	    assert( !cols.pageInfo.hasNextPage );
+	    
+	    for( const col of cols.edges ) {
+		// console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
+		let datum = {};
+		datum.GHProjectName = project.name;
+		datum.GHProjectId   = project.databaseId.toString();
+		datum.GHColumnName  = col.node.name;
+		datum.GHColumnId    = col.node.databaseId.toString();
+		data.push( datum );
+	    }
+	    
+	    // Add project even if it has no cols
+	    if( cols.edges.length == 0 ) {
+		let datum = {};
+		datum.GHProjectName = project.name;
+		datum.GHProjectId   = project.databaseId.toString();
+		datum.GHColumnName  = config.EMPTY;
+		datum.GHColumnId    = "-1";
+		data.push( datum );
+	    }
+	}
+
+	// Wait.  Data.
+	if( projects != -1 && projects.pageInfo.hasNextPage ) { await getRepoColsGQL( PAT, owner, repo, data, projects.pageInfo.endCursor ); }
+    }
 }
 
 
 
 // XXX move these
+// Testing function
 async function transferIssueGQL( authData, issueId, toRepoId) {
     // Note: node_ids are typed
     let query = `mutation ($issueId: ID!, $repoId: ID!) { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId }) {clientMutationId}}`;
@@ -776,7 +816,8 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
 async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
-    utils.checkPopulated( authData, pd.GHFullName ).then( res => assert( !res ) );
+    // Wait later
+    let origPop = utils.checkPopulated( authData, pd.GHFullName );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
     let linkage = await ghLinks.initOneRepo( authData, pd.GHFullName );
@@ -811,6 +852,8 @@ async function populateCELinkage( authData, ghLinks, pd )
 	await utils.resolve( authData, ghLinks, pd, "???" );
     }
 
+    origPop = await origPop;  // XXX any reason to back out of this sooner?
+    assert( !origPop );
     // Don't wait.
     utils.setPopulated( authData, pd.GHFullName );
     console.log( authData.who, "Populate CE Linkage Done" );
@@ -987,9 +1030,17 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     
     // Must wait.  success creates dependence.
     let success = false;
-    await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
-	.then( r => success = true )
-	.catch( e => errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "cleanUnclaimed" )
+	    .catch( e => errorHandler( "cleanUnclaimed", utils.FAKE_ISE, cleanUnclaimed, authData, ghLinks, pd ));
+    }
+    else {
+	await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
+	    .then( r => success = true )
+	    .catch( e => errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
+    }
 
     // Remove turds, report.  
     if( success ) { ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId }); }
@@ -999,8 +1050,16 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
 
 async function createColumn( authData, projId, colName ) {
     let rv = -1;
-    rv = await authData.ic.projects.createColumn({ project_id: projId, name: colName })
-	.catch( e => rv = errorHandler( "createColumn", e, createColumn, authData, projId, colName ));
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "createColumn" )
+    	    .catch( e => rv = errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, projId, colName ));
+    }
+    else {
+	rv = await authData.ic.projects.createColumn({ project_id: projId, name: colName })
+	    .catch( e => rv = errorHandler( "createColumn", e, createColumn, authData, projId, colName ));
+    }
     return rv;
 }
 

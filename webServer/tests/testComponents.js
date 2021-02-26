@@ -1114,7 +1114,7 @@ async function testAlloc( authData, ghLinks, td ) {
     let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
     let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
 
-    const issAllocDat = await tu.makeIssue( authData, td, ISS_ALLOC, [ label1m ] );
+    const issAllocDat = await tu.makeAllocIssue( authData, td, ISS_ALLOC, [ label1m ] );
 
     const starLoc   = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
     const stripeLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
@@ -1124,7 +1124,7 @@ async function testAlloc( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
     const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
 
-    await utils.sleep( 1000 ); 
+    await utils.sleep( 2000 ); 
     testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1, val: 1000000} );
     
     tu.testReport( testStatus, "Alloc setup" );
@@ -1223,7 +1223,7 @@ async function testAlloc( authData, ghLinks, td ) {
 	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat1, starCard1, testStatus, {assignees: 0, lblCount: 1} );
 
 	// Create from issue  ... should be makeAllocIssue to create comment, but not testing that here
-	const issStarDat2 = await tu.makeIssue( authData, td, "Alloc star 2", [ label1m ] );
+	const issStarDat2 = await tu.makeAllocIssue( authData, td, "Alloc star 2", [ label1m ] );
 	const starCard2   = await tu.makeProjectCard( authData, starLoc.colId, issStarDat2[0] );
 	await utils.sleep( 1000 );
 	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat2, starCard2, testStatus, {assignees: 0, lblCount: 1} );
@@ -1272,6 +1272,10 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
+    let t8 = await testAlloc( authData, ghLinks, td );
+    console.log( "\n\nAlloc complete." );
+    await utils.sleep( 5000 );
+
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 5000 );
@@ -1298,12 +1302,8 @@ async function runTests( authData, ghLinks, td ) {
     
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
-    await utils.sleep( 5000 );
-    
-    let t8 = await testAlloc( authData, ghLinks, td );
-    console.log( "\n\nAlloc complete." );
     // await utils.sleep( 5000 );
-
+    
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );

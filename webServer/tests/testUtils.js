@@ -424,6 +424,13 @@ async function makeIssue( authData, td, title, labels ) {
     return issue;
 }
 
+async function makeAllocIssue( authData, td, title, labels ) {
+    let issue = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, title, labels, true );
+    issue.push( title );
+    await utils.sleep( MIN_DELAY );
+    return issue;
+}
+
 async function blastIssue( authData, td, title, labels, assignees, specials ) {
     let wait  = typeof specials !== 'undefined' && specials.hasOwnProperty( "wait" )   ? specials.wait   : true;
 
@@ -1518,6 +1525,7 @@ exports.makeAllocCard   = makeAllocCard;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;
+exports.makeAllocIssue  = makeAllocIssue;
 exports.blastIssue      = blastIssue;
 
 exports.addLabel        = addLabel;
