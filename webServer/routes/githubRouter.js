@@ -149,7 +149,7 @@ async function getNextJob( authData, pdOld, sender, res ) {
 
 	console.log( "\n\n", authData.who, "Got next job:", ic.who );
 
-	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res, jobData.DelayCount );
+	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res, jobData.DelayCount, jobData.Stamp );
     }
     else {
 	console.log( authData.who, "jobs done" );
@@ -160,7 +160,7 @@ async function getNextJob( authData, pdOld, sender, res ) {
     return res.end();
 }
 
-async function switcher( authData, ghLinks, pd, sender, event, action, tag, res, delayCount ) {
+async function switcher( authData, ghLinks, pd, sender, event, action, tag, res, delayCount, origStamp ) {
     let retVal = "";
 
     // clear justDeleted every time, unless possibly part of delete issue blast.
@@ -211,6 +211,7 @@ async function switcher( authData, ghLinks, pd, sender, event, action, tag, res,
 	console.log( authData.who, "Delaying this job." );
 	await utils.demoteJob( ceJobs, pd, authData.job, event, sender, tag, delayCount );
     }
+    console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", delayCount );
     getNextJob( authData, pd, sender, res );	
 }
 
@@ -306,7 +307,7 @@ router.post('/:location?', async function (req, res) {
     pd.reqBody      = req.body;
     pd.GHFullName   = req.body['repository']['full_name'];
 
-    await switcher( authData, ghLinks, pd, sender, event, action, tag, res, 0 );
+    await switcher( authData, ghLinks, pd, sender, event, action, tag, res, 0, jobData.Stamp );
     
     // avoid socket hangup error, response undefined
     return res.end();

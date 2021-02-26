@@ -303,7 +303,7 @@ async function getAssignees( authData, owner, repo, issueNum )
     // console.log( authData.who, "Getting assignees for", owner, repo, issueNum );
 
     // XXX Fugly
-    if( utils.TEST_EH && Math.random() < .2 ) {
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "getAssignees" )
 	    .catch( e => retVal = errorHandler( "getAssignees", utils.FAKE_ISE, getAssignees, authData, owner, repo, issueNum));
     }
@@ -346,7 +346,7 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	retVal = await errorHandler( "checkExistsGQL", e, checkExistsGQL, authData, nodeId, nodeType );
+	retVal = await errorHandler( "checkExistsGQL", res, checkExistsGQL, authData, nodeId, nodeType );
     }
     else {
 	// Hmm node was occasionally null here, then failing on title
@@ -365,9 +365,7 @@ async function checkIssue( authData, owner, repo, issueNum ) {
     let retVal = false;
     // Wait.  Without additional wait, timing with multiple deletes is too tight.  Can still fail on transfers..
     await authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum })
-	.then( iss => {
-	    issue = iss.data;
-	})
+	.then( iss => issue = iss.data )
 	.catch( e => retVal = errorHandler( "checkIssue", e, checkIssue, authData, owner, repo, issueNum ));
 
     if( issue != -1 ) { retVal = await checkExistsGQL( authData, issue.node_id, {issue: true} ); } 
@@ -435,20 +433,28 @@ async function rebuildIssue( authData, owner, repo, issue, msg, splitTag ) {
     if( typeof splitTag !== 'undefined' ) { title = title + " split: " + splitTag; }
 
     let success = false;
-    await authData.ic.issues.create( {
-	owner:     owner,
-	repo:      repo,
-	title:     title,
-	body:      issue.body,
-	milestone: issue.milestone,
-	labels:    issue.labels,
-	assignees: issue.assignees.map( person => person.login )})
-	.then( issue => {
-	    issueData[0] = issue['data']['id'];
-	    issueData[1] = issue['data']['number'];
-	    success = true;
-	})
-	.catch( e => issueData = errorHandler( "rebuildIssue", e, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "rebuildIssue" )
+	    .catch( e => issueData = errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
+    }
+    else {
+	await authData.ic.issues.create( {
+	    owner:     owner,
+	    repo:      repo,
+	    title:     title,
+	    body:      issue.body,
+	    milestone: issue.milestone,
+	    labels:    issue.labels,
+	    assignees: issue.assignees.map( person => person.login )})
+	    .then( issue => {
+		issueData[0] = issue['data']['id'];
+		issueData[1] = issue['data']['number'];
+		success = true;
+	    })
+	    .catch( e => issueData = errorHandler( "rebuildIssue", e, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
+    }
 
     if( success ) {
 	let comment = "";
@@ -488,7 +494,7 @@ async function updateProject( authData, projId, newName ) {
 
 async function addAssignee( authData, owner, repo, issueNumber, assignee ) {
 
-    if( utils.TEST_EH && Math.random() < .2 ) {
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "addAssignee" )
 	    .catch( e => errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, owner, repo, issueNumber, assignee )); 
     }
@@ -1024,9 +1030,17 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     
     // Must wait.  success creates dependence.
     let success = false;
-    await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
-	.then( r => success = true )
-	.catch( e => errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "cleanUnclaimed" )
+	    .catch( e => errorHandler( "cleanUnclaimed", utils.FAKE_ISE, cleanUnclaimed, authData, ghLinks, pd ));
+    }
+    else {
+	await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
+	    .then( r => success = true )
+	    .catch( e => errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
+    }
 
     // Remove turds, report.  
     if( success ) { ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId }); }
@@ -1036,8 +1050,16 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
 
 async function createColumn( authData, projId, colName ) {
     let rv = -1;
-    rv = await authData.ic.projects.createColumn({ project_id: projId, name: colName })
-	.catch( e => rv = errorHandler( "createColumn", e, createColumn, authData, projId, colName ));
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "createColumn" )
+    	    .catch( e => rv = errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, projId, colName ));
+    }
+    else {
+	rv = await authData.ic.projects.createColumn({ project_id: projId, name: colName })
+	    .catch( e => rv = errorHandler( "createColumn", e, createColumn, authData, projId, colName ));
+    }
     return rv;
 }
 

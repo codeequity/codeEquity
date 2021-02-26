@@ -2,7 +2,8 @@ var fetch  = require('node-fetch');
 var assert = require('assert');
 
 // Ugly ugly hack to test error handler.  Turn this off for normal runs.
-const TEST_EH = true;
+const TEST_EH   = true;
+const TEST_EH_PCT = .05;
 
 // internal server error testing
 const FAKE_ISE = {  
@@ -89,7 +90,7 @@ async function postGH( PAT, url, postData ) {
 
     if( TEST_EH ) {
 	// Don't bother with testing only queries
-	if( !postData.includes( "mutation" ) && Math.random() < .3 ) {
+	if( !postData.includes( "mutation" ) && Math.random() < TEST_EH_PCT ) {
 	    console.log( "Error.  Fake internal server error for GQL.", postData );
 	    return FAKE_ISE;
 	}
@@ -759,9 +760,12 @@ function makeJobData( jid, handler, sender, reqBody, tag, delayCount ) {
     jobData.Tag        = tag;
     jobData.DelayCount = delayCount;
 
-    let newStamp = reqBody[handler].updated_at;
-    if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }   
-    jobData.Stamp = makeStamp( newStamp );
+    // GH stamp not dependable.
+    // let newStamp = reqBody[handler].updated_at;
+    // if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }   
+    // jobData.Stamp = makeStamp( newStamp );
+    jobData.Stamp = Date.now();
+    //console.log( jobData.Stamp, jobData.Tag );
     
     return jobData;
 }
@@ -785,28 +789,34 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
     // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
     
-    assert( delayCount < 10 );
+    assert( delayCount < 10 );  // XXX
     ceJobs.delay++;
     
     // get splice index
     let spliceIndex = 1;
     let jobs = ceJobs.jobs.getAll();
+
+    const stepCost = 300 * delayCount;   // XXX ms.  config?  
     
-    // If nothing else is here yet, delay
-    if( jobs.length <= 1 ) { console.log( "... empty queue, sleep" );  await sleep( 300 ); }
+    // If nothing else is here yet, delay.  Overall, will delay over a minute 
+    if( jobs.length <= 1 ) {
+	console.log( "... empty queue, sleep" );
+	let delay = delayCount > 4 ? stepCost + 20000 : stepCost;
+	await sleep( delay );
+    }
     else {
-	// Have to push back at least once
-	for( let i = 2; i < jobs.length; i++ ) {
-	    if( jobs[i].Stamp - newJob.Stamp > 1 )     { break;  }
-	    if( newJob.Stamp - jobs[i].Stamp > 86398 ) { break;  }  // looped
+	// Have to push back at least once.  
+	for( let i = 1; i < jobs.length; i++ ) {
 	    spliceIndex = i+1;
+	    if( jobs[i].Stamp - newJob.Stamp > 1000 ) { break;  }
 	}
     }
+    if( spliceIndex == 1 && jobs.length >= 2 ) { spliceIndex = 2; }  // force progress where possible
 
     console.log( "Got splice index of", spliceIndex );
     jobs.splice( spliceIndex, 0, newJob );
 
-    summarizeQueue( ceJobs, "\nceJobs, after demotion", 3 );
+    summarizeQueue( ceJobs, "\nceJobs, after demotion", 7 );
 }
 
 // XXX seems to belong elsewhere
@@ -903,5 +913,6 @@ exports.demoteJob = demoteJob;
 // TESTING ONLY
 exports.ingestPActs = ingestPActs;       // TESTING ONLY
 exports.TEST_EH     = TEST_EH;           // TESTING ONLY
+exports.TEST_EH_PCT = TEST_EH_PCT;       // TESTING ONLY
 exports.FAKE_ISE    = FAKE_ISE;          // TESTING ONLY
 exports.failHere    = failHere;          // TESTING ONLY
