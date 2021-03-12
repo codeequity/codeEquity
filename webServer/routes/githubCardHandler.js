@@ -92,7 +92,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    pd.GHIssueId = issue[0];
 	    
 	    // Is underlying issue already linked to unclaimed?  if so, remove it.
-	    // Wait here, else unclaimed link may (?) impact PNP
+	    // Wait here, else unclaimed link can force a resolve-split
 	    await ghSafe.cleanUnclaimed( authData, ghLinks, pd );
 	    // Don't wait.
 	    utils.processNewPEQ( authData, ghLinks, pd, issue[1], -1, "relocate" ); 
