@@ -1016,13 +1016,15 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
 }
 
 // NOTE: ONLY call during new situated card.  This is the only means to move accr out of unclaimed safely.
+// NOTE: issues can be closed while in unclaimed, before moving to intended project.
 // Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
 async function cleanUnclaimed( authData, ghLinks, pd ) {
     console.log( authData.who, "cleanUnclaimed", pd.GHIssueId );
     let link = ghLinks.getUniqueLink( authData, pd.GHIssueId );
     if( link == -1 ) { return; }
-    let allowed = [ config.UNCLAIMED, config.PROJ_ACCR ];
-    if( !allowed.includes( link.GHColumnName )) { return; }   // i.e. add allocation card to proj: add card -> add issue -> rebuild card
+
+    // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
+    if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName != config.PROJ_ACCR ) { return; }   
 	
     assert( link.GHCardId != -1 );
 

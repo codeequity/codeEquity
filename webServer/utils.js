@@ -327,11 +327,14 @@ function sleep(ms) {
 
 function getMillis() {
     var millis = new Date();
-    var hh = String(millis.getHours()).padStart(2, '0');
+
+    // var hh = String(millis.getHours()).padStart(2, '0');
     var mm = String(millis.getMinutes()).padStart(2, '0');
+    var ss = String(millis.getSeconds()).padStart(2, '0');
     var ii = String(millis.getMilliseconds());
     
-    millis = hh + '.' + mm + '.' + ii;
+    // millis = hh + '.' + mm + '.' + ss + '.' + ii;
+    millis = mm + '.' + ss + '.' + ii;
 
     return millis.toString();
 }
