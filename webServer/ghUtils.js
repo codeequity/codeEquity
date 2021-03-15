@@ -159,8 +159,8 @@ var githubUtils = {
 	return removeCard( authData, cardId );
     },
 	
-    rebuildCard: function( authData, owner, repo, colId, origCardId, issueData ) {
-	return rebuildCard( authData, owner, repo, colId, origCardId, issueData );
+    rebuildCard: function( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
+	return rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData );
     },
 
     createUnClaimedCard: function( authData, ghLinks, pd, issueId, accr ) {
@@ -867,7 +867,13 @@ async function removeCard( authData, cardId ) {
 }
 
 // XXX alignment risk - card info could have moved on
-async function rebuildCard( authData, owner, repo, colId, origCardId, issueData ) {
+async function rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
+
+    let isReserved = typeof locData !== 'undefined' && locData.hasOwnProperty( "reserved" ) ? locData.reserved : false;    
+    let projId     = typeof locData !== 'undefined' && locData.hasOwnProperty( "projId" )   ? locData.projId   : -1;
+    let projName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "projName" ) ? locData.projName : "";
+    let fullName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "fullName" ) ? locData.fullName : "";
+
     assert( issueData.length == 2 );
     let issueId  = issueData[0];
     let issueNum = issueData[1];
@@ -878,6 +884,35 @@ async function rebuildCard( authData, owner, repo, colId, origCardId, issueData 
     if( colId == -1 ) {
 	let projCard = await getCard( authData, origCardId ); 
 	colId = projCard.column_url.split('/').pop();
+    }
+
+    // Trying to build new card in reserved space .. move out of reserved, prog is preferred.
+    // Finding or creating non-reserved is a small subset of getCEprojectLayout
+    if( isReserved ) {
+	assert( projId   != -1 );
+	assert( fullName != "" );
+	const planName = config.PROJ_COLS[ config.PROJ_PLAN ];
+	const progName = config.PROJ_COLS[ config.PROJ_PROG ];
+
+	const locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );   
+	assert( locs != -1 );
+	projName = projName == "" ? locs[0].GHProjectName : projName;
+
+	colId = -1;
+	let loc = locs.find( loc => loc.GHColumnName == progName );   // prefer PROG
+	if( typeof loc !== 'undefined' ) { colId = loc.GHColumnId; }
+	else {
+	    loc = locs.find( loc => loc.GHColumnName == planName )
+	    if( typeof loc !== 'undefined' ) { colId = loc.GHColumnId; }
+	}
+
+	// Create in progress, if needed
+	if( colId == -1 ) {
+	    let progCol = await createColumn( authData, projId, progName );
+	    console.log( "Creating new column:", progName );
+	    colId = progCol.data.id; 
+	    ghLinks.addLoc( authData, fullName, projName, projId, progName, colId );
+	}
     }
     
     // create issue-linked project_card, requires id not num
