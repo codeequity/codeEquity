@@ -86,8 +86,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     console.log( authData.who, "start", authData.job );
     
-    // XXX Will probably want to move peq value check here or further up, for all below, once this if filled out
-
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
     pd.GHIssueId    = pd.reqBody['issue']['id'];
     pd.GHIssueNum   = pd.reqBody['issue']['number'];		

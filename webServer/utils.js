@@ -520,7 +520,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	}
 
 	let issueData   = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, issue, "", splitTag );  
-	let newCardId   = await gh.rebuildCard( authData, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
+	let newCardId   = await gh.rebuildCard( authData, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
 	pd.GHIssueId    = issueData[0];
 	pd.GHIssueNum   = issueData[1];
@@ -637,15 +637,22 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	// card -> issue..  exactly one linkage.
 	else {
 	    pd.GHIssueTitle = issueCardContent[0];
-	    
+
 	    // create new issue, rebuild card
 	    peqLabel = await peqLabel; // peqHumanLabelName dep
 	    let issueData = await ghSafe.createIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
-	    let newCardId = await gh.rebuildCard( authData, pd.GHOwner, pd.GHRepo, pd.GHColumnId, origCardId, issueData );
-
 	    pd.GHIssueId  = issueData[0];
 	    pd.GHIssueNum = issueData[1];
-	    
+
+	    // Creating a situated card.. no assignees possible so no PEND possible.  Accrued handled above.
+	    let isReserved = false;
+	    if( colName == config.PROJ_COLS[config.PROJ_PEND] ) {
+		console.log( authData.who, "WARNING.", colName, "is reserved, requires assignees.  Moving card out of reserved column." );
+		isReserved = true;
+	    }
+	    let locData = { "reserved": isReserved, "projId": pd.GHProjectId, "projName": pd.GHProjectName, "fullName": pd.GHFullName };
+	    let newCardId = await gh.rebuildCard( authData, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHColumnId, origCardId, issueData, locData );
+
 	    // Add card issue linkage
 	    ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName,
 				pd.GHColumnId, colName, newCardId, pd.GHIssueTitle);
@@ -720,7 +727,7 @@ async function cleanDynamo( authData, tableName, ids ) {
     return await wrappedPostIt( authData, shortName, postData );
 }
 
-// XXX unused?
+/*
 function getTimeDiff( lastEvent, newStamp ) {
     // lastEvent: {h, m, s}
     // newstamp: "2020-12-23T20:55:27Z"
@@ -741,6 +748,7 @@ function getTimeDiff( lastEvent, newStamp ) {
 
     return tdiff;
 }
+*/
 
 function makeStamp( newStamp ) {
     // newstamp: "2020-12-23T20:55:27Z"
@@ -877,7 +885,7 @@ async function failHere( source ) {
 
 
 exports.randAlpha = randAlpha;
-exports.getTimeDiff = getTimeDiff;
+// exports.getTimeDiff = getTimeDiff;
 
 exports.getAPIPath = getAPIPath;
 exports.getCognito = getCognito;

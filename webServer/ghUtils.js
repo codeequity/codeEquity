@@ -159,8 +159,8 @@ var githubUtils = {
 	return removeCard( authData, cardId );
     },
 	
-    rebuildCard: function( authData, owner, repo, colId, origCardId, issueData ) {
-	return rebuildCard( authData, owner, repo, colId, origCardId, issueData );
+    rebuildCard: function( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
+	return rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData );
     },
 
     createUnClaimedCard: function( authData, ghLinks, pd, issueId, accr ) {
@@ -867,7 +867,13 @@ async function removeCard( authData, cardId ) {
 }
 
 // XXX alignment risk - card info could have moved on
-async function rebuildCard( authData, owner, repo, colId, origCardId, issueData ) {
+async function rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
+
+    let isReserved = typeof locData !== 'undefined' && locData.hasOwnProperty( "reserved" ) ? locData.reserved : false;    
+    let projId     = typeof locData !== 'undefined' && locData.hasOwnProperty( "projId" )   ? locData.projId   : -1;
+    let projName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "projName" ) ? locData.projName : "";
+    let fullName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "fullName" ) ? locData.fullName : "";
+
     assert( issueData.length == 2 );
     let issueId  = issueData[0];
     let issueNum = issueData[1];
@@ -878,6 +884,35 @@ async function rebuildCard( authData, owner, repo, colId, origCardId, issueData 
     if( colId == -1 ) {
 	let projCard = await getCard( authData, origCardId ); 
 	colId = projCard.column_url.split('/').pop();
+    }
+
+    // Trying to build new card in reserved space .. move out of reserved, prog is preferred.
+    // Finding or creating non-reserved is a small subset of getCEprojectLayout
+    if( isReserved ) {
+	assert( projId   != -1 );
+	assert( fullName != "" );
+	const planName = config.PROJ_COLS[ config.PROJ_PLAN ];
+	const progName = config.PROJ_COLS[ config.PROJ_PROG ];
+
+	const locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );   
+	assert( locs != -1 );
+	projName = projName == "" ? locs[0].GHProjectName : projName;
+
+	colId = -1;
+	let loc = locs.find( loc => loc.GHColumnName == progName );   // prefer PROG
+	if( typeof loc !== 'undefined' ) { colId = loc.GHColumnId; }
+	else {
+	    loc = locs.find( loc => loc.GHColumnName == planName )
+	    if( typeof loc !== 'undefined' ) { colId = loc.GHColumnId; }
+	}
+
+	// Create in progress, if needed
+	if( colId == -1 ) {
+	    let progCol = await createColumn( authData, projId, progName, "first" );
+	    console.log( "Creating new column:", progName );
+	    colId = progCol.data.id; 
+	    ghLinks.addLoc( authData, fullName, projName, projId, progName, colId );
+	}
     }
     
     // create issue-linked project_card, requires id not num
@@ -1050,7 +1085,8 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
 }
 
-async function createColumn( authData, projId, colName ) {
+// Pos options are first, last, after x
+async function createColumn( authData, projId, colName, pos ) {
     let rv = -1;
 
     // XXX Fugly
@@ -1061,6 +1097,10 @@ async function createColumn( authData, projId, colName ) {
     else {
 	rv = await authData.ic.projects.createColumn({ project_id: projId, name: colName })
 	    .catch( e => rv = errorHandler( "createColumn", e, createColumn, authData, projId, colName ));
+
+	// don't wait
+	authData.ic.projects.moveColumn({ column_id: rv.data.id.toString(), position: pos })
+	    .catch( e => console.log( "Error.  Move column failed.", e ));
     }
     return rv;
 }
@@ -1136,7 +1176,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	    if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
 		console.log( "Creating new column:", progName );
 		// Wait later
-		progCol = createColumn( authData, projId, progName );
+		progCol = createColumn( authData, projId, progName, "first" );
 	    }
 	}
 
@@ -1144,13 +1184,13 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	if( foundReqCol[config.PROJ_PEND + 1] == -1 ) {
 	    console.log( "Creating new column:", pendName );
 	    // Wait later
-	    pendCol = createColumn( authData, projId, pendName );
+	    pendCol = createColumn( authData, projId, pendName, "last" );
 	}
 	// Create ACCR if missing
 	if( foundReqCol[config.PROJ_ACCR + 1] == -1 ) {
 	    console.log( "Creating new column:", accrName );
 	    // Wait later
-	    accrCol = createColumn( authData, projId, accrName );
+	    accrCol = createColumn( authData, projId, accrName, "last" );
 	}
 
 	if( progCol ) {
