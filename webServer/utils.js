@@ -727,7 +727,7 @@ async function cleanDynamo( authData, tableName, ids ) {
     return await wrappedPostIt( authData, shortName, postData );
 }
 
-// XXX unused?
+/*
 function getTimeDiff( lastEvent, newStamp ) {
     // lastEvent: {h, m, s}
     // newstamp: "2020-12-23T20:55:27Z"
@@ -748,6 +748,7 @@ function getTimeDiff( lastEvent, newStamp ) {
 
     return tdiff;
 }
+*/
 
 function makeStamp( newStamp ) {
     // newstamp: "2020-12-23T20:55:27Z"
@@ -884,7 +885,7 @@ async function failHere( source ) {
 
 
 exports.randAlpha = randAlpha;
-exports.getTimeDiff = getTimeDiff;
+// exports.getTimeDiff = getTimeDiff;
 
 exports.getAPIPath = getAPIPath;
 exports.getCognito = getCognito;

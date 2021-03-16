@@ -908,7 +908,7 @@ async function rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, i
 
 	// Create in progress, if needed
 	if( colId == -1 ) {
-	    let progCol = await createColumn( authData, projId, progName );
+	    let progCol = await createColumn( authData, projId, progName, "first" );
 	    console.log( "Creating new column:", progName );
 	    colId = progCol.data.id; 
 	    ghLinks.addLoc( authData, fullName, projName, projId, progName, colId );
@@ -1085,7 +1085,8 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
 }
 
-async function createColumn( authData, projId, colName ) {
+// Pos options are first, last, after x
+async function createColumn( authData, projId, colName, pos ) {
     let rv = -1;
 
     // XXX Fugly
@@ -1096,6 +1097,10 @@ async function createColumn( authData, projId, colName ) {
     else {
 	rv = await authData.ic.projects.createColumn({ project_id: projId, name: colName })
 	    .catch( e => rv = errorHandler( "createColumn", e, createColumn, authData, projId, colName ));
+
+	// don't wait
+	authData.ic.projects.moveColumn({ column_id: rv.data.id.toString(), position: pos })
+	    .catch( e => console.log( "Error.  Move column failed.", e ));
     }
     return rv;
 }
@@ -1171,7 +1176,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	    if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
 		console.log( "Creating new column:", progName );
 		// Wait later
-		progCol = createColumn( authData, projId, progName );
+		progCol = createColumn( authData, projId, progName, "first" );
 	    }
 	}
 
@@ -1179,13 +1184,13 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	if( foundReqCol[config.PROJ_PEND + 1] == -1 ) {
 	    console.log( "Creating new column:", pendName );
 	    // Wait later
-	    pendCol = createColumn( authData, projId, pendName );
+	    pendCol = createColumn( authData, projId, pendName, "last" );
 	}
 	// Create ACCR if missing
 	if( foundReqCol[config.PROJ_ACCR + 1] == -1 ) {
 	    console.log( "Creating new column:", accrName );
 	    // Wait later
-	    accrCol = createColumn( authData, projId, accrName );
+	    accrCol = createColumn( authData, projId, accrName, "last" );
 	}
 
 	if( progCol ) {

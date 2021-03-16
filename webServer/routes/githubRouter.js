@@ -33,9 +33,6 @@ var githubPATs     = {};
 // GH Linkage table
 var ghLinks = new links.Linkage();
 
-// XXX temp, or add date
-var lastEvent = {"h": 0, "m": 0, "s": 0 };
-
 // Will contain parts of the last link that was deleted.
 // Add: delete card.  Clear: any notification != delete issue.
 // var justDeleted = {};
@@ -56,7 +53,6 @@ async function initGH() {
     authData.pat = -1;                // personal access token for gh
     authData.job = -1;                // currently active job id
 
-    // XXX Generally, PAT will not be testOwner, testRepo.  Need CE-wide
     await initAuth( authData, config.TEST_OWNER, config.TEST_REPO  );
     ghLinks.init( authData );  
 }
@@ -108,8 +104,6 @@ async function getGHAuths( authData, owner, repo ) {
 }
 
 // Octokit using auth-token ATM, which expires every hour. Refresh as needed.
-// XXX Should switch to app-token with built-in refresh
-// XXX Looks like cognito expires at same rate
 async function refreshAuths( authData, owner, repo ) {
 
     const stamp = Date.now();
