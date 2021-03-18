@@ -67,9 +67,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    // XXX need to warn .. card be good
 	    // undo current edits, then make new.  Need to wait, else wont create label with same name
-	    console.log( authData.who, "Undoing label edit, back to", origName, origDesc );
+	    console.log( authData.who, "WARNING.  Undoing label edit, back to", origName, origDesc );
 	    await ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, origName, origDesc );
 
 	    // no need to wait
@@ -96,7 +95,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( !desc ) { return; } // bad label
 	    const lVal = ghSafe.parseLabelDescr( [ desc ] );
 	    let   tVal = ghSafe.getAllocated( [ desc ] );
-	    tVal = tVal ? "allocation" : "plan";                     // XXX config
+	    tVal = tVal ? "allocation" : "plan";
 
 	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
 	    const peqs  = await utils.getPeqs( authData, query );

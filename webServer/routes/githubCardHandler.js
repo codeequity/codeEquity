@@ -21,7 +21,6 @@ https://developer.github.com/v3/issues/#create-an-issue
 // PeqType:PLAN  most common
 async function recordMove( authData, reqBody, fullName, oldCol, newCol, link ) { 
 
-    // XXX inform all contributors of this failure
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
@@ -87,7 +86,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let issueURL = pd.reqBody['project_card']['content_url'].split('/');
 	    assert( issueURL.length > 0 );
 	    pd.GHIssueNum = parseInt( issueURL[issueURL.length - 1] );
-	    // XXX low alignment risk here... exists in theory, hard to imagine any real damage in practice, dependent on ID only
 	    let issue = await gh.getIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );   // [ id, [content] ]
 	    pd.GHIssueId = issue[0];
 	    
@@ -214,7 +212,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    // PEQ.  Card is gone, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
+	    // PEQ.  Card is gone in GH, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
 	    // Wait later
 	    let peq = utils.getPeq( authData, link.GHIssueId );
 
@@ -233,7 +231,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		// no need to wait.
 		// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
-		// XXX all vebs, actions, notes should be in config.
 		peq = await peq;
 		utils.removePEQ( authData, peq.PEQId );
 		let action = accr ? "notice"  : "delete";

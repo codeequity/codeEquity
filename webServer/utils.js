@@ -21,7 +21,6 @@ var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
 // read apiBasePath
-// XXX combine
 var fs = require('fs'), json;
 
 
@@ -80,7 +79,7 @@ async function getRemotePackageJSONObject(owner, repo, installationAccessToken) 
     return fileObject;
 };
 
-// XXX rename postIt
+
 async function postGH( PAT, url, postData ) {
     const params = {
 	method: "POST",
@@ -108,7 +107,6 @@ async function postGH( PAT, url, postData ) {
 
 
 async function postCE( shortName, postData ) {
-    // XXX
     const ceServerTestingURL = "http://127.0.0.1:3000/github/testing";
 
     const params = {
@@ -236,7 +234,7 @@ async function getProjectSubs( authData, ghLinks, repoName, projName, colName ) 
     else {
 	// Check if project is a card in Master
 	let links = ghLinks.getLinks( authData, {"repo": repoName, "projName": config.MAIN_PROJ, "cardTitle": projName} );
-	if( links != -1 ) { projSub = [ links[0]['GHColumnName'], projName ]; }  // XXX multiple?
+	if( links != -1 ) { projSub = [ links[0]['GHColumnName'], projName ]; }
 	else              { projSub = [ projName ]; }
 
 	// If col isn't a CE organizational col, add to psub
@@ -261,8 +259,7 @@ async function updatePEQPSub( authData, peqId, projSub ) {
     return await wrappedPostIt( authData, shortName, pd );
 }
 
-// XXX combine
-// XXX This must be guarded, at a minimum, not ACCR
+// Note.   This must be guarded, at a minimum, not ACCR
 async function updatePEQVal( authData, peqId, peqVal ) {
     console.log( authData.who, "Updating PEQ value after label split", peqVal );
 
@@ -310,7 +307,7 @@ async function recordPEQ( authData, postData ) {
     }
     else
     {
-	// XXX accrued - todo
+	// XXX accrued - todo (!!!!)
     }
 
     postData.CEHolderId   = [];            // no access to this, yet
@@ -371,7 +368,7 @@ async function rebuildPeq( authData, link, oldPeq ) {
     postData.GHProjectSub = [ link.GHProjectName, link.GHColumnName ];
     postData.GHProjectId  = link.GHProjectId; 
     postData.GHIssueId    = link.GHIssueId;
-    postData.GHIssueTitle = link.GHCardTitle;   // XXX fix link name here.  cwazy
+    postData.GHIssueTitle = link.GHCardTitle;
     postData.Active       = "true";
 
     if( config.PROJ_COLS.includes( link.GHColumnName ) ) { postData.GHProjectSub = [ link.GHProjectName ]; }
@@ -381,7 +378,7 @@ async function rebuildPeq( authData, link, oldPeq ) {
     return newPEQId; 
 }
 
-// XXX dup check could occur in lambda handler, save a round trip
+// not, dup check could occur in lambda handler, save a round trip
 async function recordPeqData( authData, pd, checkDup, specials ) {
     console.log( "Recording peq data for", pd.GHIssueTitle );	
     let newPEQId = -1;
@@ -493,7 +490,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    console.log( ".... new peqValue:", peqVal );
 
 	    pd.peqType = allocation ? "allocation" : "plan"; 
-	    let peqHumanLabelName = peqVal.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
+	    let peqHumanLabelName = peqVal.toString() + ( allocation ? " AllocPEQ" : " PEQ" );
 	    newLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, peqVal )
 	    issue.labels[idx] = newLabel;
 	    // update peqData for subsequent recording
@@ -511,7 +508,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	let origCardId = links[i].GHCardId;
 	let splitTag   = randAlpha(8);
 
-	// XXX This information could be passed down.. but save speedups for graphql
+	// Note: This information could be passed down.. but save speedups for graphql
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
 	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, pd.GHFullName, links[i].GHProjectId );
@@ -546,7 +543,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     return gotSplit;
 }
 
-// XXX this function can be sped up, especially when animating an unclaimed
+// Note: this function can be sped up, especially when animating an unclaimed
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
 async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, specials ) {
     pd.GHIssueTitle = issueCardContent[0];
@@ -603,7 +600,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	}
     }
     else {
-	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
+	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  
 	// Wait later, maybe
 	let peqLabel = gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
 	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
@@ -800,14 +797,14 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
     // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
     
-    assert( delayCount < 10 );  // XXX
+    assert( delayCount < 10 );  
     ceJobs.delay++;
     
     // get splice index
     let spliceIndex = 1;
     let jobs = ceJobs.jobs.getAll();
 
-    const stepCost = 300 * delayCount;   // XXX ms.  config?  
+    const stepCost = 300 * delayCount;   
     
     // If nothing else is here yet, delay.  Overall, will delay over a minute 
     if( jobs.length <= 1 ) {
@@ -830,7 +827,6 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     summarizeQueue( ceJobs, "\nceJobs, after demotion", 7 );
 }
 
-// XXX seems to belong elsewhere
 // Put the job.  Then return first on queue.  Do NOT delete first.
 function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
     const jobData = makeJobData( jid, handler, sender, reqBody, tag, 0 );
@@ -851,7 +847,7 @@ function purgeQueue( ceJobs ) {
     ceJobs.count = 0;
     ceJobs.delay = 0;
 
-    // XXX  Note, this should not be necessary.
+    // Note, this should not be necessary.
     if( ceJobs.jobs.length > 0 ) { 
 	summarizeQueue( ceJobs, "Error.  Should not be jobs to purge.", 200 );
 	ceJobs.jobs.purge();

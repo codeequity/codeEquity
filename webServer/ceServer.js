@@ -35,10 +35,6 @@ ceServer.use('/archive/github/issue', githubRouter);
 ceServer.use('/archive/github/card', githubRouter);
 ceServer.use('/github/testing', githubRouter);
 
-// XXX ??
-// ceServer.use('/archive/github/merge', githubRouter);
-
-// XXX in use? 
 var flutterRouter      = require('./routes/flutterRouter');
 ceServer.use('/update/github', flutterRouter);
 

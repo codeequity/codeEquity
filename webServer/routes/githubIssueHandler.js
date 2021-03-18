@@ -139,7 +139,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.GHIssueId );
 		    let issueURL = card.content_url.split('/');
 		    assert( issueURL.length > 0 );
-		    link.GHIssueNum  = parseInt( issueURL[issueURL.length - 1] );  // XXX already have this
+		    link.GHIssueNum  = pd.GHIssueNum;
 		    link.GHCardId    = card.id
 		    link.GHProjectId = card.project_url.split('/').pop();
 		    link.GHColumnId  = card.column_url.split('/').pop();
@@ -188,9 +188,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    
-	    // XXX Inform contributors that status is now UNTRACKED
 	    let peq = await utils.getPeq( authData, pd.GHIssueId );	
-	    console.log( "PEQ Issue unlabeled" );
+	    console.log( "WARNING.  PEQ Issue unlabeled, issue no longer tracked." );
 	    ghLinks.rebaseLinkage( authData, pd.GHIssueId );   // setting various to -1, as it is now untracked
 	    utils.removePEQ( authData, peq.PEQId );
 	    utils.recordPEQAction(
@@ -233,7 +232,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // Get array: [proj_id, col_idx4]
-	    // XXX getLayout and moveIssue both call getGHCard
 	    let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
 	    if( ceProjectLayout[0] == -1 ) {
 		console.log( "Project does not have recognizable CE column layout.  No action taken." );
