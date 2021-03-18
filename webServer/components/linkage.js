@@ -86,7 +86,7 @@ class Linkage {
     }
 
     
-    // XXX Fix cold start.  This should occur at startup, in order of most active repos.
+    // Note: be good to init in order of most recently and most active repos.
     // populateCEServer migrates a project into CE.  lots of extra checks.
     // init here is to handle a server restart, only 'remembers' official CE projects.
     async init( authData ) {
@@ -139,7 +139,7 @@ class Linkage {
 	link.GHColumnId    = colId.toString();
 	link.GHColumnName  = colName;
 	link.GHCardId      = cardId.toString();
-	link.GHCardTitle   = issueTitle;   // XXX rename
+	link.GHCardTitle   = issueTitle;   
 	link.flatSource    = haveSource ? source : link.GHColumnId;
 
 	// Do not track source col if is in full layout
@@ -188,7 +188,6 @@ class Linkage {
 
 
     // issueId:cardId 1:m  cardId:issueId 1:1
-    // XXX down the road, will want to index by repo - too many otherwise.
     getLinks( authData, query ) {
 
 	if( typeof query.repo === 'undefined' ) {
@@ -325,7 +324,7 @@ class Linkage {
     removeLinkage({ authData, issueId, cardId }) {
 	let retVal = false;
 	if( !authData ) { console.log( "missing authData" ); return retVal; }
-	if( !issueId )       { console.log( "missing issueId" ); return retVal; }
+	if( !issueId )  { console.log( "missing issueId" ); return retVal; }
 	// cardId can be missing
 
 	console.log( authData.who, "Remove link for issueId:", issueId );
@@ -408,7 +407,6 @@ class Linkage {
 	return retVal
     }
 
-    // XXX stringiness vs. intyness of link is bass ackwards.
     show( count ) {
 	console.log( "IssueId",
 		     "IssueNum",

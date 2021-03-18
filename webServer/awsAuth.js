@@ -19,7 +19,6 @@ function asyncAuthenticateUser(cognitoUser, authenticationDetails) {
   });
 }
 
-// XXX need to add ceServer login to cognito during stack creation
 async function getCogIDToken() {
     let poolData = utils.getCognito();
     let authData = utils.getCEServer();

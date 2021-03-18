@@ -1303,7 +1303,7 @@ async function runTests( authData, ghLinks, td ) {
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
     // await utils.sleep( 5000 );
-    
+
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );

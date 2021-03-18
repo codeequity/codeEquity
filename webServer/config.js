@@ -39,11 +39,11 @@ const GQL_ENDPOINT = "https://api.github.com/graphql";
 
 const CREDS_PATH  = "../ops/github/auth/ghAppCredentials";
 const CREDS_TPATH = "../ops/github/auth/ghAppTestCredentials";
-const PAT_PATH          = "../ops/github/auth/ghPersonalAccessToken";   // XXX naming
+const PAT_PATH          = "../ops/github/auth/ghPersonalAccessToken";   
 const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT"; 
 const TEST_OWNER        = "rmusick2000";
 const TEST_REPO         = "CodeEquityTester";
-const CROSS_TEST_OWNER  = "rmusick2000";          // XXX Cross tester currently requires same TEST owner, assumes codeEquity installed for all repos for tester
+const CROSS_TEST_OWNER  = "rmusick2000";          
 const CROSS_TEST_REPO   = "ceTesterAlt";
 const MULTI_TEST_OWNER  = "connieCE";
 const MULTI_TEST_REPO   = "CodeEquityTester";

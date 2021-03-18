@@ -139,10 +139,6 @@ var githubUtils = {
 	return getCard( authData, cardId );
     },
 
-    getColumns: function( authData, ghLinks, fullName, projId ) {
-	return getColumns( authData, ghLinks, fullName, projId );
-    },
-
     getFullIssue: function( authData, owner, repo, issueNum ) {
 	return getFullIssue( authData, owner, repo, issueNum );
     },
@@ -214,7 +210,7 @@ var githubUtils = {
 };
 
 
-// XXX add random backoff delay - but need to delay entire chain.
+// NOTE.  This is very simplistic.  Consider at least random backoff delay, elay entire chain.
 // Ignore:
 //   422:  validation failed.  e.g. create failed name exists.. chances are, will continue to fail.
 async function errorHandler( source, e, func, ...params ) {
@@ -229,7 +225,7 @@ async function errorHandler( source, e, func, ...params ) {
 	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels." );
 	return false;
     }
-    else if( e.status == 401 ||                             // XXX authorization
+    else if( e.status == 401 ||                             // XXX authorization will probably keep failing
 	     e.status == 500 ||                             // internal server error, wait and retry
 	     e.status == 502 )                              // server error, please retry       
     {
@@ -273,7 +269,6 @@ async function checkRateLimit( authData ) {
 	.catch( e => errorHandler( "checkRateLimit", e, checkRateLimit, authData ) );
 }
 
-// XXX paginate
 async function checkIssueExists( authData, owner, repo, title )
 {
     let retVal = false;
@@ -294,7 +289,7 @@ async function checkIssueExists( authData, owner, repo, title )
 
 // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
 // there are no assignees for card-created issues.. they are added, or created directly from issues.
-// XXX alignment risk - card info could have moved on
+// Note. alignment risk - card info could have moved on
 async function getAssignees( authData, owner, repo, issueNum )
 {
     let retVal = [];
@@ -324,11 +319,12 @@ async function getAssignees( authData, owner, repo, issueNum )
 }
 
 
+// Note.  Should work for label, but this is currently untried.
 async function checkExistsGQL( authData, nodeId, nodeType ) {
 
     let issue    = nodeType !== 'undefined' && nodeType.hasOwnProperty( "issue" )   ? nodeType.issue  : false;
     let label    = nodeType !== 'undefined' && nodeType.hasOwnProperty( "label" )   ? nodeType.label  : false;
-    assert( issue ); // XXX future fix
+    assert( issue ); 
 
     // Note: node_ids are typed
     let query = `
@@ -373,7 +369,7 @@ async function checkIssue( authData, owner, repo, issueNum ) {
 }
 
 // [id, content]
-// XXX alignment risk - card info could have moved on
+// Note. alignment risk - card info could have moved on
 async function getIssue( authData, owner, repo, issueNum )
 {
     let retVal   = [];
@@ -391,7 +387,7 @@ async function getIssue( authData, owner, repo, issueNum )
     return retIssue;
 }
 
-// XXX alignment risk - card info could have moved on
+// Note. alignment risk - card info could have moved on
 async function getFullIssue( authData, owner, repo, issueNum )
 {
     if( issueNum == -1 ) { return -1; }
@@ -404,7 +400,7 @@ async function getFullIssue( authData, owner, repo, issueNum )
     return retIssue;
 }
 
-// XXX alignment risk - card info could have moved on
+// Note. alignment risk - card info could have moved on
 async function getCard( authData, cardId ) {
     let retCard = -1;
     if( cardId == -1 ) { return retCard; }
@@ -416,15 +412,6 @@ async function getCard( authData, cardId ) {
     return retCard;
 }
 
-// XXX unused?
-function getColumns( authData, ghLinks, fullName, projId ) {
-    let cols = "";
-
-    let locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );
-    cols = locs.map( loc => loc.GHColumnId );
-    
-    return cols;
-}
 
 async function rebuildIssue( authData, owner, repo, issue, msg, splitTag ) { 
     console.log( authData.who, "Rebuild issue" );
@@ -531,7 +518,7 @@ async function createLabel( authData, owner, repo, name, color, desc ) {
 
 async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
     console.log( "Creating label", allocation, peqValue );
-    let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  // XXX config
+    let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
     let label = await createLabel( authData, owner, repo, peqHumanLabelName, pcolor, desc );
@@ -551,7 +538,7 @@ async function getLabel( authData, owner, repo, name ) {
     return labelRes;
 }
 
-// XXX (very) low risk for alignment trouble. warn if see same label create/delete on job queue.
+// Note.  (very) low risk for alignment trouble. warn if see same label create/delete on job queue.
 async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue )
 {
     // does label exist 
@@ -622,9 +609,7 @@ function populateRequest( labels ) {
 }
 
 // GraphQL to init link table
-// XXX getting open only is probably a mistake.  what if added back?  does this get all?
 async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
-    // XXX move these
     const query1 = `
     query baseConnection($owner: String!, $repo: String!) 
     {
@@ -680,8 +665,11 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 	    const cards  = issue.projectCards;
 	    const labels = issue.labels;
 	    
-	    // XXX Over 100 cards or 100 labels for 1 issue?  Don't use CE.  Warn here.
-	    assert( !cards.pageInfo.hasNextPage && !labels.hasNextPage );
+	    // Over 100 cards or 100 labels for 1 issue?  Don't use CE.  Warn here.
+	    if( cards.pageInfo.hasNextPage || labels.hasNextPage ) {
+		console.log( "WARNING. CodeEquity is not designed to handle issues with over a hundred cards or labels." );
+		assert( false );
+	    }
 	    
 	    for( const card of cards.edges ) {
 		// console.log( card.node.project.name, issue.title );
@@ -710,7 +698,6 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 // GraphQL to get all columns in repo 
 async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 
-    // XXX move these
     const query1 = `
     query baseCols($owner: String!, $repo: String!) 
     {
@@ -755,7 +742,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	    const project = projects.edges[i].node;
 	    const cols    = project.columns;
 	    
-	    // XXX Over 100 cols for 1 project?  Warn here.
+	    // Note.  Over 100 cols for 1 project?  Warn here.
 	    assert( !cols.pageInfo.hasNextPage );
 	    
 	    for( const col of cols.edges ) {
@@ -786,7 +773,6 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 
 
 
-// XXX move these
 // Testing function
 async function transferIssueGQL( authData, issueId, toRepoId) {
     // Note: node_ids are typed
@@ -812,7 +798,7 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
 //
 // Would be soooo much better if Octokit/Github had reverse link from issue to card.
 // newborn issues not populated.  newborn cards not populated.  Just linkages.
-// XXX something like this really needs graphQL
+// Note. something like this really needs graphQL
 async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
@@ -844,7 +830,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     
     // [ [projId, cardId, issueNum, issueId], ... ]
     // Note - this can't be a promise.all - parallel execution with shared pd == big mess
-    //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql.  XXX
+    //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql. 
     // Note - this mods values of pd, but exits immediately afterwards.
     for( const link of one2Many ) {
 	pd.GHIssueId  = link[3];
@@ -852,7 +838,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 	await utils.resolve( authData, ghLinks, pd, "???" );
     }
 
-    origPop = await origPop;  // XXX any reason to back out of this sooner?
+    origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
     // Don't wait.
     utils.setPopulated( authData, pd.GHFullName );
@@ -866,7 +852,7 @@ async function removeCard( authData, cardId ) {
 	.catch( e => errorHandler( "removeCard", e, removeCard, authData, cardId ));
 }
 
-// XXX alignment risk - card info could have moved on
+// Note.  alignment risk - card info could have moved on
 async function rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
 
     let isReserved = typeof locData !== 'undefined' && locData.hasOwnProperty( "reserved" ) ? locData.reserved : false;    
@@ -947,7 +933,7 @@ async function removePeqLabel( authData, owner, repo, issueNum ) {
 
     if( !retVal ) {
 	if( typeof labels === 'undefined' ) { return retVal; }
-	if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } // XXX paginate? grump grump 
+	if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } 
 	
 	let peqLabel = {};
 	for( const label of labels.data ) {
@@ -1035,7 +1021,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 }
 
 
-// XXX alignment risk
+// Note. alignment risk
 // Don't care about state:open/closed.  unclaimed need not be visible.
 async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
 {
@@ -1081,6 +1067,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
 
     // Remove turds, report.  
     if( success ) { ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId }); }
+    else { console.log( "WARNING.  cleanUnclaimed failed to remove linkage." ); }
 
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
 }
@@ -1107,13 +1094,13 @@ async function createColumn( authData, projId, colName, pos ) {
 
 //                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
 // If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
-// XXX alignment risk
+// Note. alignment risk
 async function getCEProjectLayout( authData, ghLinks, pd )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
-    // XXX Revisit if ever decided to track cols, projects.
-    // XXX may be hole in create card from isssue
+    //     Revisit if ever decided to track cols, projects.
+    // Note.  On rebuild, watch for potential hole in create card from isssue
     let issueId = pd.GHIssueId;
     let link = ghLinks.getUniqueLink( authData, issueId );
 
@@ -1262,7 +1249,7 @@ async function checkReserveSafe( authData, owner, repo, issueNum, colNameIndex )
     return retVal;
 }
 
-// XXX alignment risk if card moves in the middle of this
+// Note. alignment risk if card moves in the middle of this
 async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 {
     console.log( "Moving issue card", pd.GHIssueId, pd.GHIssueNum );
@@ -1317,7 +1304,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 	}
     }
 
-    // XXX updateLinkage should not occur unless successful.  Everywhere.  
+    // Note. updateLinkage should not occur unless successful.  Everywhere.  
     //     Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
     if( success ) {
 	success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName );
@@ -1327,7 +1314,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
     return success;
 }
 
-// XXX alignment risk
+// Note. alignment risk
 function getProjectName( authData, ghLinks, fullName, projId ) {
 
     if( projId == -1 ) { return -1; }
@@ -1339,8 +1326,7 @@ function getProjectName( authData, ghLinks, fullName, projId ) {
     
 }
 
-// XXX add repo to all these queries?
-// XXX alignment risk
+// Note.  alignment risk
 function getColumnName( authData, ghLinks, fullName, colId ) {
 
     if( colId == -1 ) { return -1; }
@@ -1354,7 +1340,6 @@ function getColumnName( authData, ghLinks, fullName, colId ) {
 }
 
 
-// XXX Revisit allowed input?
 // Allow:
 // <allocation, PEQ: 1000>      typical by hand description
 // <allocation, PEQ: 1,000>
@@ -1380,7 +1365,7 @@ function getAllocated( content ) {
 //  <PEQ: 1,000>
 function parsePEQ( content, allocation ) {
     let peqValue = 0;
-    // content must be at least 2 lines...  XXX title <PEQ: 1000> will fail here .. will be 1 char at a time
+    // content must be at least 2 lines, else will be 1 char at a time
     for( const line of content ) {
 	let s = -1;
 	let c = -1;
@@ -1443,7 +1428,7 @@ function parseLabelName( name ) {
     let peqValue = 0;
     let alloc = false;
     let splits = name.split(" ");
-    if( splits.length == 2 && ( splits[1] == "AllocPEQ" || splits[1] == "PEQ" )) {   // XXX config
+    if( splits.length == 2 && ( splits[1] == "AllocPEQ" || splits[1] == "PEQ" )) {
 	peqValue = parseInt( splits[0] );
 	alloc = splits[1] == "AllocPEQ";
     }
