@@ -64,10 +64,10 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	
 	utils.removePEQ( authData, peq.PEQId );	
 	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-			       "confirm", "change", [peq.PEQId, newPeqId], "recreate",
+			       config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], "recreate",
 			       utils.getToday(), pd.reqBody );
 	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-			       "confirm", "add", [newPeqId], "",
+			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }
     console.log( "Delete", Date.now() - tstart );
@@ -197,8 +197,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		config.EMPTY,     // CE UID
 		pd.GHCreator,     // gh user name
 		pd.GHFullName,    // of the repo
-		"confirm",        // verb
-		"delete",         // action
+		config.PACTVERB_CONF,       // verb
+		config.PACTACT_DEL,         // action
 		[ peq.PEQId ],    // subject
 		"unlabel",        // note
 		utils.getToday(), // entryDate
@@ -248,9 +248,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    else {
 			// githubCardHandler:recordMove must handle many more options.  Choices here are limited.
 			// Closed: 
-			let verb = "propose";
-			let paction = "accrue";
-			if( action == "reopened" ) { verb = "reject"; }
+			let verb = config.PACTVERB_PROP;
+			let paction = config.PACTACT_ACCR;
+			if( action == "reopened" ) { verb = config.PACTVERB_REJ; }
 			
 			let subject = [ peqId.toString() ];
 			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
@@ -293,15 +293,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    let assignee = pd.reqBody.assignee.login;
-	    let verb = "confirm";
-	    let paction = "change";
+	    let verb = config.PACTVERB_CONF;
+	    let paction = config.PACTACT_CHAN;
 	    let note = ( action == "assigned" ? "add" : "remove" ) + " assignee";
 
 	    // Not if ACCR
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
 	    if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( "WARNING.", links[0].GHColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
-		paction = "notice";
+		paction = config.PACTACT_NOTE;
 		note = "Bad assignment attempted";
 		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, assignee ); }
 		else                       { ghSafe.addAssignee( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, assignee ); }
@@ -340,7 +340,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			assert( peq != -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
 			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
-					       "confirm", "change", subject, "Change title",
+					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
 					       utils.getToday(), pd.reqBody );
 		    }
 		}
@@ -360,7 +360,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		if( peq != -1 ) {
 		    const subject = [ peq.PEQId, pd.reqBody.changes.new_repository.full_name ];
 		    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
-					   "confirm", "relocate", subject, "Transfer out",
+					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
 					   utils.getToday(), pd.reqBody );
 		}
 	    }

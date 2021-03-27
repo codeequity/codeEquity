@@ -197,7 +197,7 @@ async function testResolve( authData, ghLinks, td ) {
     await tu.addLabel( authData, td, tripleIssue.number, "enhancement" );       
 
     // Add a peq label
-    let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 " + config.PEQ_LABEL, 1000 );
 
     // Trigger resolve by adding a new card.  Note - do not catch the return here, as it will be resolved away.
     // NOTE: no sleep?  Perfectly bad notification interleaving can mean both issue and card PNP see an issue to split.
@@ -231,7 +231,7 @@ async function testResolve( authData, ghLinks, td ) {
 		if( allNames[i] == ISS_TRIPREC && issue.labels.length > 0 ) {
 		    labCount++;
 		    tripIssues.push( issue );
-		    testStatus = tu.checkEq( issue.labels[0].name, "500 PEQ", testStatus, "Bad issue label" );
+		    testStatus = tu.checkEq( issue.labels[0].name, "500 " + config.PEQ_LABEL, testStatus, "Bad issue label" );
 		}
 		else if( allNames[i] == ISS_SINREC ) {
 		    othIssues.push( issue );
@@ -294,7 +294,7 @@ async function testResolve( authData, ghLinks, td ) {
     assert( tpeqs.length == 2 );
     
     for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].Amount, 500,           testStatus, "Peq Amount" ); }
-    for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].PeqType, "plan",       testStatus, "Peq Type" ); }
+    for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].PeqType, config.PEQTYPE_PLAN, testStatus, "Peq Type" ); }
     for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].Active, "true",        testStatus, "Peq Active" ); }
     for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].CEHolderId.length, 0,  testStatus, "Peq ce holder ids" ); }
     for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].GHHolderId.length, 0,  testStatus, "Peq gh holder ids" ); }
@@ -335,18 +335,18 @@ async function testResolve( authData, ghLinks, td ) {
     for( pact of pacts ) {
 	if( pact.Subject[0] == masPeq[0].PEQId ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
+	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,         testStatus, "PAct user name" ); 
 	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
 	    testStatus = tu.checkEq( pact.Locked, "false",                       testStatus, "PAct locked" );
-	    if     ( pact.Action == "add" )    { f1 = 1; }
-	    else if( pact.Action == "change" ) { f2 = 1; }
+	    if     ( pact.Action == config.PACTACT_ADD )    { f1 = 1; }
+	    else if( pact.Action == config.PACTACT_CHAN )   { f2 = 1; }
 	}
 	else if( pact.Subject[0] == dsPeq[0].PEQId ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
-	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
+	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
+	    testStatus = tu.checkEq( pact.Action, config.PACTACT_ADD,            testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.Locked, "false",                       testStatus, "PAct locked" );
 	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
@@ -450,7 +450,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     await tu.refreshFlat( authData, td );
 
     // 1. Setup.
-    let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 " + config.PEQ_LABEL, 1000 );
     let labelDoc = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "documentation", -1 );
     let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
 
@@ -596,7 +596,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     await tu.refreshFlat( authData, td );
 
     // 1. Setup.
-    let label1m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "1000000 AllocPEQ", 1000000 );
+    let label1m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "1000000 " + config.ALLOC_LABEL, 1000000 );
     let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
 
     const issAllocDat = await tu.makeIssue( authData, td, ISS_ALLOC, [ labelBug, label1m ] );

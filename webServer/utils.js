@@ -300,7 +300,7 @@ async function recordPEQ( authData, postData ) {
     let shortName = "RecordPEQ";
     postData.GHIssueTitle = postData.GHIssueTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
 
-    if( postData.PeqType == "allocation" || postData.PeqType == "plan" ) {
+    if( postData.PeqType == config.PEQTYPE_ALLOC || postData.PeqType == config.PEQTYPE_PLAN ) {
 	postData.CEGrantorId = config.EMPTY;
 	postData.AccrualDate = config.EMPTY;
 	postData.VestedPerc  = 0.0;
@@ -408,13 +408,13 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     let action = "add";
     let subject = [ newPEQId ];
     if( typeof specials !== 'undefined' && specials == "relocate" ) {
-	action = "relocate";
+	action = config.PACTACT_RELO;
 	subject = [ newPEQId, pd.GHProjectId, pd.GHColumnId.toString() ];
     }
 	
     // no need to wait
     recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-		     "confirm", action,	subject, "",
+		     config.PACTVERB_CONF, action, subject, "",
 		     getToday(), pd.reqBody );
 
     return newPEQId;
@@ -439,7 +439,7 @@ async function changeReportPeqVal( authData, pd, peqVal ) {
     updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
     recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-		     "confirm",	"change", [newPEQ.PEQId], "peq val update", 
+		     config.PACTVERB_CONF, "change", [newPEQ.PEQId], "peq val update", 
 		     getToday(), pd.reqBody );
 }
 
@@ -489,8 +489,8 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    peqVal = Math.floor( peqVal / links.length );
 	    console.log( ".... new peqValue:", peqVal );
 
-	    pd.peqType = allocation ? "allocation" : "plan"; 
-	    let peqHumanLabelName = peqVal.toString() + ( allocation ? " AllocPEQ" : " PEQ" );
+	    pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; 
+	    let peqHumanLabelName = peqVal.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );
 	    newLabel = await gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, peqVal )
 	    issue.labels[idx] = newLabel;
 	    // update peqData for subsequent recording
@@ -558,7 +558,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     // Don't wait
     checkPopulated( authData, pd.GHFullName ).then( res => assert( res != -1 ));
     
-    if( pd.peqValue > 0 ) { pd.peqType = allocation ? "allocation" : "plan"; } 
+    if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
@@ -600,7 +600,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	}
     }
     else {
-	let peqHumanLabelName = pd.peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  
+	let peqHumanLabelName = pd.peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
 	// Wait later, maybe
 	let peqLabel = gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
 	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );

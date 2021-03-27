@@ -518,7 +518,7 @@ async function createLabel( authData, owner, repo, name, color, desc ) {
 
 async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
     console.log( "Creating label", allocation, peqValue );
-    let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  
+    let peqHumanLabelName = peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
     let label = await createLabel( authData, owner, repo, peqHumanLabelName, pcolor, desc );
@@ -1428,9 +1428,9 @@ function parseLabelName( name ) {
     let peqValue = 0;
     let alloc = false;
     let splits = name.split(" ");
-    if( splits.length == 2 && ( splits[1] == "AllocPEQ" || splits[1] == "PEQ" )) {
+    if( splits.length == 2 && ( splits[1] == config.ALLOC_LABEL || splits[1] == config.PEQ_LABEL )) {
 	peqValue = parseInt( splits[0] );
-	alloc = splits[1] == "AllocPEQ";
+	alloc = splits[1] == config.ALLOC_LABEL;
     }
     
     return [peqValue, alloc];

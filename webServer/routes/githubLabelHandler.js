@@ -55,7 +55,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    
 	    const lVal     = ghSafe.parseLabelDescr( [ origDesc ] );
 	    let allocation = ghSafe.getAllocated( [ origDesc ] );
-	    tVal = allocation ? "allocation" : "plan";
+	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    // Allow, if no active peqs
 	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: lVal, PeqType: tVal };
@@ -80,7 +80,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, name, pd.reqBody.label.color, descr );
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				   "confirm", "notice", [], "PEQ label edit attempt",
+				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label edit attempt",
 				   utils.getToday(), pd.reqBody );
 	}
 	break;
@@ -95,7 +95,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( !desc ) { return; } // bad label
 	    const lVal = ghSafe.parseLabelDescr( [ desc ] );
 	    let   tVal = ghSafe.getAllocated( [ desc ] );
-	    tVal = tVal ? "allocation" : "plan";
+	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
 	    const peqs  = await utils.getPeqs( authData, query );
@@ -106,7 +106,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    // We have peqs.  Unlabel did not trigger, so no need to fix links or peqs.
 	    // remake label.  inform.
-	    let label = await ghSafe.createPeqLabel( authData, pd.GHOwner, pd.GHRepo, tVal == "allocation", lVal );
+	    let label = await ghSafe.createPeqLabel( authData, pd.GHOwner, pd.GHRepo, tVal == config.PEQTYPE_ALLOC, lVal );
 	    
 	    // add label to all.  recreate card.  peq was not modified.
 	    console.log( "WARNING.  Active Peq labels can not be deleted.  To delete, remove them from issues first. Recreating." );
@@ -116,7 +116,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				   "confirm", "notice", [], "PEQ label delete attempt",
+				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label delete attempt",
 				   utils.getToday(), pd.reqBody );
 	}
 	break;

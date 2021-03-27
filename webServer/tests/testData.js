@@ -64,7 +64,7 @@ class TestData {
 	loc.colId    = this.dsPlanID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PLAN];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = "plan";  // XXX probably need to add alloc
+	loc.peqType  = config.PEQTYPE_PLAN;  // XXX probably need to add alloc
 	return loc;
     }
     getDSProgLoc() { 
@@ -74,7 +74,7 @@ class TestData {
 	loc.colId    = this.dsProgID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PROG];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = "plan";  // XXX probably need to add alloc
+	loc.peqType  = config.PEQTYPE_PLAN;  // XXX probably need to add alloc
 	return loc;
     }
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
@@ -85,7 +85,7 @@ class TestData {
 	loc.colId    = this.dsPendID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PEND];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = "plan"; // XXX probably need to add alloc
+	loc.peqType  = config.PEQTYPE_PLAN; // XXX probably need to add alloc
 	return loc;
     }
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
@@ -96,7 +96,7 @@ class TestData {
 	loc.colId    = this.dsAccrID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_ACCR];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = "plan";
+	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
@@ -107,7 +107,7 @@ class TestData {
 	loc.colId    = this.col2ID;
 	loc.colName  = this.col2Title;
 	loc.projSub  = [this.flatTitle, this.col2Title];
-	loc.peqType  = "plan";
+	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
@@ -118,7 +118,7 @@ class TestData {
 	loc.colId    = this.col1ID;
 	loc.colName  = this.col1Title;
 	loc.projSub  = [this.flatTitle, this.col1Title];
-	loc.peqType  = "plan";
+	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
     getUntrackLoc( pid ) {

@@ -37,7 +37,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		// send 1 PAct to update any peq projSub
 		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				       "confirm", "change", [oldName, newName], "Project rename",
+				       config.PACTVERB_CONF, config.PACTACT_CHAN, [oldName, newName], "Project rename",
 				       utils.getToday(), pd.reqBody );
 	    }
 	}
@@ -55,7 +55,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		const note = "Project " + action;
 		console.log( "Notice.", action,  "project with active PEQs.  Notifying server."  );
 		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				       "confirm", "notice", [pd.GHProjectId], note,
+				       config.PACTVERB_CONF, config.PACTACT_NOTE, [pd.GHProjectId], note,
 				       utils.getToday(), pd.reqBody );
 	    }
 	    

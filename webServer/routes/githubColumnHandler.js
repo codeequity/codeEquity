@@ -51,7 +51,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		    // send 1 PAct to update any peq projSub.  don't wait.
 		    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-					   "confirm", "notice", [oldName], "Column rename attempted",
+					   config.PACTVERB_CONF, config.PACTACT_NOTE, [oldName], "Column rename attempted",
 					   utils.getToday(), pd.reqBody );
 		}
 		else {
@@ -60,7 +60,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    
 		    // send 1 PAct to update any peq projSub.  don't wait.
 		    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-					   "confirm", "change", [oldName, newName], "Column rename",
+					   config.PACTVERB_CONF, config.PACTACT_CHAN, [oldName, newName], "Column rename",
 					   utils.getToday(), pd.reqBody );
 		}
 	    }

@@ -57,19 +57,19 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     let ghPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
     testStatus = tu.checkEq( ghPeqs.length, 1,                           testStatus, "Number of githubOps peq objects" );
-    testStatus = tu.checkEq( ghPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
+    testStatus = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,            testStatus, "PeqType" );
     testStatus = tu.checkEq( ghPeqs[0].Amount, "1500000",                testStatus, "Peq Amount" );  
     testStatus = tu.checkAr( ghPeqs[0].GHProjectSub, [td.softContTitle], testStatus, "Project sub" );
     testStatus = tu.checkEq( ghPeqs[0].GHProjectId, td.masterPID,        testStatus, "Project ID" );  
     
     let dsPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.dataSecTitle });
     testStatus = tu.checkEq( dsPeqs.length, 1,                           testStatus, "Number of datasec peq objects" );
-    testStatus = tu.checkEq( dsPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
+    testStatus = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,            testStatus, "PeqType" );
     testStatus = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], testStatus, "Project sub" );
 
     let unPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.unallocTitle });
     testStatus = tu.checkEq( unPeqs.length, 2,                           testStatus, "Number of unalloc peq objects" );
-    testStatus = tu.checkEq( unPeqs[0].PeqType, "allocation",            testStatus, "PeqType" );
+    testStatus = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,            testStatus, "PeqType" );
 
     let busTest = unPeqs[0].GHProjectSub.includes(td.busOpsTitle) || unPeqs[1].GHProjectSub.includes( td.busOpsTitle );
     testStatus = tu.checkEq( busTest, true,                              testStatus, "Project subs for unalloc" );    
@@ -82,8 +82,8 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     for( pact of pacts ) {
 	if( pact.Subject[0] == ghPeqs[0].PEQId ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
-	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
+	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
+	    testStatus = tu.checkEq( pact.Action, config.PACTACT_ADD,            testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,         testStatus, "PAct user name" ); 
 	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
@@ -92,15 +92,15 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	}
 	else if( pact.Subject[0] == dsPeqs[0].PEQId ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
-	    testStatus = tu.checkEq( pact.Action, "add",                         testStatus, "PAct Action" ); 
+	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
+	    testStatus = tu.checkEq( pact.Action, config.PACTACT_ADD,            testStatus, "PAct Action" ); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
 	    foundPActs++;
 	}
 	else if( pact.Subject[0] == unPeqs[0].PEQId ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-	    testStatus = tu.checkEq( pact.Verb, "confirm",                       testStatus, "PAct Verb"); 
+	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( hasRaw,  true,                              testStatus, "PAct Raw match" ); 
 	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
 	    foundPActs++;

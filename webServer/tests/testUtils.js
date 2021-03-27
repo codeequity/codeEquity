@@ -278,7 +278,7 @@ async function getFlatLoc( authData, projId, projName, colName ) {
     const cols = await getColumns( authData, projId );
     let col = cols.find(c => c.name == colName );
 
-    let ptype = "plan";
+    let ptype = config.PEQTYPE_PLAN;
     // no.  ceFlutter makes this happen
     // if( colName == config.PROJ_COLS[config.PROJ_PEND] ) { ptype = "pending"; }
     // if( colName == config.PROJ_COLS[config.PROJ_ACCR] ) { ptype = "grant"; }
@@ -524,7 +524,7 @@ async function reopenIssue( authData, td, issueNumber ) {
 async function remIssue( authData, td, issueId ) {
 
     let issue     = await findIssue( authData, td, issueId );
-    let endpoint  = "https://api.github.com/graphql";
+    let endpoint  = config.GQL_ENDPOINT;
     let query     = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
     let variables = {"id": issue.node_id };
     query         = JSON.stringify({ query, variables });
@@ -685,8 +685,8 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
     
     let hasraw = await hasRaw( authData, lastPact.PEQActionId );
     testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
-    testStatus = checkEq( lastPact.Verb, "confirm",                testStatus, "PAct Verb"); 
-    testStatus = checkEq( lastPact.Action, "delete",               testStatus, "PAct Verb"); 
+    testStatus = checkEq( lastPact.Verb, config.PACTVERB_CONF,     testStatus, "PAct Verb"); 
+    testStatus = checkEq( lastPact.Action, config.PACTACT_DEL,     testStatus, "PAct Verb"); 
     testStatus = checkEq( lastPact.GHUserName, config.TESTER_BOT,  testStatus, "PAct user name" ); 
     testStatus = checkEq( lastPact.Ingested, "false",              testStatus, "PAct ingested" );
     testStatus = checkEq( lastPact.Locked, "false",                testStatus, "PAct locked" );
@@ -710,7 +710,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label count" );
     testStatus = checkEq( issue.state, state,                    testStatus, "Issue state" );
 
-    const lname = labelVal.toString() + " AllocPEQ";
+    const lname = labelVal.toString() + " " + config.ALLOC_LABEL;
     testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label name" );
 
     // CHECK github location
@@ -736,7 +736,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     testStatus = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
 
-    testStatus = checkEq( peq.PeqType, "allocation",               testStatus, "peq type invalid" );        
+    testStatus = checkEq( peq.PeqType, config.PEQTYPE_ALLOC,       testStatus, "peq type invalid" );        
     testStatus = checkEq( peq.GHProjectSub.length, loc.projSub.length, testStatus, "peq project sub len invalid" );
     testStatus = checkEq( peq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
     testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );      
@@ -792,7 +792,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 
     if( assignCnt ) { testStatus = checkEq( issue.assignees.length, assignCnt, testStatus, "Assignee count" ); }
     
-    const lname = labelVal ? labelVal.toString() + " PEQ" : "1000 PEQ";
+    const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
     const lval  = labelVal ? labelVal                     : 1000;
     testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label name" );
 
@@ -898,7 +898,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     testStatus = checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = checkEq( issue.labels.length, labelCnt,         testStatus, "Issue label count" );
     
-    const lname = labelVal ? labelVal.toString() + " PEQ" : "1000 PEQ";
+    const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
     const lval  = labelVal ? labelVal                     : 1000;
     testStatus = checkEq( issue.labels[0].name, lname,           testStatus, "Issue label name" );
     testStatus = checkEq( issue.state, "open",                   testStatus, "Issue state" ); 
@@ -985,8 +985,8 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, car
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     const pact = pacts[ pacts.length - 1];
-    testStatus = checkEq( pact.Verb, "propose",                testStatus, "PAct Verb"); 
-    testStatus = checkEq( pact.Action, "accrue",               testStatus, "PAct Action"); 
+    testStatus = checkEq( pact.Verb, config.PACTVERB_PROP,     testStatus, "PAct Verb"); 
+    testStatus = checkEq( pact.Action, config.PACTACT_ACCR,               testStatus, "PAct Action"); 
 
     return testStatus;
 }
@@ -1013,8 +1013,8 @@ async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, car
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     const pact = pacts[ pacts.length - 1];
-    testStatus = checkEq( pact.Verb, "reject",                testStatus, "PAct Verb"); 
-    testStatus = checkEq( pact.Action, "accrue",               testStatus, "PAct Action"); 
+    testStatus = checkEq( pact.Verb, config.PACTVERB_REJ,               testStatus, "PAct Verb"); 
+    testStatus = checkEq( pact.Action, config.PACTACT_ACCR,             testStatus, "PAct Action"); 
 
     return testStatus;
 }
@@ -1059,20 +1059,20 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     testStatus = checkGE( pacts.length, 1,                         testStatus, "PAct count" );         
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let addUncl  = pacts.length >= 2 ? pacts[0] : {"Action": "add" };
-    let relUncl  = pacts.length >= 2 ? pacts[ pacts.length -1 ] : {"Action": "relocate" };
+    let addUncl  = pacts.length >= 2 ? pacts[0] : {"Action": config.PACTACT_ADD };
+    let relUncl  = pacts.length >= 2 ? pacts[ pacts.length -1 ] : {"Action": config.PACTACT_RELO };
     let pact     = pacts.length >= 2 ? pacts[ pacts.length -1 ] : pacts[0];
     for( const pact of pacts ) {
 	let hasraw = await hasRaw( authData, pact.PEQActionId );
 	testStatus = checkEq( hasraw, true,                            testStatus, "PAct Raw match" ); 
-	testStatus = checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
+	testStatus = checkEq( pact.Verb, config.PACTVERB_CONF,         testStatus, "PAct Verb"); 
 	testStatus = checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
 	testStatus = checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
 	testStatus = checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
     }
-    testStatus = checkEq( addUncl.Action, "add",                       testStatus, "PAct Action"); 
-    testStatus = checkEq( relUncl.Action, "relocate",                  testStatus, "PAct Action");
-    const source = pact.Action == "add" || pact.Action == "relocate";
+    testStatus = checkEq( addUncl.Action, config.PACTACT_ADD,          testStatus, "PAct Action"); 
+    testStatus = checkEq( relUncl.Action, config.PACTACT_RELO,         testStatus, "PAct Action");
+    const source = pact.Action == config.PACTACT_ADD || pact.Action == config.PACTACT_RELO;
     testStatus = checkEq( source, true,                                testStatus, "PAct Action"); 
 
     return testStatus;
@@ -1097,8 +1097,8 @@ async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, ca
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     let pact = pacts[ pacts.length - 1];
-    testStatus = checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
-    testStatus = checkEq( pact.Action, "accrue",                   testStatus, "PAct Action");
+    testStatus = checkEq( pact.Verb, config.PACTVERB_CONF,                    testStatus, "PAct Verb"); 
+    testStatus = checkEq( pact.Action, config.PACTACT_ACCR,                   testStatus, "PAct Action");
 
     return testStatus;
 }
@@ -1128,9 +1128,9 @@ async function checkUnclaimedAccr( authData, ghLinks, td, loc, issueDataOld, iss
 
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     let pact = pacts[ pacts.length - 1];
-    testStatus = checkEq( pact.Verb, "confirm",                testStatus, "PAct Verb"); 
-    if     ( source == "card" )  { testStatus = checkEq( pact.Action, "relocate",        testStatus, "PAct Action"); }
-    else if( source == "issue" ) { testStatus = checkEq( pact.Action, "add",             testStatus, "PAct Action"); }
+    testStatus = checkEq( pact.Verb, config.PACTVERB_CONF,                testStatus, "PAct Verb"); 
+    if     ( source == "card" )  { testStatus = checkEq( pact.Action, config.PACTACT_RELO,        testStatus, "PAct Action"); }
+    else if( source == "issue" ) { testStatus = checkEq( pact.Action, config.PACTACT_ADD,         testStatus, "PAct Action"); }
 
     // Check old issue
     // For source == issue, new peq is added.  Old peq is changed.
@@ -1138,17 +1138,17 @@ async function checkUnclaimedAccr( authData, ghLinks, td, loc, issueDataOld, iss
 	// PEQ inactive
 	peqs = allPeqs.filter((peq) => peq.GHIssueId == issueDataOld[0].toString() );
 	peq = peqs[0];
-	testStatus = checkEq( peqs.length, 1,                       testStatus, "Peq count" );
-	testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
+	testStatus = checkEq( peqs.length, 1,                      testStatus, "Peq count" );
+	testStatus = checkEq( peq.Active, "false",                 testStatus, "peq should be inactive" );
 	
 	// CHECK dynamo Pact  old: add, move, change
 	pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-	testStatus = checkGE( pacts.length, 3,                         testStatus, "PAct count" );
+	testStatus = checkGE( pacts.length, 3,                     testStatus, "PAct count" );
 	
 	pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
 	let pact = pacts[ pacts.length - 1];
-	testStatus = checkEq( pact.Verb, "confirm",                testStatus, "PAct Verb"); 
-	testStatus = checkEq( pact.Action, "change",               testStatus, "PAct Action"); 
+	testStatus = checkEq( pact.Verb, config.PACTVERB_CONF,     testStatus, "PAct Verb"); 
+	testStatus = checkEq( pact.Action, config.PACTACT_CHAN,    testStatus, "PAct Action"); 
 	testStatus = checkEq( pact.Note, "recreate",               testStatus, "PAct Note"); 
     }
 
@@ -1460,7 +1460,7 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     testStatus = checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
     let meltPeq = meltPeqs[0];
-    testStatus = checkEq( meltPeq.PeqType, "plan",                     testStatus, "peq type invalid" );
+    testStatus = checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        testStatus, "peq type invalid" );
     testStatus = checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
     testStatus = checkEq( meltPeq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
     testStatus = checkEq( meltPeq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
