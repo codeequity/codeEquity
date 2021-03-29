@@ -323,16 +323,16 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 		let link = links == -1 ? links : links[0]; 
 
-		if( link != -1 && link.GHCardTitle != config.EMPTY) {
+		if( link != -1 && link.GHIssueTitle != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
 		    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
-			ghSafe.updateTitle( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, link.GHCardTitle );
+			ghSafe.updateTitle( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, link.GHIssueTitle );
 		    }
 		    else {
-			assert( pd.reqBody.changes.title.from == link.GHCardTitle );
-			console.log( "Title changed from", link.GHCardTitle, "to", newTitle );
+			assert( pd.reqBody.changes.title.from == link.GHIssueTitle );
+			console.log( "Title changed from", link.GHIssueTitle, "to", newTitle );
 			
 			// if link has title, we have situated card.
 			ghLinks.updateTitle( authData, link, newTitle );

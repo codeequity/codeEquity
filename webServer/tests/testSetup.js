@@ -235,7 +235,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	    testStatus = tu.checkEq( link.GHIssueNum, td.githubOpsIss[1],    testStatus, "Linkage Issue num" );
 	    testStatus = tu.checkEq( link.GHColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
 	    testStatus = tu.checkEq( link.GHColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
-	    testStatus = tu.checkEq( link.GHCardTitle, td.githubOpsTitle,    testStatus, "Linkage Card Title" );
+	    testStatus = tu.checkEq( link.GHIssueTitle, td.githubOpsTitle,    testStatus, "Linkage Card Title" );
 	    let cardId = tu.findCardForIssue( scCards, link.GHIssueNum );
 	    testStatus = tu.checkEq( link.GHCardId, cardId,                  testStatus, "Linkage Card Id" );
 	    found = true;
@@ -244,27 +244,27 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	    testStatus = tu.checkEq( link.GHIssueNum, td.dataSecIss[1],      testStatus, "Linkage Issue num" );
 	    testStatus = tu.checkEq( link.GHColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
 	    testStatus = tu.checkEq( link.GHColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
-	    testStatus = tu.checkEq( link.GHCardTitle, td.dataSecTitle,      testStatus, "Linkage Card Title" );
+	    testStatus = tu.checkEq( link.GHIssueTitle, td.dataSecTitle,      testStatus, "Linkage Card Title" );
 	    let cardId = tu.findCardForIssue( scCards, link.GHIssueNum );
 	    testStatus = tu.checkEq( link.GHCardId, cardId,                  testStatus, "Linkage Card Id" );
 	    found = true;
 	}
 	else if( link.GHIssueId == td.unallocIss1[0] ) {
 	    testStatus = tu.checkEq( link.GHIssueNum, td.unallocIss1[1],  testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHCardTitle, td.unallocTitle,   testStatus, "Linkage Card Title" );
+	    testStatus = tu.checkEq( link.GHIssueTitle, td.unallocTitle,   testStatus, "Linkage Card Title" );
 	    if( link.GHColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.GHColumnId; }
 	    else                                        { unallocBus  = true; lBus  = link.GHColumnId; }
 	    found = true;
 	}
 	else if( link.GHIssueId == td.unallocIss2[0] ) {
 	    testStatus = tu.checkEq( link.GHIssueNum, td.unallocIss2[1],  testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHCardTitle, td.unallocTitle,   testStatus, "Linkage Card Title" );
+	    testStatus = tu.checkEq( link.GHIssueTitle, td.unallocTitle,   testStatus, "Linkage Card Title" );
 	    if( link.GHColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.GHColumnId; }
 	    else                                        { unallocBus  = true; lBus  = link.GHColumnId; }
 	    found = true;
 	}
 
-	if( link.GHCardTitle == td.dataSecTitle ) { foundDS++; }
+	if( link.GHIssueTitle == td.dataSecTitle ) { foundDS++; }
 	
 	if( found ) {
 	    testStatus = tu.checkEq( link.GHProjectName, config.MAIN_PROJ, testStatus, "Linkage Proj name" );

@@ -67,7 +67,6 @@ function getCEServer() {
     }
 }
 
-// XXX Gimme a fname
 async function getRemotePackageJSONObject(owner, repo, installationAccessToken) {
     const installationClient = await auth.getInstallationClient(owner, repo);
     const fileData = await installationClient.repos.getContents({
@@ -95,7 +94,7 @@ async function postGH( PAT, url, postData ) {
 	}
     }
 
-    // XXX haven't seen one yet, may not be compatible with test above.
+    // XXX Still waiting to see this.. 
     let gotchya = false;
     let ret = await fetch( url, params )
 	.catch( e => { gotchya = true; console.log(e); return e; });
@@ -107,7 +106,7 @@ async function postGH( PAT, url, postData ) {
 
 
 async function postCE( shortName, postData ) {
-    const ceServerTestingURL = "http://127.0.0.1:3000/github/testing";
+    const ceServerTestingURL = config.TESTING_ENDPOINT;
 
     const params = {
 	url: ceServerTestingURL,
@@ -127,10 +126,9 @@ async function postCE( shortName, postData ) {
 }
     
 
-// postAWS
-async function postIt( authData, shortName, postData ) {
+async function postAWS( authData, shortName, postData ) {
 
-    // console.log( authData.who, "postIt:", shortName );
+    // console.log( authData.who, "postAWS:", shortName );
     
     const params = {
         url: authData.api,
@@ -143,8 +141,8 @@ async function postIt( authData, shortName, postData ) {
 	.catch(err => console.log(err));
 };
 
-async function wrappedPostIt( authData, shortName, postData ) {
-    let response = await postIt( authData, shortName, JSON.stringify( postData ))
+async function wrappedPostAWS( authData, shortName, postData ) {
+    let response = await postAWS( authData, shortName, JSON.stringify( postData ))
     if( typeof response === 'undefined' ) return null;
 
     let tableName = "";
@@ -181,7 +179,7 @@ async function getPeq( authData, issueId, checkActive ) {
     let query     = active ? { "GHIssueId": issueId.toString(), "Active": "true" } : { "GHIssueId": issueId.toString() }; 
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
 
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 async function getPeqFromTitle( authData, repo, projId, title ) {
@@ -191,7 +189,7 @@ async function getPeqFromTitle( authData, repo, projId, title ) {
     let query     = { "GHRepo": repo, "GHProjectId": projId.toString(), "GHCardTitle": title };
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
 
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 
@@ -201,7 +199,7 @@ async function removePEQ( authData, peqId ) {
     let query = { "PEQId": peqId, "Active": "false" };
 
     let pd = { "Endpoint": shortName, "pLink": query };
-    return await wrappedPostIt( authData, shortName, pd );
+    return await wrappedPostAWS( authData, shortName, pd );
 }
 
 
@@ -211,7 +209,7 @@ async function checkPopulated( authData, repo ) {
     let shortName = "CheckSetGHPop";
     let postData = { "Endpoint": shortName, "GHRepo": repo, "Set": "false" };
     
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 async function setPopulated( authData, repo ) {
@@ -220,7 +218,7 @@ async function setPopulated( authData, repo ) {
     let shortName = "CheckSetGHPop";
     let postData = { "Endpoint": shortName, "GHRepo": repo, "Set": "true" };
     
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 // This needs to occur after linkage is overwritten.
@@ -233,7 +231,7 @@ async function getProjectSubs( authData, ghLinks, repoName, projName, colName ) 
     if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
 	// Check if project is a card in Master
-	let links = ghLinks.getLinks( authData, {"repo": repoName, "projName": config.MAIN_PROJ, "cardTitle": projName} );
+	let links = ghLinks.getLinks( authData, {"repo": repoName, "projName": config.MAIN_PROJ, "issueTitle": projName} );
 	if( links != -1 ) { projSub = [ links[0]['GHColumnName'], projName ]; }
 	else              { projSub = [ projName ]; }
 
@@ -256,7 +254,7 @@ async function updatePEQPSub( authData, peqId, projSub ) {
     postData.GHProjectSub = projSub;
     
     let pd = { "Endpoint": shortName, "pLink": postData }; 
-    return await wrappedPostIt( authData, shortName, pd );
+    return await wrappedPostAWS( authData, shortName, pd );
 }
 
 // Note.   This must be guarded, at a minimum, not ACCR
@@ -270,7 +268,7 @@ async function updatePEQVal( authData, peqId, peqVal ) {
     postData.Amount       = peqVal;
     
     let pd = { "Endpoint": shortName, "pLink": postData }; 
-    return await wrappedPostIt( authData, shortName, pd );
+    return await wrappedPostAWS( authData, shortName, pd );
 }
 
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
@@ -291,7 +289,7 @@ async function recordPEQAction( authData, ceUID, ghUserName, ghRepo, verb, actio
     postData.TimeStamp = JSON.stringify( Date.now() );
 
     let pd = { "Endpoint": shortName, "newPAction": postData };
-    return await wrappedPostIt( authData, shortName, pd );
+    return await wrappedPostAWS( authData, shortName, pd );
 }
 
 async function recordPEQ( authData, postData ) {
@@ -305,16 +303,12 @@ async function recordPEQ( authData, postData ) {
 	postData.AccrualDate = config.EMPTY;
 	postData.VestedPerc  = 0.0;
     }
-    else
-    {
-	// XXX accrued - todo (!!!!)
-    }
 
     postData.CEHolderId   = [];            // no access to this, yet
 
     let pd = { "Endpoint": shortName, "newPEQ": postData };
     
-    return await wrappedPostIt( authData, shortName, pd );
+    return await wrappedPostAWS( authData, shortName, pd );
 }
 
 function sleep(ms) {
@@ -368,7 +362,7 @@ async function rebuildPeq( authData, link, oldPeq ) {
     postData.GHProjectSub = [ link.GHProjectName, link.GHColumnName ];
     postData.GHProjectId  = link.GHProjectId; 
     postData.GHIssueId    = link.GHIssueId;
-    postData.GHIssueTitle = link.GHCardTitle;
+    postData.GHIssueTitle = link.GHIssueTitle;
     postData.Active       = "true";
 
     if( config.PROJ_COLS.includes( link.GHColumnName ) ) { postData.GHProjectSub = [ link.GHProjectName ]; }
@@ -431,9 +425,14 @@ function rebuildLinkage( authData, ghLinks, link, issueData, newCardId, newTitle
 			link.GHColumnId, link.GHColumnName, newCardId, newTitle )
 }
 
+// Note: Only called by resolve.  PNP rejects all attempts to create in ACCR before calling resolve.
 // The only critical component here for interleaving is getting the ID.
-async function changeReportPeqVal( authData, pd, peqVal ) {
+async function changeReportPeqVal( authData, pd, peqVal, link ) {
     console.log( "rebuild existing peq for issue:", pd.GHIssueId );
+
+    // Confirm call chain is as expected.  Do NOT want to be modifying ACCR peq vals
+    assert( link.GHColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
+    
     let newPEQ = await getPeq( authData, pd.GHIssueId );
     console.log( "Updating peq", newPEQ.PEQId, peqVal );
     updatePEQVal( authData, newPEQ.PEQId, peqVal );
@@ -498,7 +497,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 
 	    await ghSafe.rebuildLabel( authData, pd.GHOwner, pd.GHRepo, issue.number, label, newLabel );
 	    // Don't wait
-	    changeReportPeqVal( authData, pd, peqVal );
+	    changeReportPeqVal( authData, pd, peqVal, links[0] );
 	    break;
 	}
 	idx += 1;
@@ -527,7 +526,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 
     // On initial populate call, this is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
-    console.log( "Building peq for", links[1].GHCardTitle );
+    console.log( "Building peq for", links[1].GHIssueTitle );
     for( let i = 1; i < links.length; i++ ) {    
 	// Don't record simple multiply-carded issues
 	if( pd.peqType != "end" ) {
@@ -591,7 +590,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	// If reserved column, remove the card.  Can't create newbies here.  Leave issue in place else work is lost.
 	const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
 	if( reserved.includes( colName ) ) {
-	    console.log( "WARNING.", colName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue." );
+	    console.log( "WARNING.", colName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue (if any)." );
 	    gh.removeCard( authData, origCardId );
 	}
 	else if( pd.GHIssueId != -1 ) {
@@ -606,7 +605,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
 
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
-	assert( colName != -1 ); // XXX baseGH + label - link is pd.GHColumnId-1
+	assert( colName != -1 ); 
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
 	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
@@ -683,7 +682,7 @@ async function getRaw( authData, pactId ) {
     let query     = { "PEQRawId": pactId.toString() };
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQRaw", "query": query };
 
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 async function getPActs( authData, query ) {
@@ -692,7 +691,7 @@ async function getPActs( authData, query ) {
     let shortName = "GetEntries";
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQActions", "query": query };
 
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 async function getPeqs( authData, query ) {
@@ -701,7 +700,7 @@ async function getPeqs( authData, query ) {
     let shortName = "GetEntries";
     let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
 
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 
@@ -712,7 +711,7 @@ async function getRepoStatus( authData, repo ) {
     let query     = repo == -1 ? { "empty": config.EMPTY } : { "GHRepo": repo};
     let postData  = { "Endpoint": shortName, "tableName": "CERepoStatus", "query": query };
 
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 async function cleanDynamo( authData, tableName, ids ) {
@@ -721,7 +720,7 @@ async function cleanDynamo( authData, tableName, ids ) {
     let shortName = "RemoveEntries";
     let postData  = { "Endpoint": shortName, "tableName": tableName, "ids": ids };
 
-    return await wrappedPostIt( authData, shortName, postData );
+    return await wrappedPostAWS( authData, shortName, postData );
 }
 
 /*
@@ -797,26 +796,26 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
     // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
     
-    assert( delayCount < 10 );  
+    assert( delayCount < config.MAX_DELAYS );  
     ceJobs.delay++;
     
     // get splice index
     let spliceIndex = 1;
     let jobs = ceJobs.jobs.getAll();
 
-    const stepCost = 300 * delayCount;   
+    const stepCost = config.STEP_COST * delayCount;   
     
     // If nothing else is here yet, delay.  Overall, will delay over a minute 
     if( jobs.length <= 1 ) {
 	console.log( "... empty queue, sleep" );
-	let delay = delayCount > 4 ? stepCost + 20000 : stepCost;
+	let delay = delayCount > 4 ? stepCost + config.NOQ_DELAY : stepCost;
 	await sleep( delay );
     }
     else {
 	// Have to push back at least once.  
 	for( let i = 1; i < jobs.length; i++ ) {
 	    spliceIndex = i+1;
-	    if( jobs[i].Stamp - newJob.Stamp > 1000 ) { break;  }
+	    if( jobs[i].Stamp - newJob.Stamp > config.MIN_DIFF ) { break;  }
 	}
     }
     if( spliceIndex == 1 && jobs.length >= 2 ) { spliceIndex = 2; }  // force progress where possible
@@ -870,7 +869,7 @@ async function ingestPActs( authData, pactIds ) {
 
     let shortName = "UpdatePAct";
     let pd = { "Endpoint": shortName, "PactIds": pactIds }; 
-    return await wrappedPostIt( authData, shortName, pd );
+    return await wrappedPostAWS( authData, shortName, pd );
 }
 
 // UNIT TESTING ONLY!!

@@ -609,6 +609,7 @@ function populateRequest( labels ) {
 }
 
 // GraphQL to init link table
+// Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
 async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
     const query1 = `
     query baseConnection($owner: String!, $repo: String!) 
@@ -1099,7 +1100,6 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
-    //     Revisit if ever decided to track cols, projects.
     // Note.  On rebuild, watch for potential hole in create card from isssue
     let issueId = pd.GHIssueId;
     let link = ghLinks.getUniqueLink( authData, issueId );
@@ -1299,17 +1299,14 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 	    // GH has opened this issue.  Close it back up.
 	    console.log( "WARNING.  Can not reopen an issue that has accrued." );
 	    // Don't wait.
-	    updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "closed" ); // reopen issue
+	    updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "closed" ); // re-close issue
 	    return false;
 	}
     }
 
     // Note. updateLinkage should not occur unless successful.  Everywhere.  
     //     Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
-    if( success ) {
-	success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName );
-    }
-
+    if( success ) { success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName ); }
     
     return success;
 }
@@ -1365,7 +1362,8 @@ function getAllocated( content ) {
 //  <PEQ: 1,000>
 function parsePEQ( content, allocation ) {
     let peqValue = 0;
-    // content must be at least 2 lines, else will be 1 char at a time
+    // content must be at least 2 lines, i.e. obj, else will be 1 char at a time
+    assert( typeof content != "string" );
     for( const line of content ) {
 	let s = -1;
 	let c = -1;

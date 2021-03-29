@@ -621,7 +621,7 @@ async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card,
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
     testStatus = checkEq( link.GHColumnName, config.EMPTY,          testStatus, "Linkage Col name" );
-    testStatus = checkEq( link.GHCardTitle, config.EMPTY,           testStatus, "Linkage Card Title" );
+    testStatus = checkEq( link.GHIssueTitle, config.EMPTY,           testStatus, "Linkage Card Title" );
     testStatus = checkEq( link.GHProjectName, config.EMPTY,         testStatus, "Linkage Project Title" );
     testStatus = checkEq( link.GHColumnId, -1,                      testStatus, "Linkage Col Id" );
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );     // XXX tracking this??
@@ -725,7 +725,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
     testStatus = checkEq( link.GHColumnName, loc.colName,           testStatus, "Linkage Col name" );
-    testStatus = checkEq( link.GHCardTitle, issueData[2],           testStatus, "Linkage Card Title" );
+    testStatus = checkEq( link.GHIssueTitle, issueData[2],           testStatus, "Linkage Card Title" );
     testStatus = checkEq( link.GHProjectName, loc.projName,         testStatus, "Linkage Project Title" );
     testStatus = checkEq( link.GHColumnId, loc.colId,               testStatus, "Linkage Col Id" );
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );
@@ -828,7 +828,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
     testStatus = checkEq( link.GHColumnName, loc.colName,           testStatus, "Linkage Col name" );
-    testStatus = checkEq( link.GHCardTitle, issueData[2],           testStatus, "Linkage Card Title" );
+    testStatus = checkEq( link.GHIssueTitle, issueData[2],           testStatus, "Linkage Card Title" );
     testStatus = checkEq( link.GHProjectName, loc.projName,         testStatus, "Linkage Project Title" );
     testStatus = checkEq( link.GHColumnId, loc.colId,               testStatus, "Linkage Col Id" );
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );
@@ -915,7 +915,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     testStatus = checkEq( link.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = checkEq( link.GHCardId, card.id,                   testStatus, "Linkage Card Id" );
     testStatus = checkEq( link.GHColumnName, loc.colName,           testStatus, "Linkage Col name" );
-    testStatus = checkEq( link.GHCardTitle, issueData[2],           testStatus, "Linkage Card Title" );
+    testStatus = checkEq( link.GHIssueTitle, issueData[2],           testStatus, "Linkage Card Title" );
     testStatus = checkEq( link.GHProjectName, loc.projName,         testStatus, "Linkage Project Title" );
     testStatus = checkEq( link.GHColumnId, loc.colId,               testStatus, "Linkage Col Id" );
     testStatus = checkEq( link.GHProjectId, loc.projId,             testStatus, "Linkage project id" );

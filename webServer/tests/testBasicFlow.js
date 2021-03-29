@@ -67,7 +67,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, issueData, testStatus
     testStatus = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
     testStatus = tu.checkEq( meltLink.GHColumnName, config.UNCLAIMED,      testStatus, "Linkage Col name" );
-    testStatus = tu.checkEq( meltLink.GHCardTitle, ISS_FLOW,               testStatus, "Linkage Card Title" );
+    testStatus = tu.checkEq( meltLink.GHIssueTitle, ISS_FLOW,               testStatus, "Linkage Card Title" );
     testStatus = tu.checkEq( meltLink.GHProjectName, config.UNCLAIMED,     testStatus, "Linkage Project Title" );
     testStatus = tu.checkEq( meltLink.GHColumnId, td.unclaimCID,           testStatus, "Linkage Col Id" );
     testStatus = tu.checkEq( meltLink.GHProjectId, td.unclaimPID,          testStatus, "Linkage project id" );
@@ -180,7 +180,7 @@ async function checkMove( authData, ghLinks, td, issueData, colId, meltCard, tes
     let meltLink = ( links.filter((link) => link.GHIssueId == meltIssue.id ))[0];
     testStatus = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        testStatus, "Linkage Issue num" );
     testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
-    testStatus = tu.checkEq( meltLink.GHCardTitle, issueData[2],           testStatus, "Linkage Card Title" );
+    testStatus = tu.checkEq( meltLink.GHIssueTitle, issueData[2],           testStatus, "Linkage Card Title" );
     testStatus = tu.checkEq( meltLink.GHProjectName, td.dataSecTitle,      testStatus, "Linkage Project Title" );
     testStatus = tu.checkEq( meltLink.GHProjectId, td.dataSecPID,          testStatus, "Linkage project id" );
     testStatus = tu.checkEq( meltLink.GHColumnId, colId,                   testStatus, "Linkage Col Id" );
@@ -337,7 +337,7 @@ async function testBlast( authData, ghLinks, td ) {
     const uncLoc = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
     
     let links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    let link   = links.find( link => link.GHCardTitle == "Blast 1" );
+    let link   = links.find( link => link.GHIssueTitle == "Blast 1" );
     let card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1});
 
@@ -347,7 +347,7 @@ async function testBlast( authData, ghLinks, td ) {
     issDat = await tu.blastIssue( authData, td, "Blast 2", [LABNP1, LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );               
     await utils.sleep( 1500 );
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    link   = links.find( link => link.GHCardTitle == "Blast 2" );
+    link   = links.find( link => link.GHIssueTitle == "Blast 2" );
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3});
 
@@ -357,7 +357,7 @@ async function testBlast( authData, ghLinks, td ) {
     issDat = await tu.blastIssue( authData, td, "Blast 3", [LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );               
     await utils.sleep( 1500 );
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    link   = links.find( link => link.GHCardTitle == "Blast 3" );
+    link   = links.find( link => link.GHIssueTitle == "Blast 3" );
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2});
 
@@ -367,7 +367,7 @@ async function testBlast( authData, ghLinks, td ) {
     issDat = await tu.blastIssue( authData, td, "Blast 4", [LABNP1, LAB1], [ASSIGNEE1, ASSIGNEE2] );               
     await utils.sleep( 1500 );
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    link   = links.find( link => link.GHCardTitle == "Blast 4" );
+    link   = links.find( link => link.GHIssueTitle == "Blast 4" );
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2});
 
@@ -377,7 +377,7 @@ async function testBlast( authData, ghLinks, td ) {
     issDat = await tu.blastIssue( authData, td, "Blast 5", [LABNP1, LABNP2, LAB1], [ASSIGNEE2, ASSIGNEE1] );               
     await utils.sleep( 1500 );
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    link   = links.find( link => link.GHCardTitle == "Blast 5" );
+    link   = links.find( link => link.GHIssueTitle == "Blast 5" );
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3});
 
@@ -392,7 +392,7 @@ async function testBlast( authData, ghLinks, td ) {
     await tu.remLabel( authData, td, issDat[1], labNP2 );    
     
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    link   = links.find( link => link.GHCardTitle == "Blast 6" );
+    link   = links.find( link => link.GHIssueTitle == "Blast 6" );
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1});
 

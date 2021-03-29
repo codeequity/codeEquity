@@ -385,7 +385,7 @@ async function testResolve( authData, ghLinks, td ) {
 		testStatus = tu.checkEq( link.GHIssueNum, ghData[1].toString(),  testStatus, "Linkage Issue num" );
 		testStatus = tu.checkEq( link.GHCardId, ghData[0].toString(),    testStatus, "Linkage Card Id" );
 		testStatus = tu.checkEq( link.GHColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
-		testStatus = tu.checkEq( link.GHCardTitle, ghData[3],            testStatus, "Linkage Card Title" );
+		testStatus = tu.checkEq( link.GHIssueTitle, ghData[3],            testStatus, "Linkage Card Title" );
 		testStatus = tu.checkEq( link.GHProjectName, config.MAIN_PROJ,   testStatus, "Linkage Project Title" );
 		testStatus = tu.checkEq( link.GHColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
 	    }
@@ -396,7 +396,7 @@ async function testResolve( authData, ghLinks, td ) {
 		testStatus = tu.checkEq( link.GHIssueNum, ghData[1].toString(),   testStatus, "Linkage Issue num" );
 		testStatus = tu.checkEq( link.GHCardId, ghData[0].toString(),     testStatus, "Linkage Card Id" );
 		testStatus = tu.checkEq( link.GHColumnName, plan,                 testStatus, "Linkage Col name" );
-		testStatus = tu.checkEq( link.GHCardTitle, ghData[3],             testStatus, "Linkage Card Title" );
+		testStatus = tu.checkEq( link.GHIssueTitle, ghData[3],             testStatus, "Linkage Card Title" );
 		testStatus = tu.checkEq( link.GHProjectName, td.dataSecTitle,     testStatus, "Linkage Project Title" );
 		testStatus = tu.checkEq( link.GHColumnId, td.dsPlanID.toString(), testStatus, "Linkage Col Id" );
 	    }
@@ -414,7 +414,7 @@ async function testResolve( authData, ghLinks, td ) {
 	    testStatus = tu.checkEq( link.GHCardId, ghData[0].toString(),   testStatus, "Linkage Card Id" );
 
 	    testStatus = tu.checkEq( link.GHColumnName, config.EMPTY,       testStatus, "Linkage Col name" );
-	    testStatus = tu.checkEq( link.GHCardTitle, config.EMPTY,        testStatus, "Linkage Card Title" );
+	    testStatus = tu.checkEq( link.GHIssueTitle, config.EMPTY,        testStatus, "Linkage Card Title" );
 	    testStatus = tu.checkEq( link.GHProjectName, config.EMPTY,      testStatus, "Linkage Project Title" );
 	    testStatus = tu.checkEq( link.GHColumnId, -1,                   testStatus, "Linkage Col Id" );
 	}

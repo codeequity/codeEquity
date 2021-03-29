@@ -1232,9 +1232,9 @@ async function testAlloc( authData, ghLinks, td ) {
 	await tu.makeAllocCard( authData, starLoc.colId, "Alloc star 1", "1,000,000" );     // NOTE!  card is rebuilt to point to issue.  Re-find it.
 	await utils.sleep( 2000 );
 	const links       = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-	const link        = links.find( link => link.GHCardTitle == "Alloc star 1" );
+	const link        = links.find( link => link.GHIssueTitle == "Alloc star 1" );
 	const starCard1   = await tu.getCard( authData, link.GHCardId );
-	const issStarDat1 = [link.GHIssueId, link.GHIssueNum, link.GHCardTitle];
+	const issStarDat1 = [link.GHIssueId, link.GHIssueNum, link.GHIssueTitle];
 	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat1, starCard1, testStatus, {assignees: 0, lblCount: 1} );
 
 	// Create from issue  ... should be makeAllocIssue to create comment, but not testing that here
@@ -1263,8 +1263,8 @@ async function testAlloc( authData, ghLinks, td ) {
 	await tu.makeAllocCard( authData, accrLoc.colId, "Alloc accr", "1,000,000" );
 	await utils.sleep( 2000 );
 	const links      = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-	const linkProg   = links.find( link => link.GHCardTitle == "Alloc prog" );
-	const linkAccr   = links.find( link => link.GHCardTitle == "Alloc accr" );
+	const linkProg   = links.find( link => link.GHIssueTitle == "Alloc prog" );
+	const linkAccr   = links.find( link => link.GHIssueTitle == "Alloc accr" );
 
 	testStatus = tu.checkEq( typeof linkProg, 'undefined',     testStatus, "link should not exist" );
 	testStatus = tu.checkEq( typeof linkAccr, 'undefined',     testStatus, "link should not exist" );

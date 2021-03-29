@@ -24,7 +24,7 @@ async function recordMove( authData, reqBody, fullName, oldCol, newCol, link ) {
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
-    let peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHCardTitle, link.GHProjectId );
+    let peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );
 
