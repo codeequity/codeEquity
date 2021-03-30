@@ -167,6 +167,10 @@ var githubUtils = {
 	return getBasicLinkDataGQL( PAT, owner, repo, data, cursor );
     },
 
+    getLabelIssuesGQL: function( PAT, owner, repo, labelName, data, cursor ) {
+	return getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor );
+    },
+
     getRepoColsGQL: function( PAT, owner, repo, data, cursor ) {
 	return getRepoColsGQL( PAT, owner, repo, data, cursor );
     },
@@ -695,6 +699,58 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 	if( issues != -1 && issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
     }
 }
+
+
+// Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
+async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
+    const query1 = `
+    query baseConnection($owner: String!, $repo: String!, $labelName: String! ) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    label(name: $labelName) {
+	       issues(first: 100) {
+	          pageInfo { hasNextPage, endCursor },
+		  edges { node { databaseId title }}
+		}}}}`;
+    
+    const queryN = `
+    query nthConnection($owner: String!, $repo: String!, $labelName: String!, $cursor: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    label(name: $labelName) {
+               issues(first: 100 after: $cursor ) {
+	          pageInfo { hasNextPage, endCursor },
+		     edges { node { databaseId title }}
+		}}}}`;
+
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo, "labelName": labelName } : {"owner": owner, "repo": repo, "labelName": labelName, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let issues = -1;
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "getLabelIssuesGQL", e, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor ));  // probably never seen
+
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	await errorHandler( "getLabelIssuesGQL", res, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor );
+    }
+    else {
+	let label = res.data.repository.label;
+	if( typeof label !== 'undefined' ) {
+	    issues = label.issues;
+	    for( const issue of issues.edges ) {
+		let datum = {};
+		datum.issueId     = issue.node.databaseId;
+		datum.title       = issue.node.title;
+		data.push( datum );
+	    }
+	    // Wait.  Data is modified
+	    if( issues != -1 && issues.pageInfo.hasNextPage ) { await getLabelIssuesGQL( PAT, owner, repo, labelName, data, issues.pageInfo.endCursor ); }
+	}
+    }
+}
+
 
 // GraphQL to get all columns in repo 
 async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {

@@ -64,6 +64,13 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( authData.who, "No active peqs with this edited label" );
 		// Just make sure description is consistent with name, if it is a peq label.  No need to wait.
 		nameDrivesLabel( authData, pd, pd.reqBody.label.name, pd.reqBody.label.description );
+
+		// XXX For each issue attached to this new peq label.. issueHandler:label  NDL above can ret t/f if peqqy need await.  foreach, pnp.
+		//     reuse IH:L logic
+		let labelIssues = [];
+		await gh.getLabelIssuesGQL( authData.pat, pd.GHOwner, pd.GHRepo, pd.reqBody.label.name, labelIssues, -1 );
+		console.log( "OIOIOIO", labelIssues );
+		
 		return;
 	    }
 

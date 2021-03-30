@@ -65,7 +65,7 @@ class Linkage {
 
 	    let card = baseLinks.find( datum => datum.cardId == link.GHCardId );
 	    
-	    link.GHIssueTitle   = card.title;
+	    link.GHIssueTitle  = card.title;
 	    link.GHColumnId    = card.columnId.toString();
 	    link.GHProjectName = card.projectName;
 	    link.GHColumnName  = card.columnName;
@@ -140,7 +140,7 @@ class Linkage {
 	link.GHColumnId    = colId.toString();
 	link.GHColumnName  = colName;
 	link.GHCardId      = cardId.toString();
-	link.GHIssueTitle   = issueTitle;   
+	link.GHIssueTitle  = issueTitle;   
 	link.flatSource    = haveSource ? source : link.GHColumnId;
 
 	// Do not track source col if is in full layout
@@ -149,7 +149,7 @@ class Linkage {
     }
 
     addLoc( authData, repo, projName, projId, colName, colId ) {
-	colId = colId.toString();
+	colId  = colId.toString();
 	projId = projId.toString();
 	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
 	if( !this.locs[projId].hasOwnProperty( colId )) { this.locs[projId][colId] = {}; }
