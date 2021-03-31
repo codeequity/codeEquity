@@ -147,6 +147,10 @@ var githubUtils = {
 	return getLabel( authData, owner, repo, name );
     },
     
+    getLabels: function( authData, owner, repo, issueNum ) {
+	return getLabels( authData, owner, repo, issueNum );
+    },
+    
     findOrCreateLabel: function( authData, owner, repo, allocation, peqHumanLabelName, peqValue ) {
 	return findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue );
     },
@@ -710,7 +714,7 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
 	    label(name: $labelName) {
 	       issues(first: 100) {
 	          pageInfo { hasNextPage, endCursor },
-		  edges { node { databaseId title }}
+		  edges { node { databaseId title number }}
 		}}}}`;
     
     const queryN = `
@@ -720,7 +724,7 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
 	    label(name: $labelName) {
                issues(first: 100 after: $cursor ) {
 	          pageInfo { hasNextPage, endCursor },
-		     edges { node { databaseId title }}
+		     edges { node { databaseId title number }}
 		}}}}`;
 
     let query     = cursor == -1 ? query1 : queryN;
@@ -741,8 +745,9 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
 	    issues = label.issues;
 	    for( const issue of issues.edges ) {
 		let datum = {};
-		datum.issueId     = issue.node.databaseId;
-		datum.title       = issue.node.title;
+		datum.issueId = issue.node.databaseId;
+		datum.num     = issue.node.number;
+		datum.title   = issue.node.title;
 		data.push( datum );
 	    }
 	    // Wait.  Data is modified
@@ -979,19 +984,24 @@ async function removeLabel( authData, owner, repo, issueNum, label ) {
 	.catch( e => errorHandler( "removeLabel", e, removeLabel, authData, owner, repo, issueNum, label ));
 }
 
+async function getLabels( authData, owner, repo, issueNum ) {
+    var labels = -1;
+    await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
+	.then( res => labels = res )
+	.catch( e => labels  = errorHandler( "getLabels", e, getLabels, authData, owner, repo, issueNum ));
+    return labels;
+}
+
 // Note this can fail without being an error if issue is already gone.  'Note' instead of 'Error'
 // This seems to happen more with transfer, since issueDelete appears to be slower, which confuses checkIssue.  Not a real issue.
 async function removePeqLabel( authData, owner, repo, issueNum ) {
-    var labels;
     let retVal = false;
-    await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
-	.then( res => labels = res )
-	.catch( e => retVal = errorHandler( "removePeqLabel", e, removePeqLabel, authData, owner, repo, issueNum ));
+    var labels = await getLabels( authData, owner, repo, issueNum );
 
-    if( !retVal ) {
-	if( typeof labels === 'undefined' ) { return retVal; }
-	if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } 
-	
+    if( typeof labels === 'undefined' ) { return retVal; }
+    if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum );} 
+
+    if( labels != -1 ) {
 	let peqLabel = {};
 	for( const label of labels.data ) {
 	    const tval = parseLabelDescr( [label.description] );
