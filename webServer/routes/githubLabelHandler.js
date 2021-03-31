@@ -4,13 +4,16 @@ var utils   = require('../utils');
 var ghUtils = require('../ghUtils');
 var config  = require('../config');
 
+const peqData = require( '../peqData' );
+var issHan    = require('./githubIssueHandler');
+
 var gh     = ghUtils.githubUtils;
 var ghSafe = ghUtils.githubSafe;
 
 
 async function nameDrivesLabel( authData, pd, name, description ) {
     const [nameVal,alloc] = ghSafe.parseLabelName( name );
-    if( nameVal <= 0 ) { return; }
+    if( nameVal <= 0 ) { return false; }
     
     const descrVal  = ghSafe.parseLabelDescr( [description] );
     const consistentDescr     = ( alloc ? config.ADESC : config.PDESC ) + nameVal.toString();
@@ -22,7 +25,7 @@ async function nameDrivesLabel( authData, pd, name, description ) {
 	// Don't wait
 	ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, name, consistentDescr, color );		    
     }
-    return;
+    return true;
 }
 
 
@@ -55,15 +58,51 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    
 	    const lVal     = ghSafe.parseLabelDescr( [ origDesc ] );
 	    let allocation = ghSafe.getAllocated( [ origDesc ] );
-	    tVal = allocation ? "allocation" : "plan";
+	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    // Allow, if no active peqs
 	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: lVal, PeqType: tVal };
 	    const peqs  = await utils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
-		console.log( authData.who, "No active peqs with this edited label" );
+		console.log( authData.who, "No active peqs to handle with this edited label" );
 		// Just make sure description is consistent with name, if it is a peq label.  No need to wait.
-		nameDrivesLabel( authData, pd, pd.reqBody.label.name, pd.reqBody.label.description );
+		let isPeqLabel = nameDrivesLabel( authData, pd, pd.reqBody.label.name, pd.reqBody.label.description );
+
+		if( isPeqLabel ) {
+		    console.log( "New label is PEQ, converting issues." );
+		    let labelIssues = [];
+		    await gh.getLabelIssuesGQL( authData.pat, pd.GHOwner, pd.GHRepo, pd.reqBody.label.name, labelIssues, -1 );
+
+		    // Need to peq-label each attached issue.  Expensive.  Probably don't need to wait, but this operation should be rare.
+		    let promises = [];
+		    for( const issue of labelIssues ) {
+			// get issue labels
+			// NOTE newly named label is already here... remove it to pass theOnePeq
+			let issueLabels = await gh.getLabels( authData, pd.GHOwner, pd.GHRepo, issue.num );
+			assert( issueLabels != -1 );
+
+			let newLabel = issueLabels.data.find( label => label.name == pd.reqBody.label.name );
+			issueLabels = issueLabels.data;
+			// issueLabels  = issueLabels.data.filter( label => label.name != pd.reqBody.label.name );
+			assert( typeof newLabel !== 'undefined' );
+			// console.log( "Labels for", issue.title, issue.num, newLabel, issueLabels );
+
+			// modify, fill pd
+			let newPD = new peqData.PeqData();
+			newPD.GHIssueNum   = issue.num;
+			newPD.GHIssueTitle = issue.title;
+			newPD.GHIssueId    = issue.issueId;
+			newPD.GHRepo       = pd.GHRepo;
+			newPD.GHOwner      = pd.GHOwner;
+			newPD.GHFullName   = pd.GHFullName;
+			newPD.GHCreator    = pd.reqBody.sender.login;
+			newPD.reqBody      = pd.reqBody;
+
+			promises.push( issHan.labelIssue( authData, ghLinks, newPD, issue.num, issueLabels, newLabel ) );
+		    }
+		    await Promise.all( promises );
+		}
+		
 		return;
 	    }
 
@@ -80,7 +119,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, name, pd.reqBody.label.color, descr );
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				   "confirm", "notice", [], "PEQ label edit attempt",
+				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label edit attempt",
 				   utils.getToday(), pd.reqBody );
 	}
 	break;
@@ -95,7 +134,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( !desc ) { return; } // bad label
 	    const lVal = ghSafe.parseLabelDescr( [ desc ] );
 	    let   tVal = ghSafe.getAllocated( [ desc ] );
-	    tVal = tVal ? "allocation" : "plan";
+	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
 	    const peqs  = await utils.getPeqs( authData, query );
@@ -106,7 +145,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    // We have peqs.  Unlabel did not trigger, so no need to fix links or peqs.
 	    // remake label.  inform.
-	    let label = await ghSafe.createPeqLabel( authData, pd.GHOwner, pd.GHRepo, tVal == "allocation", lVal );
+	    let label = await ghSafe.createPeqLabel( authData, pd.GHOwner, pd.GHRepo, tVal == config.PEQTYPE_ALLOC, lVal );
 	    
 	    // add label to all.  recreate card.  peq was not modified.
 	    console.log( "WARNING.  Active Peq labels can not be deleted.  To delete, remove them from issues first. Recreating." );
@@ -116,7 +155,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				   "confirm", "notice", [], "PEQ label delete attempt",
+				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label delete attempt",
 				   utils.getToday(), pd.reqBody );
 	}
 	break;

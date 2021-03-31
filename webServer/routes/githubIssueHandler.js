@@ -64,15 +64,67 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	
 	utils.removePEQ( authData, peq.PEQId );	
 	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-			       "confirm", "change", [peq.PEQId, newPeqId], "recreate",
+			       config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], "recreate",
 			       utils.getToday(), pd.reqBody );
 	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-			       "confirm", "add", [newPeqId], "",
+			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }
     console.log( "Delete", Date.now() - tstart );
 }
 
+async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label ) {
+    // Zero's peqval if 2 found
+    [pd.peqValue,_] = ghSafe.theOnePEQ( issueLabels );  
+    
+    // more than 1 peq?  remove it.
+    let curVal  = ghSafe.parseLabelDescr( [ label.description ] );
+    if( pd.peqValue <= 0 && curVal > 0 ) {
+	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
+	// Don't wait, no dependence
+	ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, issueNum, label );
+	return;
+    }
+    
+    // Current notification not for peq label?
+    if( pd.peqValue <= 0 || curVal <= 0 ) {
+	console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
+	return;
+    }
+    
+    // Was this a carded issue?  Get linkage
+    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+    assert( links == -1 || links.length == 1 );
+    let link = links == -1 ? links : links[0];
+    
+    // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
+    // since can't create card without column_id.  No project, or column_id without triage.
+    if( link == -1 || link.GHColumnId == -1) {
+	if( link == -1 ) {    
+	    link = {};
+	    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.GHIssueId );
+	    let issueURL = card.content_url.split('/');
+	    assert( issueURL.length > 0 );
+	    link.GHIssueNum  = pd.GHIssueNum;
+	    link.GHCardId    = card.id
+	    link.GHProjectId = card.project_url.split('/').pop();
+	    link.GHColumnId  = card.column_url.split('/').pop();
+	}
+	else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
+	    let card = await gh.getCard( authData, link.GHCardId );
+	    link.GHColumnId  = card.column_url.split('/').pop();
+	}
+    }
+    
+    pd.updateFromLink( link );
+    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
+    
+    let content = [];
+    content.push( pd.GHIssueTitle );
+    content.push( label.description );
+    // Don't wait, no dependence
+    utils.processNewPEQ( authData, ghLinks, pd, content, link );
+}
 
 // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
 //          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
@@ -107,57 +159,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		await gh.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
-	    
-	    // Zero's peqval if 2 found
-	    [pd.peqValue,_] = ghSafe.theOnePEQ( pd.reqBody.issue.labels );  
-	    
-	    // more than 1 peq?  remove it.
-	    let curVal  = ghSafe.parseLabelDescr( [ pd.reqBody.label.description ] );
-	    if( pd.peqValue <= 0 && curVal > 0 ) {
-		console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
-		// Don't wait, no dependence
-		ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue.number, pd.reqBody.label );
-		return;
-	    }
-	    
-	    // Current notification not for peq label?
-	    if( pd.peqValue <= 0 || curVal <= 0 ) {
-		console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
-		return;
-	    }
-	    
-	    // Was this a carded issue?  Get linkage
-	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
-	    assert( links == -1 || links.length == 1 );
-	    let link = links == -1 ? links : links[0];
-	    
-	    // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
-	    // since can't create card without column_id.  No project, or column_id without triage.
-	    if( link == -1 || link.GHColumnId == -1) {
-		if( link == -1 ) {    
-		    link = {};
-		    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.GHIssueId );
-		    let issueURL = card.content_url.split('/');
-		    assert( issueURL.length > 0 );
-		    link.GHIssueNum  = pd.GHIssueNum;
-		    link.GHCardId    = card.id
-		    link.GHProjectId = card.project_url.split('/').pop();
-		    link.GHColumnId  = card.column_url.split('/').pop();
-		}
-		else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
-		    let card = await gh.getCard( authData, link.GHCardId );
-		    link.GHColumnId  = card.column_url.split('/').pop();
-		}
-	    }
-	    
-	    pd.updateFromLink( link );
-	    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
-	    
-	    let content = [];
-	    content.push( pd.GHIssueTitle );
-	    content.push( pd.reqBody.label.description );
-	    // Don't wait, no dependence
-	    utils.processNewPEQ( authData, ghLinks, pd, content, link );
+
+	    await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	}
 	break;
     case 'unlabeled':
@@ -197,8 +200,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		config.EMPTY,     // CE UID
 		pd.GHCreator,     // gh user name
 		pd.GHFullName,    // of the repo
-		"confirm",        // verb
-		"delete",         // action
+		config.PACTVERB_CONF,       // verb
+		config.PACTACT_DEL,         // action
 		[ peq.PEQId ],    // subject
 		"unlabel",        // note
 		utils.getToday(), // entryDate
@@ -248,9 +251,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    else {
 			// githubCardHandler:recordMove must handle many more options.  Choices here are limited.
 			// Closed: 
-			let verb = "propose";
-			let paction = "accrue";
-			if( action == "reopened" ) { verb = "reject"; }
+			let verb = config.PACTVERB_PROP;
+			let paction = config.PACTACT_ACCR;
+			if( action == "reopened" ) { verb = config.PACTVERB_REJ; }
 			
 			let subject = [ peqId.toString() ];
 			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
@@ -293,15 +296,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    let assignee = pd.reqBody.assignee.login;
-	    let verb = "confirm";
-	    let paction = "change";
+	    let verb = config.PACTVERB_CONF;
+	    let paction = config.PACTACT_CHAN;
 	    let note = ( action == "assigned" ? "add" : "remove" ) + " assignee";
 
 	    // Not if ACCR
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
 	    if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( "WARNING.", links[0].GHColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
-		paction = "notice";
+		paction = config.PACTACT_NOTE;
 		note = "Bad assignment attempted";
 		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, assignee ); }
 		else                       { ghSafe.addAssignee( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, assignee ); }
@@ -323,16 +326,16 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 		let link = links == -1 ? links : links[0]; 
 
-		if( link != -1 && link.GHCardTitle != config.EMPTY) {
+		if( link != -1 && link.GHIssueTitle != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
 		    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
-			ghSafe.updateTitle( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, link.GHCardTitle );
+			ghSafe.updateTitle( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, link.GHIssueTitle );
 		    }
 		    else {
-			assert( pd.reqBody.changes.title.from == link.GHCardTitle );
-			console.log( "Title changed from", link.GHCardTitle, "to", newTitle );
+			assert( pd.reqBody.changes.title.from == link.GHIssueTitle );
+			console.log( "Title changed from", link.GHIssueTitle, "to", newTitle );
 			
 			// if link has title, we have situated card.
 			ghLinks.updateTitle( authData, link, newTitle );
@@ -340,7 +343,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			assert( peq != -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
 			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
-					       "confirm", "change", subject, "Change title",
+					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
 					       utils.getToday(), pd.reqBody );
 		    }
 		}
@@ -360,7 +363,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		if( peq != -1 ) {
 		    const subject = [ peq.PEQId, pd.reqBody.changes.new_repository.full_name ];
 		    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
-					   "confirm", "relocate", subject, "Transfer out",
+					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
 					   utils.getToday(), pd.reqBody );
 		}
 	    }
@@ -385,4 +388,5 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     return;
 }
 
-exports.handler = handler;
+exports.handler    = handler;
+exports.labelIssue = labelIssue;

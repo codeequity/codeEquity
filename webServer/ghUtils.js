@@ -147,6 +147,10 @@ var githubUtils = {
 	return getLabel( authData, owner, repo, name );
     },
     
+    getLabels: function( authData, owner, repo, issueNum ) {
+	return getLabels( authData, owner, repo, issueNum );
+    },
+    
     findOrCreateLabel: function( authData, owner, repo, allocation, peqHumanLabelName, peqValue ) {
 	return findOrCreateLabel( authData, owner, repo, allocation, peqHumanLabelName, peqValue );
     },
@@ -165,6 +169,10 @@ var githubUtils = {
 
     getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
 	return getBasicLinkDataGQL( PAT, owner, repo, data, cursor );
+    },
+
+    getLabelIssuesGQL: function( PAT, owner, repo, labelName, data, cursor ) {
+	return getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor );
     },
 
     getRepoColsGQL: function( PAT, owner, repo, data, cursor ) {
@@ -518,7 +526,7 @@ async function createLabel( authData, owner, repo, name, color, desc ) {
 
 async function createPeqLabel( authData, owner, repo, allocation, peqValue ) {
     console.log( "Creating label", allocation, peqValue );
-    let peqHumanLabelName = peqValue.toString() + ( allocation ? " AllocPEQ" : " PEQ" );  
+    let peqHumanLabelName = peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
     let label = await createLabel( authData, owner, repo, peqHumanLabelName, pcolor, desc );
@@ -609,6 +617,7 @@ function populateRequest( labels ) {
 }
 
 // GraphQL to init link table
+// Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
 async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
     const query1 = `
     query baseConnection($owner: String!, $repo: String!) 
@@ -694,6 +703,59 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 	if( issues != -1 && issues.pageInfo.hasNextPage ) { await getBasicLinkDataGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
     }
 }
+
+
+// Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
+async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
+    const query1 = `
+    query baseConnection($owner: String!, $repo: String!, $labelName: String! ) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    label(name: $labelName) {
+	       issues(first: 100) {
+	          pageInfo { hasNextPage, endCursor },
+		  edges { node { databaseId title number }}
+		}}}}`;
+    
+    const queryN = `
+    query nthConnection($owner: String!, $repo: String!, $labelName: String!, $cursor: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    label(name: $labelName) {
+               issues(first: 100 after: $cursor ) {
+	          pageInfo { hasNextPage, endCursor },
+		     edges { node { databaseId title number }}
+		}}}}`;
+
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo, "labelName": labelName } : {"owner": owner, "repo": repo, "labelName": labelName, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let issues = -1;
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "getLabelIssuesGQL", e, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor ));  // probably never seen
+
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	await errorHandler( "getLabelIssuesGQL", res, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor );
+    }
+    else {
+	let label = res.data.repository.label;
+	if( typeof label !== 'undefined' ) {
+	    issues = label.issues;
+	    for( const issue of issues.edges ) {
+		let datum = {};
+		datum.issueId = issue.node.databaseId;
+		datum.num     = issue.node.number;
+		datum.title   = issue.node.title;
+		data.push( datum );
+	    }
+	    // Wait.  Data is modified
+	    if( issues != -1 && issues.pageInfo.hasNextPage ) { await getLabelIssuesGQL( PAT, owner, repo, labelName, data, issues.pageInfo.endCursor ); }
+	}
+    }
+}
+
 
 // GraphQL to get all columns in repo 
 async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
@@ -922,19 +984,24 @@ async function removeLabel( authData, owner, repo, issueNum, label ) {
 	.catch( e => errorHandler( "removeLabel", e, removeLabel, authData, owner, repo, issueNum, label ));
 }
 
+async function getLabels( authData, owner, repo, issueNum ) {
+    var labels = -1;
+    await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
+	.then( res => labels = res )
+	.catch( e => labels  = errorHandler( "getLabels", e, getLabels, authData, owner, repo, issueNum ));
+    return labels;
+}
+
 // Note this can fail without being an error if issue is already gone.  'Note' instead of 'Error'
 // This seems to happen more with transfer, since issueDelete appears to be slower, which confuses checkIssue.  Not a real issue.
 async function removePeqLabel( authData, owner, repo, issueNum ) {
-    var labels;
     let retVal = false;
-    await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
-	.then( res => labels = res )
-	.catch( e => retVal = errorHandler( "removePeqLabel", e, removePeqLabel, authData, owner, repo, issueNum ));
+    var labels = await getLabels( authData, owner, repo, issueNum );
 
-    if( !retVal ) {
-	if( typeof labels === 'undefined' ) { return retVal; }
-	if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum ); } 
-	
+    if( typeof labels === 'undefined' ) { return retVal; }
+    if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum );} 
+
+    if( labels != -1 ) {
 	let peqLabel = {};
 	for( const label of labels.data ) {
 	    const tval = parseLabelDescr( [label.description] );
@@ -1099,7 +1166,6 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 {
     // if not validLayout, won't worry about auto-card move
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
-    //     Revisit if ever decided to track cols, projects.
     // Note.  On rebuild, watch for potential hole in create card from isssue
     let issueId = pd.GHIssueId;
     let link = ghLinks.getUniqueLink( authData, issueId );
@@ -1299,17 +1365,14 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 	    // GH has opened this issue.  Close it back up.
 	    console.log( "WARNING.  Can not reopen an issue that has accrued." );
 	    // Don't wait.
-	    updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "closed" ); // reopen issue
+	    updateIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, "closed" ); // re-close issue
 	    return false;
 	}
     }
 
     // Note. updateLinkage should not occur unless successful.  Everywhere.  
     //     Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
-    if( success ) {
-	success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName );
-    }
-
+    if( success ) { success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName ); }
     
     return success;
 }
@@ -1365,7 +1428,8 @@ function getAllocated( content ) {
 //  <PEQ: 1,000>
 function parsePEQ( content, allocation ) {
     let peqValue = 0;
-    // content must be at least 2 lines, else will be 1 char at a time
+    // content must be at least 2 lines, i.e. obj, else will be 1 char at a time
+    assert( typeof content != "string" );
     for( const line of content ) {
 	let s = -1;
 	let c = -1;
@@ -1428,9 +1492,9 @@ function parseLabelName( name ) {
     let peqValue = 0;
     let alloc = false;
     let splits = name.split(" ");
-    if( splits.length == 2 && ( splits[1] == "AllocPEQ" || splits[1] == "PEQ" )) {
+    if( splits.length == 2 && ( splits[1] == config.ALLOC_LABEL || splits[1] == config.PEQ_LABEL )) {
 	peqValue = parseInt( splits[0] );
-	alloc = splits[1] == "AllocPEQ";
+	alloc = splits[1] == config.ALLOC_LABEL;
     }
     
     return [peqValue, alloc];

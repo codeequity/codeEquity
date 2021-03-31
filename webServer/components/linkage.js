@@ -65,7 +65,7 @@ class Linkage {
 
 	    let card = baseLinks.find( datum => datum.cardId == link.GHCardId );
 	    
-	    link.GHCardTitle   = card.title;
+	    link.GHIssueTitle  = card.title;
 	    link.GHColumnId    = card.columnId.toString();
 	    link.GHProjectName = card.projectName;
 	    link.GHColumnName  = card.columnName;
@@ -114,11 +114,12 @@ class Linkage {
 	    for( const [_, link] of Object.entries( clinks ) ) {
 		this.addLinkage( {}, link.GHRepo, link.GHIssueId, link.GHIssueNum,
 				 link.GHProjectId, link.GHProjectName, link.GHColumnId, link.GHColumnName,
-				 link.GHCardId, link.GHCardTitle );
+				 link.GHCardId, link.GHIssueTitle );
 	    }
 	}
     }
-    
+
+    // Linkage table only contains situated issues or better.  Card titles point to issue titles for situated issues.
     addLinkage( authData, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle, source ) {
 
 	// console.log( authData.who, "add link", issueId, cardId, colName, colId, issueTitle );
@@ -139,7 +140,7 @@ class Linkage {
 	link.GHColumnId    = colId.toString();
 	link.GHColumnName  = colName;
 	link.GHCardId      = cardId.toString();
-	link.GHCardTitle   = issueTitle;   
+	link.GHIssueTitle  = issueTitle;   
 	link.flatSource    = haveSource ? source : link.GHColumnId;
 
 	// Do not track source col if is in full layout
@@ -148,7 +149,7 @@ class Linkage {
     }
 
     addLoc( authData, repo, projName, projId, colName, colId ) {
-	colId = colId.toString();
+	colId  = colId.toString();
 	projId = projId.toString();
 	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
 	if( !this.locs[projId].hasOwnProperty( colId )) { this.locs[projId][colId] = {}; }
@@ -196,27 +197,27 @@ class Linkage {
 	}
 
 	const repo = query.repo;
-	const issueId   = query.hasOwnProperty( "issueId" )   ? query.issueId.toString() : -1;
-	const cardId    = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
-	const projId    = query.hasOwnProperty( "projId" )    ? query.projId             : -1;
-	const projName  = query.hasOwnProperty( "projName" )  ? query.projName           : config.EMPTY;
-	const colName   = query.hasOwnProperty( "colName" )   ? query.colName            : config.EMPTY;
-	const cardTitle = query.hasOwnProperty( "cardTitle" ) ? query.cardTitle          : config.EMPTY;
+	const issueId    = query.hasOwnProperty( "issueId" )   ? query.issueId.toString() : -1;
+	const cardId     = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
+	const projId     = query.hasOwnProperty( "projId" )    ? query.projId             : -1;
+	const projName   = query.hasOwnProperty( "projName" )  ? query.projName           : config.EMPTY;
+	const colName    = query.hasOwnProperty( "colName" )   ? query.colName            : config.EMPTY;
+	const issueTitle = query.hasOwnProperty( "issueTitle" ) ? query.issueTitle        : config.EMPTY;
 
-	// console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, cardTitle );
+	// console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, issueTitle );
 	
 	let links = [];
 	for( const [key, clinks] of Object.entries( this.links ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
 	    // Note, during initial resolve, this may NOT be 1:1 issue:card
 	    for( const [_, link] of Object.entries( clinks ) ) {
 		let match = true;
-		match = issueId == -1             ? match : match && (link.GHIssueId == issueId);
-		match = cardId == -1              ? match : match && (link.GHCardId  == cardId);
-		match = projId == -1              ? match : match && (link.GHProjectId == projId);
-		match = repo == config.EMPTY      ? match : match && (link.GHRepo    == repo);
-		match = projName == config.EMPTY  ? match : match && (link.GHProjectName == projName );
-		match = colName == config.EMPTY   ? match : match && (link.GHColumnName == colName );
-		match = cardTitle == config.EMPTY ? match : match && (link.GHCardTitle == cardTitle );
+		match = issueId == -1              ? match : match && (link.GHIssueId == issueId);
+		match = cardId == -1               ? match : match && (link.GHCardId  == cardId);
+		match = projId == -1               ? match : match && (link.GHProjectId == projId);
+		match = repo == config.EMPTY       ? match : match && (link.GHRepo    == repo);
+		match = projName == config.EMPTY   ? match : match && (link.GHProjectName == projName );
+		match = colName == config.EMPTY    ? match : match && (link.GHColumnName == colName );
+		match = issueTitle == config.EMPTY ? match : match && (link.GHIssueTitle == issueTitle );
 		
 		if( match ) { links.push( link ); }
 	    }
@@ -279,7 +280,7 @@ class Linkage {
 	link.GHProjectName = config.EMPTY;
 	link.GHColumnId    = -1;
 	link.GHColumnName  = config.EMPTY;
-	link.GHCardTitle   = config.EMPTY;
+	link.GHIssueTitle   = config.EMPTY;
 	link.flatSource    = -1;
     }
 
@@ -300,7 +301,7 @@ class Linkage {
 	let link = this.links[linkData.GHIssueId][linkData.GHCardId];
 	assert( link !== 'undefined' );
 
-	link.GHCardTitle  = newTitle;
+	link.GHIssueTitle  = newTitle;
 
 	return true;
     }
@@ -314,7 +315,7 @@ class Linkage {
 				    oldLink.GHProjectId, oldLink.GHProjectName,
 				    oldLink.GHColumnId, oldLink.GHColumnName,
 				    cardId.toString(),
-				    oldLink.GHCardTitle, oldLink.flatSource );
+				    oldLink.GHIssueTitle, oldLink.flatSource );
 	
 	this.removeLinkage( { "authData": authData, "issueId": oldLink.GHIssueId, "cardId": oldLink.GHCardId } );
 
@@ -434,7 +435,7 @@ class Linkage {
 	    console.log( link.GHIssueId,
 			 link.GHIssueNum,
 			 this.fill( link.GHCardId, 10 ),
-			 this.fill( link.GHCardTitle, 35 ),
+			 this.fill( link.GHIssueTitle, 35 ),
 			 link.GHColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHColumnId, 10 ),
 			 this.fill( link.GHColumnName, 20 ),
 			 link.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( link.GHProjectId, 10 ),

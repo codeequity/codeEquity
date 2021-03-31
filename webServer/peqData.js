@@ -14,7 +14,7 @@ class PeqData {
 	this.GHIssueTitle = config.EMPTY;
 
 	this.peqValue     = -1;
-	this.peqType      = "end";
+	this.peqType      = config.PEQTYPE_END;
 	this.GHAssignees  = [];
 	this.projSub      = [];
     }

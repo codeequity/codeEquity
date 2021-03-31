@@ -24,33 +24,33 @@ async function recordMove( authData, reqBody, fullName, oldCol, newCol, link ) {
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
-    let peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHCardTitle, link.GHProjectId );
+    let peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
     
-    assert( peq['PeqType'] != "grant" );
+    assert( peq['PeqType'] != config.PEQTYPE_GRANT );
 
     let verb   = "";
     let action = "";
     // Note, eggs and bacon fall into this group
-    if( peq['PeqType'] == "allocation" ||
+    if( peq['PeqType'] == config.PEQTYPE_ALLOC ||
 	( oldCol <= config.PROJ_PROG && newCol <= config.PROJ_PROG ) ) {
 	// moving between plan, and in-progress has no impact on peq summary
-	verb = "confirm";
-	action = "notice";
+	verb = config.PACTVERB_CONF;
+	action = config.PACTACT_NOTE;
     }
     else if( oldCol <= config.PROJ_PROG && newCol == config.PROJ_PEND ) {
 	// task complete, waiting for peq approval
-	verb = "propose";
-	action = "accrue";
+	verb = config.PACTVERB_PROP;
+	action = config.PACTACT_ACCR;
     }
     else if( oldCol == config.PROJ_PEND && newCol <= config.PROJ_PROG) {
 	// proposed peq has been rejected
-	verb = "reject";
-	action = "accrue";
+	verb = config.PACTVERB_REJ;
+	action = config.PACTACT_ACCR;
     }
     else if( oldCol <= config.PROJ_PEND && newCol == config.PROJ_ACCR ) {
 	// approved!   PEQ will be updated to "type:accrue" when processed in ceFlutter.
-	verb = "confirm";
-	action = "accrue";
+	verb = config.PACTVERB_CONF;
+	action = config.PACTACT_ACCR;
     }
     else {
 	console.log( authData.who, "Verb, action combo not understood", oldCol, newCol, peq.PeqType );
@@ -233,10 +233,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
 		peq = await peq;
 		utils.removePEQ( authData, peq.PEQId );
-		let action = accr ? "notice"  : "delete";
+		let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
 		let note   = accr ? "Disconnected issue" : "";
 		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				       "confirm", action, [peq.PEQId], note,
+				       config.PACTVERB_CONF, action, [peq.PEQId], note,
 				       utils.getToday(), pd.reqBody );
 	    }
 	    // ACCR, not in unclaimed.  
@@ -257,7 +257,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		peq = await peq;
 		utils.updatePEQPSub( authData, peq.PEQId, psub );
 		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				       "confirm", "relocate", [peq.PEQId, link.GHProjectId, link.GHColumnId], "",
+				       config.PACTVERB_CONF, config.PACTACT_RELO, [peq.PEQId, link.GHProjectId, link.GHColumnId], "",
 				       utils.getToday(), pd.reqBody );
 		
 	    }

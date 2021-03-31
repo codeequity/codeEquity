@@ -33,7 +33,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     testStatus = tu.checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
     let meltPeq = meltPeqs[0];
-    testStatus = tu.checkEq( meltPeq.PeqType, "plan",                     testStatus, "peq type invalid" );
+    testStatus = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        testStatus, "peq type invalid" );
     testStatus = tu.checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
     testStatus = tu.checkEq( meltPeq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
     testStatus = tu.checkEq( meltPeq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
@@ -62,18 +62,18 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     for( const pact of [addMP, addA1, addA2, remA1, remA2] ) {
 	let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
-	testStatus = tu.checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
+	testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         testStatus, "PAct Verb"); 
 	testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
 	testStatus = tu.checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
 	testStatus = tu.checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
     }
-    testStatus = tu.checkEq( addMP.Action, "relocate",                    testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( remA1.Action, "change",                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( remA2.Action, "change",                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( remA1.Subject[1], ass1,                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( remA2.Subject[1], ass2,                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( remA1.Note, "remove assignee",               testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( remA2.Note, "remove assignee",               testStatus, "PAct Verb"); 
+    testStatus = tu.checkEq( addMP.Action, config.PACTACT_RELO,           testStatus, "PAct action"); 
+    testStatus = tu.checkEq( remA1.Action, config.PACTACT_CHAN,           testStatus, "PAct action"); 
+    testStatus = tu.checkEq( remA2.Action, config.PACTACT_CHAN,           testStatus, "PAct action"); 
+    testStatus = tu.checkEq( remA1.Subject[1], ass1,                      testStatus, "PAct sub"); 
+    testStatus = tu.checkEq( remA2.Subject[1], ass2,                      testStatus, "PAct sub"); 
+    testStatus = tu.checkEq( remA1.Note, "remove assignee",               testStatus, "PAct note"); 
+    testStatus = tu.checkEq( remA2.Note, "remove assignee",               testStatus, "PAct note"); 
     
     return testStatus;
 }
@@ -108,18 +108,18 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
     for( const pact of [note1, addA1, addA2] ) {
 	let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
-	testStatus = tu.checkEq( pact.Verb, "confirm",                    testStatus, "PAct Verb"); 
+	testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         testStatus, "PAct Verb"); 
 	testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
 	testStatus = tu.checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
 	testStatus = tu.checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
     }
-    testStatus = tu.checkEq( note1.Action, "notice",                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( addA1.Action, "change",                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( addA2.Action, "change",                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( addA1.Subject[1], ass1,                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( addA2.Subject[1], ass2,                      testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( addA1.Note, "add assignee",                  testStatus, "PAct Verb"); 
-    testStatus = tu.checkEq( addA2.Note, "add assignee",                  testStatus, "PAct Verb"); 
+    testStatus = tu.checkEq( note1.Action, config.PACTACT_NOTE,           testStatus, "PAct Act"); 
+    testStatus = tu.checkEq( addA1.Action, config.PACTACT_CHAN,           testStatus, "PAct Act"); 
+    testStatus = tu.checkEq( addA2.Action, config.PACTACT_CHAN,           testStatus, "PAct Act"); 
+    testStatus = tu.checkEq( addA1.Subject[1], ass1,                      testStatus, "PAct sub"); 
+    testStatus = tu.checkEq( addA2.Subject[1], ass2,                      testStatus, "PAct sub"); 
+    testStatus = tu.checkEq( addA1.Note, "add assignee",                  testStatus, "PAct note"); 
+    testStatus = tu.checkEq( addA2.Note, "add assignee",                  testStatus, "PAct note"); 
     
     return testStatus;
 }
@@ -127,12 +127,13 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
 async function checkDubLabel( authData, ghLinks, td, loc, issueData, card, testStatus ) {
 
     // CHECK github issues
+    let kp = "1000 " + config.PEQ_LABEL;    
     let issue = await tu.findIssue( authData, td, issueData[0] );
     testStatus = tu.checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
     testStatus = tu.checkEq( issue.labels.length, 2,                testStatus, "Issue label" );
-    const labels0 = issue.labels[0].name == "1000 PEQ" && issue.labels[1].name == "documentation";
-    const labels1 = issue.labels[1].name == "1000 PEQ" && issue.labels[0].name == "documentation";
+    const labels0 = issue.labels[0].name == kp && issue.labels[1].name == "documentation";
+    const labels1 = issue.labels[1].name == kp && issue.labels[0].name == "documentation";
     testStatus = tu.checkEq( labels0 || labels1, true,              testStatus, "Issue label" );
 
     // CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
@@ -167,14 +168,16 @@ async function testLabel( authData, ghLinks, td ) {
     const bacon  = td.getBaconLoc();
 
     const flatUntrack = td.getUntrackLoc( td.flatPID );
-
+    const kp     = "1000 " + config.PEQ_LABEL;
+    const halfKP = "500 " + config.PEQ_LABEL;
+    
     {    
 	console.log( "Test label/unlabel in full CE structure" );
 
 	// 1. create peq issue in dsplan
 	console.log( "Make newly situated issue in dsplan" );
 	let issueData = await tu.makeIssue( authData, td, ISS_LAB, [] );     // [id, number, title]  
-	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	
 	let card  = await tu.makeProjectCard( authData, td.dsPlanID, issueData[0] );
@@ -230,7 +233,7 @@ async function testLabel( authData, ghLinks, td ) {
 	// 1. create 1k peq issue in bacon
 	console.log( "Make newly situated issue in bacon" );
 	let issueData = await tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, title] 
-	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	let card  = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 
@@ -246,7 +249,7 @@ async function testLabel( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label Dub 2" );
 	
 	// 3. add 500 peq (fail)
-	let label500  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "500 PEQ", 500 );	
+	let label500  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, halfKP, 500 );	
 	await tu.addLabel( authData, td, issueData[1], label500.name );
 	await utils.sleep( 1000 );
 	testStatus = await checkDubLabel( authData, ghLinks, td, bacon, issueData, card, testStatus );
@@ -336,10 +339,11 @@ async function testAssignment( authData, ghLinks, td ) {
     const assPlan = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     
     // 1. Create PEQ issue, add to proj
+    const kp = "1000 " + config.PEQ_LABEL;
     console.log( "Make newly situated issue" );
     let assData = await tu.makeIssue( authData, td, ISS_ASS, [] );     // [id, number, title]  
 
-    let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
     await tu.addLabel( authData, td, assData[1], newLabel.name );
 
     let assCard  = await tu.makeProjectCard( authData, td.dsPlanID, assData[0] );
@@ -354,7 +358,7 @@ async function testAssignment( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, assData[1], ASSIGNEE2 );
     await utils.sleep( 1000 );
     testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1, ASSIGNEE2], assData, testStatus );
-    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, "confirm", "change", "add assignee", testStatus );    
+    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, config.PACTVERB_CONF, config.PACTACT_CHAN, "add assignee", testStatus );    
 
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
 
@@ -385,12 +389,12 @@ async function testAssignment( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, assData[1], ASSIGNEE2 );
     await utils.sleep( 1000 );
     testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1], assData, testStatus );
-    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, "confirm", "notice", "Bad assignment attempted", testStatus );
+    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, config.PACTVERB_CONF, config.PACTACT_NOTE, "Bad assignment attempted", testStatus );
     // Rem, fail
     await tu.remAssignee( authData, td, assData[1], ASSIGNEE1 );
     await utils.sleep( 1000 );
     testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1], assData, testStatus );
-    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, "confirm", "notice", "Bad assignment attempted", testStatus );
+    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, config.PACTVERB_CONF, config.PACTACT_NOTE, "Bad assignment attempted", testStatus );
     
     tu.testReport( testStatus, "Test Assign" );
     return testStatus;
@@ -420,7 +424,8 @@ async function testLabelCarded( authData, ghLinks, td ) {
 	testStatus     = await tu.checkUntrackedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 
 	// 2. add label
-	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	const kp = "1000 " + config.PEQ_LABEL;
+	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	await utils.sleep( 2000 );
 	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
@@ -444,10 +449,12 @@ async function testCloseReopen( authData, ghLinks, td ) {
     const bacon      = td.getBaconLoc();
     const eggs       = td.getEggsLoc();
 
+    const kp = "1000 " + config.PEQ_LABEL;
+    
     {
 	console.log( "Open/close in flat" );
 	// 0. make peq in bacon
-	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	const issueData = await tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
 	const card      = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 	await utils.sleep( 2000 );
@@ -561,7 +568,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	ghoAccr.projSub = stars.projSub;
 	
 	// 0. make peq in stars
-	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	const issueData = await tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
 	const card      = await tu.makeProjectCard( authData, stars.colId, issueData[0] );
 	await utils.sleep( 2000 );
@@ -652,7 +659,8 @@ async function testCreateDelete( authData, ghLinks, td ) {
 
     const stars      = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
     const stripes    = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
-    
+
+    const kp = "1000 " + config.PEQ_LABEL;    
     {
 	console.log( "\nNewborn testing" );
 
@@ -731,7 +739,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	const ISS_ACCR = ISS_SITU + " Accrued";
 
 	// 0. make situated issues
-	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );	
+	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );	
 	const issDatFlat = await tu.makeIssue( authData, td, ISS_FLAT, [label] );     
 	const issDatProg = await tu.makeIssue( authData, td, ISS_PROG, [label] );
 	const issDatPend = await tu.makeIssue( authData, td, ISS_PEND, [label] );
@@ -770,7 +778,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	const ISS_AGHO2 = ISS_SITU + " Accrued iss1st";
 
 	// 0. make situated issues
-	const label      = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );	
+	const label      = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );	
 	const issDatAgho1 = await tu.makeIssue( authData, td, ISS_AGHO1, [label] );
 	const issDatAgho2 = await tu.makeIssue( authData, td, ISS_AGHO2, [label] );
 
@@ -830,7 +838,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkNewbornIssue( authData, ghLinks, td, issDatAgho1, testStatus );
 	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard1New.id, ISS_AGHO1, testStatus, {"peq": true} );
-	testStatus = await tu.checkPact( authData, ghLinks, td, ISS_AGHO1, "confirm", "notice", "Disconnected issue", testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, ISS_AGHO1, config.PACTVERB_CONF, config.PACTACT_NOTE, "Disconnected issue", testStatus );
 
 	testStatus = await tu.checkNoIssue( authData, ghLinks, td, aghoIss2New, testStatus );
 	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard2New.id, ISS_AGHO2, testStatus, {"peq": true} );
@@ -855,7 +863,7 @@ async function testLabelMods( authData, ghLinks, td ) {
     const ISS_PEND = "LM Pending";
     const ISS_ACCR = "LM Accrued";
 
-    const LAB1     = "501 PEQ";
+    const LAB1     = "501 " + config.PEQ_LABEL;    
     const LABNP1   = "nonPeq1";
     const LABNP2   = "nonPeq2";
     
@@ -925,14 +933,15 @@ async function testLabelMods( authData, ghLinks, td ) {
 
 	// 4. Edit lab1 name, fail and create new
 	console.log( "Mod peq label name" );
-	await tu.updateLabel( authData, td, lab1, {name: "51 PEQ"} );                                          
+	const smallKP = "51 " + config.PEQ_LABEL;    
+	await tu.updateLabel( authData, td, lab1, {name: smallKP} );                                          
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
 	lab1     = labelRes.label;
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "51 PEQ" );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, smallKP );
 	lab51    = labelRes.label;
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
-	testStatus = await tu.checkLabel( authData, lab51, "51 PEQ", "PEQ value: 51", testStatus );
+	testStatus = await tu.checkLabel( authData, lab51, smallKP, "PEQ value: 51", testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
 	
@@ -943,22 +952,23 @@ async function testLabelMods( authData, ghLinks, td ) {
 	await tu.updateLabel( authData, td, lab1, {description: "PEQ value: 51"} );                                          
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
 	lab1     = labelRes.label;
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	
 	tu.testReport( testStatus, "Label mods E" );
 
 	// 6. Edit lab1 all, fail & create new
 	console.log( "Mod peq label name,descr" );
-	await tu.updateLabel( authData, td, lab1, {name: "52 PEQ",  description: "PEQ value: 52"} );                                          
+	const small52KP = "52 " + config.PEQ_LABEL;
+	await tu.updateLabel( authData, td, lab1, {name: small52KP,  description: "PEQ value: 52"} );                                          
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
 	lab1     = labelRes.label;
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "52 PEQ" );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, small52KP );
 	lab52    = labelRes.label;
 	await utils.sleep( 1000 );
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );	
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
-	testStatus = await tu.checkLabel( authData, lab52, "52 PEQ", "PEQ value: 52", testStatus );
+	testStatus = await tu.checkLabel( authData, lab52, small52KP, "PEQ value: 52", testStatus );
 	
 	tu.testReport( testStatus, "Label mods F" );
 
@@ -967,7 +977,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	await tu.delLabel( authData, td, lab1.name );
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
 	lab1     = labelRes.label;
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label delete attempt", testStatus );	
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
@@ -976,10 +986,11 @@ async function testLabelMods( authData, ghLinks, td ) {
 
 	// 8. Make partial peq label
 	console.log( "Make partial peq label" );
-	await tu.updateLabel( authData, td, labNP1, {name: "105 PEQ", description: "newDesc"} );
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "105 PEQ" );
+	const pl105 = "105 " + config.PEQ_LABEL;
+	await tu.updateLabel( authData, td, labNP1, {name: pl105, description: "newDesc"} );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, pl105 );
 	labNP1   = labelRes.label;
-	testStatus = await tu.checkLabel( authData, labNP1, "105 PEQ", "PEQ value: 105", testStatus ); 
+	testStatus = await tu.checkLabel( authData, labNP1, pl105, "PEQ value: 105", testStatus ); 
 
 	tu.testReport( testStatus, "Label mods B" );
 
@@ -1012,6 +1023,7 @@ async function testProjColMods( authData, ghLinks, td ) {
     const pendName = config.PROJ_COLS[config.PROJ_PEND];
     const accrName = config.PROJ_COLS[config.PROJ_ACCR];
 
+    const kp = "1000 " + config.PEQ_LABEL;
     {
 	// 1. Setup.  New project. full cols. 1 peq issue each.
 	const projId    = await tu.makeProject( authData, td, PROJ_NAME, "" );
@@ -1023,7 +1035,7 @@ async function testProjColMods( authData, ghLinks, td ) {
 	const pendLoc = await tu.getFlatLoc( authData, projId, PROJ_NAME, pendName );
 	const accrLoc = await tu.getFlatLoc( authData, projId, PROJ_NAME, accrName );
 
-	let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );	
+	let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );	
 
 	const issPlanDat = await tu.makeIssue( authData, td, ISS_PLAN, [ label1k ] );
 	const issPendDat = await tu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
@@ -1058,7 +1070,7 @@ async function testProjColMods( authData, ghLinks, td ) {
 	await tu.updateColumn( authData, planLoc.colId, "New plan name" );
 	planLoc.colName = "New plan name";
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "change", "Column rename", testStatus, {sub:[planName, "New plan name" ]} );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, "Column rename", testStatus, {sub:[planName, "New plan name" ]} );
 
 	tu.testReport( testStatus, "ProjCol mods B" );
 
@@ -1069,7 +1081,7 @@ async function testProjColMods( authData, ghLinks, td ) {
 	// do not update locs, nothing should have changed.
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "Column rename attempted", testStatus, {sub:[accrName]} );	
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "Column rename attempted", testStatus, {sub:[accrName]} );	
 	
 	tu.testReport( testStatus, "ProjCol mods C" );
 
@@ -1083,7 +1095,7 @@ async function testProjColMods( authData, ghLinks, td ) {
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "change", "Project rename", testStatus, {sub:[PROJ_NAME, newProjName]} );	
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, "Project rename", testStatus, {sub:[PROJ_NAME, newProjName]} );	
     }
     
     
@@ -1109,9 +1121,10 @@ async function testAlloc( authData, ghLinks, td ) {
     await tu.refreshFlat( authData, td );
 
     // 1. Setup.
-    let label1m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "1000000 AllocPEQ", 1000000 );
-    let label2m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "2000000 AllocPEQ", 2000000 );
-    let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 PEQ", 1000 );
+    let ap1m = "1000000 " + config.ALLOC_LABEL;
+    let label1m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, ap1m, 1000000 );
+    let label2m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "2000000 " + config.ALLOC_LABEL, 2000000 );
+    let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 "   + config.PEQ_LABEL, 1000 );
     let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
 
     const issAllocDat = await tu.makeAllocIssue( authData, td, ISS_ALLOC, [ label1m ] );
@@ -1165,34 +1178,36 @@ async function testAlloc( authData, ghLinks, td ) {
     // Label mods
     {
 	// Mod label2m, success
+	let ap100 = "100 "  + config.ALLOC_LABEL;
+	let ap2k  = "2000 " + config.ALLOC_LABEL;
 	let labelRes = {};
-	await tu.updateLabel( authData, td, label2m, {name: "100 AllocPEQ" });
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "100 AllocPEQ" );
-	testStatus = await tu.checkLabel( authData, labelRes.label, "100 AllocPEQ", "Allocation PEQ value: 100", testStatus ); 	
+	await tu.updateLabel( authData, td, label2m, {name: ap100 });
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, ap100 );
+	testStatus = await tu.checkLabel( authData, labelRes.label, ap100, "Allocation PEQ value: 100", testStatus ); 	
 	    
 	// delete label2m, good
 	await tu.delLabel( authData, td, labelRes.label.name );
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "100 AllocPEQ" );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, ap100 );
 	testStatus = await tu.checkLabel( authData, labelRes.label, -1, -1, testStatus );
 	
 	// Mod label1m, fail and create
-	await tu.updateLabel( authData, td, label1m, {name: "2000 AllocPEQ" });
+	await tu.updateLabel( authData, td, label1m, {name: ap2k });
 	await utils.sleep( 1000 );  // gh 
 	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, label1m.name );
 	let lOrig = labelRes.label;
-	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "2000 AllocPEQ" );
+	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, ap2k );
 	let lNew  = labelRes.label;
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label edit attempt", testStatus );
-	testStatus = await tu.checkLabel( authData, lOrig, "1000000 AllocPEQ", "Allocation PEQ value: 1000000", testStatus );
-	testStatus = await tu.checkLabel( authData, lNew, "2000 AllocPEQ", "Allocation PEQ value: 2000", testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );
+	testStatus = await tu.checkLabel( authData, lOrig, ap1m, "Allocation PEQ value: 1000000", testStatus );
+	testStatus = await tu.checkLabel( authData, lNew, ap2k, "Allocation PEQ value: 2000", testStatus );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
 
 	// Delete label1m, fail
 	await tu.delLabel( authData, td, label1m.name );  	
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "1000000 AllocPEQ" );
+	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, ap1m );
 	lOrig = labelRes.label;
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "notice", "PEQ label delete attempt", testStatus );
-	testStatus = await tu.checkLabel( authData, lOrig, "1000000 AllocPEQ", "Allocation PEQ value: 1000000", testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );
+	testStatus = await tu.checkLabel( authData, lOrig, ap1m, "Allocation PEQ value: 1000000", testStatus );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
 	
 	tu.testReport( testStatus, "Alloc C" );
@@ -1217,9 +1232,9 @@ async function testAlloc( authData, ghLinks, td ) {
 	await tu.makeAllocCard( authData, starLoc.colId, "Alloc star 1", "1,000,000" );     // NOTE!  card is rebuilt to point to issue.  Re-find it.
 	await utils.sleep( 2000 );
 	const links       = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-	const link        = links.find( link => link.GHCardTitle == "Alloc star 1" );
+	const link        = links.find( link => link.GHIssueTitle == "Alloc star 1" );
 	const starCard1   = await tu.getCard( authData, link.GHCardId );
-	const issStarDat1 = [link.GHIssueId, link.GHIssueNum, link.GHCardTitle];
+	const issStarDat1 = [link.GHIssueId, link.GHIssueNum, link.GHIssueTitle];
 	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat1, starCard1, testStatus, {assignees: 0, lblCount: 1} );
 
 	// Create from issue  ... should be makeAllocIssue to create comment, but not testing that here
@@ -1248,8 +1263,8 @@ async function testAlloc( authData, ghLinks, td ) {
 	await tu.makeAllocCard( authData, accrLoc.colId, "Alloc accr", "1,000,000" );
 	await utils.sleep( 2000 );
 	const links      = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-	const linkProg   = links.find( link => link.GHCardTitle == "Alloc prog" );
-	const linkAccr   = links.find( link => link.GHCardTitle == "Alloc accr" );
+	const linkProg   = links.find( link => link.GHIssueTitle == "Alloc prog" );
+	const linkAccr   = links.find( link => link.GHIssueTitle == "Alloc accr" );
 
 	testStatus = tu.checkEq( typeof linkProg, 'undefined',     testStatus, "link should not exist" );
 	testStatus = tu.checkEq( typeof linkAccr, 'undefined',     testStatus, "link should not exist" );

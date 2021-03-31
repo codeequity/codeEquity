@@ -39,7 +39,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     await tu.addLabel( authDataX, tdX, issPopDat[1], popLabel.name );       
     await utils.sleep( 1000 );
 
-    const LAB = "704 PEQ";
+    const LAB = "704 " + config.PEQ_LABEL;
     let lab   = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LAB, 704 );
     let labX  = await gh.findOrCreateLabel( authDataX, tdX.GHOwner, tdX.GHRepo, false, LAB, 704 );
 
@@ -62,7 +62,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     let allPeqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let peq     = allPeqs.find(p => p.GHIssueId == issDat[0].toString() );
     let sub     = [peq.PEQId, td.githubOpsPID.toString(), stripeLoc.colId.toString() ];
-    testStatus  = await tu.checkPact( authData, ghLinks, td, issDat[2], "confirm", "relocate", "", testStatus, {sub: sub} );
+    testStatus  = await tu.checkPact( authData, ghLinks, td, issDat[2], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
     
     tu.testReport( testStatus, "Test " + testName + " A" );    
     
@@ -79,7 +79,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     allPeqs  = await utils.getPeqs( authDataX, { "GHRepo": tdX.GHFullName });
     let peqX = allPeqs.find(p => p.GHIssueId == issDatX[0].toString() );
     sub      = [peqX.PEQId, crossPid.toString(), crossCid.toString() ];
-    testStatus  = await tu.checkPact( authDataX, ghLinks, tdX, issDatX[2], "confirm", "relocate", "", testStatus, {sub: sub} );
+    testStatus  = await tu.checkPact( authDataX, ghLinks, tdX, issDatX[2], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
 
     tu.testReport( testStatus, "Test " + testName + " B" );    
 
@@ -101,9 +101,9 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
 
     // Careful.. peq is gone at this point.   Delete may come after relocate, hence depth
     sub         = [peqX.PEQId, config.TEST_OWNER + "/" + config.TEST_REPO];
-    testStatus  = await tu.checkPact( authDataX, ghLinks, tdX, -1, "confirm", "relocate", "Transfer out", testStatus, {sub: sub, depth: 2} );
+    testStatus  = await tu.checkPact( authDataX, ghLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer out", testStatus, {sub: sub, depth: 2} );
     sub         = [peq.PEQId, config.TEST_OWNER + "/" + config.CROSS_TEST_REPO];
-    testStatus  = await tu.checkPact( authData, ghLinks, td, -1, "confirm", "relocate", "Transfer out", testStatus, {sub: sub, depth: 2} );
+    testStatus  = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer out", testStatus, {sub: sub, depth: 2} );
 
     
     tu.testReport( testStatus, "Test " + testName );
@@ -138,7 +138,7 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
     await utils.sleep( 1000 );
 
     // Labels, Assignees & Locs
-    const LAB    = "903 PEQ";
+    const LAB    = "903 " + config.PEQ_LABEL;
     const LABNP1 = "bug";
     const LABNP2 = "documentation";
     let lab     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LAB, 903 );
