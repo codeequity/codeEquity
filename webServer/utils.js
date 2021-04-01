@@ -376,15 +376,19 @@ async function rebuildPeq( authData, link, oldPeq ) {
 async function recordPeqData( authData, pd, checkDup, specials ) {
     console.log( "Recording peq data for", pd.GHIssueTitle );	
     let newPEQId = -1;
+    let newPEQ = -1
     if( checkDup ) { 
 	// Only 1 peq per issueId. Might be moving a card here
-	const newPEQ = await getPeq( authData, pd.GHIssueId, false );
+	newPEQ = await getPeq( authData, pd.GHIssueId, false );
 	if( newPEQ != -1 ) { newPEQId = newPEQ.PEQId; }
     }
 
+    // If relocate, must have existing peq
+    assert( specials != "relocate" || newPEQ != -1 );
+
     let postData = {};
     postData.PEQId        = newPEQId;
-    postData.GHHolderId   = pd.GHAssignees;           // list of ghUserLogins assigned
+    postData.GHHolderId   = specials == "relocate" ? newPEQ.GHHolderId : pd.GHAssignees;           // list of ghUserLogins assigned
     postData.PeqType      = pd.peqType;               // type of peq
     postData.Amount       = pd.peqValue;              // amount
     postData.GHRepo       = pd.GHFullName;            // gh repo
@@ -629,6 +633,14 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	if( pd.GHIssueNum > -1 ) {
 	    ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName,
 				pd.GHColumnId, colName, origCardId, issueCardContent[0] );
+
+	    // If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
+	    // Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
+	    // If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
+	    if( specials != "relocate" ) {
+		pd.GHAssignees = await gh.getAssignees( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );
+	    }
+	    
 	}
 	// card -> issue..  exactly one linkage.
 	else {
@@ -654,10 +666,6 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 				pd.GHColumnId, colName, newCardId, pd.GHIssueTitle);
 	}
     }
-
-    // NO.. There are PActs for this.  GH/CE jobQ misalignment can cause this value to change depending on ms timing.
-    //       Remember, this is only called for PEQs, not for initial populate
-    // if( pd.peqType != "end" ) { pd.GHAssignees = await gh.getAssignees( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum ); }
 
     // Resolve splits issues to ensure a 1:1 mapping issue:card, record data for all newly created issue:card(s)
     let gotSplit = await resolve( authData, ghLinks, pd, allocation );

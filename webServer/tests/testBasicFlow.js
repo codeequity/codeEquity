@@ -339,7 +339,7 @@ async function testBlast( authData, ghLinks, td ) {
     let links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let link   = links.find( link => link.GHIssueTitle == "Blast 1" );
     let card   = await tu.getCard( authData, link.GHCardId );
-    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1});
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [ASSIGNEE1]});
 
     tu.testReport( testStatus, "Test Blast A" );    
 
@@ -349,7 +349,7 @@ async function testBlast( authData, ghLinks, td ) {
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHIssueTitle == "Blast 2" );
     card   = await tu.getCard( authData, link.GHCardId );
-    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3});
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [ASSIGNEE1, ASSIGNEE2]});
 
     tu.testReport( testStatus, "Test Blast B" );    
 
@@ -359,7 +359,7 @@ async function testBlast( authData, ghLinks, td ) {
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHIssueTitle == "Blast 3" );
     card   = await tu.getCard( authData, link.GHCardId );
-    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2});
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [ASSIGNEE1, ASSIGNEE2]});
 
     tu.testReport( testStatus, "Test Blast C" );    
 
@@ -369,7 +369,7 @@ async function testBlast( authData, ghLinks, td ) {
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHIssueTitle == "Blast 4" );
     card   = await tu.getCard( authData, link.GHCardId );
-    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2});
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [ASSIGNEE1, ASSIGNEE2]});
 
     tu.testReport( testStatus, "Test Blast D" );    
 
@@ -379,7 +379,7 @@ async function testBlast( authData, ghLinks, td ) {
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHIssueTitle == "Blast 5" );
     card   = await tu.getCard( authData, link.GHCardId );
-    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3});
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [ASSIGNEE2, ASSIGNEE1]});
 
     tu.testReport( testStatus, "Test Blast E" );    
 
@@ -394,7 +394,8 @@ async function testBlast( authData, ghLinks, td ) {
     links  = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     link   = links.find( link => link.GHIssueTitle == "Blast 6" );
     card   = await tu.getCard( authData, link.GHCardId );
-    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1});
+    // Assigns show up still - peq assignees not updated once created until ceFlutter
+    testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [ASSIGNEE1, ASSIGNEE2]});
 
     tu.testReport( testStatus, "Test Blast F" );    
 
