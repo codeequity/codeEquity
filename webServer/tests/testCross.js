@@ -57,7 +57,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     const card  = await tu.makeProjectCard( authData, stripeLoc.colId, issDat[0] );
     await utils.sleep( 1000 );
     
-    testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1});
+    testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1, assign: 2});
     
     let allPeqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let peq     = allPeqs.find(p => p.GHIssueId == issDat[0].toString() );
@@ -74,7 +74,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     const cardX  = await tu.makeProjectCard( authDataX, crossLoc.colId, issDatX[0] );
     await utils.sleep( 1000 );
     
-    testStatus = await tu.checkSituatedIssue( authDataX, ghLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1});
+    testStatus = await tu.checkSituatedIssue( authDataX, ghLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1, assign: 2});
     
     allPeqs  = await utils.getPeqs( authDataX, { "GHRepo": tdX.GHFullName });
     let peqX = allPeqs.find(p => p.GHIssueId == issDatX[0].toString() );

@@ -839,11 +839,13 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     testStatus  = checkEq( peqs.length, 1,                          testStatus, "Peq count" );
     let peq = peqs[0];
 
+    assignCnt = assignCnt ? assignCnt : 0;
+    
     testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );        
     testStatus = checkEq( peq.GHProjectSub.length, loc.projSub.length, testStatus, "peq project sub len invalid" );
     testStatus = checkEq( peq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
-    testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );      
-    testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );    
+    testStatus = checkEq( peq.GHHolderId.length, assignCnt,        testStatus, "peq holders wrong" );      
+    testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq ceholders wrong" );    
     testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );      
     testStatus = checkEq( peq.Amount, lval,                        testStatus, "peq amount" );
     testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub 0 invalid" );
@@ -883,6 +885,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
 
     let labelVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
     let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
+    let assignees    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assigns" )      ? specials.assigns      : [];
     
     console.log( "Check unclaimed issue", loc.projName, loc.colName, labelVal );
 
@@ -929,14 +932,18 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     testStatus = checkEq( peq.PeqType, loc.peqType,                testStatus, "peq type invalid" );        
     testStatus = checkEq( peq.GHProjectSub.length, loc.projSub.length, testStatus, "peq project sub len invalid" );
     testStatus = checkEq( peq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
-    testStatus = checkEq( peq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );      
-    testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );    
+    testStatus = checkEq( peq.GHHolderId.length, assignees.length, testStatus, "peq holders wrong" );      
+    testStatus = checkEq( peq.CEHolderId.length, 0,                testStatus, "peq ce holders wrong" );    
     testStatus = checkEq( peq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );      
     testStatus = checkEq( peq.Amount, lval,                        testStatus, "peq amount" );
     testStatus = checkEq( peq.GHProjectSub[0], loc.projSub[0],     testStatus, "peq project sub 0 invalid" );
     testStatus = checkEq( peq.Active, "true",                      testStatus, "peq" );
     testStatus = checkEq( peq.GHProjectId, loc.projId,             testStatus, "peq project id bad" );
 
+    for( const assignee of assignees ) {
+	testStatus = checkEq( peq.GHHolderId.includes( assignee ), true, testStatus, "peq holder bad" );
+    }
+    
     // CHECK dynamo Pact
     let allPacts  = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
@@ -1464,7 +1471,7 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     testStatus = checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
     testStatus = checkEq( meltPeq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
     testStatus = checkEq( meltPeq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
-    testStatus = checkEq( meltPeq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
+    testStatus = checkEq( meltPeq.CEHolderId.length, 0,                testStatus, "peq ceholders wrong" );
     testStatus = checkEq( meltPeq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );
     testStatus = checkEq( meltPeq.Amount, 1000,                        testStatus, "peq amount" );
     testStatus = checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   testStatus, "peq project sub invalid" );

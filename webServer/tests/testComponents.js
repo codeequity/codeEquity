@@ -308,14 +308,15 @@ async function testLabel( authData, ghLinks, td ) {
 	// 5. relabel (OK here, negotiating)
 	await tu.addLabel( authData, td, issueData[1], label500.name );    
 	await utils.sleep( 1000 );
-	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus, {"label": 500 } );
+	// re-created peq, i.e. re-peq-labeled.  Gets assignees again.
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus, {label: 500, assign: 1 } );
 	await utils.sleep( 1000 );
 	tu.testReport( testStatus, "Label flat 6" );
 	
 	// 6. move to accr
 	await tu.moveCard( authData, card.id, flatAccr.colId );
 	await utils.sleep( 1000 );
-	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {"label": 500 } );
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {label: 500, assign: 1 } );
 	tu.testReport( testStatus, "Label flat 7" );
     }
 
@@ -1287,12 +1288,12 @@ async function runTests( authData, ghLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
-    let t8 = await testAlloc( authData, ghLinks, td );
-    console.log( "\n\nAlloc complete." );
-    await utils.sleep( 5000 );
-
     let t1 = await testAssignment( authData, ghLinks, td );
     console.log( "\n\nAssignment test complete." );
+    await utils.sleep( 5000 );
+
+    let t8 = await testAlloc( authData, ghLinks, td );
+    console.log( "\n\nAlloc complete." );
     await utils.sleep( 5000 );
     
     let t2 = await testLabel( authData, ghLinks, td ); 
