@@ -316,16 +316,17 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function getMillis() {
+function getMillis( byHour ) {
     var millis = new Date();
 
-    // var hh = String(millis.getHours()).padStart(2, '0');
+    var hh = String(millis.getHours()).padStart(2, '0');
     var mm = String(millis.getMinutes()).padStart(2, '0');
     var ss = String(millis.getSeconds()).padStart(2, '0');
     var ii = String(millis.getMilliseconds());
     
     // millis = hh + '.' + mm + '.' + ss + '.' + ii;
-    millis = mm + '.' + ss + '.' + ii;
+    if( typeof byHour !== 'undefined' && byHour ) {  millis = hh; }
+    else                                          {  millis = mm + '.' + ss + '.' + ii; }
 
     return millis.toString();
 }
