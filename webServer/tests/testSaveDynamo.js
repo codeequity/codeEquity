@@ -1,3 +1,5 @@
+var fs = require('fs'), json;
+
 var utils = require('../utils');
 const tu  = require('./testUtils');
 
@@ -11,12 +13,19 @@ function execAWS_CLI( table ) {
     console.log( "Saving AWS Dynamo table:", table );
 
     // cmd = "aws dynamodb scan --table-name CEPEQs | jq '{"Ownerships": [.Items[] | {PutRequest: {Item: .}}]}' > testData/testDataCEPEQS.json"
+    let fname = "tests/testData/dynamo" + table + "_" + stamp + ".json";
     let cmd = "aws dynamodb scan --table-name " + table + " | jq ";
-    cmd    += "'{\"" + table + "\": [.Items[] | {PutRequest: {Item: .}}]}' > tests/testData/dynamo" + table + "_" + stamp + ".json";
+    cmd    += "'{\"" + table + "\": [.Items[] | {PutRequest: {Item: .}}]}' > " + fname;
 
-    // XXX Currently, if the tablename is bad, scan generates empty input to jq, which then file redirects as told.  No errors.
-    //     Will need to check for empty result to make sure we got something.
     execSync( cmd, { encoding: 'utf-8' });
+
+    // if the tablename is bad, scan generates empty input to jq, which then file redirects as told.  No errors.
+    // check for empty result to make sure we got something.
+    let contents = "";
+    try { contents = fs.readFileSync(fname, 'utf8'); }
+    catch(e) {	console.log('Error:', e.stack);  }
+
+    if( contents == "" ) { success = false; }
     return success;
 }
 
@@ -27,8 +36,7 @@ async function runTests( ) {
     let testStatus = [ 0, 0, []];
     let success = false;
 
-    // success = execAWS_CLI( "CEPEQs" );
-    success = execAWS_CLI( "CEPkljsdjkhdgs" );
+    success = execAWS_CLI( "CEPEQs" );
     testStatus = tu.checkEq( success, true, testStatus, "save PEQ Table" );
 
     success = execAWS_CLI( "CEPEQActions" );
@@ -48,9 +56,6 @@ async function runTests( ) {
 
     success = execAWS_CLI( "CEAgreements" );
     testStatus = tu.checkEq( success, true, testStatus, "save Agreements Table" );
-
-    // XXX kill linkage, cequeue
-    // XXX ??? cegithub
 
     return testStatus
 }

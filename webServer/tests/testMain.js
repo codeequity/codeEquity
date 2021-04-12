@@ -74,7 +74,7 @@ async function runTests() {
     const mrp = pacts != -1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
     if( utils.getToday() != mrp.EntryDate ) {
 	console.log( "Cold start?  Most recent pact", mrp.EntryDate );
-//	await utils.sleep( 8000 );
+	await utils.sleep( 8000 );
     }
     tu.remProject( authData, wakeyPID );
 
@@ -91,7 +91,6 @@ async function runTests() {
     await utils.sleep( 1000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    /*
     await testDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
 
     subTest = await testSetup.runTests( authData, ghLinks, td );
@@ -123,7 +122,7 @@ async function runTests() {
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-*/
+
     tu.testReport( testStatus, "================= Testing complete =================" );
 
 }

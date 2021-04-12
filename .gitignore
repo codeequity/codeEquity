@@ -6,4 +6,5 @@ __pycache__
 node_modules
 ceFlutter/build
 webServer/dump*
+webServer/tests/testData/*
 tmp*

@@ -307,15 +307,19 @@ class Linkage {
     }
 
     // primary keys have changed.
-    rebuildLinkage( authData, oldLink, issueData, cardId ) {
+    rebuildLinkage( authData, oldLink, issueData, cardId, splitTitle ) {
 	console.log( authData.who, "Rebuild linkage", oldLink.GHIssueNum, "->", issueData[0] );
+	let newTitle = oldLink.GHIssueTitle;
+	if( typeof splitTitle !== 'undefined' ) {
+	    newTitle = oldLink.GHColumnId == -1 ? config.EMPTY : splitTitle;
+	}
+	
 	let link = this.addLinkage( authData,
 				    oldLink.GHRepo,
 				    issueData[0].toString(), issueData[1].toString(),
 				    oldLink.GHProjectId, oldLink.GHProjectName,
 				    oldLink.GHColumnId, oldLink.GHColumnName,
-				    cardId.toString(),
-				    oldLink.GHIssueTitle, oldLink.flatSource );
+				    cardId.toString(), newTitle, oldLink.flatSource );
 	
 	this.removeLinkage( { "authData": authData, "issueId": oldLink.GHIssueId, "cardId": oldLink.GHCardId } );
 

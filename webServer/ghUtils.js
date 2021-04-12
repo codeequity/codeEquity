@@ -228,7 +228,7 @@ async function errorHandler( source, e, func, ...params ) {
 	console.log( source, "Issue", arguments[6], "already gone" );  
 	return false;
     }
-    else if( e.status == 403 && source == "removePeqLabel" )
+    else if( e.status == 403 && ( source == "removePeqLabel" || source == "getLabels" ))
     {
 	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels." );
 	return false;
@@ -257,7 +257,7 @@ async function errorHandler( source, e, func, ...params ) {
 	else { console.log( "Error.  Retries exhausted, command failed.  Please try again later." ); }
     }
     else {
-	console.log( "Error in errorHandler, unknown status code.", e );
+	console.log( "Error in errorHandler, unknown status code.", source, e );
     }
 }
 
@@ -733,7 +733,7 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
 
     let issues = -1;
     let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "getLabelIssuesGQL", e, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor ));  // probably never seen
+	.catch( e => errorHandler( "getLabelIssuesGQL", e, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor ));  // probably only seen during testing
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
@@ -741,7 +741,7 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
     }
     else {
 	let label = res.data.repository.label;
-	if( typeof label !== 'undefined' ) {
+	if( typeof label !== 'undefined' && label != null ) {
 	    issues = label.issues;
 	    for( const issue of issues.edges ) {
 		let datum = {};
@@ -752,6 +752,10 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
 	    }
 	    // Wait.  Data is modified
 	    if( issues != -1 && issues.pageInfo.hasNextPage ) { await getLabelIssuesGQL( PAT, owner, repo, labelName, data, issues.pageInfo.endCursor ); }
+	}
+	else {
+	    // XXX may not be an error.. 
+	    console.log( "XXX Error.  ", res );
 	}
     }
 }
@@ -998,7 +1002,7 @@ async function removePeqLabel( authData, owner, repo, issueNum ) {
     let retVal = false;
     var labels = await getLabels( authData, owner, repo, issueNum );
 
-    if( typeof labels === 'undefined' ) { return retVal; }
+    if( typeof labels === 'undefined' || labels == false ) { return retVal; }
     if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum );} 
 
     if( labels != -1 ) {
@@ -1332,6 +1336,15 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 
 	const link = ghLinks.getUniqueLink( authData, pd.GHIssueId );
 	cardId = link.GHCardId;
+
+	// Out of order notification is possible.  If already accrued, stop.
+	// There is no symmetric issue - once accr, can't repoen.  if only pend, no subsequent move after reopen.
+	if( link.GHColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
+	    let issue = await getFullIssue( authData, owner, repo, pd.GHIssueNum );
+	    if( issue.state == 'closed' ) {
+		return false;
+	    }
+	}
 	
 	// move card to "Pending PEQ Approval"
 	if( cardId != -1 ) {
@@ -1496,7 +1509,6 @@ function parseLabelName( name ) {
 	peqValue = parseInt( splits[0] );
 	alloc = splits[1] == config.ALLOC_LABEL;
     }
-    
     return [peqValue, alloc];
 }
 

@@ -65,8 +65,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    const peqs  = await utils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs to handle with this edited label" );
-		// Just make sure description is consistent with name, if it is a peq label.  No need to wait.
-		let isPeqLabel = nameDrivesLabel( authData, pd, pd.reqBody.label.name, pd.reqBody.label.description );
+		// Just make sure description is consistent with name, if it is a peq label.  Must wait for bool, else always true.  Could break this up, buuuutttt
+		let isPeqLabel = await nameDrivesLabel( authData, pd, pd.reqBody.label.name, pd.reqBody.label.description );
 
 		if( isPeqLabel ) {
 		    console.log( "New label is PEQ, converting issues." );
