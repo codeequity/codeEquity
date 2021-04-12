@@ -7,6 +7,7 @@ var config  = require('../config');
 var links     = require('../components/linkage.js');
 
 const tu             = require('./testUtils');
+const testSaveDynamo = require( './testSaveDynamo' );
 const testDelete     = require( './testDelete' );
 const testSetup      = require( './testSetup' );
 const testFlat       = require( './testFlat' );
@@ -82,6 +83,13 @@ async function runTests() {
 
     let testStatus = [ 0, 0, []];
     let subTest = "";
+
+    // Save dynamo data
+
+    subTest = await testSaveDynamo.runTests( );
+    console.log( "\n\nSave Dynamo complete" );
+    await utils.sleep( 1000 );
+    testStatus = tu.mergeTests( testStatus, subTest );
 
     await testDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
 

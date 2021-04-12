@@ -94,11 +94,11 @@ async function postGH( PAT, url, postData ) {
 	}
     }
 
-    // XXX Still waiting to see this.. 
     let gotchya = false;
     let ret = await fetch( url, params )
 	.catch( e => { gotchya = true; console.log(e); return e; });
 
+    // XXX Still waiting to see this.. 
     if( gotchya ) { let x = await ret.json(); console.log( "Error.  XXXXXXXXXXXXXX got one!", x, ret ); }
     
     return await ret.json();
@@ -316,18 +316,35 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function getMillis() {
+function getMillis( byHour ) {
     var millis = new Date();
 
-    // var hh = String(millis.getHours()).padStart(2, '0');
+    var hh = String(millis.getHours()).padStart(2, '0');
     var mm = String(millis.getMinutes()).padStart(2, '0');
     var ss = String(millis.getSeconds()).padStart(2, '0');
     var ii = String(millis.getMilliseconds());
     
     // millis = hh + '.' + mm + '.' + ss + '.' + ii;
-    millis = mm + '.' + ss + '.' + ii;
+    if( typeof byHour !== 'undefined' && byHour ) {  millis = hh; }
+    else                                          {  millis = mm + '.' + ss + '.' + ii; }
 
     return millis.toString();
+}
+
+function millisDiff( mNew, mOld) {
+
+    var mmNew = parseInt( mNew.substr(0,2) );
+    var ssNew = parseInt( mNew.substr(3,2) );
+    var iiNew = parseInt( mNew.substr(6,2) );
+
+    var mmOld = parseInt( mOld.substr(0,2) );
+    var ssOld = parseInt( mOld.substr(3,2) );
+    var iiOld = parseInt( mOld.substr(6,2) );
+
+    if( mmNew < mmOld ) { mmNew += 60; }  // rollover
+    const millis = iiNew - iiOld + 1000 * (ssNew - ssOld) + 60 * 1000 * (mmNew - mmOld );
+
+    return millis;
 }
 
 function getToday() {
@@ -416,17 +433,6 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 		     getToday(), pd.reqBody );
 
     return newPEQId;
-}
-
-function rebuildLinkage( authData, ghLinks, link, issueData, newCardId, newTitle ) {
-    // no need to wait for the deletion
-    ghLinks.removeLinkage({ "authData": authData, "issueId": link.GHIssueId, "cardId": link.GHCardId });
-
-    // is this an untracked carded issue?
-    if( link.GHColumnId == -1 ) { newTitle = config.EMPTY; } 
-
-    ghLinks.addLinkage( authData, link.GHRepo, issueData[0], issueData[1], link.GHProjectId, link.GHProjectName,
-			link.GHColumnId, link.GHColumnName, newCardId, newTitle )
 }
 
 // Note: Only called by resolve.  PNP rejects all attempts to create in ACCR before calling resolve.
@@ -525,7 +531,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	pd.GHIssueId    = issueData[0];
 	pd.GHIssueNum   = issueData[1];
 	pd.GHIssueTitle = issue.title + " split: " + splitTag;
-	rebuildLinkage( authData, ghLinks, links[i], issueData, newCardId, pd.GHIssueTitle );
+	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.GHIssueTitle );
     }
 
     // On initial populate call, this is called first, followed by processNewPeq.
@@ -909,6 +915,7 @@ exports.setPopulated = setPopulated;
 exports.updatePEQPSub = updatePEQPSub;
 exports.sleep = sleep;
 exports.getMillis = getMillis;
+exports.millisDiff = millisDiff;
 exports.getToday = getToday;
 exports.resolve = resolve;
 exports.processNewPEQ = processNewPEQ;

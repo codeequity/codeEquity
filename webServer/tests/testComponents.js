@@ -950,7 +950,8 @@ async function testLabelMods( authData, ghLinks, td ) {
 
 	// 5. Edit lab1 descr, fail
 	console.log( "Mod peq label descr" );
-	await tu.updateLabel( authData, td, lab1, {description: "PEQ value: 51"} );                                          
+	await tu.updateLabel( authData, td, lab1, {description: "PEQ value: 51"} );
+	await utils.sleep( 1000 );	
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
 	lab1     = labelRes.label;
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
@@ -966,7 +967,6 @@ async function testLabelMods( authData, ghLinks, td ) {
 	lab1     = labelRes.label;
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, small52KP );
 	lab52    = labelRes.label;
-	await utils.sleep( 1000 );
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
 	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	testStatus = await tu.checkLabel( authData, lab52, small52KP, "PEQ value: 52", testStatus );
@@ -976,6 +976,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	// 7. Delete lab1, fail
 	console.log( "Delete peq label" );
 	await tu.delLabel( authData, td, lab1.name );
+	await utils.sleep( 1500 );	
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
 	lab1     = labelRes.label;
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );	

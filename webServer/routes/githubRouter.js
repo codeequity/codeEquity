@@ -9,6 +9,7 @@ var config  = require('../config');
 const peqData = require( '../peqData' );
 var fifoQ     = require('../components/queue.js');
 var links     = require('../components/linkage.js');
+var hist      = require('../components/histogram.js');
 
 var issues    = require('./githubIssueHandler');
 var cards     = require('./githubCardHandler');
@@ -23,6 +24,9 @@ ceJobs.jobs = new fifoQ.Queue();
 ceJobs.count = 0;
 ceJobs.delay = 0;
 ceJobs.maxDepth = 0;
+
+// CE arrival hist
+ceArrivals = new hist.Histogram( 1, 3, 5, 8, 12, 15, 20, 30 );
 
 var notificationCount = 0;
 
@@ -147,7 +151,8 @@ async function getNextJob( authData, pdOld, sender, res ) {
     }
     else {
 	console.log( authData.who, "jobs done" );
-	ghLinks.show( 5 );	
+	ghLinks.show( 5 );
+	ceArrivals.show();
 	// ghLinks.showLocs( 10 );
 	console.log( "\n" );
     }
@@ -277,6 +282,7 @@ router.post('/:location?', async function (req, res) {
     // if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }      // label create doesn't have this
 
     let newStamp = utils.getMillis();
+    ceArrivals.add( newStamp );
     console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
 
     // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
