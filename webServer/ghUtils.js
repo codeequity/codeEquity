@@ -1340,7 +1340,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 	// Out of order notification is possible.  If already accrued, stop.
 	// There is no symmetric issue - once accr, can't repoen.  if only pend, no subsequent move after reopen.
 	if( link.GHColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
-	    let issue = await getFullIssue( authData, owner, repo, pd.GHIssueNum );
+	    let issue = await getFullIssue( authData, pd.GHOwner, repo, pd.GHIssueNum );
 	    if( issue.state == 'closed' ) {
 		return false;
 	    }

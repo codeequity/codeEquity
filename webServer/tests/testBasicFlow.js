@@ -108,66 +108,68 @@ async function checkMove( authData, ghLinks, td, issueData, colId, meltCard, tes
     // CHECK github issues
     // id, num in linkage
     let meltIssue = await tu.findIssue( authData, td, issueData[0] );
-    testStatus = tu.checkEq( meltIssue.assignees.length, 2,                              testStatus, "Issue assignee count" );
-    if     ( colId == td.dsPendID ) { testStatus = tu.checkEq( meltIssue.state, "closed",     testStatus, "Issue status" );  }
-    else if( colId == td.dsAccrID ) { testStatus = tu.checkEq( meltIssue.state, "closed",     testStatus, "Issue status" );  }
-    else                            { testStatus = tu.checkEq( meltIssue.state, "open",       testStatus, "Issue status" );  }
+    let subTest = [ 0, 0, []];
+    
+    subTest = tu.checkEq( meltIssue.assignees.length, 2,                              subTest, "Issue assignee count" );
+    if     ( colId == td.dsPendID ) { subTest = tu.checkEq( meltIssue.state, "closed",     subTest, "Issue status" );  }
+    else if( colId == td.dsAccrID ) { subTest = tu.checkEq( meltIssue.state, "closed",     subTest, "Issue status" );  }
+    else                            { subTest = tu.checkEq( meltIssue.state, "open",       subTest, "Issue status" );  }
 
     // CHECK github location
     let cards = await tu.getCards( authData, colId );   
     let mCard = cards.filter((card) => card.content_url.split('/').pop() == meltIssue.number );
-    testStatus = tu.checkGE( mCard.length, 1,                           testStatus, "Card location" );
+    subTest = tu.checkGE( mCard.length, 1,                           subTest, "Card location" );
     let foundCard = false;
     for( const c of mCard ) {
 	if( c.id == meltCard.id ) { foundCard = true; }
     }
-    testStatus = tu.checkEq( foundCard, true,                           testStatus, "Card location" );   
+    subTest = tu.checkEq( foundCard, true,                           subTest, "Card location" );   
 
     
     // CHECK Dynamo PEQ
     // Should be no change
     let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == meltIssue.id );
-    testStatus = tu.checkEq( meltPeqs.length, 1,                          testStatus, "Peq count" );
+    subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
-    testStatus = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        testStatus, "peq type invalid" );
-    testStatus = tu.checkEq( meltPeq.GHProjectSub.length, 2,              testStatus, "peq project sub invalid" );
-    testStatus = tu.checkEq( meltPeq.GHIssueTitle, issueData[2],          testStatus, "peq title is wrong" );
-    testStatus = tu.checkEq( meltPeq.GHHolderId.length, 0,                testStatus, "peq holders wrong" );
-    testStatus = tu.checkEq( meltPeq.CEHolderId.length, 0,                testStatus, "peq holders wrong" );
-    testStatus = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           testStatus, "peq grantor wrong" );
-    testStatus = tu.checkEq( meltPeq.Amount, 1000,                        testStatus, "peq amount" );
-    testStatus = tu.checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   testStatus, "peq project sub invalid" );
-    testStatus = tu.checkEq( meltPeq.GHProjectSub[1], td.dataSecTitle,    testStatus, "peq project sub invalid" );
-    testStatus = tu.checkEq( meltPeq.GHProjectId, td.dataSecPID,          testStatus, "peq unclaimed PID bad" );
-    testStatus = tu.checkEq( meltPeq.Active, "true",                      testStatus, "peq" );
+    subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
+    subTest = tu.checkEq( meltPeq.GHProjectSub.length, 2,              subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+    subTest = tu.checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
+    subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
+    subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
+    subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
+    subTest = tu.checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.GHProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.GHProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
+    subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
     // CHECK Dynamo PAct
     // Should show relevant change 
     let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
-    testStatus = tu.checkGE( meltPacts.length, 4,                     testStatus, "PAct count" );
+    subTest = tu.checkGE( meltPacts.length, 4,                     subTest, "PAct count" );
     
     meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     const pact = meltPacts[ meltPacts.length - 1];
 
     let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
     console.log( pact.PEQActionId );
-    testStatus = tu.checkEq( hasRaw, true,                            testStatus, "PAct Raw match" ); 
-    testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      testStatus, "PAct user name" ); 
-    testStatus = tu.checkEq( pact.Ingested, "false",                  testStatus, "PAct ingested" );
-    testStatus = tu.checkEq( pact.Locked, "false",                    testStatus, "PAct locked" );
+    subTest = tu.checkEq( hasRaw, true,                            subTest, "PAct Raw match" ); 
+    subTest = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+    subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     if( colId == td.dsProgID ) {
-	testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     testStatus, "PAct Verb"); 
-	testStatus = tu.checkEq( pact.Action, config.PACTACT_NOTE,    testStatus, "PAct Action");
+	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
+	subTest = tu.checkEq( pact.Action, config.PACTACT_NOTE,    subTest, "PAct Action");
     }
     else if( colId == td.dsPendID ) {
-	testStatus = tu.checkEq( pact.Verb, config.PACTVERB_PROP,     testStatus, "PAct Verb"); 
-	testStatus = tu.checkEq( pact.Action, config.PACTACT_ACCR,    testStatus, "PAct Action");
+	subTest = tu.checkEq( pact.Verb, config.PACTVERB_PROP,     subTest, "PAct Verb"); 
+	subTest = tu.checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action");
     }
     else if( colId == td.dsAccrID ) {
-	testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     testStatus, "PAct Verb"); 
-	testStatus = tu.checkEq( pact.Action, config.PACTACT_ACCR,    testStatus, "PAct Action");
+	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
+	subTest = tu.checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action");
     }
 
 
@@ -178,17 +180,17 @@ async function checkMove( authData, ghLinks, td, issueData, colId, meltCard, tes
     let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName });
     assert( links != -1 );
     let meltLink = ( links.filter((link) => link.GHIssueId == meltIssue.id ))[0];
-    testStatus = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        testStatus, "Linkage Issue num" );
-    testStatus = tu.checkEq( meltLink.GHCardId, meltCard.id,               testStatus, "Linkage Card Id" );
-    testStatus = tu.checkEq( meltLink.GHIssueTitle, issueData[2],           testStatus, "Linkage Card Title" );
-    testStatus = tu.checkEq( meltLink.GHProjectName, td.dataSecTitle,      testStatus, "Linkage Project Title" );
-    testStatus = tu.checkEq( meltLink.GHProjectId, td.dataSecPID,          testStatus, "Linkage project id" );
-    testStatus = tu.checkEq( meltLink.GHColumnId, colId,                   testStatus, "Linkage Col Id" );
-    if     ( colId == td.dsProgID ) { testStatus = tu.checkEq( meltLink.GHColumnName, prog,  testStatus, "Linkage Col name" ); }
-    else if( colId == td.dsPendID ) { testStatus = tu.checkEq( meltLink.GHColumnName, pend,  testStatus, "Linkage Col name" ); }
-    else if( colId == td.dsAccrID ) { testStatus = tu.checkEq( meltLink.GHColumnName, accr,  testStatus, "Linkage Col name" ); }
-    
-    return testStatus;
+    subTest = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        subTest, "Linkage Issue num" );
+    subTest = tu.checkEq( meltLink.GHCardId, meltCard.id,               subTest, "Linkage Card Id" );
+    subTest = tu.checkEq( meltLink.GHIssueTitle, issueData[2],           subTest, "Linkage Card Title" );
+    subTest = tu.checkEq( meltLink.GHProjectName, td.dataSecTitle,      subTest, "Linkage Project Title" );
+    subTest = tu.checkEq( meltLink.GHProjectId, td.dataSecPID,          subTest, "Linkage project id" );
+    subTest = tu.checkEq( meltLink.GHColumnId, colId,                   subTest, "Linkage Col Id" );
+    if     ( colId == td.dsProgID ) { subTest = tu.checkEq( meltLink.GHColumnName, prog,  subTest, "Linkage Col name" ); }
+    else if( colId == td.dsPendID ) { subTest = tu.checkEq( meltLink.GHColumnName, pend,  subTest, "Linkage Col name" ); }
+    else if( colId == td.dsAccrID ) { subTest = tu.checkEq( meltLink.GHColumnName, accr,  subTest, "Linkage Col name" ); }
+
+    return await tu.settle( subTest, testStatus, checkMove, authData, ghLinks, td, issueData, colId, meltCard, testStatus );
 }
 
 async function testStepByStep( authData, ghLinks, td ) {
