@@ -144,7 +144,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
 
-	    // Do no allow move out of ACCR
+	    // Do not allow move out of ACCR
 	    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( "WARNING.  Can't move Accrued issue.  Move not processed.", cardId );
 		gh.moveCard( authData, cardId, oldColId );

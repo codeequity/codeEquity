@@ -45,7 +45,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( oldName != -1 ) {
 
 		if( oldName == config.PROJ_COLS[config.PROJ_PEND] || oldName == config.PROJ_COLS[config.PROJ_ACCR] ) {
-		    console.log( "WARNING.", oldName, "is a reserved column.  To change the name, modify your config file.  Reverting." );
+		    console.log( "WARNING.", oldName, "is a reserved column.  To change the name, modify your config file and re-create.  Reverting." );
 		    // Don't wait
 		    ghSafe.updateColumn( authData, pd.reqBody.project_column.id, oldName );
 
