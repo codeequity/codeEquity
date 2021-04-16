@@ -835,11 +835,12 @@ async function testLabelMods( authData, ghLinks, td ) {
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
 	await tu.updateLabel( authData, td, labNP1, {name: pl105, description: "newDesc"} );
+	// XXXXXXXXXXXXxx  these three lines are one unit.
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, pl105 );
 	labNP1   = labelRes.label;
 	testStatus = await tu.checkLabel( authData, labNP1, pl105, "PEQ value: 105", testStatus ); 
 
-	tu.testReport( testStatus, "Label mods B" );
+	tu.testReport( testStatus, "Label mods H" );
 
 	
 	// Clean
@@ -985,11 +986,12 @@ async function testAlloc( authData, ghLinks, td ) {
     const progLoc   = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const accrLoc   = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
+    // NOTE: assignee added after makeIssue - will not show up
     await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
     const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
 
     await utils.sleep( 2000 ); 
-    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1, val: 1000000} );
+    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, { lblCount: 1, val: 1000000} );
     
     tu.testReport( testStatus, "Alloc setup" );
 
@@ -1001,13 +1003,13 @@ async function testAlloc( authData, ghLinks, td ) {
 	// Peq is now out of date.  Change stripeLoc psub to fit.
 	stripeLoc.projSub[2] = "Stars";
 	
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
 	await tu.moveCard( authData, cardAlloc.id, progLoc.colId );   // FAIL
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
 	await tu.moveCard( authData, cardAlloc.id, accrLoc.colId );   // FAIL
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
 	tu.testReport( testStatus, "Alloc A" );
     }
@@ -1015,13 +1017,13 @@ async function testAlloc( authData, ghLinks, td ) {
     // Dub label
     {
 	await tu.addLabel( authData, td, issAllocDat[1], labelBug.name );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	
 	await tu.addLabel( authData, td, issAllocDat[1], label2m.name );  // FAIL
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 
 	await tu.addLabel( authData, td, issAllocDat[1], label1k.name );  // FAIL
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 
 	tu.testReport( testStatus, "Alloc B" );
     }
@@ -1051,7 +1053,7 @@ async function testAlloc( authData, ghLinks, td ) {
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );
 	testStatus = await tu.checkLabel( authData, lOrig, ap1m, "Allocation PEQ value: 1000000", testStatus );
 	testStatus = await tu.checkLabel( authData, lNew, ap2k, "Allocation PEQ value: 2000", testStatus );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );	
 
 	// Delete label1m, fail
 	await tu.delLabel( authData, td, label1m.name );  	
@@ -1059,7 +1061,7 @@ async function testAlloc( authData, ghLinks, td ) {
 	lOrig = labelRes.label;
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );
 	testStatus = await tu.checkLabel( authData, lOrig, ap1m, "Allocation PEQ value: 1000000", testStatus );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );	
 	
 	tu.testReport( testStatus, "Alloc C" );
     }
@@ -1068,11 +1070,10 @@ async function testAlloc( authData, ghLinks, td ) {
     {
 	// Should stay in stripe, allocs don't move.
 	await tu.closeIssue( authData, td, issAllocDat[1] );
-	await utils.sleep( 500 );  // seems a little slow sometimes?
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2, state: "closed"} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, state: "closed"} );
 
 	await tu.reopenIssue( authData, td, issAllocDat[1] );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	
 	tu.testReport( testStatus, "Alloc D" );
     }
