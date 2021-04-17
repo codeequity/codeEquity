@@ -696,6 +696,21 @@ async function testCreateDelete( authData, ghLinks, td ) {
     return testStatus;
 }
 
+async function labHelp( authData, td, getName, checkName, descr, testStatus ) {
+    let subTest  = [ 0, 0, []];    
+    let labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, getName );
+    let label    = labelRes.label;
+    subTest      = await tu.checkLabel( authData, label, checkName, descr, subTest );
+
+    return await tu.settle( subTest, testStatus, labHelp, authData, td, getName, checkName, descr, testStatus );
+}
+
+async function getLabHelp( authData, td, name ) {
+    const labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "newName" );
+    return labelRes.label;
+}
+    
+
 // edit, delete peq labels for open, pend and accr issues.  test a non-peq.
 async function testLabelMods( authData, ghLinks, td ) {
     // [pass, fail, msgs]
@@ -760,86 +775,64 @@ async function testLabelMods( authData, ghLinks, td ) {
 
 	// 2. Mod newborn label, label should be as modded.
 	console.log( "Mod newborn label" );
-	let labelRes = {};
 	await tu.updateLabel( authData, td, labNP1, {name: "newName", description: "newDesc"} );
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "newName" );
-	labNP1   = labelRes.label;
-	testStatus = await tu.checkLabel( authData, labNP1, "newName", "newDesc", testStatus ); 
-
+	testStatus = await labHelp( authData, td, "newName", "newName", "newDesc", testStatus );
 	tu.testReport( testStatus, "Label mods B" );
 	
 	// 3. delete np2, should no longer find it.
 	console.log( "Remove nonPeq(2) label" );
 	await tu.delLabel( authData, td, labNP2.name );
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LABNP2 );
-	labNP2   = labelRes.label;
-	testStatus = await tu.checkLabel( authData, labNP2, -1, -1, testStatus );
-
+	testStatus = await labHelp( authData, td, LABNP2, -1, -1, testStatus );
 	tu.testReport( testStatus, "Label mods C" );
 
 	// 4. Edit lab1 name, fail and create new
 	console.log( "Mod peq label name" );
 	const smallKP = "51 " + config.PEQ_LABEL;    
-	await tu.updateLabel( authData, td, lab1, {name: smallKP} );                                          
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
-	lab1     = labelRes.label;
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, smallKP );
-	lab51    = labelRes.label;
+	await tu.updateLabel( authData, td, lab1, {name: smallKP} );
+
+	testStatus = await labHelp( authData, td, LAB1, LAB1, "PEQ value: 501", testStatus );
+	testStatus = await labHelp( authData, td, smallKP, smallKP, "PEQ value: 51", testStatus );
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
-	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
-	testStatus = await tu.checkLabel( authData, lab51, smallKP, "PEQ value: 51", testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
-	
 	tu.testReport( testStatus, "Label mods D" );
 
 	// 5. Edit lab1 descr, fail
 	console.log( "Mod peq label descr" );
 	await tu.updateLabel( authData, td, lab1, {description: "PEQ value: 51"} );
-	await utils.sleep( 1000 );	
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
-	lab1     = labelRes.label;
+
+	testStatus = await labHelp( authData, td, LAB1, LAB1, "PEQ value: 501", testStatus );
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
-	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
-	
 	tu.testReport( testStatus, "Label mods E" );
 
 	// 6. Edit lab1 all, fail & create new
 	console.log( "Mod peq label name,descr" );
 	const small52KP = "52 " + config.PEQ_LABEL;
-	await tu.updateLabel( authData, td, lab1, {name: small52KP,  description: "PEQ value: 52"} );                                          
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
-	lab1     = labelRes.label;
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, small52KP );
-	lab52    = labelRes.label;
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
-	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
-	testStatus = await tu.checkLabel( authData, lab52, small52KP, "PEQ value: 52", testStatus );
+	await tu.updateLabel( authData, td, lab1, {name: small52KP,  description: "PEQ value: 52"} );
 	
+	testStatus = await labHelp( authData, td, LAB1, LAB1, "PEQ value: 501", testStatus );
+	testStatus = await labHelp( authData, td, small52KP, small52KP, "PEQ value: 52", testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
 	tu.testReport( testStatus, "Label mods F" );
 
 	// 7. Delete lab1, fail
 	console.log( "Delete peq label" );
 	await tu.delLabel( authData, td, lab1.name );
-	await utils.sleep( 1500 );	
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
-	lab1     = labelRes.label;
+
+	testStatus = await labHelp( authData, td, LAB1, LAB1, "PEQ value: 501", testStatus );	
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );	
-	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
-	
 	tu.testReport( testStatus, "Label mods G" );
 
 	// 8. Make partial peq label
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
-	await tu.updateLabel( authData, td, labNP1, {name: pl105, description: "newDesc"} );
-	// XXXXXXXXXXXXxx  these three lines are one unit.
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, pl105 );
-	labNP1   = labelRes.label;
-	testStatus = await tu.checkLabel( authData, labNP1, pl105, "PEQ value: 105", testStatus ); 
 
+	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
+	await tu.updateLabel( authData, td, labNP1, {name: pl105, description: "newDesc"} );
+
+	testStatus = await labHelp( authData, td, pl105, pl105, "PEQ value: 105", testStatus );	
 	tu.testReport( testStatus, "Label mods H" );
 
 	

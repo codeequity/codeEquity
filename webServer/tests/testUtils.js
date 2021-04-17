@@ -1291,29 +1291,32 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
 	
 	if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
 	
-	assert( typeof issLink !== 'undefined' );
-	assert( typeof splitLink !== 'undefined' );
-	const card      = await getCard( authData, issLink.GHCardId );
-	const splitCard = await getCard( authData, splitLink.GHCardId );
+	subTest = await checkEq( typeof issLink   !== 'undefined', true, subTest, "issLink trouble" );
+	subTest = await checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
+
+	if( typeof issLink !== 'undefined' && typeof splitLink !== 'undefined' ) {
+	    const card      = await getCard( authData, issLink.GHCardId );
+	    const splitCard = await getCard( authData, splitLink.GHCardId );
+	    
+	    if( situated ) {
+		let lval = origVal / 2;
+		subTest = await checkSituatedIssue( authData, ghLinks, td, origLoc, issDat,   card,      subTest, {label: lval, lblCount: labelCnt} );
+		subTest = await checkSituatedIssue( authData, ghLinks, td, newLoc,  splitDat, splitCard, subTest, {label: lval, lblCount: labelCnt } );
+	    }
+	    else {
+		subTest = await checkUntrackedIssue( authData, ghLinks, td, origLoc, issDat,   card,      subTest, {lblCount: labelCnt} );
+		subTest = await checkUntrackedIssue( authData, ghLinks, td, newLoc,  splitDat, splitCard, subTest, {lblCount: labelCnt } );
+	    }
+	    subTest = checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
+	    
+	    // check assign
+	    subTest = checkEq( issue.assignees.length, assignCnt,    subTest, "Issue assignee count" );
+	    subTest = checkEq( splitIss.assignees.length, assignCnt, subTest, "Issue assignee count" );
 	
-	if( situated ) {
-	    let lval = origVal / 2;
-	    subTest = await checkSituatedIssue( authData, ghLinks, td, origLoc, issDat,   card,      subTest, {label: lval, lblCount: labelCnt} );
-	    subTest = await checkSituatedIssue( authData, ghLinks, td, newLoc,  splitDat, splitCard, subTest, {label: lval, lblCount: labelCnt } );
+	    // Check comment on splitIss
+	    const comments = await getComments( authData, td, splitDat[1] );
+	    subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
 	}
-	else {
-	    subTest = await checkUntrackedIssue( authData, ghLinks, td, origLoc, issDat,   card,      subTest, {lblCount: labelCnt} );
-	    subTest = await checkUntrackedIssue( authData, ghLinks, td, newLoc,  splitDat, splitCard, subTest, {lblCount: labelCnt } );
-	}
-	subTest = checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
-	
-	// check assign
-	subTest = checkEq( issue.assignees.length, assignCnt,    subTest, "Issue assignee count" );
-	subTest = checkEq( splitIss.assignees.length, assignCnt, subTest, "Issue assignee count" );
-	
-	// Check comment on splitIss
-	const comments = await getComments( authData, td, splitDat[1] );
-	subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
     }
     
     return await settle( subTest, testStatus, checkSplit, authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials );
