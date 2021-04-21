@@ -79,6 +79,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			// get issue labels
 			// NOTE newly named label is already here... remove it to pass theOnePeq
 			let issueLabels = await gh.getLabels( authData, pd.GHOwner, pd.GHRepo, issue.num );
+			if( issueLabels.length > 99 ) { console.log( "Error.  Too many labels for issue", issue.num );} 			
 			assert( issueLabels != -1 );
 
 			let newLabel = issueLabels.data.find( label => label.name == pd.reqBody.label.name );

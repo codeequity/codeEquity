@@ -119,10 +119,6 @@ var githubUtils = {
 	return checkRateLimit( authData );
     },
 
-    checkIssueExists: function( authData, owner, repo, title ) {
-	return checkIssueExists( authData, owner, repo, title );
-    },
-
     getAssignees: function( authData, owner, repo, issueNum ) {
 	return getAssignees( authData, owner, repo, issueNum );
     },
@@ -277,23 +273,6 @@ async function checkRateLimit( authData ) {
 	.catch( e => errorHandler( "checkRateLimit", e, checkRateLimit, authData ) );
 }
 
-async function checkIssueExists( authData, owner, repo, title )
-{
-    let retVal = false;
-
-    // Issue with same title may already exist, in which case, check for label, then point to that issue.
-    await authData.ic.issues.listForRepo( { owner: owner, repo: repo })
-	.then( issues => {
-	    for( issue of issues['data'] ) {
-		if( issue['title'] == title ) {
-		    retVal = true;
-		    break;
-		}
-	    }
-	})
-	.catch( e => retVal = errorHandler( "checkIssueExists", e, checkIssueExists, authData, owner, repo, title));
-    return retVal;
-}
 
 // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
 // there are no assignees for card-created issues.. they are added, or created directly from issues.
@@ -987,6 +966,7 @@ async function removeLabel( authData, owner, repo, issueNum, label ) {
     await authData.ic.issues.removeLabel({ owner: owner, repo: repo, issue_number: issueNum, name: label.name  } )
 	.catch( e => errorHandler( "removeLabel", e, removeLabel, authData, owner, repo, issueNum, label ));
 }
+
 
 async function getLabels( authData, owner, repo, issueNum ) {
     var labels = -1;
