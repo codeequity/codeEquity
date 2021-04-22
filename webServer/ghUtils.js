@@ -224,6 +224,11 @@ async function errorHandler( source, e, func, ...params ) {
 	console.log( source, "Issue", arguments[6], "already gone" );  
 	return false;
     }
+    else if( e.status == 404 && source == "updateLabel" )
+    {
+	console.log( source, "Label", arguments[6], "already gone" );  
+	return false;
+    }
     else if( e.status == 403 && ( source == "removePeqLabel" || source == "getLabels" ))
     {
 	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels." );

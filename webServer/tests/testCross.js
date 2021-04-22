@@ -31,7 +31,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     // Setup.
     // Add populate label to testProject2, to invoke repostatus
     let crossPid = await tu.makeProject( authDataX, tdX, "Cross Proj", "For testing transfers to other repos" );
-    let crossCid = await tu.makeColumn( authDataX, crossPid, "Cross Col" );
+    let crossCid = await tu.makeColumn( authDataX, ghLinks, tdX.GHFullName, crossPid, "Cross Col" );
     
     let issPopDat = await ghSafe.createIssue( authDataX, tdX.GHOwner, tdX.GHRepo, "A special populate issue", [], false );
     let cardPop   = await ghSafe.createProjectCard( authDataX, crossCid, issPopDat[0] );
@@ -54,7 +54,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     let issDat = await tu.blastIssue( authData, td, "CT Blast", [LAB], [ASSIGNEE1, ASSIGNEE2] );               
     await utils.sleep( 2000 );
 
-    const card  = await tu.makeProjectCard( authData, stripeLoc.colId, issDat[0] );
+    const card  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, stripeLoc.colId, issDat[0] );
     await utils.sleep( 1000 );
     
     testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1, assign: 2});
@@ -71,7 +71,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     let issDatX = await tu.blastIssue( authDataX, tdX, "CT Blast X", [LAB], [ASSIGNEE1, ASSIGNEE2] );               
     await utils.sleep( 2000 );
 
-    const cardX  = await tu.makeProjectCard( authDataX, crossLoc.colId, issDatX[0] );
+    const cardX  = await tu.makeProjectCard( authDataX, ghLinks, tdX.GHFullName, crossLoc.colId, issDatX[0] );
     await utils.sleep( 1000 );
     
     testStatus = await tu.checkSituatedIssue( authDataX, ghLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1, assign: 2});
@@ -130,7 +130,7 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
 
     // Add populate label to testProject2, to invoke repostatus. 
     let multiPid = await tu.makeProject( authDataM, tdM, "Multi Proj", "For testing request interleaving" );
-    let multiCid = await tu.makeColumn( authDataM, multiPid, "Multi Col" );
+    let multiCid = await tu.makeColumn( authDataM, ghLinks, tdM.GHFullName, multiPid, "Multi Col" );
     let issPopDat = await ghSafe.createIssue( authDataM, tdM.GHOwner, tdM.GHRepo, "A special populate issue", [], false );
     let cardPop   = await ghSafe.createProjectCard( authDataM, multiCid, issPopDat[0] );
     let popLabel  = await gh.findOrCreateLabel( authDataM, tdM.GHOwner, tdM.GHRepo, false, config.POPULATE, -1 );

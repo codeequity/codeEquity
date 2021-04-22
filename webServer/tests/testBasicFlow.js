@@ -223,7 +223,7 @@ async function testStepByStep( authData, ghLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
 
     // 3. Add to project
-    let meltCard  = await tu.makeProjectCard( authData, td.dsPlanID, meltData[0] );
+    let meltCard  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, meltData[0] );
     await utils.sleep( 1000 );
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, flowPlan, meltData, meltCard, testStatus );
 
@@ -281,7 +281,7 @@ async function testEndpoint( authData, ghLinks, td ) {
     await tu.addLabel( authData, td, meltData[1], newLabel.name );
     
     // 3. Add to project
-    let meltCard  = await tu.makeProjectCard( authData, td.dsPlanID, meltData[0] );
+    let meltCard  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, meltData[0] );
 
     // 4. add assignee
     await tu.addAssignee( authData, td, meltData[1], ASSIGNEE1 );
@@ -345,7 +345,7 @@ async function testBlast( authData, ghLinks, td ) {
     const uncLoc = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
 
     let title  = "Blast 1";
-    let link = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );
+    let link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );
     let card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [ASSIGNEE1]});
 
