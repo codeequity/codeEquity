@@ -15,19 +15,19 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     
     // Master: softwareContr, businessOps, unallocated
     td.masterPID  = await tu.makeProject( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
-    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, td.softContTitle );
-    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, td.busOpsTitle );
-    let mastCol3  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, td.unallocTitle );
+    let mastCol1  = await tu.makeColumn( authData, td.masterPID, td.softContTitle );
+    let mastCol2  = await tu.makeColumn( authData, td.masterPID, td.busOpsTitle );
+    let mastCol3  = await tu.makeColumn( authData, td.masterPID, td.unallocTitle );
 
     // dataSec: 4x
     let dataPID  = await tu.makeProject( authData, td, td.dataSecTitle, "Make PII safe" );
-    let dataCols = await tu.make4xCols( authData, ghLinks, td.GHFullName, dataPID );
+    let dataCols = await tu.make4xCols( authData, dataPID );
 
     // githubOPs: 4x
     let ghOpPID  = await tu.makeProject( authData, td, td.githubOpsTitle, "Make it giddy" );
-    let ghOpCols = await tu.make4xCols( authData, ghLinks, td.GHFullName, ghOpPID );
-    await tu.makeColumn( authData, ghLinks, td.GHFullName, ghOpPID, "Stars" );	
-    await tu.makeColumn( authData, ghLinks, td.GHFullName, ghOpPID, "Stripes" );
+    let ghOpCols = await tu.make4xCols( authData, ghOpPID );
+    await tu.makeColumn( authData, ghOpPID, "Stars" );	
+    await tu.makeColumn( authData, ghOpPID, "Stripes" );
 
 
     // TRIGGER
@@ -38,12 +38,12 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     await utils.sleep( 1000 );
 
     // softCont: dataSecurity, githubOps, unallocated
-    await tu.makeAllocCard( authData, ghLinks, td.GHFullName, mastCol1, td.dataSecTitle, "1,000,000" );
-    await tu.makeAllocCard( authData, ghLinks, td.GHFullName, mastCol1, td.githubOpsTitle, "1,500,000" );
-    await tu.makeAllocCard( authData, ghLinks, td.GHFullName, mastCol1, td.unallocTitle, "3,000,000" );
+    await tu.makeAllocCard( authData, mastCol1, td.dataSecTitle, "1,000,000" );
+    await tu.makeAllocCard( authData, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await tu.makeAllocCard( authData, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await tu.makeAllocCard( authData, ghLinks, td.GHFullName, mastCol2, td.unallocTitle, "1,000,000" );
+    await tu.makeAllocCard( authData, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
 async function testPreferredCEProjects( authData, ghLinks, td ) {

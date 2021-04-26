@@ -460,7 +460,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     const issPendDat = await tu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
     const issAccrDat = await tu.makeIssue( authData, td, ISS_ACCR, [ label1k, labelDoc, labelBug ] );
 
-    await tu.makeColumn( authData, ghLinks, td.GHFullName, td.githubOpsPID, "Moons" );	    
+    await tu.makeColumn( authData, td.githubOpsPID, "Moons" );	    
 
     // From
     const moonLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Moons" );
@@ -484,11 +484,11 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, issAccrDat[1], ASSIGNEE1 );
 
     // Set up first cards
-    const cardMoon = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, moonLoc.colId, issMoonDat[0] );
-    const cardPlan = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, planLoc.colId, issPlanDat[0] );
-    const cardProg = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, progLoc.colId, issProgDat[0] );
-    const cardPend = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, planLoc.colId, issPendDat[0] );
-    const cardAccr = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, planLoc.colId, issAccrDat[0] );
+    const cardMoon = await tu.makeProjectCard( authData, moonLoc.colId, issMoonDat[0] );
+    const cardPlan = await tu.makeProjectCard( authData, planLoc.colId, issPlanDat[0] );
+    const cardProg = await tu.makeProjectCard( authData, progLoc.colId, issProgDat[0] );
+    const cardPend = await tu.makeProjectCard( authData, planLoc.colId, issPendDat[0] );
+    const cardAccr = await tu.makeProjectCard( authData, planLoc.colId, issAccrDat[0] );
 
     // Close & accrue
     await tu.closeIssue( authData, td, issPendDat[1] );
@@ -509,7 +509,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     
     // Plan += Bacon  (add new plan card to bacon column)
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toBacnLoc.colId, issPlanDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toBacnLoc.colId, issPlanDat[0] );
 	await utils.sleep( 4000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, testStatus, {peq: true, lblCount: 3 } );
 
@@ -519,7 +519,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Plan += Pend 
     {
 	// At this point, plan lval is 500
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toPendLoc.colId, issPlanDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issPlanDat[0] );
 	await utils.sleep( 3000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, testStatus, {peq: true, lblCount: 3 } );
 
@@ -528,7 +528,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 
     // Moon += Pend .. Fail not peq.
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toPendLoc.colId, issMoonDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issMoonDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issMoonDat, toPendLoc, cardNew.id, testStatus );
@@ -538,7 +538,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     
     // Moon += Prog 
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toProgLoc.colId, issMoonDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toProgLoc.colId, issMoonDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, testStatus, {peq: false, lblCount: 2 } );
 
@@ -547,7 +547,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 
     // Prog += Accr  .. Fail no create in accr
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toAccrLoc.colId, issProgDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issProgDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issProgDat, toAccrLoc, cardNew.id, testStatus );
@@ -558,7 +558,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     
     // Pend += Accr  .. Fail no create in accr
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toAccrLoc.colId, issPendDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issPendDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issPendDat, toAccrLoc, cardNew.id, testStatus );
@@ -568,7 +568,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 
     // Accr += Pend  .. Fail no modify accr
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toPendLoc.colId, issAccrDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toPendLoc.colId, issAccrDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {lblCount: 3 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAccrDat, toPendLoc, cardNew.id, testStatus );
@@ -613,7 +613,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
     
     // Set up first card
-    const cardAlloc = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, starLoc.colId, issAllocDat[0] );
+    const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
     await utils.sleep( 1000 );
     testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, val: 1000000} );
     
@@ -622,7 +622,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     // += Prog.  Fail.  No create into x4
     {
 	// At this point, lval is 500k
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toProgLoc.colId, issAllocDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toProgLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toProgLoc, cardNew.id, testStatus );
@@ -632,7 +632,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
 
     // += Accr.  Fail.  No create into x4
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toAccrLoc.colId, issAllocDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toAccrLoc, cardNew.id, testStatus );
@@ -643,7 +643,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     // += Bacon
     // Note - this must be last, else will cause issue to be found in checkNoSplit
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toBacnLoc.colId, issAllocDat[0] );
+	const cardNew = await tu.makeProjectCard( authData, toBacnLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkAllocSplit( authData, ghLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { issAssignees: 1, lblCount: 2 } );
 

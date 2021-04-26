@@ -229,7 +229,7 @@ async function errorHandler( source, e, func, ...params ) {
 	console.log( source, "Label", arguments[6], "already gone" );  
 	return false;
     }
-    else if( e.status == 403 && ( source == "removePeqLabel" || source == "getLabels" ))
+    else if( (e.status == 403 || e.status == 404) && ( source == "removePeqLabel" || source == "getLabels" ))
     {
 	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels." );
 	return false;
@@ -739,7 +739,7 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
 	}
 	else {
 	    // XXX may not be an error.. 
-	    console.log( "XXX Error.  ", res );
+	    console.log( "XXX Error, no issues for label", labelName, res );
 	}
     }
 }
@@ -1325,7 +1325,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 	// Out of order notification is possible.  If already accrued, stop.
 	// There is no symmetric issue - once accr, can't repoen.  if only pend, no subsequent move after reopen.
 	if( link.GHColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
-	    let issue = await getFullIssue( authData, pd.GHOwner, repo, pd.GHIssueNum );
+	    let issue = await getFullIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );
 	    if( issue.state == 'closed' ) {
 		return false;
 	    }

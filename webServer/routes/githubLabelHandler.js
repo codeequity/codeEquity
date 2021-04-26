@@ -50,9 +50,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    const name = pd.reqBody.label.name;
+	    const newName = pd.reqBody.label.name;
 	    let origDesc = pd.reqBody.label.description;
-	    let origName = name;
+	    let origName = newName;
 	    if( typeof pd.reqBody.changes.description !== 'undefined' ) { origDesc = pd.reqBody.changes.description.from; }
 	    if( typeof pd.reqBody.changes.name !== 'undefined' )        { origName = pd.reqBody.changes.name.from; }
 	    
@@ -60,18 +60,37 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let allocation = ghSafe.getAllocated( [ origDesc ] );
 	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
-	    // Allow, if no active peqs
+	    // Allow, if no active peqs for current label
 	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: lVal, PeqType: tVal };
 	    const peqs  = await utils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs to handle with this edited label" );
 		// Just make sure description is consistent with name, if it is a peq label.  Must wait for bool, else always true.  Could break this up, buuuutttt
-		let isPeqLabel = await nameDrivesLabel( authData, pd, pd.reqBody.label.name, pd.reqBody.label.description );
+		let isPeqLabel = await nameDrivesLabel( authData, pd, newName, pd.reqBody.label.description );
 
 		if( isPeqLabel ) {
 		    console.log( "New label is PEQ, converting issues." );
+
+		    // GH can send 'edited' notification before it rebuilds it's internal GQL structure.
+		    // Painful.  Create list from both old and new.
+		    let labelIssuesOld = [];
 		    let labelIssues = [];
-		    await gh.getLabelIssuesGQL( authData.pat, pd.GHOwner, pd.GHRepo, pd.reqBody.label.name, labelIssues, -1 );
+		    
+		    if( origName != newName ) {
+			console.log(" ... getting labels from orig.. may be empty" );
+			await gh.getLabelIssuesGQL( authData.pat, pd.GHOwner, pd.GHRepo, origName, labelIssuesOld, -1 );
+			console.log(" ... now getting labels from new label.. may be empty" );
+		    }
+		    await gh.getLabelIssuesGQL( authData.pat, pd.GHOwner, pd.GHRepo, newName, labelIssues, -1 );
+
+		    console.log( labelIssuesOld );
+		    console.log( labelIssues );
+		    let labelIssuesId = labelIssues.map( iss => iss.issueId );
+		    console.log( "LID", labelIssuesId );
+		    for( const oldIss of labelIssuesOld ) {
+			if( !labelIssuesId.includes( oldIss.issueId)) { labelIssues.push( oldIss ); }
+		    }
+		    
 
 		    // Need to peq-label each attached issue.  Expensive.  Probably don't need to wait, but this operation should be rare.
 		    let promises = [];
@@ -82,9 +101,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			if( issueLabels.length > 99 ) { console.log( "Error.  Too many labels for issue", issue.num );} 			
 			assert( issueLabels != -1 );
 
-			let newLabel = issueLabels.data.find( label => label.name == pd.reqBody.label.name );
+			let newLabel = issueLabels.data.find( label => label.name == newName );
 			issueLabels = issueLabels.data;
-			// issueLabels  = issueLabels.data.filter( label => label.name != pd.reqBody.label.name );
+			// issueLabels  = issueLabels.data.filter( label => label.name != newName );
 			assert( typeof newLabel !== 'undefined' );
 			// console.log( "Labels for", issue.title, issue.num, newLabel, issueLabels );
 
@@ -109,15 +128,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    // undo current edits, then make new.  Need to wait, else wont create label with same name
 	    console.log( authData.who, "WARNING.  Undoing label edit, back to", origName, origDesc );
-	    await ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, name, origName, origDesc );
+	    await ghSafe.updateLabel( authData, pd.GHOwner, pd.GHRepo, newName, origName, origDesc );
 
 	    // no need to wait
 	    // make new label, iff the name changed.  If only descr, we are done already.  This need not be peq.
-	    if( origName != name ) {
+	    if( origName != newName ) {
 		console.log( "Making new label to contain the edit" );
-		const [peqValue,_] = ghSafe.parseLabelName( name );
+		const [peqValue,_] = ghSafe.parseLabelName( newName );
 		const descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
-		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, name, pd.reqBody.label.color, descr );
+		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, newName, pd.reqBody.label.color, descr );
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label edit attempt",

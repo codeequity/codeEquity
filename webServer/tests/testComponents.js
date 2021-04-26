@@ -19,27 +19,29 @@ const ASSIGNEE2 = "codeequity";
 
 async function checkDubLabel( authData, ghLinks, td, loc, issueData, card, testStatus ) {
 
+    let subTest = [ 0, 0, []];
+
     // CHECK github issues
     let kp = "1000 " + config.PEQ_LABEL;    
     let issue = await tu.findIssue( authData, td, issueData[0] );
-    testStatus = tu.checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
-    testStatus = tu.checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
-    testStatus = tu.checkEq( issue.labels.length, 2,                testStatus, "Issue label" );
+    subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
+    subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
+    subTest = tu.checkEq( issue.labels.length, 2,                subTest, "Issue label" );
     const labels0 = issue.labels[0].name == kp && issue.labels[1].name == "documentation";
     const labels1 = issue.labels[1].name == kp && issue.labels[0].name == "documentation";
-    testStatus = tu.checkEq( labels0 || labels1, true,              testStatus, "Issue label" );
+    subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
 
     // CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
     let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     peqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = tu.checkEq( peqs.length, 1,                          testStatus, "Peq count" );
+    subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
 
     let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-    testStatus = tu.checkEq( pacts.length, 2,                         testStatus, "PAct count" );     
+    subTest = tu.checkEq( pacts.length, 2,                         subTest, "PAct count" );     
     
-    return testStatus;
+    return await tu.settle( subTest, testStatus, checkDubLabel, authData, ghLinks, td, loc, issueData, card, testStatus );
 }
 
 
@@ -73,7 +75,7 @@ async function testLabel( authData, ghLinks, td ) {
 	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	
-	let card  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, issueData[0] );
+	let card  = await tu.makeProjectCard( authData, td.dsPlanID, issueData[0] );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 1" );
 	
@@ -123,7 +125,7 @@ async function testLabel( authData, ghLinks, td ) {
 	let issueData = await tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, title] 
 	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	await tu.addLabel( authData, td, issueData[1], label.name );
-	let card  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, bacon.colId, issueData[0] );
+	let card  = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 1" );
@@ -226,7 +228,7 @@ async function testAssignment( authData, ghLinks, td ) {
     let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
     await tu.addLabel( authData, td, assData[1], newLabel.name );
 
-    let assCard  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, assData[0] );
+    let assCard  = await tu.makeProjectCard( authData, td.dsPlanID, assData[0] );
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, assPlan, assData, assCard, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "A" ); }
@@ -293,7 +295,7 @@ async function testLabelCarded( authData, ghLinks, td ) {
 	// 1. make carded issue in bacon
 	console.log( "Make carded issue" );
 	const issueData = await tu.makeIssue( authData, td, ISS_LAB3, [] );     // [id, number, title] 
-	const card      = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, bacon.colId, issueData[0] );
+	const card      = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 	testStatus     = await tu.checkUntrackedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 
 	// 2. add label
@@ -328,7 +330,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	// 0. make peq in bacon
 	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	const issueData = await tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
-	const card      = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, bacon.colId, issueData[0] );
+	const card      = await tu.makeProjectCard( authData, bacon.colId, issueData[0] );
 	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "A" );
@@ -430,7 +432,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	// 0. make peq in stars
 	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
 	const issueData = await tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
-	const card      = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, stars.colId, issueData[0] );
+	const card      = await tu.makeProjectCard( authData, stars.colId, issueData[0] );
 	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, stars, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "A" );
@@ -522,10 +524,10 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	const ISS_ACCR = ISS_NEWB + " Accrued";
 
 	// 0. make newborns
-	const cardIdFlat  = await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, stars.colId, ISS_FLAT );
-	const cardIdProg  = await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, ghoProg.colId, ISS_PROG );
-	const cardIdPend  = await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, ghoPend.colId, ISS_PEND );
-	const cardIdAccr  = await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, ghoAccr.colId, ISS_ACCR );
+	const cardIdFlat  = await tu.makeNewbornCard( authData, stars.colId, ISS_FLAT );
+	const cardIdProg  = await tu.makeNewbornCard( authData, ghoProg.colId, ISS_PROG );
+	const cardIdPend  = await tu.makeNewbornCard( authData, ghoPend.colId, ISS_PEND );
+	const cardIdAccr  = await tu.makeNewbornCard( authData, ghoAccr.colId, ISS_ACCR );
 	testStatus     = await tu.checkNewbornCard( authData, ghLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
 	testStatus     = await tu.checkNewbornCard( authData, ghLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
 	testStatus     = await tu.checkNoCard( authData, ghLinks, td, ghoPend, cardIdPend, ISS_PEND, testStatus );
@@ -555,10 +557,10 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	const issDatPend = await tu.makeIssue( authData, td, ISS_PEND, [] );
 	const issDatAccr = await tu.makeIssue( authData, td, ISS_ACCR, [] );
 
-	const flatCard   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, stars.colId,   issDatFlat[0] );
-	const progCard   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoProg.colId, issDatProg[0] );
-	const pendCard   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoPend.colId, issDatPend[0] );
-	const accrCard   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoAccr.colId, issDatAccr[0] );
+	const flatCard   = await tu.makeProjectCard( authData, stars.colId,   issDatFlat[0] );
+	const progCard   = await tu.makeProjectCard( authData, ghoProg.colId, issDatProg[0] );
+	const pendCard   = await tu.makeProjectCard( authData, ghoPend.colId, issDatPend[0] );
+	const accrCard   = await tu.makeProjectCard( authData, ghoAccr.colId, issDatAccr[0] );
 
 	testStatus     = await tu.checkUntrackedIssue( authData, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
 	testStatus     = await tu.checkUntrackedIssue( authData, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
@@ -594,10 +596,10 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	const issDatPend = await tu.makeIssue( authData, td, ISS_PEND, [label] );
 	const issDatAccr = await tu.makeIssue( authData, td, ISS_ACCR, [label] );
 
-	const flatCard   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, stars.colId,   issDatFlat[0] );
-	const progCard   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoProg.colId, issDatProg[0] );
-	const pendCard   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoPend.colId, issDatPend[0] );
-	const accrCard   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoAccr.colId, issDatAccr[0] );
+	const flatCard   = await tu.makeProjectCard( authData, stars.colId,   issDatFlat[0] );
+	const progCard   = await tu.makeProjectCard( authData, ghoProg.colId, issDatProg[0] );
+	const pendCard   = await tu.makeProjectCard( authData, ghoPend.colId, issDatPend[0] );
+	const accrCard   = await tu.makeProjectCard( authData, ghoAccr.colId, issDatAccr[0] );
 
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, stars,   issDatFlat, flatCard, testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoProg, issDatProg, progCard, testStatus );
@@ -634,8 +636,8 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await tu.addAssignee( authData, td, issDatAgho2[1], ASSIGNEE1 );	
 
 	// add to gho pend
-	const aghoCard1   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoPend.colId, issDatAgho1[0] );
-	const aghoCard2   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoPend.colId, issDatAgho2[0] );
+	const aghoCard1   = await tu.makeProjectCard( authData, ghoPend.colId, issDatAgho1[0] );
+	const aghoCard2   = await tu.makeProjectCard( authData, ghoPend.colId, issDatAgho2[0] );
 
 	// Close
 	await tu.closeIssue( authData, td, issDatAgho1[1] );
@@ -767,9 +769,9 @@ async function testLabelMods( authData, ghLinks, td ) {
 	await tu.addAssignee( authData, td, issAccrDat[1], ASSIGNEE2 );
 
 	// Set up cards
-	const cardPlan = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoPlan.colId, issPlanDat[0] );
-	const cardPend = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoPlan.colId, issPendDat[0] );
-	const cardAccr = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoPlan.colId, issAccrDat[0] );
+	const cardPlan = await tu.makeProjectCard( authData, ghoPlan.colId, issPlanDat[0] );
+	const cardPend = await tu.makeProjectCard( authData, ghoPlan.colId, issPendDat[0] );
+	const cardAccr = await tu.makeProjectCard( authData, ghoPlan.colId, issAccrDat[0] );
 
 	// Close & accrue
 	await tu.closeIssue( authData, td, issPendDat[1] );
@@ -849,9 +851,9 @@ async function testLabelMods( authData, ghLinks, td ) {
 	
 	// Clean
 	// NOTE: if delete before update-driven LM Accrued remove label is complete, will see server error 404.
-	//       update label above drives a bunch of asynch unwaited-for labelings.  So, wait until can't see issue any longer (i.e. remove is done)
+	//       update label above drives a bunch of asynch unwaited-for labelings.  So, wait until can't see issue's label any longer (i.e. remove is done)
 	await tu.settleWithVal( "LabelMods remove from lmAccr", labNotInIssueHelp, authData, td, pl105, issAccrDat[0] );
-	await tu.delLabel( authData, td, labNP1.name );
+	await tu.delLabel( authData, td, pl105 );
 	
     }
     
@@ -882,9 +884,9 @@ async function testProjColMods( authData, ghLinks, td ) {
     {
 	// 1. Setup.  New project. full cols. 1 peq issue each.
 	const projId    = await tu.makeProject( authData, td, PROJ_NAME, "" );
-	const planColId = await tu.makeColumn( authData, ghLinks, td.GHFullName, projId, planName );
-	const pendColId = await tu.makeColumn( authData, ghLinks, td.GHFullName, projId, pendName );
-	const accrColId = await tu.makeColumn( authData, ghLinks, td.GHFullName, projId, accrName );
+	const planColId = await tu.makeColumn( authData, projId, planName );
+	const pendColId = await tu.makeColumn( authData, projId, pendName );
+	const accrColId = await tu.makeColumn( authData, projId, accrName );
 
 	const planLoc = await tu.getFlatLoc( authData, projId, PROJ_NAME, planName );
 	const pendLoc = await tu.getFlatLoc( authData, projId, PROJ_NAME, pendName );
@@ -904,9 +906,9 @@ async function testProjColMods( authData, ghLinks, td ) {
 	await tu.addAssignee( authData, td, issAccrDat[1], ASSIGNEE1 );
 
 	// Set up cards
-	const cardPlan = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, planLoc.colId, issPlanDat[0] );
-	const cardPend = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, planLoc.colId, issPendDat[0] );
-	const cardAccr = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, planLoc.colId, issAccrDat[0] );
+	const cardPlan = await tu.makeProjectCard( authData, planLoc.colId, issPlanDat[0] );
+	const cardPend = await tu.makeProjectCard( authData, planLoc.colId, issPendDat[0] );
+	const cardAccr = await tu.makeProjectCard( authData, planLoc.colId, issAccrDat[0] );
 
 	// Close & accrue
 	await tu.closeIssue( authData, td, issPendDat[1] );
@@ -991,7 +993,7 @@ async function testAlloc( authData, ghLinks, td ) {
 
     // NOTE: assignee added after makeIssue - will not show up
     await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
-    const cardAlloc = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, starLoc.colId, issAllocDat[0] );
+    const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
 
     await utils.sleep( 2000 ); 
     testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, { lblCount: 1, val: 1000000} );
@@ -1076,7 +1078,7 @@ async function testAlloc( authData, ghLinks, td ) {
     // Create/delete good column
     {
 	// Create from card .. NOTE!  card is rebuilt to point to issue.  Re-find it.
-	await tu.makeAllocCard( authData, ghLinks, td.GHFullName, starLoc.colId, "Alloc star 1", "1,000,000" );     
+	await tu.makeAllocCard( authData, starLoc.colId, "Alloc star 1", "1,000,000" );     
 	await utils.sleep( 2000 );
 	const links       = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
 	const link        = links.find( link => link.GHIssueTitle == "Alloc star 1" );
@@ -1086,7 +1088,7 @@ async function testAlloc( authData, ghLinks, td ) {
 
 	// Create from issue  ... should be makeAllocIssue to create comment, but not testing that here
 	const issStarDat2 = await tu.makeAllocIssue( authData, td, "Alloc star 2", [ label1m ] );
-	const starCard2   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, starLoc.colId, issStarDat2[0] );
+	const starCard2   = await tu.makeProjectCard( authData, starLoc.colId, issStarDat2[0] );
 	await utils.sleep( 1000 );
 	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat2, starCard2, testStatus, {assignees: 0, lblCount: 1} );
 
@@ -1106,8 +1108,8 @@ async function testAlloc( authData, ghLinks, td ) {
     // Create/delete x4 column
     {
 	// Create from card 
-	await tu.makeAllocCard( authData, ghLinks, td.GHFullName, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
-	await tu.makeAllocCard( authData, ghLinks, td.GHFullName, accrLoc.colId, "Alloc accr", "1,000,000" );
+	await tu.makeAllocCard( authData, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
+	await tu.makeAllocCard( authData, accrLoc.colId, "Alloc accr", "1,000,000" );
 	await utils.sleep( 2000 );
 	const links      = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
 	const linkProg   = links.find( link => link.GHIssueTitle == "Alloc prog" );
@@ -1157,7 +1159,7 @@ async function runTests( authData, ghLinks, td ) {
     let t5 = await testCreateDelete( authData, ghLinks, td );
     console.log( "\n\nCreate / Delete complete." );
     await utils.sleep( 5000 );
-    
+
     let t6 = await testLabelMods( authData, ghLinks, td );
     console.log( "\n\nLabel mods complete." );
     await utils.sleep( 5000 );
@@ -1165,6 +1167,7 @@ async function runTests( authData, ghLinks, td ) {
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
     // await utils.sleep( 5000 );
+
 
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );
