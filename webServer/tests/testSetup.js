@@ -49,92 +49,92 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
 async function testPreferredCEProjects( authData, ghLinks, td ) {
 
     // [pass, fail, msgs]
-    let testStatus = [ 0, 0, []];
-
+    let subTest  = [ 0, 0, []];
+    
     await tu.refresh( authData, td, config.MAIN_PROJ );
 
     // Check DYNAMO PEQ table
     let ghPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
-    testStatus = tu.checkEq( ghPeqs.length, 1,                           testStatus, "Number of githubOps peq objects" );
-    testStatus = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,            testStatus, "PeqType" );
-    testStatus = tu.checkEq( ghPeqs[0].Amount, "1500000",                testStatus, "Peq Amount" );  
-    testStatus = tu.checkAr( ghPeqs[0].GHProjectSub, [td.softContTitle], testStatus, "Project sub" );
-    testStatus = tu.checkEq( ghPeqs[0].GHProjectId, td.masterPID,        testStatus, "Project ID" );  
+    subTest = tu.checkEq( ghPeqs.length, 1,                           subTest, "Number of githubOps peq objects" );
+    subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
+    subTest = tu.checkEq( ghPeqs[0].Amount, "1500000",                subTest, "Peq Amount" );  
+    subTest = tu.checkAr( ghPeqs[0].GHProjectSub, [td.softContTitle], subTest, "Project sub" );
+    subTest = tu.checkEq( ghPeqs[0].GHProjectId, td.masterPID,        subTest, "Project ID" );  
     
     let dsPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.dataSecTitle });
-    testStatus = tu.checkEq( dsPeqs.length, 1,                           testStatus, "Number of datasec peq objects" );
-    testStatus = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,            testStatus, "PeqType" );
-    testStatus = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], testStatus, "Project sub" );
+    subTest = tu.checkEq( dsPeqs.length, 1,                           subTest, "Number of datasec peq objects" );
+    subTest = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
+    subTest = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], subTest, "Project sub" );
 
     let unPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.unallocTitle });
-    testStatus = tu.checkEq( unPeqs.length, 2,                           testStatus, "Number of unalloc peq objects" );
-    testStatus = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,            testStatus, "PeqType" );
+    subTest = tu.checkEq( unPeqs.length, 2,                           subTest, "Number of unalloc peq objects" );
+    subTest = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
 
     let busTest = unPeqs[0].GHProjectSub.includes(td.busOpsTitle) || unPeqs[1].GHProjectSub.includes( td.busOpsTitle );
-    testStatus = tu.checkEq( busTest, true,                              testStatus, "Project subs for unalloc" );    
+    subTest = tu.checkEq( busTest, true,                              subTest, "Project subs for unalloc" );    
 
     
     // Check DYNAMO PAct 
     let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-    testStatus = tu.checkGE( pacts.length, 4,         testStatus, "Number of PActs" );
+    subTest = tu.checkGE( pacts.length, 4,         subTest, "Number of PActs" );
     let foundPActs = 0;
     for( pact of pacts ) {
 	if( pact.Subject[0] == ghPeqs[0].PEQId ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
-	    testStatus = tu.checkEq( pact.Action, config.PACTACT_ADD,            testStatus, "PAct Action" ); 
-	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
-	    testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,         testStatus, "PAct user name" ); 
-	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
-	    testStatus = tu.checkEq( pact.Locked, "false",                       testStatus, "PAct locked" );
+	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
+	    subTest = tu.checkEq( pact.Action, config.PACTACT_ADD,            subTest, "PAct Action" ); 
+	    subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" ); 
+	    subTest = tu.checkEq( pact.GHUserName, config.TESTER_BOT,         subTest, "PAct user name" ); 
+	    subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
+	    subTest = tu.checkEq( pact.Locked, "false",                       subTest, "PAct locked" );
 	    foundPActs++;
 	}
 	else if( pact.Subject[0] == dsPeqs[0].PEQId ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
-	    testStatus = tu.checkEq( pact.Action, config.PACTACT_ADD,            testStatus, "PAct Action" ); 
-	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
-	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
+	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
+	    subTest = tu.checkEq( pact.Action, config.PACTACT_ADD,            subTest, "PAct Action" ); 
+	    subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" ); 
+	    subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
 	    foundPActs++;
 	}
 	else if( pact.Subject[0] == unPeqs[0].PEQId ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
-	    testStatus = tu.checkEq( hasRaw,  true,                              testStatus, "PAct Raw match" ); 
-	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
+	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
+	    subTest = tu.checkEq( hasRaw,  true,                              subTest, "PAct Raw match" ); 
+	    subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
 	    foundPActs++;
 	}
     }
-    testStatus = tu.checkEq( foundPActs, 3 ,           testStatus, "Matched PActs with PEQs" );
+    subTest = tu.checkEq( foundPActs, 3 ,           subTest, "Matched PActs with PEQs" );
 
     // Check DYNAMO RepoStatus
     let pop = await utils.checkPopulated( authData, td.GHFullName );
-    testStatus = tu.checkEq( pop, "true", testStatus, "Repo status wrt populated" );
+    subTest = tu.checkEq( pop, "true", subTest, "Repo status wrt populated" );
     
 
     // Check GITHUB Labels
     let peqLabels = await tu.getPeqLabels( authData, td );
-    testStatus = tu.checkGE( peqLabels.length, 3,   testStatus, "Peq Label count" );
+    subTest = tu.checkGE( peqLabels.length, 3,   subTest, "Peq Label count" );
     let foundLabs = 0;
     for( label of peqLabels ) {
 	if( ghSafe.parseLabelDescr( [label.description] ) == 1000000 ) {
-	    testStatus = tu.checkEq( label.description.includes( "Allocation" ), true, testStatus, "Peq label descr" );
+	    subTest = tu.checkEq( label.description.includes( "Allocation" ), true, subTest, "Peq label descr" );
 	    foundLabs++;
 	}
 	else if( ghSafe.parseLabelDescr( [label.description] ) == 1500000 ) { foundLabs++; }
 	else if( ghSafe.parseLabelDescr( [label.description] ) == 3000000 ) { foundLabs++; }
     }
-    testStatus = tu.checkEq( foundLabs, 3,   testStatus, "Peq Label matching peq amounts" );
+    subTest = tu.checkEq( foundLabs, 3,   subTest, "Peq Label matching peq amounts" );
 
     
     // Check GITHUB Issues
     let issues = await tu.getIssues( authData, td );
-    testStatus = tu.checkGE( issues.length, 4,     testStatus, "Issue count" );
+    subTest = tu.checkGE( issues.length, 4,     subTest, "Issue count" );
     let foundIss = 0;
     for( const issue of issues ) {
 	if( issue.title == td.githubOpsTitle ) {
-	    testStatus = tu.checkEq( issue.body.includes( "allocation issue added by CodeEquity" ), true, testStatus, "issue body" );
+	    subTest = tu.checkEq( issue.body.includes( "allocation issue added by CodeEquity" ), true, subTest, "issue body" );
 	    td.githubOpsIss = [issue.id, issue.number];
 	    foundIss++;
 	}
@@ -148,12 +148,12 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	    foundIss++;
 	}  // 2 of these
     }
-    testStatus = tu.checkEq( foundIss, 4,       testStatus, "Matching issue count" );
+    subTest = tu.checkEq( foundIss, 4,       subTest, "Matching issue count" );
 
 
     // Check GITHUB Projects
     let projects = await tu.getProjects( authData, td );
-    testStatus = tu.checkGE( projects.length, 3,     testStatus, "Project count" );
+    subTest = tu.checkGE( projects.length, 3,     subTest, "Project count" );
     let foundProj = 0;
     for( const proj of projects ) {
 	if( proj.name == config.MAIN_PROJ ) {
@@ -169,7 +169,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	    foundProj++;
 	}  
     }
-    testStatus = tu.checkEq( foundProj, 3,       testStatus, "Matching project count" );
+    subTest = tu.checkEq( foundProj, 3,       subTest, "Matching project count" );
 
     
     // Check GITHUB Columns
@@ -178,22 +178,22 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     let dsCols   = await tu.getColumns( authData, td.dataSecPID  );
     let ghCols   = await tu.getColumns( authData, td.githubOpsPID  );
 
-    testStatus = tu.checkEq( mastCols.length, 3,   testStatus, "Master proj col count" );
-    testStatus = tu.checkEq( dsCols.length, 4,     testStatus, "Data security proj col count" );
-    testStatus = tu.checkEq( ghCols.length, 6,     testStatus, "Github ops proj col count" );
+    subTest = tu.checkEq( mastCols.length, 3,   subTest, "Master proj col count" );
+    subTest = tu.checkEq( dsCols.length, 4,     subTest, "Data security proj col count" );
+    subTest = tu.checkEq( ghCols.length, 6,     subTest, "Github ops proj col count" );
 
     let colNames = mastCols.map((col) => col.name );
-    testStatus = tu.checkEq( colNames.includes( td.softContTitle ), true,   testStatus, "Master col names" );
-    testStatus = tu.checkEq( colNames.includes( td.busOpsTitle ), true,     testStatus, "Master col names" );
-    testStatus = tu.checkEq( colNames.includes( td.unallocTitle ), true,   testStatus, "Master col names" );
+    subTest = tu.checkEq( colNames.includes( td.softContTitle ), true,   subTest, "Master col names" );
+    subTest = tu.checkEq( colNames.includes( td.busOpsTitle ), true,     subTest, "Master col names" );
+    subTest = tu.checkEq( colNames.includes( td.unallocTitle ), true,   subTest, "Master col names" );
     
     colNames = dsCols.map((col) => col.name );
-    testStatus = tu.checkEq( colNames.includes( config.PROJ_COLS[0] ), true,   testStatus, "Data sec col names" );
-    testStatus = tu.checkEq( colNames.includes( config.PROJ_COLS[1] ), true,   testStatus, "Data sec  col names" );
+    subTest = tu.checkEq( colNames.includes( config.PROJ_COLS[0] ), true,   subTest, "Data sec col names" );
+    subTest = tu.checkEq( colNames.includes( config.PROJ_COLS[1] ), true,   subTest, "Data sec  col names" );
 
     colNames = ghCols.map((col) => col.name );
-    testStatus = tu.checkEq( colNames.includes( config.PROJ_COLS[2] ), true,   testStatus, "Github ops col names" );
-    testStatus = tu.checkEq( colNames.includes( config.PROJ_COLS[3] ), true,   testStatus, "Github ops  col names" );
+    subTest = tu.checkEq( colNames.includes( config.PROJ_COLS[2] ), true,   subTest, "Github ops col names" );
+    subTest = tu.checkEq( colNames.includes( config.PROJ_COLS[3] ), true,   subTest, "Github ops  col names" );
 
     for( const col of mastCols ) {
 	if     ( col.name == td.softContTitle ) { td.scColID = col.id; }
@@ -208,9 +208,9 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     let boCards = await tu.getCards( authData, td.boColID );
     let noCards = await tu.getCards( authData, td.unColID );
 
-    testStatus = tu.checkEq( scCards.length, 4, testStatus, "Soft cont col card count" );
-    testStatus = tu.checkEq( boCards.length, 1, testStatus, "Bus ops col card count" );
-    testStatus = tu.checkEq( noCards.length, 0, testStatus, "Unalloc col card count" );
+    subTest = tu.checkEq( scCards.length, 4, subTest, "Soft cont col card count" );
+    subTest = tu.checkEq( boCards.length, 1, subTest, "Bus ops col card count" );
+    subTest = tu.checkEq( noCards.length, 0, subTest, "Unalloc col card count" );
 
     // Check a random col
     let rn2 = Math.floor(Math.random() * 2); // (0,1)
@@ -219,12 +219,12 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     let cols = dsCols;
     if( rn2 == 1 )  { cols = ghCols; }
     noCards = await tu.getCards( authData, cols[rn4].id );
-    testStatus = tu.checkEq( noCards.length, 0, testStatus, "Unalloc col card count" );
+    subTest = tu.checkEq( noCards.length, 0, subTest, "Unalloc col card count" );
 
 
     // Check DYNAMO Linkage
     let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    testStatus = tu.checkGE( links.length, 4, testStatus, "Linkage count" );
+    subTest = tu.checkGE( links.length, 4, subTest, "Linkage count" );
     let unallocSoft = false;   let lSoft = -1;
     let unallocBus  = false;   let lBus  = -1;
     // td.show();
@@ -232,33 +232,33 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     for( const link of links ) {
 	let found = false;
 	if( link.GHIssueId == td.githubOpsIss[0] ) {
-	    testStatus = tu.checkEq( link.GHIssueNum, td.githubOpsIss[1],    testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
-	    testStatus = tu.checkEq( link.GHColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
-	    testStatus = tu.checkEq( link.GHIssueTitle, td.githubOpsTitle,    testStatus, "Linkage Card Title" );
+	    subTest = tu.checkEq( link.GHIssueNum, td.githubOpsIss[1],    subTest, "Linkage Issue num" );
+	    subTest = tu.checkEq( link.GHColumnName, td.softContTitle,    subTest, "Linkage Col name" );
+	    subTest = tu.checkEq( link.GHColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
+	    subTest = tu.checkEq( link.GHIssueTitle, td.githubOpsTitle,    subTest, "Linkage Card Title" );
 	    let cardId = tu.findCardForIssue( scCards, link.GHIssueNum );
-	    testStatus = tu.checkEq( link.GHCardId, cardId,                  testStatus, "Linkage Card Id" );
+	    subTest = tu.checkEq( link.GHCardId, cardId,                  subTest, "Linkage Card Id" );
 	    found = true;
 	}
 	else if( link.GHIssueId == td.dataSecIss[0] ) {
-	    testStatus = tu.checkEq( link.GHIssueNum, td.dataSecIss[1],      testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
-	    testStatus = tu.checkEq( link.GHColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
-	    testStatus = tu.checkEq( link.GHIssueTitle, td.dataSecTitle,      testStatus, "Linkage Card Title" );
+	    subTest = tu.checkEq( link.GHIssueNum, td.dataSecIss[1],      subTest, "Linkage Issue num" );
+	    subTest = tu.checkEq( link.GHColumnName, td.softContTitle,    subTest, "Linkage Col name" );
+	    subTest = tu.checkEq( link.GHColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
+	    subTest = tu.checkEq( link.GHIssueTitle, td.dataSecTitle,      subTest, "Linkage Card Title" );
 	    let cardId = tu.findCardForIssue( scCards, link.GHIssueNum );
-	    testStatus = tu.checkEq( link.GHCardId, cardId,                  testStatus, "Linkage Card Id" );
+	    subTest = tu.checkEq( link.GHCardId, cardId,                  subTest, "Linkage Card Id" );
 	    found = true;
 	}
 	else if( link.GHIssueId == td.unallocIss1[0] ) {
-	    testStatus = tu.checkEq( link.GHIssueNum, td.unallocIss1[1],  testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHIssueTitle, td.unallocTitle,   testStatus, "Linkage Card Title" );
+	    subTest = tu.checkEq( link.GHIssueNum, td.unallocIss1[1],  subTest, "Linkage Issue num" );
+	    subTest = tu.checkEq( link.GHIssueTitle, td.unallocTitle,   subTest, "Linkage Card Title" );
 	    if( link.GHColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.GHColumnId; }
 	    else                                        { unallocBus  = true; lBus  = link.GHColumnId; }
 	    found = true;
 	}
 	else if( link.GHIssueId == td.unallocIss2[0] ) {
-	    testStatus = tu.checkEq( link.GHIssueNum, td.unallocIss2[1],  testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHIssueTitle, td.unallocTitle,   testStatus, "Linkage Card Title" );
+	    subTest = tu.checkEq( link.GHIssueNum, td.unallocIss2[1],  subTest, "Linkage Issue num" );
+	    subTest = tu.checkEq( link.GHIssueTitle, td.unallocTitle,   subTest, "Linkage Card Title" );
 	    if( link.GHColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.GHColumnId; }
 	    else                                        { unallocBus  = true; lBus  = link.GHColumnId; }
 	    found = true;
@@ -267,17 +267,16 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	if( link.GHIssueTitle == td.dataSecTitle ) { foundDS++; }
 	
 	if( found ) {
-	    testStatus = tu.checkEq( link.GHProjectName, config.MAIN_PROJ, testStatus, "Linkage Proj name" );
-	    testStatus = tu.checkEq( link.GHProjectId, td.masterPID,       testStatus, "Linkage Proj id" );
+	    subTest = tu.checkEq( link.GHProjectName, config.MAIN_PROJ, subTest, "Linkage Proj name" );
+	    subTest = tu.checkEq( link.GHProjectId, td.masterPID,       subTest, "Linkage Proj id" );
 	}
     }
-    testStatus = tu.checkEq( foundDS, 1, testStatus, "Duplicate links" );
-    testStatus = tu.checkEq( (unallocSoft && unallocBus), true, testStatus, "Linkage unalloc unique count" );
-    if( unallocSoft ) { testStatus = tu.checkEq( lSoft, td.scColID.toString(), testStatus, "Linkage Col Id" ); }
-    if( unallocBus )  { testStatus = tu.checkEq( lBus,  td.boColID.toString(), testStatus, "Linkage Col Id" ); }
-    
-    tu.testReport( testStatus, "Create preferred CE Projects" );
-    return testStatus;
+    subTest = tu.checkEq( foundDS, 1, subTest, "Duplicate links" );
+    subTest = tu.checkEq( (unallocSoft && unallocBus), true, subTest, "Linkage unalloc unique count" );
+    if( unallocSoft ) { subTest = tu.checkEq( lSoft, td.scColID.toString(), subTest, "Linkage Col Id" ); }
+    if( unallocBus )  { subTest = tu.checkEq( lBus,  td.boColID.toString(), subTest, "Linkage Col Id" ); }
+
+    return await tu.settle( subTest, [ 0, 0, []], testPreferredCEProjects, authData, ghLinks, td );
 }
 
 
@@ -292,6 +291,7 @@ async function runTests( authData, ghLinks, td ) {
     let t1 = await testPreferredCEProjects( authData, ghLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );
+    tu.testReport( testStatus, "Create preferred CE Projects" );
     return testStatus;
 }
 

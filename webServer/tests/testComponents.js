@@ -19,27 +19,29 @@ const ASSIGNEE2 = "codeequity";
 
 async function checkDubLabel( authData, ghLinks, td, loc, issueData, card, testStatus ) {
 
+    let subTest = [ 0, 0, []];
+
     // CHECK github issues
     let kp = "1000 " + config.PEQ_LABEL;    
     let issue = await tu.findIssue( authData, td, issueData[0] );
-    testStatus = tu.checkEq( issue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
-    testStatus = tu.checkEq( issue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
-    testStatus = tu.checkEq( issue.labels.length, 2,                testStatus, "Issue label" );
+    subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
+    subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
+    subTest = tu.checkEq( issue.labels.length, 2,                subTest, "Issue label" );
     const labels0 = issue.labels[0].name == kp && issue.labels[1].name == "documentation";
     const labels1 = issue.labels[1].name == kp && issue.labels[0].name == "documentation";
-    testStatus = tu.checkEq( labels0 || labels1, true,              testStatus, "Issue label" );
+    subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
 
     // CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
     let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     peqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = tu.checkEq( peqs.length, 1,                          testStatus, "Peq count" );
+    subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
 
     let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-    testStatus = tu.checkEq( pacts.length, 2,                         testStatus, "PAct count" );     
+    subTest = tu.checkEq( pacts.length, 2,                         subTest, "PAct count" );     
     
-    return testStatus;
+    return await tu.settle( subTest, testStatus, checkDubLabel, authData, ghLinks, td, loc, issueData, card, testStatus );
 }
 
 
@@ -696,6 +698,32 @@ async function testCreateDelete( authData, ghLinks, td ) {
     return testStatus;
 }
 
+async function labHelp( authData, td, getName, checkName, descr, testStatus ) {
+    let subTest  = [ 0, 0, []];    
+    let labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, getName );
+    let label    = labelRes.label;
+    subTest      = await tu.checkLabel( authData, label, checkName, descr, subTest );
+
+    return await tu.settle( subTest, testStatus, labHelp, authData, td, getName, checkName, descr, testStatus );
+}
+
+async function getLabHelp( authData, td, name ) {
+    const labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, name );
+    return labelRes.label;
+}
+
+async function labNotInIssueHelp( authData, td, labName, issId ) {
+    let retVal = true;
+    let accrIss = await tu.findIssue( authData, td, issId );
+    for( const lab of accrIss.labels ) {
+	if( lab.name == labName ) {
+	    retVal = false;
+	    break;
+	}
+    }
+    return retVal;
+}
+
 // edit, delete peq labels for open, pend and accr issues.  test a non-peq.
 async function testLabelMods( authData, ghLinks, td ) {
     // [pass, fail, msgs]
@@ -760,94 +788,72 @@ async function testLabelMods( authData, ghLinks, td ) {
 
 	// 2. Mod newborn label, label should be as modded.
 	console.log( "Mod newborn label" );
-	let labelRes = {};
 	await tu.updateLabel( authData, td, labNP1, {name: "newName", description: "newDesc"} );
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, "newName" );
-	labNP1   = labelRes.label;
-	testStatus = await tu.checkLabel( authData, labNP1, "newName", "newDesc", testStatus ); 
-
+	testStatus = await labHelp( authData, td, "newName", "newName", "newDesc", testStatus );
 	tu.testReport( testStatus, "Label mods B" );
 	
 	// 3. delete np2, should no longer find it.
 	console.log( "Remove nonPeq(2) label" );
 	await tu.delLabel( authData, td, labNP2.name );
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LABNP2 );
-	labNP2   = labelRes.label;
-	testStatus = await tu.checkLabel( authData, labNP2, -1, -1, testStatus );
-
+	testStatus = await labHelp( authData, td, LABNP2, -1, -1, testStatus );
 	tu.testReport( testStatus, "Label mods C" );
 
 	// 4. Edit lab1 name, fail and create new
 	console.log( "Mod peq label name" );
 	const smallKP = "51 " + config.PEQ_LABEL;    
-	await tu.updateLabel( authData, td, lab1, {name: smallKP} );                                          
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
-	lab1     = labelRes.label;
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, smallKP );
-	lab51    = labelRes.label;
+	await tu.updateLabel( authData, td, lab1, {name: smallKP} );
+
+	testStatus = await labHelp( authData, td, LAB1, LAB1, "PEQ value: 501", testStatus );
+	testStatus = await labHelp( authData, td, smallKP, smallKP, "PEQ value: 51", testStatus );
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
-	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
-	testStatus = await tu.checkLabel( authData, lab51, smallKP, "PEQ value: 51", testStatus );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
-	
 	tu.testReport( testStatus, "Label mods D" );
 
 	// 5. Edit lab1 descr, fail
 	console.log( "Mod peq label descr" );
 	await tu.updateLabel( authData, td, lab1, {description: "PEQ value: 51"} );
-	await utils.sleep( 1000 );	
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
-	lab1     = labelRes.label;
+
+	testStatus = await labHelp( authData, td, LAB1, LAB1, "PEQ value: 501", testStatus );
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
-	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
-	
 	tu.testReport( testStatus, "Label mods E" );
 
 	// 6. Edit lab1 all, fail & create new
 	console.log( "Mod peq label name,descr" );
 	const small52KP = "52 " + config.PEQ_LABEL;
-	await tu.updateLabel( authData, td, lab1, {name: small52KP,  description: "PEQ value: 52"} );                                          
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
-	lab1     = labelRes.label;
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, small52KP );
-	lab52    = labelRes.label;
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
-	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
-	testStatus = await tu.checkLabel( authData, lab52, small52KP, "PEQ value: 52", testStatus );
+	await tu.updateLabel( authData, td, lab1, {name: small52KP,  description: "PEQ value: 52"} );
 	
+	testStatus = await labHelp( authData, td, LAB1, LAB1, "PEQ value: 501", testStatus );
+	testStatus = await labHelp( authData, td, small52KP, small52KP, "PEQ value: 52", testStatus );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );	
 	tu.testReport( testStatus, "Label mods F" );
 
 	// 7. Delete lab1, fail
 	console.log( "Delete peq label" );
 	await tu.delLabel( authData, td, lab1.name );
-	await utils.sleep( 1500 );	
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, LAB1 );
-	lab1     = labelRes.label;
+
+	testStatus = await labHelp( authData, td, LAB1, LAB1, "PEQ value: 501", testStatus );	
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );	
-	testStatus = await tu.checkLabel( authData, lab1, LAB1, "PEQ value: 501", testStatus );   
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, ghoPlan, issPlanDat, cardPlan, testStatus, {label: 501, lblCount: 2} );
 	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
-	
 	tu.testReport( testStatus, "Label mods G" );
 
-	// 8. Make partial peq label
+	// 8. Make partial peq label.  Three will be unlabeled (can't have 2 peq labels), one will remain.
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
-	await tu.updateLabel( authData, td, labNP1, {name: pl105, description: "newDesc"} );
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, pl105 );
-	labNP1   = labelRes.label;
-	testStatus = await tu.checkLabel( authData, labNP1, pl105, "PEQ value: 105", testStatus ); 
 
-	tu.testReport( testStatus, "Label mods B" );
+	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
+	await tu.updateLabel( authData, td, labNP1, {name: pl105, description: "newDesc"} );
+
+	testStatus = await labHelp( authData, td, pl105, pl105, "PEQ value: 105", testStatus );	
+	tu.testReport( testStatus, "Label mods H" );
 
 	
 	// Clean
 	// NOTE: if delete before update-driven LM Accrued remove label is complete, will see server error 404.
-	//       update label above drives a bunch of asynch unwaited-for labelings.  Can still be in process when get here.
-	//       If this fires again, loop-check on get labels for lm accr, making sure 105 is gone.
-	await utils.sleep( 3000 );
-	await tu.delLabel( authData, td, labNP1.name );
+	//       update label above drives a bunch of asynch unwaited-for labelings.  So, wait until can't see issue's label any longer (i.e. remove is done)
+	await tu.settleWithVal( "LabelMods remove from lmAccr", labNotInIssueHelp, authData, td, pl105, issAccrDat[0] );
+	await tu.delLabel( authData, td, pl105 );
 	
     }
     
@@ -985,11 +991,12 @@ async function testAlloc( authData, ghLinks, td ) {
     const progLoc   = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const accrLoc   = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
+    // NOTE: assignee added after makeIssue - will not show up
     await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
     const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
 
     await utils.sleep( 2000 ); 
-    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1, val: 1000000} );
+    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, { lblCount: 1, val: 1000000} );
     
     tu.testReport( testStatus, "Alloc setup" );
 
@@ -1001,13 +1008,13 @@ async function testAlloc( authData, ghLinks, td ) {
 	// Peq is now out of date.  Change stripeLoc psub to fit.
 	stripeLoc.projSub[2] = "Stars";
 	
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
 	await tu.moveCard( authData, cardAlloc.id, progLoc.colId );   // FAIL
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
 	await tu.moveCard( authData, cardAlloc.id, accrLoc.colId );   // FAIL
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 1} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
 	tu.testReport( testStatus, "Alloc A" );
     }
@@ -1015,13 +1022,13 @@ async function testAlloc( authData, ghLinks, td ) {
     // Dub label
     {
 	await tu.addLabel( authData, td, issAllocDat[1], labelBug.name );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	
 	await tu.addLabel( authData, td, issAllocDat[1], label2m.name );  // FAIL
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 
 	await tu.addLabel( authData, td, issAllocDat[1], label1k.name );  // FAIL
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 
 	tu.testReport( testStatus, "Alloc B" );
     }
@@ -1033,33 +1040,25 @@ async function testAlloc( authData, ghLinks, td ) {
 	let ap2k  = "2000 " + config.ALLOC_LABEL;
 	let labelRes = {};
 	await tu.updateLabel( authData, td, label2m, {name: ap100 });
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, ap100 );
-	testStatus = await tu.checkLabel( authData, labelRes.label, ap100, "Allocation PEQ value: 100", testStatus ); 	
+	testStatus = await labHelp( authData, td, ap100, ap100, "Allocation PEQ value: 100", testStatus );	
 	    
-	// delete label2m, good
-	await tu.delLabel( authData, td, labelRes.label.name );
+	// delete label2m, ap100, good
 	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, ap100 );
-	testStatus = await tu.checkLabel( authData, labelRes.label, -1, -1, testStatus );
+	await tu.delLabel( authData, td, labelRes.label.name );
+	testStatus = await labHelp( authData, td, ap100, -1, -1, testStatus );		
 	
 	// Mod label1m, fail and create
 	await tu.updateLabel( authData, td, label1m, {name: ap2k });
-	await utils.sleep( 1000 );  // gh 
-	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, label1m.name );
-	let lOrig = labelRes.label;
-	labelRes  = await gh.getLabel( authData, td.GHOwner, td.GHRepo, ap2k );
-	let lNew  = labelRes.label;
+	testStatus = await labHelp( authData, td, label1m.name, ap1m, "Allocation PEQ value: 1000000", testStatus );
+	testStatus = await labHelp( authData, td, ap2k, ap2k, "Allocation PEQ value: 2000", testStatus );
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );
-	testStatus = await tu.checkLabel( authData, lOrig, ap1m, "Allocation PEQ value: 1000000", testStatus );
-	testStatus = await tu.checkLabel( authData, lNew, ap2k, "Allocation PEQ value: 2000", testStatus );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );	
 
 	// Delete label1m, fail
-	await tu.delLabel( authData, td, label1m.name );  	
-	labelRes = await gh.getLabel( authData, td.GHOwner, td.GHRepo, ap1m );
-	lOrig = labelRes.label;
+	await tu.delLabel( authData, td, label1m.name );
+	testStatus = await labHelp( authData, td, ap1m, ap1m, "Allocation PEQ value: 1000000", testStatus );
 	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );
-	testStatus = await tu.checkLabel( authData, lOrig, ap1m, "Allocation PEQ value: 1000000", testStatus );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );	
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );	
 	
 	tu.testReport( testStatus, "Alloc C" );
     }
@@ -1068,19 +1067,18 @@ async function testAlloc( authData, ghLinks, td ) {
     {
 	// Should stay in stripe, allocs don't move.
 	await tu.closeIssue( authData, td, issAllocDat[1] );
-	await utils.sleep( 500 );  // seems a little slow sometimes?
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2, state: "closed"} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, state: "closed"} );
 
 	await tu.reopenIssue( authData, td, issAllocDat[1] );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	
 	tu.testReport( testStatus, "Alloc D" );
     }
 
     // Create/delete good column
     {
-	// Create from card .. 
-	await tu.makeAllocCard( authData, starLoc.colId, "Alloc star 1", "1,000,000" );     // NOTE!  card is rebuilt to point to issue.  Re-find it.
+	// Create from card .. NOTE!  card is rebuilt to point to issue.  Re-find it.
+	await tu.makeAllocCard( authData, starLoc.colId, "Alloc star 1", "1,000,000" );     
 	await utils.sleep( 2000 );
 	const links       = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
 	const link        = links.find( link => link.GHIssueTitle == "Alloc star 1" );
@@ -1161,7 +1159,7 @@ async function runTests( authData, ghLinks, td ) {
     let t5 = await testCreateDelete( authData, ghLinks, td );
     console.log( "\n\nCreate / Delete complete." );
     await utils.sleep( 5000 );
-    
+
     let t6 = await testLabelMods( authData, ghLinks, td );
     console.log( "\n\nLabel mods complete." );
     await utils.sleep( 5000 );
@@ -1169,6 +1167,7 @@ async function runTests( authData, ghLinks, td ) {
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
     // await utils.sleep( 5000 );
+
 
     testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t2 );

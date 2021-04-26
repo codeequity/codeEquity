@@ -44,14 +44,13 @@ exports.handler = (event, context, callback) => {
     var resultPromise;
 
     console.log( "User:", username, "Endpoint:", endPoint );
-    if( endPoint == "GetEntry")            { resultPromise = getEntry( rb.tableName, rb.query ); }
+    if(      endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
     else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
     else if( endPoint == "RemoveEntries")  { resultPromise = removeEntries( rb.tableName, rb.ids ); }
     else if( endPoint == "GetID")          { resultPromise = getPersonId( username ); }             // username is local
     else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.GHUserName ); }           // return varies on no_content
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
-    else if( endPoint == "DeletePEQ")      { resultPromise = delPeq( rb.GHIssueId, rb.subComponent ); }
     else if( endPoint == "CheckSetGHPop")  { resultPromise = checkSetGHPop( rb.GHRepo, rb.Set ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
@@ -394,19 +393,6 @@ async function checkSetGHPop( repo, setVal ) {
 	    else      { return success( false ); }
 	});
     }
-}
-
-
-async function delPeq( issueId, subComp ) {
-    let peqId = await getPeqId( issueId, subComp );
-    console.log( "peqId", peqId );
-    const params = {
-        TableName: 'CEPEQs',
-	Key: {"PEQId": peqId }
-    };
-    
-    let promise = bsdb.delete( params ).promise();
-    return promise.then(() => success( true ));
 }
 
 

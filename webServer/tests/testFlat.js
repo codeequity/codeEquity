@@ -9,7 +9,7 @@ const tu = require('./testUtils');
 const FLAT_PROJ = "A Pre-Existing Project";
 
 
-async function createFlatProject( authData, td ) {
+async function createFlatProject( authData, ghLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
     td.masterPID  = await tu.makeProject( authData, td, FLAT_PROJ, "" );
@@ -112,7 +112,7 @@ async function runTests( authData, ghLinks ) {
 
     let testStatus = [ 0, 0, []];
 
-    await createFlatProject( authData, td );
+    await createFlatProject( authData, ghLinks, td );
     await utils.sleep( 1000 );
     let t1 = await testFlatProject( authData, ghLinks, td );
 

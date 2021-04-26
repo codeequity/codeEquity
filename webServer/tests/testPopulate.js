@@ -609,12 +609,13 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     const toProgLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const toAccrLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
+    // NOTE: assignee added after makeIssue - will not show up
     await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
     
     // Set up first card
     const cardAlloc = await tu.makeProjectCard( authData, starLoc.colId, issAllocDat[0] );
-    await utils.sleep( 1000 ); 
-    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2, val: 1000000} );
+    await utils.sleep( 1000 );
+    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, val: 1000000} );
     
     tu.testReport( testStatus, "Split Alloc setup" );
 
@@ -623,7 +624,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
 	// At this point, lval is 500k
 	const cardNew = await tu.makeProjectCard( authData, toProgLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toProgLoc, cardNew.id, testStatus );
 
 	tu.testReport( testStatus, "Split Alloc A" );
@@ -633,7 +634,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     {
 	const cardNew = await tu.makeProjectCard( authData, toAccrLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {assignees: 1, lblCount: 2} );
+	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toAccrLoc, cardNew.id, testStatus );
 
 	tu.testReport( testStatus, "Split Alloc B" );
@@ -644,7 +645,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     {
 	const cardNew = await tu.makeProjectCard( authData, toBacnLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkAllocSplit( authData, ghLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { assginees: 1, lblCount: 2 } );
+	testStatus = await tu.checkAllocSplit( authData, ghLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { issAssignees: 1, lblCount: 2 } );
 
 	tu.testReport( testStatus, "Split Alloc C" );
     }
