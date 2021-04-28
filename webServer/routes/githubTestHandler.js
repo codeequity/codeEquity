@@ -10,6 +10,10 @@ async function handler( ghLinks, ceJobs, reqBody, res ) {
     if( reqBody.Request == "getLinks" ) {
 	retVal = ghLinks.links;
     }
+    // use ONLY to verify test outcome in CE before performing dependent step.
+    else if( reqBody.Request == "getLocs" ) {  
+	retVal = ghLinks.locs;
+    }
     else if( reqBody.Request == "purgeLinks" ) {
 	retVal = ghLinks.purge( reqBody.Repo );
     }

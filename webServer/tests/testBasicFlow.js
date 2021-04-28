@@ -223,7 +223,7 @@ async function testStepByStep( authData, ghLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
 
     // 3. Add to project
-    let meltCard  = await tu.makeProjectCard( authData, td.dsPlanID, meltData[0] );
+    let meltCard  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, meltData[0] );
     await utils.sleep( 1000 );
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, flowPlan, meltData, meltCard, testStatus );
 
@@ -281,7 +281,7 @@ async function testEndpoint( authData, ghLinks, td ) {
     await tu.addLabel( authData, td, meltData[1], newLabel.name );
     
     // 3. Add to project
-    let meltCard  = await tu.makeProjectCard( authData, td.dsPlanID, meltData[0] );
+    let meltCard  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, meltData[0] );
 
     // 4. add assignee
     await tu.addAssignee( authData, td, meltData[1], ASSIGNEE1 );
