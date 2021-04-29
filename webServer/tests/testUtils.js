@@ -158,7 +158,7 @@ async function confirmProject( authData, ghLinks, fullName, projId ) {
     */
     
     let locs = await getLocs( authData, ghLinks, { repo: fullName, projId: projId } );
-    return loc != -1; 
+    return locs != -1; 
 }
 
 async function confirmColumn( authData, ghLinks, fullName, colId ) {
@@ -170,7 +170,7 @@ async function confirmColumn( authData, ghLinks, fullName, colId ) {
     return retVal;
     */
     let locs = await getLocs( authData, ghLinks, { repo: fullName, colId: colId } );
-    return loc != -1; 
+    return locs != -1; 
 }
 
 async function hasRaw( authData, pactId ) {
