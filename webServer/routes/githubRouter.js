@@ -10,6 +10,7 @@ const peqData = require( '../peqData' );
 var fifoQ     = require('../components/queue.js');
 var links     = require('../components/linkage.js');
 var hist      = require('../components/histogram.js');
+var circBuff  = require('../components/circBuff.js');
 
 var issues    = require('./githubIssueHandler');
 var cards     = require('./githubCardHandler');
@@ -25,10 +26,14 @@ ceJobs.count = 0;
 ceJobs.delay = 0;
 ceJobs.maxDepth = 0;
 
-// CE arrival hist
-ceArrivals = new hist.Histogram( 1, 3, 5, 8, 12, 15, 20, 30 );
-
+// XXX verbosity control needed
 var notificationCount = 0;
+
+// CE arrival hist
+var ceArrivals = new hist.Histogram( 1, 3, 5, 8, 12, 15, 20, 30 );
+
+// CE Notification buffer
+var ceNotification = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
 
 var authData       = {};
 var octokitClients = {};
@@ -220,7 +225,7 @@ async function switcher( authData, ghLinks, pd, sender, event, action, tag, res,
 router.post('/:location?', async function (req, res) {
 
     // invisible, mostly
-    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, ceNotification, req.body, res ); }
     
     console.log( "" );
     let action   = req.body['action'];
@@ -284,6 +289,7 @@ router.post('/:location?', async function (req, res) {
     let newStamp = utils.getMillis();
     ceArrivals.add( newStamp );
     console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
+    ceNotification.push( event+" "+action+" "+tag+" "+fullName );
 
     // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext

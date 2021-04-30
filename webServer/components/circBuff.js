@@ -14,8 +14,6 @@ class CircularBuffer {
 	else if( elements.length < buffCount ) {
 	    this.elements = this.elements.concat( new Array( buffCount - elements.length).fill(-1) );
 	}
-	
-	this.show();
     }
 
     
@@ -27,6 +25,7 @@ class CircularBuffer {
 	let elts = 1;
 	while( elts <= this.buffCount ) {
 	    const idx = this.at >= elts ? this.at - elts : this.at + this.buffCount - elts;
+	    if( this.elements[idx] == -1 ) { break; }
 	    console.log( this.elements[ idx ] );
 	    elts++;
 	}
@@ -46,6 +45,12 @@ class CircularBuffer {
     }
 
     find(arg) { return this.elements.includes( arg ); }
+
+    fromJson( notes ) {
+	this.elements  = notes.elements;
+	this.at        = notes.at;
+	this.buffCount = notes.buffCount;
+    }
 
 }
 

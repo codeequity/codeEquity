@@ -76,6 +76,8 @@ const STEP_COST  = 300;         // expanding job backoff timer, step_cost * dela
 const NOQ_DELAY  = 20000;       // backoff millis if queue is empty
 const MIN_DIFF   = 1000;        // min timestamp diff in millis for new insert location 
 
+// server notification buffer size for testing
+const NOTICE_BUFFER_SIZE = 20;
 
 // XXX TEMP will go way
 const POPULATE = "populate";
@@ -165,3 +167,5 @@ exports.MAX_DELAYS = MAX_DELAYS;
 exports.STEP_COST  = STEP_COST;
 exports.NOQ_DELAY  = NOQ_DELAY;
 exports.MIN_DIFF   = MIN_DIFF;
+
+exports.NOTICE_BUFFER_SIZE = NOTICE_BUFFER_SIZE;

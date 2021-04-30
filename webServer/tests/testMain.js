@@ -26,33 +26,6 @@ async function runTests() {
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
     let ghLinks = new links.Linkage();
 
-/*
-    let cb  = new circBuff.CircularBuffer(10);
-    let cb1 = new circBuff.CircularBuffer(10, "yadda", "badda", "cada");
-    let cb2 = new circBuff.CircularBuffer(3, "yadda", "badda", "cada", "mada", "pada");
-    cb1.push( "bbaa" );
-    cb1.show();
-    cb1.push( "bbaa8" );
-    cb1.push( "bbaa7" );
-    cb1.push( "bbaa6" );
-    cb1.push( "bbaa5" );
-    cb1.push( "bbaa4" );
-    cb1.push( "bbaa3" );
-    cb1.push( "bbaa2" );
-    cb1.push( "bbaa1" );
-    cb1.show();
-    cb1.push( "bbaa8" );
-    cb1.push( "bbaa7" );
-    cb1.push( "bbaa6" );
-    cb1.push( "bbaa5" );
-    cb1.push( "bbaa4" );
-    cb1.push( "bbaa3" );
-    cb1.push( "bbaa2" );
-    cb1.push( "bbaa1" );
-    cb1.show();
-*/
-
-    
     // TEST_REPO auth
     let td = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;

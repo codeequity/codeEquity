@@ -6,6 +6,8 @@ var ghUtils = require('../ghUtils');
 var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
+var circBuff  = require('../components/circBuff.js');
+
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
 // Server is fast enough for sub 1s, but GH struggles.
 //const MIN_DELAY = 1200;  
@@ -15,6 +17,8 @@ const GH_DELAY = 400;
 
 var CETestDelayCount = 0;
 const CE_DELAY_MAX = 8;
+
+var CE_Notes = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
 
@@ -263,6 +267,20 @@ async function getLocs( authData, ghLinks, query ) {
     return ghLinks.getLocs( authData, query );
 }
 
+async function getNotices() {
+    let postData = {"Endpoint": "Testing", "Request": "getNotices" };
+    return await utils.postCE( "testHandler", JSON.stringify( postData ));
+}
+
+async function findNotice( query ) {
+    let notes = await getNotices();
+    CE_Notes.fromJson( notes );
+    console.log( "NOTICES.  Looking for", query );
+
+    if( Math.random() < .15 ) { console.log(""); CE_Notes.show(); console.log(""); }
+    return CE_Notes.find( query );
+}
+
 // Purge repo's links n locs from ceServer
 async function remLinks( authData, ghLinks, repo ) {
     let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "Repo": repo };
@@ -412,6 +430,9 @@ async function makeColumn( authData, ghLinks, fullName, projId, name ) {
 	.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 
     console.log( "MakeColumn:", name, cid );
+    let query = "project_column created " + name + " " + fullName;
+    await settleWithVal( "makeCol", findNotice, query );
+    
     await utils.sleep( GH_DELAY );
     return cid;
 }
@@ -503,13 +524,16 @@ async function blastIssue( authData, td, title, labels, assignees, specials ) {
 async function addLabel( authData, td, issueNumber, labelName ) {
     await authData.ic.issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
 	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
-    await utils.sleep( MIN_DELAY );
 }	
 
 async function remLabel( authData, td, issueNumber, label ) {
     console.log( "Removing", label.name, "from issueNum", issueNumber );
     await authData.ic.issues.removeLabel({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, name: label.name })
 	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
+
+    // Need issue name
+    // let query = "issue unlabeled " + label.name + " " + td.GHFullName;
+    // await settleWithVal( "unlabel", findNotice, query );
     await utils.sleep( MIN_DELAY );
 }
 
@@ -530,7 +554,9 @@ async function delLabel( authData, td, name ) {
     console.log( "Removing label:", name );
     await authData.ic.issues.deleteLabel({ owner: td.GHOwner, repo: td.GHRepo, name: name })
 	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
-    await utils.sleep( MIN_DELAY );
+
+    let query = "label deleted " + name + " " + td.GHFullName;
+    await settleWithVal( "del label", findNotice, query );
 }
 
 async function addAssignee( authData, td, issueNumber, assignee ) {
@@ -652,9 +678,10 @@ function mergeTests( t1, t2 ) {
 }
 
 async function delayTimer() {
-    // Settle for up to 30s (Total) before failing.
+    // Settle for up to 30s (Total) before failing.  First few are quick.
     console.log( "XXX GH Settle Time", CETestDelayCount );
-    await utils.sleep( 3000 + CETestDelayCount * 1000 );
+    let waitVal = CETestDelayCount < 3 ? (CETestDelayCount+1) * 500 : 3000 + CETestDelayCount * 1000;
+    await utils.sleep( waitVal );
     CETestDelayCount++;
     return CETestDelayCount < CE_DELAY_MAX;
 }
@@ -922,45 +949,49 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 	// CHECK dynamo Peq
 	let allPeqs = await peqsP;
 	let peqs    = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
-	subTest  = checkEq( peqs.length, 1,                          subTest, "Peq count" );
-	let peq = peqs[0];
-	
-	assignCnt = assignCnt ? assignCnt : 0;
-	
-	subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
-	subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-	subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-	subTest = checkEq( peq.GHHolderId.length, assignCnt,        subTest, "peq holders wrong" );      
-	subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );    
-	subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-	subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-	subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
-	subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
-	if( !skipPeqPID ) {
-	    subTest = checkEq( peq.GHProjectId, loc.projId,         subTest, "peq project id bad" );
-	}
-	
-	// CHECK dynamo Pact
-	let allPacts = await pactsP;
-	let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-	subTest   = checkGE( pacts.length, 1,                         subTest, "PAct count" );  
-	
-	// This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
-	if( pacts.length <= 3 && loc.projSub.length > 1 ) {
-	    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
-	    if( !pip.includes( loc.projSub[1] )) { 
-		subTest = checkEq( peq.GHProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
-	    }
-	}
-	
-	// Could have been many operations on this.
-	for( const pact of pacts ) {
-	    let hr  = await hasRaw( authData, pact.PEQActionId );
-	    subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	    subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
-	    subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+	subTest     = checkEq( peqs.length, 1,                          subTest, "Peq count" );
+	let peq     = peqs[0];
+	subTest     = checkEq( typeof peq !== 'undefined', true,        subTest, "peq not ready yet" );
+
+	if( typeof peq !== 'undefined' ) {
 	    
-	    if( !muteIngested ) { subTest = checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }
+	    assignCnt = assignCnt ? assignCnt : 0;
+	
+	    subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
+	    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+	    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+	    subTest = checkEq( peq.GHHolderId.length, assignCnt,        subTest, "peq holders wrong" );      
+	    subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );    
+	    subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
+	    subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
+	    subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
+	    subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
+	    if( !skipPeqPID ) {
+		subTest = checkEq( peq.GHProjectId, loc.projId,         subTest, "peq project id bad" );
+	    }
+	    
+	    // CHECK dynamo Pact
+	    let allPacts = await pactsP;
+	    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+	    subTest   = checkGE( pacts.length, 1,                         subTest, "PAct count" );  
+	    
+	    // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
+	    if( pacts.length <= 3 && loc.projSub.length > 1 ) {
+		const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
+		if( !pip.includes( loc.projSub[1] )) { 
+		    subTest = checkEq( peq.GHProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
+		}
+	    }
+	    
+	    // Could have been many operations on this.
+	    for( const pact of pacts ) {
+		let hr  = await hasRaw( authData, pact.PEQActionId );
+		subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
+		subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+		subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+		
+		if( !muteIngested ) { subTest = checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }
+	    }
 	}
     }
     
@@ -1370,7 +1401,11 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
 	
 	    // Check comment on splitIss
 	    const comments = await getComments( authData, td, splitDat[1] );
-	    subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
+	    subTest = checkEq( typeof comments !== 'undefined',                      true,   subTest, "Comment not yet ready" );
+	    subTest = checkEq( typeof comments[0] !== 'undefined',                   true,   subTest, "Comment not yet ready" );
+	    if( typeof comments !== 'undefined' && typeof comments[0] !== 'undefined' ) {
+		subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
+	    }
 	}
     }
     
