@@ -476,12 +476,12 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     const toAccrLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
     
     // Need assignees for pend/accr. 
-    await tu.addAssignee( authData, td, issMoonDat[1], ASSIGNEE1 );	
-    await tu.addAssignee( authData, td, issPlanDat[1], ASSIGNEE1 );	
-    await tu.addAssignee( authData, td, issProgDat[1], ASSIGNEE2 );	
-    await tu.addAssignee( authData, td, issPendDat[1], ASSIGNEE1 );	
-    await tu.addAssignee( authData, td, issPendDat[1], ASSIGNEE2 );	
-    await tu.addAssignee( authData, td, issAccrDat[1], ASSIGNEE1 );
+    await tu.addAssignee( authData, td, issMoonDat, ASSIGNEE1 );	
+    await tu.addAssignee( authData, td, issPlanDat, ASSIGNEE1 );	
+    await tu.addAssignee( authData, td, issProgDat, ASSIGNEE2 );	
+    await tu.addAssignee( authData, td, issPendDat, ASSIGNEE1 );	
+    await tu.addAssignee( authData, td, issPendDat, ASSIGNEE2 );	
+    await tu.addAssignee( authData, td, issAccrDat, ASSIGNEE1 );
 
     // Set up first cards
     const cardMoon = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, moonLoc.colId, issMoonDat[0] );
@@ -491,8 +491,8 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     const cardAccr = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, planLoc.colId, issAccrDat[0] );
 
     // Close & accrue
-    await tu.closeIssue( authData, td, issPendDat[1] );
-    await tu.closeIssue( authData, td, issAccrDat[1] );
+    await tu.closeIssue( authData, td, issPendDat );
+    await tu.closeIssue( authData, td, issAccrDat );
     await tu.moveCard( authData, cardAccr.id, accrLoc.colId );
 
     await utils.sleep( 2000 );	
@@ -610,7 +610,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     const toAccrLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
     // NOTE: assignee added after makeIssue - will not show up
-    await tu.addAssignee( authData, td, issAllocDat[1], ASSIGNEE2 );
+    await tu.addAssignee( authData, td, issAllocDat, ASSIGNEE2 );
     
     // Set up first card
     const cardAlloc = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, starLoc.colId, issAllocDat[0] );

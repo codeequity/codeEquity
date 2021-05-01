@@ -277,7 +277,7 @@ async function findNotice( query ) {
     CE_Notes.fromJson( notes );
     console.log( "NOTICES.  Looking for", query );
 
-    if( Math.random() < .15 ) { console.log(""); CE_Notes.show(); console.log(""); }
+    if( Math.random() < .05 ) { console.log(""); CE_Notes.show(); console.log(""); }
     return CE_Notes.find( query );
 }
 
@@ -432,8 +432,7 @@ async function makeColumn( authData, ghLinks, fullName, projId, name ) {
     console.log( "MakeColumn:", name, cid );
     let query = "project_column created " + name + " " + fullName;
     await settleWithVal( "makeCol", findNotice, query );
-    
-    await utils.sleep( GH_DELAY );
+
     return cid;
 }
 
@@ -483,6 +482,11 @@ async function makeProjectCard( authData, ghLinks, fullName, colId, issueId ) {
     await settleWithVal( "make Proj card", confirmColumn, authData, ghLinks, fullName, colId );
 
     let card = await ghSafe.createProjectCard( authData, colId, issueId );
+
+    let query = "project_card created iss" + card.content_url.split('/').pop() + " " + fullName;
+    await settleWithVal( "makeProjCard", findNotice, query );
+
+    // XXX either leave this in to allow peq data to record, or set additional post condition.
     await utils.sleep( MIN_DELAY );
     return card;
 }
@@ -526,15 +530,13 @@ async function addLabel( authData, td, issueNumber, labelName ) {
 	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
 }	
 
-async function remLabel( authData, td, issueNumber, label ) {
-    console.log( "Removing", label.name, "from issueNum", issueNumber );
-    await authData.ic.issues.removeLabel({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, name: label.name })
+async function remLabel( authData, td, issueData, label ) {
+    console.log( "Removing", label.name, "from issueNum", issueData[1] );
+    await authData.ic.issues.removeLabel({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], name: label.name })
 	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
 
-    // Need issue name
-    // let query = "issue unlabeled " + label.name + " " + td.GHFullName;
-    // await settleWithVal( "unlabel", findNotice, query );
-    await utils.sleep( MIN_DELAY );
+    let query = "issue unlabeled " + issueData[2] + " " + td.GHFullName;
+    await settleWithVal( "unlabel", findNotice, query );
 }
 
 // NOTE - this ignores color... 
@@ -559,10 +561,12 @@ async function delLabel( authData, td, name ) {
     await settleWithVal( "del label", findNotice, query );
 }
 
-async function addAssignee( authData, td, issueNumber, assignee ) {
-    await authData.ic.issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
+async function addAssignee( authData, td, issueData, assignee ) {
+    await authData.ic.issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], assignees: [assignee] })
 	.catch( e => { console.log( authData.who, "Add assignee failed.", e ); });
-    await utils.sleep( MIN_DELAY );
+
+    let query = "issue assigned " + issueData[2] + " " + td.GHFullName;
+    await settleWithVal( "assign issue", findNotice, query );
 }
 
 async function remAssignee( authData, td, issueNumber, assignee ) {
@@ -583,10 +587,12 @@ async function remCard( authData, cardId ) {
     await utils.sleep( MIN_DELAY );
 }
 
-async function closeIssue( authData, td, issueNumber ) {
-    await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
+async function closeIssue( authData, td, issueData ) {
+    await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], state: "closed" })
 	.catch( e => { console.log( authData.who, "Close issue failed.", e );	});
-    await utils.sleep( MIN_DELAY );
+
+    let query = "issue closed " + issueData[2] + " " + td.GHFullName;
+    await settleWithVal( "closeIssue", findNotice, query );
 }
 
 async function reopenIssue( authData, td, issueNumber ) {
@@ -909,9 +915,12 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     if( assignCnt ) { subTest = checkEq( issue.assignees.length, assignCnt, subTest, "Assignee count" ); }
     
     const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
-    const lval  = labelVal ? labelVal                     : 1000;
-    subTest = checkEq( issue.labels[0].name, lname,           subTest, "Issue label name" );
+    const lval  = labelVal ? labelVal : 1000;
+    subTest = checkEq( typeof issue.labels[0] !== 'undefined', true, subTest, "labels not yet ready" );
 
+    if( typeof issue.labels[0] !== 'undefined' ) {
+	subTest = checkEq( issue.labels[0].name, lname,                  subTest, "Issue label name" );
+    }
     if( issueState ) { subTest = checkEq( issue.state, issueState, subTest, "Issue state" );  }
 
     // XXX Crappy test.  many locs are not related to td.unclaim.  Can be situated and in unclaim.
@@ -1420,48 +1429,51 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
     let issAssignCnt = typeof specials !== 'undefined' && specials.hasOwnProperty( "issAssignees" )  ? specials.issAssignees  : 1;
     
     console.log( "Check Alloc Split", issDat[2], origLoc.colName, newLoc.colName );
+    let subTest = [ 0, 0, []];
 
     // Get new issue
     let issues   = await getIssues( authData, td );
     let issue    = await findIssue( authData, td, issDat[0] );    
     let splitIss = issues.find( issue => issue.title.includes( issDat[2] + " split" ));
     const splitDat = typeof splitIss == 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
-    assert( splitDat[0] != -1 );
-    
-    // Get cards
-    let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
-    let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
-    let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
 
-    if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
-
-    // Break this in to to avoid nested loop for settle timer
-    if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
-    
-	const card      = await getCard( authData, issLink.GHCardId );
-	const splitCard = await getCard( authData, splitLink.GHCardId );
+    subTest = checkEq( splitDat[0] != -1, true, subTest, "split iss not ready yet" );
+    if( splitDat[0] != -1 ) {
 	
-	let lval = origVal / 2;
-	testStatus = await checkAlloc( authData, ghLinks, td, origLoc, issDat,   card,      testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
-	testStatus = await checkAlloc( authData, ghLinks, td, newLoc,  splitDat, splitCard, testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+	// Get cards
+	let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
+	let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
+	let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
+	
+	if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
+	
+	// Break this in two to avoid nested loop for settle timer
+	if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
+	    
+	    const card      = await getCard( authData, issLink.GHCardId );
+	    const splitCard = await getCard( authData, splitLink.GHCardId );
+	    
+	    let lval = origVal / 2;
+	    testStatus = await checkAlloc( authData, ghLinks, td, origLoc, issDat,   card,      testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+	    testStatus = await checkAlloc( authData, ghLinks, td, newLoc,  splitDat, splitCard, testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+	}
+	
+	if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
+	    subTest = checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
+	    
+	    // check assign
+	    subTest = checkEq( issue.assignees.length, issAssignCnt,    subTest, "Issue assignee count" );
+	    subTest = checkEq( splitIss.assignees.length, issAssignCnt, subTest, "Issue assignee count" );
+	    
+	    // Check comment on splitIss
+	    const comments = await getComments( authData, td, splitDat[1] );
+	    subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
+	}
+	
+	subTest = await checkEq( typeof issLink   !== 'undefined', true, subTest, "issLink trouble" );
+	subTest = await checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
     }
     
-    let subTest = [ 0, 0, []];
-    if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
-	subTest = checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
-	
-	// check assign
-	subTest = checkEq( issue.assignees.length, issAssignCnt,    subTest, "Issue assignee count" );
-	subTest = checkEq( splitIss.assignees.length, issAssignCnt, subTest, "Issue assignee count" );
-	
-	// Check comment on splitIss
-	const comments = await getComments( authData, td, splitDat[1] );
-	subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
-    }
-
-    subTest = await checkEq( typeof issLink   !== 'undefined', true, subTest, "issLink trouble" );
-    subTest = await checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
-
     return await settle( subTest, testStatus, checkAllocSplit, authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials );
 }
 

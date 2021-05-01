@@ -95,13 +95,16 @@ async function checkUnclaimedIssue( authData, ghLinks, td, issueData, testStatus
 	subTest = tu.checkEq( typeof pacts !== 'undefined', true,             subTest, "no pact yet" );
 	if( typeof pacts !== 'undefined' ) {
 	    let meltPact = (pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId ))[0];
-	    let hasRaw = await tu.hasRaw( authData, meltPact.PEQActionId );
-	    subTest = tu.checkEq( hasRaw, true,                                   subTest, "PAct Raw match" ); 
-	    subTest = tu.checkEq( meltPact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
-	    subTest = tu.checkEq( meltPact.Action, config.PACTACT_ADD,            subTest, "PAct Action"); 
-	    subTest = tu.checkEq( meltPact.GHUserName, config.TESTER_BOT,         subTest, "PAct user name" ); 
-	    subTest = tu.checkEq( meltPact.Ingested, "false",                     subTest, "PAct ingested" );
-	    subTest = tu.checkEq( meltPact.Locked, "false",                       subTest, "PAct locked" );
+	    subTest = tu.checkEq( typeof meltPact !== 'undefined', true,         subTest, "no pact yet" );
+	    if( typeof meltPact !== 'undefined' ) {
+		let hasRaw = await tu.hasRaw( authData, meltPact.PEQActionId );
+		subTest = tu.checkEq( hasRaw, true,                                   subTest, "PAct Raw match" ); 
+		subTest = tu.checkEq( meltPact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
+		subTest = tu.checkEq( meltPact.Action, config.PACTACT_ADD,            subTest, "PAct Action"); 
+		subTest = tu.checkEq( meltPact.GHUserName, config.TESTER_BOT,         subTest, "PAct user name" ); 
+		subTest = tu.checkEq( meltPact.Ingested, "false",                     subTest, "PAct ingested" );
+		subTest = tu.checkEq( meltPact.Locked, "false",                       subTest, "PAct locked" );
+	    }
 	}
     }
     return await tu.settle( subTest, testStatus, checkUnclaimedIssue, authData, ghLinks, td, issueData, testStatus );
@@ -236,8 +239,8 @@ async function testStepByStep( authData, ghLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "C" ); }
 
     // 4. add assignee
-    await tu.addAssignee( authData, td, meltData[1], ASSIGNEE1 );
-    await tu.addAssignee( authData, td, meltData[1], ASSIGNEE2 );
+    await tu.addAssignee( authData, td, meltData, ASSIGNEE1 );
+    await tu.addAssignee( authData, td, meltData, ASSIGNEE2 );
     await utils.sleep( 1000 );
     testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1, ASSIGNEE2], meltData, testStatus );
     testStatus = await tu.checkPact( authData, ghLinks, td, ISS_FLOW, config.PACTVERB_CONF, config.PACTACT_CHAN, "add assignee", testStatus );
@@ -252,7 +255,7 @@ async function testStepByStep( authData, ghLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "E" ); }
 
     // 6. close
-    await tu.closeIssue( authData, td, meltData[1] );
+    await tu.closeIssue( authData, td, meltData );
     await utils.sleep( 1000 );
     testStatus = await checkMove( authData, ghLinks, td, meltData, td.dsPendID, meltCard, testStatus );
 
@@ -290,14 +293,14 @@ async function testEndpoint( authData, ghLinks, td ) {
     let meltCard  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, meltData[0] );
 
     // 4. add assignee
-    await tu.addAssignee( authData, td, meltData[1], ASSIGNEE1 );
-    await tu.addAssignee( authData, td, meltData[1], ASSIGNEE2 );
+    await tu.addAssignee( authData, td, meltData, ASSIGNEE1 );
+    await tu.addAssignee( authData, td, meltData, ASSIGNEE2 );
 
     // 5. move to prog
     await tu.moveCard( authData, meltCard.id, td.dsProgID );
 	
     // 6. close
-    await tu.closeIssue( authData, td, meltData[1] );
+    await tu.closeIssue( authData, td, meltData );
 
     // Here, physically can't get from close issue screen to project screen to move it within a second.
     // which is good, since if GH updates the internal move a hair too slowly, the subsequent move below fails.
@@ -398,8 +401,8 @@ async function testBlast( authData, ghLinks, td ) {
     await utils.sleep( 1500 );
     await tu.remAssignee( authData, td, issDat[1], ASSIGNEE2 );
     await tu.remAssignee( authData, td, issDat[1], ASSIGNEE1 );
-    await tu.remLabel( authData, td, issDat[1], labNP1 );    
-    await tu.remLabel( authData, td, issDat[1], labNP2 );    
+    await tu.remLabel( authData, td, issDat, labNP1 );    
+    await tu.remLabel( authData, td, issDat, labNP2 );    
     
     title  = "Blast 6";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );
