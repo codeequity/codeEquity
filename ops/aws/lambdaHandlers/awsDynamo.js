@@ -26,6 +26,10 @@ const BAD_SEMANTICS = {
 // In order to extract meaningful values, we need to first parse this string
 // into an object. A more robust implementation might inspect the Content-Type
 // header first and use a different parsing strategy based on that value.
+
+// NOTE.  Dynamo scan limit is PRE-FILTER..!  So basically every .scan needs to be paginated, unless the table is
+//        not expected to carry more than 100 items.  
+
 exports.handler = (event, context, callback) => {
 
     console.log( 'awsDynamo Handler start' );
@@ -321,11 +325,11 @@ async function getPersonId( username ) {
         ExpressionAttributeValues: { ":uname": username }
     };
 
-    let personPromise = bsdb.scan( paramsP ).promise();
+    let personPromise = paginatedScan( paramsP );
     return personPromise.then((persons) => {
-	assert(persons.Count == 1 );
-	console.log( "Found PersonId ", persons.Items[0].PersonId );
-	return success( persons.Items[0].PersonId );
+	assert(persons.length == 1 );
+	console.log( "Found PersonId ", persons[0].PersonId );
+	return success( persons[0].PersonId );
     });
 }
 
@@ -337,11 +341,11 @@ async function getCEUID( ghUser ) {
         ExpressionAttributeValues: { ":uname": ghUser }
     };
 
-    let promise = bsdb.scan( params ).promise();
+    let promise = paginatedScan( params );
     return promise.then((gh) => {
-	if( gh.Count == 1 ) {
-	    console.log( "Found ceOwnerId ", gh.Items[0].CEOwnerId );
-	    return success( gh.Items[0].CEOwnerId );
+	if( gh.length == 1 ) {
+	    console.log( "Found ceOwnerId ", gh[0].CEOwnerId );
+	    return success( gh[0].CEOwnerId );
 	}
 	else {
 	    // may not be one yet
@@ -387,9 +391,9 @@ async function checkSetGHPop( repo, setVal ) {
 	params.FilterExpression          = 'GHRepo = :repo';
 	params.ExpressionAttributeValues = { ':repo': repo };
 
-	promise = bsdb.scan( params ).promise();
+	promise = paginatedScan( params );
 	return promise.then((res) => {
-	    if( res && res.Count > 0 ) { return success( res.Items[0].Populated ); }
+	    if( res && res.length > 0 ) { return success( res[0].Populated ); }
 	    else      { return success( false ); }
 	});
     }
@@ -470,11 +474,11 @@ async function getPeqId( issueId, subComp ) {
     params.FilterExpression = 'GHIssueId = :issueId AND contains( GHProjectSub, :subcomp )';
     params.ExpressionAttributeValues = { ":issueId": issueId, ":subcomp": subComp };
 
-    let promise = bsdb.scan( params ).promise();
+    let promise = paginatedScan( params );
     return promise.then((peqs) => {
 	// console.log( "Found peqs ", peqs );
-	if( peqs.Count == 1 ) { return peqs.Items[0].PEQId ; }
-	else                  { return -1; }
+	if( peqs.length == 1 ) { return peqs[0].PEQId ; }
+	else                   { return -1; }
     });
     
 }
@@ -601,7 +605,7 @@ async function getPeqsById( peqIds ) {
 	    FilterExpression: 'PEQId = :peqId',
 	    ExpressionAttributeValues: { ":peqId": peqId }};
 	
-	promises.push( bsdb.scan( params ).promise() );
+	promises.push( paginatedScan( params ) );
     });
 
     // Promises execute in parallel, collect in order
@@ -610,8 +614,8 @@ async function getPeqsById( peqIds ) {
 	    console.log( '...promises done' );
 	    let res = [];
 	    results.forEach( function ( peq ) {
-		assert( peq.Count == 1 );
-		res.push( peq.Items[0] );
+		assert( peq.length == 1 );
+		res.push( peq[0] );
 	    });
 	    
 	    if( res.length > 0 ) { return success( res ); }
