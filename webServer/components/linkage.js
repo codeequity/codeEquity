@@ -148,6 +148,17 @@ class Linkage {
 	return link;
     }
 
+
+    fromJsonLocs( locData ) {
+	this.links = {};
+	console.log( "Creating ghLinks.locs from json data" );
+	for( const [_, clocs] of Object.entries( locData ) ) {
+	    for( const [_, loc] of Object.entries( clocs ) ) {
+		this.addLoc( {}, loc.GHRepo, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId );
+	    }
+	}
+    }
+
     addLoc( authData, repo, projName, projId, colName, colId ) {
 	colId  = colId.toString();
 	projId = projId.toString();

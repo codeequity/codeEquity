@@ -5,6 +5,7 @@ const utils = require( "../utils");
 var config  = require('../config');
 
 var links     = require('../components/linkage.js');
+var circBuff  = require('../components/circBuff.js');
 
 const tu             = require('./testUtils');
 const testSaveDynamo = require( './testSaveDynamo' );

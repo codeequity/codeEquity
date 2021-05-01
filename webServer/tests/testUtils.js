@@ -6,6 +6,8 @@ var ghUtils = require('../ghUtils');
 var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
+var circBuff  = require('../components/circBuff.js');
+
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
 // Server is fast enough for sub 1s, but GH struggles.
 //const MIN_DELAY = 1200;  
@@ -15,6 +17,8 @@ const GH_DELAY = 400;
 
 var CETestDelayCount = 0;
 const CE_DELAY_MAX = 8;
+
+var CE_Notes = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
 
@@ -146,21 +150,31 @@ function makeTitleReducer( aStr ) {
 }
 
 
-// Don't try using ghLinks.showLocs(). Tester ghLinks is not the same as the server, and we don't want to expose server locs
-async function confirmProject( authData, projId ) {
+// Can't just rely on GH for confirmation.  Notification arrival to CE can be much slower, and in this case we need
+// CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
+async function confirmProject( authData, ghLinks, fullName, projId ) {
+    /*
     let retVal = false;
     await( authData.ic.projects.get( { project_id: projId }))
 	.then( proj => { retVal = true; })
 	.catch( e => { console.log( authData.who, "get project failed.", e ); });
     return retVal;
+    */
+    
+    let locs = await getLocs( authData, ghLinks, { repo: fullName, projId: projId } );
+    return locs != -1; 
 }
 
-async function confirmColumn( authData, colId ) {
+async function confirmColumn( authData, ghLinks, fullName, colId ) {
+    /*
     let retVal = false;
     await( authData.ic.projects.getColumn( { column_id: colId }))
 	.then( proj => { retVal = true; })
 	.catch( e => { console.log( authData.who, "get column failed.", e ); });
     return retVal;
+    */
+    let locs = await getLocs( authData, ghLinks, { repo: fullName, colId: colId } );
+    return locs != -1; 
 }
 
 async function hasRaw( authData, pactId ) {
@@ -244,6 +258,27 @@ async function getLinks( authData, ghLinks, query ) {
     let linkData = await utils.postCE( "testHandler", JSON.stringify( postData ));
     ghLinks.fromJson( linkData );
     return ghLinks.getLinks( authData, query );
+}
+
+async function getLocs( authData, ghLinks, query ) {
+    let postData = {"Endpoint": "Testing", "Request": "getLocs" };
+    let locData = await utils.postCE( "testHandler", JSON.stringify( postData ));
+    ghLinks.fromJsonLocs( locData );
+    return ghLinks.getLocs( authData, query );
+}
+
+async function getNotices() {
+    let postData = {"Endpoint": "Testing", "Request": "getNotices" };
+    return await utils.postCE( "testHandler", JSON.stringify( postData ));
+}
+
+async function findNotice( query ) {
+    let notes = await getNotices();
+    CE_Notes.fromJson( notes );
+    console.log( "NOTICES.  Looking for", query );
+
+    if( Math.random() < .05 ) { console.log(""); CE_Notes.show(); console.log(""); }
+    return CE_Notes.find( query );
 }
 
 // Purge repo's links n locs from ceServer
@@ -386,25 +421,27 @@ async function updateProject( authData, projId, name ) {
     await utils.sleep( MIN_DELAY);
 }
 
-async function makeColumn( authData, projId, name ) {
+async function makeColumn( authData, ghLinks, fullName, projId, name ) {
     // First, wait for projId, can lag
-    await settleWithVal( "make col", confirmProject, authData, projId );
+    await settleWithVal( "make col", confirmProject, authData, ghLinks, fullName, projId );
     
     let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
 	.then((column) => { return column.data.id; })
 	.catch( e => { console.log( authData.who, "Create column failed.", e ); });
 
     console.log( "MakeColumn:", name, cid );
-    await utils.sleep( GH_DELAY );
+    let query = "project_column created " + name + " " + fullName;
+    await settleWithVal( "makeCol", findNotice, query );
+
     return cid;
 }
 
-async function make4xCols( authData, projId ) {
+async function make4xCols( authData, ghLinks, fullName, projId ) {
 
-    let plan = await makeColumn( authData, projId, config.PROJ_COLS[ config.PROJ_PLAN ] );
-    let prog = await makeColumn( authData, projId, config.PROJ_COLS[ config.PROJ_PROG ] );
-    let pend = await makeColumn( authData, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
-    let accr = await makeColumn( authData, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
+    let plan = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PLAN ] );
+    let prog = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PROG ] );
+    let pend = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
+    let accr = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
 	
     await utils.sleep( MIN_DELAY );
     return [prog, plan, pend, accr];
@@ -412,9 +449,9 @@ async function make4xCols( authData, projId ) {
 
 
 // do NOT return card or id here.  card is rebuilt to be driven from issue.
-async function makeAllocCard( authData, colId, title, amount ) {
+async function makeAllocCard( authData, ghLinks, fullName, colId, title, amount ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make alloc card", confirmColumn, authData, colId );
+    await settleWithVal( "make alloc card", confirmColumn, authData, ghLinks, fullName, colId );
 
     let note = title + "\n<allocation, PEQ: " + amount + ">";
     
@@ -426,9 +463,9 @@ async function makeAllocCard( authData, colId, title, amount ) {
     await utils.sleep( MIN_DELAY );
 }
 
-async function makeNewbornCard( authData, colId, title ) {
+async function makeNewbornCard( authData, ghLinks, fullName, colId, title ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make newbie card", confirmColumn, authData, colId );
+    await settleWithVal( "make newbie card", confirmColumn, authData, ghLinks, fullName, colId );
 
     let note = title;
     
@@ -440,11 +477,16 @@ async function makeNewbornCard( authData, colId, title ) {
     return cid;
 }
 
-async function makeProjectCard( authData, colId, issueId ) {
+async function makeProjectCard( authData, ghLinks, fullName, colId, issueId ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make Proj card", confirmColumn, authData, colId );
+    await settleWithVal( "make Proj card", confirmColumn, authData, ghLinks, fullName, colId );
 
     let card = await ghSafe.createProjectCard( authData, colId, issueId );
+
+    let query = "project_card created iss" + card.content_url.split('/').pop() + " " + fullName;
+    await settleWithVal( "makeProjCard", findNotice, query );
+
+    // XXX either leave this in to allow peq data to record, or set additional post condition.
     await utils.sleep( MIN_DELAY );
     return card;
 }
@@ -486,14 +528,15 @@ async function blastIssue( authData, td, title, labels, assignees, specials ) {
 async function addLabel( authData, td, issueNumber, labelName ) {
     await authData.ic.issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
 	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
-    await utils.sleep( MIN_DELAY );
 }	
 
-async function remLabel( authData, td, issueNumber, label ) {
-    console.log( "Removing", label.name, "from issueNum", issueNumber );
-    await authData.ic.issues.removeLabel({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, name: label.name })
+async function remLabel( authData, td, issueData, label ) {
+    console.log( "Removing", label.name, "from issueNum", issueData[1] );
+    await authData.ic.issues.removeLabel({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], name: label.name })
 	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
-    await utils.sleep( MIN_DELAY );
+
+    let query = "issue unlabeled " + issueData[2] + " " + td.GHFullName;
+    await settleWithVal( "unlabel", findNotice, query );
 }
 
 // NOTE - this ignores color... 
@@ -513,13 +556,17 @@ async function delLabel( authData, td, name ) {
     console.log( "Removing label:", name );
     await authData.ic.issues.deleteLabel({ owner: td.GHOwner, repo: td.GHRepo, name: name })
 	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
-    await utils.sleep( MIN_DELAY );
+
+    let query = "label deleted " + name + " " + td.GHFullName;
+    await settleWithVal( "del label", findNotice, query );
 }
 
-async function addAssignee( authData, td, issueNumber, assignee ) {
-    await authData.ic.issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
+async function addAssignee( authData, td, issueData, assignee ) {
+    await authData.ic.issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], assignees: [assignee] })
 	.catch( e => { console.log( authData.who, "Add assignee failed.", e ); });
-    await utils.sleep( MIN_DELAY );
+
+    let query = "issue assigned " + issueData[2] + " " + td.GHFullName;
+    await settleWithVal( "assign issue", findNotice, query );
 }
 
 async function remAssignee( authData, td, issueNumber, assignee ) {
@@ -540,10 +587,12 @@ async function remCard( authData, cardId ) {
     await utils.sleep( MIN_DELAY );
 }
 
-async function closeIssue( authData, td, issueNumber ) {
-    await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "closed" })
+async function closeIssue( authData, td, issueData ) {
+    await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], state: "closed" })
 	.catch( e => { console.log( authData.who, "Close issue failed.", e );	});
-    await utils.sleep( MIN_DELAY );
+
+    let query = "issue closed " + issueData[2] + " " + td.GHFullName;
+    await settleWithVal( "closeIssue", findNotice, query );
 }
 
 async function reopenIssue( authData, td, issueNumber ) {
@@ -635,9 +684,10 @@ function mergeTests( t1, t2 ) {
 }
 
 async function delayTimer() {
-    // Settle for up to 30s (Total) before failing.
+    // Settle for up to 30s (Total) before failing.  First few are quick.
     console.log( "XXX GH Settle Time", CETestDelayCount );
-    await utils.sleep( 3000 + CETestDelayCount * 1000 );
+    let waitVal = CETestDelayCount < 3 ? (CETestDelayCount+1) * 500 : 3000 + CETestDelayCount * 1000;
+    await utils.sleep( waitVal );
     CETestDelayCount++;
     return CETestDelayCount < CE_DELAY_MAX;
 }
@@ -865,9 +915,12 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     if( assignCnt ) { subTest = checkEq( issue.assignees.length, assignCnt, subTest, "Assignee count" ); }
     
     const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
-    const lval  = labelVal ? labelVal                     : 1000;
-    subTest = checkEq( issue.labels[0].name, lname,           subTest, "Issue label name" );
+    const lval  = labelVal ? labelVal : 1000;
+    subTest = checkEq( typeof issue.labels[0] !== 'undefined', true, subTest, "labels not yet ready" );
 
+    if( typeof issue.labels[0] !== 'undefined' ) {
+	subTest = checkEq( issue.labels[0].name, lname,                  subTest, "Issue label name" );
+    }
     if( issueState ) { subTest = checkEq( issue.state, issueState, subTest, "Issue state" );  }
 
     // XXX Crappy test.  many locs are not related to td.unclaim.  Can be situated and in unclaim.
@@ -884,66 +937,73 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
 
     // Long GH pauses show their fury here, more likely than not.
-    if( typeof mCard[0] === 'undefined' ) { mCard.push( [] ); }
+    subTest = checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
+    subTest = checkEq( typeof card     !== 'undefined', true,     subTest, "Card not yet ready" );
+    if( typeof mCard[0] !== 'undefined' && typeof card !== 'undefined' ) {
     
-    subTest = checkEq( mCard.length, 1,                           subTest, "Card claimed" );
-    subTest = checkEq( mCard[0].id, card.id,                      subTest, "Card claimed" );
+	subTest = checkEq( mCard.length, 1,                           subTest, "Card claimed" );
+	subTest = checkEq( mCard[0].id, card.id,                      subTest, "Card claimed" );
+	
+	// CHECK linkage
+	let links  = await linksP;
+	let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+	subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
+	subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
+	subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
+	subTest = checkEq( link.GHIssueTitle, issueData[2],           subTest, "Linkage Card Title" );
+	subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
+	subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
+	subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
+	
+	// CHECK dynamo Peq
+	let allPeqs = await peqsP;
+	let peqs    = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+	subTest     = checkEq( peqs.length, 1,                          subTest, "Peq count" );
+	let peq     = peqs[0];
+	subTest     = checkEq( typeof peq !== 'undefined', true,        subTest, "peq not ready yet" );
 
-    // CHECK linkage
-    let links  = await linksP;
-    let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
-    subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
-    subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
-    subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
-    subTest = checkEq( link.GHIssueTitle, issueData[2],           subTest, "Linkage Card Title" );
-    subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
-    subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
-    subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
-
-    // CHECK dynamo Peq
-    let allPeqs = await peqsP;
-    let peqs    = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
-    subTest  = checkEq( peqs.length, 1,                          subTest, "Peq count" );
-    let peq = peqs[0];
-
-    assignCnt = assignCnt ? assignCnt : 0;
-    
-    subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
-    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-    subTest = checkEq( peq.GHHolderId.length, assignCnt,        subTest, "peq holders wrong" );      
-    subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );    
-    subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-    subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-    subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
-    subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
-    if( !skipPeqPID ) {
-	subTest = checkEq( peq.GHProjectId, loc.projId,         subTest, "peq project id bad" );
-    }
-
-    // CHECK dynamo Pact
-    let allPacts = await pactsP;
-    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-    subTest   = checkGE( pacts.length, 1,                         subTest, "PAct count" );  
-
-    // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
-    if( pacts.length <= 3 && loc.projSub.length > 1 ) {
-	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
-	if( !pip.includes( loc.projSub[1] )) { 
-	    subTest = checkEq( peq.GHProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
+	if( typeof peq !== 'undefined' ) {
+	    
+	    assignCnt = assignCnt ? assignCnt : 0;
+	
+	    subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
+	    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+	    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+	    subTest = checkEq( peq.GHHolderId.length, assignCnt,        subTest, "peq holders wrong" );      
+	    subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );    
+	    subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
+	    subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
+	    subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
+	    subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
+	    if( !skipPeqPID ) {
+		subTest = checkEq( peq.GHProjectId, loc.projId,         subTest, "peq project id bad" );
+	    }
+	    
+	    // CHECK dynamo Pact
+	    let allPacts = await pactsP;
+	    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+	    subTest   = checkGE( pacts.length, 1,                         subTest, "PAct count" );  
+	    
+	    // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
+	    if( pacts.length <= 3 && loc.projSub.length > 1 ) {
+		const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
+		if( !pip.includes( loc.projSub[1] )) { 
+		    subTest = checkEq( peq.GHProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
+		}
+	    }
+	    
+	    // Could have been many operations on this.
+	    for( const pact of pacts ) {
+		let hr  = await hasRaw( authData, pact.PEQActionId );
+		subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
+		subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+		subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+		
+		if( !muteIngested ) { subTest = checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }
+	    }
 	}
     }
     
-    // Could have been many operations on this.
-    for( const pact of pacts ) {
-	let hr  = await hasRaw( authData, pact.PEQActionId );
-	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
-	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
-
-	if( !muteIngested ) { subTest = checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }
-    }
-
     return await settle( subTest, testStatus, checkSituatedIssue, authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 }
 
@@ -1350,7 +1410,11 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
 	
 	    // Check comment on splitIss
 	    const comments = await getComments( authData, td, splitDat[1] );
-	    subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
+	    subTest = checkEq( typeof comments !== 'undefined',                      true,   subTest, "Comment not yet ready" );
+	    subTest = checkEq( typeof comments[0] !== 'undefined',                   true,   subTest, "Comment not yet ready" );
+	    if( typeof comments !== 'undefined' && typeof comments[0] !== 'undefined' ) {
+		subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
+	    }
 	}
     }
     
@@ -1365,48 +1429,51 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
     let issAssignCnt = typeof specials !== 'undefined' && specials.hasOwnProperty( "issAssignees" )  ? specials.issAssignees  : 1;
     
     console.log( "Check Alloc Split", issDat[2], origLoc.colName, newLoc.colName );
+    let subTest = [ 0, 0, []];
 
     // Get new issue
     let issues   = await getIssues( authData, td );
     let issue    = await findIssue( authData, td, issDat[0] );    
     let splitIss = issues.find( issue => issue.title.includes( issDat[2] + " split" ));
     const splitDat = typeof splitIss == 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
-    assert( splitDat[0] != -1 );
-    
-    // Get cards
-    let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
-    let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
-    let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
 
-    if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
-
-    // Break this in to to avoid nested loop for settle timer
-    if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
-    
-	const card      = await getCard( authData, issLink.GHCardId );
-	const splitCard = await getCard( authData, splitLink.GHCardId );
+    subTest = checkEq( splitDat[0] != -1, true, subTest, "split iss not ready yet" );
+    if( splitDat[0] != -1 ) {
 	
-	let lval = origVal / 2;
-	testStatus = await checkAlloc( authData, ghLinks, td, origLoc, issDat,   card,      testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
-	testStatus = await checkAlloc( authData, ghLinks, td, newLoc,  splitDat, splitCard, testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+	// Get cards
+	let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
+	let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
+	let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
+	
+	if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
+	
+	// Break this in two to avoid nested loop for settle timer
+	if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
+	    
+	    const card      = await getCard( authData, issLink.GHCardId );
+	    const splitCard = await getCard( authData, splitLink.GHCardId );
+	    
+	    let lval = origVal / 2;
+	    testStatus = await checkAlloc( authData, ghLinks, td, origLoc, issDat,   card,      testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+	    testStatus = await checkAlloc( authData, ghLinks, td, newLoc,  splitDat, splitCard, testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+	}
+	
+	if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
+	    subTest = checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
+	    
+	    // check assign
+	    subTest = checkEq( issue.assignees.length, issAssignCnt,    subTest, "Issue assignee count" );
+	    subTest = checkEq( splitIss.assignees.length, issAssignCnt, subTest, "Issue assignee count" );
+	    
+	    // Check comment on splitIss
+	    const comments = await getComments( authData, td, splitDat[1] );
+	    subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
+	}
+	
+	subTest = await checkEq( typeof issLink   !== 'undefined', true, subTest, "issLink trouble" );
+	subTest = await checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
     }
     
-    let subTest = [ 0, 0, []];
-    if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
-	subTest = checkEq( issue.state, splitIss.state,    subTest, "Issues have different state" );
-	
-	// check assign
-	subTest = checkEq( issue.assignees.length, issAssignCnt,    subTest, "Issue assignee count" );
-	subTest = checkEq( splitIss.assignees.length, issAssignCnt, subTest, "Issue assignee count" );
-	
-	// Check comment on splitIss
-	const comments = await getComments( authData, td, splitDat[1] );
-	subTest = checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
-    }
-
-    subTest = await checkEq( typeof issLink   !== 'undefined', true, subTest, "issLink trouble" );
-    subTest = await checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
-
     return await settle( subTest, testStatus, checkAllocSplit, authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials );
 }
 

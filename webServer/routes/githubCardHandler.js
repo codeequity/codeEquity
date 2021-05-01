@@ -54,6 +54,8 @@ async function recordMove( authData, reqBody, fullName, oldCol, newCol, link ) {
     }
     else {
 	console.log( authData.who, "Verb, action combo not understood", oldCol, newCol, peq.PeqType );
+	console.log( reqBody );
+	console.log( link );
 	assert( false );
     }
 
