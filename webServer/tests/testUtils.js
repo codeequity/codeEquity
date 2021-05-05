@@ -593,6 +593,9 @@ async function closeIssue( authData, td, issueData ) {
 
     let query = "issue closed " + issueData[2] + " " + td.GHFullName;
     await settleWithVal( "closeIssue", findNotice, query );
+    // This extra sleep gives CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
+    // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
+    await utils.sleep( GH_DELAY );
 }
 
 async function reopenIssue( authData, td, issueNumber ) {
@@ -910,16 +913,20 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let issue  = await findIssue( authData, td, issueData[0] );
     subTest = checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
     subTest = checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
-    subTest = checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
 
     if( assignCnt ) { subTest = checkEq( issue.assignees.length, assignCnt, subTest, "Assignee count" ); }
     
     const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
     const lval  = labelVal ? labelVal : 1000;
-    subTest = checkEq( typeof issue.labels[0] !== 'undefined', true, subTest, "labels not yet ready" );
 
-    if( typeof issue.labels[0] !== 'undefined' ) {
-	subTest = checkEq( issue.labels[0].name, lname,                  subTest, "Issue label name" );
+    subTest = checkEq( typeof issue.labels !== 'undefined', true, subTest, "labels not yet ready" );
+    
+    if( typeof issue.labels !== 'undefined' ){
+	subTest = checkEq( typeof issue.labels[0] !== 'undefined', true, subTest, "labels not yet ready" );
+	subTest = checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
+	if( typeof issue.labels[0] !== 'undefined' ) {
+	    subTest = checkEq( issue.labels[0].name, lname,           subTest, "Issue label name" );
+	}
     }
     if( issueState ) { subTest = checkEq( issue.state, issueState, subTest, "Issue state" );  }
 

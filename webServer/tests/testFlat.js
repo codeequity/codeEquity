@@ -32,6 +32,8 @@ async function testFlatProject( authData, ghLinks, td ) {
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
     let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let foundFlat = false;
+    if( links == -1 ) { links = []; }
+
     for( const link of links ) {
 	if( link.GHProjectName == FLAT_PROJ    ||
 	    link.GHProjectID   == td.masterPID ||
