@@ -5,24 +5,28 @@ const CE_USER = 'codeEquity';
 const CE_BOT  = 'codeequity[bot]';
 const TESTER_BOT = 'cetester[bot]';
 
-
-// Default path locations
+// CE Server locs
 const APIPATH_CONFIG_LOC  = './public-flutter/assets/files/api_base_path.txt';
 const COGNITO_CONFIG_LOC  = './public-flutter/assets/files/awsconfiguration.json';
 const CESERVER_CONFIG_LOC = '../ops/aws/auth/ceServerConfig.json';
+
+// Default path locations:  CodeEquity app
 const CREDS_PATH          = '../ops/github/auth/ghAppCredentials';
-const PAT_PATH            = '../ops/github/auth/ghPersonalAccessToken';   
+// XXX ceServer pat
 
 const GQL_ENDPOINT        = 'https://api.github.com/graphql';
 const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
 
 // For testing .. needs work
 const CREDS_TPATH       = "../ops/github/auth/ghAppTestCredentials";
-const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT"; 
-const TEST_OWNER        = "rmusick2000";
+
+const PAT_PATH          = "../ops/github/auth/ghAriPAT";
+const TEST_OWNER        = "ariCETester";
 const TEST_REPO         = "CodeEquityTester";
-const CROSS_TEST_OWNER  = "rmusick2000";          
+const CROSS_TEST_OWNER  = "ariCETester";          
 const CROSS_TEST_REPO   = "ceTesterAlt";
+
+const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT"; 
 const MULTI_TEST_OWNER  = "connieCE";
 const MULTI_TEST_REPO   = "CodeEquityTester";
 

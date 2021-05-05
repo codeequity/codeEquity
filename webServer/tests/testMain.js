@@ -27,7 +27,7 @@ async function runTests() {
     let ghLinks = new links.Linkage();
 
     // TEST_REPO auth
-    let td = new testData.TestData();
+    let td          = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
     td.GHRepo       = config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;

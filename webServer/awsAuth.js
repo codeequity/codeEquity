@@ -22,7 +22,6 @@ function asyncAuthenticateUser(cognitoUser, authenticationDetails) {
 async function getCogIDToken() {
     let poolData = utils.getCognito();
     let authData = utils.getCEServer();
-    // let authData = { Username : 'ceServer', Password : 'passWD123' };
 
     let userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
     let userData = { Username: authData.Username, Pool: userPool };

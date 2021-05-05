@@ -43,7 +43,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     let lab   = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, LAB, 704 );
     let labX  = await gh.findOrCreateLabel( authDataX, tdX.GHOwner, tdX.GHRepo, false, LAB, 704 );
 
-    const ASSIGNEE1 = "rmusick2000";
+    const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "codeequity";
         
     const stripeLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
@@ -148,7 +148,7 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
     let labNP1M = await gh.findOrCreateLabel( authDataM, tdM.GHOwner, tdM.GHRepo, false, LABNP1, -1 );
     let labNP2M = await gh.findOrCreateLabel( authDataM, tdM.GHOwner, tdM.GHRepo, false, LABNP2, -1 );
 
-    const ASSIGNEE1 = "rmusick2000";
+    const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "codeequity";
     const ASSIGNEE3 = "connieCE";
         
