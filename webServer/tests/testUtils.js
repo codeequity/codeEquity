@@ -593,6 +593,9 @@ async function closeIssue( authData, td, issueData ) {
 
     let query = "issue closed " + issueData[2] + " " + td.GHFullName;
     await settleWithVal( "closeIssue", findNotice, query );
+    // This extra sleep gives CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
+    // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
+    await utils.sleep( GH_DELAY );
 }
 
 async function reopenIssue( authData, td, issueNumber ) {

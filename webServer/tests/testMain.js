@@ -98,7 +98,7 @@ async function runTests() {
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-
+    
     subTest = await testFlat.runTests( authData, ghLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 5000 );
@@ -108,7 +108,7 @@ async function runTests() {
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-
+    
     subTest = await testCross.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );

@@ -59,51 +59,54 @@ async function checkUnclaimedIssue( authData, ghLinks, td, issueData, testStatus
     
     // CHECK github location
     let cards = await tu.getCards( authData, td.unclaimCID );   // everything here has an issue
-    let meltCard = ( cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() ))[0];
-    subTest = tu.checkEq( meltCard.column_url.split('/').pop(), td.unclaimCID,     subTest, "Card location" );
-    
-    // CHECK dynamo linkage
-    let links    = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName });
-    let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
-    subTest = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
-    subTest = tu.checkEq( meltLink.GHCardId, meltCard.id,               subTest, "Linkage Card Id" );
-    subTest = tu.checkEq( meltLink.GHColumnName, config.UNCLAIMED,      subTest, "Linkage Col name" );
-    subTest = tu.checkEq( meltLink.GHIssueTitle, ISS_FLOW,               subTest, "Linkage Card Title" );
-    subTest = tu.checkEq( meltLink.GHProjectName, config.UNCLAIMED,     subTest, "Linkage Project Title" );
-    subTest = tu.checkEq( meltLink.GHColumnId, td.unclaimCID,           subTest, "Linkage Col Id" );
-    subTest = tu.checkEq( meltLink.GHProjectId, td.unclaimPID,          subTest, "Linkage project id" );
-
-    // CHECK dynamo Peq
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let meltPeq = ( peqs.filter((peq) => peq.GHIssueId == issueData[0] ))[0];
-    subTest = tu.checkEq( typeof meltPeq !== 'undefined', true,        subTest, "no peq yet" );
-    if( typeof meltPeq !== 'undefined' ) {
-	subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-	subTest = tu.checkEq( meltPeq.GHProjectSub.length, 2,              subTest, "peq project sub invalid" );
-	subTest = tu.checkEq( meltPeq.GHProjectSub[0], config.UNCLAIMED,   subTest, "peq project sub invalid" );
-	subTest = tu.checkEq( meltPeq.GHProjectSub[1], config.UNCLAIMED,   subTest, "peq project sub invalid" );
-	subTest = tu.checkEq( meltPeq.GHProjectId, td.unclaimPID,          subTest, "peq unclaimed PID bad" );
-	subTest = tu.checkEq( meltPeq.GHIssueTitle, ISS_FLOW,              subTest, "peq title is wrong" );
-	subTest = tu.checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
-	subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
-	subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
-	subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-	subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
-
-	// CHECK dynamo Pact
-	let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-	subTest = tu.checkEq( typeof pacts !== 'undefined', true,             subTest, "no pact yet" );
-	if( typeof pacts !== 'undefined' ) {
-	    let meltPact = (pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId ))[0];
-	    subTest = tu.checkEq( typeof meltPact !== 'undefined', true,         subTest, "no pact yet" );
-	    if( typeof meltPact !== 'undefined' ) {
-		let hasRaw = await tu.hasRaw( authData, meltPact.PEQActionId );
-		subTest = tu.checkEq( hasRaw, true,                                   subTest, "PAct Raw match" ); 
-		subTest = tu.checkEq( meltPact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
-		subTest = tu.checkEq( meltPact.Action, config.PACTACT_ADD,            subTest, "PAct Action"); 
-		subTest = tu.checkEq( meltPact.GHUserName, config.TESTER_BOT,         subTest, "PAct user name" ); 
-		subTest = tu.checkEq( meltPact.Ingested, "false",                     subTest, "PAct ingested" );
-		subTest = tu.checkEq( meltPact.Locked, "false",                       subTest, "PAct locked" );
+    subTest = tu.checkEq( typeof cards !== 'undefined', true,        subTest, "cards not yet ready" );
+    if( typeof cards !== 'undefined' ) {
+	let meltCard = ( cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() ))[0];
+	subTest = tu.checkEq( meltCard.column_url.split('/').pop(), td.unclaimCID,     subTest, "Card location" );
+	
+	// CHECK dynamo linkage
+	let links    = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName });
+	let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+	subTest = tu.checkEq( meltLink.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
+	subTest = tu.checkEq( meltLink.GHCardId, meltCard.id,               subTest, "Linkage Card Id" );
+	subTest = tu.checkEq( meltLink.GHColumnName, config.UNCLAIMED,      subTest, "Linkage Col name" );
+	subTest = tu.checkEq( meltLink.GHIssueTitle, ISS_FLOW,               subTest, "Linkage Card Title" );
+	subTest = tu.checkEq( meltLink.GHProjectName, config.UNCLAIMED,     subTest, "Linkage Project Title" );
+	subTest = tu.checkEq( meltLink.GHColumnId, td.unclaimCID,           subTest, "Linkage Col Id" );
+	subTest = tu.checkEq( meltLink.GHProjectId, td.unclaimPID,          subTest, "Linkage project id" );
+	
+	// CHECK dynamo Peq
+	let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+	let meltPeq = ( peqs.filter((peq) => peq.GHIssueId == issueData[0] ))[0];
+	subTest = tu.checkEq( typeof meltPeq !== 'undefined', true,        subTest, "no peq yet" );
+	if( typeof meltPeq !== 'undefined' ) {
+	    subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
+	    subTest = tu.checkEq( meltPeq.GHProjectSub.length, 2,              subTest, "peq project sub invalid" );
+	    subTest = tu.checkEq( meltPeq.GHProjectSub[0], config.UNCLAIMED,   subTest, "peq project sub invalid" );
+	    subTest = tu.checkEq( meltPeq.GHProjectSub[1], config.UNCLAIMED,   subTest, "peq project sub invalid" );
+	    subTest = tu.checkEq( meltPeq.GHProjectId, td.unclaimPID,          subTest, "peq unclaimed PID bad" );
+	    subTest = tu.checkEq( meltPeq.GHIssueTitle, ISS_FLOW,              subTest, "peq title is wrong" );
+	    subTest = tu.checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
+	    subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
+	    subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
+	    subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
+	    subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
+	    
+	    // CHECK dynamo Pact
+	    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	    subTest = tu.checkEq( typeof pacts !== 'undefined', true,             subTest, "no pact yet" );
+	    if( typeof pacts !== 'undefined' ) {
+		let meltPact = (pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId ))[0];
+		subTest = tu.checkEq( typeof meltPact !== 'undefined', true,         subTest, "no pact yet" );
+		if( typeof meltPact !== 'undefined' ) {
+		    let hasRaw = await tu.hasRaw( authData, meltPact.PEQActionId );
+		    subTest = tu.checkEq( hasRaw, true,                                   subTest, "PAct Raw match" ); 
+		    subTest = tu.checkEq( meltPact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
+		    subTest = tu.checkEq( meltPact.Action, config.PACTACT_ADD,            subTest, "PAct Action"); 
+		    subTest = tu.checkEq( meltPact.GHUserName, config.TESTER_BOT,         subTest, "PAct user name" ); 
+		    subTest = tu.checkEq( meltPact.Ingested, "false",                     subTest, "PAct ingested" );
+		    subTest = tu.checkEq( meltPact.Locked, "false",                       subTest, "PAct locked" );
+		}
 	    }
 	}
     }
