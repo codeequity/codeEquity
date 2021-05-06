@@ -1063,18 +1063,17 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     let peq = peqs[0];
     subTest  = checkEq( peqs.length, 1,                          subTest, "Peq count" );
     subTest  = checkEq( typeof peq !== 'undefined', true,        subTest, "Peq count" );
-    if( typeof peq !== 'undefined' ) {
-	subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
-	subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-	subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-	subTest = checkEq( peq.GHHolderId.length, assignees.length, subTest, "peq holders wrong" );      
-	subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
-	subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-	subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-	subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
-	subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
-	subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq project id bad" );
-    }
+    if( typeof peq === 'undefined' ) { return await settle( subTest, testStatus, checkUnclaimedIssue, authData, ghLinks, td, loc, issueData, card, testStatus, specials ); }
+    subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
+    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+    subTest = checkEq( peq.GHHolderId.length, assignees.length, subTest, "peq holders wrong" );      
+    subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
+    subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
+    subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
+    subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
+    subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
+    subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq project id bad" );
 
     for( const assignee of assignees ) {
 	subTest = checkEq( peq.GHHolderId.includes( assignee ), true, subTest, "peq holder bad" );

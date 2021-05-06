@@ -259,6 +259,7 @@ async function errorHandler( source, e, func, ...params ) {
     }
     else {
 	console.log( "Error in errorHandler, unknown status code.", source, e );
+	console.log( arguments[0], arguments[1] );
     }
 }
 

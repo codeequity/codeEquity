@@ -12,7 +12,8 @@ const CESERVER_CONFIG_LOC = '../ops/aws/auth/ceServerConfig.json';
 
 // Default path locations:  CodeEquity app
 const CREDS_PATH          = '../ops/github/auth/ghAppCredentials';
-// XXX ceServer pat
+const SERVER_PAT_PATH     = "../ops/github/auth/ghCodeEquityPAT";
+const SERVER_NOREPO       = "CEServer-Wide";
 
 const GQL_ENDPOINT        = 'https://api.github.com/graphql';
 const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
@@ -20,7 +21,8 @@ const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
 // For testing .. needs work
 const CREDS_TPATH       = "../ops/github/auth/ghAppTestCredentials";
 
-const PAT_PATH          = "../ops/github/auth/ghAriPAT";
+const TEST_PAT_PATH     = "../ops/github/auth/ghAriPAT";
+const CROSS_PAT_PATH    = "../ops/github/auth/ghAriPAT";
 const TEST_OWNER        = "ariCETester";
 const TEST_REPO         = "CodeEquityTester";
 const CROSS_TEST_OWNER  = "ariCETester";          
@@ -136,9 +138,12 @@ exports.CESERVER_CONFIG_LOC = CESERVER_CONFIG_LOC;
 exports.GQL_ENDPOINT     = GQL_ENDPOINT;
 exports.TESTING_ENDPOINT = TESTING_ENDPOINT;
 
-exports.CREDS_PATH  = CREDS_PATH;
-exports.CREDS_TPATH = CREDS_TPATH;
-exports.PAT_PATH    = PAT_PATH
+exports.CREDS_PATH       = CREDS_PATH;
+exports.CREDS_TPATH      = CREDS_TPATH;
+exports.SERVER_PAT_PATH  = SERVER_PAT_PATH
+exports.SERVER_NOREPO    = SERVER_NOREPO
+exports.TEST_PAT_PATH    = TEST_PAT_PATH
+exports.CROSS_PAT_PATH   = CROSS_PAT_PATH
 exports.MULTI_PAT_PATH   = MULTI_PAT_PATH
 exports.TEST_OWNER       = TEST_OWNER;
 exports.TEST_REPO        = TEST_REPO;

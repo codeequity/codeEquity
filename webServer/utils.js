@@ -170,6 +170,18 @@ async function wrappedPostAWS( authData, shortName, postData ) {
 }
 
 
+// Check for stored PAT.  Not available means public repo that uses ceServer PAT
+async function getStoredPAT( authData, owner, repo ) {
+    console.log( authData.who, "Get stored PAT for:", owner, repo );
+
+    let shortName = "GetEntry";
+    let query     = { "GHRepo": owner + "/" + repo };
+    let postData  = { "Endpoint": shortName, "tableName": "CERepoStatus", "query": query };
+
+    let repoStatus = await wrappedPostAWS( authData, shortName, postData );
+    return repoStatus.GHPAT;
+}
+
 async function getPeq( authData, issueId, checkActive ) {
     console.log( authData.who, "Get PEQ from issueId:", issueId );
     let active = true;
@@ -908,6 +920,7 @@ exports.recordPEQ = recordPEQ;
 exports.rebuildPeq = rebuildPeq;
 exports.recordPeqData = recordPeqData;
 exports.removePEQ = removePEQ;
+exports.getStoredPAT = getStoredPAT;
 exports.getPeq = getPeq;
 exports.getPeqFromTitle = getPeqFromTitle;
 exports.checkPopulated = checkPopulated;

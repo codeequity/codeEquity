@@ -62,7 +62,7 @@ async function initGH() {
     authData.pat = -1;                // personal access token for gh
     authData.job = -1;                // currently active job id
 
-    await initAuth( authData, config.TEST_OWNER, config.TEST_REPO  );
+    await initAuth( authData, config.CE_USER, config.SERVER_NOREPO );
     ghLinks.init( authData );  
 }
 
@@ -84,27 +84,39 @@ async function initAuth( authData, owner, repo ) {
 // CE_USER used for app-wide jwt
 // owner, repo needed for octokit installation client.
 // owner needed for personal access token
+
+// If private repo, get key from aws.  If public repo, use ceServer key.  if tester repos, use config keys.
 async function getGHAuths( authData, owner, repo ) {
 
     if( !octokitClients.hasOwnProperty( owner ) ) { octokitClients[owner] = {}; }
-    
+
     if( !octokitClients[owner].hasOwnProperty( repo )) {
 	console.log( authData.who, "get octo", owner, repo );
 	// Wait later
 	octokitClients[owner][repo] = {}
-	octokitClients[owner][repo].auth = auth.getInstallationClient( owner, repo, config.CE_USER );
+	if( repo != config.SERVER_NOREPO ) { octokitClients[owner][repo].auth = auth.getInstallationClient( owner, repo, config.CE_USER ); }
 	octokitClients[owner][repo].last = Date.now();
     }
 
-    if( !githubPATs.hasOwnProperty( owner )) {
-	// Wait later
-	githubPATs[owner] = auth.getPAT( owner );
+
+    if( !githubPATs.hasOwnProperty( owner )) { githubPATs[owner] = {}; }
+
+    // Wait later
+    if( !githubPATs[owner].hasOwnProperty( repo )) {
+	let reservedUsers = [config.CE_USER, config.TEST_OWNER, config.CROSS_TEST_OWNER, config.MULTI_TEST_OWNER];
+	githubPATs[owner][repo] = reservedUsers.includes( owner ) ?  auth.getPAT( owner ) :  utils.getStoredPAT( authData, owner, repo );
     }
     
-    octokitClients[owner][repo].auth = await octokitClients[owner][repo].auth;
-    githubPATs[owner] = await githubPATs[owner];
-    authData.ic  = octokitClients[owner][repo].auth;
-    authData.pat = githubPATs[owner];
+    githubPATs[owner][repo] = await githubPATs[owner][repo];
+    // This is the expected outcome for public repos
+    if( githubPATs[owner][repo] == -1 ) { githubPATs[owner][repo] = await auth.getPAT( config.CE_USER ); }
+    authData.pat = githubPATs[owner][repo];
+
+    if( repo != config.SERVER_NOREPO ) {
+	octokitClients[owner][repo].auth = await octokitClients[owner][repo].auth; 
+	authData.ic  = octokitClients[owner][repo].auth;
+    }
+    else { authData.ic  = -1; }
 
     // Might have gotten older auths above.  Check stamp and refresh as needed.
     await refreshAuths( authData, owner, repo );
@@ -118,9 +130,12 @@ async function refreshAuths( authData, owner, repo ) {
     const stamp = Date.now();
     if( stamp - octokitClients[owner][repo].last > 3500000 ) {
 	console.log( "********  Old octo auth.. refreshing." );
-	octokitClients[owner][repo].auth = await auth.getInstallationClient( owner, repo, config.CE_USER );
+	if( repo != config.SERVER_NOREPO ) {	
+	    octokitClients[owner][repo].auth = await auth.getInstallationClient( owner, repo, config.CE_USER );
+	    authData.ic  = octokitClients[owner][repo].auth;
+	}
+	else { authData.ic  = -1; }
 	octokitClients[owner][repo].last = Date.now();
-	authData.ic  = octokitClients[owner][repo].auth;
 
 	authData.cog = await awsAuth.getCogIDToken();	
     }
