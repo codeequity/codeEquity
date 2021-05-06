@@ -240,7 +240,8 @@ class Linkage {
 
     getLocs( authData, query ) {
 	// console.log( authData.who, "get Locs", query );
-
+	// this.showLocs();
+	    
 	if( typeof query.repo === 'undefined' ) {
 	    console.log( "Error.  Repo was not defined in Locs query." );
 	    assert( false );
@@ -256,12 +257,13 @@ class Linkage {
 	for( const [_, clocs] of Object.entries( this.locs ) ) { 
 	    for( const [_, loc] of Object.entries( clocs ) ) {
 		let match = true;
+
 		match = projId == -1             ? match : match && (loc.GHProjectId   == projId);
 		match = colId == -1              ? match : match && (loc.GHColumnId    == colId);
 		match = repo == config.EMPTY     ? match : match && (loc.GHRepo        == repo);
 		match = projName == config.EMPTY ? match : match && (loc.GHProjectName == projName );
 		match = colName == config.EMPTY  ? match : match && (loc.GHColumnName  == colName );
-		
+
 		if( match ) { locs.push( loc ); }
 	    }
 	}

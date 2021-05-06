@@ -75,7 +75,9 @@ async function getInstallationClient(owner, repo, source) {
 async function getPAT( owner ) {
     let PAT = "";
     let fname = "";
-    if( owner == config.TEST_OWNER )            { fname = config.PAT_PATH; }
+    if(      owner == config.CE_USER )          { fname = config.SERVER_PAT_PATH; }
+    else if( owner == config.TEST_OWNER )       { fname = config.TEST_PAT_PATH; }
+    else if( owner == config.CROSS_TEST_OWNER ) { fname = config.CROSS_PAT_PATH; }
     else if( owner == config.MULTI_TEST_OWNER ) { fname = config.MULTI_PAT_PATH; }
     
     try { PAT = fs.readFileSync(fname, 'utf8'); }

@@ -275,9 +275,8 @@ async function getNotices() {
 async function findNotice( query ) {
     let notes = await getNotices();
     CE_Notes.fromJson( notes );
-    console.log( "NOTICES.  Looking for", query );
-
-    if( Math.random() < .05 ) { console.log(""); CE_Notes.show(); console.log(""); }
+    // console.log( "NOTICES.  Looking for", query );
+    // if( Math.random() < .05 ) { console.log(""); CE_Notes.show(); console.log(""); }
     return CE_Notes.find( query );
 }
 
@@ -423,7 +422,7 @@ async function updateProject( authData, projId, name ) {
 
 async function makeColumn( authData, ghLinks, fullName, projId, name ) {
     // First, wait for projId, can lag
-    await settleWithVal( "make col", confirmProject, authData, ghLinks, fullName, projId );
+    await settleWithVal( "confirmProj", confirmProject, authData, ghLinks, fullName, projId );
     
     let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
 	.then((column) => { return column.data.id; })
@@ -688,7 +687,7 @@ function mergeTests( t1, t2 ) {
 
 async function delayTimer() {
     // Settle for up to 30s (Total) before failing.  First few are quick.
-    console.log( "XXX GH Settle Time", CETestDelayCount );
+    if( CETestDelayCount > 0 ) { console.log( "XXX GH Settle Time", CETestDelayCount ); }
     let waitVal = CETestDelayCount < 3 ? (CETestDelayCount+1) * 500 : 3000 + CETestDelayCount * 1000;
     await utils.sleep( waitVal );
     CETestDelayCount++;
@@ -1064,18 +1063,17 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     let peq = peqs[0];
     subTest  = checkEq( peqs.length, 1,                          subTest, "Peq count" );
     subTest  = checkEq( typeof peq !== 'undefined', true,        subTest, "Peq count" );
-    if( typeof peq !== 'undefined' ) {
-	subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
-	subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-	subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-	subTest = checkEq( peq.GHHolderId.length, assignees.length, subTest, "peq holders wrong" );      
-	subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
-	subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-	subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-	subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
-	subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
-	subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq project id bad" );
-    }
+    if( typeof peq === 'undefined' ) { return await settle( subTest, testStatus, checkUnclaimedIssue, authData, ghLinks, td, loc, issueData, card, testStatus, specials ); }
+    subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
+    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+    subTest = checkEq( peq.GHHolderId.length, assignees.length, subTest, "peq holders wrong" );      
+    subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
+    subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
+    subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
+    subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
+    subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
+    subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq project id bad" );
 
     for( const assignee of assignees ) {
 	subTest = checkEq( peq.GHHolderId.includes( assignee ), true, subTest, "peq holder bad" );
@@ -1634,7 +1632,7 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     subTest = checkEq( issue.assignees.length, assigns.length, subTest, "Issue assignee count" );
     if( issue.assignees.length == assigns.length ) {
 	for( let i = 0; i < assigns.length; i++ ) {
-	    subTest = checkEq( issue.assignees[i].login, assigns[i], subTest, "assignee1" );
+	    subTest = checkEq( assigns.includes( issue.assignees[i].login ), true, subTest, "extra assignee " + issue.assignees[i].login );
 	}
     }
 

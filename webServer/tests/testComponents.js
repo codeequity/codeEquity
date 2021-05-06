@@ -13,7 +13,7 @@ const ISS_LAB   = "LabelTest";
 const ISS_LAB2  = "LabelTest Dubs";
 const ISS_LAB3  = "LabelTest Carded";
 const ISS_LAB4  = "Close Open test";
-const ASSIGNEE1 = "rmusick2000";
+const ASSIGNEE1 = "ariCETester";
 const ASSIGNEE2 = "codeequity";
 
 

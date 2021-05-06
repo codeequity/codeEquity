@@ -437,7 +437,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     console.log( "Test Incremental Resolve" );
     authData.who = "<TEST: Incr Resolve>";
 
-    const ASSIGNEE1 = "rmusick2000";
+    const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "codeequity";
 
     const ISS_MOON = "IR Moons";

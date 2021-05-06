@@ -5,24 +5,30 @@ const CE_USER = 'codeEquity';
 const CE_BOT  = 'codeequity[bot]';
 const TESTER_BOT = 'cetester[bot]';
 
-
-// Default path locations
+// CE Server locs
 const APIPATH_CONFIG_LOC  = './public-flutter/assets/files/api_base_path.txt';
 const COGNITO_CONFIG_LOC  = './public-flutter/assets/files/awsconfiguration.json';
 const CESERVER_CONFIG_LOC = '../ops/aws/auth/ceServerConfig.json';
+
+// Default path locations:  CodeEquity app
 const CREDS_PATH          = '../ops/github/auth/ghAppCredentials';
-const PAT_PATH            = '../ops/github/auth/ghPersonalAccessToken';   
+const SERVER_PAT_PATH     = "../ops/github/auth/ghCodeEquityPAT";
+const SERVER_NOREPO       = "CEServer-Wide";
 
 const GQL_ENDPOINT        = 'https://api.github.com/graphql';
 const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
 
 // For testing .. needs work
 const CREDS_TPATH       = "../ops/github/auth/ghAppTestCredentials";
-const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT"; 
-const TEST_OWNER        = "rmusick2000";
+
+const TEST_PAT_PATH     = "../ops/github/auth/ghAriPAT";
+const CROSS_PAT_PATH    = "../ops/github/auth/ghAriPAT";
+const TEST_OWNER        = "ariCETester";
 const TEST_REPO         = "CodeEquityTester";
-const CROSS_TEST_OWNER  = "rmusick2000";          
+const CROSS_TEST_OWNER  = "ariCETester";          
 const CROSS_TEST_REPO   = "ceTesterAlt";
+
+const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT"; 
 const MULTI_TEST_OWNER  = "connieCE";
 const MULTI_TEST_REPO   = "CodeEquityTester";
 
@@ -132,9 +138,12 @@ exports.CESERVER_CONFIG_LOC = CESERVER_CONFIG_LOC;
 exports.GQL_ENDPOINT     = GQL_ENDPOINT;
 exports.TESTING_ENDPOINT = TESTING_ENDPOINT;
 
-exports.CREDS_PATH  = CREDS_PATH;
-exports.CREDS_TPATH = CREDS_TPATH;
-exports.PAT_PATH    = PAT_PATH
+exports.CREDS_PATH       = CREDS_PATH;
+exports.CREDS_TPATH      = CREDS_TPATH;
+exports.SERVER_PAT_PATH  = SERVER_PAT_PATH
+exports.SERVER_NOREPO    = SERVER_NOREPO
+exports.TEST_PAT_PATH    = TEST_PAT_PATH
+exports.CROSS_PAT_PATH   = CROSS_PAT_PATH
 exports.MULTI_PAT_PATH   = MULTI_PAT_PATH
 exports.TEST_OWNER       = TEST_OWNER;
 exports.TEST_REPO        = TEST_REPO;
