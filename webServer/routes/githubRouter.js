@@ -258,6 +258,11 @@ router.post('/:location?', async function (req, res) {
 	return res.end();
     }
 
+    if( !req.body.hasOwnProperty('repository') ) {
+	console.log( "Notification for Delete repository.  CodeEquity does not require these.  Skipping." );
+	return res.end();
+    }
+    
     let fullName = req.body['repository']['full_name'];
     let repo     = req.body['repository']['name'];
     let owner    = req.body['repository']['owner']['login'];
