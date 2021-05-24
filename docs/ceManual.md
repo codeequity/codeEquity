@@ -1,6 +1,7 @@
-# CodeEquity
+# CodeEquity Manual
 
 **DOC IN PROGRESS...**
+
 
 For the developer.. XXX
 
@@ -16,7 +17,17 @@ XXX
 XXX
 
 # CodeEquity for GitHub
-XXX
+
+CodeEquity works with GitHub through its project board, which is a Kanban-style project management
+tool.  GitHub's project boards are a great way to track the lifecycle of an issue during a project.
+They are quick to learn, and functional enough to easily support small to medium sized projects and
+teams.  GitHub has integrated their project boards with all core elements of it's repository
+management toolkit, and provides a push-based notification system based on REST for external
+application integration.  CodeEquity utilizes this notification system along with GitHub's Octokit
+developer API to build a (functional overlay)
+
+
+
 
 # CodeEquity Architecture
 
@@ -37,7 +48,7 @@ CodeEquity is composed of the following major components:
 * **AWS Backend**.  A serverless backend for CE Server responsible for storing and supplying all data
                 and updates related to provisional equity.
 
-A brief review of each component follows.  Please see the [CodeEquity manual](docs/ceManual.md) for a more in-depth description.
+A brief review of each component follows.  Please see the CodeEquity manual for a more in-depth description.
 
 ## CodeEquity App for GitHub
 
@@ -84,38 +95,4 @@ All communication with the AWS Backend is encoded as JSON REST data.
 ## Developer
 ## Founder
 ## Collaborator
-
-
-# Status 6/30/21
-
-### CodeEquity App for GitHub Status
-
-Done.
-
-### CE Flutter Status
-
-Pre-Alpha.
-
-### CE Server Status
-
-Pre-Beta.
-
-### AWS Backend Status
-
-Beta.
-
-# Contributing
-
-See the [CONTRIBUTING](CONTRIBUTING.md) file for how to contribute.
-
-# License
-
-See the [LICENSE](LICENSE) file for our project's licensing.
-
-Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-
-
-
 
