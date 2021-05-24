@@ -1,31 +1,40 @@
 # CodeEquity
 
-For the developer.. <XXX>
+For the developer.. XXX
 
-For the founder.. <XXX>
+For the founder.. XXX
 
-For the collaborator.. <XXX>
+For the collaborator.. XXX
 
 
 DOC IN PROGRESS...
 
 ### CodeEquity Project
-<XXX>
+XXX
 
 ### Provisional Equity (PEQ)
-<XXX>
+XXX
 
 # CodeEquity for GitHub
-<XXX>
+XXX
 
 # CodeEquity Architecture
 
 CodeEquity is composed of the following major components:
-* CodeEquity GitHub App.  A GitHub app that converts projects in a GitHub repository into CodeEquity projects.
-* CE Flutter.  A multi-platform front end for managing CodeEquity projects.
-* CE Server.  A Node.js Express server that handles requests from the CodeEquity GitHub App and CE
-              Flutter, and manages all related modifications to provisional equity.
-* AWS Backend.  A serverless backend for CE Server responsible for storing and supplying all data
+
+<p float="left">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
+  <img src="docs/backendArch.png" />
+</p>
+
+<br>
+
+
+* **CodeEquity GitHub App**.  A GitHub app that converts projects in a GitHub repository into CodeEquity projects.
+* **CE Flutter**.  A multi-platform front end for managing CodeEquity projects.
+* **CE Server**.  A Node.js Express server that handles requests from the CodeEquity GitHub App and
+                  CE Flutter, and manages all related modifications to provisional equity.  
+* **AWS Backend**.  A serverless backend for CE Server responsible for storing and supplying all data
                 and updates related to provisional equity.
 
 A brief review of each component follows.  Please see the CodeEquity manual for a more in-depth description.
@@ -34,8 +43,8 @@ A brief review of each component follows.  Please see the CodeEquity manual for 
 
 The CodeEquity App for GitHub is (XXX or will be) available in the GitHub Marketplace.  The CodeEquity
 App connects a user's GitHub repository to CE Server, by means of the GitHub notification system.
-Once installed, any [project]
-(https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards)
+Once installed, any 
+[project](https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards)
 in that repository can be transformed into a CodeEquity project.
 
 The CodeEquity App is actually just a cohesive set of notification requests and permissions that allow
@@ -65,7 +74,7 @@ specifications.
 
 Requests from CE Server and CE Flutter are signed with JWT tokens secured from AWS Cognito running
 with a user pool.  Signed requests are sent to AWS Lambda functions via AWS Gateway.
-[awsDynamo](ops/aws/lambdaHandlers/awsDynamojs) contains the key lambda handlers for the backend.
+[awsDynamo](ops/aws/lambdaHandlers/awsDynamo.js) contains the key lambda handlers for the backend.
 Their primary function is saving and retrieving data from a collection of AWS DynamoDB tables.
 
 All communication with the AWS Backend is encoded as JSON REST data.
@@ -110,12 +119,3 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 
 
-
-# TODO
-* CE app makes project, or repo  codeEquity project or codeEquity repo
-* Review ceFlutter, ceServer link
-* link CodeEquity Project to definition
-* link GitHub app to github expl
-* normalize caps
-* show dynamo tables?
-* Update CE Server location and instantiation once final home is resolved
