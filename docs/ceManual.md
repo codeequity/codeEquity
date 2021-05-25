@@ -18,14 +18,71 @@ XXX
 
 # CodeEquity for GitHub
 
-CodeEquity works with GitHub through its project board, which is a Kanban-style project management
+CodeEquity works with GitHub through
+(project boards)(https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards),
+which is a Kanban-style project management
 tool.  GitHub's project boards are a great way to track the lifecycle of an issue during a project.
 They are quick to learn, and functional enough to easily support small to medium sized projects and
 teams.  GitHub has integrated their project boards with all core elements of it's repository
 management toolkit, and provides a push-based notification system based on REST for external
 application integration.  CodeEquity utilizes this notification system along with GitHub's Octokit
-developer API to build a (functional overlay)
+developer API to build a wrapper around any Github project board, converting it into a CodeEquity
+Project.
 
+The image below shows a typical GitHub project.  This project is for "LUCI", and is composed of three
+columns and a handful of cards that are linked to issues.  One issue can be linked to multiple cards
+in GitHub.  Cards and issues can exist independently of one another, however, when they are linked,
+all related information is stored with the issue.  GitHub uses labels with issues to help manage the
+attention of the project's collaborators.  For example, common labels deal with feature requests,
+bugs, severity, and so on.  Issues contain a history of comments, can be assigned to collaborators,
+they can be opened, closed, transfered and edited.  A GitHub repository can have any number of
+projects associated with it.
+
+
+<p float="left">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
+  <img src="docs/githubProject.png" width="480" height="320"  />
+</p>
+
+<br>
+
+This next image shows a typical CodeEquity project in GitHub.  There are a handful of key
+differences that can be seen here.
+
+
+<p float="left">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
+  <img src="docs/codeEquityProject.png" width="480" height="320"  />
+</p>
+
+<br>
+
+CodeEquity adds two new types of labels, called PEQ (or Provisional EQuity) labels.  For example,
+the *Close open test* card in the **Accrued** column has the label * **1000 PEQ** *.  This label
+informs CE Server that the *Close Open test* card, or rather the issue linked to it, is valued at
+1000 shares of provisional equity.  In contrast, an AllocPEQ label such as * **200,000 AllocPEQ** *
+indicates that the task described in the related card has been allocated 200,000 PEQs for planning,
+but has not yet been fully tasked out.  There can only be one PEQ label per issue.
+
+CodeEquity projects also have two reserved columns: **Pending PEQ Approval** and **Accrued**.  When
+a card moves to the **Pending PEQ Approval** column, it serves as a signal to CE Server that the
+underlying issue is completely resolved.  When the card enters **Pending PEQ Approval**, it also
+serves as a request to the whomever has approval authority on the project, to confirm that the issue
+has been resolved in a satisfactory way.  The approver confirms by moving the card
+into the **Accrued** column.  The act of moving a card into the
+**Accrued** column is an explicit acknowledgement to the team, and to CodeEquity, that the
+assignee(s) on the issue have just accrued the PEQs related to that issue.  For example, when *IR
+Pending* moves to the **Accrued** column, one thousand PEQs will accrue and be evenly distributed to
+the two assignees on the issue.
+
+The final significant difference between a normal GitHub project, and a CodeEquity project, is that
+CE Server enfoces a one to one mapping from issues to cards in a CodeEquity project.  Otherwise, if
+one issue has multiple cards, there is no clean and simple way to determine how and when the
+associated PEQs should accrue.  CE Server enforces this mapping by force-creating a new issue every
+time a user attempts to add an issue to a second project column.
+
+There are other differences as well, mainly to ensure that a CodeEquity project stays in a valid state.
+These differences are smaller in scope, and are introduced below.
 
 
 
