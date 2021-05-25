@@ -41,7 +41,7 @@ projects associated with it.
 
 <p float="left">
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
-  <img src="docs/githubProject.png" width="480" height="320"  />
+  <img src="githubProject.png" width="480" height="320"  />
 </p>
 
 <br>
@@ -52,7 +52,7 @@ differences that can be seen here.
 
 <p float="left">
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
-  <img src="docs/codeEquityProject.png" width="480" height="320"  />
+  <img src="codeEquityProject.png" width="480" height="320"  />
 </p>
 
 <br>
@@ -92,7 +92,7 @@ CodeEquity is composed of the following major components:
 
 <p float="left">
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
-  <img src="docs/backendArch.png" />
+  <img src="backendArch.png" />
 </p>
 
 <br>
