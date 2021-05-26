@@ -1,29 +1,82 @@
-# CodeEquity Manual
-
+<br>
+**DOC IN PROGRESS...**
+<br>
+**DOC IN PROGRESS...**
+<br>
 **DOC IN PROGRESS...**
 
+# CodeEquity Software Manual
 
-For the developer.. XXX
+CodeEquity is based on a simple, fundamental idea.  In caveman speak: ***If I build something with
+my own resources, it is mine to do with as I please***.  The world we live in today is, happily, a
+more refined and collaborative place.  Translated to today's world: ***If you help build something
+outside the scope of a job and all the benefits a job normally entails, you should at least earn
+fair ownership in that thing***.
 
-For the founder.. XXX
+Traditionally, established companies promise stability and pay employees salaries, provide
+insurance, retirement plans, office space, computing environments, lots of free coffee and more.
+In return those companies own all of the output of every one of their employees.  Startup companies,
+on the other hand, can not offer stability, and often skimp on wages, retirement plans, and so on.
+In return, a startup company will offer small amounts of equity in order to attract skilled
+employees.
 
-For the collaborator.. XXX
+There are newer models for organizing teams to create a products.  GitHub provides a space for the
+primary alternative today in the software development world.  Most new ventures in this space do not
+offer money to compensate skilled contributors.  Nor do they offer office space, insurance,
+retirement plans, or lots of free coffee.  Instead, they offer social recognition and a sense of
+purpose.  These incentives can be powerful, but only up to a point. 
+
+CodeEquity proposes that these new ventures additionally offer up their primary currency,
+***ownership***, as the key incentive to attract skilled contributors.  CodeEquity is both a legal
+framework, and a software framework, that makes this simple idea easy to put into practice, and
+iron-clad should the venture become successful down the road.
+
+The big picture for CodeEquity is about breaking down barriers to technical innovation on a large
+scale.  There are many great ideas out there today that do not need a full traditional company
+layout to be explored.  We've made strong progress in this regard - almost all of the significant
+technical barriers of just a decade or two ago have been resolved, thanks in large part to
+dependable internet, cloud-based compute services, cloud-based distributed code management and
+version control and project management.  Unfortunately, the human barrier is still as daunting as it
+ever has been.  How do you attract several person-years of skilled, dedicated help without the money
+to pay wages?  We believe fully sharing equity is the only answer that has a chance to reshape or
+destroy this last significant barrier to full merit-based technical innovation.
+
+How much more dynamic, inventive and sizeable would the GitHub community be if contributors actually
+owned a part of what they contribute to?
 
 
-### CodeEquity Project
-XXX
+For the *potential contributor* the choice is clear.  All else being equal between two projects of
+equal merit, one of which is a CodeEquity project, and one which is not, why contribute to the
+project that does not share equity?
+
+For the *founders*, the choice is easy as well.  Most new ventures find it hard to attract skilled
+contributors.  Is there a more powerful way to attract them than by offering equity?  Yes, it will
+reduce the equity you can retain personally, but the equity you do retain has a much higher chance
+of being worth something down the road if you can get good help early on.
+
+For the potential contributor to CodeEquity software itself, well, yes, we are a CodeEquity project,
+so consider joining the team!
+
+The remainder of this document focuses on the software infrastructure, exclusively.
 
 ### Provisional Equity (PEQ)
+
+
+Equity is the only currency we have to spend.
+
+Share equity based on objective contributions that all can see.
+
 XXX
 
 # CodeEquity for GitHub
 
 CodeEquity works with GitHub through
-(project boards)(https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards),
+[project boards](https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards),
 which is a Kanban-style project management
-tool.  GitHub's project boards are a great way to track the lifecycle of an issue during a project.
+tool.  GitHub's project boards are a great way to track the lifecycle of all the issues related to a
+project throughout the duration of the project.
 They are quick to learn, and functional enough to easily support small to medium sized projects and
-teams.  GitHub has integrated their project boards with all core elements of it's repository
+teams.  GitHub has integrated their project boards with all core elements of its repository
 management toolkit, and provides a push-based notification system based on REST for external
 application integration.  CodeEquity utilizes this notification system along with GitHub's Octokit
 developer API to build a wrapper around any Github project board, converting it into a CodeEquity
@@ -40,8 +93,7 @@ projects associated with it.
 
 
 <p float="left">
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
-  <img src="githubProject.png" height="320"  />
+  <img src="githubProject.png" height="480"  />
 </p>
 
 <br>
@@ -51,16 +103,15 @@ differences that can be seen here.
 
 
 <p float="left">
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
   <img src="codeEquityProject.png" height="320"  />
 </p>
 
 <br>
 
 CodeEquity adds two new types of labels, called PEQ (or Provisional EQuity) labels.  For example,
-the *Close open test* card in the **Accrued** column has the label * **1000 PEQ** *.  This label
+the *Close open test* card in the **Accrued** column has the label ***1000 PEQ***.  This label
 informs CE Server that the *Close Open test* card, or rather the issue linked to it, is valued at
-1000 shares of provisional equity.  In contrast, an AllocPEQ label such as * **200,000 AllocPEQ** *
+1000 shares of provisional equity.  In contrast, an AllocPEQ label such as ***200,000 AllocPEQ***
 indicates that the task described in the related card has been allocated 200,000 PEQs for planning,
 but has not yet been fully tasked out.  There can only be one PEQ label per issue.
 
@@ -76,13 +127,13 @@ Pending* moves to the **Accrued** column, one thousand PEQs will accrue and be e
 the two assignees on the issue.
 
 The final significant difference between a normal GitHub project, and a CodeEquity project, is that
-CE Server enfoces a one to one mapping from issues to cards in a CodeEquity project.  Otherwise, if
+CE Server enforces a one to one mapping from issues to cards in a CodeEquity project.  Otherwise, if
 one issue has multiple cards, there is no clean and simple way to determine how and when the
-associated PEQs should accrue.  CE Server enforces this mapping by force-creating a new issue every
-time a user attempts to add an issue to a second project column.
+associated PEQs should accrue.  CE Server enforces this mapping by force-duplicating the issue
+every time a user attempts to add an issue to a second project column.
 
 There are other differences as well, mainly to ensure that a CodeEquity project stays in a valid state.
-These differences are smaller in scope, and are introduced below.
+These differences are smaller in scope, and are introduced below.  
 
 
 
@@ -91,7 +142,6 @@ These differences are smaller in scope, and are introduced below.
 CodeEquity is composed of the following major components:
 
 <p float="left">
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp
   <img src="backendArch.png" />
 </p>
 
