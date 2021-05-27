@@ -55,12 +55,84 @@ so consider joining the team!
 The remainder of this document focuses on the software infrastructure, exclusively.
 
 
+## CodeEquity Key Concepts
+
+Equity in a CodeEquity project is earned by making contributions to that project.  In a typical
+company, equity is granted to a person privately on an annual basis based on the subjective
+evaluation of that person's boss.  In contrast, equity in a CodeEquity project can be earned at any point during
+the year.  The equity value of any contribution is known to all, up front, and the accrual of equity
+is both objective and public.
+
+Note that below, several common CodeEquity terms and concepts are introduced, primarily to help make
+the manual concise and understandable.  These introductions are for common reference only.  For
+binding definitions and details, refer to the **CodeEquity Venture Equity Agreement**.
+
+
 ### Provisional Equity (PEQ)
 
+In point of fact, *equity* is not earned in CodeEquity Ventures, but rather *provisional equity* is.
+Equity in a company requires the company to exist a legal entity such as an LLC or a Corporation.  This
+is not a realistic step for most early ventures, since it takes time and money to set up.  
 
-Share equity based on objective contributions that all can see.
+Provisional equity are normal stock options, provisional on the venture being converted into a legal
+business entity.  The CodeEquity promise, secured by the CodeEquity legal framework, is that every
+share of provisional equity owned by a contributor will be converted 1:1 to a stock option in any
+company created from the venture.  Furthermore, any revenue gained by a CodeEquity Venture (for
+example, with the sale of related intellectual property) that is not fed back into the venture will
+be split among contributors according to how many shares of Provisional Equity they have.
 
-XXX
+For binding definitions and details, refer to **Provisional Stock Options** in the **CodeEquity Venture Equity Agreement**.  
+For simplicity of reference throughout CodeEquity, one provisional stock option is denoted as *1 PEQ*,
+or *one share of provisional equity*.
+
+
+### CodeEquity Ventures & Projects
+
+A CodeEquity Venture is analogous to a company.  A CodeEquity Project is analogous to a project, or
+part of a project within a company.
+
+For example, Jessie has a great idea for an app that allows people within a community to browse,
+borrow and loan books with each-other, and has decided to pursue this idea within the CodeEquity
+framework.  Jessie is calling the app "BookShare".  To simplify planning, Jessie is breaking the app
+development into several projects: *BookShare frontend*, *BookShare backend*, and *BookShare
+operations*.  In this example, the CodeEquity Venture is BookShare.  The Venture is made up of three
+CodeEquity Projects: *BookShare frontend*, *BookShare backend*, and *BookShare operations*.
+CodeEquity will track and collate provisional equity across the three projects and report it within
+the umbrella of the Venture: BookShare.
+
+### PEQ Issues
+
+A CodeEquity Project will typically be planned and tracked with a collection of *issues* managed 
+with project management software.  For example, see the GitHub project boards below.  Common issues
+involve planned features, feature requests, and bug reports.
+
+A PEQ issue is any issue that has a PEQ value attached to it.  For example, the BookShare frontend
+project might have an issue: "Add book detail page".  Without an associated PEQ value, this is not a
+PEQ issue.  Once Jessie adds, say, a "1000 PEQ" label to the issue, it becomes a PEQ issue and will
+be subsequently tracked by CodeEquity software.
+
+
+### CodeEquity Software Framework Mandate
+
+All elements of CodeEquity's software exist to aid in tracking and managing the provisional equity
+associated with a CodeEquity Venture.  This responsibility lasts up until when the Venture converts
+to a legal corporate entity and the provision shares are converted to stock options in that new
+entity, at which point the new legal entity takes over.
+
+To support this mandate, CodeEquity software tracks and stores every action that impacts the
+resolution of an issue with attached PEQs.  Likewise, CodeEquity is free to ignore every action that
+has no impact on the resolution of an issue with attached PEQs.  For example, CodeEquity tracks
+operations like adding a PEQ label to an issue, closing a PEQ issue, or changing who is assigned to
+a PEQ issue.  For example, CodeEquity ignores operations like creating an issue that does not have a
+PEQ label, adding a comment to an issue, or changing the name of a project column that does not have
+associated PEQ issues.
+
+Additionally, CodeEquity software ensures that once PEQs have accrued (i.e. provisional equity has
+been earned by a contributor), all characteristics of those PEQs are immutable.  For example, if
+Alex earned 1000 PEQs for implementing a new feature for BookShare, they can not be taken away or
+changed down the road.
+
+
 
 # CodeEquity for GitHub
 
