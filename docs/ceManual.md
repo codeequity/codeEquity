@@ -7,21 +7,17 @@
 
 # CodeEquity Software Manual
 
-CodeEquity is based on a simple, fundamental idea.  In caveman speak: ***If I build something with
-my own resources, it is mine to do with as I please***.  The world we live in today is, happily, a
-more refined and collaborative place.  Translated to today's world: ***If you help build something
-outside the scope of a job and all the benefits a job normally entails, you should at least earn
-fair ownership in that thing***.
+CodeEquity is based on a simple truth: ***If you help create something, you should
+be among those that benefit from it***.
 
-Traditionally, established companies promise stability and pay employees salaries, provide
-insurance, retirement plans, office space, computing environments, lots of free coffee and more.
-In return those companies own all of the output of every one of their employees.  Startup companies,
-on the other hand, can not offer stability, and often skimp on wages, retirement plans, and so on.
-In return, a startup company will offer small amounts of equity in order to attract skilled
-employees.
+Traditional established companies pay employee salaries, promise stability, and provide many perks
+including insurance, retirement plans, office space, computing environments, lots of free coffee and
+more.  In return, those companies own all of the output of every one of their employees.  Startup
+companies are similar, but in place of stability, retirement plans, and often competitive wages,
+they offer small amounts of equity in order to attract skilled employees.
 
-There are newer models for organizing teams to create a products.  GitHub provides a space for the
-primary alternative today in the software development world.  Most new ventures in this space do not
+There are other models for organizing teams to create products.  GitHub provides a space for the
+primary alternative today in the software development world.  Most new ventures in the GitHub space do not
 offer money to compensate skilled contributors.  Nor do they offer office space, insurance,
 retirement plans, or lots of free coffee.  Instead, they offer social recognition and a sense of
 purpose.  These incentives can be powerful, but only up to a point. 
@@ -31,19 +27,18 @@ CodeEquity proposes that these new ventures additionally offer up their primary 
 framework, and a software framework, that makes this simple idea easy to put into practice, and
 iron-clad should the venture become successful down the road.
 
-The big picture for CodeEquity is about breaking down barriers to technical innovation on a large
-scale.  There are many great ideas out there today that do not need a full traditional company
-layout to be explored.  We've made strong progress in this regard - almost all of the significant
-technical barriers of just a decade or two ago have been resolved, thanks in large part to
-dependable internet, cloud-based compute services, cloud-based distributed code management and
-version control and project management.  Unfortunately, the human barrier is still as daunting as it
-ever has been.  How do you attract several person-years of skilled, dedicated help without the money
-to pay wages?  We believe fully sharing equity is the only answer that has a chance to reshape or
-destroy this last significant barrier to full merit-based technical innovation.
+In the big picture, CodeEquity is an attack on the greatest remaining barrier to large scale
+technical innovation: the human factor.  Up until now, the necessary ingredients before a new
+venture can take off are: lots of money; some luck; and a good idea.  The money has been needed for
+all of the trappings of a traditional company, including office space, computing environments and
+wages.  This equation has changed over the last decade, with the advent of dependable internet,
+cloud-based compute services, code and project management.  All that's left is the human factor: How
+do you attract several person-years of skilled, dedicated help without the money to pay wages?  We
+believe fully sharing equity is the only answer that has a chance to reshape or destroy this final
+blocker to full merit-based technical innovation.
 
-How much more dynamic, inventive and sizeable would the GitHub community be if contributors actually
-owned a part of what they contribute to?
-
+How much more dynamic, inventive and sizeable would the GitHub community be if contributors saw the
+potential, however slight, of making a living or better by contributing to a project?
 
 For the *potential contributor* the choice is clear.  All else being equal between two projects of
 equal merit, one of which is a CodeEquity project, and one which is not, why contribute to the
@@ -59,10 +54,9 @@ so consider joining the team!
 
 The remainder of this document focuses on the software infrastructure, exclusively.
 
+
 ### Provisional Equity (PEQ)
 
-
-Equity is the only currency we have to spend.
 
 Share equity based on objective contributions that all can see.
 
