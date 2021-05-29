@@ -291,14 +291,144 @@ the notifications to.  The notifications are JSON REST, see a full example of on
 
 # CE Server
 
-node.js express.  Asynch.
+CE Server is a Node.js Express server.  GitHub sends notifications to CE Server whenever a change is
+made to a CodeEquity Project, as directed by the CodeEquity App for GitHub.  The express
+specification is found in [ceServer.js](ceServer.js), which establishes
+[githubRouter.js](routes/githubRouter.js) as the central dispatcher for CE Server.
+
+The main notification types in GitHub include: `issue`, `project_card`, `project`, `project_column`,
+and `label`.  There are others types, for example `synchronize` or `repository`, but these are
+irrelevant to CodeEquity.  The payloads for each notification type vary (details can be found [here](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#issues), but most carry information like action, repo, issue, timestamp and so on.  A simplified example
+of a `labeled` action for an `issue` notification is shown below.
+
+```
+{ action: 'labeled',
+  issue: 
+   { url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57',
+     repository_url: 'https://api.github.com/repos/codeequity/codeEquity',
+     number: 57,
+     title: 'simple',
+     user: 
+      { login: 'rmusick2000',
+        url: 'https://api.github.com/users/rmusick2000' },
+     labels: [ [Object] ],
+     state: 'open',
+     created_at: '2020-07-12T20:38:39Z',
+     updated_at: '2020-07-12T20:38:39Z' },
+  label: 
+   { url: 'https://api.github.com/repos/codeequity/codeEquity/labels/500%20PEQ',
+     name: '500 PEQ',
+     color: 'ffcc80',
+     default: false,
+     description: 'PEQ value: 500' },
+  repository: 
+   { name: 'codeEquity',
+     owner: 
+      { login: 'codeequity' },
+     html_url: 'https://github.com/codeequity/codeEquity',
+     default_branch: 'master' },
+  sender: 
+   { login: 'rmusick2000' }}
+```
+
+## `githubRouter` Job Dispatch
+At the time of writing, CE Server is singly-threaded with no thread pool or worker threads.
+
+### `ceJobs`
+In a well-behaved world, the handler in `githubRouter` would simply reroute each notification to
+it's specific handler, for example, `githubIssueHandler` receives the notification above.  As is typically the
+case for servers in the wild, however, that doesn't work here.
+
+The most common way in which this fails is when a group of notifications arrives at CE Server in
+close proximity (by time).  By default, each time a new notification arrives, it acts as an
+interrupt, delaying whichever notification was already being handled.  Over time, the currently
+pending operations interleave in the server in unpredictable ways.  This has several impacts,
+including difficult debugging, out of order execution (vs. the originating actions in GitHub)
+becoming the norm, and job starvation.
+
+CE Server handles this with a FIFO (first in first out) queue in `githubRouter` called `ceJobs`.
+Every notification that arrives interrupts `githubRouter` long enough to add the job details to
+`ceJobs`, then processing continues with the first job on the queue.  In this manner, actual server
+operations begin and end with a single notification before starting on the next notification, and
+job starvation is not an issue.  
+
+### Demotion
+The `ceJobs` queue ensures that each notification is treated by CE Server as one atomic unit, in other
+words, no other notification can interfere with it during processing.  The `ceJobs` queue does not address
+out of order operations, however, which can lead to uncommon but pernicious failures due to
+dependency issues.
+
+Many operations in GitHub generate several component notifications.  For example, creating an issue
+can generate an `issue:open` notification, several `issue:assigned` notifications, several
+`issue:labeled` notifications and more.  The notifications are all sent at roughly the same time,
+and can arrive at CE Server out of order.  There is no sequencing or grouping information in the
+notifications, and the timestamps are not dependable (for example, stamps only record to the second,
+and different stamps for the same operation can vary by as much as 10s!).
+
+To handle this, if a sub-handler of `githubRouter` detects a dependency issue, it will direct the
+`githubRouter` to demote the current job by pushing it further down the `ceJobs` queue, so that the job it
+depends on can be handled first.
+
+##### Example
+
+Jessie is creating a new issue in BookShareFE, called *Blast 1*.   Jessie has filled out the issue
+details, including who is assigned to it, and has given the issue a PEQ label.  As soon Jessie
+clicks `Submit new issue` in GitHub, GitHub sends `githubRouter` a slew of notifications.  At some point
+during processing, the `ceJobs` queue looks like this: 
+
+```
+ceJobs, Depth 2 Max depth 11 Count: 236 Demotions: 1
+    jessie BookShareFE yPqzTssMts issue assigned Blast 1 1622310313268 0
+    jessie BookShareFE NRwxaJRGlv issue labeled Blast 1 1622310313440 0
+```
+
+The handler treats assignments differently depending on if the issue is a PEQ issue, or not.  At
+this point in time, we can tell from the information in the notification that *Blast 1* is a PEQ
+issue, but CE Server won't be aware of it until the second item `issue:labeled` in the queue is
+processed. 
+
+The  `issue:assigned` job is popped off `ceJobs`, and sent to the issue handler.  During processing,
+the handler notices that dependencies are incorrect, and requests the job be demoted
+
+```
+<issue: assigned Blast 1>  start yPqzTssMts
+<issue: assigned Blast 1>  assigned jessie to issue 906524064
+<issue: assigned Blast 1>  Get PEQ from issueId: 906524064
+
+Assignment to peq issue, but peq doesn't exist (yet).  Reshuffle.
+<issue: assigned Blast 1>  Delaying this job.
+Demoting yPqzTssMts 1
+```
+
+After the demotion, `ceJobs` shows that the assignment job as been pushed further down on the stack.
+
+```
+ceJobs, after demotion Depth 2 Max depth 11 Count: 236 Demotions: 2
+    jessie BookShareFE NRwxaJRGlv issue labeled Blast 1 1622310313440 0
+    jessie BookShareFE yPqzTssMts issue assigned Blast 1 1622310313477 1
+```
+
+Demotions are based on the arrival timestamp (the big number in the example above) of the
+notification.  Early demotions will drop at least two jobs down, but no more than a few hundred
+milliseconds.  If a job continues being demoted, the minimum time delay grows.  If a job has been demoted more
+than a set number of times (default is 30), the server will drop it with an error, and move on the
+the next job.  The values controlling this operation can be configured in
+[config.js](webServer/config.js).
+
+
+
+### linkages
+
+details handled by config.js
+
 
 ## main router:
-job arrival characteristics.  out of order.  jobq.  demote, delay.  Bots. authorizations .  config
+job arrival characteristics.  out of order.  jobq.  demote, delay.  Bots. authorizations .  config.  Asynch
 
 handlers for different notification classes: a,b,c
 handlers for testing: x,y,z
 
+## bots
 ## issue handler
 ## card handler
 ## project handler

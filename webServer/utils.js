@@ -818,7 +818,7 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
     console.log( "Demoting", jobId, delayCount );
     const newJob   = makeJobData( jobId, event, sender, pd.reqBody, tag, delayCount+1 );
 
-    // This has failed one, during cross repo blast test, when 2 label notifications were sent out
+    // This has failed once, during cross repo blast test, when 2 label notifications were sent out
     // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
     // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
     
