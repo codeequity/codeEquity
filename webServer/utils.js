@@ -420,7 +420,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     // If relocate, must have existing peq
     // Make sure aws has dependent PEQ before proceeding.
     if( specials == "relocate" && newPEQ == -1 ) {
-	newPEQ = settleWithVal( "recordPeqData", getPeq, authData, pd.GHIssueId, false );
+	newPEQ = await settleWithVal( "recordPeqData", getPeq, authData, pd.GHIssueId, false );
 	newPEQId = newPEQ.PEQId; 
     }
     
