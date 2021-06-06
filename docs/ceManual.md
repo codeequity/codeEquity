@@ -270,15 +270,14 @@ to https://github.com/apps/codeEquity.  Installing the app will allow the GitHub
 convert any GitHub project board into a CodeEquity Project, or to start a new CodeEquity Project
 from start.
 
-The CodeEquity App for GitHub should be installed by the GitHub repository owner, only.  This is
-because CE Server needs to use the GitHub GraphQL API for some operations, which can require the
-Personal Access Token of the owner in order to work.  Contributors to a project do not need to
-install this app.
+The CodeEquity App for GitHub should be installed by the GitHub repository owner, only.
+Contributors to a project do not need to install this app. 
 
 To install:
  * browse to https://github.com/apps/codeEquity, click 'install', and accept defaults.
 
-To create a personal access token for CodeEquity,
+If you are installing CodeEquity for a private repository, you will need to provide a personal
+access token.  To create a personal access token for CodeEquity,
  * browe to https://github.com/settings/tokens, click "create a new token.
  * add a note, like "for CodeEquity" at the top
  * set the scope to be "repo  full control of private repositories"
@@ -291,14 +290,267 @@ the notifications to.  The notifications are JSON REST, see a full example of on
 
 # CE Server
 
-node.js express.  Asynch.
+CE Server is a Node.js Express server.  GitHub sends notifications to CE Server whenever a change is
+made to a CodeEquity Project, as directed by the CodeEquity App for GitHub.  The express
+specification is found in [ceServer.js](ceServer.js), which establishes
+[githubRouter.js](routes/githubRouter.js) as the central dispatcher for CE Server.
 
-## main router:
-job arrival characteristics.  out of order.  jobq.  demote, delay.  Bots. authorizations .  config
+The main notification types in GitHub include: `issue`, `project_card`, `project`, `project_column`,
+and `label`.  There are others types, for example `synchronize` or `repository`, but these are
+irrelevant to CodeEquity.  The payloads for each notification type vary (details can be found [here](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#issues), but most carry information like action, repo, issue, timestamp and so on.  A simplified example
+of a `labeled` action for an `issue` notification is shown below.
+
+```
+{ action: 'labeled',
+  issue: 
+   { url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57',
+     repository_url: 'https://api.github.com/repos/codeequity/codeEquity',
+     number: 57,
+     title: 'simple',
+     user: 
+      { login: 'rmusick2000',
+        url: 'https://api.github.com/users/rmusick2000' },
+     labels: [ [Object] ],
+     state: 'open',
+     created_at: '2020-07-12T20:38:39Z',
+     updated_at: '2020-07-12T20:38:39Z' },
+  label: 
+   { url: 'https://api.github.com/repos/codeequity/codeEquity/labels/500%20PEQ',
+     name: '500 PEQ',
+     color: 'ffcc80',
+     default: false,
+     description: 'PEQ value: 500' },
+  repository: 
+   { name: 'codeEquity',
+     owner: 
+      { login: 'codeequity' },
+     html_url: 'https://github.com/codeequity/codeEquity',
+     default_branch: 'master' },
+  sender: 
+   { login: 'rmusick2000' }}
+```
+
+## `githubRouter` Job Dispatch
+At the time of writing, CE Server is singly-threaded with no thread pool or worker threads.
+
+### `ceJobs`
+In a well-behaved world, the handler in `githubRouter` would simply reroute each notification to
+it's specific handler, for example, `githubIssueHandler` for the notification above.  As is typically the
+case for servers in the wild, however, that doesn't work here.
+
+The most common way in which this fails is when a group of notifications arrive at CE Server in
+close proximity (by time).  By default, each time a new notification arrives, it acts as an
+interrupt, delaying whichever notification was already being handled.  Over time, the currently
+pending operations interleave in the server in unpredictable ways.  This has several impacts,
+including difficult debugging, out of order execution (vs. the originating actions in GitHub)
+becoming the norm, and job starvation.
+
+CE Server handles this with a FIFO (first in first out) queue in `githubRouter` called `ceJobs`.
+Every notification that arrives interrupts `githubRouter` long enough to add the job details to
+`ceJobs`, then processing continues with the first job on the queue.  In this manner, actual server
+operations begin and end with a single notification before starting on the next notification, and
+job starvation is not an issue.  
+
+### Demotion
+The `ceJobs` queue ensures that each notification is treated by CE Server as one atomic unit, in other
+words, no other notification can interfere with it during processing.  The `ceJobs` queue does not address
+out of order operations, however, which can lead to uncommon but pernicious failures due to
+dependency issues.
+
+Many operations in GitHub generate several component notifications.  For example, creating an issue
+can generate an `issue:open` notification, several `issue:assigned` notifications, several
+`issue:labeled` notifications and more.  The notifications are all sent at roughly the same time,
+and can arrive at CE Server out of order.  There is no sequencing or grouping information in the
+notifications, and the timestamps are not dependable (for example, stamps only record to the second,
+and different stamps for the same operation can vary by as much as 10s!).
+
+To manage this, if a sub-handler of `githubRouter` detects a dependency issue, it will direct the
+`githubRouter` to demote the current job by pushing it further down the `ceJobs` queue, so that the job it
+depends on can be handled first.
+
+##### Example
+
+Jessie is creating a new issue in BookShareFE, called *Blast 1*.   Jessie has filled out the issue
+details, including who is assigned to it, and has given the issue a PEQ label.  As soon Jessie
+clicks `Submit new issue` in GitHub, GitHub sends `githubRouter` a slew of notifications.  At some point
+during processing, the `ceJobs` queue looks like this: 
+
+```
+ceJobs, Depth 2 Max depth 11 Count: 236 Demotions: 1
+    jessie BookShareFE yPqzTssMts issue assigned Blast 1 1622310313268 0
+    jessie BookShareFE NRwxaJRGlv issue labeled Blast 1 1622310313440 0
+```
+
+The handler treats assignments differently depending on if the issue is a PEQ issue, or not.  At
+this point in time, we can tell from the information in the notification that *Blast 1* is a PEQ
+issue, but CE Server won't have pushed this information up to the AWS backend until the second item
+`issue:labeled` in the queue is processed.
+
+The  `issue:assigned` job is popped off `ceJobs`, and sent to the issue handler.  During processing,
+the handler notices that dependencies are incorrect, and requests the job be demoted
+
+```
+<issue: assigned Blast 1>  start yPqzTssMts
+<issue: assigned Blast 1>  assigned jessie to issue 906524064
+<issue: assigned Blast 1>  Get PEQ from issueId: 906524064
+
+Assignment to peq issue, but peq doesn't exist (yet).  Reshuffle.
+<issue: assigned Blast 1>  Delaying this job.
+Demoting yPqzTssMts 1
+```
+
+After the demotion, `ceJobs` shows that the assignment job as been pushed further down on the stack.
+
+```
+ceJobs, after demotion Depth 2 Max depth 11 Count: 236 Demotions: 2
+    jessie BookShareFE NRwxaJRGlv issue labeled Blast 1 1622310313440 0
+    jessie BookShareFE yPqzTssMts issue assigned Blast 1 1622310313477 1
+```
+
+Demotions are based on the arrival timestamp (the big number in the example above) of the
+notification.  Early demotions will drop at least two jobs down, but no more than a few hundred
+milliseconds.  If a job continues being demoted, the minimum time delay grows.  If a job has been demoted more
+than a set number of times (default is 30), the server will drop it with an error, and move on the
+the next job.  The values controlling this operation can be configured in
+[config.js](webServer/config.js).
+
+
+### Linkages
+
+CE Server's sub-handlers interact with GitHub via Octokit, and with the AWS Backend.  These APIs
+frequently require information related to the operation at hand that can not be found in the
+notification.  For example, closing a PEQ issue in GitHub will cause CE Server to move that issue
+into the **Pending PEQ Approval** column.  The move requires the project ID and column ID of the
+target column, neither of which are to be found in the `issue:closed` notification.  
+
+Requesting this information on the fly from GitHub more than doubles the request volume and the
+subsequent await times, leading to a noticeable lag for the GitHub user.  To avoid this, CE Server
+tracks two pieces of state.  The first is the `ghLink` table shown below, which gathers the most
+frequently required names and ids surrounding an issue.
+
+```
+IssueId IssueNum CardId  Title                               ColId      ColName              ProjId     ProjName        SourceCol 
+906523785 559 62095884   Github Operations                   14524013   Software Contributio 12566158   Master          14524013  
+906523791 560 62095889   Unallocated                         14524013   Software Contributio 12566158   Master          14524013  
+906523793 561 62095893   Unallocated                         14524014   Business Operations  12566158   Master          14524014  
+906523901 562 62095914   Snow melt                           14524020   Accrued              12566159   Data Security   -1        
+906524003 563 62095929   Ice skating                         14524020   Accrued              12566159   Data Security   -1        
+```
+
+The second is a `ghLocs` table shown below, which tracks the ids and names of the projects and
+columns in each CodeEquity Project.  
+```
+Repo                 ProjId     ProjName        ColId      ColName             
+ariCETester/CodeEqui 12566158   Master          14524013   Software Contributio
+ariCETester/CodeEqui 12566158   Master          14524014   Business Operations 
+ariCETester/CodeEqui 12566158   Master          14524015   Unallocated         
+ariCETester/CodeEqui 12566159   Data Security   14524016   Planned             
+ariCETester/CodeEqui 12566159   Data Security   14524017   In Progress         
+ariCETester/CodeEqui 12566159   Data Security   14524019   Pending PEQ Approval
+ariCETester/CodeEqui 12566159   Data Security   14524020   Accrued             
+```
+
+CE Server keeps `ghLinks` and `ghLocs` up to date with every operation on projects and columns in
+GitHub, and regenerates the state from scratch should the server be restarted.  Together, this state
+information is responsible for significant speedups for user operations on GitHub.
+
+### Authorizations
+
+CE Server uses several APIs to communicate with GitHub and the AWS Backend:
+* The [Octokit REST API](https://octokit.github.io/rest.js) for GitHub
+* The [Octokit GraphQL API](https://docs.github.com/en/graphql/reference) for GitHub
+* An [AWS Lambda Gateway](https://docs.aws.amazon.com/lambda/index.html) for CodeEquity's AWS Backend
+
+Each of these requires a different form of authorization.
+
+##### CodeEquity App for Github credentials  (enabled upon app install)
+
+When the CodeEquity App for GitHub was built, a set of private key credentials were created and
+associated with the app identifier.  Every you install the CodeEquity App for GitHub for a new repo,
+GitHub internally authorizes the app (via the private key credentials) to interact with the repo.
+
+These credentials are stored in `ops/github/auth` Additionally, CE Flutter will on occasion
+communicate directly with GitHub through Octokit.  To make this feasible, the app credentials are
+also copied into the CE Flutter space as part of the flutter build step.
+
+Note that CodeEquity has a separate testing app for GitHub, called "ceTester", described in the
+**Testing** Section below.  ceTester generates GitHub activity under a separate testing account
+through the GitHub Octokit API, and so requires it's own set of app credentials.  These are stored
+as siblings to the credentials for the main CodeEquity App for GitHub.
+
+##### Installation client for Octokit (refreshed hourly by CE Server)
+
+GitHub's Octokit REST API requires an installation access token for all requests on a GitHub
+repo.  CE Server acquires this token by using the private key credentials of the app making the
+request, in other words, the CodeEquity App for GitHub credentials described above.
+
+In slightly more detail, the server first gets a signed JSON web token (JWT) from Octokit that is
+specific to the CodeEquity App for GitHub, then uses that to get an installation-specific token
+which is used to sign all subsequent requests to the REST API from the app, for the
+repo-specific installation.
+
+At the time of writing, the installation token expires after an hour or so.  `githubRouter` tracks
+the age of each token for every known owner and repo, and will refresh the token when the next
+notification arrives that requires communication with GitHub.
+
+The installation token is not stored in the system.
+
+##### Personal Access Token for GitHub (supplied by repo owner in CE Flutter)
+
+The REST API is useful up to a point for a GitHub app, but comes with some serious limitations.  For
+example, you can not delete an issue by using the REST API, which is critical for automated testing.
+For example, cards in a GitHub project point to issues, so it is very easy to find an issue given a
+card.  However, there are no reverse pointers.. if you only have an issue ID, you would need to ask
+GitHub for all projects for the repo, then all columns per project, all cards per column, then
+search all those cards for the desired issue.  This clearly does not scale.
+
+GitHub's Octokit also provides a GraphQL API, which allows an app to traverse the object hierarchy
+internal to GitHub within the context of a single query to the system.  In the example above,
+finding a card from an issue is a single, simple GraphQL query, in contrast to the hundreds of
+queries the REST API might require.  The GraphQL API is fast and scalable, but does require access
+to a usable personal access token. 
+
+CodeEquity's personal access token is stored along with other server authorization data in
+`ops/github/auth`.  CE Server will use this token by default for all server-related GitHub GraphQL
+requests.  *This token works for all public repositories the have installed the CodeEquity App for
+GitHub.*
+
+If you want to create a CodeEquity project in a *private* repository, then you will need to supply your
+personal access token to CE Server via CE Flutter (instructions will follow).  Private repositories
+restrict access to outsiders, so CodeEquity's personal access token will not be authorized to
+operate on your repo.  Your personal access token will be stored on the AWS Backend, and only used
+for CodeEquity-related operations.  If you want to avoid this, consider making your repo public, or
+alternatively, transfer repo ownership to a different GitHub account from which sharing the personal
+access token with CodeEquity would be more acceptable.
+
+Note that CE Server testing is carried out with two other testing accounts, to allow for a full
+collection of cross-repo and multi-user tests.  These accounts also store their personal access
+tokens in `ops/github/auth` as siblings to CodeEquity's token.
+
+##### Cognito ID token for AWS (enabled upon app install)
+
+CE Server communicates to the AWS Backend through CodeEquity's AWS Lambda Gateway.  Authorization
+for this communication is done using AWS Cognito, with a user pool.  CE Server has a built-in
+Cognito account that it uses for all communication to the backend.  The credentials for this account
+are stored in `ops/aws/auth`.
+
+The Cognito ID token expires roughly every hour.  In the manner as with the installation token
+above, `githubRouter` tracks the age of each token for CE Server, and will refresh
+the token when the next notification arrives that requires communication with AWS.
+
+
+### Notification Filtering
+bots
+
+### Sub-Handlers 
+
+### Testing
+
 
 handlers for different notification classes: a,b,c
 handlers for testing: x,y,z
 
+## bots
 ## issue handler
 ## card handler
 ## project handler

@@ -15,8 +15,8 @@ const MIN_DELAY = 1800;
 //const MIN_DELAY = 2500;     
 const GH_DELAY = 400;
 
-var CETestDelayCount = 0;
-const CE_DELAY_MAX = 8;
+var CETestDelayCounts = {};
+const CE_DELAY_MAX    = 8;
 
 var CE_Notes = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
 
@@ -685,37 +685,42 @@ function mergeTests( t1, t2 ) {
     return [t1[0] + t2[0], t1[1] + t2[1], t1[2].concat( t2[2] ) ];
 }
 
-async function delayTimer() {
+async function delayTimer( fname ) {
     // Settle for up to 30s (Total) before failing.  First few are quick.
-    if( CETestDelayCount > 0 ) { console.log( "XXX GH Settle Time", CETestDelayCount ); }
-    let waitVal = CETestDelayCount < 3 ? (CETestDelayCount+1) * 500 : 3000 + CETestDelayCount * 1000;
+    if( CETestDelayCounts[fname] > 0 ) { console.log( "XXX GH Settle Time", CETestDelayCounts[fname] ); }
+    let waitVal = CETestDelayCounts[fname] < 3 ? (CETestDelayCounts[fname]+1) * 500 : 3000 + CETestDelayCounts[fname] * 1000;
     await utils.sleep( waitVal );
-    CETestDelayCount++;
-    return CETestDelayCount < CE_DELAY_MAX;
+    CETestDelayCounts[fname]++;
+    return CETestDelayCounts[fname] < CE_DELAY_MAX;
 }
 
 // Let GH and/or ceServer settle , try again
 async function settle( subTest, testStatus, func, ...params ) {
-    if( subTest[1] > 0 && CETestDelayCount < CE_DELAY_MAX) {
+    if( !CETestDelayCounts.hasOwnProperty(func.name) ) { CETestDelayCounts[func.name] = 0; }
+	
+    if( subTest[1] > 0 && CETestDelayCounts[func.name] < CE_DELAY_MAX) {
 	testReport( subTest, "Settle waiting.." );
-	await delayTimer();
+	await delayTimer( func.name );
 	return await func( ...params );
     }
-    else { CETestDelayCount = 0; }
+    else { CETestDelayCounts[func.name] = 0; }
     testStatus = mergeTests( testStatus, subTest );
     return testStatus;
 }
 
 async function settleWithVal( fname, func, ...params ) {
 
+    if( !CETestDelayCounts.hasOwnProperty(func.name) ) { CETestDelayCounts[func.name] = 0; }
+
     let retVal = await func( ...params );
-    // console.log( "swt", retVal, CETestDelayCount );
-    while( (typeof retVal === 'undefined' || retVal == false ) && CETestDelayCount < CE_DELAY_MAX) {
+    while( (typeof retVal === 'undefined' || retVal == false ) && CETestDelayCounts[func.name] < CE_DELAY_MAX) {
 	console.log( "SettleVal waiting.. ", fname );
-	await delayTimer();
+	await delayTimer( func.name );
 	retVal = await func( ...params );
+
+	if( CETestDelayCounts[func.name] > 2 ) { console.log( ...params ); }
     }
-    CETestDelayCount = 0;
+    CETestDelayCounts[func.name] = 0;
     return retVal;
 }
 
@@ -1110,6 +1115,7 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, car
 
     if( typeof specials === 'undefined' ) { specials = {}; }
     if( !specials.state ) { specials.state = "closed"; }
+
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
     let subTest = [ 0, 0, []];
 
@@ -1139,7 +1145,9 @@ async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, car
 
     if( typeof specials === 'undefined' ) { specials = {}; }
     if( !specials.state ) { specials.state = "open"; }
+
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
+
     let subTest = [ 0, 0, []];
 
     console.log( "Check Opened issue", loc.projName, loc.colName );
@@ -1169,6 +1177,7 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 
     if( typeof specials === 'undefined' ) { specials = {}; }
     if( !specials.hasOwnProperty( "state" ) ) { specials.state = "open"; }
+
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check newly situated issue", loc.projName, loc.colName );
@@ -1226,6 +1235,7 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
+
     console.log( "Check newly accrued issue", loc.projName, loc.colName );
     let subTest = [ 0, 0, []];
 
@@ -1257,6 +1267,7 @@ async function checkUnclaimedAccr( authData, ghLinks, td, loc, issueDataOld, iss
     if( source == "card" ) { assert( issueDataOld[0] == issueDataNew[0] ); }
 
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueDataNew, cardNew, testStatus, { "skipPeqPID": skip });
+
     console.log( "Check unclaimed accrued issue", loc.projName, loc.colName, issueDataOld );
     let subTest = [ 0, 0, []];
     

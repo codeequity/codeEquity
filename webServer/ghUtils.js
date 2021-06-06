@@ -229,9 +229,9 @@ async function errorHandler( source, e, func, ...params ) {
 	console.log( source, "Label", arguments[6], "already gone" );  
 	return false;
     }
-    else if( (e.status == 403 || e.status == 404) && ( source == "removePeqLabel" || source == "getLabels" ))
+    else if( (e.status == 403 || e.status == 404) && ( source == "removeLabel" || source == "getLabels" || source == "addComment" ))
     {
-	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels." );
+	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels or add comments." );
 	return false;
     }
     else if( e.status == 401 ||                             // XXX authorization will probably keep failing
