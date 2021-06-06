@@ -173,7 +173,7 @@ async function getNextJob( authData, pdOld, sender, res ) {
 	console.log( authData.who, "jobs done" );
 	ghLinks.show( 5 );
 	ceArrivals.show();
-	ghLinks.showLocs( 10 );
+	//ghLinks.showLocs( 10 );
 	console.log( "\n" );
     }
     return res.end();

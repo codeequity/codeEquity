@@ -401,9 +401,14 @@ async function rebuildPeq( authData, link, oldPeq ) {
     return newPEQId; 
 }
 
+// There is a rare race condition that can cause recordPeqData to fail.
+//   label issue.  calls PNP, but does not await.  (PNP will create PEQ, eventually)
+//   create card.  calls PNP, which calls recordPeqData, which checks for unclaimed:relocate and existence of PEQ.  
+// await in label does not solve it 100%.   Having bad dependent peq recordings in aws may hurt later.
+// Settlewait.. this has show up once in... hundreds of runs of the full test suite?
 // not, dup check could occur in lambda handler, save a round trip
 async function recordPeqData( authData, pd, checkDup, specials ) {
-    console.log( "Recording peq data for", pd.GHIssueTitle );	
+    console.log( authData.who, "Recording peq data for", pd.GHIssueTitle );	
     let newPEQId = -1;
     let newPEQ = -1
     if( checkDup ) { 
@@ -413,8 +418,12 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     }
 
     // If relocate, must have existing peq
-    assert( specials != "relocate" || newPEQ != -1 );
-
+    // Make sure aws has dependent PEQ before proceeding.
+    if( specials == "relocate" && newPEQ == -1 ) {
+	newPEQ = settleWithVal( "recordPeqData", getPeq, authData, pd.GHIssueId, false );
+	newPEQId = newPEQ.PEQId; 
+    }
+    
     let postData = {};
     postData.PEQId        = newPEQId;
     postData.GHHolderId   = specials == "relocate" ? newPEQ.GHHolderId : pd.GHAssignees;           // list of ghUserLogins assigned
@@ -654,8 +663,9 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 
 	    // If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
 	    // Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
+	    // Note: assigments are not relevant for allocations
 	    // If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
-	    if( specials != "relocate" ) {
+	    if( specials != "relocate" && !allocation ) {
 		pd.GHAssignees = await gh.getAssignees( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );
 	    }
 	    
@@ -749,28 +759,21 @@ async function cleanDynamo( authData, tableName, ids ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-/*
-function getTimeDiff( lastEvent, newStamp ) {
-    // lastEvent: {h, m, s}
-    // newstamp: "2020-12-23T20:55:27Z"
-    assert( newStamp.length >= 20 );
-    let h = parseInt( newStamp.substr(11,2) );
-    let m = parseInt( newStamp.substr(14,2) );
-    let s = parseInt( newStamp.substr(17,2) );
+// Use this sparingly, if at all!!
+async function settleWithVal( fname, func, ...params ) {
+    let delayCount = 1;
+    console.log( "Error.", fname, delayCount, "Should this happen with any frequency, increase the instance stats, and add a thread pool." );
 
-    let newTime = h * 3600 + m * 60 + s;
-    let oldTime = lastEvent.h * 3600 + lastEvent.m * 60 + lastEvent.s;
-    let tdiff = newTime - oldTime;
-
-    if( tdiff < 0 ) { console.log( "Old event:", lastEvent, "New timestamp", h, m, s ); }
-
-    lastEvent.h = h;
-    lastEvent.m = m;
-    lastEvent.s = s;
-
-    return tdiff;
+    let retVal = await func( ...params );
+    while( (typeof retVal === 'undefined' || retVal == -1 ) && delayCount < config.MAX_DELAYS) {
+	console.log( "Error.", fname, delayCount, "Should this happen with any frequency, increase the instance stats, and add a thread pool." );
+	await sleep( config.STEP_COST );
+	retVal = await func( ...params );
+	delayCount++;
+    }
+    return retVal;
 }
-*/
+
 
 function makeStamp( newStamp ) {
     // newstamp: "2020-12-23T20:55:27Z"

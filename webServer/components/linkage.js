@@ -104,7 +104,7 @@ class Linkage {
 	await Promise.all( promises );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
 	this.show();
-	this.showLocs();
+	//this.showLocs();
     }
 
     fromJson( linkData ) {
