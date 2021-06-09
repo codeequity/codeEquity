@@ -7,8 +7,17 @@ var assert = require('assert');
 // NOTE, as of 5/20 dynamo supports empty strings.  yay.  Save this for sets & etc.
 const EMPTY = "---EMPTY---";  
 
+const SPIN_DELAY = 200; // spin wait on fine-grained lock conflict
+const MAX_SPIN   = 20;  // how many times will we retry
+
 const NO_CONTENT = {
 		statusCode: 204,
+		body: JSON.stringify( "---" ),
+		headers: { 'Access-Control-Allow-Origin': '*' }
+	    };
+
+const LOCKED = {
+		statusCode: 423,
 		body: JSON.stringify( "---" ),
 		headers: { 'Access-Control-Allow-Origin': '*' }
 	    };
@@ -47,7 +56,7 @@ exports.handler = (event, context, callback) => {
     var endPoint = rb.Endpoint;
     var resultPromise;
 
-    console.log( "User:", username, "Endpoint:", endPoint );
+    // console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
     else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
     else if( endPoint == "RemoveEntries")  { resultPromise = removeEntries( rb.tableName, rb.ids ); }
@@ -83,6 +92,10 @@ exports.handler = (event, context, callback) => {
 };
 
 
+function sleep(ms) {
+    console.log( "Sleep for", ms, "ms" );
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // Note: .Count and .Items do not show up here, as they do in bsdb.scan
 function paginatedScan( params ) {
@@ -127,6 +140,53 @@ function randAlpha(length) {
    }
    return result;
 }
+
+
+async function checkPeqLock( peqId ) {
+    const params = {
+        TableName: 'CEPEQs',
+        FilterExpression: 'PEQId = :pid',
+        ExpressionAttributeValues: { ":pid": peqId }
+    };
+
+    let promise = paginatedScan( params );
+    return promise.then((peq) => {
+	assert(peq.length == 1 );
+	console.log( "checking peqlock ", peq[0].PEQId, peq[0].LockId );
+	return peq[0].LockId;
+    });
+}
+
+async function setPeqLock( peqId, lockId ) {
+    if( !lockId ) { lockId = "false" }
+    console.log( "set peqLock", peqId, lockId );
+    
+    let params = {};
+    params.TableName                  = 'CEPEQs';
+    params.Key                        = {"PEQId": peqId };
+    params.UpdateExpression           = 'set LockId = :lockVal';
+    params.ExpressionAttributeValues  = {":lockVal": lockId };
+
+    let promise = bsdb.update( params ).promise();
+    return promise.then(() => true );
+}
+
+// Three phase lock to avoid multiple parties reading 'false', setting 'true' at same time, then both proceeding 
+// phase 1: read.  if false, phase2: set with ID.  phase 3 read.  if same ID, proceed.
+async function acquireLock( peqId, lockId ) {
+    let retVal = false;
+    let firstCheck = await checkPeqLock( peqId );
+    console.log( "Excess check.", firstCheck, !firstCheck, typeof firstCheck, typeof firstCheck === 'undefined' );
+    if( firstCheck == "false" ) {
+	console.log( "try setting lock" );
+	await setPeqLock( peqId, lockId );
+	console.log( "done" );
+	if( (await checkPeqLock( peqId )) == lockId ) { retVal = true; }
+    }
+
+    return retVal;
+}
+
 
 function buildUpdateParams( obj, props ) {
     let first = true;
@@ -186,6 +246,7 @@ async function setLock( pactId, lockVal ) {
 }
 
 
+// NOTE: ignore locks on reads
 // NOTE: scan return limit, before filter, is 1m. If desired item is not found, will return empty set.
 //      So, paginate is required, for every scan.
 async function getEntry( tableName, query ) {
@@ -231,6 +292,7 @@ async function getEntry( tableName, query ) {
     });
 }
 
+// NOTE: ignore locks on reads
 async function getEntries( tableName, query ) {
     console.log( "Get from", tableName, ":", query );
     
@@ -269,7 +331,7 @@ async function getEntries( tableName, query ) {
     });
 }
 
-
+// NOTE: ignore locks on peq item delete, which is only for testing
 async function removeEntries( tableName, ids ) {
     console.log( "Remove from", tableName, ":", ids );
     
@@ -400,9 +462,26 @@ async function checkSetGHPop( repo, setVal ) {
 }
 
 
+// Dynamo can't fine-grain lock tables!  graaaaack.  
+// Implement fine-grained lock to avoid this type of (actual) interleaving error
+// 50m 16s 620ms  start delete
+// 50m 16s 770ms  start add
+// 50m 16s 803ms  finish add
+// 50m 17s 224ms  finish delete  (delete via update does much more work, very slow)
 async function putPeq( newPEQ ) {
 
+    // No need to acquire lock if creating a brand-new peq
     if( newPEQ.PEQId == -1 ) { newPEQ.PEQId = randAlpha(10); }
+    else {
+	let spinCount = 0;
+	let peqLockId = randAlpha(10);
+	while( !(await acquireLock( newPEQ.PEQId, peqLockId )) && spinCount < MAX_SPIN )  {
+	    spinCount++;
+	    await sleep( SPIN_DELAY );
+	}
+	if( spinCount >= MAX_SPIN ) { return LOCKED; }
+    }
+    
     const params = {
         TableName: 'CEPEQs',
 	Item: {
@@ -424,14 +503,19 @@ async function putPeq( newPEQ ) {
     };
 
     let recPromise = bsdb.put( params ).promise();
-    return recPromise.then(() => success( newPEQ.PEQId ));
+    let retVal = recPromise.then(() => success( newPEQ.PEQId ));
+    retVal = await retVal;
+
+    // No need to wait for unset lock
+    setPeqLock( newPEQ.PEQId, false );
+    return retVal;
 }
 
 
 async function putPAct( newPAction ) {
 
     let newId = randAlpha(10);
-    console.log( newId, newPAction.Verb, newPAction.Action, newPAction.subject );
+    console.log( newId, newPAction.Verb, newPAction.Action, newPAction.Subject );
     const params = {
         TableName: 'CEPEQActions',
 	Item: {
@@ -468,23 +552,9 @@ async function putPAct( newPAction ) {
 }
 
 
-async function getPeqId( issueId, subComp ) {
-    const params = { TableName: 'CEPEQs', Limit: 99, };
-
-    params.FilterExpression = 'GHIssueId = :issueId AND contains( GHProjectSub, :subcomp )';
-    params.ExpressionAttributeValues = { ":issueId": issueId, ":subcomp": subComp };
-
-    let promise = paginatedScan( params );
-    return promise.then((peqs) => {
-	// console.log( "Found peqs ", peqs );
-	if( peqs.length == 1 ) { return peqs[0].PEQId ; }
-	else                   { return -1; }
-    });
-    
-}
-
 // XXX Slow
 // Get all for uid, app can figure out whether or not to sort by associated ghUser
+// NOTE: ignore locks on read
 async function getPeq( uid, ghUser, ghRepo ) {
     const params = { TableName: 'CEPEQs', Limit: 99, };
 
@@ -594,6 +664,7 @@ async function updatePActions( pactIds ) {
 // Dynamo - to have a filterExpression that is, say, x in <a list>,
 // you must construct the expression and the expressionAttrVals piece by piece, explicitly.  Then ordering is in question.
 // For now, use promises.all to ensure ordering and skip explicit construction.  more aws calls, buuuuttt....
+// NOTE: ignore locks on read
 async function getPeqsById( peqIds ) {
 
     console.log( "Get peqs by id, mamasita", peqIds );
@@ -627,6 +698,14 @@ async function updatePEQ( pLink ) {
 
     console.log( "Updating PEQ", pLink.PEQId );
 
+    let spinCount = 0;
+    let peqLockId = randAlpha(10);
+    while( !(await acquireLock( pLink.PEQId, peqLockId )) && spinCount < MAX_SPIN )  {
+	spinCount++;
+	await sleep( SPIN_DELAY );
+    }
+    if( spinCount >= MAX_SPIN ) { return LOCKED; }
+    
     // Only props that get updated
     let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "GHIssueTitle", "GHProjectSub", "PeqType", "VestedPerc" ];
     let updateVals = buildUpdateParams( pLink, props );
@@ -639,7 +718,12 @@ async function updatePEQ( pLink ) {
     params.ExpressionAttributeValues  = updateVals[1];
 
     let promise = bsdb.update( params ).promise();
-    return promise.then(() => success( true ));
+    let retVal = promise.then(() => success( true ));
+    retVal = await retVal;
+
+    // No need to wait for unset lock
+    setPeqLock( pLink.PEQId, false );
+    return retVal;
 }
 
 

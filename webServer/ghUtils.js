@@ -224,6 +224,10 @@ async function errorHandler( source, e, func, ...params ) {
 	console.log( source, "Issue", arguments[6], "already gone" );  
 	return false;
     }
+    else if( e.status == 423 )
+    {
+	console.log( "Error.  XXX", source, "There was a conflict accessing a PEQ in the PEQ table in AWS.", params );
+    }
     else if( e.status == 404 && source == "updateLabel" )
     {
 	console.log( source, "Label", arguments[6], "already gone" );  
