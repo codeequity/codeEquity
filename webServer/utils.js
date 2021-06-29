@@ -145,19 +145,28 @@ async function wrappedPostAWS( authData, shortName, postData ) {
     let response = await postAWS( authData, shortName, JSON.stringify( postData ))
     if( typeof response === 'undefined' ) return null;
 
+    if( response['status'] == 504 && shortName == "GetEntries" ) {
+	let retries = 0;
+	while( retries < config.MAX_AWS_RETRIES && response['status'] == 504 ) {
+	    console.log( authData.who, "Error. Timeout.  Retrying.", retries );
+	    response = await postAWS( authData, shortName, JSON.stringify( postData ))
+	    if( typeof response === 'undefined' ) return null;
+	}
+    }
+    
     let tableName = "";
     if( shortName == "GetEntry" || shortName == "GetEntries" ) { tableName = postData.tableName; }
     
-    if (response['status'] == 201) {
+    if( response['status'] == 201 ) {
 	let body = await response.json();
 	// console.log("Good status.  Body:", body);
 	return body;
     }
-    else if (response['status'] == 204) {
+    else if( response['status'] == 204 ) {
 	if( tableName != "CEPEQs" ) { console.log(authData.who, tableName, "Not found.", response['status'] ); }
 	return -1;
     }
-    else if (response['status'] == 422) {
+    else if( response['status'] == 422 ) {
 	console.log(authData.who, "Semantic error.  Normally means more items found than expected.", response['status'] );
 	return -1;
     }

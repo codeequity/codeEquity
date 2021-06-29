@@ -494,7 +494,6 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     await tu.closeIssue( authData, td, issPendDat );
 
     await tu.closeIssue( authData, td, issAccrDat );
-    await utils.sleep( 1500 );  // XXX should NOT need this.
     await tu.moveCard( authData, cardAccr.id, accrLoc.colId );
 
     await utils.sleep( 2000 );	

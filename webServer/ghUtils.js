@@ -1296,11 +1296,19 @@ async function moveCard( authData, cardId, colId ) {
 	.catch( e => errorHandler( "moveCard", e, moveCard, authData, cardId, colId ));
 }
 
-
+// GitHub add assignee can take a second or two to complete, internally.
+// If this fails, retry a small number of times before returning false.
 async function checkReserveSafe( authData, owner, repo, issueNum, colNameIndex ) {
     let retVal = true;
     if( colNameIndex > config.PROJ_PROG ) { 
 	let assignees = await getAssignees( authData, owner, repo, issueNum );
+	let retries = 0;
+	while( assignees.length == 0 && retries < config.MAX_GH_RETRIES ) {
+	    retries++;
+	    console.log( "XXX WARNING.  No assignees found.  Retrying.", retries, Date.now() );
+	    assignees = await getAssignees( authData, owner, repo, issueNum );	    
+	}
+	
 	if( assignees.length == 0  ) {
 	    console.log( "WARNING.  Update card failed - no assignees" );   // can't propose grant without a grantee
 	    retVal = false;

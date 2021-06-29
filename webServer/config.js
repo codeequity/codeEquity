@@ -82,6 +82,12 @@ const STEP_COST  = 300;         // expanding job backoff timer, step_cost * dela
 const NOQ_DELAY  = 20000;       // backoff millis if queue is empty
 const MIN_DIFF   = 1000;        // min timestamp diff in millis for new insert location 
 
+// GitHub related
+const MAX_GH_RETRIES = 5;       // GH internals can be quite slow to update at times. Allow retries in some cases.
+
+// AWS related
+const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
+
 // server notification buffer size for testing
 const NOTICE_BUFFER_SIZE = 20;
 

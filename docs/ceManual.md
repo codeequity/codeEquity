@@ -18,7 +18,7 @@ they offer small amounts of equity in order to attract skilled employees.
 
 There are other models for organizing teams to create products.  GitHub provides a space for the
 primary alternative today in the software development world.  Most new ventures in the GitHub space do not
-offer money to compensate skilled contributors.  Nor do they offer office space, insurance,
+offer money or equity to compensate skilled contributors.  Nor do they offer office space, insurance,
 retirement plans, or lots of free coffee.  Instead, they offer social recognition and a sense of
 purpose.  These incentives can be powerful, but only up to a point. 
 
@@ -59,7 +59,7 @@ The remainder of this document focuses on the software infrastructure, exclusive
 ## CodeEquity Key Concepts
 
 Equity in a CodeEquity project is earned by making contributions to that project.  In a typical
-company, equity is granted to a person privately on an annual basis based on the subjective
+company, equity is granted once a year to a person privately based on the subjective
 evaluation of that person's boss.  In contrast, equity in a CodeEquity project can be earned at any point during
 the year.  The equity value of any contribution is known to all, up front, and the accrual of equity
 is both objective and public.
@@ -77,7 +77,7 @@ part of a project within a company.
 For example, Jessie has a great idea for an app that allows people within a community to browse,
 borrow and loan books with each-other, and has decided to pursue this idea within the CodeEquity
 framework.  Jessie is calling the app "BookShare".  To simplify planning, Jessie decides to break the app
-development planning and tracking into several projects: *BookShare frontend*, *BookShare backend*, and *BookShare
+development, planning and tracking into several projects: *BookShare frontend*, *BookShare backend*, and *BookShare
 operations*.  In this example, the CodeEquity Venture is BookShare.  The Venture is made up of three
 CodeEquity Projects: *BookShare frontend*, *BookShare backend*, and *BookShare operations*.
 CodeEquity will track and collate provisional equity across the three projects and report it within
@@ -87,11 +87,12 @@ the umbrella of the Venture: BookShare.
 ### Provisional Equity (PEQ)
 
 In point of fact, *equity* is not earned in CodeEquity Ventures, but rather *provisional equity* is.
-Equity in a company requires the company to exist a legal entity such as an LLC or a Corporation.  This
-is not a realistic step for most early ventures, since it takes time and money to set up.  
+Equity in a company requires the company to exist a legal entity such as an LLC or a Corporation.
+This is not a useful step for most early ventures, since it takes time and money to set up, time
+that is better spent on developing and testing the ideas for the venture.
 
 Provisional equity are normal stock options, provisional on the venture being converted into a legal
-business entity.  The CodeEquity promise, secured by the CodeEquity legal framework, is that every
+business entity at some point in the future.  The CodeEquity promise, secured by the CodeEquity legal framework, is that every
 share of provisional equity owned by a contributor will be converted 1:1 to a stock option in any
 company created from the venture.  Furthermore, any revenue gained by a CodeEquity Venture (for
 example, with the sale of related intellectual property) that is not fed back into the venture will
@@ -147,7 +148,7 @@ They are quick to learn, and functional enough to easily support small to medium
 teams.  GitHub has integrated their project boards with all core elements of its repository
 management toolkit, and provides a push-based notification system for external
 application integration.  CodeEquity utilizes this notification system along with GitHub's Octokit
-developer REST and GraphQL APIs to build a wrapper around any Github project board, converting it into a CodeEquity
+REST and GraphQL APIs to build a wrapper around any Github project board, converting it into a CodeEquity
 Project.
 
 The image below shows a typical GitHub project.  This project is for "LUCI", and is composed of three

@@ -60,8 +60,12 @@ async function checkUnclaimedIssue( authData, ghLinks, td, issueData, testStatus
     // CHECK github location
     let cards = await tu.getCards( authData, td.unclaimCID );   // everything here has an issue
 
-    subTest = tu.checkEq( cards != -1, true,        subTest, "cards not yet ready" );
-    if( cards == -1 ) { return await tu.settle( subTest, testStatus, checkUnclaimedIssue, authData, ghLinks, td, issueData, testStatus ); }
+    // First time out, createUnclaimed can take a moment.
+    subTest = tu.checkEq( cards != -1, true,        subTest, "cards not yet ready", td.unclaimCID );
+    if( cards == -1 ) {
+	await tu.refreshUnclaimed( authData, td );	
+	return await tu.settle( subTest, testStatus, checkUnclaimedIssue, authData, ghLinks, td, issueData, testStatus );
+    }
 
     let meltCard = ( cards.filter((card) => card.content_url.split('/').pop() == issueData[1].toString() ))[0];
     subTest = tu.checkEq( typeof meltCard !== 'undefined', true,        subTest, "mcards not yet ready" );
