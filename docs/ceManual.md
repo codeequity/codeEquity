@@ -593,44 +593,59 @@ server for unit testing.
 ### Issue SubHandler
 
 The issue subhandler is found in [githubIssueHandler.js](routes/githubIssueHandler.js).  Issue
-notifications cover a broad range of interactions with GitHub issues, not all of which are relevant
+notifications cover a broad range of interactions with GitHub issues, many of which are not relevant
 to CodeEquity. 
 
-The following actions for issue event notifications are ignored by the handler: `opened`, `pinned`, `unpinned`,
+The following notification types for issues are ignored by the handler: `opened`, `pinned`, `unpinned`,
 `locked`, `unlocked`, `milestoned`, and `demilstoned`.  It may be surprising to see `opened` as one of
 the ignored actions.  CodeEquity does not track every issue in a CodeEquity project, just those that
 are PEQ issues.  A PEQ issue can only be created with a `labeled` action.
 
-The following actions for issue event notifications are handled by the handler: `labeled`,
-`unlabeled`, `deleted`, `closed`, `reopened`, `assigned`, `unassigned`, `edited`, and
-`transferred`.  All valid actions in this group that do not violate the constraints below will all cause
-the handler to store the raw request body for the action in the AWS Backend.  Many of these actions
-will also cause the handler to update (or create) the PEQ issue on the AWS Backend.
-
+The following notification types for issues are handled by the handler: `labeled`, `unlabeled`,
+`deleted`, `closed`, `reopened`, `assigned`, `unassigned`, `edited`, and `transferred`.  
+*All valid actions* in this group that do
+not violate the constraints below will all *cause the handler to store the raw request body for the
+action in the AWS Backend, and possibly also update (or create) the PEQ issue on the AWS Backend*.
 
 The `labeled` and `unlabeled` actions are relevant only when the label is a PEQ or an AllocPEQ label, such as
 ***1000 PEQ***, or ***200,000 AllocPEQ***.   A `labeled` action with a PEQ label is one of two ways to create a PEQ
-issue.  The second is to create a card with a PEQ label, which is described in the Card SubHandler section.
+issue.  The second is to create a card with a PEQ label, which is described in the card subhandler section.
 
-The `deleted` action is ignored on a non-PEQ issue.  Deleting a PEQ issue will cause GitHub to
-send CE Server at least two notifications: `issue:deleted` and `card:deleted`.  In most cases, the
-Card SubHandler will do all of the related work.  If the issue is a PEQ issue residing in an
-**Accrued** column, the Issue SubHandler takes over.  Accrued PEQ issues are never modified after
-being accrued on the AWS Backend, however, the repository owner has the ability to clean
-up projects in GitHub, even if the project has accrued PEQ issues in it.  Deleting an accrued PEQ
-issue is a two-step process.  The first delete will retain the PEQ issue (and card), but move the
-card to the **Unclaimed** column in the Unclaimed project.  If an accrued PEQ issue is deleted from
-**Unclaimed**, then the Issue SubHandler will then delete the PEQ issue from GitHub.  Note, however,
-it still resides in CodeEquity unmodified, and is still binding on the members of the project.
+The `deleted` action ignores non-PEQ issues.  Deleting a PEQ issue will cause GitHub to send CE Server at least two notifications:
+`issue:deleted` and `card:deleted`.  In most cases, the card subhandler will do all of the work.  If
+the issue is a PEQ issue residing in an **Accrued** column, the issue subhandler takes over.
+Accrued PEQ issues are never modified on the AWS Backend, and have a permanent, binding status in
+CodeEquity.  In GitHub, however, apps can be removed and repositories deleted, even those with
+accrued PEQ issues.  CodeEquity, therefore, allows deletion of accrued PEQ issues with a two-step
+process.  The first delete on the GitHub site retains the PEQ issue (and card), but moves the card
+to the **Accrued** column in the Unclaimed project (both of which are created by the handler if they
+do not already exist).  If an accrued PEQ issue is deleted from the Unclaimed project, the issue
+subhandler will delete the PEQ issue from GitHub.
 
-The `closed` and `reopened` actions are ignored for non-PEQ issues, and for AllocPEQ issues.
+The `closed` and `reopened` actions are ignored for both non-PEQ issues and AllocPEQ issues.
 Closing a properly-formed PEQ issue will cause the handler to move the associated card into the **Pending PEQ
 Approval** column.  Reopening a PEQ issue will cause the handler to move the associated card back to
-it's originating column (if known), otherwise to the **In Progress** or **Planned** if available.
-If not available, the handler will create XXX
+it's originating column (if known), otherwise to the **In Progress** or **Planned** if available,
+otherwise the handler will create **In Progress** column and move the card there.
+
+The `assigned` and `unassigned` actions are ignored for both non-PEQ issues and AllocPEQ issues.  For a PEQ
+issue, it is possible that the backend has not yet been updated, in which case this job will be
+demoted in the `ceJobs` queue.  If the constraints below are satisfied, the handler simply updates
+the backend here.
+
+The `edited` action is only handled for PEQ issues, and only when the changes involve the issue's
+title.  If the constraints below are satisfied, the handler simply updates
+the backend here.
+
+The `transferred` action is only handled for PEQ issues.  The handler does not interfere with the
+transfer of accrued PEQ issues, for reasons similar to allowing deletion of accrued PEQ issues on
+GitHub.  The handler will record the raw action in the AWS Backend, but as before, the accrued PEQ
+issue itself will be unmodified on the backend and retain its permanent, binding status in CodeEquity.
 
 
 CodeEquity project Constraints for the Issue SubHandler:
+
+<blockquote>
 
 ##### `labeled` One PEQ label per issue
 If an issue is already a PEQ issue, the new label can not be a PEQ label, otherwise which PEQ value label should take precedence?
@@ -656,26 +671,20 @@ Once accrued, a PEQ issue can no longer be modified in CodeEquity (as stored in 
 will take actions so ensure that the GitHub view of the PEQ issue is consistent with the AWS
 Backend.  If a PEQ label is removed on an Accrued PEQ issue by a user in GitHub, the handler will reinstate it.  
 
-##### `deleted` Can not modify accrued PEQ issues in CodeEquity.
-Once accrued, a PEQ issue can no
-longer be modified in CodeEquity (as stored in the AWS Backend).  In most cases, the handler will
-take actions so ensure that the GitHub view of the PEQ issue is consistent with the AWS Backend.
-Deleting an accrued PEQ issue is a two-step process.  The first delete causes the handler to move
-the card to the **Unclaimed** column in the Unclaimed project.  The second delete causes the handler
-to delete the PEQ issue from GitHub.  Note, however, it still resides in CodeEquity unmodified, and
-is still binding on the members of the project.
+##### `closed` Can not submit a PEQ issue for approval without assignees
+Closing a PEQ issue signals CE Server and other members on the project that the issue is fully
+resolved and ready for the associated PEQ to be accrued.  Without assignees, who should the PEQ
+accrue to?
 
-closed
-reopened
-assigned
-unassigned
-edited
-transferred
+##### `assigned`, `unassigned` Can not modify an accrued PEQ issue
+Accrued PEQ issues should not be modified.  If a user attempts to change an assignee on GitHub
+for an accrued PEQ issue, the handler will undo that change.
 
-XXX indent the constraints blocks?
-XXX PEQ issue, AllocPEQ issue.
-XXX allocPeq label not done justice to, yet.  Should run through Lifecycle Example early on.  Should
-    introduce codeequity columns: reserved and suggested.
+##### `edidted` Can not modify an accrued PEQ issue
+Accrued PEQ issues should not be modified.  If a user attempts to change the title of an accrued PEQ
+issue on GitHub, the handler will undo that change. 
+
+</blockquote>
 
 
 
