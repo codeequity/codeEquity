@@ -18,7 +18,7 @@ they offer small amounts of equity in order to attract skilled employees.
 
 There are other models for organizing teams to create products.  GitHub provides a space for the
 primary alternative today in the software development world.  Most new ventures in the GitHub space do not
-offer money to compensate skilled contributors.  Nor do they offer office space, insurance,
+offer money or equity to compensate skilled contributors.  Nor do they offer office space, insurance,
 retirement plans, or lots of free coffee.  Instead, they offer social recognition and a sense of
 purpose.  These incentives can be powerful, but only up to a point. 
 
@@ -59,7 +59,7 @@ The remainder of this document focuses on the software infrastructure, exclusive
 ## CodeEquity Key Concepts
 
 Equity in a CodeEquity project is earned by making contributions to that project.  In a typical
-company, equity is granted to a person privately on an annual basis based on the subjective
+company, equity is granted once a year to a person privately based on the subjective
 evaluation of that person's boss.  In contrast, equity in a CodeEquity project can be earned at any point during
 the year.  The equity value of any contribution is known to all, up front, and the accrual of equity
 is both objective and public.
@@ -77,7 +77,7 @@ part of a project within a company.
 For example, Jessie has a great idea for an app that allows people within a community to browse,
 borrow and loan books with each-other, and has decided to pursue this idea within the CodeEquity
 framework.  Jessie is calling the app "BookShare".  To simplify planning, Jessie decides to break the app
-development planning and tracking into several projects: *BookShare frontend*, *BookShare backend*, and *BookShare
+development, planning and tracking into several projects: *BookShare frontend*, *BookShare backend*, and *BookShare
 operations*.  In this example, the CodeEquity Venture is BookShare.  The Venture is made up of three
 CodeEquity Projects: *BookShare frontend*, *BookShare backend*, and *BookShare operations*.
 CodeEquity will track and collate provisional equity across the three projects and report it within
@@ -87,11 +87,12 @@ the umbrella of the Venture: BookShare.
 ### Provisional Equity (PEQ)
 
 In point of fact, *equity* is not earned in CodeEquity Ventures, but rather *provisional equity* is.
-Equity in a company requires the company to exist a legal entity such as an LLC or a Corporation.  This
-is not a realistic step for most early ventures, since it takes time and money to set up.  
+Equity in a company requires the company to exist as a legal entity such as an LLC or a Corporation.
+This is not a useful step for most early ventures, since it takes time and money to set up, time
+that is better spent on developing and testing the ideas for the venture.
 
 Provisional equity are normal stock options, provisional on the venture being converted into a legal
-business entity.  The CodeEquity promise, secured by the CodeEquity legal framework, is that every
+business entity at some point in the future.  The CodeEquity promise, secured by the CodeEquity legal framework, is that every
 share of provisional equity owned by a contributor will be converted 1:1 to a stock option in any
 company created from the venture.  Furthermore, any revenue gained by a CodeEquity Venture (for
 example, with the sale of related intellectual property) that is not fed back into the venture will
@@ -143,11 +144,11 @@ CodeEquity works with GitHub through
 which is a Kanban-style project management
 tool.  GitHub's project boards are a great way to track the lifecycle of all the issues related to a
 project throughout the duration of the project.
-They are quick to learn, and functional enough to easily support small to medium sized projects and
+They are quick to learn, and functional enough to easily support small to medium-sized projects and
 teams.  GitHub has integrated their project boards with all core elements of its repository
 management toolkit, and provides a push-based notification system for external
 application integration.  CodeEquity utilizes this notification system along with GitHub's Octokit
-developer REST and GraphQL APIs to build a wrapper around any Github project board, converting it into a CodeEquity
+REST and GraphQL APIs to build a wrapper around any Github project board, converting it into a CodeEquity
 Project.
 
 The image below shows a typical GitHub project.  This project is for "LUCI", and is composed of three
@@ -176,12 +177,12 @@ differences that can be seen here.
 
 <br>
 
-CodeEquity adds two new types of labels, called PEQ (remember, Provisional EQuity) labels.  For example,
+CodeEquity adds two new types of labels, called PEQ (remember, Provisional EQuity) and AllocPEQ labels.  For example,
 the *Close open test* card in the **Accrued** column has the label ***1000 PEQ***.  This label
 informs CE Server that the *Close Open test* card, or rather the issue linked to it, is valued at
 1000 shares of provisional equity.  In contrast, an AllocPEQ label such as ***200,000 AllocPEQ***
 indicates that the task described in the related card has been allocated 200,000 PEQs for planning,
-but has not yet been fully tasked out.  There can only be one PEQ label per issue.
+but has not yet been fully tasked out.  There can only be one PEQ or AllocPeq label per issue.
 
 CodeEquity projects also have two reserved columns: **Pending PEQ Approval** and **Accrued**.  When
 a card moves to the **Pending PEQ Approval** column, it serves as a signal to CE Server that the
@@ -195,13 +196,100 @@ Pending* moves to the **Accrued** column, one thousand PEQs will accrue and be e
 the two assignees on the issue.
 
 The final significant difference between a normal GitHub project, and a CodeEquity project, is that
-CE Server enforces a one to one mapping from issues to cards in a CodeEquity project.  Otherwise, if
+CE Server enforces a 1:1 mapping from issues to cards in a CodeEquity project.  Otherwise, if
 one issue has multiple cards, there is no clean way to determine how and when the
 associated PEQs should accrue.  CE Server enforces this mapping by force-duplicating the issue
 every time a user attempts to add an issue to a second project column.
 
 There are other differences as well, mainly to ensure that a CodeEquity project stays in a valid state.
 These differences are smaller in scope, and are introduced below.  
+
+
+# Common Lifecycle Examples
+
+### Creating a CodeEquity Project Structure from Scratch
+Easier.. go first.
+
+multiple
+master.
+columns.
+allocPeq, Peq, other.
+
+
+
+### Converting a Project into a CodeEquity Project
+
+Jessie ran across CodeEquity on the GitHub Marketplace, and is excited to try it out in hopes of
+attracting more developers.  Jessie has decided to convert the BookShare FrontEnd (or BookShareFE)
+project into a CodeEquity project.  The BookShareFE project is part of the BookShare repository in
+GitHub, and both the repo and the project have been in active use for over a year now.
+
+Jessie starts by installing the CodeEquity App for GitHub, following the instructions in the CE
+Server portion of this manual.  (XXX REVISIT XXX) Jessie then browses to www.codeequity.net, and signs up for
+CodeEquity.  Part of this process involves reading and signing the equity agreement that all
+contributors to the BookShareFE project will sign, ensuring their fair share of provisional equity
+in this new CodeEquity project.  
+
+While at CodeEquity.net, Jessie selects the `Convert BookShareFE` option.  At this point, the
+CodeEquity website instructs the server to convert the BookShareFE project into a CodeEquity
+Project.  This may take a few minutes.  CE Server will initialize internal state (see the
+**Linkages** Section below), and enforce the 1:1 mapping rule between issues and cards in the new
+CodeEquity project by duplicating and renaming any issue that is pointed at by more than one card.
+The new issue names are identical to the original name, but with a random alpha-numeric string
+appended to the end of it.
+
+BookShareFE is now a valid CodeEquity project.  All pre-existing columns are preserved, as
+well as all pre-existing cards, issues and labels.  The reserved columns **Pending PEQ Approval**
+and **Accrued** will be added as soon as a PEQ issue is closed.  The reserved PEQ and AllocPeq
+labels will be added as soon as a PEQ issue, or an allocation are added to the new project.  From
+this point on, all changes to BookShareFE maintain it's valid status as a CodeEquity Project.
+
+Jessie's BookShareFE project looks identical to how it looked before being converted
+into a CodeEquity project:
+
+<p float="left">
+  <img src="bookShareFE.png" />
+</p>
+
+While BookShareFE is a valid CodeEquity project, it does not have a single PEQ issue, there is no
+provisional equity, and as such it is a CodeEquity project in name only.  Jessie wants 
+to make substantive use of CodeEquity, and so carries out the next several steps:
+   * *Columns:*  Adds the column **Planning** (*optional*).  Renames the default **In Progress**
+column to **Underway** in the CodeEquity website (*optional*).
+
+   * *PEQ labels* Adds a handful of PEQ labels.  Typically, this step is unnecessary, as the CE
+Server will add PEQ labels to GitHub automatically when a need is detected.  To do this, in GitHub
+click on `Issues`, then `Labels`, then `New Label`.  Type in a PEQ label name, like `1000 PEQ` and
+click on `save`.  CE Server will rebuild this into a valid PEQ label, although you may need to
+refresh your screen in order to see any change.  See the CE Flutter manual for PEQ label options.
+
+   * *AllocPEQ issues* Adds several large AllocPEQ cards.  AllocPEQ cards are a way to indicate
+an estimated value of a large chunk of work that is currently not scoped out.  For example, the
+*Expand Flutter Testing* card with **AllocPEQ 500,000** indicates a large chunk of untasked work
+under the general category of expanded flutter testing.
+
+   * *Update issues* Adds assignees and PEQ labels to the existing issues.  Adds a few extra labels
+to help identify which page of the front end the issue belongs to.  In order to help keep the
+initial conversion as simple as possible, no cards will move with the addition of a PEQ label.  
+So if an issue had been closed earlier, and there are
+assignees, and a PEQ label is added, CE Server will NOT move that related card into the **Pending PEQ
+Approval** column.  Contributors should move these by hand.
+
+   * *Move closed PEQ issues* Moves all closed PEQ issues with assignees to the **Pending PEQ
+      Approval** column.
+
+At the end of this, the project looks like this:
+
+<p float="left">
+  <img src="bookShareFE2.png" />
+</p>
+
+
+initial equity structure
+
+
+
+### Working with PEQ Issues
 
 
 
@@ -335,7 +423,7 @@ At the time of writing, CE Server is singly-threaded with no thread pool or work
 
 ### `ceJobs`
 In a well-behaved world, the handler in `githubRouter` would simply reroute each notification to
-it's specific handler, for example, `githubIssueHandler` for the notification above.  As is typically the
+it's specific handler, for example, `githubIssueHandler` for the `issue:labeled` notification above.  As is typically the
 case for servers in the wild, however, that doesn't work here.
 
 The most common way in which this fails is when a group of notifications arrive at CE Server in
@@ -364,7 +452,7 @@ and can arrive at CE Server out of order.  There is no sequencing or grouping in
 notifications, and the timestamps are not dependable (for example, stamps only record to the second,
 and different stamps for the same operation can vary by as much as 10s!).
 
-To manage this, if a sub-handler of `githubRouter` detects a dependency issue, it will direct the
+To manage this, if a subhandler of `githubRouter` detects a dependency issue, it will direct the
 `githubRouter` to demote the current job by pushing it further down the `ceJobs` queue, so that the job it
 depends on can be handled first.
 
@@ -386,7 +474,7 @@ this point in time, we can tell from the information in the notification that *B
 issue, but CE Server won't have pushed this information up to the AWS backend until the second item
 `issue:labeled` in the queue is processed.
 
-The  `issue:assigned` job is popped off `ceJobs`, and sent to the issue handler.  During processing,
+The  `issue:assigned` job will be popped off `ceJobs` first, and sent to the issue handler.  During processing,
 the handler notices that dependencies are incorrect, and requests the job be demoted
 
 ```
@@ -415,9 +503,9 @@ the next job.  The values controlling this operation can be configured in
 [config.js](webServer/config.js).
 
 
-### Linkages
+## Linkages
 
-CE Server's sub-handlers interact with GitHub via Octokit, and with the AWS Backend.  These APIs
+CE Server's subhandlers interact with GitHub via Octokit, and with the AWS Backend.  These APIs
 frequently require information related to the operation at hand that can not be found in the
 notification.  For example, closing a PEQ issue in GitHub will cause CE Server to move that issue
 into the **Pending PEQ Approval** column.  The move requires the project ID and column ID of the
@@ -425,7 +513,7 @@ target column, neither of which are to be found in the `issue:closed` notificati
 
 Requesting this information on the fly from GitHub more than doubles the request volume and the
 subsequent await times, leading to a noticeable lag for the GitHub user.  To avoid this, CE Server
-tracks two pieces of state.  The first is the `ghLink` table shown below, which gathers the most
+tracks two pieces of state.  The first is the `ghLinks` table shown below, which gathers the most
 frequently required names and ids surrounding an issue.
 
 ```
@@ -454,7 +542,7 @@ CE Server keeps `ghLinks` and `ghLocs` up to date with every operation on projec
 GitHub, and regenerates the state from scratch should the server be restarted.  Together, this state
 information is responsible for significant speedups for user operations on GitHub.
 
-### Authorizations
+## Authorizations
 
 CE Server uses several APIs to communicate with GitHub and the AWS Backend:
 * The [Octokit REST API](https://octokit.github.io/rest.js) for GitHub
@@ -466,10 +554,11 @@ Each of these requires a different form of authorization.
 ##### CodeEquity App for Github credentials  (enabled upon app install)
 
 When the CodeEquity App for GitHub was built, a set of private key credentials were created and
-associated with the app identifier.  Every you install the CodeEquity App for GitHub for a new repo,
+associated with the app identifier.  Every time you install the CodeEquity App for GitHub for a new repo,
 GitHub internally authorizes the app (via the private key credentials) to interact with the repo.
 
-These credentials are stored in `ops/github/auth` Additionally, CE Flutter will on occasion
+These credentials are stored in `ops/github/auth`, and used by CE Server to acquire the Octokit
+credentials described below.  Additionally, CE Flutter will on occasion
 communicate directly with GitHub through Octokit.  To make this feasible, the app credentials are
 also copied into the CE Flutter space as part of the flutter build step.
 
@@ -482,7 +571,7 @@ as siblings to the credentials for the main CodeEquity App for GitHub.
 
 GitHub's Octokit REST API requires an installation access token for all requests on a GitHub
 repo.  CE Server acquires this token by using the private key credentials of the app making the
-request, in other words, the CodeEquity App for GitHub credentials described above.
+request, in other words, the CodeEquity App for GitHub credentials (or the ceTester credentials) described above.
 
 In slightly more detail, the server first gets a signed JSON web token (JWT) from Octokit that is
 specific to the CodeEquity App for GitHub, then uses that to get an installation-specific token
@@ -495,7 +584,7 @@ notification arrives that requires communication with GitHub.
 
 The installation token is not stored in the system.
 
-##### Personal Access Token for GitHub (supplied by repo owner in CE Flutter)
+##### Personal Access Token for GitHub (supplied by repo owner using CE Flutter)
 
 The REST API is useful up to a point for a GitHub app, but comes with some serious limitations.  For
 example, you can not delete an issue by using the REST API, which is critical for automated testing.
@@ -534,31 +623,190 @@ for this communication is done using AWS Cognito, with a user pool.  CE Server h
 Cognito account that it uses for all communication to the backend.  The credentials for this account
 are stored in `ops/aws/auth`.
 
-The Cognito ID token expires roughly every hour.  In the manner as with the installation token
-above, `githubRouter` tracks the age of each token for CE Server, and will refresh
-the token when the next notification arrives that requires communication with AWS.
+The Cognito ID token expires roughly every hour.  As with the management of the installation token
+above, `githubRouter` tracks the age of each token for CE Server, and will refresh an
+expired token when the next notification arrives that requires communication with AWS.
 
 
-### Notification Filtering
-bots
+## Notification Filtering
 
-### Sub-Handlers 
+The subhandlers for CE Server make changes to
+CodeEquity projects in GitHub on behalf of users, in order to keep projects in a valid state.
 
-### Testing
+For example, when a user closes a PEQ issue in a CodeEquity project, that indicates that the work
+associated with the issue is complete, and the PEQ issue is ready to be reviewed by whomever has
+approval authority on the project.  In this case, CE Server will send a request to GitHub via the
+Octokit REST API to move the related card (remember, every PEQ issue has exactly one card attached
+to it) into the **Pending PEQ Approval** column.  CE Server will also make a request to GitHub to
+create this column in the project if it does not already exist.
+
+A full list of these automated actions is found in the SubHandlers section below.
+
+GitHub sends notifications to CE Server for all actions on a CodeEquity project (as directed by the CodeEquity
+App for GitHub), including those that CE Server itself initiated.  In the example above, GitHub will
+generate notifications related to the user closing the PEQ issue, and notifications related to the
+server moving the related card to the **Pending PEQ Approval** column.  
+
+CE Server's subhandlers assume that every new notification from GitHub originates from a human user,
+which makes it straightforward to determine what additional actions CE Server must initiate in
+GitHub to maintain a valid state.  For this to work, `githubRouter` filters out and ignores all
+notifications that originated from CE Server itself.  Notifications generated by CE Server have a
+specific `sender:login` in the notification payload that is derived from the name of the CodeEquity
+for GitHub App.  Continuing with the example above, `githubRouter` will pass along notifications
+related to closing the PEQ issue to the issue subhandler, but filter and ignore the notifications
+related to moving the card to the **Pending PEQ Approval** column.
+
+CE Server's `githubRouter` also filters out all notifications from CodeEquity's two primary testing
+accounts, and any notifications for actions that CE Server need not pay attention to such as
+`synchronize` and `repository`.
+
+## SubHandlers 
+
+As noted earlier, CE Server is a Node.js Express server.  The server specification is found in
+[ceServer.js](ceServer.js), which establishes [githubRouter.js](routes/githubRouter.js) as the
+central dispatcher for CE Server.  All notifications arrive at `githubRouter`, and are either
+filtered and ignored at that point, or converted into a job on the `ceJobs` stack.  `githubRouter`
+handles one job at a time from the `ceJobs` stack, from start to finish, by sending that job to it's
+related subhandler and waiting for its resolution.  
+
+CE Server pays attention to the following notification types from GitHub: `issue`,
+`project_card`, `project`, `project_column`, and `label`.  Each of these notification types has it's
+own subhandler.  The payloads for each notification type vary (details can be found
+[here](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads).
+
+CE Server additionally has a test handler, which provides access to limited internal state of the
+server for unit testing.
+
+### Issue SubHandler
+
+The issue subhandler is found in [githubIssueHandler.js](routes/githubIssueHandler.js).  Issue
+notifications cover a broad range of interactions with GitHub issues, many of which are not relevant
+to CodeEquity. 
+
+The following notification types for issues are ignored by the handler: `opened`, `pinned`, `unpinned`,
+`locked`, `unlocked`, `milestoned`, and `demilstoned`.  It may be surprising to see `opened` as one of
+the ignored actions.  CodeEquity does not track every issue in a CodeEquity project, just those that
+are PEQ issues.  A PEQ issue can only be created with a `labeled` action.
+
+The following notification types for issues are handled by the handler: `labeled`, `unlabeled`,
+`deleted`, `closed`, `reopened`, `assigned`, `unassigned`, `edited`, and `transferred`.  
+*All valid actions* in this group that do
+not violate the constraints below will all *cause the handler to store the raw request body for the
+action in the AWS Backend, and possibly also update (or create) the PEQ issue on the AWS Backend*.
+
+The `labeled` and `unlabeled` actions are relevant only when the label is a PEQ or an AllocPEQ label, such as
+***1000 PEQ***, or ***200,000 AllocPEQ***.   A `labeled` action with a PEQ label is one of two ways to create a PEQ
+issue.  The second is to create a card with a PEQ label, which is described in the card subhandler section.
+
+The `deleted` action ignores non-PEQ issues.  Deleting a PEQ issue will cause GitHub to send CE Server at least two notifications:
+`issue:deleted` and `card:deleted`.  In most cases, the card subhandler will do all of the work.  If
+the issue is a PEQ issue residing in an **Accrued** column, the issue subhandler takes over.
+Accrued PEQ issues are never modified on the AWS Backend, and have a permanent, binding status in
+CodeEquity.  In GitHub, however, apps can be removed and repositories deleted, even those with
+accrued PEQ issues.  CodeEquity, therefore, allows deletion of accrued PEQ issues with a two-step
+process.  The first delete on the GitHub site retains the PEQ issue (and card), but moves the card
+to the **Accrued** column in the Unclaimed project (both of which are created by the handler if they
+do not already exist).  If an accrued PEQ issue is deleted from the Unclaimed project, the issue
+subhandler will delete the PEQ issue from GitHub.
+
+The `closed` and `reopened` actions are ignored for both non-PEQ issues and AllocPEQ issues.
+Closing a properly-formed PEQ issue will cause the handler to move the associated card into the **Pending PEQ
+Approval** column.  Reopening a PEQ issue will cause the handler to move the associated card back to
+it's originating column (if known), otherwise to the **In Progress** or **Planned** if available,
+otherwise the handler will create **In Progress** column and move the card there.
+
+The `assigned` and `unassigned` actions are ignored for both non-PEQ issues and AllocPEQ issues.  For a PEQ
+issue, it is possible that the backend has not yet been updated, in which case this job will be
+demoted in the `ceJobs` queue.  If the constraints below are satisfied, the handler simply updates
+the backend here.
+
+The `edited` action is only handled for PEQ issues, and only when the changes involve the issue's
+title.  If the constraints below are satisfied, the handler simply updates
+the backend here.
+
+The `transferred` action is only handled for PEQ issues.  The handler does not interfere with the
+transfer of accrued PEQ issues, for reasons similar to allowing deletion of accrued PEQ issues on
+GitHub.  The handler will record the raw action in the AWS Backend, but as before, the accrued PEQ
+issue itself will be unmodified on the backend and retain its permanent, binding status in CodeEquity.
 
 
-handlers for different notification classes: a,b,c
-handlers for testing: x,y,z
+CodeEquity project Constraints for the Issue SubHandler:
 
-## bots
-## issue handler
-## card handler
-## project handler
-## column handler
-## label handler
+<blockquote>
+
+##### `labeled` One PEQ label per issue
+If an issue is already a PEQ issue, the new label can not be a PEQ label, otherwise which PEQ value label should take precedence?
+In this case the handler will send GitHub an `issue:unlabeled` event for the new label.
+
+##### `labeled` 1:1 mapping from issue to card
+If an issue is given a PEQ label, but does not have an associated card yet, the handler will ask
+GitHub to create a new card for that issue.  Since the card does not have an assigned project and
+column yet in the CodeEquity project, the handler will create an **Unclaimed** project with an
+**Unclaimed** column if they do not already exist, and place the card there.
+
+##### `labeled` Allocation PEQs are not useful in some columns.
+An ***AllocPEQ*** label is used to indicate some amount of as-of-yet unplanned work to be carried
+out in a given area.  For example, front end work may be allocated 2,000,000 PEQ up front during
+early planning, without having to break that front end work down to specific tasks quite yet.
+CodeEquity's reserved and suggested project columns, namely: **Planned**, **In Progress**, **Pending
+PEQ Approval** and **Accrued** are meant to be used specifically for individual tasks that have
+already been broken down.  It does not make sense to put an allocation for unplanned work in one of
+these columns.  If this occurs, the handler will remove the card and any associated issue.
+
+##### `unlabeled` Can not modify accrued PEQ issues in CodeEquity.
+Once accrued, a PEQ issue can no longer be modified in CodeEquity (as stored in the AWS Backend).  In most cases, the handler
+will take actions so ensure that the GitHub view of the PEQ issue is consistent with the AWS
+Backend.  If a PEQ label is removed on an Accrued PEQ issue by a user in GitHub, the handler will reinstate it.  
+
+##### `closed` Can not submit a PEQ issue for approval without assignees
+Closing a PEQ issue signals CE Server and other members on the project that the issue is fully
+resolved and ready for the associated PEQ to be accrued.  Without assignees, who should the PEQ
+accrue to?
+
+##### `assigned`, `unassigned` Can not modify an accrued PEQ issue
+Accrued PEQ issues should not be modified.  If a user attempts to change an assignee on GitHub
+for an accrued PEQ issue, the handler will undo that change.
+
+##### `edidted` Can not modify an accrued PEQ issue
+Accrued PEQ issues should not be modified.  If a user attempts to change the title of an accrued PEQ
+issue on GitHub, the handler will undo that change. 
+
+</blockquote>
+
+
+
+### Card SubHandler
+
+
+The card subhandler is found in [githubCardHandler.js](routes/githubCardHandler.js).
+
+##### `labeled` Can not create non-peq in reserved columns.
+will remove card but keep issue.
+
+
+### Project SubHandler
+
+The project subhandler is found in [githubProjectHandler.js](routes/githubProjectHandler.js).
+
+### Column SubHandler
+
+The column subhandler is found in [githubColumnHandler.js](routes/githubColumnHandler.js).
+
+### Label SubHandler
+
+The label subhandler is found in [githubLabelHandler.js](routes/githubLabelHandler.js).
+
+### Test SubHandler
+
+The test subhandler is found in [githubTestHandler.js](routes/githubTestHandler.js).
+
+
+
+
 
 # AWS Backend
 
+# CodeEquity FAQ
 
 # CodeEquity QuickStart
 ## Developer

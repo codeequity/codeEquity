@@ -176,14 +176,14 @@ async function setPeqLock( peqId, lockId ) {
 async function acquireLock( peqId, lockId ) {
     let retVal = false;
     let firstCheck = await checkPeqLock( peqId );
-    console.log( "Excess check.", firstCheck, !firstCheck, typeof firstCheck, typeof firstCheck === 'undefined' );
     if( firstCheck == "false" ) {
 	console.log( "try setting lock" );
 	await setPeqLock( peqId, lockId );
 	console.log( "done" );
 	if( (await checkPeqLock( peqId )) == lockId ) { retVal = true; }
     }
-
+    else{ console.log("Acquire lock failed, lock busy.", peqId, lockId, firstCheck ); }
+	
     return retVal;
 }
 
