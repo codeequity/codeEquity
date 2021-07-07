@@ -87,7 +87,7 @@ the umbrella of the Venture: BookShare.
 ### Provisional Equity (PEQ)
 
 In point of fact, *equity* is not earned in CodeEquity Ventures, but rather *provisional equity* is.
-Equity in a company requires the company to exist a legal entity such as an LLC or a Corporation.
+Equity in a company requires the company to exist as a legal entity such as an LLC or a Corporation.
 This is not a useful step for most early ventures, since it takes time and money to set up, time
 that is better spent on developing and testing the ideas for the venture.
 
@@ -144,7 +144,7 @@ CodeEquity works with GitHub through
 which is a Kanban-style project management
 tool.  GitHub's project boards are a great way to track the lifecycle of all the issues related to a
 project throughout the duration of the project.
-They are quick to learn, and functional enough to easily support small to medium sized projects and
+They are quick to learn, and functional enough to easily support small to medium-sized projects and
 teams.  GitHub has integrated their project boards with all core elements of its repository
 management toolkit, and provides a push-based notification system for external
 application integration.  CodeEquity utilizes this notification system along with GitHub's Octokit
@@ -177,12 +177,12 @@ differences that can be seen here.
 
 <br>
 
-CodeEquity adds two new types of labels, called PEQ (remember, Provisional EQuity) labels.  For example,
+CodeEquity adds two new types of labels, called PEQ (remember, Provisional EQuity) and AllocPEQ labels.  For example,
 the *Close open test* card in the **Accrued** column has the label ***1000 PEQ***.  This label
 informs CE Server that the *Close Open test* card, or rather the issue linked to it, is valued at
 1000 shares of provisional equity.  In contrast, an AllocPEQ label such as ***200,000 AllocPEQ***
 indicates that the task described in the related card has been allocated 200,000 PEQs for planning,
-but has not yet been fully tasked out.  There can only be one PEQ label per issue.
+but has not yet been fully tasked out.  There can only be one PEQ or AllocPeq label per issue.
 
 CodeEquity projects also have two reserved columns: **Pending PEQ Approval** and **Accrued**.  When
 a card moves to the **Pending PEQ Approval** column, it serves as a signal to CE Server that the
@@ -196,13 +196,100 @@ Pending* moves to the **Accrued** column, one thousand PEQs will accrue and be e
 the two assignees on the issue.
 
 The final significant difference between a normal GitHub project, and a CodeEquity project, is that
-CE Server enforces a one to one mapping from issues to cards in a CodeEquity project.  Otherwise, if
+CE Server enforces a 1:1 mapping from issues to cards in a CodeEquity project.  Otherwise, if
 one issue has multiple cards, there is no clean way to determine how and when the
 associated PEQs should accrue.  CE Server enforces this mapping by force-duplicating the issue
 every time a user attempts to add an issue to a second project column.
 
 There are other differences as well, mainly to ensure that a CodeEquity project stays in a valid state.
 These differences are smaller in scope, and are introduced below.  
+
+
+# Common Lifecycle Examples
+
+### Creating a CodeEquity Project Structure from Scratch
+Easier.. go first.
+
+multiple
+master.
+columns.
+allocPeq, Peq, other.
+
+
+
+### Converting a Project into a CodeEquity Project
+
+Jessie ran across CodeEquity on the GitHub Marketplace, and is excited to try it out in hopes of
+attracting more developers.  Jessie has decided to convert the BookShare FrontEnd (or BookShareFE)
+project into a CodeEquity project.  The BookShareFE project is part of the BookShare repository in
+GitHub, and both the repo and the project have been in active use for over a year now.
+
+Jessie starts by installing the CodeEquity App for GitHub, following the instructions in the CE
+Server portion of this manual.  (XXX REVISIT XXX) Jessie then browses to www.codeequity.net, and signs up for
+CodeEquity.  Part of this process involves reading and signing the equity agreement that all
+contributors to the BookShareFE project will sign, ensuring their fair share of provisional equity
+in this new CodeEquity project.  
+
+While at CodeEquity.net, Jessie selects the `Convert BookShareFE` option.  At this point, the
+CodeEquity website instructs the server to convert the BookShareFE project into a CodeEquity
+Project.  This may take a few minutes.  CE Server will initialize internal state (see the
+**Linkages** Section below), and enforce the 1:1 mapping rule between issues and cards in the new
+CodeEquity project by duplicating and renaming any issue that is pointed at by more than one card.
+The new issue names are identical to the original name, but with a random alpha-numeric string
+appended to the end of it.
+
+BookShareFE is now a valid CodeEquity project.  All pre-existing columns are preserved, as
+well as all pre-existing cards, issues and labels.  The reserved columns **Pending PEQ Approval**
+and **Accrued** will be added as soon as a PEQ issue is closed.  The reserved PEQ and AllocPeq
+labels will be added as soon as a PEQ issue, or an allocation are added to the new project.  From
+this point on, all changes to BookShareFE maintain it's valid status as a CodeEquity Project.
+
+Jessie's BookShareFE project looks identical to how it looked before being converted
+into a CodeEquity project:
+
+<p float="left">
+  <img src="bookShareFE.png" />
+</p>
+
+While BookShareFE is a valid CodeEquity project, it does not have a single PEQ issue, there is no
+provisional equity, and as such it is a CodeEquity project in name only.  Jessie wants 
+to make substantive use of CodeEquity, and so carries out the next several steps:
+   * *Columns:*  Adds the column **Planning** (*optional*).  Renames the default **In Progress**
+column to **Underway** in the CodeEquity website (*optional*).
+
+   * *PEQ labels* Adds a handful of PEQ labels.  Typically, this step is unnecessary, as the CE
+Server will add PEQ labels to GitHub automatically when a need is detected.  To do this, in GitHub
+click on `Issues`, then `Labels`, then `New Label`.  Type in a PEQ label name, like `1000 PEQ` and
+click on `save`.  CE Server will rebuild this into a valid PEQ label, although you may need to
+refresh your screen in order to see any change.  See the CE Flutter manual for PEQ label options.
+
+   * *AllocPEQ issues* Adds several large AllocPEQ cards.  AllocPEQ cards are a way to indicate
+an estimated value of a large chunk of work that is currently not scoped out.  For example, the
+*Expand Flutter Testing* card with **AllocPEQ 500,000** indicates a large chunk of untasked work
+under the general category of expanded flutter testing.
+
+   * *Update issues* Adds assignees and PEQ labels to the existing issues.  Adds a few extra labels
+to help identify which page of the front end the issue belongs to.  In order to help keep the
+initial conversion as simple as possible, no cards will move with the addition of a PEQ label.  
+So if an issue had been closed earlier, and there are
+assignees, and a PEQ label is added, CE Server will NOT move that related card into the **Pending PEQ
+Approval** column.  Contributors should move these by hand.
+
+   * *Move closed PEQ issues* Moves all closed PEQ issues with assignees to the **Pending PEQ
+      Approval** column.
+
+At the end of this, the project looks like this:
+
+<p float="left">
+  <img src="bookShareFE2.png" />
+</p>
+
+
+initial equity structure
+
+
+
+### Working with PEQ Issues
 
 
 
@@ -651,7 +738,7 @@ CodeEquity project Constraints for the Issue SubHandler:
 If an issue is already a PEQ issue, the new label can not be a PEQ label, otherwise which PEQ value label should take precedence?
 In this case the handler will send GitHub an `issue:unlabeled` event for the new label.
 
-##### `labeled` One:one mapping from issue to card
+##### `labeled` 1:1 mapping from issue to card
 If an issue is given a PEQ label, but does not have an associated card yet, the handler will ask
 GitHub to create a new card for that issue.  Since the card does not have an assigned project and
 column yet in the CodeEquity project, the handler will create an **Unclaimed** project with an
