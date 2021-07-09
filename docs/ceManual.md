@@ -252,7 +252,8 @@ repository, and has a few files there but has not yet started a project board.
 Connie starts by [signing up](#common-lifecycle-examples) for CodeEquity, following the default
 installation for public repositories.  Connie also sticks with the default equity structure proposed
 by the CodeEquity website, comfortable that as the project evolves, so can the equity structure for
-GarlicBeer. 
+GarlicBeer.  (XXX REVISIT XXX) should I need to select empty projects as codeequity projects?  No.
+
 
 #### GarlicBeer Project Structure
 
@@ -265,37 +266,147 @@ The GarlicBeer repo so far has no issues, and no project boards.  Connie decides
 CodeEquity's recommended hierarchical layout as a starting point.  In this approach, a user creates
 several CodeEquity projects within the repo, all of which are linked together.  The top level
 project is named `Master` (see [config.js](webServer/config.js) to modify names) by default.  The
-child projects are named after the cards in the columns in the `Master` project.  PEQs are
-summarized by columns in the `Master` project.
+child projects are named after the cards in the columns of the `Master` project.  In CE Flutter,
+PEQs for contributors and the overall venture can be 
+grouped and summarized by columns in the `Master` project.
 
 Connie creates one column in `Master` for `Software Contributions`, one for `Business
 Operations`, and a third for `Unallocated`.  The `Unallocated` column is a handy way to inform
-CodeEquity that all unallocated equity should be summarized as a sibling of the software and busops
+CodeEquity that all unallocated equity should be summarized as a sibling of the software and bus-ops
 columns.  
 
 <p float="left">
   <img src="images/garlicBeer0.png" />
 </p>
 
+In the **Software Contributions** column for `Master`, Connie decides to start with very broad
+categories, each of which will be a project in its own right: *FrontEnd*, *BackEnd* and another
+*Unallocated* card that serves as a placeholder for provisional equity for other work down
+the road.  Unallocated cards in `Master` should not be matched with a related project.
+
+Connie takes advantage of a shorthand built into CodeEquity projects.  When creating cards, CE
+Server looks for any line of the form `<allocation, PEQ: 1,000,000>`, or `<PEQ: 1000>` (any number
+works).  When found, CE Server will create an issue for that card, rebuild the card to point at
+the new issue, and send the PEQ data to the AWS Backend.  This is a very quick way to build a set of
+allocations and issues for your new project.
+
+In this case, Connie types: 
+
+<p float="left">
+  <img src="images/garlicBeer1Pre.png" />
+</p>
+
+which results in: 
+
+<p float="left">
+  <img src="images/garlicBeer1Post.png" />
+</p>
+
+If you are familar with GitHub, you will notice that the result is a card linked to an open issue with
+the name `Back End`, and a label of `2000000 AllocPEQ`.  Using CodeEquity's default suggestion of
+`50,000 PEQ` for one person-day of work, this means Connie has made a rough allocation of 10
+person-months of work for the back end.  If this turns out to be wrong later (which is almost a
+certainty), that allocation can be adjusted in either direction with no bad consequences.
+
+Connie adds a few more high-level allocations in `Master`, resulting in: 
+
+<p float="left">
+  <img src="images/garlicBeer2.png" />
+</p>
+
+At this point, Connie is done with high level allocations.  Connie's rough estimate is 
+that both the front end and the back end will need 2 million PEQs to complete, and has added a
+buffer of another 2 million PEQs for whatever comes up under **Software Contributions**.  Similarly,
+Connie has estimated a million PEQs for **Business Operations**.
+
+The `Master` project is now done for now, the child projects are next.  There are two additional projects to
+create, one for each card in `Master` that is not an *Unallocated* card, namely *Front End* and
+*Back End*.  While not a requirement, CodeEquity recommends choosing columns in these child projects that support the natural
+flow of an issue in a CodeEquity project: planned, in progress, pending PEQ approval, and accrued
+(or approved).  Connie decides to proceed with this recommendation, ending up with the following
+projects:
+
+<p float="left">
+  <img src="images/garlicBeerProjects.png" />
+</p>
+
+and the following column layout in each child project:
+
+<p float="left">
+  <img src="images/garlicBeerChild.png" />
+</p>
 
 
+#### Basic Issue Lifecycle
 
+Connie wants a hands-on understanding of what happens with a PEQ issue as it works its way through
+the project.  Connie starts with entering the following PEQ issue using the shortcut identifier
+`<PEQ: 1000>`: 
 
+<p float="left">
+  <img src="images/garlicBeerLC0.png" />
+</p>
 
-(XXX Revisit XXX) should show flutter's collated summarization results here.
+resulting in: 
 
-The typical flow for an issue in a
-CodeEquity project is to move through the following states in order: planned, in progress, pending
-PEQ approval, and accrued (or approved).  
+<p float="left">
+  <img src="images/garlicBeerLC1.png" />
+</p>
 
-Any number of project board structures can support this easily.
-Preferred is 4x.  reserved is 2x.  
+Looking at the current issues tab, you can see that all the PEQ-related cards have had corresponding
+issues created:
 
+<p float="left">
+  <img src="images/garlicBeerLC2.png" />
+</p>
 
-multiple
-master.
-columns.
-allocPeq, Peq, other.
+Clicking into the *Test PEQ LifeCycle* issue, Connie adds an assignee, then back in the projects
+page, Connie drags and drops the card into the **In Progress** column.
+Connie goes back and forth playing with this a few times before leaving the card in **In
+Progress**.   If Connie were to try dragging the card into the
+**Accrued** column right now, CE Server would move the card back to **In Progress**.  PEQ issues
+can only enter **Accrued** from the **Pending PEQ Approval** column.
+
+<p float="left">
+  <img src="images/garlicBeerLC3.png" />
+</p>
+
+<p float="left">
+  <img src="images/garlicBeerLC4.png" />
+</p>
+
+Now Connie clicks back into the issue, and clicks `Close issue`	in GitHub.  CE Server sees this
+notification and automatically moves the card into the **Pending PEQ Approval** column.
+Alternatively, Connie could have dragged the card from **In Progress** to **Pending PEQ Approval**,
+and CE Server would have automatically closed the issue.  Connie
+clicks back into projects to verify this: 
+
+<p float="left">
+  <img src="images/garlicBeerLC5.png" />
+</p>
+
+Connie then clicks `Reopen issue` and `Close issue` a few times to see how the card moves, leaving
+the card in the **Pending PEQ Approval** column.  Finally, Connie clicks into the `Front End`
+project again, and drags the card into the **Accrued** column:
+
+<p float="left">
+  <img src="images/garlicBeerLC6.png" />
+</p>
+
+Note that the history of these actions has been caught by GitHub, including which individual
+caused the actions to occur.  For example, the first red circle shows `connieCE closed
+this` which reflects the fact that Connie closed the issue.  The action immediately following is
+`codeEquity (bot) moved this`, reflecting the fact that CE Server moved the card to the **Pending
+PEQ Approval** column as a result of Connie closing the issue.
+
+<p float="left">
+  <img src="images/garlicBeerLC7.png" />
+</p>
+
+#### CE Flutter results
+
+Done with GitHub for the moment, Connie opens the CE Flutter app to see what has happened: (XXX REVISIT XXX).
+
 
 
 
