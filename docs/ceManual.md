@@ -162,7 +162,7 @@ projects associated with it.
 
 
 <p float="left">
-  <img src="githubProject.png" height="480"  />
+  <img src="images/githubProject.png" height="480"  />
 </p>
 
 <br>
@@ -172,7 +172,7 @@ differences that can be seen here.
 
 
 <p float="left">
-  <img src="codeEquityProject.png" height="320"  />
+  <img src="images/codeEquityProject.png" height="320"  />
 </p>
 
 <br>
@@ -207,8 +207,90 @@ These differences are smaller in scope, and are introduced below.
 
 # Common Lifecycle Examples
 
+The initial signup and startup for every CodeEquity project is identical.
+
+The first step is to install the CodeEquity App for GitHub, following the instructions [here](#codeequity-app-for-github).
+The default installation enables all of the repositories you own to
+host CodeEquity projects, but will not impact those repositories that never do.
+
+Next, browse to www.codeequity.net, and sign up for CodeEquity.  Part of this process
+involves reading and signing the equity agreement that all contributors to your venture
+will sign, ensuring their fair share of provisional equity.
+
+The third and final step in the early thinking for any CodeEquity project is, well, thinking about the
+equity.  *How much total (provisional) equity will there be in the venture?*  *How much should each
+task be worth?*  The CodeEquity website proposes a default starting point for any software venture.
+(XXX revisit XXX)  See [common equity structures](docs/adoc.md) for the rationale and 
+details on this default setup.  There are a few important points to keep in mind here:
+   1. No decision at this point is permanent.  In fact, you should expect overall PEQs and PEQs per
+task to change over time.  
+
+   2. The total number of allocated PEQs doesn't matter.  What matters is the percentage of
+PEQs a person has accrued compared the overall total accrued in the venture, when it comes
+time to convert PEQs into equity in a legal entity.  That percentage will develop over months and years, not days.
+
+So, your early choices here **are useful to start communications with contributors**, but beyond that,
+they are **neither major nor permanent**.
+
+The default equity structure authorizes 7 - 10 million shares of provisional equity (stock) up front for
+software development, which is 30-50% of the overall provisional equity in the venture.  The default
+plan assumes three person-years of work for a typical software venture to get the code in place to
+make a run for it.  This works out to be, roughly:
+   * 1,000 PEQs for tiny tasks, of maybe an hour or so,
+   * 10,000 PEQs for one person-day of work,
+   * 50,000 PEQs for one person-week of work.  
+
 ### Creating a CodeEquity Project Structure from Scratch
-Easier.. go first.
+
+A CodeEquity project can be converted from an existing GitHub project board, or created from
+scratch.  This first example follows Connie creating a CodeEquity Project as a completely new
+project.  Connie is already a contributor to several repositories owned by other people, and is the
+owner of several others.  Connie is planning to start exploring a brewery
+simulation game as a CodeEquity Project.  Connie has already created the GarlicBeer public
+repository, and has a few files there but has not yet started a project board.
+
+Connie starts by [signing up](#common-lifecycle-examples) for CodeEquity, following the default
+installation for public repositories.  Connie also sticks with the default equity structure proposed
+by the CodeEquity website, comfortable that as the project evolves, so can the equity structure for
+GarlicBeer. 
+
+#### GarlicBeer Project Structure
+
+A CodeEquity project supports any type of flat project board setup that can be made in GitHub.  Once
+you start creating and manipulating PEQ issues in your project board, CE Server will create the two
+reserved columns **Pending PEQ Approval** and **Accrued** as needed.  CodeEquity projects also
+support a hierarchical project structure, which can make organization and reporting more cohesive.
+
+The GarlicBeer repo so far has no issues, and no project boards.  Connie decides to adopt 
+CodeEquity's recommended hierarchical layout as a starting point.  In this approach, a user creates
+several CodeEquity projects within the repo, all of which are linked together.  The top level
+project is named `Master` (see [config.js](webServer/config.js) to modify names) by default.  The
+child projects are named after the cards in the columns in the `Master` project.  PEQs are
+summarized by columns in the `Master` project.
+
+Connie creates one column in `Master` for `Software Contributions`, one for `Business
+Operations`, and a third for `Unallocated`.  The `Unallocated` column is a handy way to inform
+CodeEquity that all unallocated equity should be summarized as a sibling of the software and busops
+columns.  
+
+<p float="left">
+  <img src="images/garlicBeer0.png" />
+</p>
+
+
+
+
+
+
+(XXX Revisit XXX) should show flutter's collated summarization results here.
+
+The typical flow for an issue in a
+CodeEquity project is to move through the following states in order: planned, in progress, pending
+PEQ approval, and accrued (or approved).  
+
+Any number of project board structures can support this easily.
+Preferred is 4x.  reserved is 2x.  
+
 
 multiple
 master.
@@ -225,14 +307,14 @@ project into a CodeEquity project.  The BookShareFE project is part of the BookS
 GitHub, and both the repo and the project have been in active use for over a year now.
 
 Jessie starts by installing the CodeEquity App for GitHub, following the instructions in the CE
-Server portion of this manual.  (XXX REVISIT XXX) Jessie then browses to www.codeequity.net, and signs up for
+Server portion of this manual.  (XXX REVISIT.  Use actual bookshare project XXX) Jessie then browses to www.codeequity.net, and signs up for
 CodeEquity.  Part of this process involves reading and signing the equity agreement that all
 contributors to the BookShareFE project will sign, ensuring their fair share of provisional equity
-in this new CodeEquity project.  
+in this new venture.
 
 While at CodeEquity.net, Jessie selects the `Convert BookShareFE` option.  At this point, the
 CodeEquity website instructs the server to convert the BookShareFE project into a CodeEquity
-Project.  This may take a few minutes.  CE Server will initialize internal state (see the
+Project. CE Server will initialize internal state (see the
 **Linkages** Section below), and enforce the 1:1 mapping rule between issues and cards in the new
 CodeEquity project by duplicating and renaming any issue that is pointed at by more than one card.
 The new issue names are identical to the original name, but with a random alpha-numeric string
@@ -248,7 +330,7 @@ Jessie's BookShareFE project looks identical to how it looked before being conve
 into a CodeEquity project:
 
 <p float="left">
-  <img src="bookShareFE.png" />
+  <img src="images/bookShareFE.png" />
 </p>
 
 While BookShareFE is a valid CodeEquity project, it does not have a single PEQ issue, there is no
@@ -257,35 +339,37 @@ to make substantive use of CodeEquity, and so carries out the next several steps
    * *Columns:*  Adds the column **Planning** (*optional*).  Renames the default **In Progress**
 column to **Underway** in the CodeEquity website (*optional*).
 
-   * *PEQ labels* Adds a handful of PEQ labels.  Typically, this step is unnecessary, as the CE
+   * *PEQ labels:* Adds a handful of PEQ labels.  Typically, this step is unnecessary, as the CE
 Server will add PEQ labels to GitHub automatically when a need is detected.  To do this, in GitHub
 click on `Issues`, then `Labels`, then `New Label`.  Type in a PEQ label name, like `1000 PEQ` and
 click on `save`.  CE Server will rebuild this into a valid PEQ label, although you may need to
 refresh your screen in order to see any change.  See the CE Flutter manual for PEQ label options.
 
-   * *AllocPEQ issues* Adds several large AllocPEQ cards.  AllocPEQ cards are a way to indicate
+   * *AllocPEQ issues:* Adds several large AllocPEQ cards.  AllocPEQ cards are a way to indicate
 an estimated value of a large chunk of work that is currently not scoped out.  For example, the
 *Expand Flutter Testing* card with **AllocPEQ 500,000** indicates a large chunk of untasked work
 under the general category of expanded flutter testing.
 
-   * *Update issues* Adds assignees and PEQ labels to the existing issues.  Adds a few extra labels
+   * *Update issues:* Adds assignees and PEQ labels to the existing issues.  Adds a few extra labels
 to help identify which page of the front end the issue belongs to.  In order to help keep the
-initial conversion as simple as possible, no cards will move with the addition of a PEQ label.  
-So if an issue had been closed earlier, and there are
+initial conversion as simple as possible, no cards will move with the addition of a PEQ label.  So if an issue had been closed earlier, and there are
 assignees, and a PEQ label is added, CE Server will NOT move that related card into the **Pending PEQ
 Approval** column.  Contributors should move these by hand.
 
-   * *Move closed PEQ issues* Moves all closed PEQ issues with assignees to the **Pending PEQ
+   * *Move closed PEQ issues:* Moves all closed PEQ issues with assignees to the **Pending PEQ
       Approval** column.
 
 At the end of this, the project looks like this:
 
 <p float="left">
-  <img src="bookShareFE2.png" />
+  <img src="images/bookShareFE2.png" />
 </p>
 
 
-initial equity structure
+initial equity structure.
+comment on underway.
+Accr col.
+
 
 
 
@@ -298,7 +382,7 @@ initial equity structure
 CodeEquity is composed of the following major components:
 
 <p float="left">
-  <img src="backendArch.png" />
+  <img src="images/backendArch.png" />
 </p>
 
 <br>
@@ -311,7 +395,7 @@ CodeEquity is composed of the following major components:
 * **AWS Backend**.  A serverless backend for CE Server responsible for storing and supplying all data
                 and updates related to provisional equity.
 
-### CodeEquity App for GitHub
+### Overview: CodeEquity App for GitHub
 
 The CodeEquity App for GitHub is (XXX or will be) available in the GitHub Marketplace.  The CodeEquity
 App connects a user's GitHub repository to CE Server, by means of the GitHub notification system.
@@ -323,14 +407,14 @@ The CodeEquity App is actually just a cohesive set of notification requests and 
 GitHub and CE Server to begin communicating.  As such, the app has no logic or state specific to it.
 
 
-### CE Flutter
+### Overview: CE Flutter
 
 CE Flutter is a Flutter app for desktop and mobile devices that is used to manage CodeEquity
 projects.  CE Flutter communicates directly with the AWS backend for provenance related to
 provisional equity, collaborator agreements, equity agreements and more. 
 
 
-### CE Server
+### Overview: CE Server
 
 CE Server is a Node.js Express server.  CE Server has two primary functions for CodeEquity projects
 in a GitHub repository.  First, it records all interactions with provisional equity-related issues,
@@ -339,7 +423,7 @@ Second, CE Server makes changes on behalf of a user in the CodeEquity project in
 the project remains in a valid state.  CE Server does also manage a small amount of state, which
 helps provide a significant speedup to it's GitHub operations.
 
-### AWS Backend
+### Overview: AWS Backend
 The AWS backend is a serverless architecture on AWS. The architecture is specified with a [yaml
 file](ops/aws/samInfrastructure.yaml) that is a mixture of AWS's SAM and CloudFormation
 specifications.
@@ -356,7 +440,7 @@ All communication with the AWS Backend is encoded as JSON REST data.
 The CodeEquity App for GitHub can either be found in the GitHub Marketplace, or by browsing directly
 to https://github.com/apps/codeEquity.  Installing the app will allow the GitHub repository owner to
 convert any GitHub project board into a CodeEquity Project, or to start a new CodeEquity Project
-from start.
+from scratch.
 
 The CodeEquity App for GitHub should be installed by the GitHub repository owner, only.
 Contributors to a project do not need to install this app. 
@@ -366,7 +450,7 @@ To install:
 
 If you are installing CodeEquity for a private repository, you will need to provide a personal
 access token.  To create a personal access token for CodeEquity,
- * browe to https://github.com/settings/tokens, click "create a new token.
+ * browse to https://github.com/settings/tokens, click "create a new token.
  * add a note, like "for CodeEquity" at the top
  * set the scope to be "repo  full control of private repositories"
  * click generate at the bottom
