@@ -182,6 +182,7 @@ async function acquireLock( peqId, lockId ) {
 	console.log( "done" );
 	if( (await checkPeqLock( peqId )) == lockId ) { retVal = true; }
     }
+    else if( firstCheck == lockId ) { retVal = true; }  // first time through, second checkPeqLock can return before set is finished writing.
     else{ console.log("Acquire lock failed, lock busy.", peqId, lockId, firstCheck ); }
 	
     return retVal;
