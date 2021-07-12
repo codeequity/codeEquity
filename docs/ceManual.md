@@ -205,6 +205,10 @@ There are other differences as well, mainly to ensure that a CodeEquity project 
 These differences are smaller in scope, and are introduced below.  
 
 
+<br>
+<br>
+
+
 # Common Lifecycle Examples
 
 The initial signup and startup for every CodeEquity project is identical.
@@ -254,6 +258,7 @@ installation for public repositories.  Connie also sticks with the default equit
 by the CodeEquity website, comfortable that as the project evolves, so can the equity structure for
 GarlicBeer.  (XXX REVISIT XXX) should I need to select empty projects as codeequity projects?  No.
 
+<br>
 
 #### GarlicBeer Project Structure
 
@@ -286,7 +291,8 @@ the road.  Unallocated cards in `Master` should not be matched with a related pr
 
 Connie takes advantage of a shorthand built into CodeEquity projects.  When creating cards, CE
 Server looks for any line of the form `<allocation, PEQ: 1,000,000>`, or `<PEQ: 1000>` (any number
-works).  When found, CE Server will create an issue for that card, rebuild the card to point at
+works).  When found at the beginning of a line, CE Server will create a PEQ or AllocPEQ label, create an issue for that card
+with the new label, rebuild the card to point at
 the new issue, and send the PEQ data to the AWS Backend.  This is a very quick way to build a set of
 allocations and issues for your new project.
 
@@ -336,6 +342,7 @@ and the following column layout in each child project:
   <img src="images/garlicBeerChild.png" />
 </p>
 
+<br>
 
 #### Basic Issue Lifecycle
 
@@ -403,30 +410,33 @@ PEQ Approval** column as a result of Connie closing the issue.
   <img src="images/garlicBeerLC7.png" />
 </p>
 
-#### CE Flutter results
+<br>
+
+#### GarlicBeer in CE Flutter
 
 Done with GitHub for the moment, Connie opens the CE Flutter app to see what has happened: (XXX REVISIT XXX).
 
-
+<br>
+<br>
 
 
 ### Converting a Project into a CodeEquity Project
 
-Jessie ran across CodeEquity on the GitHub Marketplace, and is excited to try it out in hopes of
-attracting more developers.  Jessie has decided to convert the BookShare FrontEnd (or BookShareFE)
+This second example follows Jessie converting an existing GitHub project board into a CodeEquity
+project.  Jessie is already a contributor to several repositories owned by other people, and is the
+owner of several others.  Jessie is exited by the possibility of attracting more developers, and has
+decided to convert the BookShare FrontEnd (or BookShareFE) 
 project into a CodeEquity project.  The BookShareFE project is part of the BookShare repository in
-GitHub, and both the repo and the project have been in active use for over a year now.
+GitHub, and both the repo and the project are already in active use.
 
-Jessie starts by installing the CodeEquity App for GitHub, following the instructions in the CE
-Server portion of this manual.  (XXX REVISIT.  Use actual bookshare project XXX) Jessie then browses to www.codeequity.net, and signs up for
-CodeEquity.  Part of this process involves reading and signing the equity agreement that all
-contributors to the BookShareFE project will sign, ensuring their fair share of provisional equity
-in this new venture.
+Jessie starts by [signing up](#common-lifecycle-examples) for CodeEquity, following the default
+installation for public repositories.  Jessie also sticks with the default equity structure proposed
+by the CodeEquity website, comfortable that as the project evolves, so can the equity structure for
+BookShare. 
 
 While at CodeEquity.net, Jessie selects the `Convert BookShareFE` option.  At this point, the
 CodeEquity website instructs the server to convert the BookShareFE project into a CodeEquity
-Project. CE Server will initialize internal state (see the
-**Linkages** Section below), and enforce the 1:1 mapping rule between issues and cards in the new
+Project. CE Server will initialize internal state (see [Linkages](#linkages)), and enforce the 1:1 mapping rule between issues and cards in the new
 CodeEquity project by duplicating and renaming any issue that is pointed at by more than one card.
 The new issue names are identical to the original name, but with a random alpha-numeric string
 appended to the end of it.
@@ -434,7 +444,7 @@ appended to the end of it.
 BookShareFE is now a valid CodeEquity project.  All pre-existing columns are preserved, as
 well as all pre-existing cards, issues and labels.  The reserved columns **Pending PEQ Approval**
 and **Accrued** will be added as soon as a PEQ issue is closed.  The reserved PEQ and AllocPeq
-labels will be added as soon as a PEQ issue, or an allocation are added to the new project.  From
+labels will be added as soon as a PEQ issue, or an allocation are added to the project.  From
 this point on, all changes to BookShareFE maintain it's valid status as a CodeEquity Project.
 
 Jessie's BookShareFE project looks identical to how it looked before being converted
@@ -444,22 +454,22 @@ into a CodeEquity project:
   <img src="images/bookShareFE.png" />
 </p>
 
-While BookShareFE is a valid CodeEquity project, it does not have a single PEQ issue, there is no
-provisional equity, and as such it is a CodeEquity project in name only.  Jessie wants 
+While BookShareFE is a valid CodeEquity project, it does not have a single PEQ issue, nor is there 
+any provisional equity, and as such it is a CodeEquity project in name only.  Jessie wants 
 to make substantive use of CodeEquity, and so carries out the next several steps:
    * *Columns:*  Adds the column **Planning** (*optional*).  Renames the default **In Progress**
 column to **Underway** in the CodeEquity website (*optional*).
 
-   * *PEQ labels:* Adds a handful of PEQ labels.  Typically, this step is unnecessary, as the CE
-Server will add PEQ labels to GitHub automatically when a need is detected.  To do this, in GitHub
-click on `Issues`, then `Labels`, then `New Label`.  Type in a PEQ label name, like `1000 PEQ` and
-click on `save`.  CE Server will rebuild this into a valid PEQ label, although you may need to
-refresh your screen in order to see any change.  See the CE Flutter manual for PEQ label options.
+   * *PEQ labels:* Adds a handful of PEQ labels.  To do this, in GitHub click on `Issues`, then
+`Labels`, then `New Label`.  Type in a PEQ label name, like `1000 PEQ` and click on `save`.  CE
+Server will rebuild this into a valid PEQ label, although you may need to refresh your screen in
+order to see any change.  (XXX Revisit XXX) See the CE Flutter manual for PEQ label options.
 
-   * *AllocPEQ issues:* Adds several large AllocPEQ cards.  AllocPEQ cards are a way to indicate
+   * *Allocations:* Adds several large allocation.  Allocations are a way to indicate
 an estimated value of a large chunk of work that is currently not scoped out.  For example, the
-*Expand Flutter Testing* card with **AllocPEQ 500,000** indicates a large chunk of untasked work
-under the general category of expanded flutter testing.
+*Expand Flutter Testing* card with **AllocPEQ 500,000** label indicates a large chunk of untasked work
+under the general category of expanded flutter testing.  See
+[GarlicBeer](#garlicbeer-project-structure) for more allocation examples.
 
    * *Update issues:* Adds assignees and PEQ labels to the existing issues.  Adds a few extra labels
 to help identify which page of the front end the issue belongs to.  In order to help keep the
@@ -476,15 +486,14 @@ At the end of this, the project looks like this:
   <img src="images/bookShareFE2.png" />
 </p>
 
+<br>
 
-initial equity structure.
-comment on underway.
-Accr col.
+#### BookShareFE in CE Flutter
 
+Done with GitHub for the moment, Jessie opens the CE Flutter app to see what has happened: (XXX REVISIT XXX).
 
-
-
-### Working with PEQ Issues
+<br>
+<br>
 
 
 
@@ -872,6 +881,13 @@ own subhandler.  The payloads for each notification type vary (details can be fo
 CE Server additionally has a test handler, which provides access to limited internal state of the
 server for unit testing.
 
+Note that in all cases, CE Server gets notifications *after* the corresponding event has already
+occured on GitHub (even though sometimes CE Server precipitates those events).  So if the server
+needs to change something, it is always after the fact, and often involves undoing an action or a
+set of actions.  The issue logs (such as in the [GarlicBeer](#basic-issue-lifecycle) example) will
+show the sequence of events clearly in cases like this. 
+
+
 ### Issue SubHandler
 
 The issue subhandler is found in [githubIssueHandler.js](routes/githubIssueHandler.js).  Issue
@@ -891,7 +907,7 @@ action in the AWS Backend, and possibly also update (or create) the PEQ issue on
 
 The `labeled` and `unlabeled` actions are relevant only when the label is a PEQ or an AllocPEQ label, such as
 ***1000 PEQ***, or ***200,000 AllocPEQ***.   A `labeled` action with a PEQ label is one of two ways to create a PEQ
-issue.  The second is to create a card with a PEQ label, which is described in the card subhandler section.
+issue.  The second is to create a card with a PEQ label shortcut, which is described in the card subhandler section.
 
 The `deleted` action ignores non-PEQ issues.  Deleting a PEQ issue will cause GitHub to send CE Server at least two notifications:
 `issue:deleted` and `card:deleted`.  In most cases, the card subhandler will do all of the work.  If
@@ -972,31 +988,185 @@ issue on GitHub, the handler will undo that change.
 
 ### Card SubHandler
 
+The card subhandler is found in [githubCardHandler.js](routes/githubCardHandler.js), and is focused
+on handling `project_card` (or, more simply, "card") notifications.
 
-The card subhandler is found in [githubCardHandler.js](routes/githubCardHandler.js).
+Every type of card notification is relevant to CodeEquity, including: `created`, `converted`,
+`moved`, `deleted`, and `edited`.
+*All valid actions* in this group that do
+not violate the constraints below will all *cause the handler to store the raw request body for the
+action in the AWS Backend, and possibly also update (or create) the PEQ issue on the AWS Backend*.
 
-##### `labeled` Can not create non-peq in reserved columns.
-will remove card but keep issue.
+The `created` action is ignored if there is no associated issue.  If the card is linked to an issue
+that is not a PEQ issue, some internal state is collected to speed future activity.  If the user
+creates a card in the project board and uses a PEQ label shortcut such as `<PEQ: 10,000>`, the
+handler will recognize this as shorthand for PEQ issue creation.  The handler will create or find
+the PEQ label, create an issue for that card with the new label, and rebuild the card to point at
+the new issue.
 
+If the user instead created a PEQ issue in GitHub, GitHub initially prevents the assignment of the
+issue to a column in a project.  The user must first submit the issue, wait for a bit, then click on
+`triage` in the `Projects` sidebar to assign the issue to a column (i.e. to tell GitHub to create a
+card in the selected project column).  Before that action is taken, the handler must take action to
+avoid a PEQ issue existing without an associated card, which would violate the 1:1 mapping rule for
+CodeEquity projects.  To avoid this problem, immediately after the user submits the PEQ issue, the
+handler will tell GitHub to create a card pointed at the PEQ issue, and place it in the
+**Unclaimed** column of the Unclaimed project.  Once the user does `triage` on the PEQ issue,
+the handler will remove the card that was created in **Unclaimed**.
+
+The `converted` action notification is only generated with a non-PEQ issue, and so is ignored.
+
+The `moved` action is ignored if the card is moved within the same column.  The action is also
+ignored if the card belongs to a non-PEQ issue.  If a PEQ issue card is moved into, or out of the **Pending
+PEQ Approval** by hand in GitHub, the handler will `close` the corresponding issue, or `reopen`it,
+respectively.  
+
+The `deleted` action will clean up all internal state related to the card, and de-activate any
+non-accrued PEQ issues.  A `card:deleted` action is often received with an `issue:deleted`
+action.  If an `issue:deleted` is received for a PEQ issue, then CE Server knows a `card:deleted`
+will be received as well and can act accordingly.  A `card:deleted` action does not carry any
+additional information, and so must carry out all work associated with the deletion of a card.
+For example, the handler will remove any PEQ labels from GitHub that are no longer in
+use.  For example, if a PEQ issue card is being deleted from an **Accrued** column that is not in the
+Unclaimed project, the handler will recreate the card in the **Accrued** column in Unclaimed.
+Note that accrued PEQ issues are never modified on the AWS Backend, and have a permanent, binding status in
+CodeEquity.  In GitHub, however, apps can be removed and repositories deleted, even those with
+accrued PEQ issues.  
+
+The `edited` action is only generated from GitHub when a card that is not linked to an issue is
+edited.  This is because once a card is linked to an issue, all content is stored in the issue.  The
+only edit the handler pays attention to is if the user adds a PEQ label shortcut such as `<PEQ:
+30,000>` to the card.  In this case, the handler acts just as though it is a `card:created` notification.
+
+
+<blockquote>
+
+##### `created` No non-PEQ issues with cards in reserved columns.
+Creating a non-PEQ issue with a card in **Pending PEQ Approval** or **Accrued** is not legal.  In
+this case, the handler will remove the offending card.
+
+##### `created` Can not create a PEQ issue card in **Accrued**
+Creating a PEQ issue with a card in **Accrued** is not legal.  In
+this case, the handler will remove both the offending card and will strip the PEQ label from the
+issue, turning it into a non-PEQ issue.
+
+##### `created` No duplicates of an accrued PEQ issue
+When you click into `issues`, then click into a PEQ issue, in the Projects sidebar you could select
+multiple projects and columns, which would cause GitHub to try creating a card pointing to the PEQ
+issue for each selection.  Normally, the handler resolves this by duplicating the issue and renaming
+it for each new selection, in order to maintain the 1:1 mapping from issues to cards.  If the source
+column was **Accrued**, however, the handler simply removes the new card.
+
+##### `moved` Can not move non-PEQ cards into reserved columns.
+Moving a non-PEQ card into **Pending PEQ Approval** or **Accrued** is not legal.  In
+this case, the handler will move the offending card back to where it came from.
+
+##### `moved` Can not move PEQ issue cards out of **Accrued**.
+Once a PEQ issue has accrued, the card will stay in the **Accrued** column.  If an action indicates 
+the card moved out, the handler will move the card back to **Accrued**.
+
+##### `moved` Allocation PEQs are not useful in some columns.
+An ***AllocPEQ*** label is used to indicate some amount of as-of-yet unplanned work to be carried
+out in a given area.  
+CodeEquity's reserved and suggested project columns, namely: **Planned**, **In Progress**, **Pending
+PEQ Approval** and **Accrued** are meant to be used specifically for individual tasks that have
+already been broken down.  If an allocation PEQ is moved to one of these columns, the handler will
+move it back.
+
+##### `moved` PEQ issue cards can not move to reserved columns without assignees.
+If a PEQ issue card is moved to **Pending PEQ Approval** or **Accrued** columns without assignees,
+the handler will move it back.
+
+</blockquote>
 
 ### Project SubHandler
 
-The project subhandler is found in [githubProjectHandler.js](routes/githubProjectHandler.js).
+The project subhandler is found in [githubProjectHandler.js](routes/githubProjectHandler.js), and is
+focused on handling `project` notifications.
+
+All `project` notifications are relevant to the handler, including: `deleted`, `created`, `edited`,
+`reopened`, and `closed`.  In every case, the main action taken by the handler is to update internal
+state to properly track the name and ID, and in most cases the raw request body of the corresponding
+activity is recorded on the AWS Backend.
+
+Note that when a project is `deleted`, GitHub will delete the cards and columns (but not the issues)
+that are part of that project, sending notifications for each individual `deleted` action.  The card
+and column handlers do the vast majority of the work when a project is deleted.
+
 
 ### Column SubHandler
 
-The column subhandler is found in [githubColumnHandler.js](routes/githubColumnHandler.js).
+The column subhandler is found in [githubColumnHandler.js](routes/githubColumnHandler.js), and is
+focused on handling `column` notifications.
+
+The following notification types for issues are ignored by the handler: `moved`.
+
+The remaining `column` notifications are relevant to the handler, including: `deleted`, `created` and `edited`.
+In each case, the handler updates internal
+state to properly track the column name and ID, and in most cases the raw request body of the corresponding
+activity is recorded on the AWS Backend.
+
+<blockquote>
+
+##### `edited` Can not change reserved column names.
+The **Pending PEQ Approval** and **Accrued** columns can not have their names changed through the
+normal GitHub interface.  If an attempt is made, the handler will rename the columns as specified in
+[config.js](webServer/config.js).  To rename these columns, a user must change the names in
+config.js.  (XXX Revisit XXX) this will be done via CE Flutter.
+
+</blockquote>
+
 
 ### Label SubHandler
 
-The label subhandler is found in [githubLabelHandler.js](routes/githubLabelHandler.js).
+The label subhandler is found in [githubLabelHandler.js](routes/githubLabelHandler.js), and is
+focused on label notifications.
+
+All label actions are relevant to the handler, including `created`, `deleted` and `edited`.
+
+The `created` action is ignored for non-PEQ labels.  For a PEQ label, the handler will update the
+labe so that the description is consistent with the label's name, and so that the color is
+consistent with the schemes described in [config.js](webServer/config.js) (XXX REVISIT XXX).
+
+The `deleted` action is ignored unless the label is a PEQ label and is in use by at least one active
+PEQ issue.  If there are active PEQs, the action is revoked and the raw request body is stored on
+the backend.
+
+The `edited` action is ignored unless the changes are to the label name or description.  If the
+old label is a PEQ label and is in use by at least one active PEQ issue, the action is revoked and the
+request body is stored on the backend.  The action is ignored if the new label is not a PEQ label.
+
+If the old label has no active PEQ issues (for example, it is not a PEQ label), and the new label is
+a PEQ label, the handler will rebuild the new label to make the name and description consistent, and
+will recolor the label to be consistent with the schemes described in
+[config.js](webServer/config.js) (XXX REVISIT XXX).  The handler will then run through all issues
+currently attached to the old label, and have GitHub relabel them with the new PEQ label.
+Subsequently, GitHub will send `issue:labeled` notifications, causing CE Server to create turn those
+issues into active PEQ issues.  Note that this operation can be expensive if there are a large
+number of issues attached to the old label.
+
+<blockquote>
+
+##### `deleted` Can not delete an active PEQ label
+PEQ labels that are in current use by active PEQ issues can not be deleted.  If this occurs, the
+handler will recreate the label, and re-attach it to the PEQ issue.  To delete a PEQ label, one must
+first delete all related PEQ issues.
+
+##### `edited` Can not edit an active PEQ label
+PEQ labels that are in current use by active PEQ issues can not change their name or description.  If this occurs, the
+handler will recreate the label, and re-attach it to the PEQ issue.  To modify PEQ label, one must
+first delete all related PEQ issues.
+
+</blockquote>
 
 ### Test SubHandler
 
-The test subhandler is found in [githubTestHandler.js](routes/githubTestHandler.js).
+The test subhandler is found in [githubTestHandler.js](routes/githubTestHandler.js).  It does not
+respond to any notifications from GitHub.  The sole purpose of this handler is to support internal
+testing.
 
-
-
+The handler responds to requests to purge internal state, or to provide access to limited portions
+of internal state for testing.
 
 
 # AWS Backend
