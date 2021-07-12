@@ -1171,6 +1171,17 @@ of internal state for testing.
 
 # AWS Backend
 
+The AWS backend is a serverless architecture on AWS.  See the [architecture diagram](#codeequity-architecture-overview) for
+reference.  The architecture is specified with a [yaml](../ops/aws/samInfrastructure.yaml) file
+that is a mixture of AWS's SAM and CloudFormation specifications. 
+
+Requests from CE Server and CE Flutter are signed with JWT tokens secured from AWS Cognito running
+with a user pool. Signed requests are sent to AWS Lambda functions via AWS Gateway. awsDynamo
+contains the key lambda handlers for the backend. Their primary function is saving and retrieving
+data from a collection of AWS DynamoDB tables. 
+
+All communication with the AWS Backend is encoded as JSON REST data.
+
 # CodeEquity FAQ
 
 # CodeEquity QuickStart
