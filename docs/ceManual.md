@@ -1039,6 +1039,8 @@ only edit the handler pays attention to is if the user adds a PEQ label shortcut
 30,000>` to the card.  In this case, the handler acts just as though it is a `card:created` notification.
 
 
+<blockquote>
+
 ##### `created` No non-PEQ issues with cards in reserved columns.
 Creating a non-PEQ issue with a card in **Pending PEQ Approval** or **Accrued** is not legal.  In
 this case, the handler will remove the offending card.
@@ -1075,25 +1077,96 @@ move it back.
 If a PEQ issue card is moved to **Pending PEQ Approval** or **Accrued** columns without assignees,
 the handler will move it back.
 
+</blockquote>
 
 ### Project SubHandler
 
-The project subhandler is found in [githubProjectHandler.js](routes/githubProjectHandler.js).
+The project subhandler is found in [githubProjectHandler.js](routes/githubProjectHandler.js), and is
+focused on handling `project` notifications.
+
+All `project` notifications are relevant to the handler, including: `deleted`, `created`, `edited`,
+`reopened`, and `closed`.  In every case, the main action taken by the handler is to update internal
+state to properly track the name and ID, and in most cases the raw request body of the corresponding
+activity is recorded on the AWS Backend.
+
+Note that when a project is `deleted`, GitHub will delete the cards and columns (but not the issues)
+that are part of that project, sending notifications for each individual `deleted` action.  The card
+and column handlers do the vast majority of the work when a project is deleted.
+
 
 ### Column SubHandler
 
-The column subhandler is found in [githubColumnHandler.js](routes/githubColumnHandler.js).
+The column subhandler is found in [githubColumnHandler.js](routes/githubColumnHandler.js), and is
+focused on handling `column` notifications.
+
+The following notification types for issues are ignored by the handler: `moved`.
+
+The remaining `column` notifications are relevant to the handler, including: `deleted`, `created` and `edited`.
+In each case, the handler updates internal
+state to properly track the column name and ID, and in most cases the raw request body of the corresponding
+activity is recorded on the AWS Backend.
+
+<blockquote>
+
+##### `edited` Can not change reserved column names.
+The **Pending PEQ Approval** and **Accrued** columns can not have their names changed through the
+normal GitHub interface.  If an attempt is made, the handler will rename the columns as specified in
+[config.js](webServer/config.js).  To rename these columns, a user must change the names in
+config.js.  (XXX Revisit XXX) this will be done via CE Flutter.
+
+</blockquote>
+
 
 ### Label SubHandler
 
-The label subhandler is found in [githubLabelHandler.js](routes/githubLabelHandler.js).
+The label subhandler is found in [githubLabelHandler.js](routes/githubLabelHandler.js), and is
+focused on label notifications.
+
+All label actions are relevant to the handler, including `created`, `deleted` and `edited`.
+
+The `created` action is ignored for non-PEQ labels.  For a PEQ label, the handler will update the
+labe so that the description is consistent with the label's name, and so that the color is
+consistent with the schemes described in [config.js](webServer/config.js) (XXX REVISIT XXX).
+
+The `deleted` action is ignored unless the label is a PEQ label and is in use by at least one active
+PEQ issue.  If there are active PEQs, the action is revoked and the raw request body is stored on
+the backend.
+
+The `edited` action is ignored unless the changes are to the label name or description.  If the
+old label is a PEQ label and is in use by at least one active PEQ issue, the action is revoked and the
+request body is stored on the backend.  The action is ignored if the new label is not a PEQ label.
+
+If the old label has no active PEQ issues (for example, it is not a PEQ label), and the new label is
+a PEQ label, the handler will rebuild the new label to make the name and description consistent, and
+will recolor the label to be consistent with the schemes described in
+[config.js](webServer/config.js) (XXX REVISIT XXX).  The handler will then run through all issues
+currently attached to the old label, and have GitHub relabel them with the new PEQ label.
+Subsequently, GitHub will send `issue:labeled` notifications, causing CE Server to create turn those
+issues into active PEQ issues.  Note that this operation can be expensive if there are a large
+number of issues attached to the old label.
+
+<blockquote>
+
+##### `deleted` Can not delete an active PEQ label
+PEQ labels that are in current use by active PEQ issues can not be deleted.  If this occurs, the
+handler will recreate the label, and re-attach it to the PEQ issue.  To delete a PEQ label, one must
+first delete all related PEQ issues.
+
+##### `edited` Can not edit an active PEQ label
+PEQ labels that are in current use by active PEQ issues can not change their name or description.  If this occurs, the
+handler will recreate the label, and re-attach it to the PEQ issue.  To modify PEQ label, one must
+first delete all related PEQ issues.
+
+</blockquote>
 
 ### Test SubHandler
 
-The test subhandler is found in [githubTestHandler.js](routes/githubTestHandler.js).
+The test subhandler is found in [githubTestHandler.js](routes/githubTestHandler.js).  It does not
+respond to any notifications from GitHub.  The sole purpose of this handler is to support internal
+testing.
 
-
-
+The handler responds to requests to purge internal state, or to provide access to limited portions
+of internal state for testing.
 
 
 # AWS Backend
