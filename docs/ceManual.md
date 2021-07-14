@@ -622,6 +622,11 @@ of a `labeled` action for an `issue` notification is shown below.
    { login: 'rmusick2000' }}
 ```
 
+CE Server will often act upon GitHub as a service to the user, to help keep the CodeEquity project
+in a valid state.  Calls to GitHub may fail for a variety of reasons.  An error handler in
+[ghUtils.js](./ghUtils.js) will retry operations a number of times if the error type is
+recognizable.  All communication with the GitHub is encoded as JSON REST data.
+
 ## `githubRouter` Job Dispatch
 At the time of writing, CE Server is singly-threaded with no thread pool or worker threads.
 
@@ -1182,7 +1187,158 @@ data from a collection of AWS DynamoDB tables.
 
 All communication with the AWS Backend is encoded as JSON REST data.
 
+## Creating the AWS Backend
+
+The `ops/aws` directory contains the code used to create, delete and manage the backend that CE
+Server depends on.  The key files are:
+
+   * [createCE.py](../ops/aws/createCE.py)   
+   * [samInfrastructure.yaml](../ops/aws/samInfrastructure.yaml)
+   * [awsCECommon.py](../ops/aws/utils/awsCECommon.py)
+   * [samInstance.py](../ops/aws/utils/samInstance.py))
+   * [awsDynamo.js](../ops/aws/lambdaHandlers/awsDynamo.js)
+
+#### `createCE.py`
+Handles the bulk of the administrative side of dealing with AWS.  It uses a
+combination of the AWS command line interface (the [awscli](https://aws.amazon.com/cli/)), with
+[boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) to interact with the
+serverless architecture [AWS SAM](https://aws.amazon.com/serverless/sam/) that is specified in the
+yaml file above.  `createCE.py` has the following capabilities:
+
+```
+% python createCE.py help
+Reading AWS Config: XXXXXXXXXXX/.aws/config
+Reading AWS Credentials: XXXXXXXXXXX/.aws/credentials
+us-east-1 XXXXXXXXXXXXXXXXXXXXX
+07/12/2021 02:11:17 PM INFO: Validating local environment
+XXXXXXXXXXX/linuxbrew/.linuxbrew/bin/sam
+/usr/local/bin/npm
+/usr/bin/nodejs
+07/12/2021 02:11:17 PM INFO: Found credentials in shared credentials file: ~/.aws/credentials
+07/12/2021 02:11:18 PM INFO: 
+07/12/2021 02:11:18 PM INFO: Available commands:
+07/12/2021 02:11:18 PM INFO:   - makeCEResources:       create all required CodeEquity resources on AWS.
+07/12/2021 02:11:18 PM INFO:   - deleteCEResources:     remove all CodeEquity resources on AWS.
+07/12/2021 02:11:18 PM INFO:   - getCFStacks:           list your AWS CloudFormation stacks.
+07/12/2021 02:11:18 PM INFO:   - getStackOutputs:       display the outputs of CodeEquity's AWS CloudFormation stacks.
+07/12/2021 02:11:18 PM INFO:   - validateConfiguration: Will assert if your dev environment doesn't look suitable.
+07/12/2021 02:11:18 PM INFO:   - createTestDDBEntries:  Adds some test data to AWS DynamoDB tables
+07/12/2021 02:11:18 PM INFO:   - createTestAccounts:    Adds _ce_tester accounts and signup data for integration testing.
+07/12/2021 02:11:18 PM INFO:   - help:                  list available commands.
+07/12/2021 02:11:18 PM INFO: 
+07/12/2021 02:11:18 PM INFO: Pre-experimental commands:
+07/12/2021 02:11:18 PM INFO:   - InstallAWSPermissions: Attempts to create a valid dev environment.  Best used as a set of hints for now.
+```
+
+**WARNING** <br>
+Running `python createCE.py` with anything other than `help` has the potential to destroy
+the current CE Server backend, along with all it's data.  In fact, that's what it's designed to do.
+Do not use this tool without a very clear understanding of what you want to accomplish, and what the tool does.
+<br>
+**WARNING** 
+
+
+#### `awsCECommon.py`
+Contains paths, asset locations, versions, stack names and other common variables.
+
+#### `samInstance.py`
+A class that automates things like running a SAM template, creating stacks and S3 buckets, and
+removing stack resources.
+
+#### `awsDynamo.js`
+
+`awsDynamo.js` is the lambda handler that the AWS Gateway connects with to reach CodeEquity's data, which is stored in DynamoDB.
+Both CE Flutter and CE Server read and write data.  Requests are initiated in the server
+through [utils.js](./utils.js) as JSON `POST` requests.
+Whether communicating with AWS, GitHub or the CodeEquity server itself, the post functions have a
+nearly identical structure, but with different queries and authorizations.  The returns are
+wrapped differently as well, in order to catch and repond to different types of errors.
+
+For example, a call to get the PEQ issues from DynamoDB in a given repo with a
+specific label and a specific status, looks like: 
+
+```
+const query = { GHRepo: pd.GHFullName, Active: "true", Amount: lVal, PeqType: tVal };
+const peqs  = await utils.getPeqs( authData, query );
+```
+
+and will go through the following chain of calls in `utils.js`: 
+
+```
+
+async function postAWS( authData, shortName, postData ) {
+
+const params = {
+        url: authData.api,
+	method: "POST",
+        headers: { 'Authorization': authData.cog },
+        body: postData
+    };
+
+    return fetch( authData.api, params )
+	.catch(err => console.log(err));
+};
+
+async function wrappedPostAWS( authData, shortName, postData ) {
+    let response = await postAWS( authData, shortName, JSON.stringify( postData ))
+    if( typeof response === 'undefined' ) return null;
+
+    if( response['status'] == 504 && shortName == "GetEntries" ) {
+	let retries = 0;
+	while( retries < config.MAX_AWS_RETRIES && response['status'] == 504 ) {
+	    console.log( authData.who, "Error. Timeout.  Retrying.", retries );
+	    response = await postAWS( authData, shortName, JSON.stringify( postData ))
+	    if( typeof response === 'undefined' ) return null;
+	}
+    }
+    
+    let tableName = "";
+    if( shortName == "GetEntry" || shortName == "GetEntries" ) { tableName = postData.tableName; }
+    
+    if( response['status'] == 201 ) {
+	let body = await response.json();
+	return body;
+    }
+    else if( response['status'] == 204 ) {
+	if( tableName != "CEPEQs" ) { console.log(authData.who, tableName, "Not found.", response['status'] ); }
+	return -1;
+    }
+    else if( response['status'] == 422 ) {
+	console.log(authData.who, "Semantic error.  Normally means more items found than expected.", response['status'] );
+	return -1;
+    }
+    else {
+	console.log("Unhandled status code:", response['status'] );
+	let body = await response.json();
+	console.log(authData.who, shortName, postData, "Body:", body);
+	return -1;
+    }
+}
+
+async function getPeqs( authData, query ) {
+    let shortName = "GetEntries";
+    let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+```
+
+`awsDynamo.js` provides a handler to the gateway that receives `POST` requests like the one above.  The handler
+uses the `Endpoint` of the query to dispatch the request to the proper function.  The functions that
+hit the data in DynamoDB are written using the [aws-sdk](https://aws.amazon.com/sdk-for-javascript/) and the [AWS DynamoDB Document
+Client](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/dynamodb-example-document-client.html).
+
+Queries for locating data in DynamoDB implemented as full table scans, with filtering applied to the
+scan results.  For CodeEquity, all scans must therefore be paginated scans, since in Dynamo, query filters are
+applied AFTER the page of data is returned.  For example, if the query asks for one unique row of a
+table, if that row does not show up in the first page of data, without a paginated scan, the
+query result would be an empty set.
+
+
 # CodeEquity FAQ
+
+
 
 # CodeEquity QuickStart
 ## Developer
