@@ -173,6 +173,14 @@ async function setPeqLock( peqId, lockId ) {
 
 // Three phase lock to avoid multiple parties reading 'false', setting 'true' at same time, then both proceeding 
 // phase 1: read.  if false, phase2: set with ID.  phase 3 read.  if same ID, proceed.
+// Dynamo can't fine-grain lock tables!  graaaaack.  
+// Implement fine-grained lock to avoid this type of (actual) interleaving error
+// Example failure prior to fine-grained lock
+//    50m 16s 620ms  start delete
+//    50m 16s 770ms  start add
+//    50m 16s 803ms  finish add
+//    50m 17s 224ms  finish delete  (delete via update does much more work, very slow)
+
 async function acquireLock( peqId, lockId ) {
     let retVal = false;
     let firstCheck = await checkPeqLock( peqId );
@@ -463,12 +471,7 @@ async function checkSetGHPop( repo, setVal ) {
 }
 
 
-// Dynamo can't fine-grain lock tables!  graaaaack.  
-// Implement fine-grained lock to avoid this type of (actual) interleaving error
-// 50m 16s 620ms  start delete
-// 50m 16s 770ms  start add
-// 50m 16s 803ms  finish add
-// 50m 17s 224ms  finish delete  (delete via update does much more work, very slow)
+// acquire fine-grained lock
 async function putPeq( newPEQ ) {
 
     // No need to acquire lock if creating a brand-new peq

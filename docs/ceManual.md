@@ -622,13 +622,26 @@ of a `labeled` action for an `issue` notification is shown below.
    { login: 'rmusick2000' }}
 ```
 
+CE Server will often act upon GitHub as a service to the user, to help keep the CodeEquity project
+in a valid state.  Calls to GitHub may fail for a variety of reasons.  An error handler in
+[ghUtils.js](./ghUtils.js) will retry operations a number of times if the error type is
+recognizable.  All communication with the GitHub is encoded as JSON REST data.
+
+The main challenge for CE Server is that the server and GitHub are both marching along to a
+different clock.  CE Server starts to act only after receiving notifications from GitHub.  GitHub will
+send notifications after an action has already
+been registered, and sometimes before all aftershocks of that action have completely resolved.  
+GitHub sends these notifications independently of what CE Server is currently working on
+Most of the work in CE Server revolves around dealing with the 
+asynchronous nature of this pairing.
+
 ## `githubRouter` Job Dispatch
 At the time of writing, CE Server is singly-threaded with no thread pool or worker threads.
 
 ### `ceJobs`
 In a well-behaved world, the handler in `githubRouter` would simply reroute each notification to
 it's specific handler, for example, `githubIssueHandler` for the `issue:labeled` notification above.  As is typically the
-case for servers in the wild, however, that doesn't work here.
+case for servers in the wild, however, that doesn't work here.  
 
 The most common way in which this fails is when a group of notifications arrive at CE Server in
 close proximity (by time).  By default, each time a new notification arrives, it acts as an
@@ -641,7 +654,7 @@ CE Server handles this with a FIFO (first in first out) queue in `githubRouter` 
 Every notification that arrives interrupts `githubRouter` long enough to add the job details to
 `ceJobs`, then processing continues with the first job on the queue.  In this manner, actual server
 operations begin and end with a single notification before starting on the next notification, and
-job starvation is not an issue.  
+job starvation is not an issue.
 
 ### Demotion
 The `ceJobs` queue ensures that each notification is treated by CE Server as one atomic unit, in other
@@ -918,7 +931,8 @@ accrued PEQ issues.  CodeEquity, therefore, allows deletion of accrued PEQ issue
 process.  The first delete on the GitHub site retains the PEQ issue (and card), but moves the card
 to the **Accrued** column in the Unclaimed project (both of which are created by the handler if they
 do not already exist).  If an accrued PEQ issue is deleted from the Unclaimed project, the issue
-subhandler will delete the PEQ issue from GitHub.
+subhandler will delete the PEQ issue from GitHub (actually, it will remove the card and the PEQ
+label, leaving a non-PEQ issue in place, which can then be finally deleted by hand).
 
 The `closed` and `reopened` actions are ignored for both non-PEQ issues and AllocPEQ issues.
 Closing a properly-formed PEQ issue will cause the handler to move the associated card into the **Pending PEQ
@@ -1171,7 +1185,239 @@ of internal state for testing.
 
 # AWS Backend
 
+The AWS backend is a serverless architecture on AWS.  See the [architecture diagram](#codeequity-architecture-overview) for
+reference.  The architecture is specified with a [yaml](../ops/aws/samInfrastructure.yaml) file
+that is a mixture of AWS's SAM and CloudFormation specifications. 
+
+Requests from CE Server and CE Flutter are signed with JWT tokens secured from AWS Cognito running
+with a user pool. Signed requests are sent to AWS Lambda functions via AWS Gateway. awsDynamo
+contains the key lambda handlers for the backend. Their primary function is saving and retrieving
+data from a collection of AWS DynamoDB tables. 
+
+All communication with the AWS Backend is encoded as JSON REST data.
+
+## Creating the AWS Backend
+
+The `ops/aws` directory contains the code used to create, delete and manage the backend that CE
+Server depends on.  The key files are:
+
+   * [createCE.py](../ops/aws/createCE.py)   
+   * [samInfrastructure.yaml](../ops/aws/samInfrastructure.yaml)
+   * [awsCECommon.py](../ops/aws/utils/awsCECommon.py)
+   * [samInstance.py](../ops/aws/utils/samInstance.py))
+   * [awsDynamo.js](../ops/aws/lambdaHandlers/awsDynamo.js)
+
+#### `createCE.py`
+Handles the bulk of the administrative side of dealing with AWS.  It uses a
+combination of the AWS command line interface (the [awscli](https://aws.amazon.com/cli/)), with
+[boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) to interact with the
+serverless architecture [AWS SAM](https://aws.amazon.com/serverless/sam/) that is specified in the
+yaml file above.  `createCE.py` has the following capabilities:
+
+```
+% python createCE.py help
+Reading AWS Config: XXXXXXXXXXX/.aws/config
+Reading AWS Credentials: XXXXXXXXXXX/.aws/credentials
+us-east-1 XXXXXXXXXXXXXXXXXXXXX
+07/12/2021 02:11:17 PM INFO: Validating local environment
+XXXXXXXXXXX/linuxbrew/.linuxbrew/bin/sam
+/usr/local/bin/npm
+/usr/bin/nodejs
+07/12/2021 02:11:17 PM INFO: Found credentials in shared credentials file: ~/.aws/credentials
+07/12/2021 02:11:18 PM INFO: 
+07/12/2021 02:11:18 PM INFO: Available commands:
+07/12/2021 02:11:18 PM INFO:   - makeCEResources:       create all required CodeEquity resources on AWS.
+07/12/2021 02:11:18 PM INFO:   - deleteCEResources:     remove all CodeEquity resources on AWS.
+07/12/2021 02:11:18 PM INFO:   - getCFStacks:           list your AWS CloudFormation stacks.
+07/12/2021 02:11:18 PM INFO:   - getStackOutputs:       display the outputs of CodeEquity's AWS CloudFormation stacks.
+07/12/2021 02:11:18 PM INFO:   - validateConfiguration: Will assert if your dev environment doesn't look suitable.
+07/12/2021 02:11:18 PM INFO:   - createTestDDBEntries:  Adds some test data to AWS DynamoDB tables
+07/12/2021 02:11:18 PM INFO:   - createTestAccounts:    Adds _ce_tester accounts and signup data for integration testing.
+07/12/2021 02:11:18 PM INFO:   - help:                  list available commands.
+07/12/2021 02:11:18 PM INFO: 
+07/12/2021 02:11:18 PM INFO: Pre-experimental commands:
+07/12/2021 02:11:18 PM INFO:   - InstallAWSPermissions: Attempts to create a valid dev environment.  Best used as a set of hints for now.
+```
+
+**WARNING** <br>
+Running `python createCE.py` with anything other than `help` has the potential to destroy
+the current CE Server backend, along with all it's data.  In fact, that's what it's designed to do.
+Do not use this tool without a very clear understanding of what you want to accomplish, and what the tool does.
+<br>
+**WARNING** 
+
+
+#### `awsCECommon.py`
+Contains paths, asset locations, versions, stack names and other common variables.
+
+#### `samInstance.py`
+A class that automates things like running a SAM template, creating stacks and S3 buckets, and
+removing stack resources.
+
+#### `awsDynamo.js`
+
+`awsDynamo.js` is the lambda handler that the AWS Gateway connects with to reach CodeEquity's data, which is stored in DynamoDB.
+Both CE Flutter and CE Server read and write data.  Requests are initiated in the server
+through [utils.js](./utils.js) as JSON `POST` requests.
+Whether communicating with AWS, GitHub or the CodeEquity server itself, the post functions have a
+nearly identical structure, but with different queries and authorizations.  The returns are
+wrapped differently as well, in order to catch and repond to different types of errors.
+
+For example, a call to get the PEQ issues from DynamoDB in a given repo with a
+specific label and a specific status, looks like: 
+
+```
+const query = { GHRepo: pd.GHFullName, Active: "true", Amount: lVal, PeqType: tVal };
+const peqs  = await utils.getPeqs( authData, query );
+```
+
+and will go through the following chain of calls in `utils.js`: 
+
+```
+
+async function postAWS( authData, shortName, postData ) {
+
+const params = {
+        url: authData.api,
+	method: "POST",
+        headers: { 'Authorization': authData.cog },
+        body: postData
+    };
+
+    return fetch( authData.api, params )
+	.catch(err => console.log(err));
+};
+
+async function wrappedPostAWS( authData, shortName, postData ) {
+    let response = await postAWS( authData, shortName, JSON.stringify( postData ))
+    if( typeof response === 'undefined' ) return null;
+
+    if( response['status'] == 504 && shortName == "GetEntries" ) {
+	let retries = 0;
+	while( retries < config.MAX_AWS_RETRIES && response['status'] == 504 ) {
+	    console.log( authData.who, "Error. Timeout.  Retrying.", retries );
+	    response = await postAWS( authData, shortName, JSON.stringify( postData ))
+	    if( typeof response === 'undefined' ) return null;
+	}
+    }
+    
+    let tableName = "";
+    if( shortName == "GetEntry" || shortName == "GetEntries" ) { tableName = postData.tableName; }
+    
+    if( response['status'] == 201 ) {
+	let body = await response.json();
+	return body;
+    }
+    else if( response['status'] == 204 ) {
+	if( tableName != "CEPEQs" ) { console.log(authData.who, tableName, "Not found.", response['status'] ); }
+	return -1;
+    }
+    else if( response['status'] == 422 ) {
+	console.log(authData.who, "Semantic error.  Normally means more items found than expected.", response['status'] );
+	return -1;
+    }
+    else {
+	console.log("Unhandled status code:", response['status'] );
+	let body = await response.json();
+	console.log(authData.who, shortName, postData, "Body:", body);
+	return -1;
+    }
+}
+
+async function getPeqs( authData, query ) {
+    let shortName = "GetEntries";
+    let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+```
+
+`awsDynamo.js` provides a handler to the gateway that receives `POST` requests like the one above.  The handler
+uses the `Endpoint` of the query to dispatch the request to the proper function.  The functions that
+hit the data in DynamoDB are written using the [aws-sdk](https://aws.amazon.com/sdk-for-javascript/) and the [AWS DynamoDB Document
+Client](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/dynamodb-example-document-client.html).
+
+Queries for locating data in DynamoDB implemented as full table scans, with filtering applied to the
+scan results.  For CodeEquity, all scans must therefore be paginated scans, since in Dynamo, query filters are
+applied AFTER the page of data is returned.  For example, if the query asks for one unique row of a
+table, if that row does not show up in the first page of data, without a paginated scan, the
+query result would be an empty set.
+
+
 # CodeEquity FAQ
+
+#### Why the `Unclaimed` column and project?
+
+CE Server uses the `Unclaimed` column as a placeholder location while the user is creating new PEQ
+issues.  Occasionally, it is also a placeholder for an accrued PEQ issue that has been accidentally
+or purposefully deleted from a project.  
+
+CE Server does this mainly for speed, and simplicity.  This way, CodeEquity's 1:1 mapping from PEQ
+issue to card is sancrosact.  Internally, CE Server can respond to queries more quickly when this is
+true, with no special case code.  Externally, CE Flutter can aggragate PEQs by topic area based on
+where the cards reside in the project structure.
+
+For the user, the most every case the `Unclaimed` column is either irrelevant (there will be no
+cards there, since CE Server removes the card from `Unclaimed` once the user does the `triage` step), or a sign
+of a forgotten step (a card is there because the user forgot the `triage` step when adding an issue
+to a project).  So there is little or not cost to the choice.
+
+#### Why is CE Server keeping and modifying a queue of jobs?
+
+Think of the relationship between GitHub and CE Server as similar to the wait staff and the cook in
+a restaurant.  The wait staff (GitHub) will send food orders to the kitchen as fast as they arrive,
+no matter what the cook (CE Server) is doing.  The cook prioritizes the food orders in a queue above the grill,
+usually cooking the tickets in order of arrivan, but sometimes moving them around if a later ticket
+can be handled at the same time as the current one.  Without queue operations like this, some
+customers could wait a long time and would probably never come back.
+
+#### Why is **Pending PEQ Approval** a reserved column?
+
+This is mainly to limit the false alarms that project approvers will need to deal with.  When a PEQ
+issue is moved into the **Pending PEQ Approval** column, an email is sent to all approvers asking
+them to decide if the issue should be accrued or not.  It seems only fair that the contributor first
+makes sure everything is ready to be signed off.
+
+It is still possible to create a PEQ issue directly in this column.  CE Server supports this mode
+mainly to support the initial transition of a non-CodeEquity project into a CodeEquity project.  
+
+Note that before the PEQ issue is accrued, modifications are still allowed to the issue, such as
+changing the PEQ label, or the assignees.  CE Server allows this to support a limited form of
+negotiation before the PEQ issue is accrued.  
+
+#### What happens if I archive a PEQ issue-card?
+
+Project cards in GitHub can be archived, and restored from the project menu sidebar.  For the
+user, this action simply hides the card, it does not cause a `deleted` notification.  When the card
+is restored, CE Server sees it as a `move` within the same column, and so takes no action.  In
+summary, cards can be archived and restored at will, with no impact on the underlying PEQ issue.
+
+#### Why bother moving PEQ issue-cards to `Unclaimed` when deleting a column?
+
+In GitHub, when a project or a column is deleted, the issues that were part of the deleted object
+are left untouched.  CodeEquity should not violate this expectation.  But CodeEquity must also
+preserve a 1:1 mapping from PEQ issues to cards.  There is no better place to place the newly
+created cards.
+
+#### My Project is finished.  Should I close it, or delete it?
+
+Prefer to close a project, rather than delete it.  In either case, the project is hidden from view.
+When you close it, all issues and cards histories
+are still available in GitHub, but just hidden away.  Closing a project gives you the option to
+reopen it down the road.  If you delete it instead, non-PEQ cards will be lost, and any PEQ
+issue-cards will move to `Unclaimed`.  Recovering from a delete is much more work.
+
+Note that closing and reopening projects cause CE Server to store the raw request body on the AWS
+Backend.
+
+#### How can I undo becoming a CodeEquity Project?
+
+#### Should I add assignees to AllocPeq issues?
+
+No, it is not meaningful.  An allocation is meant to be used to represent a large amount of
+unplanned work.  If you want to have an assignee do the planning, then use a standard PEQ issue
+(e.g. "Plan out the allocation") and add the assignee there.
 
 # CodeEquity QuickStart
 ## Developer
