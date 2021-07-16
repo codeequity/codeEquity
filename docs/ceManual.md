@@ -627,13 +627,21 @@ in a valid state.  Calls to GitHub may fail for a variety of reasons.  An error 
 [ghUtils.js](./ghUtils.js) will retry operations a number of times if the error type is
 recognizable.  All communication with the GitHub is encoded as JSON REST data.
 
+The main challenge for CE Server is that the server and GitHub are both marching along to a
+different clock.  CE Server starts to act only after receiving notifications from GitHub.  GitHub will
+send notifications after an action has already
+been registered, and sometimes before all aftershocks of that action have completely resolved.  
+GitHub sends these notifications independently of what CE Server is currently working on
+Most of the work in CE Server revolves around dealing with the 
+asynchronous nature of this pairing.
+
 ## `githubRouter` Job Dispatch
 At the time of writing, CE Server is singly-threaded with no thread pool or worker threads.
 
 ### `ceJobs`
 In a well-behaved world, the handler in `githubRouter` would simply reroute each notification to
 it's specific handler, for example, `githubIssueHandler` for the `issue:labeled` notification above.  As is typically the
-case for servers in the wild, however, that doesn't work here.
+case for servers in the wild, however, that doesn't work here.  
 
 The most common way in which this fails is when a group of notifications arrive at CE Server in
 close proximity (by time).  By default, each time a new notification arrives, it acts as an
@@ -646,7 +654,7 @@ CE Server handles this with a FIFO (first in first out) queue in `githubRouter` 
 Every notification that arrives interrupts `githubRouter` long enough to add the job details to
 `ceJobs`, then processing continues with the first job on the queue.  In this manner, actual server
 operations begin and end with a single notification before starting on the next notification, and
-job starvation is not an issue.  
+job starvation is not an issue.
 
 ### Demotion
 The `ceJobs` queue ensures that each notification is treated by CE Server as one atomic unit, in other
@@ -923,7 +931,8 @@ accrued PEQ issues.  CodeEquity, therefore, allows deletion of accrued PEQ issue
 process.  The first delete on the GitHub site retains the PEQ issue (and card), but moves the card
 to the **Accrued** column in the Unclaimed project (both of which are created by the handler if they
 do not already exist).  If an accrued PEQ issue is deleted from the Unclaimed project, the issue
-subhandler will delete the PEQ issue from GitHub.
+subhandler will delete the PEQ issue from GitHub (actually, it will remove the card and the PEQ
+label, leaving a non-PEQ issue in place, which can then be finally deleted by hand).
 
 The `closed` and `reopened` actions are ignored for both non-PEQ issues and AllocPEQ issues.
 Closing a properly-formed PEQ issue will cause the handler to move the associated card into the **Pending PEQ
@@ -1338,7 +1347,77 @@ query result would be an empty set.
 
 # CodeEquity FAQ
 
+#### Why the `Unclaimed` column and project?
 
+CE Server uses the `Unclaimed` column as a placeholder location while the user is creating new PEQ
+issues.  Occasionally, it is also a placeholder for an accrued PEQ issue that has been accidentally
+or purposefully deleted from a project.  
+
+CE Server does this mainly for speed, and simplicity.  This way, CodeEquity's 1:1 mapping from PEQ
+issue to card is sancrosact.  Internally, CE Server can respond to queries more quickly when this is
+true, with no special case code.  Externally, CE Flutter can aggragate PEQs by topic area based on
+where the cards reside in the project structure.
+
+For the user, the most every case the `Unclaimed` column is either irrelevant (there will be no
+cards there, since CE Server removes the card from `Unclaimed` once the user does the `triage` step), or a sign
+of a forgotten step (a card is there because the user forgot the `triage` step when adding an issue
+to a project).  So there is little or not cost to the choice.
+
+#### Why is CE Server keeping and modifying a queue of jobs?
+
+Think of the relationship between GitHub and CE Server as similar to the wait staff and the cook in
+a restaurant.  The wait staff (GitHub) will send food orders to the kitchen as fast as they arrive,
+no matter what the cook (CE Server) is doing.  The cook prioritizes the food orders in a queue above the grill,
+usually cooking the tickets in order of arrivan, but sometimes moving them around if a later ticket
+can be handled at the same time as the current one.  Without queue operations like this, some
+customers could wait a long time and would probably never come back.
+
+#### Why is **Pending PEQ Approval** a reserved column?
+
+This is mainly to limit the false alarms that project approvers will need to deal with.  When a PEQ
+issue is moved into the **Pending PEQ Approval** column, an email is sent to all approvers asking
+them to decide if the issue should be accrued or not.  It seems only fair that the contributor first
+makes sure everything is ready to be signed off.
+
+It is still possible to create a PEQ issue directly in this column.  CE Server supports this mode
+mainly to support the initial transition of a non-CodeEquity project into a CodeEquity project.  
+
+Note that before the PEQ issue is accrued, modifications are still allowed to the issue, such as
+changing the PEQ label, or the assignees.  CE Server allows this to support a limited form of
+negotiation before the PEQ issue is accrued.  
+
+#### What happens if I archive a PEQ issue-card?
+
+Project cards in GitHub can be archived, and restored from the project menu sidebar.  For the
+user, this action simply hides the card, it does not cause a `deleted` notification.  When the card
+is restored, CE Server sees it as a `move` within the same column, and so takes no action.  In
+summary, cards can be archived and restored at will, with no impact on the underlying PEQ issue.
+
+#### Why bother moving PEQ issue-cards to `Unclaimed` when deleting a column?
+
+In GitHub, when a project or a column is deleted, the issues that were part of the deleted object
+are left untouched.  CodeEquity should not violate this expectation.  But CodeEquity must also
+preserve a 1:1 mapping from PEQ issues to cards.  There is no better place to place the newly
+created cards.
+
+#### My Project is finished.  Should I close it, or delete it?
+
+Prefer to close a project, rather than delete it.  In either case, the project is hidden from view.
+When you close it, all issues and cards histories
+are still available in GitHub, but just hidden away.  Closing a project gives you the option to
+reopen it down the road.  If you delete it instead, non-PEQ cards will be lost, and any PEQ
+issue-cards will move to `Unclaimed`.  Recovering from a delete is much more work.
+
+Note that closing and reopening projects cause CE Server to store the raw request body on the AWS
+Backend.
+
+#### How can I undo becoming a CodeEquity Project?
+
+#### Should I add assignees to AllocPeq issues?
+
+No, it is not meaningful.  An allocation is meant to be used to represent a large amount of
+unplanned work.  If you want to have an assignee do the planning, then use a standard PEQ issue
+(e.g. "Plan out the allocation") and add the assignee there.
 
 # CodeEquity QuickStart
 ## Developer
