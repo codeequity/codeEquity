@@ -1,10 +1,3 @@
-<br>
-**DOC IN PROGRESS...**
-<br>
-**DOC IN PROGRESS...**
-<br>
-**DOC IN PROGRESS...**
-
 # CodeEquity Software Manual
 
 CodeEquity is based on a simple truth: ***If you help create something, you should
@@ -1253,6 +1246,8 @@ Contains paths, asset locations, versions, stack names and other common variable
 #### `samInstance.py`
 A class that automates things like running a SAM template, creating stacks and S3 buckets, and
 removing stack resources.
+
+## Interacting with the Backend
 
 #### `awsDynamo.js`
 
