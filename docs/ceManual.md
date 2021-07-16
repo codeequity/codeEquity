@@ -1,9 +1,34 @@
-<br>
-**DOC IN PROGRESS...**
-<br>
-**DOC IN PROGRESS...**
-<br>
-**DOC IN PROGRESS...**
+- [CodeEquity Software Manual](#codeequity-software-manual)
+  * [CodeEquity Key Concepts](#codeequity-key-concepts)
+- [CodeEquity for GitHub](#codeequity-for-github)
+- [Common Lifecycle Examples](#common-lifecycle-examples)
+  * [Creating a CodeEquity Project Structure from Scratch](#creating-a-codeequity-project-structure-from-scratch)
+  * [Converting a Project into a CodeEquity Project](#converting-a-project-into-a-codeequity-project)
+- [CodeEquity Architecture Overview](#codeequity-architecture-overview)
+- [CodeEquity App for GitHub](#codeequity-app-for-github)
+- [CE Server](#ce-server)
+  * [`githubRouter` Job Dispatch](#githubrouter-job-dispatch)
+    - [`ceJobs`](#cejobs)
+    - [Demotion](#demotion)
+  * [Linkages](#linkages)
+  * [Authorizations](#authorizations)
+  * [Notification Filtering](#notification-filtering)
+  * [SubHandlers ](#subhandlers)
+    - [Issue SubHandler](#issue-subhandler)
+    - [Card SubHandler](#card-subhandler)
+    - [Project SubHandler](#project-subhandler)
+    - [Column SubHandler](#column-subhandler)
+    - [Label SubHandler](#label-subhandler)
+    - [Test SubHandler](#test-subhandler)
+- [AWS Backend](#aws-backend)
+  * [Creating the AWS Backend](#creating-the-aws-backend)
+  * [Interacting with the Backend](#interacting-with-the-backend)
+- [CodeEquity FAQ](#codeequity-faq)
+- [CodeEquity QuickStart](#codeequity-quickstart)
+  * [Developer](#developer)
+  * [Founder](#founder)
+  * [Collaborator](#collaborator)
+
 
 # CodeEquity Software Manual
 
@@ -1253,6 +1278,8 @@ Contains paths, asset locations, versions, stack names and other common variable
 #### `samInstance.py`
 A class that automates things like running a SAM template, creating stacks and S3 buckets, and
 removing stack resources.
+
+## Interacting with the Backend
 
 #### `awsDynamo.js`
 
