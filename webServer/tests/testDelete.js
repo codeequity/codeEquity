@@ -158,7 +158,7 @@ async function runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM )
     console.log( "Clear testing environment" );
 
     let promises = [];
-    promises.push( clearRepo( authData, ghLinks, td ));
+    promises.push( clearRepo( authData,  ghLinks, td ));
     promises.push( clearRepo( authDataX, ghLinks, tdX ));
     promises.push( clearRepo( authDataM, ghLinks, tdM ));
     await Promise.all( promises );

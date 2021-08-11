@@ -26,9 +26,19 @@ async function deleteIssue( authData, ghLinks, pd ) {
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
     if( links == -1 ) return;
     let link = links[0];
-
+    
     // Just carded?  No-op.  Delete issue also sends delete card, which handles linkage.
     [pd.peqValue, _] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+
+    // XXX Looks like there might be a bug when issue is deleted with GQL.
+    //     deleteCard, deleteIssue both being sent.  But early return with no 'Delete' indicates that
+    //     sometimes notification's reqBody labels is already incomplete or empty.  Need evidence..
+    //     No labels, no recreate.
+    if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] && pd.peqValue <= 0 ) {
+	console.log( "XXX Gotchya.  GQL delete may sometimes not send issue's original labels." );
+	console.log( "XXX", pd.reqBody['issue'] );
+    }
+    
     if( pd.peqValue <= 0 ) return;
 
     // PEQ.  Card is gone, issue is gone.  Delete card will handle all but the one case below, in which case it leaves link intact.

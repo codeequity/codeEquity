@@ -93,6 +93,8 @@ async function runTests() {
     testStatus = tu.mergeTests( testStatus, subTest );
 
     await testDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
+    console.log( "\n\nInitial cleanup complete" );
+    await utils.sleep( 5000 );
 
     subTest = await testSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );

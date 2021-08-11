@@ -633,6 +633,17 @@ function checkEq( lhs, rhs, testStatus, msg ) {
     return testStatus;
 }
 
+function checkNEq( lhs, rhs, testStatus, msg ) {
+    if( lhs != rhs ) {
+	testStatus[0]++;
+    }
+    else {
+	testStatus[1]++;
+	testStatus[2].push( msg + ": " + lhs + " == " + rhs );
+    }
+    return testStatus;
+}
+
 function checkGE( lhs, rhs, testStatus, msg ) {
     if( lhs >= rhs ) {
 	testStatus[0]++;
@@ -837,7 +848,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     subTest = checkEq( issue.state, state,                    subTest, "Issue state" );
 
     const lname = labelVal.toString() + " " + config.ALLOC_LABEL;
-    subTest = checkEq( issue.labels[0].name, lname,           subTest, "Issue label name" );
+    subTest = checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );    
 
     // CHECK github location
     cards = await getCards( authData, loc.colId );
@@ -929,7 +940,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 	subTest = checkEq( typeof issue.labels[0] !== 'undefined', true, subTest, "labels not yet ready" );
 	subTest = checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
 	if( typeof issue.labels[0] !== 'undefined' ) {
-	    subTest = checkEq( issue.labels[0].name, lname,           subTest, "Issue label name" );
+	    subTest = checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );
 	}
     }
     if( issueState ) { subTest = checkEq( issue.state, issueState, subTest, "Issue state" );  }
@@ -1042,7 +1053,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     
     const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
     const lval  = labelVal ? labelVal                     : 1000;
-    subTest = checkEq( issue.labels[0].name, lname,           subTest, "Issue label name" );
+    subTest = checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );        
     subTest = checkEq( issue.state, "open",                   subTest, "Issue state" ); 
 
     // CHECK github location

@@ -300,6 +300,7 @@ router.post('/:location?', async function (req, res) {
     let jobId = utils.randAlpha(10);
 
     notificationCount++;
+    // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
     if( notificationCount % 20 == 0 ) { ghLinks.show(); }
 
     // GH stamps are totally unreliable. Maybe good to the minute, which is not useful.  Use server arrival time.
