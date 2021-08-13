@@ -19,12 +19,14 @@ https://developer.github.com/v3/issues/#create-an-issue
 // PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
-async function recordMove( authData, reqBody, fullName, oldCol, newCol, link ) { 
+async function recordMove( authData, reqBody, fullName, oldCol, newCol, link, peq ) { 
 
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
-    let peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
+    if( typeof peq == 'undefined' ) {
+	peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
+    }
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );
 
@@ -287,4 +289,5 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     return;
 }
 
-exports.handler = handler;
+exports.handler    = handler;
+exports.recordMove = recordMove;

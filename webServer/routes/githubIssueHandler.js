@@ -1,10 +1,11 @@
-var utils = require('../utils');
-var ghUtils = require('../ghUtils');
-var config  = require('../config');
-var assert = require('assert');
+var utils       = require('../utils');
+var ghUtils     = require('../ghUtils');
+var config      = require('../config');
+var assert      = require('assert');
+var cardHandler = require('./githubCardHandler');
 
-var gh     = ghUtils.githubUtils;
-var ghSafe = ghUtils.githubSafe;
+var gh      = ghUtils.githubUtils;
+var ghSafe  = ghUtils.githubSafe;
 
 // Terminology:
 // situated issue: an issue with a card in a CE-valid project structure
@@ -92,13 +93,13 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
 	ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, issueNum, label );
-	return;
+	return false;
     }
     
     // Current notification not for peq label?
     if( pd.peqValue <= 0 || curVal <= 0 ) {
 	console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
-	return;
+	return false;
     }
     
     // Was this a carded issue?  Get linkage
@@ -132,7 +133,8 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     content.push( pd.GHIssueTitle );
     content.push( label.description );
     // Don't wait, no dependence
-    utils.processNewPEQ( authData, ghLinks, pd, content, link );
+    let retVal = utils.processNewPEQ( authData, ghLinks, pd, content, link );
+    return (retVal != 'early' && retVal != 'removeLabel')
 }
 
 // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
@@ -169,7 +171,38 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
+	    let success = await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
+	    
+	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
+	    // Will not allow this in ACCR.
+	    if( success && pd.reqBody.issue.state == 'closed' ) {
+
+		console.log( "PEQ labeled closed issue." )
+
+		// Must be situated by now.  Move, if in flatworld.
+		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+		assert( links.length == 1 );
+		let link = links[0];
+
+		if( !config.PROJ_COLS.includes( link.GHColumnName )) {
+
+		    let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
+		    if( ceProjectLayout[0] == -1 ) { console.log( "Project does not have recognizable CE column layout.  No action taken." ); }
+		    else {
+			// Must wait.  Move card can fail if, say, no assignees
+			let success = await gh.moveIssueCard( authData, ghLinks, pd, 'closed', ceProjectLayout ); 
+			if( success ) {
+		    
+			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
+			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.GHFullName,
+								 link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
+
+			    cardHandler.recordMove( authData, pd.reqBody, pd.GHFullName, -1, config.PROJ_PEND, link, peq );
+			}
+		    }
+		}
+	    }
+	    
 	}
 	break;
     case 'unlabeled':

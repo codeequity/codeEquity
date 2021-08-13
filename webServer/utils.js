@@ -612,7 +612,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 	console.log( authData.who, "WARNING.", links[0].GHColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
 	gh.removeCard( authData, origCardId );
-	return;
+	return 'early';
     }
 
     // Bail, if this is alloc in x4
@@ -620,7 +620,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	// remove card, leave issue & label in place.
 	console.log( authData.who, "WARNING.", "Allocations are not useful in config's PROJ_COLS columns.  Removing card from", colName );
 	gh.removeCard( authData, origCardId );
-	return;
+	return 'early';
     }
 	
 
@@ -771,11 +771,10 @@ async function cleanDynamo( authData, tableName, ids ) {
 // Use this sparingly, if at all!!
 async function settleWithVal( fname, func, ...params ) {
     let delayCount = 1;
-    console.log( "Error.", fname, delayCount, "Should this happen with any frequency, increase the instance stats, and add a thread pool." );
 
     let retVal = await func( ...params );
     while( (typeof retVal === 'undefined' || retVal == -1 ) && delayCount < config.MAX_DELAYS) {
-	console.log( "Error.", fname, delayCount, "Should this happen with any frequency, increase the instance stats, and add a thread pool." );
+	console.log( "WARNING", fname, delayCount, "Spin wait.  Should this happen with any frequency, increase the instance stats, and add a thread pool." );
 	await sleep( config.STEP_COST );
 	retVal = await func( ...params );
 	delayCount++;
@@ -951,10 +950,11 @@ exports.getPeqs = getPeqs;
 exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;
 
-exports.checkQueue = checkQueue;
-exports.purgeQueue = purgeQueue;
-exports.getFromQueue = getFromQueue;
-exports.demoteJob = demoteJob;
+exports.checkQueue    = checkQueue;
+exports.purgeQueue    = purgeQueue;
+exports.getFromQueue  = getFromQueue;
+exports.demoteJob     = demoteJob;
+exports.settleWithVal = settleWithVal;
 
 // TESTING ONLY
 exports.ingestPActs = ingestPActs;       // TESTING ONLY
