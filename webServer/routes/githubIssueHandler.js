@@ -26,35 +26,34 @@ async function deleteIssue( authData, ghLinks, pd ) {
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
     if( links == -1 ) return;
     let link = links[0];
-    
-    // Just carded?  No-op.  Delete issue also sends delete card, which handles linkage.
-    [pd.peqValue, _] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
 
-    // XXX Looks like there might be a bug when issue is deleted with GQL.
-    //     deleteCard, deleteIssue both being sent.  But early return with no 'Delete' indicates that
-    //     sometimes notification's reqBody labels is already incomplete or empty.  Need evidence..
-    //     No labels, no recreate.
-    if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] && pd.peqValue <= 0 ) {
-	console.log( "XXX Gotchya.  GQL delete may sometimes not send issue's original labels." );
-	console.log( "XXX", pd.reqBody['issue'] );
-    }
-    
-    if( pd.peqValue <= 0 ) return;
+    // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
+    // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
+    // [pd.peqValue, _] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+    // if( pd.peqValue <= 0 ) return;
 
     // PEQ.  Card is gone, issue is gone.  Delete card will handle all but the one case below, in which case it leaves link intact.
 
     // ACCR, not unclaimed, deleted issue.
     if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 
-	// the entire issue has been given to us here.  Recreate it.
-	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.", pd.GHIssueNum );
-	
+	// Because of the change in August 2021, the request body no longer has labels.  
+	// Can recreate linkage to peq label, but will lose the others.  This is a bug, out of our immediate control.
+	// Rare.  GQL-only.  Would need to save more state.  Painful.
+	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.  Non-PEQ labels will be lost.", pd.GHIssueNum );
+
+	// the entire issue has no longer(!) been given to us here.  Recreate it.
+	// Can only be alloc:false peq label here.
+	let peq  = await utils.getPeq( authData, link.GHIssueId );
+	const lName = peq.Amount.toString() + " " + config.PEQ_LABEL;
+	const theLabel = await gh.findOrCreateLabel( authData,  pd.GHOwner, pd.GHRepo, false, lName, peq.Amount );
+	pd.reqBody.issue.labels = [ theLabel ];
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
+
 	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
 
 	// Promises
 	console.log( authData.who, "creating card from new issue" );
-	let peq  = utils.getPeq( authData, link.GHIssueId );
 	let card = gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
@@ -69,7 +68,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	console.log( authData.who, "rebuilt link" );
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
-	peq = await peq;
+	// peq = await peq;
 	const newPeqId = await utils.rebuildPeq( authData, link, peq );
 	
 	utils.removePEQ( authData, peq.PEQId );	

@@ -301,7 +301,7 @@ router.post('/:location?', async function (req, res) {
 
     notificationCount++;
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
-    if( notificationCount % 20 == 0 ) { ghLinks.show(); }
+    if( notificationCount % 50 == 0 ) { ghLinks.show(); }
 
     // GH stamps are totally unreliable. Maybe good to the minute, which is not useful.  Use server arrival time.
     // let newStamp = req.body[event].updated_at;
