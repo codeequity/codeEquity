@@ -1219,12 +1219,13 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     // CHECK dynamo Pact
     // label carded issue?  1 pact.  attach labeled issue to proj col?  2 pact.
     // Could be any number.  add (unclaimed).  change (assign) x n.  relocate (peqify)
+    // Note.  Can arrive in dynamo out of order - no awaiting for most PActs
     let allPacts = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     subTest = checkGE( pacts.length, 1,                         subTest, "PAct count" );         
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let addUncl  = pacts.length >= 2 ? pacts[0] : {"Action": config.PACTACT_ADD };
+    let addUncl  = pacts.length >= 2 ? pacts[0] :                 {"Action": config.PACTACT_ADD };
     let relUncl  = pacts.length >= 2 ? pacts[ pacts.length -1 ] : {"Action": config.PACTACT_RELO };
     let pact     = pacts.length >= 2 ? pacts[ pacts.length -1 ] : pacts[0];
     for( const pact of pacts ) {
@@ -1235,6 +1236,14 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
+
+    // reorder, in case arrival got messed up
+    if( addUncl.Action == config.PACTACT_RELO && relUncl.Action == config.PACTACT_ADD ) {
+	let t   = addUncl;
+	addUncl = relUncl;
+	relUncl = t;
+    }
+    
     subTest = checkEq( addUncl.Action, config.PACTACT_ADD,          subTest, "PAct Action"); 
     subTest = checkEq( relUncl.Action, config.PACTACT_RELO,         subTest, "PAct Action");
     const source = pact.Action == config.PACTACT_ADD || pact.Action == config.PACTACT_RELO;
@@ -1746,7 +1755,14 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
-    subTest = checkEq( addMP.Action, config.PACTACT_RELO,           subTest, "PAct action"); 
+
+    // XXX Dangerous test, PActs can get reordered on the way in.
+    //     First reorder: add vs relocate.
+
+    let addRelo = ( addMP.Action == config.PACTACT_RELO || addMP.Action == config.PACTACT_ADD );
+    if( !addRelo ) { config.log( "PAct action", addRelo, "is not add or relo" ); }
+    
+    subTest = checkEq( addRelo, true,                               subTest, "PAct action"); 
     subTest = checkEq( remA1.Action, config.PACTACT_CHAN,           subTest, "PAct action"); 
     subTest = checkEq( remA2.Action, config.PACTACT_CHAN,           subTest, "PAct action");
     let assignees = ( remA1.Subject[1] == ass1 && remA2.Subject[1] == ass2 ) || ( remA1.Subject[1] == ass2 && remA2.Subject[1] == ass1 );

@@ -19,12 +19,14 @@ https://developer.github.com/v3/issues/#create-an-issue
 // PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
-async function recordMove( authData, reqBody, fullName, oldCol, newCol, link ) { 
+async function recordMove( authData, reqBody, fullName, oldCol, newCol, link, peq ) { 
 
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
-    let peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
+    if( typeof peq == 'undefined' ) {
+	peq = await ghSafe.validatePEQ( authData, fullName, link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
+    }
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );
 
@@ -159,8 +161,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    const fullIssue = await gh.getFullIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );   
 	    let [_, allocation] = ghSafe.theOnePEQ( fullIssue.labels );
-	    if( allocation && config.PROJ_COLS.includes( newColName )) {
-		console.log( authData.who, "WARNING.", "Allocations are not useful in config's PROJ_COLS columns.  Moving card back." );
+	    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newColName )) {
+		console.log( authData.who, "WARNING.", "Allocations are only useful in config:PROJ_PLAN, or flat columns.  Moving card back." );
 		gh.moveCard( authData, cardId, oldColId );
 		return;
 	    }
@@ -287,4 +289,5 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     return;
 }
 
-exports.handler = handler;
+exports.handler    = handler;
+exports.recordMove = recordMove;
