@@ -30,8 +30,8 @@ async function remIssues( authData, ghLinks, pd ) {
     
     let allLinks = await tu.getLinks( authData, ghLinks, { "repo": pd.GHFullName } );
     
-    // XXX Could probably do this in one fel swoop, but for now
-    // XXX Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
+    // Could probably do this in one fel swoop, but for now
+    // Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
     let endpoint = "https://api.github.com/graphql";
     for( const issue of issues) {
 	const nodeId = issue.node_id;

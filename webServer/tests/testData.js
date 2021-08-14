@@ -31,7 +31,6 @@ class TestData {
 	this.githubOpsPID     = config.EMPTY;
 	this.ghProgID         = config.EMPTY;
 
-	// XXX used?
 	this.githubOpsIss     = config.EMPTY;  // [ id, num ] 
 	this.dataSecIss       = config.EMPTY;
 	this.unallocIss1      = config.EMPTY;
@@ -64,7 +63,7 @@ class TestData {
 	loc.colId    = this.dsPlanID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PLAN];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = config.PEQTYPE_PLAN;  // XXX probably need to add alloc
+	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
     getDSProgLoc() { 
@@ -74,7 +73,7 @@ class TestData {
 	loc.colId    = this.dsProgID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PROG];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = config.PEQTYPE_PLAN;  // XXX probably need to add alloc
+	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
@@ -85,7 +84,7 @@ class TestData {
 	loc.colId    = this.dsPendID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PEND];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle];
-	loc.peqType  = config.PEQTYPE_PLAN; // XXX probably need to add alloc
+	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
