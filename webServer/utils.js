@@ -615,10 +615,10 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	return 'early';
     }
 
-    // Bail, if this is alloc in x4
-    if( allocation && config.PROJ_COLS.includes( colName )) {
+    // Bail, if this is alloc in x3
+    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
 	// remove card, leave issue & label in place.
-	console.log( authData.who, "WARNING.", "Allocations are not useful in config's PROJ_COLS columns.  Removing card from", colName );
+	console.log( authData.who, "WARNING.", "Allocations only useful in config:PROJ_PLAN, or flat columns.  Removing card from", colName );
 	gh.removeCard( authData, origCardId );
 	return 'early';
     }

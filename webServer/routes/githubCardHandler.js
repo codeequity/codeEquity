@@ -161,8 +161,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    const fullIssue = await gh.getFullIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );   
 	    let [_, allocation] = ghSafe.theOnePEQ( fullIssue.labels );
-	    if( allocation && config.PROJ_COLS.includes( newColName )) {
-		console.log( authData.who, "WARNING.", "Allocations are not useful in config's PROJ_COLS columns.  Moving card back." );
+	    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newColName )) {
+		console.log( authData.who, "WARNING.", "Allocations are only useful in config:PROJ_PLAN, or flat columns.  Moving card back." );
 		gh.moveCard( authData, cardId, oldColId );
 		return;
 	    }
