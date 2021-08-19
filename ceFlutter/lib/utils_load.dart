@@ -106,7 +106,9 @@ Future<bool> checkValidConfig( context ) async {
 
    print( "Cog Key location: " + poolKeys );
 
-   var response = await http.get( poolKeys );
+   var url = Uri.parse( poolKeys );
+   var response = await http.get( url );   
+   // var response = await http.get( poolKeys );
    var rbody = json.decode(utf8.decode(response.bodyBytes));
    print( "RESPONSE " + rbody.toString() );
 

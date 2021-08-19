@@ -29,8 +29,8 @@ class CEApp extends StatelessWidget {
            appBarTheme: AppBarTheme(
               color: Colors.grey[200],
               // title is deprecated 1.13, but as of 2/20 headline6 has not yet made it to the stable release
-              //textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
-              textTheme: TextTheme( title: TextStyle( color: Colors.black )),
+              textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
+              //textTheme: TextTheme( title: TextStyle( color: Colors.black )),
               iconTheme: IconThemeData( color: Colors.black ) ),
            bottomAppBarColor: Colors.grey[200] ),
         home:  CESplashPage( title: 'CodeEquity'),
