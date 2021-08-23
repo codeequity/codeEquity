@@ -139,9 +139,11 @@ Future<http.Response> localPost( String shortName, postData ) async {
 // XXX naming convention, pls
 Future<http.Response> ghGet( url ) async {
 
+   final urlUri = Uri.parse( url );
+   
    final response =
       await http.get(
-         url,
+         urlUri,
          headers: {HttpHeaders.contentTypeHeader: 'application/json' },
          );
 
@@ -153,10 +155,11 @@ Future<http.Response> postIt( String shortName, postData, container ) async {
    print( shortName );
    final appState  = container.state;
 
-   final gatewayURL = appState.apiBasePath + "/find";
+   // final gatewayURL = appState.apiBasePath + "/find";
+   final gatewayURL = Uri.parse( appState.apiBasePath + "/find" );
 
    if( appState.idToken == "" ) { print( "Access token appears to be empty!"); }
-   
+
    final response =
       await http.post(
          gatewayURL,
@@ -261,8 +264,9 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
 
 Future<PEQSummary> fetchPEQSummary( context, container, postData ) async {
    String shortName = "fetchPEQSummary";
-   final response = await postIt( shortName, postData, container );
-   
+
+   final response = await postIt( shortName, json.encode( postData ), container );
+
    if (response.statusCode == 201) {
       final ps = json.decode(utf8.decode(response.bodyBytes));
       PEQSummary peqSummary = PEQSummary.fromJson(ps);
@@ -350,6 +354,8 @@ Future<void> reloadMyProjects( context, container ) async {
    // XXX could store 'lastViewed' with ghAccount.  For now, default is first.
    // XXX breaks if no repo yet
    if( appState.myGHAccounts.length > 0 ) {
+      print( "My GH Accts:" );
+      print( appState.myGHAccounts );
       String ghUser = appState.myGHAccounts[0].ghUserName;
       String ghRepo = appState.myGHAccounts[0].repos[2];
       appState.selectedRepo = ghRepo;

@@ -106,6 +106,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
         
         String cogData = await DefaultAssetBundle.of(context).loadString('files/awsconfiguration.json');
         final cogJson = json.decode( cogData );
+        print( cogJson );
         setState(() {
               state.cogPoolId          = cogJson['CognitoUserPool']['Default']['PoolId'];
               state.cogAppClientId     = cogJson['CognitoUserPool']['Default']['AppClientId'];

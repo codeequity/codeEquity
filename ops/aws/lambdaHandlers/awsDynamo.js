@@ -279,6 +279,9 @@ async function getEntry( tableName, query ) {
     case "CERepoStatus":
 	props = [ "GHRepo" ];
 	break;
+    case "CEPEQSummary":
+	props = [ "GHRepo" ];
+	break;
     default:
 	assert( false );
     }
