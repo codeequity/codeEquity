@@ -45,6 +45,8 @@ class AppState {
    bool loaded;                              // control expensive aspects of state initialization
    String userId;
 
+   Map< String, String > idMapGH;         // github userid to CE user id
+   
    List<PEQ>       myPEQs;                // ??? 
    List<PEQAction> myPEQActions;          // ???
    PEQSummary myPEQSummary;               // XXX need 1 proj, one my per repo
@@ -66,6 +68,7 @@ class AppState {
       loaded = false;
 
       userId = "";
+      idMapGH = new Map<String, String>();
       myPEQs = [];
       myPEQActions = [];
       myPEQSummary = null;
