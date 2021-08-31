@@ -34,8 +34,33 @@ class PEQ {
                            'PeqType': enumToStr(peqType), 'Amount': amount, 'AccrualDate': accrualDate, 'VestedPerc': vestedPerc,
                            'GHRepo': ghRepo, 'GHProjectSub': ghProjectSub, 'GHProjectId': ghProjectId, 'GHIssueId': ghIssueId,
                            'GHIssueTitle': ghIssueTitle, 'Active': active }; 
-   
+
+   // No PEQ found.  return empty peq.
+   factory PEQ.empty() {
+      return PEQ(
+         id:            "-1",
+         ceHolderId:    new List<String>(),
+         ghHolderId:    new List<String>(),
+         ceGrantorId:   "-1",
+
+         peqType:       PeqType.end,
+         amount:        -1,
+         accrualDate:   "-1",
+         vestedPerc:    0.0,
+
+         ghRepo:        "-1",
+         ghProjectSub:  new List<String>(),
+         ghProjectId:   "-1",
+         ghIssueId:     "-1",
+         ghIssueTitle:  "-1",
+
+         active:        false,
+         );
+   }
+      
    factory PEQ.fromJson(Map<String, dynamic> json) {
+
+      print( "fromming " + json['PEQId'] );
 
       var dynamicSub   = json['GHProjectSub'];
       var dynamicAssCE = json['CEHolderId'];

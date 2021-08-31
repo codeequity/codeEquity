@@ -80,7 +80,7 @@ class _CEDetailState extends State<CEDetailPage> {
             var postData = {};
             postData['PEQRawId'] = pact.id;
             var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQRaw", "query": postData }; 
-            PEQRaw pr = await fetchPEQRaw( context, container, pd );
+            PEQRaw pr = await fetchPEQRaw( context, container, json.encode( pd ));
             var encoder = new JsonEncoder.withIndent("  ");
             var prj = json.decode( pr.rawReqBody );
             String prettyRaw = encoder.convert(prj);
@@ -154,6 +154,8 @@ class _CEDetailState extends State<CEDetailPage> {
                ]));
    }
 
+   // XXX this needs to include pacts for any user, as long as it hits the given peq.
+   //     internal state does not support this
    void rebuildPActions( container, context ) async {
       print( "rebuiding userPactions for selected user. " );
       await updateUserPActions( container, context );

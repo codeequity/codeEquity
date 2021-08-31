@@ -279,6 +279,9 @@ async function getEntry( tableName, query ) {
     case "CERepoStatus":
 	props = [ "GHRepo" ];
 	break;
+    case "CEPEQSummary":
+	props = [ "GHRepo" ];
+	break;
     default:
 	assert( false );
     }
@@ -689,8 +692,13 @@ async function getPeqsById( peqIds ) {
 	    console.log( '...promises done' );
 	    let res = [];
 	    results.forEach( function ( peq ) {
-		assert( peq.length == 1 );
-		res.push( peq[0] );
+		assert( peq.length <= 1 );
+		if( peq.length == 1 ) {
+		    res.push( peq[0] );
+		}
+		else {
+		    res.push( -1 );
+		}
 	    });
 	    
 	    if( res.length > 0 ) { return success( res ); }

@@ -50,6 +50,7 @@ void notYetImplemented(BuildContext context) {
       // toastLength: Toast.LENGTH_LONG,
       gravity: ToastGravity.CENTER,
       backgroundColor: Colors.pinkAccent,
+      //style.background: Colors.pinkAccent,
       textColor: Colors.white,
       fontSize: 14.0
       );
@@ -63,6 +64,7 @@ void showToast(String msg) {
       msg: msg,
       toastLength: Toast.LENGTH_LONG,    
       backgroundColor: Colors.pinkAccent,
+      // style.background: Colors.pinkAccent,
       gravity: ToastGravity.CENTER,
       textColor: Colors.white,
       fontSize: 18.0,

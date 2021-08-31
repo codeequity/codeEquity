@@ -6,21 +6,22 @@ const RESOURCES = {
   "assets/FontManifest.json": "faa14c07b2f22d2dc8497ef79219a2b6",
 "assets/files/api_base_path.txt": "51d6675479dd1c078558b900508579ae",
 "assets/files/awsconfiguration.json": "5b5104c1d6192fa0dcc81061bfc0a0f0",
-"assets/NOTICES": "e034f8bff601746769a8ebc9ddfbf544",
+"assets/NOTICES": "fd3c8d38a638351efec093945eb62e95",
 "assets/images/ceFlutter.jpeg": "8a46724752f0b44bcecbe5ea3b4a0d71",
 "assets/images/ceFlutterLaunchIcon.jpeg": "f83b26fd3a655dd9736952f6333c5afe",
-"assets/AssetManifest.json": "550142b9006c401efec3e4294d85d641",
+"assets/AssetManifest.json": "831cc71460bdc589f91a80a590a82ba2",
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "115e937bb829a890521f72d2e664b632",
-"assets/fonts/MaterialIcons-Regular.otf": "1288c9e28052e028aba623321f7826ac",
+"assets/fonts/MaterialIcons-Regular.otf": "4e6447691c9509f7acdbf8a931a85ca1",
 "assets/fonts/customIcons.ttf": "b5220f15f9012179da7c429943b97791",
 "assets/fonts/Mansalva-Regular.ttf": "3df5a9bbbb65409d04bb4429830b24c7",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "version.json": "5593f408f3abbef5f22ef707f9154375",
-"main.dart.js": "5ceda403f2868d910ef83a7c02f64d9b",
-"index.html": "4279e37598f4269ce7cc92eb0b3dabc1",
-"/": "4279e37598f4269ce7cc92eb0b3dabc1",
+"main.dart.js": "6940b7b5c18beebb69a80ea0bb25c70e",
+"index.html": "dd7a8da1198208cd970e33ed55356584",
+"/": "dd7a8da1198208cd970e33ed55356584",
+"index.html.orig": "9e481afe3dc784880d62b499f0b2eb7c",
 "manifest.json": "96b3e2ee6852c0d22672c7a163d57d12"
 };
 
@@ -39,7 +40,7 @@ self.addEventListener("install", (event) => {
   return event.waitUntil(
     caches.open(TEMP).then((cache) => {
       return cache.addAll(
-        CORE.map((value) => new Request(value + '?revision=' + RESOURCES[value], {'cache': 'reload'})));
+        CORE.map((value) => new Request(value, {'cache': 'reload'})));
     })
   );
 });
@@ -165,7 +166,7 @@ async function downloadOffline() {
     }
     currentContent[key] = true;
   }
-  for (var resourceKey in Object.keys(RESOURCES)) {
+  for (var resourceKey of Object.keys(RESOURCES)) {
     if (!currentContent[resourceKey]) {
       resources.push(resourceKey);
     }

@@ -5,7 +5,6 @@ const testData = require( './testData' );
 const tu = require('./testUtils');
 
 
-// XXX use td names
 const FLAT_PROJ = "A Pre-Existing Project";
 
 

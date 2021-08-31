@@ -347,7 +347,7 @@ async function getFlatLoc( authData, projId, projName, colName ) {
     loc.colId    = col.id;
     loc.colName  = col.name;
     loc.projSub  = psub;
-    loc.peqType  = ptype; // XXX probably need to add alloc
+    loc.peqType  = ptype;
 
     return loc;
 }
@@ -759,7 +759,7 @@ async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card,
     subTest = checkEq( link.GHIssueTitle, config.EMPTY,           subTest, "Linkage Card Title" );
     subTest = checkEq( link.GHProjectName, config.EMPTY,         subTest, "Linkage Project Title" );
     subTest = checkEq( link.GHColumnId, -1,                      subTest, "Linkage Col Id" );
-    subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );     // XXX tracking this??
+    subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     let peqs      = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
