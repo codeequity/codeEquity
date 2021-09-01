@@ -36,6 +36,10 @@ class _CELaunchPageState extends State<CELaunchPage> {
 
     print( "start launch page builder" );
     
+    Widget _guestButton = makeActionButtonSmall( appState, 'Look around as a guest', (() {
+             notYetImplemented(context);
+          }));
+       
     Widget _loginButton = makeActionButton( appState, 'Login', (() {
              Navigator.push(
                 context,
@@ -48,13 +52,47 @@ class _CELaunchPageState extends State<CELaunchPage> {
                 MaterialPageRoute(builder: (context) => CESignupPage()));
           }));
 
-    Widget _nurb = Container(
-       padding: const EdgeInsets.all(4),
+
+    Widget _fairBlurb = Container(
+       padding: const EdgeInsets.all(0),
        child: Text(
-         'CodeEquity Code Equity CE codeEquity\n'
-         'code code code equity equity equity equity!',
+         'If you help create something\n'
+         'You should be among those that benefit from it',
          softWrap: true,
-         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+          ));
+
+    Widget _simpleBlurb = Container(
+       padding: const EdgeInsets.all(0),
+       child: Text(
+          'Simple Idea: New ventures share equity with contributors',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Mansalva', fontSize: 20, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)
+          ));
+
+    Widget _ceIsBlurb = Container(
+       padding: const EdgeInsets.all(0),
+       child: Text(
+          'CodeEquity makes this simple idea easy to put into practice,\n'
+          'and iron-clad should the venture become successful.',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+          ));
+    
+    Widget _contribBlurb = Container(
+       padding: const EdgeInsets.all(0),
+       child: Text(
+          'All else being equal, why not contribute to the project that offers equity?',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+          ));
+
+    Widget _founderBlurb = Container(
+       padding: const EdgeInsets.all(0),
+       child: Text(
+         'Is there a more powerful way to attract skilled help?',
+         softWrap: true,
+         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
           ));
 
     final devWidth = MediaQuery.of(context).size.width;
@@ -67,17 +105,32 @@ class _CELaunchPageState extends State<CELaunchPage> {
           child: Column(
              mainAxisAlignment: MainAxisAlignment.start,
              children: <Widget>[
-                SizedBox( height: devHeight / 8.0),
+                SizedBox( height: devHeight * .08),
                 Stack(
                    children: <Widget>[
-                      Container( child: Image.asset( 'images/ceFlutter.jpeg', width: devWidth - 50, fit: BoxFit.fitWidth)), 
-                      Positioned( bottom: 60 , left: 10, child: Text("CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 54.0))),
-                      Positioned( bottom: 20, left: 10, child: _nurb )
+                      Container( child: Image.asset( 'images/ceFlutter.jpeg',
+                                                     height: devHeight * .6,
+                                                     fit: BoxFit.fitHeight,
+                                                     color: Colors.grey.withOpacity(0.3),
+                                                     colorBlendMode: BlendMode.dstATop
+                                    )), 
+                      Positioned( top:  30, left:  0, child: Text("CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 54.0))),
+                      Positioned( top:  90, left: 30, child: _fairBlurb ),
+                      Positioned( top: 150, left: 10, child: _simpleBlurb ),
+                      Positioned( top: 175, left: 30, child: _ceIsBlurb ),
+                      Positioned( top: 300, left: 10, child: Text("For the Contributor", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 18.0))),
+                      Positioned( top: 325, left: 30, child: _contribBlurb ),
+                      Positioned( top: 375, left: 10, child: Text("For the Founder", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 18.0))),
+                      Positioned( top: 400, left: 30, child: _founderBlurb )
                       ]),
-                SizedBox( height: devHeight / 10.0 ),
+                SizedBox( height: devHeight * .066 ),
                 _signupButton,
-                SizedBox( height: 20.0),
+                SizedBox( height: devHeight * .02 ),
                 _loginButton,
+                SizedBox( height:  devHeight * .02 ),
+                Text("-- Or --", style: new TextStyle( fontFamily: 'Montserrat', fontSize: 14.0)),
+                SizedBox( height: devHeight * .02 ),
+                _guestButton,
                 ]),
           
           )
