@@ -190,7 +190,25 @@ Widget makeActionButtonSmall( appState, buttonText, fn ) {
       color: Color(0xff01A0C7),
       child: MaterialButton(
          key: Key( buttonText ),
-         minWidth: appState.screenWidth * .25,
+         minWidth: appState.screenWidth * .20,
+         onPressed: fn,
+         child: Text( buttonText,
+                      textAlign: TextAlign.center,
+                      style: style.copyWith(
+                         color: Colors.white, fontWeight: FontWeight.bold)),
+         )
+      );
+}
+
+Widget makeActionButtonFixed( appState, buttonText, fn ) {
+   TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 12.0);
+   return Material(
+      elevation: 5.0,
+      borderRadius: BorderRadius.circular(10.0),
+      color: Color(0xff01A0C7),
+      child: MaterialButton(
+         key: Key( buttonText ),
+         minWidth: 200,
          onPressed: fn,
          child: Text( buttonText,
                       textAlign: TextAlign.center,

@@ -34,104 +34,163 @@ class _CELaunchPageState extends State<CELaunchPage> {
     final container = AppStateContainer.of(context);
     final appState = container.state;
 
-    print( "start launch page builder" );
+    final devWidth  = MediaQuery.of(context).size.width;
+    final devHeight = MediaQuery.of(context).size.height;
+    appState.screenHeight = devHeight;
+    appState.screenWidth = devWidth;
+    print( "launch recalc screen size " + devWidth.toString() );
     
-    Widget _guestButton = makeActionButtonSmall( appState, 'Look around as a guest', (() {
+    Widget _guestButton = makeActionButtonFixed( appState, 'Look around as a guest', (() {
              notYetImplemented(context);
           }));
        
-    Widget _loginButton = makeActionButton( appState, 'Login', (() {
+    Widget _loginButton = makeActionButtonFixed( appState, 'Login', (() {
              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CELoginPage()));
           }));
        
-    Widget _signupButton = makeActionButton( appState, 'Create New Account', (() {
+    Widget _signupButton = makeActionButtonFixed( appState, 'Create New Account', (() {
              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CESignupPage()));
           }));
 
 
-    Widget _fairBlurb = Container(
-       padding: const EdgeInsets.all(0),
-       child: Text(
+    Widget _ceHead = paddedLTRB( 
+       Text(
+          'CodeEquity',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Mansalva', fontSize: 88.0 ),
+          ),
+       0, 0, 0, 0);
+    
+    Widget _simpleHead = paddedLTRB(
+       Text(
+          'Simple Idea',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+          ),
+       10,0,0,10);
+
+    Widget _contribHead = paddedLTRB(
+       Text(
+          'For the GitHub Contributor',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+          ),
+       10,0,0,0);
+
+    Widget _founderHead = paddedLTRB(
+       Text(
+          'For the GitHub Founder',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+          ),
+       10,0,0,0);
+
+    Widget _fairBlurb = paddedLTRB(
+       Text(
          'If you help create something\n'
          'You should be among those that benefit from it',
          softWrap: true,
          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
-          ));
+          ),
+       30,0,0,0);
 
-    Widget _simpleBlurb = Container(
-       padding: const EdgeInsets.all(0),
-       child: Text(
-          'Simple Idea: New ventures share equity with contributors',
+    Widget _simpleBlurb = paddedLTRB(
+       Text(
+          'New ventures share equity with contributors',
           softWrap: true,
-          style: new TextStyle( fontFamily: 'Mansalva', fontSize: 20, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)
-          ));
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+          ),
+       30,0,0,10);
 
-    Widget _ceIsBlurb = Container(
-       padding: const EdgeInsets.all(0),
-       child: Text(
-          'CodeEquity makes this simple idea easy to put into practice,\n'
+    Widget _ceIsBlurb = paddedLTRB(
+       Text(
+          'CodeEquity makes it easy to put this idea into practice,\n'
           'and iron-clad should the venture become successful.',
           softWrap: true,
-          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
-          ));
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+          ),
+       30,0,0,0);
     
-    Widget _contribBlurb = Container(
-       padding: const EdgeInsets.all(0),
-       child: Text(
-          'All else being equal, why not contribute to the project that offers equity?',
+    Widget _contribBlurb = paddedLTRB(
+       Text(
+          'All else being equal,\n'
+          'why not contribute to the project that offers equity?',
           softWrap: true,
-          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
-          ));
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+          ),
+       30,0,0,0);
 
-    Widget _founderBlurb = Container(
-       padding: const EdgeInsets.all(0),
-       child: Text(
+    Widget _founderBlurb = paddedLTRB(
+       Text(
          'Is there a more powerful way to attract skilled help?',
          softWrap: true,
-         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
-          ));
+         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+          ),
+       30,0,0,0);
 
-    final devWidth = MediaQuery.of(context).size.width;
-    final devHeight = MediaQuery.of(context).size.height;
-
+    // XXX should not yellowbox.   Bottom yellow can be eliminated with ListView
     return Scaffold(
        
        body: Center(
-          
+
+          // XXX why does <Widget> in front of list throw x-axis alignment??
           child: Column(
+             crossAxisAlignment: CrossAxisAlignment.center,
              mainAxisAlignment: MainAxisAlignment.start,
-             children: <Widget>[
+             children: [
+                SizedBox( height: devHeight * .02),
+                _ceHead,
                 SizedBox( height: devHeight * .08),
-                Stack(
-                   children: <Widget>[
-                      Container( child: Image.asset( 'images/ceFlutter.jpeg',
-                                                     height: devHeight * .6,
-                                                     fit: BoxFit.fitHeight,
-                                                     color: Colors.grey.withOpacity(0.3),
-                                                     colorBlendMode: BlendMode.dstATop
-                                    )), 
-                      Positioned( top:  30, left:  0, child: Text("CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 54.0))),
-                      Positioned( top:  90, left: 30, child: _fairBlurb ),
-                      Positioned( top: 150, left: 10, child: _simpleBlurb ),
-                      Positioned( top: 175, left: 30, child: _ceIsBlurb ),
-                      Positioned( top: 300, left: 10, child: Text("For the Contributor", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 18.0))),
-                      Positioned( top: 325, left: 30, child: _contribBlurb ),
-                      Positioned( top: 375, left: 10, child: Text("For the Founder", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 18.0))),
-                      Positioned( top: 400, left: 30, child: _founderBlurb )
+                Wrap(
+                   children: [
+                      Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         mainAxisAlignment: MainAxisAlignment.start,
+                         children: [
+                            _simpleHead,
+                            _simpleBlurb,
+                            _ceIsBlurb,
+                            SizedBox( height: devHeight * .07 ),
+                            _contribHead,
+                            _contribBlurb,
+                            SizedBox( height: devHeight * .02 ),
+                            _founderHead,
+                            _founderBlurb,
+                            SizedBox( height: devHeight * .08 ),
+                            Wrap(
+                               children: [
+                                  Column(
+                                     crossAxisAlignment: CrossAxisAlignment.center,
+                                     mainAxisAlignment: MainAxisAlignment.start,
+                                     children: [
+                                        paddedLTRB( _signupButton, 0, 0, 0, 0 ),
+                                        SizedBox( height: devHeight * .02 ),
+                                        paddedLTRB( _loginButton, 0, 0, 0, 0 ),
+                                        ]),
+                                  paddedLTRB( Text("-- Or --", style: new TextStyle( fontFamily: 'Montserrat', fontSize: 14.0)), 20, devHeight*.032, 20, 0 ),
+                                  paddedLTRB( _guestButton, 0, devHeight*.025, 0, 0 ),
+                                  ])
+                            ]),
+                      SizedBox( width: devWidth * .06 ),
+                      Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         mainAxisAlignment: MainAxisAlignment.start,
+                         children: [
+                            SizedBox( width: 410, //devWidth * .4,
+                                      child: Image.asset( 'images/ceFlutter.jpeg',
+                                                          fit: BoxFit.fitWidth,
+                                                          color: Colors.grey.withOpacity(0.05),
+                                                          colorBlendMode: BlendMode.darken
+                                         )),
+                            SizedBox( height: devHeight * .01 ),                            
+                            _fairBlurb,
+                            ]),
                       ]),
-                SizedBox( height: devHeight * .066 ),
-                _signupButton,
-                SizedBox( height: devHeight * .02 ),
-                _loginButton,
-                SizedBox( height:  devHeight * .02 ),
-                Text("-- Or --", style: new TextStyle( fontFamily: 'Montserrat', fontSize: 14.0)),
-                SizedBox( height: devHeight * .02 ),
-                _guestButton,
-                ]),
+                ])
           
           )
        );
