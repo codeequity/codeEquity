@@ -38,7 +38,16 @@ class _CELaunchPageState extends State<CELaunchPage> {
     final devHeight = MediaQuery.of(context).size.height;
     appState.screenHeight = devHeight;
     appState.screenWidth = devWidth;
-    print( "launch recalc screen size " + devWidth.toString() );
+
+    // XXX should base 410 off computed height of left hand side.  410 lines bottoms up.
+    //     hmm.. need to be the width of current column, independent of wrap
+    //     small rhsWidth set back to 1.0 since wrap will move it
+    final lhsWidth  = 504;
+    final rhsWidth  = devWidth - 504 - devWidth * .06;
+    var widthFactor = rhsWidth / 410.0;
+    widthFactor     = widthFactor > 1.0 || widthFactor < 0.5 ? 1.0 : rhsWidth / 410.0;
+
+    print( "launch recalc screen size " + devWidth.toString() + " WF: " + widthFactor.toStringAsFixed(2) );
     
     Widget _guestButton = makeActionButtonFixed( appState, 'Look around as a guest', (() {
              notYetImplemented(context);
@@ -180,6 +189,28 @@ class _CELaunchPageState extends State<CELaunchPage> {
                          crossAxisAlignment: CrossAxisAlignment.start,
                          mainAxisAlignment: MainAxisAlignment.start,
                          children: [
+                            ClipRect(
+                               child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: widthFactor,
+                                  child: Image.asset( 'images/ceFlutter.jpeg',
+                                                      width: 410,
+                                                      color: Colors.grey.withOpacity(0.05),
+                                                      colorBlendMode: BlendMode.darken
+                                     ))),
+                            SizedBox( height: devHeight * .01 ),                            
+                            ClipRect(
+                               child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: widthFactor,
+                                  child: _fairBlurb
+                                  ))
+                            ]),
+                      /*
+                      Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         mainAxisAlignment: MainAxisAlignment.start,
+                         children: [
                             SizedBox( width: 410, //devWidth * .4,
                                       child: Image.asset( 'images/ceFlutter.jpeg',
                                                           fit: BoxFit.fitWidth,
@@ -189,6 +220,7 @@ class _CELaunchPageState extends State<CELaunchPage> {
                             SizedBox( height: devHeight * .01 ),                            
                             _fairBlurb,
                             ]),
+                      */
                       ]),
                 ])
           
