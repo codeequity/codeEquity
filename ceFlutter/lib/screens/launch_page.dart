@@ -27,6 +27,84 @@ class _CELaunchPageState extends State<CELaunchPage> {
   void dispose() {
      super.dispose();
   }
+
+    
+  
+  Widget _ceHead = paddedLTRB( 
+     Text(
+        'CodeEquity',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Mansalva', fontSize: 88.0 ),
+        ),
+     0, 0, 0, 0);
+  
+  Widget _simpleHead = paddedLTRB(
+     Text(
+        'Simple Idea',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+        ),
+     10,0,0,10);
+  
+  Widget _contribHead = paddedLTRB(
+     Text(
+        'For the GitHub Contributor',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+        ),
+     10,0,0,0);
+  
+  Widget _founderHead = paddedLTRB(
+     Text(
+        'For the GitHub Founder',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+        ),
+     10,0,0,0);
+  
+  Widget _fairBlurb = paddedLTRB(
+     Text(
+        'If you help create something\n'
+        'You should be among those that benefit from it',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+        ),
+     30,0,0,0);
+  
+  Widget _simpleBlurb = paddedLTRB(
+     Text(
+        'New ventures share equity with contributors',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+        ),
+     30,0,0,10);
+  
+  Widget _ceIsBlurb = paddedLTRB(
+     Text(
+        'CodeEquity makes it easy to put this idea into practice,\n'
+        'and iron-clad should the venture become successful.',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+        ),
+     30,0,0,0);
+  
+  Widget _contribBlurb = paddedLTRB(
+     Text(
+        'All else being equal,\n'
+        'why not contribute to the project that offers equity?',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+        ),
+     30,0,0,0);
+  
+  Widget _founderBlurb = paddedLTRB(
+     Text(
+        'Is there a more powerful way to attract skilled help?',
+        softWrap: true,
+        style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+        ),
+     30,0,0,0);
+  
   
   @override
   Widget build(BuildContext context) {
@@ -47,100 +125,23 @@ class _CELaunchPageState extends State<CELaunchPage> {
     // set rhsWidth back to 1.0 when too small since wrap will move it
     widthFactor     = widthFactor > 1.0 || widthFactor < 0.5 ? 1.0 : rhsWidth / 410.0;
 
-    print( "launch recalc screen size " + devWidth.toString() + " WF: " + widthFactor.toStringAsFixed(2) );
-    
     Widget _guestButton = makeActionButtonFixed( appState, 'Look around as a guest', (() {
              notYetImplemented(context);
           }));
-       
+    
     Widget _loginButton = makeActionButtonFixed( appState, 'Login', (() {
              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CELoginPage()));
           }));
-       
+    
     Widget _signupButton = makeActionButtonFixed( appState, 'Create New Account', (() {
              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CESignupPage()));
-          }));
-
-
-    Widget _ceHead = paddedLTRB( 
-       Text(
-          'CodeEquity',
-          softWrap: true,
-          style: new TextStyle( fontFamily: 'Mansalva', fontSize: 88.0 ),
-          ),
-       0, 0, 0, 0);
+        }));
     
-    Widget _simpleHead = paddedLTRB(
-       Text(
-          'Simple Idea',
-          softWrap: true,
-          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
-          ),
-       10,0,0,10);
-
-    Widget _contribHead = paddedLTRB(
-       Text(
-          'For the GitHub Contributor',
-          softWrap: true,
-          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
-          ),
-       10,0,0,0);
-
-    Widget _founderHead = paddedLTRB(
-       Text(
-          'For the GitHub Founder',
-          softWrap: true,
-          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
-          ),
-       10,0,0,0);
-
-    Widget _fairBlurb = paddedLTRB(
-       Text(
-         'If you help create something\n'
-         'You should be among those that benefit from it',
-         softWrap: true,
-         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
-          ),
-       30,0,0,0);
-
-    Widget _simpleBlurb = paddedLTRB(
-       Text(
-          'New ventures share equity with contributors',
-          softWrap: true,
-          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold, color: Colors.pink[300] )
-          ),
-       30,0,0,10);
-
-    Widget _ceIsBlurb = paddedLTRB(
-       Text(
-          'CodeEquity makes it easy to put this idea into practice,\n'
-          'and iron-clad should the venture become successful.',
-          softWrap: true,
-          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
-          ),
-       30,0,0,0);
-    
-    Widget _contribBlurb = paddedLTRB(
-       Text(
-          'All else being equal,\n'
-          'why not contribute to the project that offers equity?',
-          softWrap: true,
-          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
-          ),
-       30,0,0,0);
-
-    Widget _founderBlurb = paddedLTRB(
-       Text(
-         'Is there a more powerful way to attract skilled help?',
-         softWrap: true,
-         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
-          ),
-       30,0,0,0);
-
+    print( "launch recalc screen size " + devHeight.toString() + " " + devWidth.toString() + " WF: " + widthFactor.toStringAsFixed(2) );
     return Scaffold(
        body: Center(
 
