@@ -40,11 +40,11 @@ class _CELaunchPageState extends State<CELaunchPage> {
     appState.screenWidth = devWidth;
 
     // XXX should base 410 off computed height of left hand side.  410 lines bottoms up.
-    //     hmm.. need to be the width of current column, independent of wrap
-    //     small rhsWidth set back to 1.0 since wrap will move it
+    // XXX should compute 504
     final lhsWidth  = 504;
     final rhsWidth  = devWidth - 504 - devWidth * .06;
     var widthFactor = rhsWidth / 410.0;
+    // set rhsWidth back to 1.0 when too small since wrap will move it
     widthFactor     = widthFactor > 1.0 || widthFactor < 0.5 ? 1.0 : rhsWidth / 410.0;
 
     print( "launch recalc screen size " + devWidth.toString() + " WF: " + widthFactor.toStringAsFixed(2) );
@@ -141,89 +141,79 @@ class _CELaunchPageState extends State<CELaunchPage> {
           ),
        30,0,0,0);
 
-    // XXX should not yellowbox.   Bottom yellow can be eliminated with ListView
     return Scaffold(
-       
        body: Center(
 
-          // XXX why does <Widget> in front of list throw x-axis alignment??
-          child: Column(
-             crossAxisAlignment: CrossAxisAlignment.center,
-             mainAxisAlignment: MainAxisAlignment.start,
-             children: [
+          child: ConstrainedBox( 
+            constraints: new BoxConstraints(
+               minHeight: 20.0,
+               minWidth: 20.0,
+               maxHeight: devHeight,
+               maxWidth:  devWidth,
+               ),
+            child: ListView(
+               scrollDirection: Axis.vertical,
+               children: <Widget>[
                 SizedBox( height: devHeight * .02),
-                _ceHead,
+                Center( child: _ceHead ),
                 SizedBox( height: devHeight * .08),
-                Wrap(
-                   children: [
-                      Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         mainAxisAlignment: MainAxisAlignment.start,
-                         children: [
-                            _simpleHead,
-                            _simpleBlurb,
-                            _ceIsBlurb,
-                            SizedBox( height: devHeight * .07 ),
-                            _contribHead,
-                            _contribBlurb,
-                            SizedBox( height: devHeight * .02 ),
-                            _founderHead,
-                            _founderBlurb,
-                            SizedBox( height: devHeight * .08 ),
-                            Wrap(
-                               children: [
-                                  Column(
-                                     crossAxisAlignment: CrossAxisAlignment.center,
-                                     mainAxisAlignment: MainAxisAlignment.start,
-                                     children: [
-                                        paddedLTRB( _signupButton, 0, 0, 0, 0 ),
-                                        SizedBox( height: devHeight * .02 ),
-                                        paddedLTRB( _loginButton, 0, 0, 0, 0 ),
-                                        ]),
-                                  paddedLTRB( Text("-- Or --", style: new TextStyle( fontFamily: 'Montserrat', fontSize: 14.0)), 20, devHeight*.032, 20, 0 ),
-                                  paddedLTRB( _guestButton, 0, devHeight*.025, 0, 0 ),
-                                  ])
-                            ]),
-                      SizedBox( width: devWidth * .06 ),
-                      Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         mainAxisAlignment: MainAxisAlignment.start,
-                         children: [
-                            ClipRect(
-                               child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  widthFactor: widthFactor,
-                                  child: Image.asset( 'images/ceFlutter.jpeg',
-                                                      width: 410,
-                                                      color: Colors.grey.withOpacity(0.05),
-                                                      colorBlendMode: BlendMode.darken
-                                     ))),
-                            SizedBox( height: devHeight * .01 ),                            
-                            ClipRect(
-                               child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  widthFactor: widthFactor,
-                                  child: _fairBlurb
-                                  ))
-                            ]),
-                      /*
-                      Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         mainAxisAlignment: MainAxisAlignment.start,
-                         children: [
-                            SizedBox( width: 410, //devWidth * .4,
-                                      child: Image.asset( 'images/ceFlutter.jpeg',
-                                                          fit: BoxFit.fitWidth,
-                                                          color: Colors.grey.withOpacity(0.05),
-                                                          colorBlendMode: BlendMode.darken
-                                         )),
-                            SizedBox( height: devHeight * .01 ),                            
-                            _fairBlurb,
-                            ]),
-                      */
-                      ]),
+                Center(
+                   child: Wrap(
+                      children: [
+                         Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                               _simpleHead,
+                               _simpleBlurb,
+                               _ceIsBlurb,
+                               SizedBox( height: devHeight * .07 ),
+                               _contribHead,
+                               _contribBlurb,
+                               SizedBox( height: devHeight * .02 ),
+                               _founderHead,
+                               _founderBlurb,
+                               SizedBox( height: devHeight * .08 ),
+                               Wrap(
+                                  children: [
+                                     Column(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        mainAxisAlignment: MainAxisAlignment.start,
+                                        children: [
+                                           paddedLTRB( _signupButton, 0, 0, 0, 0 ),
+                                           SizedBox( height: devHeight * .02 ),
+                                           paddedLTRB( _loginButton, 0, 0, 0, 0 ),
+                                           ]),
+                                     paddedLTRB( Text("-- Or --", style: new TextStyle( fontFamily: 'Montserrat', fontSize: 14.0)), 20, devHeight*.032, 20, 0 ),
+                                     paddedLTRB( _guestButton, 0, devHeight*.025, 0, 0 ),
+                                     ])
+                               ]),
+                         SizedBox( width: devWidth * .06 ),
+                         Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                               ClipRect(
+                                  child: Align(
+                                     alignment: Alignment.centerLeft,
+                                     widthFactor: widthFactor,
+                                     child: Image.asset( 'images/ceFlutter.jpeg',
+                                                         width: 410,
+                                                         color: Colors.grey.withOpacity(0.05),
+                                                         colorBlendMode: BlendMode.darken
+                                        ))),
+                               SizedBox( height: devHeight * .01 ),                            
+                               ClipRect(
+                                  child: Align(
+                                     alignment: Alignment.centerLeft,
+                                     widthFactor: widthFactor,
+                                     child: _fairBlurb
+                                     ))
+                               ]),
+                         ])),
                 ])
           
+            )
           )
        );
   }
