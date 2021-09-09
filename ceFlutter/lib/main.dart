@@ -106,6 +106,7 @@ class _CESplashPageState extends State<CESplashPage> {
      final devHeight = MediaQuery.of(context).size.height;
      appState.screenHeight = devHeight;
      appState.screenWidth = devWidth;
+     print( "Main recalc screen size" );
 
        return Scaffold(
           body: Center(

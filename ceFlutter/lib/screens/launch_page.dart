@@ -34,52 +34,186 @@ class _CELaunchPageState extends State<CELaunchPage> {
     final container = AppStateContainer.of(context);
     final appState = container.state;
 
-    print( "start launch page builder" );
+    final devWidth  = MediaQuery.of(context).size.width;
+    final devHeight = MediaQuery.of(context).size.height;
+    appState.screenHeight = devHeight;
+    appState.screenWidth = devWidth;
+
+    // XXX should base 410 off computed height of left hand side.  410 lines bottoms up.
+    // XXX should compute 504
+    final lhsWidth  = 504;
+    final rhsWidth  = devWidth - 504 - devWidth * .06;
+    var widthFactor = rhsWidth / 410.0;
+    // set rhsWidth back to 1.0 when too small since wrap will move it
+    widthFactor     = widthFactor > 1.0 || widthFactor < 0.5 ? 1.0 : rhsWidth / 410.0;
+
+    print( "launch recalc screen size " + devWidth.toString() + " WF: " + widthFactor.toStringAsFixed(2) );
     
-    Widget _loginButton = makeActionButton( appState, 'Login', (() {
+    Widget _guestButton = makeActionButtonFixed( appState, 'Look around as a guest', (() {
+             notYetImplemented(context);
+          }));
+       
+    Widget _loginButton = makeActionButtonFixed( appState, 'Login', (() {
              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CELoginPage()));
           }));
        
-    Widget _signupButton = makeActionButton( appState, 'Create New Account', (() {
+    Widget _signupButton = makeActionButtonFixed( appState, 'Create New Account', (() {
              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CESignupPage()));
           }));
 
-    Widget _nurb = Container(
-       padding: const EdgeInsets.all(4),
-       child: Text(
-         'CodeEquity Code Equity CE codeEquity\n'
-         'code code code equity equity equity equity!',
-         softWrap: true,
-         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 15.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
-          ));
 
-    final devWidth = MediaQuery.of(context).size.width;
-    final devHeight = MediaQuery.of(context).size.height;
+    Widget _ceHead = paddedLTRB( 
+       Text(
+          'CodeEquity',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Mansalva', fontSize: 88.0 ),
+          ),
+       0, 0, 0, 0);
+    
+    Widget _simpleHead = paddedLTRB(
+       Text(
+          'Simple Idea',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+          ),
+       10,0,0,10);
+
+    Widget _contribHead = paddedLTRB(
+       Text(
+          'For the GitHub Contributor',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+          ),
+       10,0,0,0);
+
+    Widget _founderHead = paddedLTRB(
+       Text(
+          'For the GitHub Founder',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold)
+          ),
+       10,0,0,0);
+
+    Widget _fairBlurb = paddedLTRB(
+       Text(
+         'If you help create something\n'
+         'You should be among those that benefit from it',
+         softWrap: true,
+         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+          ),
+       30,0,0,0);
+
+    Widget _simpleBlurb = paddedLTRB(
+       Text(
+          'New ventures share equity with contributors',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.bold, color: Colors.pink[300] )
+          ),
+       30,0,0,10);
+
+    Widget _ceIsBlurb = paddedLTRB(
+       Text(
+          'CodeEquity makes it easy to put this idea into practice,\n'
+          'and iron-clad should the venture become successful.',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+          ),
+       30,0,0,0);
+    
+    Widget _contribBlurb = paddedLTRB(
+       Text(
+          'All else being equal,\n'
+          'why not contribute to the project that offers equity?',
+          softWrap: true,
+          style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+          ),
+       30,0,0,0);
+
+    Widget _founderBlurb = paddedLTRB(
+       Text(
+         'Is there a more powerful way to attract skilled help?',
+         softWrap: true,
+         style: new TextStyle( fontFamily: 'Montserrat', fontSize: 18.0, fontWeight: FontWeight.bold )
+          ),
+       30,0,0,0);
 
     return Scaffold(
-       
        body: Center(
+
+          child: ConstrainedBox( 
+            constraints: new BoxConstraints(
+               minHeight: 20.0,
+               minWidth: 20.0,
+               maxHeight: devHeight,
+               maxWidth:  devWidth,
+               ),
+            child: ListView(
+               scrollDirection: Axis.vertical,
+               children: <Widget>[
+                SizedBox( height: devHeight * .02),
+                Center( child: _ceHead ),
+                SizedBox( height: devHeight * .08),
+                Center(
+                   child: Wrap(
+                      children: [
+                         Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                               _simpleHead,
+                               _simpleBlurb,
+                               _ceIsBlurb,
+                               SizedBox( height: devHeight * .07 ),
+                               _contribHead,
+                               _contribBlurb,
+                               SizedBox( height: devHeight * .02 ),
+                               _founderHead,
+                               _founderBlurb,
+                               SizedBox( height: devHeight * .08 ),
+                               Wrap(
+                                  children: [
+                                     Column(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        mainAxisAlignment: MainAxisAlignment.start,
+                                        children: [
+                                           paddedLTRB( _signupButton, 0, 0, 0, 0 ),
+                                           SizedBox( height: devHeight * .02 ),
+                                           paddedLTRB( _loginButton, 0, 0, 0, 0 ),
+                                           ]),
+                                     paddedLTRB( Text("-- Or --", style: new TextStyle( fontFamily: 'Montserrat', fontSize: 14.0)), 20, devHeight*.032, 20, 0 ),
+                                     paddedLTRB( _guestButton, 0, devHeight*.025, 0, 0 ),
+                                     ])
+                               ]),
+                         SizedBox( width: devWidth * .06 ),
+                         Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                               ClipRect(
+                                  child: Align(
+                                     alignment: Alignment.centerLeft,
+                                     widthFactor: widthFactor,
+                                     child: Image.asset( 'images/ceFlutter.jpeg',
+                                                         width: 410,
+                                                         color: Colors.grey.withOpacity(0.05),
+                                                         colorBlendMode: BlendMode.darken
+                                        ))),
+                               SizedBox( height: devHeight * .01 ),                            
+                               ClipRect(
+                                  child: Align(
+                                     alignment: Alignment.centerLeft,
+                                     widthFactor: widthFactor,
+                                     child: _fairBlurb
+                                     ))
+                               ]),
+                         ])),
+                ])
           
-          child: Column(
-             mainAxisAlignment: MainAxisAlignment.start,
-             children: <Widget>[
-                SizedBox( height: devHeight / 8.0),
-                Stack(
-                   children: <Widget>[
-                      Container( child: Image.asset( 'images/ceFlutter.jpeg', width: devWidth - 50, fit: BoxFit.fitWidth)), 
-                      Positioned( bottom: 60 , left: 10, child: Text("CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 54.0))),
-                      Positioned( bottom: 20, left: 10, child: _nurb )
-                      ]),
-                SizedBox( height: devHeight / 10.0 ),
-                _signupButton,
-                SizedBox( height: 20.0),
-                _loginButton,
-                ]),
-          
+            )
           )
        );
   }
