@@ -706,6 +706,39 @@ async function getPeqsById( peqIds ) {
 	});
 }
 
+async function getRepoStatus( repos ) {
+    console.log( "Which GHAs are CEPs?", repos );
+
+    let promises = [];
+    repos.forEach(function (fullName) {
+	const params = {
+	    TableName: 'CERepoStatus',
+	    FilterExpression: 'GHRepo = :ghRepo',
+	    ExpressionAttributeValues: { ":ghRepo": fullName }};
+	
+	promises.push( paginatedScan( params ) );
+    });
+
+    // Promises execute in parallel, collect in order
+    return await Promise.all( promises )
+	.then((results) => {
+	    console.log( '...promises done' );
+	    let res = [];
+	    results.forEach( function ( repo ) {
+		assert( repo.length <= 1 );
+		if( repo.length == 1 ) {
+		    res.push( repo[0] );
+		}
+		else {
+		    res.push( -1 );
+		}
+	    });
+	    
+	    if( res.length > 0 ) { return res; }        // internal, no additional json layer
+	    else                 { return []; }
+	});
+}
+
 async function updatePEQ( pLink ) {
 
     console.log( "Updating PEQ", pLink.PEQId );
@@ -783,14 +816,19 @@ async function getGHA( uid ) {
 
     console.log( "GH Account repos");
     let ghaPromise = paginatedScan( paramsP );
-    return ghaPromise.then((ghas) => {
-	console.log( "Found GH account ", ghas );
 
-	if( Array.isArray(ghas) && ghas.length ) {
-	    return success( ghas );
-	}
-	else { return NO_CONTENT; }
-    });
+    let ghas = await ghaPromise;
+    if( ! Array.isArray(ghas) || !ghas.length ) { return NO_CONTENT; }
+
+    for( const gha of ghas ) {
+	console.log( "Found GH account ", gha );
+
+	let ceps = await getRepoStatus( gha.Repos );
+	console.log( "...working with ", ceps );
+	
+	gha.ceProjs = ceps.map( cep => (cep == -1 || cep.Populated == "false") ? "false" : "true" );
+    }
+    return success( ghas );
 }
 
 // XXX this gets all, not just needing update

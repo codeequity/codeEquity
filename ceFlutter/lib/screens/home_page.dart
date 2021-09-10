@@ -61,9 +61,20 @@ class _CEHomeState extends State<CEHomePage> {
       final textWidth = appState.screenWidth * .2;
       List<Widget> repoChunks = [];
       repoChunks.add( makeTitleText( gha.ghUserName, textWidth, false, 1 ) );
-      gha.repos.forEach((repo) {
-            repoChunks.add( _makeRepoChunk( repo ));
-         });
+      for( var i = 0; i < gha.repos.length; i++ ) {
+         if( !gha.ceProject[i] ) repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+      }
+      return repoChunks;
+   }
+   
+   // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
+   List<Widget> _makeCEProjs( gha ) {
+      final textWidth = appState.screenWidth * .2;
+      List<Widget> repoChunks = [];
+      repoChunks.add( makeTitleText( gha.ghUserName, textWidth, false, 1 ) );
+      for( var i = 0; i < gha.repos.length; i++ ) {
+         if( gha.ceProject[i] ) repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+      }
       return repoChunks;
    }
    
@@ -98,6 +109,8 @@ class _CEHomeState extends State<CEHomePage> {
       
       if( appState.myGHAccounts != null || appState.ghUpdated ) {
          for( final gha in appState.myGHAccounts ) {
+            acctList.addAll( _makeCEProjs( gha ));
+            acctList.add( makeHDivider( appState.screenWidth * .3, 0.0, appState.screenWidth * .1 ));
             acctList.addAll( _makeRepos( gha ));
             acctList.add( makeHDivider( appState.screenWidth * .3, 0.0, appState.screenWidth * .1 ));
          }
