@@ -223,6 +223,7 @@ Widget makeTitleText( title, width, wrap, lines ) {
    return Padding(
       padding: const EdgeInsets.fromLTRB(20, 6, 6, 0),
       child: Container( width: width,
+                        height: 20,   // 14pt fonts are 19.2px
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold))));

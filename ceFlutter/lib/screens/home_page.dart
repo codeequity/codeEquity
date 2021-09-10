@@ -1,4 +1,5 @@
 import 'dart:convert';                   // json encode/decode
+import 'dart:math';               
 import 'package:flutter/services.dart';  // orientation
 import 'package:flutter/material.dart';
 
@@ -24,6 +25,8 @@ class _CEHomeState extends State<CEHomePage> {
    bool     addGHAcct;
    var      ghPersonalAccessToken;
    TextEditingController pat;
+
+   static const lhsPaneMinWidth = 250.0;
    
    @override
    void initState() {
@@ -88,8 +91,9 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
-   // XXX 20, 250
-   Widget _showGHAccts() {
+   // XXX 20, 26.. 14pt font height
+   // XXX at wrapPoint, change maxHeight in BoxConstraint to size of acctList plus buffer.
+   Widget _showGHAccts( rhsPaneWidth ) {
       List<Widget> acctList = [];
       
       if( appState.myGHAccounts != null || appState.ghUpdated ) {
@@ -99,14 +103,20 @@ class _CEHomeState extends State<CEHomePage> {
          }
          
          appState.ghUpdated = false;
-         final mWidth = 250.0 > appState.screenWidth * .3 ? 250.0 : appState.screenWidth * .3;
-         
+         final lhsMaxWidth  = max( appState.screenWidth * .3, lhsPaneMinWidth );
+
+         var lhsHeight = appState.screenHeight * .946; // room for top bar
+         if( appState.screenWidth < lhsMaxWidth + 5 + rhsPaneWidth ) {
+            // wrapped.  Reduce height to make room for rhsPane
+            lhsHeight = min( lhsHeight, acctList.length * 26.0 );
+         }
+                           
          return ConstrainedBox(
             constraints: new BoxConstraints(
                minHeight: 20.0,
-               minWidth: 250.0,
-               maxHeight: appState.screenHeight * .946,  // make room for topbar
-               maxWidth:  mWidth
+               minWidth: lhsPaneMinWidth,
+               maxHeight: lhsHeight,
+               maxWidth:  lhsMaxWidth
                ),
             child: ListView(
                scrollDirection: Axis.vertical,
@@ -119,7 +129,7 @@ class _CEHomeState extends State<CEHomePage> {
    }
    
 
-   Widget _makeGHZone( ) {
+   Widget _makeGHZone( rhsPaneWidth ) {
       final textWidth = appState.screenWidth * .5;
       String ghExplain = "CodeEquity will authenticate your account with Github one time only.";
       ghExplain       += "  You can undo this association at any time.  Click here to generate PAT.";
@@ -144,36 +154,20 @@ class _CEHomeState extends State<CEHomePage> {
             );
       }
       else {
-         return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,    // required for listView child
-            children: <Widget>[ _showGHAccts() ]);
+         return _showGHAccts( rhsPaneWidth );
       }
       
    }
 
-
-   
-   // XXX need listview.  try wrap.
+   // XXX 300.  274, 26.
    Widget _makeBody() {
       if( appState.loaded ) {
-         
          return
-            Row(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               mainAxisAlignment: MainAxisAlignment.start,
+            Wrap(
                children: <Widget>[
                   Container(
                      color: Colors.white,
-                     child: 
-                     Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,    // required for listView child
-                        children: <Widget>[
-                           _makeGHZone()
-                           ]),
+                     child: _makeGHZone(300)
                      ),
                   const VerticalDivider(
                      color: Colors.grey,
@@ -186,7 +180,7 @@ class _CEHomeState extends State<CEHomePage> {
                   Container(
                      color: Colors.grey[50],
                      child: 
-                     makeTitleText( "Recent Activity", 200, true, 1 )
+                     makeTitleText( "Recent Activity", 274, true, 1 )
                      )
                   ]);
       }
@@ -195,7 +189,6 @@ class _CEHomeState extends State<CEHomePage> {
          return CircularProgressIndicator();
       }
    }
-   
    
    @override
       Widget build(BuildContext context) {
@@ -212,8 +205,8 @@ class _CEHomeState extends State<CEHomePage> {
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;
       
-      print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
-      print( getToday() );
+      // print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
+      // print( getToday() );
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
