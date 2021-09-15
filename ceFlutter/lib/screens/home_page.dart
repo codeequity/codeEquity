@@ -41,43 +41,6 @@ class _CEHomeState extends State<CEHomePage> {
       super.dispose();
    }
 
-
-   
-   // This GD opens and closes peqSummary.
-   Widget _makeRepoChunk( String repoName ) {
-      final textWidth = appState.screenWidth * .4;
-      return GestureDetector(
-         onTap: ()
-         {
-            appState.selectedRepo = repoName;
-            notYetImplemented(context);            
-         },
-         child: makeTitleText( repoName, textWidth, false, 1 )
-         );
-   }
-   
-   // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-   List<Widget> _makeRepos( gha ) {
-      final textWidth = appState.screenWidth * .2;
-      List<Widget> repoChunks = [];
-      repoChunks.add( makeTitleText( gha.ghUserName, textWidth, false, 1 ) );
-      for( var i = 0; i < gha.repos.length; i++ ) {
-         if( !gha.ceProject[i] ) repoChunks.add( _makeRepoChunk( gha.repos[i] ));
-      }
-      return repoChunks;
-   }
-   
-   // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-   List<Widget> _makeCEProjs( gha ) {
-      final textWidth = appState.screenWidth * .2;
-      List<Widget> repoChunks = [];
-      repoChunks.add( makeTitleText( gha.ghUserName, textWidth, false, 1 ) );
-      for( var i = 0; i < gha.repos.length; i++ ) {
-         if( gha.ceProject[i] ) repoChunks.add( _makeRepoChunk( gha.repos[i] ));
-      }
-      return repoChunks;
-   }
-   
    Widget _ghAssociateButton() {
       return makeActionButtonSmall(
          appState,
@@ -91,28 +54,113 @@ class _CEHomeState extends State<CEHomePage> {
             
          });
    }
-   
-   Widget _addGHAcct() {
-      return makeActionButtonSmall(
+
+   Widget _newCEProjButton() {
+      return makeActionButtonFixed(
          appState,
-         "Add Github account",
+         "New",
+         80, 
+         () async
+         {
+            notYetImplemented(context);            
+         });
+   }
+
+   Widget _addGHAcct() {
+      return makeActionButtonFixed(
+         appState,
+         "Add",
+         80,
          () async
          {
             setState(() {addGHAcct = true; });
          });
    }
 
-   // XXX 20, 26.. 14pt font height
+   
+   // This GD opens and closes peqSummary.
+   Widget _makeRepoChunk( String repoName ) {
+      final textWidth = appState.screenWidth * .4;
+      return GestureDetector(
+         onTap: ()
+         {
+            appState.selectedRepo = repoName;
+            notYetImplemented(context);            
+         },
+         child: makeActionText( repoName, textWidth, false, 1 )
+         );
+   }
+   
+   // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
+   List<Widget> _makeRepos( gha ) {
+      final textWidth = appState.screenWidth * .15;
+      List<Widget> repoChunks = [];
+
+      Widget _repoBar = Row(
+         crossAxisAlignment: CrossAxisAlignment.center,
+         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+         children: <Widget>[ makeTitleText( "GitHub Repositories", textWidth, false, 1 ),
+                             Container( width: 10 ),
+                             _addGHAcct(),
+                             Container( width: 10 ),
+            ]);
+         
+      repoChunks.add( _repoBar );
+
+      // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
+      // if( gha.ceProject.any(( bool p ) => !p )) {}
+      for( var i = 0; i < gha.repos.length; i++ ) {
+         if( !gha.ceProject[i] ) repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+      }
+      repoChunks.add( Container( height: 20.0 ));
+      repoChunks.add( makeHDivider( textWidth, 20.0, appState.screenWidth * .1 ));      
+      repoChunks.add( Container( height: 20.0 ));
+
+      return repoChunks;
+   }
+   
+   // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
+   List<Widget> _makeCEProjs( gha ) {
+      final textWidth = appState.screenWidth * .15;
+      List<Widget> repoChunks = [];
+
+      Widget _ceProjBar = Row(
+         crossAxisAlignment: CrossAxisAlignment.center,
+         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+         children: <Widget>[ makeTitleText( "Code Equity Projects", textWidth, false, 1 ),
+                             Container( width: 10 ),
+                             _newCEProjButton(),
+                             Container( width: 10 ),
+            ]);
+         
+      repoChunks.add( _ceProjBar );
+
+      // Do we have any ceProjects?  Hmm.. no matter.
+      // if( gha.ceProject.any(( bool p ) => p )) {}
+      for( var i = 0; i < gha.repos.length; i++ ) {
+         if( gha.ceProject[i] ) repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+      }
+      repoChunks.add( Container( height: 20.0 ));
+      repoChunks.add( makeHDivider( textWidth, 20.0, appState.screenWidth * .1 ));      
+      repoChunks.add( Container( height: 20.0 ));
+
+      return repoChunks;
+   }
+   
+   // XXX 20, 29, 26.. 14pt font height
    // XXX at wrapPoint, change maxHeight in BoxConstraint to size of acctList plus buffer.
    Widget _showGHAccts( rhsPaneWidth ) {
       List<Widget> acctList = [];
-      
+
+      // Whitespace
+      acctList.add( Container( height: 20.0 ) );
+
       if( appState.myGHAccounts != null || appState.ghUpdated ) {
+
+
          for( final gha in appState.myGHAccounts ) {
             acctList.addAll( _makeCEProjs( gha ));
-            acctList.add( makeHDivider( appState.screenWidth * .3, 0.0, appState.screenWidth * .1 ));
             acctList.addAll( _makeRepos( gha ));
-            acctList.add( makeHDivider( appState.screenWidth * .3, 0.0, appState.screenWidth * .1 ));
          }
          
          appState.ghUpdated = false;
@@ -121,7 +169,7 @@ class _CEHomeState extends State<CEHomePage> {
          var lhsHeight = appState.screenHeight * .946; // room for top bar
          if( appState.screenWidth < lhsMaxWidth + 5 + rhsPaneWidth ) {
             // wrapped.  Reduce height to make room for rhsPane
-            lhsHeight = min( lhsHeight, acctList.length * 26.0 );
+            lhsHeight = min( lhsHeight, acctList.length * 29.0 );
          }
                            
          return ConstrainedBox(
@@ -143,7 +191,7 @@ class _CEHomeState extends State<CEHomePage> {
    
 
    Widget _makeGHZone( rhsPaneWidth ) {
-      final textWidth = appState.screenWidth * .5;
+      final explainWidth = appState.screenWidth * .5;
       String ghExplain = "CodeEquity will authenticate your account with Github one time only.";
       ghExplain       += "  You can undo this association at any time.  Click here to generate PAT.";
       
@@ -153,7 +201,7 @@ class _CEHomeState extends State<CEHomePage> {
                crossAxisAlignment: CrossAxisAlignment.center,
                mainAxisAlignment: MainAxisAlignment.center,
                children: <Widget>[
-                  makeTitleText( ghExplain, textWidth, true, 3 ),
+                  makeTitleText( ghExplain, explainWidth, true, 3 ),
                   Expanded( 
                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,

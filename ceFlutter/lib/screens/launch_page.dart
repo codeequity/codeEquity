@@ -125,17 +125,17 @@ class _CELaunchPageState extends State<CELaunchPage> {
     // set rhsWidth back to 1.0 when too small since wrap will move it
     widthFactor     = widthFactor > 1.0 || widthFactor < 0.5 ? 1.0 : rhsWidth / 410.0;
 
-    Widget _guestButton = makeActionButtonFixed( appState, 'Look around as a guest', (() {
+    Widget _guestButton = makeActionButtonFixed( appState, 'Look around as a guest', 200, (() {
              notYetImplemented(context);
           }));
     
-    Widget _loginButton = makeActionButtonFixed( appState, 'Login', (() {
+    Widget _loginButton = makeActionButtonFixed( appState, 'Login', 200, (() {
              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CELoginPage()));
           }));
     
-    Widget _signupButton = makeActionButtonFixed( appState, 'Create New Account', (() {
+    Widget _signupButton = makeActionButtonFixed( appState, 'Create New Account', 200, (() {
              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CESignupPage()));
