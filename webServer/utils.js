@@ -748,6 +748,14 @@ async function getPeqs( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function getSummaries( authData, query ) {
+    // console.log( "Get Summaries for a given repo:", query);
+
+    let shortName = "GetEntries";
+    let postData  = { "Endpoint": shortName, "tableName": "CEPEQSummary", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
 
 async function getRepoStatus( authData, repo ) {
     console.log( authData.who, "Get Status for a given repo:", repo );
@@ -764,6 +772,15 @@ async function cleanDynamo( authData, tableName, ids ) {
 
     let shortName = "RemoveEntries";
     let postData  = { "Endpoint": shortName, "tableName": tableName, "ids": ids };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+async function clearIngested( authData, query ) {
+    // console.log( "Clear ingested flag for a given repo:", query);
+
+    let shortName = "Uningest";
+    let postData  = { "Endpoint": shortName, "tableName": "CEPEQActions", "query": query };
 
     return await wrappedPostAWS( authData, shortName, postData );
 }
@@ -947,8 +964,10 @@ exports.processNewPEQ = processNewPEQ;
 exports.getRaw   = getRaw; 
 exports.getPActs = getPActs;
 exports.getPeqs = getPeqs;
+exports.getSummaries = getSummaries;
 exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;
+exports.clearIngested = clearIngested;
 
 exports.checkQueue    = checkQueue;
 exports.purgeQueue    = purgeQueue;

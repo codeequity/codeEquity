@@ -70,6 +70,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
+    else if( endPoint == "Uningest")       { resultPromise = unIngest( rb.tableName, rb.query ); }    
     else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.pLink ); }
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
@@ -322,6 +323,9 @@ async function getEntries( tableName, query ) {
     case "CERepoStatus": 
 	props = [ "GHRepo" ];
 	break;
+    case "CEPEQSummary": 
+	props = [ "GHRepo" ];
+	break;
     default:
 	assert( false );
     }
@@ -361,6 +365,9 @@ async function removeEntries( tableName, ids ) {
 	break;
     case "CERepoStatus": 
 	pkey1 = "GHRepo";
+	break;
+    case "CEPEQSummary": 
+	pkey1 = "PEQSummaryId";
 	break;
     default:
 	assert( false );
@@ -631,7 +638,9 @@ async function getUnPActions( ghRepo ) {
 }
 
 // Unlock.  set PEQActions ingested to true
+// XXX PAGINATE!!!
 // XXX no update where.  this will be too slow
+// XXX fix res, all like it
 async function updatePActions( pactIds ) {
 
     console.log( "Updating pactions to unlocked and ingested" );
@@ -657,6 +666,49 @@ async function updatePActions( pactIds ) {
 	    //results.forEach(function(result) { res = res && result; });
 	    //console.log( "Returning from update,", res.toString() );
 
+	    if( res ) { return success( res ); }
+	    else {
+		return {
+		    statusCode: 500,
+		    body: JSON.stringify( "---" ),
+		    headers: { 'Access-Control-Allow-Origin': '*' }
+		};
+	    }
+	});
+}
+
+// set PEQActions ingested to false
+// XXX no update where.  this will be too slow
+async function unIngest( tableName, query ) {
+
+    console.log( "Updating pactions to not ingested for", query.GHRepo );
+
+    // Find uningested
+    const params = {
+        TableName: tableName,
+        FilterExpression: 'GHRepo = :ghrepo AND Ingested = :true',
+        ExpressionAttributeValues: { ':ghrepo': query.GHRepo , ':true': "true" },
+	Limit: 99,
+    };
+    let unprocPromise = paginatedScan( params );
+    const pacts   = await unprocPromise;
+    const pactIds = pacts.map( pact => pact.PEQActionId );
+    
+    let promises = [];
+    pactIds.forEach(function (pactId) {
+	const params = {
+	    TableName: tableName,
+	    Key: {"PEQActionId": pactId },
+	    UpdateExpression: 'set Ingested = :false',
+	    ExpressionAttributeValues: { ':false': "false" }};
+	
+	promises.push( bsdb.update( params ).promise() );
+    });
+
+    // Promises execute in parallel, collect in order
+    return await Promise.all( promises )
+	.then((results) => {
+	    let res = !results.some( result => !result ); // all true or not?
 	    if( res ) { return success( res ); }
 	    else {
 		return {

@@ -36,6 +36,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
   AppState state;
 
   // Create localstore instance
+  // XXX remove this once cookies are in place from webServer
   final _db = Localstore.instance;
 
   // init Cognito
@@ -98,7 +99,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
         // May not need accessToken, or refreshToken
         String credentials = await state.cogUserService.getCredentials( );
 
-        print( "XXX GAT set: " + state.cogUser.email );
+        print( "GAT set: " + state.cogUser.email );
         _db.collection('userNames').doc('userName').set({
            'uname': state.cogUser.email,
                  'credentials': credentials
@@ -143,17 +144,16 @@ class _AppStateContainerState extends State<AppStateContainer> {
 
      // XXX ooh temp workaround only
      final cookie = await _db.collection('userNames').doc('userName').get();
-     print( "XXX " + cookie.toString() );
+     // print( "XXX " + cookie.toString() );
      
      if( state.cogUser.confirmed ) {
         await getAuthTokens( false );
      }
      else if( cookie != null && cookie['uname'] == state.cogUser.email ) {
-        print( "setting credentials.  no setstate, triggers newUser?" );
+        print( "setting credentials.  no setstate, triggers newUser" );
         state.idToken = cookie['credentials'];
         state.cogUser.confirmed = true;
         state.cogUser.hasAccess = true;
-        print( "Done setting credentials" );
      }
      else {
         print( "User is not confirmed - can not finalize cognito and project setup." );
