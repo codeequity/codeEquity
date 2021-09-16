@@ -59,7 +59,7 @@ class _CEHomeState extends State<CEHomePage> {
             appState.userPActUpdate = true;            
             Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
          },
-         child: makeTitleText( ghUserLogin, width, false, 1 )
+         child: makeTitleText( appState, ghUserLogin, width, false, 1 )
          );
    }
 
@@ -188,7 +188,7 @@ class _CEHomeState extends State<CEHomePage> {
             appState.selectedRepo = repoName;
             confirm( context, "Update Summary?", "Press Continue to proceed.", () => _updateConfirmed( repoName ), () => _updateRejected() );
          },
-         child: makeTitleText( repoName, textWidth, false, 1 )
+         child: makeTitleText( appState, repoName, textWidth, false, 1 )
          );
    }
    
@@ -196,7 +196,7 @@ class _CEHomeState extends State<CEHomePage> {
    List<Widget> _makeRepos( gha ) {
       final textWidth = appState.screenWidth * .2;
       List<Widget> repoChunks = [];
-      repoChunks.add( makeTitleText( gha.ghUserName, textWidth, false, 1 ) );
+      repoChunks.add( makeTitleText( appState, gha.ghUserName, textWidth, false, 1 ) );
       gha.repos.forEach((repo) {
             repoChunks.add( _makeRepoChunk( repo ));
             repoChunks.addAll( _showPAlloc(repo ) );
@@ -269,7 +269,7 @@ class _CEHomeState extends State<CEHomePage> {
                crossAxisAlignment: CrossAxisAlignment.center,
                mainAxisAlignment: MainAxisAlignment.center,
                children: <Widget>[
-                  makeTitleText( ghExplain, textWidth, true, 3 ),
+                  makeTitleText( appState, ghExplain, textWidth, true, 3 ),
                   Expanded( 
                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -298,7 +298,7 @@ class _CEHomeState extends State<CEHomePage> {
                      mainAxisAlignment: MainAxisAlignment.start,
                      mainAxisSize: MainAxisSize.min, 
                      children: <Widget>[
-                        makeTitleText( "Add your githubness here", textWidth, false, 1 ),
+                        makeTitleText( appState, "Add your githubness here", textWidth, false, 1 ),
                         _addGHAcct()
                         ])
                   ])

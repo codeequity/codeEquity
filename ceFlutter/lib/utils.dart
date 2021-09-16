@@ -171,8 +171,8 @@ Widget makeActionButton( appState, buttonText, fn ) {
       color: Color(0xff01A0C7),
       child: MaterialButton(
          key: Key( buttonText ),
-         minWidth: appState.screenWidth - 30,
-         padding: EdgeInsets.fromLTRB(20.0, 15.0, 20.0, 15.0),
+         minWidth: appState.screenWidth - 2*appState.FAT_PAD,
+         padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.FAT_PAD, appState.GAP_PAD, appState.FAT_PAD),
          onPressed: fn,
          child: Text( buttonText,
                       textAlign: TextAlign.center,
@@ -205,7 +205,7 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
-      color: Color(0xff01A0C7),
+      color: appState.BUTTON_COLOR,
       child: MaterialButton(
          key: Key( buttonText ),
          minWidth: minWidth,
@@ -219,52 +219,44 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
 }
 
 
-Widget makeActionText( title, width, wrap, lines ) {
+Widget makeActionText( appState, title, width, wrap, lines ) {
    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 9, 6, 0),
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
-                        height: 20,   // 14pt fonts are 19.2px
+                        height: appState.BASE_TXT_HEIGHT,   
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 14, color: Color(0xff01A0C7), fontWeight: FontWeight.bold))));
+                                    style: TextStyle(fontSize: 14, color: appState.BUTTON_COLOR, fontWeight: FontWeight.bold))));
 }
 
-Widget makeTitleText( title, width, wrap, lines ) {
+Widget makeTitleText( appState, title, width, wrap, lines ) {
    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 6, 0),
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
-                        height: 20,   // 14pt fonts are 19.2px
+                        height: appState.BASE_TXT_HEIGHT,
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold))));
 }
 
-Widget makeBodyText( title, width, wrap, lines ) {
+Widget makeBodyText( appState, title, width, wrap, lines ) {
    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 6, 0),
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(height: 2, fontSize: 14))));
 }
 
-Widget makeAuthorText( author, width, wrap, lines ) {
-   return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 6, 0),
-      child: Container( width: width,
-                        key: Key( author ),
-                        child: Text("By: " + author, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic))));
-}
       
-Widget makeInputField( BuildContext context, hintText, obscure, controller ) {
+Widget makeInputField( appState, hintText, obscure, controller ) {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
    return TextField(
       key: Key( hintText ),
       obscureText: obscure,
       style: style,
       decoration: InputDecoration(
-         contentPadding: EdgeInsets.fromLTRB(20.0, 15.0, 20.0, 15.0),
+         contentPadding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.FAT_PAD, appState.GAP_PAD, appState.FAT_PAD),
          hintText: hintText,
          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0))),
       controller: controller

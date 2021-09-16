@@ -117,8 +117,8 @@ class _CELoginState extends State<CELoginPage> {
      final appState = container.state;
 
 
-     final usernameField = makeInputField( context, "username", false, appState.usernameController );
-     final passwordField = makeInputField( context, "password", true, appState.passwordController );
+     final usernameField = makeInputField( appState, "username", false, appState.usernameController );
+     final passwordField = makeInputField( appState, "password", true, appState.passwordController );
      final loginButton = makeActionButton( appState, 'Login', (() async {
               String userName = appState.usernameController.text;
               String userPassword = appState.passwordController.text;

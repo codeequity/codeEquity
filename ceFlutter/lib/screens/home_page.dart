@@ -26,7 +26,14 @@ class _CEHomeState extends State<CEHomePage> {
    var      ghPersonalAccessToken;
    TextEditingController pat;
 
+   var      runningLHSHeight;
+
+   // iphone 5: 320px
    static const lhsPaneMinWidth = 250.0;
+   static const lhsPaneMaxWidth = 300.0;
+   static const rhsPaneMinWidth = 300.0;
+   static const buttonWidth     =  80.0;
+   static const vBarWidth       =   5.0;
    
    @override
    void initState() {
@@ -59,7 +66,7 @@ class _CEHomeState extends State<CEHomePage> {
       return makeActionButtonFixed(
          appState,
          "New",
-         80, 
+         buttonWidth, 
          () async
          {
             notYetImplemented(context);            
@@ -70,7 +77,7 @@ class _CEHomeState extends State<CEHomePage> {
       return makeActionButtonFixed(
          appState,
          "Add",
-         80,
+         buttonWidth,
          () async
          {
             setState(() {addGHAcct = true; });
@@ -87,76 +94,92 @@ class _CEHomeState extends State<CEHomePage> {
             appState.selectedRepo = repoName;
             notYetImplemented(context);            
          },
-         child: makeActionText( repoName, textWidth, false, 1 )
+         child: makeActionText( appState, repoName, textWidth, false, 1 )
          );
    }
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeRepos( gha ) {
-      final textWidth = appState.screenWidth * .15;
+      final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;              // 2*container + button + pad
+      final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> repoChunks = [];
+      var chunkHeight = 0.0;
 
       Widget _repoBar = Row(
          crossAxisAlignment: CrossAxisAlignment.center,
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( "GitHub Repositories", textWidth, false, 1 ),
+         children: <Widget>[ makeTitleText( appState, "GitHub Repositories", textWidth, false, 1 ),
                              Container( width: 10 ),
                              _addGHAcct(),
                              Container( width: 10 ),
             ]);
          
       repoChunks.add( _repoBar );
+      chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
       // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
       // if( gha.ceProject.any(( bool p ) => !p )) {}
       for( var i = 0; i < gha.repos.length; i++ ) {
-         if( !gha.ceProject[i] ) repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+         if( !gha.ceProject[i] ) {
+            repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         }
       }
-      repoChunks.add( Container( height: 20.0 ));
-      repoChunks.add( makeHDivider( textWidth, 20.0, appState.screenWidth * .1 ));      
-      repoChunks.add( Container( height: 20.0 ));
+      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
 
+      runningLHSHeight += chunkHeight;
       return repoChunks;
    }
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeCEProjs( gha ) {
-      final textWidth = appState.screenWidth * .15;
+      final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
+      final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> repoChunks = [];
+      var chunkHeight = 0.0;
 
       Widget _ceProjBar = Row(
          crossAxisAlignment: CrossAxisAlignment.center,
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( "Code Equity Projects", textWidth, false, 1 ),
+         children: <Widget>[ makeTitleText( appState, "Code Equity Projects", textWidth, false, 1 ),
                              Container( width: 10 ),
                              _newCEProjButton(),
                              Container( width: 10 ),
             ]);
          
       repoChunks.add( _ceProjBar );
+      chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
       // Do we have any ceProjects?  Hmm.. no matter.
       // if( gha.ceProject.any(( bool p ) => p )) {}
       for( var i = 0; i < gha.repos.length; i++ ) {
-         if( gha.ceProject[i] ) repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+         if( gha.ceProject[i] ) {
+            repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         }
       }
-      repoChunks.add( Container( height: 20.0 ));
-      repoChunks.add( makeHDivider( textWidth, 20.0, appState.screenWidth * .1 ));      
-      repoChunks.add( Container( height: 20.0 ));
 
+      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
+
+      runningLHSHeight += chunkHeight;
       return repoChunks;
    }
-   
-   // XXX 20, 29, 26.. 14pt font height
-   // XXX at wrapPoint, change maxHeight in BoxConstraint to size of acctList plus buffer.
-   Widget _showGHAccts( rhsPaneWidth ) {
+
+   // Keep LHS panel between 250 and 300px, no matter what.
+   Widget _showGHAccts() {
       List<Widget> acctList = [];
 
       // Whitespace
-      acctList.add( Container( height: 20.0 ) );
+      acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
+      runningLHSHeight += appState.BASE_TXT_HEIGHT;
 
       if( appState.myGHAccounts != null || appState.ghUpdated ) {
-
 
          for( final gha in appState.myGHAccounts ) {
             acctList.addAll( _makeCEProjs( gha ));
@@ -164,17 +187,18 @@ class _CEHomeState extends State<CEHomePage> {
          }
          
          appState.ghUpdated = false;
-         final lhsMaxWidth  = max( appState.screenWidth * .3, lhsPaneMinWidth );
-
+         final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
+         final wrapPoint = lhsMaxWidth + vBarWidth + rhsPaneMinWidth;
+         
+         // Wrapped?  Reduce height to make room for rhsPane
          var lhsHeight = appState.screenHeight * .946; // room for top bar
-         if( appState.screenWidth < lhsMaxWidth + 5 + rhsPaneWidth ) {
-            // wrapped.  Reduce height to make room for rhsPane
-            lhsHeight = min( lhsHeight, acctList.length * 29.0 );
+         if( appState.screenWidth < wrapPoint ) {
+            lhsHeight = min( lhsHeight, runningLHSHeight );
          }
-                           
+
          return ConstrainedBox(
             constraints: new BoxConstraints(
-               minHeight: 20.0,
+               minHeight: appState.BASE_TXT_HEIGHT,
                minWidth: lhsPaneMinWidth,
                maxHeight: lhsHeight,
                maxWidth:  lhsMaxWidth
@@ -190,7 +214,7 @@ class _CEHomeState extends State<CEHomePage> {
    }
    
 
-   Widget _makeGHZone( rhsPaneWidth ) {
+   Widget _makeGHZone() {
       final explainWidth = appState.screenWidth * .5;
       String ghExplain = "CodeEquity will authenticate your account with Github one time only.";
       ghExplain       += "  You can undo this association at any time.  Click here to generate PAT.";
@@ -201,7 +225,7 @@ class _CEHomeState extends State<CEHomePage> {
                crossAxisAlignment: CrossAxisAlignment.center,
                mainAxisAlignment: MainAxisAlignment.center,
                children: <Widget>[
-                  makeTitleText( ghExplain, explainWidth, true, 3 ),
+                  makeTitleText( appState, ghExplain, explainWidth, true, 3 ),
                   Expanded( 
                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -215,12 +239,11 @@ class _CEHomeState extends State<CEHomePage> {
             );
       }
       else {
-         return _showGHAccts( rhsPaneWidth );
+         return _showGHAccts();
       }
       
    }
 
-   // XXX 300.  274, 26.
    Widget _makeBody() {
       if( appState.loaded ) {
          return
@@ -228,20 +251,20 @@ class _CEHomeState extends State<CEHomePage> {
                children: <Widget>[
                   Container(
                      color: Colors.white,
-                     child: _makeGHZone(300)
+                     child: _makeGHZone()
                      ),
                   const VerticalDivider(
                      color: Colors.grey,
                      thickness: 1,
                      indent: 0,
                      endIndent: 0,
-                     width: 5,
+                     width: vBarWidth,
                      ),
                   
                   Container(
-                     color: Colors.grey[50],
+                     color: appState.BACKGROUND,
                      child: 
-                     makeTitleText( "Recent Activity", 274, true, 1 )
+                     makeTitleText( appState, "Recent Activity", rhsPaneMinWidth - appState.GAP_PAD - appState.TINY_PAD, true, 1 )
                      )
                   ]);
       }
@@ -256,15 +279,16 @@ class _CEHomeState extends State<CEHomePage> {
 
       container   = AppStateContainer.of(context);
       appState    = container.state;
-      
+
       pat = TextEditingController();
       
-      ghPersonalAccessToken = makeInputField( context, "Github Personal Access Token", false, pat );
+      ghPersonalAccessToken = makeInputField( appState, "Github Personal Access Token", false, pat );
       
       // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.
       SystemChrome.setPreferredOrientations([ DeviceOrientation.portraitUp, DeviceOrientation.portraitDown ]);
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;
+      runningLHSHeight = 0;
       
       // print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
       // print( getToday() );

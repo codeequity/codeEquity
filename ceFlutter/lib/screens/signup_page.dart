@@ -45,10 +45,10 @@ class _CESignupState extends State<CESignupPage> {
       final container = AppStateContainer.of(context);
       final appState = container.state;
       
-      final usernameField = makeInputField( context, "username", false, appState.usernameController );
-      final passwordField = makeInputField( context, "password", true, appState.passwordController );
-      final emailField    = makeInputField( context, "email address", false, appState.attributeController );
-      final confirmationCodeField = makeInputField( context, "confirmation code", false, appState.confirmationCodeController );
+      final usernameField = makeInputField( appState, "username", false, appState.usernameController );
+      final passwordField = makeInputField( appState, "password", true, appState.passwordController );
+      final emailField    = makeInputField( appState, "email address", false, appState.attributeController );
+      final confirmationCodeField = makeInputField( appState, "confirmation code", false, appState.confirmationCodeController );
 
       String message = "";  
 
