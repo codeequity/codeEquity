@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/utils.dart';
+
+import 'package:ceFlutter/models/app_state.dart';
 
 import 'package:ceFlutter/components/tree.dart';
 import 'package:ceFlutter/components/leaf.dart';
@@ -8,16 +11,19 @@ import 'package:ceFlutter/components/leaf.dart';
 
 // XXX getAmounts walking tree 3x - not necessary
 class Node extends StatelessWidget implements Tree {
-  final String title;
-  int allocAmount;
-  final IconData icon;
-  
-  final double width;
-  final bool isInitiallyExpanded;
-
-  final List<Tree> leaves = List<Tree>();
-
-  Node(this.title, this.allocAmount, this.icon, this.width, [this.isInitiallyExpanded = false] );
+   final String title;
+   int allocAmount;
+   final IconData icon;
+   
+   final double width;
+   final bool isInitiallyExpanded;
+   
+   final List<Tree> leaves = List<Tree>();
+   
+   var      container;
+   AppState appState;
+   
+   Node(this.title, this.allocAmount, this.icon, this.width, [this.isInitiallyExpanded = false] );
 
   void addLeaf(Tree leaf ) {
     leaves.add( leaf );
@@ -106,12 +112,13 @@ class Node extends StatelessWidget implements Tree {
      String pending = addCommas( getPendingAmount() );
      String accrue = addCommas( getAccrueAmount() );
 
+     
      // XXX consider using font for clickability?
      return Padding(
-        padding: const EdgeInsets.only(left: 15.0),  // XXX
+        padding: EdgeInsets.only(left: appState.FAT_PAD ),
         child: ExpansionTile(
            // leading: icon == null ? Container() : Icon(icon),
-           title: makeBodyText( "$title (${ alloc + " " + plan + " " + pending + " " + accrue })", width, false, 1 ),
+           title: makeBodyText( appState, "$title (${ alloc + " " + plan + " " + pending + " " + accrue })", width, false, 1 ),
            children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
            // trailing: Text( addCommas( getAmount() ), style: TextStyle(fontSize: 12) ),
            initiallyExpanded: isInitiallyExpanded,
@@ -121,6 +128,10 @@ class Node extends StatelessWidget implements Tree {
 
   @override
      Widget build(BuildContext context) {
+
+     container   = AppStateContainer.of(context);
+     appState    = container.state;
+
      return render(context);
   }
 }

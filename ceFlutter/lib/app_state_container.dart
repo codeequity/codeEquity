@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';  // json encode/decode
 
+import 'package:localstore/localstore.dart';
+
 // mobile..
 // Note - this requires state here: android/app/src/main/res/raw/awsconfiguration.json
 // import 'package:flutter_cognito_plugin/flutter_cognito_plugin.dart';
@@ -31,7 +33,11 @@ class AppStateContainer extends StatefulWidget {
 
 
 class _AppStateContainerState extends State<AppStateContainer> {
-  AppState state;  
+  AppState state;
+
+  // Create localstore instance
+  // XXX remove this once cookies are in place from webServer
+  final _db = Localstore.instance;
 
   // init Cognito
   Future<void> doCogInit() async {
@@ -48,13 +54,13 @@ class _AppStateContainerState extends State<AppStateContainer> {
 
         await state.cogUserService.init();
         print("... user service init done." );
-
+        
         // XXX Inactive.  Useful for cookies?
         bool isAuthenticated = await state.cogUserService.checkAuthenticated();
-        print( "... auth done." + isAuthenticated.toString() );
+        print( "... auth done: " + isAuthenticated.toString() );
         if( isAuthenticated ) {
            state.cogUser = await state.cogUserService.getCurrentUser();
-           print( "Got User." );
+           print( "Got User: " );
         }
 
         // XXX Inactive.  Useful for cookies?
@@ -92,6 +98,13 @@ class _AppStateContainerState extends State<AppStateContainer> {
 
         // May not need accessToken, or refreshToken
         String credentials = await state.cogUserService.getCredentials( );
+
+        print( "GAT set: " + state.cogUser.email );
+        _db.collection('userNames').doc('userName').set({
+           'uname': state.cogUser.email,
+                 'credentials': credentials
+                 });
+        
         setState(() {
               // state.accessToken = accessToken;   
               // state.refreshToken = refreshToken;
@@ -128,21 +141,32 @@ class _AppStateContainerState extends State<AppStateContainer> {
 
   Future<bool> finalizeUser( newUser ) async {
      assert( state.newUser == newUser );
+
+     // XXX ooh temp workaround only
+     final cookie = await _db.collection('userNames').doc('userName').get();
+     // print( "XXX " + cookie.toString() );
      
      if( state.cogUser.confirmed ) {
-        print( "Finalizing user token and project setup" );
-        await getAPIBasePath();
         await getAuthTokens( false );
-        if( !newUser ) {
-           await reloadMyProjects( context, this );
-           state.updateAllocTree = true;                 // forces buildAllocationTree
-        }
-        return true;
+     }
+     else if( cookie != null && cookie['uname'] == state.cogUser.email ) {
+        print( "setting credentials.  no setstate, triggers newUser" );
+        state.idToken = cookie['credentials'];
+        state.cogUser.confirmed = true;
+        state.cogUser.hasAccess = true;
      }
      else {
         print( "User is not confirmed - can not finalize cognito and project setup." );
         return false;
      }
+
+     print( "Finalizing user token and project setup" );
+     await getAPIBasePath();
+     if( !newUser ) {
+        await reloadMyProjects( context, this );
+        state.updateAllocTree = true;                 // forces buildAllocationTree
+     }
+     return true;
   }
 
   @override

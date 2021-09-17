@@ -1,5 +1,6 @@
-import 'dart:convert';  // json encode/decode
-import 'package:flutter/services.dart';
+import 'dart:convert';                   // json encode/decode
+import 'dart:math';               
+import 'package:flutter/services.dart';  // orientation
 import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
@@ -8,14 +9,8 @@ import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
-import 'package:ceFlutter/models/allocation.dart';
-import 'package:ceFlutter/models/PEQ.dart';
 
-import 'package:ceFlutter/components/tree.dart';
-import 'package:ceFlutter/components/node.dart';
-import 'package:ceFlutter/components/leaf.dart';
-
-import 'package:ceFlutter/screens/detail_page.dart';
+import 'package:ceFlutter/screens/add_gh_page.dart';
 
 
 class CEHomePage extends StatefulWidget {
@@ -29,16 +24,20 @@ class _CEHomeState extends State<CEHomePage> {
 
    var      container;
    AppState appState;
-   bool     addGHAcct;
-   var      ghPersonalAccessToken;
-   TextEditingController pat;
+
+   var      runningLHSHeight;
+
+   // iphone 5: 320px
+   static const lhsPaneMinWidth = 250.0;
+   static const lhsPaneMaxWidth = 300.0;
+   static const rhsPaneMinWidth = 300.0;
+   static const buttonWidth     =  80.0;
+   static const vBarWidth       =   5.0;
    
    @override
    void initState() {
       print( "HOMEPAGE INIT" );
       super.initState();
-
-      addGHAcct = false;
    }
 
    @override
@@ -46,138 +45,29 @@ class _CEHomeState extends State<CEHomePage> {
       super.dispose();
    }
 
-
-   // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
-   //     detail page..?  
-   _pactDetail( ghUserLogin, width, context, container ) {
-      final appState = container.state;
-      return GestureDetector(
-         onTap: () async 
+   Widget _newCEProjButton() {
+      return makeActionButtonFixed(
+         appState,
+         "New",
+         buttonWidth, 
+         () async
          {
-            print( "pactDetail fired for: " + ghUserLogin );
-            appState.selectedUser = ghUserLogin;
-            appState.userPActUpdate = true;            
-            Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
-         },
-         child: makeTitleText( ghUserLogin, width, false, 1 )
-         );
+            notYetImplemented(context);            
+         });
    }
 
-   // XXX this could easily be made iterative
-   // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
-   // header      alloc                   sub alloc                 plan
-   buildAllocationTree( ) {
-      print( "Build allocation tree" );
-      final appState  = container.state;
-      final width = appState.screenWidth * .6;
-      
-      appState.allocTree = Node( "Category    Alloc / Plan / Accr", 0, null, width, true );
-
-      if( appState.myPEQSummary == null ) {
-               appState.updateAllocTree = false;
-               return;
-      }
-      
-      for( var alloc in appState.myPEQSummary.allocations ) {
-         
-         Tree curNode = appState.allocTree;
-         
-         // when allocs are created, they are leaves.
-         // down the road, they become nodes
-         for( int i = 0; i < alloc.category.length; i++ ) {
-            
-            print( "working on " + alloc.category.toString() + " : " + alloc.category[i] );
-            
-            bool lastCat = false;
-            if( i == alloc.category.length - 1 ) { lastCat = true; }
-            Tree childNode = curNode.findNode( alloc.category[i] );
-            
-            if( childNode is Leaf && !lastCat ) {
-               // allocation leaf, convert to a node to accomodate plan/accrue
-               print( "... leaf in middle - convert" );
-               curNode = (curNode as Node).convertToNode( childNode );
-            }
-            else if( childNode == null ) {
-               if( !lastCat ) {
-                  print( "... nothing - add node" );
-                  Node tmpNode = Node( alloc.category[i], 0, null, width );
-                  (curNode as Node).addLeaf( tmpNode );
-                  curNode = tmpNode;
-               }
-               else {
-                  print( "... nothing found, last cat, add leaf" );
-                  // leaf.  amounts stay at leaves
-
-                  int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount : 0 );
-                  int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
-                  int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount : 0 );
-                  int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
-                  Widget details = _pactDetail( alloc.category[i], width, context, container );
-                  Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
-                  (curNode as Node).addLeaf( tmpLeaf );
-               }
-            }
-            else if( childNode is Node ) {
-               if( !lastCat ) {
-                  print( "... found - move on" );
-                  curNode = childNode;
-               }
-               else {
-                  print( "... alloc adding into existing chain" );
-                  assert( alloc.allocType == PeqType.allocation );
-                  (childNode as Node).addAlloc( alloc.amount );
-               }
-            }
-            else {
-               print( "XXXXXXXXXXXXXXXX BAD" );
-               print( "XXXXXXXXXXXXXXXX BOOBOO" );
-               print( "XXXXXXXXXXXXXXXX BABY" );
-            }
-         }
-      }
-      appState.updateAllocTree = false;
-      // print( appState.allocTree.toStr() );
+   Widget _addGHAcct() {
+      return makeActionButtonFixed(
+         appState,
+         "Add",
+         buttonWidth,
+         () async
+         {
+            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddGHPage());
+            Navigator.push( context, newPage );
+         });
    }
 
-   
-   // XXX consider making peqSummary a list in appState
-   List<Widget> _showPAlloc( repo ) {
-
-      List<Widget> allocList = [];
-
-      if( appState.updateAllocTree ) { buildAllocationTree(); }
-      
-      if( appState.peqUpdated && appState.myPEQSummary != null )
-      {
-         if( appState.myPEQSummary.ghRepo == repo ) {
-            if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
-            print( "_showPalloc Update alloc" );
-            allocList.add( appState.allocTree );
-         }
-      }
-      else { return []; }
-      
-      return allocList;
-   }
-   
-   
-   Future<void> _updateConfirmed( String repoName ) async {
-      appState.peqUpdated = false;
-      
-      await updatePEQAllocations( repoName, context, container );
-      buildAllocationTree();
-      
-      // XXX local, or app-wide?  app for now
-      setState(() { appState.peqUpdated = true; });
-      
-      Navigator.of( context ).pop(); 
-   }
-   
-   void _updateRejected() {
-      print( "not updated" );
-      Navigator.of( context ).pop(); 
-   }
-   
    
    // This GD opens and closes peqSummary.
    Widget _makeRepoChunk( String repoName ) {
@@ -186,41 +76,116 @@ class _CEHomeState extends State<CEHomePage> {
          onTap: ()
          {
             appState.selectedRepo = repoName;
-            confirm( context, "Update Summary?", "Press Continue to proceed.", () => _updateConfirmed( repoName ), () => _updateRejected() );
+            notYetImplemented(context);            
          },
-         child: makeTitleText( repoName, textWidth, false, 1 )
+         child: makeActionText( appState, repoName, textWidth, false, 1 )
          );
    }
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeRepos( gha ) {
-      final textWidth = appState.screenWidth * .2;
+      final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;              // 2*container + button + pad
+      final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> repoChunks = [];
-      repoChunks.add( makeTitleText( gha.ghUserName, textWidth, false, 1 ) );
-      gha.repos.forEach((repo) {
-            repoChunks.add( _makeRepoChunk( repo ));
-            repoChunks.addAll( _showPAlloc(repo ) );
-         });
+      var chunkHeight = 0.0;
+
+      Widget _repoBar = Row(
+         crossAxisAlignment: CrossAxisAlignment.center,
+         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+         children: <Widget>[ makeTitleText( appState, "GitHub Repositories", textWidth, false, 1 ),
+                             Container( width: 10 ),
+                             _addGHAcct(),
+                             Container( width: 10 ),
+            ]);
+         
+      repoChunks.add( _repoBar );
+      chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+
+      // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
+      // if( gha.ceProject.any(( bool p ) => !p )) {}
+      for( var i = 0; i < gha.repos.length; i++ ) {
+         if( !gha.ceProject[i] ) {
+            repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         }
+      }
+      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
+
+      runningLHSHeight += chunkHeight;
       return repoChunks;
    }
    
-   Widget _showGHAccts( ) {
+   // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
+   List<Widget> _makeCEProjs( gha ) {
+      final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
+      final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
+      List<Widget> repoChunks = [];
+      var chunkHeight = 0.0;
+
+      Widget _ceProjBar = Row(
+         crossAxisAlignment: CrossAxisAlignment.center,
+         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+         children: <Widget>[ makeTitleText( appState, "Code Equity Projects", textWidth, false, 1 ),
+                             Container( width: 10 ),
+                             _newCEProjButton(),
+                             Container( width: 10 ),
+            ]);
+         
+      repoChunks.add( _ceProjBar );
+      chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+
+      // Do we have any ceProjects?  Hmm.. no matter.
+      // if( gha.ceProject.any(( bool p ) => p )) {}
+      for( var i = 0; i < gha.repos.length; i++ ) {
+         if( gha.ceProject[i] ) {
+            repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         }
+      }
+
+      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
+
+      runningLHSHeight += chunkHeight;
+      return repoChunks;
+   }
+
+   // Keep LHS panel between 250 and 300px, no matter what.
+   Widget _showGHAccts() {
       List<Widget> acctList = [];
-      
+
+      // Whitespace
+      acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
+      runningLHSHeight += appState.BASE_TXT_HEIGHT;
+
       if( appState.myGHAccounts != null || appState.ghUpdated ) {
+
          for( final gha in appState.myGHAccounts ) {
+            acctList.addAll( _makeCEProjs( gha ));
             acctList.addAll( _makeRepos( gha ));
-            acctList.add( makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));
          }
          
          appState.ghUpdated = false;
+         final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
+         final wrapPoint = lhsMaxWidth + vBarWidth + rhsPaneMinWidth;
          
-         return ConstrainedBox( 
+         // Wrapped?  Reduce height to make room for rhsPane
+         var lhsHeight = appState.screenHeight * .946; // room for top bar
+         if( appState.screenWidth < wrapPoint ) {
+            lhsHeight = min( lhsHeight, runningLHSHeight );
+         }
+
+         return ConstrainedBox(
             constraints: new BoxConstraints(
-               minHeight: 20.0,
-               minWidth: 20.0,
-               maxHeight: appState.screenHeight * .85,
-               maxWidth:  appState.screenWidth * .8
+               minHeight: appState.BASE_TXT_HEIGHT,
+               minWidth: lhsPaneMinWidth,
+               maxHeight: lhsHeight,
+               maxWidth:  lhsMaxWidth
                ),
             child: ListView(
                scrollDirection: Axis.vertical,
@@ -232,122 +197,64 @@ class _CEHomeState extends State<CEHomePage> {
       }
    }
    
-   
-   Widget _ghAssociateButton() {
-      return makeActionButtonSmall(
-         appState,
-         "Enable Github access",
-         () async
-         {
-            bool associated = await associateGithub( context, container, pat.text );
-            if( associated ) {
-               setState(() { addGHAcct = false; });                 
-            }
-            
-         });
-   }
-   
-   Widget _addGHAcct() {
-      return makeActionButtonSmall(
-         appState,
-         "Add Github account",
-         () async
-         {
-            setState(() {addGHAcct = true; });
-         });
-   }
-
-   // XXX Col inside col?
-   Widget _makeGHZone() {
-      final textWidth = appState.screenWidth * .5;
-      String ghExplain = "CodeEquity will authenticate your account with Github one time only.";
-      ghExplain       += "  You can undo this association at any time.  Click here to generate PAT.";
-      
-      if( addGHAcct ) {
-         return Center(
-            child: Row(
-               crossAxisAlignment: CrossAxisAlignment.center,
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: <Widget>[
-                  makeTitleText( ghExplain, textWidth, true, 3 ),
-                  Expanded( 
-                     child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                           ghPersonalAccessToken,
-                           _ghAssociateButton()
-                           ])
-                     )
-                  ])
-            );
-      }
-      else {
-         return Center(
-            child: Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               mainAxisAlignment: MainAxisAlignment.start,
-               mainAxisSize: MainAxisSize.min,    // required for listView child
-               children: <Widget>[
-                  
-                  // HERE
-                  _showGHAccts(),
-                  
-                  Row(
-                     crossAxisAlignment: CrossAxisAlignment.start,
-                     mainAxisAlignment: MainAxisAlignment.start,
-                     mainAxisSize: MainAxisSize.min, 
-                     children: <Widget>[
-                        makeTitleText( "Add your githubness here", textWidth, false, 1 ),
-                        _addGHAcct()
-                        ])
-                  ])
-            );
-      }
-      
+   Widget _makeActivityZone() {
+      final w = rhsPaneMinWidth - appState.GAP_PAD - appState.TINY_PAD;
+      return Column( 
+         crossAxisAlignment: CrossAxisAlignment.start,
+         mainAxisAlignment: MainAxisAlignment.start,
+         children: <Widget>[
+            Container( width: w, height: appState.GAP_PAD ),
+            makeTitleText( appState, "Activity", w, true, 1 )
+            ]);
    }
    
    Widget _makeBody() {
       if( appState.loaded ) {
-         
-         return Center(
-            child: Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               mainAxisAlignment: MainAxisAlignment.start,
-               mainAxisSize: MainAxisSize.min,    // required for listView child
+         return
+            Wrap(
                children: <Widget>[
-                  SizedBox( height: 5.0),
-                  _makeGHZone()
-                  ]));
-      } else {
+                  Container(
+                     color: Colors.white,
+                     child: _showGHAccts()
+                     ),
+                  const VerticalDivider(
+                     color: Colors.grey,
+                     thickness: 1,
+                     indent: 0,
+                     endIndent: 0,
+                     width: vBarWidth,
+                     ),
+                  
+                  Container(
+                     color: appState.BACKGROUND,
+                     child: _makeActivityZone()
+                     )
+                  ]);
+      }
+      else {
          print( "AppState not ? Loaded" );
          return CircularProgressIndicator();
       }
    }
    
-   
    @override
       Widget build(BuildContext context) {
-      
+
       container   = AppStateContainer.of(context);
       appState    = container.state;
-      
-      pat = TextEditingController();
-      
-      ghPersonalAccessToken = makeInputField( context, "Github Personal Access Token", false, pat );
-      
+
       // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.
       SystemChrome.setPreferredOrientations([ DeviceOrientation.portraitUp, DeviceOrientation.portraitDown ]);
+      appState.screenHeight = MediaQuery.of(context).size.height;
+      appState.screenWidth  = MediaQuery.of(context).size.width;
+      runningLHSHeight = 0;
       
-
-     
-     print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
-     print( getToday() );
-     
-     return Scaffold(
-        appBar: makeTopAppBar( context, "Home" ),
-        //bottomNavigationBar: makeBotAppBar( context, "Home" ),
-        body: _makeBody()
-        );
+      // print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
+      // print( getToday() );
+      
+      return Scaffold(
+         appBar: makeTopAppBar( context, "Home" ),
+         body: _makeBody()
+         );
    }
 }

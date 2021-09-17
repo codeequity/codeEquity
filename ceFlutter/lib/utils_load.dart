@@ -362,8 +362,8 @@ Future<void> reloadMyProjects( context, container ) async {
 
       // XXX could be thousands... too much.  Just get uningested, most recent, etc.
       // Get all PEQ data related to the selected repo.  
-      appState.myPEQs       = await fetchPEQs( context, container,
-                                                      '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
+      appState.myPEQs = await fetchPEQs( context, container,
+                                         '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
 
       // XXX Really just want mine?  Hmmmmmmmm.......no.  get all for peqs above.
       // XXX could be thousands... too much.   Just get uningested, most recent, etc.

@@ -34,10 +34,10 @@ class AppState {
    bool newUser;          // signup: newuser creating a login has some special requirements during setup
    
    String apiBasePath;                         // where to find lambda interface to aws
-   TextEditingController usernameController;   
-   TextEditingController passwordController;
-   TextEditingController attributeController; 
-   TextEditingController confirmationCodeController;
+   TextEditingController usernameController;   // XXX move out
+   TextEditingController passwordController;   // XXX move out
+   TextEditingController attributeController;  // XXX move out
+   TextEditingController confirmationCodeController;  // XXX move out
    double screenHeight;
    double screenWidth;
 
@@ -64,6 +64,18 @@ class AppState {
    Map< String, List<PEQ> >        userPeqs;        // ghUsers : peqs where user was pact actor
    bool                            userPActUpdate;  // need to upate pact list
 
+   // UI constants
+   final double BASE_TXT_HEIGHT = 20.0;     // 14pt font is 19.2 px height
+
+   final double TINY_PAD        =  6.0;     // minimal padding for text
+   final double MID_PAD         =  9.0;     // robust padding for text
+   final double FAT_PAD         = 15.0;     // Action button padding
+   final double GAP_PAD         = 20.0;     // padding between objects
+   
+   final DIV_BAR_COLOR          = Colors.grey[200];   // XXX use.  expand.
+   final BUTTON_COLOR           = Color(0xff01A0C7);  // XXX
+   final BACKGROUND             = Colors.grey[50];    // XXX
+   
    initAppData() {
       loaded = false;
 

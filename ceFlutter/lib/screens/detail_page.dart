@@ -65,14 +65,14 @@ class _CEDetailState extends State<CEDetailPage> {
       String apeq =  peq.ghIssueTitle + " (" + proj + ") status: " + enumToStr( peq.peqType ) + " " + peq.amount.toString() + " PEQs";
       if( peq.ghHolderId.length > 0 ) { apeq += "  Holder(s): " + peq.ghHolderId.toString(); }
       if( peq.ceGrantorId != EMPTY ) { apeq += "  Grantor: " + peq.ceGrantorId; }
-      return makeTitleText( apeq, textWidth, false, 1 );
+      return makeTitleText( appState, apeq, textWidth, false, 1 );
    }
 
    // XXX rawbody -> prettier list of string
    Widget _makePAct( pact ) {
       final textWidth = appState.screenWidth * .6;
       String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.entryDate;
-      // return makeBodyText( apact, textWidth, false, 1 );
+      // return makeBodyText( appState, apact, textWidth, false, 1 );
       print( ".. GD for " + pact.id );
       return GestureDetector(
          onTap: () async
@@ -86,10 +86,10 @@ class _CEDetailState extends State<CEDetailPage> {
             String prettyRaw = encoder.convert(prj);
 
             // Let makeBody handle the json
-            Widget prw = makeBodyText(prettyRaw, textWidth, true, 1000);
+            Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000);
             popScroll( context, "Raw Github Action:", prw, () => _closeRaw() );            
          },
-         child: makeBodyText( apact, textWidth, false, 1 )
+         child: makeBodyText( appState, apact, textWidth, false, 1 )
          );
 
       
