@@ -10,6 +10,8 @@ import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
+import 'package:ceFlutter/screens/add_gh_page.dart';
+
 
 class CEHomePage extends StatefulWidget {
    CEHomePage({Key key}) : super(key: key);
@@ -22,9 +24,6 @@ class _CEHomeState extends State<CEHomePage> {
 
    var      container;
    AppState appState;
-   bool     addGHAcct;
-   var      ghPersonalAccessToken;
-   TextEditingController pat;
 
    var      runningLHSHeight;
 
@@ -39,27 +38,11 @@ class _CEHomeState extends State<CEHomePage> {
    void initState() {
       print( "HOMEPAGE INIT" );
       super.initState();
-
-      addGHAcct = false;
    }
 
    @override
    void dispose() {
       super.dispose();
-   }
-
-   Widget _ghAssociateButton() {
-      return makeActionButtonSmall(
-         appState,
-         "Enable Github access",
-         () async
-         {
-            bool associated = await associateGithub( context, container, pat.text );
-            if( associated ) {
-               setState(() { addGHAcct = false; });                 
-            }
-            
-         });
    }
 
    Widget _newCEProjButton() {
@@ -80,7 +63,8 @@ class _CEHomeState extends State<CEHomePage> {
          buttonWidth,
          () async
          {
-            setState(() {addGHAcct = true; });
+            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddGHPage());
+            Navigator.push( context, newPage );
          });
    }
 
@@ -213,37 +197,17 @@ class _CEHomeState extends State<CEHomePage> {
       }
    }
    
-
-   Widget _makeGHZone() {
-      final explainWidth = appState.screenWidth * .5;
-      String ghExplain = "CodeEquity will authenticate your account with Github one time only.";
-      ghExplain       += "  You can undo this association at any time.  Click here to generate PAT.";
-      
-      if( addGHAcct ) {
-         return Center(
-            child: Row(
-               crossAxisAlignment: CrossAxisAlignment.center,
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: <Widget>[
-                  makeTitleText( appState, ghExplain, explainWidth, true, 3 ),
-                  Expanded( 
-                     child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                           ghPersonalAccessToken,
-                           _ghAssociateButton()
-                           ])
-                     )
-                  ])
-            );
-      }
-      else {
-         return _showGHAccts();
-      }
-      
+   Widget _makeActivityZone() {
+      final w = rhsPaneMinWidth - appState.GAP_PAD - appState.TINY_PAD;
+      return Column( 
+         crossAxisAlignment: CrossAxisAlignment.start,
+         mainAxisAlignment: MainAxisAlignment.start,
+         children: <Widget>[
+            Container( width: w, height: appState.GAP_PAD ),
+            makeTitleText( appState, "Activity", w, true, 1 )
+            ]);
    }
-
+   
    Widget _makeBody() {
       if( appState.loaded ) {
          return
@@ -251,7 +215,7 @@ class _CEHomeState extends State<CEHomePage> {
                children: <Widget>[
                   Container(
                      color: Colors.white,
-                     child: _makeGHZone()
+                     child: _showGHAccts()
                      ),
                   const VerticalDivider(
                      color: Colors.grey,
@@ -263,8 +227,7 @@ class _CEHomeState extends State<CEHomePage> {
                   
                   Container(
                      color: appState.BACKGROUND,
-                     child: 
-                     makeTitleText( appState, "Recent Activity", rhsPaneMinWidth - appState.GAP_PAD - appState.TINY_PAD, true, 1 )
+                     child: _makeActivityZone()
                      )
                   ]);
       }
@@ -280,10 +243,6 @@ class _CEHomeState extends State<CEHomePage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
 
-      pat = TextEditingController();
-      
-      ghPersonalAccessToken = makeInputField( appState, "Github Personal Access Token", false, pat );
-      
       // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.
       SystemChrome.setPreferredOrientations([ DeviceOrientation.portraitUp, DeviceOrientation.portraitDown ]);
       appState.screenHeight = MediaQuery.of(context).size.height;

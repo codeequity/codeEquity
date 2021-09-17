@@ -223,20 +223,24 @@ Widget makeActionText( appState, title, width, wrap, lines ) {
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
-                        height: appState.BASE_TXT_HEIGHT,   
+                        height: appState.BASE_TXT_HEIGHT*lines,   
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: 14, color: appState.BUTTON_COLOR, fontWeight: FontWeight.bold))));
 }
 
-Widget makeTitleText( appState, title, width, wrap, lines ) {
+Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14 } ) {
+   // Add as encountered.
+   var mux = 1.0;
+   if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
+
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
-                        height: appState.BASE_TXT_HEIGHT,
+                        height: appState.BASE_TXT_HEIGHT * lines * mux,
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold))));
+                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
 }
 
 Widget makeBodyText( appState, title, width, wrap, lines ) {
