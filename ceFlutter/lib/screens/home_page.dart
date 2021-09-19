@@ -11,6 +11,7 @@ import 'package:ceFlutter/utils_load.dart';
 import 'package:ceFlutter/models/app_state.dart';
 
 import 'package:ceFlutter/screens/add_gh_page.dart';
+import 'package:ceFlutter/screens/project_page.dart';
 
 
 class CEHomePage extends StatefulWidget {
@@ -76,7 +77,8 @@ class _CEHomeState extends State<CEHomePage> {
          onTap: ()
          {
             appState.selectedRepo = repoName;
-            notYetImplemented(context);            
+            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
+            Navigator.push( context, newPage );
          },
          child: makeActionText( appState, repoName, textWidth, false, 1 )
          );

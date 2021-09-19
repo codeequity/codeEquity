@@ -112,7 +112,10 @@ class Node extends StatelessWidget implements Tree {
      String pending = addCommas( getPendingAmount() );
      String accrue = addCommas( getAccrueAmount() );
 
-     
+     // Odd.. Why must this be set again, explicitly?  Render must not be in synch with build in the context tree.
+     container   = AppStateContainer.of(context);
+     appState    = container.state;
+
      // XXX consider using font for clickability?
      return Padding(
         padding: EdgeInsets.only(left: appState.FAT_PAD ),

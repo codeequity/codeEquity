@@ -232,7 +232,10 @@ Widget makeActionText( appState, title, width, wrap, lines ) {
 Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14 } ) {
    // Add as encountered.
    var mux = 1.0;
-   if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
+   if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 28 ) { mux = 38.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
 
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
