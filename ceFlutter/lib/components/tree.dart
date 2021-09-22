@@ -12,5 +12,9 @@ abstract class Tree {
    
    String getTitle();
    String toStr();
+
+   void setVis( visible );
+
+   List<List<Widget>> getCurrent( BuildContext context );
    Widget render(BuildContext context);
 }

@@ -57,6 +57,7 @@ class AppState {
 
    Node allocTree;
    bool updateAllocTree;
+   bool expansionChanged;
 
    String                          selectedRepo;
    String                          selectedUser;    // Looking at details for this user, currently
@@ -91,6 +92,7 @@ class AppState {
 
       allocTree = null;
       updateAllocTree = false;
+      expansionChanged = false;
 
       selectedRepo = "";
       selectedUser = "";

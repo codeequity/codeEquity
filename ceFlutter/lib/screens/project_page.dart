@@ -32,8 +32,22 @@ class _CEProjectState extends State<CEProjectPage> {
       super.dispose();
    }
 
-   // XXX would like elipsis or stacking if screen shrinks.
-   // XXX functionality on other pages
+
+   Widget _makeTab( fn ) {
+      return Container(
+         color: Colors.white,
+         child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: <Widget>[
+               makeHDivider( appState.screenWidth, 0, 0 ),
+               fn()
+               ])
+         );
+   }
+
+   
+
    // https://stackoverflow.com/questions/60362159/defaulttabcontroller-without-scaffold
    Widget _makeBody() {
       final w = 100;
@@ -43,99 +57,56 @@ class _CEProjectState extends State<CEProjectPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
-
-               makeTitleText( appState, appState.selectedRepo, w*6, false, 1, fontSize: 18),
                
-               Expanded( child: DefaultTabController(
-                  initialIndex: 1,
-                  length: 5,
-                  child: Padding(
-                     padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
-                     child: Container(
-                        padding: EdgeInsets.all(5.0),
-                        decoration: BoxDecoration(
-                           color: appState.BACKGROUND,
-                           borderRadius: BorderRadius.all(
-                              Radius.circular(5),
-                              )),
-                        child: Column( 
-                           children: <Widget> [
-                              Align(
-                                 alignment: Alignment.centerLeft,
-                                 child: TabBar(
-                                    tabs: <Widget>[
-                                       Tab( child: makeTitleText( appState, "Approvals", w, false, 1 )),
-                                       Tab( child: makeTitleText( appState, "PEQ Summary", w, false, 1 )),
-                                       Tab( child: makeTitleText( appState, "Contributors", w, false, 1 )),
-                                       Tab( child: makeTitleText( appState, "Equity Plan", w, false, 1 )),
-                                       Tab( child: makeTitleText( appState, "Agreements", w, false, 1 )),
-                                       ],
-                                    
-                                    unselectedLabelColor: Colors.black54,
-                                    labelColor: Colors.black,
-                                    isScrollable: true,
-                                    indicatorSize: TabBarIndicatorSize.tab,
-                                    indicator: BoxDecoration(
-                                       shape: BoxShape.rectangle,
-                                       borderRadius: BorderRadius.circular(10),
-                                       color: Colors.white,
-                                       ))),
-                              Expanded(
-                                 child: TabBarView(
-                                    children: <Widget>[
-                                       Container(
+               makeTitleText( appState, appState.selectedRepo, w*6, false, 1, fontSize: 18),
+               Container( height: 10 ),
+               
+               Expanded(
+                  child: DefaultTabController(
+                     initialIndex: 1,
+                     length: 5,
+                     child: Padding(
+                        padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
+                        child: Container(
+                           padding: EdgeInsets.all(5.0),
+                           decoration: BoxDecoration(
+                              color: appState.BACKGROUND,
+                              borderRadius: BorderRadius.all(
+                                 Radius.circular(5),
+                                 )),
+                           child: Column( 
+                              children: <Widget> [
+                                 Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TabBar(
+                                       tabs: <Widget>[
+                                          Tab( child: makeTitleText( appState, "Approvals", w, false, 1 )),
+                                          Tab( child: makeTitleText( appState, "PEQ Summary", w, false, 1 )),
+                                          Tab( child: makeTitleText( appState, "Contributors", w, false, 1 )),
+                                          Tab( child: makeTitleText( appState, "Equity Plan", w, false, 1 )),
+                                          Tab( child: makeTitleText( appState, "Agreements", w, false, 1 )),
+                                          ],
+                                       
+                                       unselectedLabelColor: Colors.black54,
+                                       labelColor: Colors.black,
+                                       isScrollable: true,
+                                       indicatorSize: TabBarIndicatorSize.tab,
+                                       indicator: BoxDecoration(
+                                          shape: BoxShape.rectangle,
+                                          borderRadius: BorderRadius.circular(10),
                                           color: Colors.white,
-                                          child: Column(
-                                             crossAxisAlignment: CrossAxisAlignment.start,
-                                             mainAxisAlignment: MainAxisAlignment.start,
-                                             children: <Widget>[
-                                                makeHDivider( appState.screenWidth, 0, 0 ),
-                                                makeTitleText( appState, "ZooBaDoo!", w, false, 1 ),
-                                                ])
-                                          ),
-                                       Container(
-                                          color: Colors.white,
-                                          child: Column(
-                                             crossAxisAlignment: CrossAxisAlignment.start,
-                                             mainAxisAlignment: MainAxisAlignment.start,
-                                             children: <Widget>[
-                                                makeHDivider( appState.screenWidth, 0, 0 ),
-                                                CESummaryPage()
-                                                ])
-                                          ),
-                                       Container(
-                                          color: Colors.white,
-                                          child: Column(
-                                             crossAxisAlignment: CrossAxisAlignment.start,
-                                             mainAxisAlignment: MainAxisAlignment.start,
-                                             children: <Widget>[
-                                                makeHDivider( appState.screenWidth, 0, 0 ),
-                                                makeTitleText( appState, "ZooBaDoo!", w, false, 1 ),
-                                                ])
-                                          ),
-                                       Container(
-                                          color: Colors.white,
-                                          child: Column(
-                                             crossAxisAlignment: CrossAxisAlignment.start,
-                                             mainAxisAlignment: MainAxisAlignment.start,
-                                             children: <Widget>[
-                                                makeHDivider( appState.screenWidth, 0, 0 ),
-                                                makeTitleText( appState, "ZooBaDoo!", w, false, 1 ),
-                                                ])
-                                          ),
-                                       Container(
-                                          color: Colors.white,
-                                          child: Column(
-                                             crossAxisAlignment: CrossAxisAlignment.start,
-                                             mainAxisAlignment: MainAxisAlignment.start,
-                                             children: <Widget>[
-                                                makeHDivider( appState.screenWidth, 0, 0 ),
-                                                makeTitleText( appState, "ZooBaDoo!", w, false, 1 ),
-                                                ])
-                                          ),
-                                       ]))
-                              ])))
-                            ))
+                                          ))),
+                                 Expanded(
+                                    child: TabBarView(
+                                       children: <Widget>[
+                                          _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
+                                          _makeTab( () => CESummaryPage() ),
+                                          _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
+                                          _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
+                                          _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
+                                          ]))
+                                 ])))
+                     ))
                ]);
          
       } else {

@@ -43,19 +43,47 @@ class Leaf extends StatelessWidget implements Tree {
      res += "\n   with accrue amount: " + addCommas( accrueAmount ) + " PEQ";
      return res;
   }
+
+  @override
+  List<List<Widget>> getCurrent( BuildContext context ) {
+
+     String alloc  = addCommas( getAllocAmount() );
+     String plan   = addCommas( getPlanAmount() );
+     String pending = addCommas( getPendingAmount() );
+     String accrue = addCommas( getAccrueAmount() );
+
+     List<Widget> anode = [];
+     List<List<Widget>> nodes = [];
+
+     anode.add( this );
+     anode.add( Text( alloc, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
+     anode.add( Text( plan, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
+     anode.add( Text( pending, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
+     anode.add( Text( accrue,maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
+
+     nodes.add( anode );
+     
+     return nodes;
+  }
+
+  @override
+  setVis( visible ) {
+     print( "XXX Leaf vis" );
+  }
   
   @override
   Widget render(BuildContext context) {
      String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( pendingAmount ) + " " + addCommas( accrueAmount );
-     return Padding(
-       padding: const EdgeInsets.only(left: 15.0),  // XXX
-       child: ListTile(
-          //leading: icon == null ? Container() : Icon(icon),
-          // title: makeBodyText( title, width, false, 1 ),
-          title: details,
-          trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
-          dense: true
-          ));
+     final height = 50.0;
+
+     return Container(
+        width: width,
+        height: height,
+        child: ListTile(
+           title: details,
+           trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
+           dense: true
+           ));
   }
 
   @override

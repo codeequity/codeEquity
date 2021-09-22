@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'dart:math';               
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils.dart';
@@ -31,6 +31,8 @@ class _CESummaryState extends State<CESummaryPage> {
    var      container;
    AppState appState;
 
+   static const maxPaneWidth = 800.0;
+
    @override
    void initState() {
       super.initState();
@@ -57,6 +59,11 @@ class _CESummaryState extends State<CESummaryPage> {
          );
    }
    
+
+   // XXX hmm.. basically making gestureDetector?
+   _allocTileExpansionChanged( expansionVal ) {
+      setState(() => appState.expansionChanged = expansionVal );
+   }
    
    
    // XXX problem 1: setState, but stateless
@@ -69,9 +76,9 @@ class _CESummaryState extends State<CESummaryPage> {
    // header      alloc                   sub alloc                 plan
    _buildAllocationTree() {
       print( "Build allocation tree" );
-      final width = appState.screenWidth * .6;
+      final width = 290.0;  // XXX
       
-      appState.allocTree = Node( "Category    Alloc / Plan / Accr", 0, null, width, true );
+      appState.allocTree = Node( "Category", 0, null, width, _allocTileExpansionChanged, isInitiallyExpanded:true, header:true );
       
       if( appState.myPEQSummary == null ) {
          appState.updateAllocTree = false;
@@ -100,7 +107,7 @@ class _CESummaryState extends State<CESummaryPage> {
             else if( childNode == null ) {
                if( !lastCat ) {
                   print( "... nothing - add node" );
-                  Node tmpNode = Node( alloc.category[i], 0, null, width );
+                  Node tmpNode = Node( alloc.category[i], 0, null, width, _allocTileExpansionChanged );
                   (curNode as Node).addLeaf( tmpNode );
                   curNode = tmpNode;
                }
@@ -141,18 +148,19 @@ class _CESummaryState extends State<CESummaryPage> {
    
    
    // XXX consider making peqSummary a list in appState
-   List<Widget> _showPAlloc( ) {
+   List<List<Widget>> _showPAlloc( ) {
       
-      List<Widget> allocList = [];
+      List<List<Widget>> allocList = [];
       
       if( appState.updateAllocTree ) { _buildAllocationTree(); }
       
-      if( appState.peqUpdated && appState.myPEQSummary != null )
+      if( ( appState.peqUpdated || appState.expansionChanged ) && appState.myPEQSummary != null )
       {
          if( appState.myPEQSummary.ghRepo == appState.selectedRepo ) {
             if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
             print( "_showPalloc Update alloc" );
-            allocList.add( appState.allocTree );
+            // allocList.add( appState.allocTree );
+            allocList.addAll( appState.allocTree.getCurrent(context) );
          }
       }
       else { return []; }
@@ -177,27 +185,79 @@ class _CESummaryState extends State<CESummaryPage> {
       
       final buttonWidth = 100;
       
-      List<Widget> allocs = [];
+      List<List<Widget>> allocs = [];
 
       // XXX Without this, need to click update?  rebuildProj is off.
-      // appState.peqUpdated = true;
+      appState.peqUpdated = true;
+
+      var c = Container( width: 1 );
       
       allocs.addAll( _showPAlloc( ) );
-      allocs.add(    makeHDivider( buttonWidth, appState.GAP_PAD, appState.screenWidth * .15 ) );
-      allocs.add(    makeActionButtonFixed(
+      allocs.addAll( [[ makeHDivider( appState.screenWidth * .8, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c ]] );  // XXX
+      allocs.addAll( [[ makeActionButtonFixed(
                         appState,
                         "Update PEQ summary?",
                         buttonWidth, 
                         () async
                         {
                            _updateConfirmed();
-                        }));
+                        }),
+                        c, c, c, c ]] );
+
+
+      // https://stackoverflow.com/questions/45137297/implementing-a-bidirectional-listview-in-flutter?noredirect=1&lq=1
+      // https://stackoverflow.com/questions/45270900/how-to-implement-nested-listview-in-flutter
+      // https://stackoverflow.com/questions/55385170/flutter-list-view-with-multiple-scroll-direction
+
+      var allocCount = min( allocs.length, 10 );
+      var allocWidth = allocs[0].length;
+
+      return SingleChildScrollView( 
+         scrollDirection: Axis.vertical,
+         child: SizedBox(
+            width: maxPaneWidth,
+            height: appState.screenHeight * .8,
+            child: ListView.builder(
+               itemCount: min( allocCount, 20 ),
+               itemBuilder: (BuildContext context, int i)
+               {
+                  if( i >= allocCount ) { print( "Oof" ); return Container( height: 100, width: 50 ); }
+                  else {
+                     return new Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: new List.generate(allocWidth, (int j) {
+                              // print( allocCount.toString() + " " + allocs[i].length.toString() + " " +i.toString() + " " + j.toString() );
+                              return allocs[i][j];
+                           })
+                        );
+                  }
+               })
+            ));
+
+      /*
+      return SingleChildScrollView( 
+         scrollDirection: Axis.horizontal,
+         child: SizedBox(
+            width: maxPaneWidth,
+            child:ConstrainedBox( 
+               constraints: new BoxConstraints(
+                  minHeight: 20.0,
+                  maxHeight: appState.screenHeight * .8
+                  ),
+               child: ListView(
+                  scrollDirection: Axis.vertical,
+                  children: allocs[0]
+                  ))
+            ));
+      */
       
+      /*
       return Column(
          crossAxisAlignment: CrossAxisAlignment.start,
          mainAxisAlignment: MainAxisAlignment.start,
          children: allocs
          );
+      */
    }
    
    

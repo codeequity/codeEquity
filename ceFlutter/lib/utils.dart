@@ -246,6 +246,17 @@ Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14 } ) {
                                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
 }
 
+Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 14 } ) {
+
+   return Padding(
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+      child: Container( width: width,
+                        height: height - appState.GAP_PAD,
+                        key: Key( title ),
+                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
+}
+
 Widget makeBodyText( appState, title, width, wrap, lines ) {
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
