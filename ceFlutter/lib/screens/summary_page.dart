@@ -190,10 +190,10 @@ class _CESummaryState extends State<CESummaryPage> {
       // XXX Without this, need to click update?  rebuildProj is off.
       appState.peqUpdated = true;
 
-      var c = Container( width: 1 );
+      var c = Container( width: 1, height: 1 );
       
       allocs.addAll( _showPAlloc( ) );
-      allocs.addAll( [[ makeHDivider( appState.screenWidth * .8, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c ]] );  // XXX
+      allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 4, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
                         "Update PEQ summary?",
@@ -203,13 +203,13 @@ class _CESummaryState extends State<CESummaryPage> {
                            _updateConfirmed();
                         }),
                         c, c, c, c ]] );
-
+      
 
       // https://stackoverflow.com/questions/45137297/implementing-a-bidirectional-listview-in-flutter?noredirect=1&lq=1
       // https://stackoverflow.com/questions/45270900/how-to-implement-nested-listview-in-flutter
       // https://stackoverflow.com/questions/55385170/flutter-list-view-with-multiple-scroll-direction
 
-      var allocCount = min( allocs.length, 10 );
+      var allocCount = min( allocs.length, 30 );
       var allocWidth = allocs[0].length;
 
       return SingleChildScrollView( 

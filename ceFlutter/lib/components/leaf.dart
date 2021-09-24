@@ -5,70 +5,75 @@ import 'package:ceFlutter/components/tree.dart';
 
 // Leave room for icons for later - may help to clarify equity tables
 class Leaf extends StatelessWidget implements Tree {
-  final String title;
-  final int    allocAmount;
-  final int    planAmount;
-  final int    pendingAmount;
-  final int    accrueAmount;
-     
-  final IconData icon;
-  final double width;
-  final Widget details;
+   final String title;
+   final int    allocAmount;
+   final int    planAmount;
+   final int    pendingAmount;
+   final int    accrueAmount;
+   
+   final IconData icon;
+   final double width;
+   final Widget details;
+   bool isVisible;
+   
+   Leaf(this.title, this.allocAmount, this.planAmount, this.pendingAmount, this.accrueAmount, this.icon, this.width, this.details) {
+      isVisible = false;
+   }
 
-  const Leaf(this.title, this.allocAmount, this.planAmount, this.pendingAmount, this.accrueAmount, this.icon, this.width, this.details);
+   @override
+   String getTitle() { return title; }
+   
+   @override
+   int getAllocAmount()  { return allocAmount; }
+   @override
+   int getPlanAmount()   { return planAmount; }
+   @override
+   int getPendingAmount() { return pendingAmount; }
+   @override
+   int getAccrueAmount() { return accrueAmount; }
+   
+   @override
+   Tree findNode( String target ) { return null; }
+   
+   
+   @override
+   String toStr() {
+      String res = "";
+      res += "\n   LEAF: " + title;
+      res += "\n   with alloc amount: " + addCommas( allocAmount ) + " PEQ";
+      res += "\n   with plan amount: " + addCommas( planAmount ) + " PEQ";
+      res += "\n   with pending amount: " + addCommas( pendingAmount ) + " PEQ";
+      res += "\n   with accrue amount: " + addCommas( accrueAmount ) + " PEQ";
+      return res;
+   }
 
-  @override
-  String getTitle() { return title; }
+   @override
+   List<List<Widget>> getCurrent( BuildContext context ) {
 
-  @override
-  int getAllocAmount()  { return allocAmount; }
-  @override
-  int getPlanAmount()   { return planAmount; }
-  @override
-  int getPendingAmount() { return pendingAmount; }
-  @override
-  int getAccrueAmount() { return accrueAmount; }
+      List<List<Widget>> nodes = [];
+      if( !isVisible ) { return nodes; }
 
-  @override
-  Tree findNode( String target ) { return null; }
-  
+      String alloc  = addCommas( getAllocAmount() );
+      String plan   = addCommas( getPlanAmount() );
+      String pending = addCommas( getPendingAmount() );
+      String accrue = addCommas( getAccrueAmount() );
+      
+      List<Widget> anode = [];
+      anode.add( this );
+      anode.add( Text( alloc, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
+      anode.add( Text( plan, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
+      anode.add( Text( pending, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
+      anode.add( Text( accrue,maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
+      
+      nodes.add( anode );
 
-  @override
-  String toStr() {
-     String res = "";
-     res += "\n   LEAF: " + title;
-     res += "\n   with alloc amount: " + addCommas( allocAmount ) + " PEQ";
-     res += "\n   with plan amount: " + addCommas( planAmount ) + " PEQ";
-     res += "\n   with pending amount: " + addCommas( pendingAmount ) + " PEQ";
-     res += "\n   with accrue amount: " + addCommas( accrueAmount ) + " PEQ";
-     return res;
-  }
-
-  @override
-  List<List<Widget>> getCurrent( BuildContext context ) {
-
-     String alloc  = addCommas( getAllocAmount() );
-     String plan   = addCommas( getPlanAmount() );
-     String pending = addCommas( getPendingAmount() );
-     String accrue = addCommas( getAccrueAmount() );
-
-     List<Widget> anode = [];
-     List<List<Widget>> nodes = [];
-
-     anode.add( this );
-     anode.add( Text( alloc, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-     anode.add( Text( plan, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-     anode.add( Text( pending, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-     anode.add( Text( accrue,maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-
-     nodes.add( anode );
-     
-     return nodes;
-  }
+      return nodes;
+   }
 
   @override
   setVis( visible ) {
-     print( "XXX Leaf vis" );
+     print( "Leaf vis" );
+     isVisible = visible;
   }
   
   @override

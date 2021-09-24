@@ -19,6 +19,7 @@ class Node extends StatelessWidget implements Tree {
    final double width;
    final bool isInitiallyExpanded;
    bool isVisible;
+   bool firstPass;   // use this to setVis based on isInitiallyExpanded, one time only.
 
    final bool header;
    final expansion;
@@ -30,7 +31,8 @@ class Node extends StatelessWidget implements Tree {
    AppState appState;
    
    Node(this.title, this.allocAmount, this.icon, this.width, this.expansion, {this.isInitiallyExpanded = false, this.header = false} ) {
-      this.isVisible = this.isInitiallyExpanded; 
+      isVisible = this.isInitiallyExpanded;
+      firstPass = true;
    }
    
   void addLeaf(Tree leaf ) {
@@ -151,11 +153,14 @@ class Node extends StatelessWidget implements Tree {
      anode.add( makeTableText( appState, accrue, numWidth, height, false, 1 ) );
      nodes.add( anode );
 
-     if( isVisible ) {
-        leaves.forEach( ((Tree leaf) {
-              nodes.addAll( leaf.getCurrent(context) );
-              }));
+     if( firstPass & isInitiallyExpanded ) {
+        firstPass = false;
+        leaves.forEach((Tree child) => child.setVis( true ));
      }
+     
+     leaves.forEach( ((Tree child) {
+              nodes.addAll( child.getCurrent(context) );
+           }));
      
      return nodes;
   }
