@@ -174,8 +174,7 @@ class Node extends StatelessWidget implements Tree {
         leaves.forEach((Tree child) => child.setVis( true ));
      }
 
-     // XXX  
-     // At this point, should tell setVis on all kids that are allocExpanded to true.
+     // setVis on all kids that are allocExpanded to true.
      // no need to check allocExpanded.. if kids not yet opened, very little extra work is done
      if( priorExpansionState != _tileExpanded && _tileExpanded ) {
         print( "!!! !!! $title just opened." );
@@ -197,8 +196,8 @@ class Node extends StatelessWidget implements Tree {
   @override
   reopenKids() {
      print( "Reopening previously expanded $title kids" );
+     isVisible = true;
      if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {
-        isVisible = true;
         // Should only get here for nodes, given allocExpanded above... oops.. ok.  tree
         leaves.forEach( (child) => child..reopenKids() );
      }
@@ -230,6 +229,9 @@ class Node extends StatelessWidget implements Tree {
      }
      else { print( "NRENDER $title tileExpanded is: $_tileExpanded" ); }
 
+     var newTitle = _tileExpanded ? title + " open" : title + " close";
+     
+     
      // XXX consider using font for clickability?
      return Container(
         width: width,
@@ -239,7 +241,9 @@ class Node extends StatelessWidget implements Tree {
            child: ExpansionTile(
               // children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
               trailing: Icon( _tileExpanded ? Icons.arrow_drop_down_circle : Icons.arrow_drop_down ),
-              title: makeTableText( appState, "$title", width, height, false, 1, mux: currentDepth * .5 ),
+              // title: makeTableText( appState, "$title", width, height, false, 1, mux: currentDepth * .5 ),
+              key: new PageStorageKey(path),
+              title: makeTableText( appState, "$newTitle", width, height, false, 1, mux: currentDepth * .5 ),
               initiallyExpanded: isInitiallyExpanded,
               onExpansionChanged: ((expanded) {
                     print( "*** $title expanded? $expanded" );
@@ -291,7 +295,6 @@ class Node extends StatelessWidget implements Tree {
                     expansion( expanded, title );
                  })
               )));
-
   }
   */
 
