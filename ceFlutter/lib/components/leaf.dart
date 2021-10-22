@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'package:ceFlutter/app_state_container.dart';
+
 import 'package:ceFlutter/utils.dart';
+
+import 'package:ceFlutter/models/app_state.dart';
+
 import 'package:ceFlutter/components/tree.dart';
 
 // Leave room for icons for later - may help to clarify equity tables
@@ -15,6 +20,9 @@ class Leaf extends StatelessWidget implements Tree {
    final double width;
    final Widget details;
    bool isVisible;
+
+   var      container;
+   AppState appState;
    
    Leaf(this.title, this.allocAmount, this.planAmount, this.pendingAmount, this.accrueAmount, this.icon, this.width, this.details) {
       isVisible = false;
@@ -48,10 +56,17 @@ class Leaf extends StatelessWidget implements Tree {
    }
 
    @override
-   List<List<Widget>> getCurrent( BuildContext context ) {
+   List<List<Widget>> getCurrent( BuildContext context, {treeDepth = 0, ancestors = ""} ) {
+      final numWidth = width / 3.0;
+      final height   = 50;
+
+      container    = AppStateContainer.of(context);
+      appState     = container.state;
 
       List<List<Widget>> nodes = [];
       if( !isVisible ) { return nodes; }
+
+      print( "leaf GET CURRENT  $title mod: " + appState.expansionChanged.toString() + " isVis?: " + isVisible.toString());
 
       String alloc  = addCommas( getAllocAmount() );
       String plan   = addCommas( getPlanAmount() );
@@ -59,12 +74,12 @@ class Leaf extends StatelessWidget implements Tree {
       String accrue = addCommas( getAccrueAmount() );
       
       List<Widget> anode = [];
-      anode.add( this );
-      anode.add( Text( alloc, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-      anode.add( Text( plan, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-      anode.add( Text( pending, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-      anode.add( Text( accrue,maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-      
+      // anode.add( this );
+      anode.add( getTile() );
+      anode.add( makeTableText( appState, alloc,   numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState, plan,    numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState, pending, numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState, accrue,  numWidth, height, false, 1 ) );
       nodes.add( anode );
 
       return nodes;
@@ -72,27 +87,60 @@ class Leaf extends StatelessWidget implements Tree {
 
   @override
   setVis( visible ) {
-     print( "Leaf vis" );
+     print( "Leaf vis? $visible" );
      isVisible = visible;
   }
+
+  // If this just opened, re-vis any kid that was opened before - can save open/close state this way
+  @override
+  reopenKids() {
+     print( "Reopening previously expanded $title (leaf)" );
+     isVisible = true;
+  }
+
   
   @override
-  Widget render(BuildContext context) {
-     String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( pendingAmount ) + " " + addCommas( accrueAmount );
+  Widget getTile() {
+     // String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( pendingAmount ) + " " + addCommas( accrueAmount );
      final height = 50.0;
+     print( "LRENDER $title h,w:" + height.toString() + " " + width.toString() );
 
      return Container(
         width: width,
         height: height,
+        //child: details
         child: ListTile(
            title: details,
-           trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
+           // trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
            dense: true
-           ));
+           )
+        );
   }
 
+  /*
+  // XXX Need to use treeDepth/currentDepth in details, as with node.
+  @override
+  Widget render(BuildContext context) {
+     // String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( pendingAmount ) + " " + addCommas( accrueAmount );
+     final height = 50.0;
+     print( "LRENDER $title h,w:" + height.toString() + " " + width.toString() );
+
+     return Container(
+        width: width,
+        height: height,
+        //child: details
+        child: ListTile(
+           title: details,
+           // trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
+           dense: true
+           )
+        );
+  }
+  */
+  
   @override
   Widget build(BuildContext context) {
-    return render(context);
+     // return render(context);
+     return getTile();
   }
 }

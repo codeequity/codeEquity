@@ -43,10 +43,13 @@ class _CESummaryState extends State<CESummaryPage> {
       super.dispose();
    }
 
-   
+
+   // XXX Spacing is awkward
+   // XXX ghUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
    //     detail page..?  
-   _pactDetail( ghUserLogin, width ) {
+   _pactDetail( ghUserLogin, width, depth ) {
+      final height = 50;              // XXX
       return GestureDetector(
          onTap: () async 
          {
@@ -55,14 +58,17 @@ class _CESummaryState extends State<CESummaryPage> {
             appState.userPActUpdate = true;            
             Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
          },
-         child: makeTitleText( appState, ghUserLogin, width, false, 1 )
+         child: makeTableText( appState, ghUserLogin, width, height, false, 1, mux: depth * .5 )
          );
    }
    
 
    // XXX hmm.. basically making gestureDetector?
-   _allocTileExpansionChanged( expansionVal ) {
+   _allocTileExpansionChanged( expansionVal, path ) {
+      print( ".. summary SetState expansionChanged" );
       setState(() => appState.expansionChanged = expansionVal );
+      print( ".. summary change allocExpanded $path $expansionVal" );
+      setState(() => appState.allocExpanded[path] = expansionVal );
    }
    
    
@@ -119,7 +125,7 @@ class _CESummaryState extends State<CESummaryPage> {
                   int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
                   int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount : 0 );
                   int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
-                  Widget details = _pactDetail( alloc.category[i], width );
+                  Widget details = _pactDetail( alloc.category[i], width, i+1 );
                   Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }
@@ -146,7 +152,7 @@ class _CESummaryState extends State<CESummaryPage> {
       //print( appState.allocTree.toStr() );
    }
    
-   
+
    // XXX consider making peqSummary a list in appState
    List<List<Widget>> _showPAlloc( ) {
       
@@ -181,7 +187,7 @@ class _CESummaryState extends State<CESummaryPage> {
    
    
 
-   Widget getAllocation( ) {
+   Widget getAllocation( context ) {
       
       final buttonWidth = 100;
       
@@ -267,7 +273,7 @@ class _CESummaryState extends State<CESummaryPage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
 
-      return getAllocation();
+      return getAllocation( context );
       
  }
  

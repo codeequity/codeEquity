@@ -14,7 +14,10 @@ abstract class Tree {
    String toStr();
 
    void setVis( visible );
+   void reopenKids();
 
-   List<List<Widget>> getCurrent( BuildContext context );
-   Widget render(BuildContext context);
+   List<List<Widget>> getCurrent( BuildContext context, {treeDepth = 0, ancestors = ""} );
+
+   Widget getTile();
+   // Widget render(BuildContext context);
 }

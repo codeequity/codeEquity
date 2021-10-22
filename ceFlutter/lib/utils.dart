@@ -246,10 +246,11 @@ Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14 } ) {
                                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
 }
 
-Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 14 } ) {
+Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 14, mux = 1.0 } ) {
 
+   // print( "    mtt $title w,h,m: $width $height $mux" );
    return Padding(
-      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+      padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
                         height: height - appState.GAP_PAD,
                         key: Key( title ),

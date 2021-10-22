@@ -17,12 +17,17 @@ class Node extends StatelessWidget implements Tree {
    final IconData icon;
    
    final double width;
-   final bool isInitiallyExpanded;
-   bool isVisible;
+   final bool header;
+   int  currentDepth;   // for indentation
+
+   final bool isInitiallyExpanded; 
+   bool isVisible;   // controls what tiles get added to display list
    bool firstPass;   // use this to setVis based on isInitiallyExpanded, one time only.
 
-   final bool header;
-   final expansion;
+
+   final expansion;     // setState callback in screens:summary
+   bool _tileExpanded;
+   String path;
 
 
    final List<Tree> leaves = List<Tree>();
@@ -30,9 +35,11 @@ class Node extends StatelessWidget implements Tree {
    var      container;
    AppState appState;
    
-   Node(this.title, this.allocAmount, this.icon, this.width, this.expansion, {this.isInitiallyExpanded = false, this.header = false} ) {
+   Node(this.title, this.allocAmount, this.icon, this.width, this.expansion, {this.isInitiallyExpanded = false, this.header = false, this.currentDepth = 0} ) {
       isVisible = this.isInitiallyExpanded;
+      _tileExpanded = this.isInitiallyExpanded;
       firstPass = true;
+      path = "";
    }
    
   void addLeaf(Tree leaf ) {
@@ -114,20 +121,25 @@ class Node extends StatelessWidget implements Tree {
 
      return res;
   }
+
+
+  // XXX child expansion carrot bad after hide/expand parent (if was initially expanded)
   
   // XXX Will context give me click
   // XXX I'm rendering "this" because it is a statelesswidget
   //     I can't set leaves as children because leaves is list<tree> which is abstract class.
   //     does not need to be stateless....  how would that help?
   @override
-  List<List<Widget>> getCurrent( BuildContext context ) {
+     List<List<Widget>> getCurrent( BuildContext context, {treeDepth = 0, ancestors = ""} ) {
      final numWidth = width / 3.0;
      final height   = 50;
 
-     container   = AppStateContainer.of(context);
-     appState    = container.state;
+     currentDepth = treeDepth;
+     container    = AppStateContainer.of(context);
+     appState     = container.state;
+     path         = ancestors + "/" + title;
 
-     print( "GET CURRENT  $title mod: " + appState.expansionChanged.toString() + " isVis?: " + isVisible.toString());
+     if( isVisible ) {  print( "visible node GET CURRENT  $title "); }
      
      List<List<Widget>> nodes = [];
 
@@ -145,8 +157,12 @@ class Node extends StatelessWidget implements Tree {
         accrue  = "Accrued";
      }
 
+     final priorExpansionState = _tileExpanded;
+     
      List<Widget> anode = [];
-     anode.add( this );
+     // anode.add( this );
+     anode.add( getTile() );
+     
      anode.add( makeTableText( appState, alloc, numWidth, height, false, 1 ) );
      anode.add( makeTableText( appState, plan, numWidth, height, false, 1 ) );
      anode.add( makeTableText( appState, pending, numWidth, height, false, 1 ) );
@@ -157,15 +173,40 @@ class Node extends StatelessWidget implements Tree {
         firstPass = false;
         leaves.forEach((Tree child) => child.setVis( true ));
      }
+
+     // XXX  
+     // At this point, should tell setVis on all kids that are allocExpanded to true.
+     // no need to check allocExpanded.. if kids not yet opened, very little extra work is done
+     if( priorExpansionState != _tileExpanded && _tileExpanded ) {
+        print( "!!! !!! $title just opened." );
+        reopenKids();
+     }
+
+     print( "" );
      
      leaves.forEach( ((Tree child) {
-              nodes.addAll( child.getCurrent(context) );
+              nodes.addAll( child.getCurrent(context, treeDepth: treeDepth + 1, ancestors: path ));
            }));
+
+     if( leaves.length == 0 ) { print( "bottom" ); }
      
      return nodes;
   }
 
+  // If this just opened, re-vis any kid that was opened before - can save open/close state this way
+  @override
+  reopenKids() {
+     print( "Reopening previously expanded $title kids" );
+     if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {
+        isVisible = true;
+        // Should only get here for nodes, given allocExpanded above... oops.. ok.  tree
+        leaves.forEach( (child) => child..reopenKids() );
+     }
+  }
+
+
   // If vis was set true, only me.  Else, myself and all kids are invis
+  @override
   setVis( visible ) {
      print( "VISIBLE  $title :" + visible.toString() );
      isVisible = visible;
@@ -174,44 +215,94 @@ class Node extends StatelessWidget implements Tree {
      }
 
   }
-  
-  @override
-  Widget render(BuildContext context) {
-     
-     final height = 50.0;
-     print( "RENDER $title h,w:" + height.toString() + " " + width.toString() );
 
-     // Odd.. Why must this be set again, explicitly?  Render must not be in synch with build in the context tree.
-     container   = AppStateContainer.of(context);
-     appState    = container.state;
+  @override
+  Widget getTile() {
+     final height = 50.0;  // XXX
+
+     print( "NRENDER $title $path tileExp: $_tileExpanded init: $isInitiallyExpanded" );
+     print( "contains " + appState.allocExpanded.containsKey(path).toString() );
+     if( appState.allocExpanded.containsKey(path) ) { print( "value " + appState.allocExpanded[path].toString() ); }
+
+     if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] != _tileExpanded ) {
+        _tileExpanded = !_tileExpanded;
+        print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" );
+     }
+     else { print( "NRENDER $title tileExpanded is: $_tileExpanded" ); }
 
      // XXX consider using font for clickability?
      return Container(
         width: width,
         height: height,
         child: ListTileTheme(
-           contentPadding: EdgeInsets.all(0),
            dense: true,
            child: ExpansionTile(
-              title: makeTableText( appState, "R $title", width, height, false, 1 ),
               // children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
-              //children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
+              trailing: Icon( _tileExpanded ? Icons.arrow_drop_down_circle : Icons.arrow_drop_down ),
+              title: makeTableText( appState, "$title", width, height, false, 1, mux: currentDepth * .5 ),
               initiallyExpanded: isInitiallyExpanded,
               onExpansionChanged: ((expanded) {
-                    print( "*** " + expanded.toString() );
+                    print( "*** $title expanded? $expanded" );
                     leaves.forEach( (child) => child.setVis( expanded ) );
-                    expansion( expanded);
+                    expansion( expanded, path );
                  })
               )));
 
   }
+  /*
+  @override
+  Widget render(BuildContext context) {
+     
+     final height = 50.0;
+     // print( "NRENDER $title h,w:" + height.toString() + " " + width.toString() );
+     print( "NRENDER $title tileExpanded? $_tileExpanded $isInitiallyExpanded"  );
 
+     // Odd.. Why must this be set again, explicitly?  Render must not be in synch with build in the context tree.
+     container   = AppStateContainer.of(context);
+     appState    = container.state;
+
+     // XXX darg
+     var newTitle = title;
+     if( appState.ghoChanged && _tileExpanded ) {
+        newTitle = title + " EXP";
+        print( "GHO CHANGED, in render, $newTitle" );
+        appState.ghoChanged = false;
+     }
+     
+     // XXX consider using font for clickability?
+     return Container(
+        width: width,
+        height: height,
+        child: ListTileTheme(
+           // Not rendering the tree any longer from here, so padding does nothing.
+           //contentPadding: EdgeInsets.fromLTRB(appState.MID_PAD, 0, 0, 0),
+           dense: true,
+           child: ExpansionTile(
+              // children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
+              // maintainState: true,
+              trailing: Icon( _tileExpanded ? Icons.arrow_drop_down_circle : Icons.arrow_drop_down ),
+              // title: makeTableText( appState, "$title", width, height, false, 1, mux: currentDepth * .5 ),
+              title: makeTableText( appState, "$newTitle", width, height, false, 1, mux: currentDepth * .5 ),
+              initiallyExpanded: isInitiallyExpanded,
+              onExpansionChanged: ((expanded) {
+                    print( "*** $title expanded? $expanded" );
+                    _tileExpanded = expanded;
+                    leaves.forEach( (child) => child.setVis( expanded ) );
+                    expansion( expanded, title );
+                 })
+              )));
+
+  }
+  */
+
+  
   @override
      Widget build(BuildContext context) {
 
      container   = AppStateContainer.of(context);
      appState    = container.state;
 
-     return render(context);
+     //return render(context);
+     return getTile();
   }
 }
