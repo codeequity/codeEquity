@@ -19,7 +19,9 @@ import 'package:ceFlutter/screens/detail_page.dart';
 
 
 class CESummaryPage extends StatefulWidget {
-   CESummaryPage({Key key}) : super(key: key);
+   var appContainer;
+   
+   CESummaryPage( {Key key, this.appContainer } ) : super(key: key);
 
   @override
   _CESummaryState createState() => _CESummaryState();
@@ -36,6 +38,9 @@ class _CESummaryState extends State<CESummaryPage> {
    @override
    void initState() {
       super.initState();
+      print( "XXXXXXXXXXXXXX" );
+      print( "Summary init new object" );
+      print( "XXXXXXXXXXXXXX" );
    }
 
    @override
@@ -99,7 +104,7 @@ class _CESummaryState extends State<CESummaryPage> {
          // down the road, they become nodes
          for( int i = 0; i < alloc.category.length; i++ ) {
             
-            print( "working on " + alloc.category.toString() + " : " + alloc.category[i] );
+            //print( "working on " + alloc.category.toString() + " : " + alloc.category[i] );
             
             bool lastCat = false;
             if( i == alloc.category.length - 1 ) { lastCat = true; }
@@ -107,18 +112,18 @@ class _CESummaryState extends State<CESummaryPage> {
             
             if( childNode is Leaf && !lastCat ) {
                // allocation leaf, convert to a node to accomodate plan/accrue
-               print( "... leaf in middle - convert" );
+               //print( "... leaf in middle - convert" );
                curNode = (curNode as Node).convertToNode( childNode );
             }
             else if( childNode == null ) {
                if( !lastCat ) {
-                  print( "... nothing - add node" );
+                  //print( "... nothing - add node" );
                   Node tmpNode = Node( alloc.category[i], 0, null, width, _allocTileExpansionChanged );
                   (curNode as Node).addLeaf( tmpNode );
                   curNode = tmpNode;
                }
                else {
-                  print( "... nothing found, last cat, add leaf" );
+                  //print( "... nothing found, last cat, add leaf" );
                   // leaf.  amounts stay at leaves
                   
                   int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount : 0 );
@@ -132,11 +137,11 @@ class _CESummaryState extends State<CESummaryPage> {
             }
             else if( childNode is Node ) {
                if( !lastCat ) {
-                  print( "... found - move on" );
+                  //print( "... found - move on" );
                   curNode = childNode;
                }
                else {
-                  print( "... alloc adding into existing chain" );
+                  //print( "... alloc adding into existing chain" );
                   assert( alloc.allocType == PeqType.allocation );
                   (childNode as Node).addAlloc( alloc.amount );
                }
@@ -154,7 +159,7 @@ class _CESummaryState extends State<CESummaryPage> {
    
 
    // XXX consider making peqSummary a list in appState
-   List<List<Widget>> _showPAlloc( ) {
+   List<List<Widget>> _showPAlloc() {
       
       List<List<Widget>> allocList = [];
       
@@ -166,7 +171,7 @@ class _CESummaryState extends State<CESummaryPage> {
             if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
             print( "_showPalloc Update alloc" );
             // allocList.add( appState.allocTree );
-            allocList.addAll( appState.allocTree.getCurrent(context) );
+            allocList.addAll( appState.allocTree.getCurrent( container ) );
          }
       }
       else { return []; }
@@ -270,8 +275,10 @@ class _CESummaryState extends State<CESummaryPage> {
    @override
    Widget build(BuildContext context) {
       
-      container   = AppStateContainer.of(context);
+      container   = widget.appContainer;   // Neat.  Access parameter in super.
       appState    = container.state;
+
+      print( "SUMMARY BUILD. " + (appState == Null).toString());
 
       return getAllocation( context );
       

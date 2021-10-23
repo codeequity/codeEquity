@@ -16,8 +16,7 @@ abstract class Tree {
    void setVis( visible );
    void reopenKids();
 
-   List<List<Widget>> getCurrent( BuildContext context, {treeDepth = 0, ancestors = ""} );
+   List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} );
 
    Widget getTile();
-   // Widget render(BuildContext context);
 }

@@ -49,10 +49,12 @@ class _CEProjectState extends State<CEProjectPage> {
    
 
    // https://stackoverflow.com/questions/60362159/defaulttabcontroller-without-scaffold
-   Widget _makeBody() {
+   Widget _makeBody( context ) {
       final w = 100;
       if( appState.loaded ) {
 
+         Widget summaryPageWidget = CESummaryPage( appContainer: container );
+            
          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
@@ -100,7 +102,7 @@ class _CEProjectState extends State<CEProjectPage> {
                                     child: TabBarView(
                                        children: <Widget>[
                                           _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
-                                          _makeTab( () => CESummaryPage() ),
+                                          _makeTab( () => summaryPageWidget ),
                                           _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
                                           _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
                                           _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
@@ -124,7 +126,7 @@ class _CEProjectState extends State<CEProjectPage> {
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
-         body: _makeBody()
+         body: _makeBody( context )
          );
    }
 }
