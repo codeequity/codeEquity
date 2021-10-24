@@ -11,30 +11,46 @@ import 'package:ceFlutter/components/leaf.dart';
 
 // XXX getAmounts walking tree 3x - not necessary
 class Node extends StatelessWidget implements Tree {
+      
    final String title;
    int allocAmount;
    final IconData icon;
    
    final double width;
-   final bool isInitiallyExpanded;
-   
+   final bool header;
+   int  currentDepth;   // for indentation
+
+   final bool isInitiallyExpanded; 
+   bool isVisible;   // controls what tiles get added to display list
+   bool firstPass;   // use this to setVis based on isInitiallyExpanded, one time only.
+
+
+   final expansion;     // setState callback in screens:summary
+   bool _tileExpanded;
+   String path;
+
+
    final List<Tree> leaves = List<Tree>();
    
-   var      container;
    AppState appState;
    
-   Node(this.title, this.allocAmount, this.icon, this.width, [this.isInitiallyExpanded = false] );
-
+   Node(this.title, this.allocAmount, this.icon, this.width, this.expansion, {this.isInitiallyExpanded = false, this.header = false, this.currentDepth = 0} ) {
+      isVisible = this.isInitiallyExpanded;
+      _tileExpanded = this.isInitiallyExpanded;
+      firstPass = true;
+      path = "";
+   }
+   
   void addLeaf(Tree leaf ) {
     leaves.add( leaf );
   }
 
   @override
   Tree findNode( String target ) {
-     print( "   in findNode" );
+     //print( "   in findNode" );
      for( var leaf in leaves ) {
         if( leaf.getTitle() == target ) {
-           print( "   ... returning " + leaf.getTitle() );
+           //print( "   ... returning " + leaf.getTitle() );
            return leaf;
         }
      }
@@ -43,7 +59,7 @@ class Node extends StatelessWidget implements Tree {
 
   Tree convertToNode( Leaf child ) {
      assert( child.getPlanAmount() == 0 && child.getAccrueAmount() == 0 );
-     Node newNode = Node( child.getTitle(), child.getAllocAmount(), child.icon, child.width );
+     Node newNode = Node( child.getTitle(), child.getAllocAmount(), child.icon, child.width, expansion );
      bool converted = false;
      
      // find and replace in list
@@ -63,13 +79,14 @@ class Node extends StatelessWidget implements Tree {
   
   @override
   String getTitle() { return title; }
-  
+
   @override
   int getAllocAmount() {
     var sum = allocAmount;
     leaves.forEach((Tree leaf) => sum += leaf.getAllocAmount());
     return sum;
   }
+
   @override
   int getPlanAmount() {
     var sum = 0;
@@ -103,35 +120,122 @@ class Node extends StatelessWidget implements Tree {
 
      return res;
   }
-  
+
   @override
-  Widget render(BuildContext context) {
+  List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} ) {
+     final numWidth = width / 3.0;
+     final height   = 50;
 
-     String alloc  = addCommas( getAllocAmount() );
-     String plan   = addCommas( getPlanAmount() );
-     String pending = addCommas( getPendingAmount() );
-     String accrue = addCommas( getAccrueAmount() );
-
+     appState    = container.state;
      
-     // XXX consider using font for clickability?
-     return Padding(
-        padding: EdgeInsets.only(left: appState.FAT_PAD ),
-        child: ExpansionTile(
-           // leading: icon == null ? Container() : Icon(icon),
-           title: makeBodyText( appState, "$title (${ alloc + " " + plan + " " + pending + " " + accrue })", width, false, 1 ),
-           children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
-           // trailing: Text( addCommas( getAmount() ), style: TextStyle(fontSize: 12) ),
-           initiallyExpanded: isInitiallyExpanded,
-           ));
+     currentDepth = treeDepth;
+     path         = ancestors + "/" + title;
+
+     // if( isVisible ) {  print( "visible node GET CURRENT  $title "); }
+     
+     List<List<Widget>> nodes = [];
+
+     if( !isVisible ) { return nodes; }
+
+     String alloc   = addCommas( getAllocAmount() );
+     String plan    = addCommas( getPlanAmount() );
+     String pending = addCommas( getPendingAmount() );
+     String accrue  = addCommas( getAccrueAmount() );
+
+     if( header ) {
+        alloc   = "Allocation";
+        plan    = "Planned";
+        pending = "Pending";
+        accrue  = "Accrued";
+     }
+
+     final priorExpansionState = _tileExpanded;
+     
+     List<Widget> anode = [];
+     // anode.add( this );
+     anode.add( getTile( ) );
+     
+     anode.add( makeTableText( appState, alloc, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState, plan, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState, pending, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState, accrue, numWidth, height, false, 1 ) );
+     nodes.add( anode );
+
+     if( firstPass & isInitiallyExpanded ) {
+        firstPass = false;
+        leaves.forEach((Tree child) => child.setVis( true ));
+     }
+
+     // setVis on all kids that are allocExpanded to true.
+     // no need to check allocExpanded.. if kids not yet opened, very little extra work is done
+     if( priorExpansionState != _tileExpanded && _tileExpanded ) {
+        print( "!!! !!! $title just opened." );
+        reopenKids();
+     }
+
+     leaves.forEach( ((Tree child) {
+              nodes.addAll( child.getCurrent(container, treeDepth: treeDepth + 1, ancestors: path ));
+           }));
+
+     return nodes;
+  }
+
+  // If this just opened, re-vis any kid that was opened before - can save open/close state this way
+  @override
+  reopenKids() {
+     print( "Reopening previously expanded $title kids" );
+     isVisible = true;
+     if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {
+        // Should only get here for nodes, given allocExpanded above... oops.. ok.  tree
+        leaves.forEach( (child) => child..reopenKids() );
+     }
+  }
+
+
+  // If vis was set true, only me.  Else, myself and all kids are invis
+  @override
+  setVis( visible ) {
+     print( "VISIBLE  $title :" + visible.toString() );
+     isVisible = visible;
+     if( !visible ) {
+        leaves.forEach( (child) => child.setVis( visible ) );
+     }
 
   }
 
   @override
+  Widget getTile() {
+     final height = 50.0;  // XXX
+
+     if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] != _tileExpanded ) {
+        _tileExpanded = !_tileExpanded;
+        print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" );
+     }
+     
+     // XXX consider using font for clickability?
+     return Container(
+        width: width,
+        height: height,
+        child: ListTileTheme(
+           dense: true,
+           child: ExpansionTile(
+              // children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
+              trailing: Icon( _tileExpanded ? Icons.arrow_drop_down_circle : Icons.arrow_drop_down ),
+              title: makeTableText( appState, "$title", width, height, false, 1, mux: currentDepth * .5 ),
+              key: new PageStorageKey(path),
+              initiallyExpanded: isInitiallyExpanded,
+              onExpansionChanged: ((expanded) {
+                    print( "*** $title expanded? $expanded" );
+                    leaves.forEach( (child) => child.setVis( expanded ) );
+                    expansion( expanded, path );
+                 })
+              )));
+
+  }
+  
+  @override
      Widget build(BuildContext context) {
 
-     container   = AppStateContainer.of(context);
-     appState    = container.state;
-
-     return render(context);
+     return getTile( );
   }
 }

@@ -1,65 +1,122 @@
 import 'package:flutter/material.dart';
 
+import 'package:ceFlutter/app_state_container.dart';
+
 import 'package:ceFlutter/utils.dart';
+
+import 'package:ceFlutter/models/app_state.dart';
+
 import 'package:ceFlutter/components/tree.dart';
 
 // Leave room for icons for later - may help to clarify equity tables
 class Leaf extends StatelessWidget implements Tree {
-  final String title;
-  final int    allocAmount;
-  final int    planAmount;
-  final int    pendingAmount;
-  final int    accrueAmount;
-     
-  final IconData icon;
-  final double width;
-  final Widget details;
+   final String title;
+   final int    allocAmount;
+   final int    planAmount;
+   final int    pendingAmount;
+   final int    accrueAmount;
+   
+   final IconData icon;
+   final double width;
+   final Widget details;
+   bool isVisible;
 
-  const Leaf(this.title, this.allocAmount, this.planAmount, this.pendingAmount, this.accrueAmount, this.icon, this.width, this.details);
+   AppState appState;
+   
+   Leaf(this.title, this.allocAmount, this.planAmount, this.pendingAmount, this.accrueAmount, this.icon, this.width, this.details) {
+      isVisible = false;
+   }
+
+   @override
+   String getTitle() { return title; }
+   
+   @override
+   int getAllocAmount()  { return allocAmount; }
+   @override
+   int getPlanAmount()   { return planAmount; }
+   @override
+   int getPendingAmount() { return pendingAmount; }
+   @override
+   int getAccrueAmount() { return accrueAmount; }
+   
+   @override
+   Tree findNode( String target ) { return null; }
+   
+   
+   @override
+   String toStr() {
+      String res = "";
+      res += "\n   LEAF: " + title;
+      res += "\n   with alloc amount: " + addCommas( allocAmount ) + " PEQ";
+      res += "\n   with plan amount: " + addCommas( planAmount ) + " PEQ";
+      res += "\n   with pending amount: " + addCommas( pendingAmount ) + " PEQ";
+      res += "\n   with accrue amount: " + addCommas( accrueAmount ) + " PEQ";
+      return res;
+   }
+
+   @override
+   List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} ) {
+      final numWidth = width / 3.0;
+      final height   = 50;
+
+      appState     = container.state;
+
+      List<List<Widget>> nodes = [];
+      if( !isVisible ) { return nodes; }
+
+      // if( isVisible ) { print( "leaf GET CURRENT  $title mod: " + appState.expansionChanged.toString() ); }
+
+      String alloc   = addCommas( getAllocAmount() );
+      String plan    = addCommas( getPlanAmount() );
+      String pending = addCommas( getPendingAmount() );
+      String accrue  = addCommas( getAccrueAmount() );
+      
+      List<Widget> anode = [];
+      // anode.add( this );
+      anode.add( getTile() );
+      anode.add( makeTableText( appState, alloc,   numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState, plan,    numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState, pending, numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState, accrue,  numWidth, height, false, 1 ) );
+      nodes.add( anode );
+
+      return nodes;
+   }
 
   @override
-  String getTitle() { return title; }
-
-  @override
-  int getAllocAmount()  { return allocAmount; }
-  @override
-  int getPlanAmount()   { return planAmount; }
-  @override
-  int getPendingAmount() { return pendingAmount; }
-  @override
-  int getAccrueAmount() { return accrueAmount; }
-
-  @override
-  Tree findNode( String target ) { return null; }
-  
-
-  @override
-  String toStr() {
-     String res = "";
-     res += "\n   LEAF: " + title;
-     res += "\n   with alloc amount: " + addCommas( allocAmount ) + " PEQ";
-     res += "\n   with plan amount: " + addCommas( planAmount ) + " PEQ";
-     res += "\n   with pending amount: " + addCommas( pendingAmount ) + " PEQ";
-     res += "\n   with accrue amount: " + addCommas( accrueAmount ) + " PEQ";
-     return res;
+  setVis( visible ) {
+     print( "Leaf vis? $visible" );
+     isVisible = visible;
   }
-  
+
+  // If this just opened, re-vis any kid that was opened before - can save open/close state this way
   @override
-  Widget render(BuildContext context) {
-     String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( pendingAmount ) + " " + addCommas( accrueAmount );
-     return Padding(
-       padding: const EdgeInsets.only(left: 15.0),  // XXX
-       child: ListTile(
-          //leading: icon == null ? Container() : Icon(icon),
-          // title: makeBodyText( title, width, false, 1 ),
-          title: details,
-          trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
-          dense: true
-          ));
+  reopenKids() {
+     print( "Reopening previously expanded $title (leaf)" );
+     isVisible = true;
   }
 
+  
+  @override
+  Widget getTile() {
+     // String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( pendingAmount ) + " " + addCommas( accrueAmount );
+     final height = 50.0;
+
+     return Container(
+        width: width,
+        height: height,
+        //child: details
+        child: ListTile(
+           title: details,
+           // trailing: Text( amounts, style: TextStyle(fontSize: 12) ),
+           dense: true
+           )
+        );
+  }
+
+  
   @override
   Widget build(BuildContext context) {
-    return render(context);
+     return getTile();
   }
 }

@@ -375,7 +375,7 @@ Future<void> reloadMyProjects( context, container ) async {
       var postData = {};
       postData['GHRepo'] = ghRepo;
       var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postData };
-      appState.myPEQSummary = await fetchPEQSummary( context, container, pd );
+      appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
       
       if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
       

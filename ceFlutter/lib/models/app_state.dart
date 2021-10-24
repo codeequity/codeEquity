@@ -1,4 +1,5 @@
 import 'dart:typed_data';                   // ByteData
+import 'dart:collection';                   // hashmap
 import 'package:flutter/material.dart';
 
 // Note - this requires state here: android/app/src/main/res/raw/awsconfiguration.json
@@ -57,6 +58,10 @@ class AppState {
 
    Node allocTree;
    bool updateAllocTree;
+   bool expansionChanged;
+
+   HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
+   
 
    String                          selectedRepo;
    String                          selectedUser;    // Looking at details for this user, currently
@@ -91,6 +96,9 @@ class AppState {
 
       allocTree = null;
       updateAllocTree = false;
+      expansionChanged = false;
+
+      allocExpanded = HashMap<String, bool>();
 
       selectedRepo = "";
       selectedUser = "";

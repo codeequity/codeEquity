@@ -232,12 +232,27 @@ Widget makeActionText( appState, title, width, wrap, lines ) {
 Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14 } ) {
    // Add as encountered.
    var mux = 1.0;
-   if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
+   if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 28 ) { mux = 38.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
 
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
                         height: appState.BASE_TXT_HEIGHT * lines * mux,
+                        key: Key( title ),
+                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
+}
+
+Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 14, mux = 1.0 } ) {
+
+   // print( "    mtt $title w,h,m: $width $height $mux" );
+   return Padding(
+      padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+      child: Container( width: width,
+                        height: height - appState.GAP_PAD,
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
