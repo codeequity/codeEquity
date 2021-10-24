@@ -173,8 +173,6 @@ class Node extends StatelessWidget implements Tree {
         reopenKids();
      }
 
-     print( "" );
-     
      leaves.forEach( ((Tree child) {
               nodes.addAll( child.getCurrent(container, treeDepth: treeDepth + 1, ancestors: path ));
            }));

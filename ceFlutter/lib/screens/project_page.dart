@@ -33,6 +33,37 @@ class _CEProjectState extends State<CEProjectPage> {
    }
 
 
+   // start CALLBACKS for tab frames
+   // define here .. child widget state (like summaryPage) is disposed of when clicking between frames
+
+   Future<void> _updateCallback( ) async {
+      appState.peqUpdated = false;
+      await updatePEQAllocations( appState.selectedRepo, context, container );
+
+      // causes buildAllocTree to fire
+      setState(() => appState.updateAllocTree = true );
+   }      
+
+   _updateCompleteCallback() {
+      // causes summary_page to update list of allocs in showPalloc
+      print( "UCC setstate" );
+      setState(() => appState.peqUpdated = true );  
+   }
+
+   // XXX combine expansionChanged and expanded[path]?
+   _allocExpansionCallback( expansionVal, path ) {
+      print( ".. summary SetState expansionChanged" );
+      // Causes summary nodes to setvis or unsetvis on children
+      setState(() => appState.expansionChanged = expansionVal );
+
+      print( ".. summary change allocExpanded $path $expansionVal" );
+      // causes node to update internal tile expansion state, which updates trailing icons
+      setState(() => appState.allocExpanded[path] = expansionVal );
+   }
+
+   // end CALLBACKS for tab frames
+
+
    Widget _makeTab( fn ) {
       return Container(
          color: Colors.white,
@@ -46,14 +77,16 @@ class _CEProjectState extends State<CEProjectPage> {
          );
    }
 
-   
-
    // https://stackoverflow.com/questions/60362159/defaulttabcontroller-without-scaffold
    Widget _makeBody( context ) {
       final w = 100;
       if( appState.loaded ) {
 
-         Widget summaryPageWidget = CESummaryPage( appContainer: container );
+         Widget summaryPageWidget = CESummaryPage(
+            appContainer: container,
+            updateCallback:         _updateCallback,
+            updateCompleteCallback: _updateCompleteCallback,
+            allocExpansionCallback: _allocExpansionCallback );
             
          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,

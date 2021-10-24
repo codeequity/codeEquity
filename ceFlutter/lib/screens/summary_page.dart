@@ -20,8 +20,11 @@ import 'package:ceFlutter/screens/detail_page.dart';
 
 class CESummaryPage extends StatefulWidget {
    var appContainer;
+   final updateCallback;
+   final updateCompleteCallback;
+   final allocExpansionCallback;
    
-   CESummaryPage( {Key key, this.appContainer } ) : super(key: key);
+   CESummaryPage( {Key key, this.appContainer, this.updateCallback, this.updateCompleteCallback, this.allocExpansionCallback } ) : super(key: key);
 
   @override
   _CESummaryState createState() => _CESummaryState();
@@ -38,9 +41,6 @@ class _CESummaryState extends State<CESummaryPage> {
    @override
    void initState() {
       super.initState();
-      print( "XXXXXXXXXXXXXX" );
-      print( "Summary init new object" );
-      print( "XXXXXXXXXXXXXX" );
    }
 
    @override
@@ -48,8 +48,6 @@ class _CESummaryState extends State<CESummaryPage> {
       super.dispose();
    }
 
-
-   // XXX Spacing is awkward
    // XXX ghUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
    //     detail page..?  
@@ -67,29 +65,14 @@ class _CESummaryState extends State<CESummaryPage> {
          );
    }
    
-
-   // XXX hmm.. basically making gestureDetector?
-   _allocTileExpansionChanged( expansionVal, path ) {
-      print( ".. summary SetState expansionChanged" );
-      setState(() => appState.expansionChanged = expansionVal );
-      print( ".. summary change allocExpanded $path $expansionVal" );
-      setState(() => appState.allocExpanded[path] = expansionVal );
-   }
-   
-   
-   // XXX problem 1: setState, but stateless
-   // XXX problem 2: buildAlloc uses Node.  Node is constructed OUTSIDE the widget tree - no context, no appState.
-   //                could pass to constructor, but that doesn't help problem 1.
-   // ... make this stateful again.  construct instance as with Node.  call method on instance.
-   
    // XXX this could easily be made iterative
    // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
    // header      alloc                   sub alloc                 plan
-   _buildAllocationTree() {
+   _buildAllocationTree( { notify = true } ) {
       print( "Build allocation tree" );
       final width = 290.0;  // XXX
       
-      appState.allocTree = Node( "Category", 0, null, width, _allocTileExpansionChanged, isInitiallyExpanded:true, header:true );
+      appState.allocTree = Node( "Category", 0, null, width, widget.allocExpansionCallback, isInitiallyExpanded:true, header: true );
       
       if( appState.myPEQSummary == null ) {
          appState.updateAllocTree = false;
@@ -118,7 +101,7 @@ class _CESummaryState extends State<CESummaryPage> {
             else if( childNode == null ) {
                if( !lastCat ) {
                   //print( "... nothing - add node" );
-                  Node tmpNode = Node( alloc.category[i], 0, null, width, _allocTileExpansionChanged );
+                  Node tmpNode = Node( alloc.category[i], 0, null, width, widget.allocExpansionCallback );
                   (curNode as Node).addLeaf( tmpNode );
                   curNode = tmpNode;
                }
@@ -154,16 +137,19 @@ class _CESummaryState extends State<CESummaryPage> {
          }
       }
       appState.updateAllocTree = false;
+
+      // during build, calling setState is an error.
+      if( notify ) { widget.updateCompleteCallback(); }
       //print( appState.allocTree.toStr() );
    }
    
 
    // XXX consider making peqSummary a list in appState
-   List<List<Widget>> _showPAlloc() {
+   List<List<Widget>> _showPAlloc( { fromGA = false } ) {
       
       List<List<Widget>> allocList = [];
       
-      if( appState.updateAllocTree ) { _buildAllocationTree(); }
+      if( appState.updateAllocTree ) { _buildAllocationTree( notify: !fromGA ); }
       
       if( ( appState.peqUpdated || appState.expansionChanged ) && appState.myPEQSummary != null )
       {
@@ -179,18 +165,6 @@ class _CESummaryState extends State<CESummaryPage> {
       return allocList;
    }
    
-   
-   Future<void> _updateConfirmed( ) async {
-      appState.peqUpdated = false;
-      
-      await updatePEQAllocations( appState.selectedRepo, context, container );
-      _buildAllocationTree();
-      
-      // XXX local, or app-wide?  app for now
-      setState(() { appState.peqUpdated = true; });
-   }
-   
-   
 
    Widget getAllocation( context ) {
       
@@ -203,7 +177,7 @@ class _CESummaryState extends State<CESummaryPage> {
 
       var c = Container( width: 1, height: 1 );
       
-      allocs.addAll( _showPAlloc( ) );
+      allocs.addAll( _showPAlloc( fromGA: true ) );
       allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 4, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
@@ -211,7 +185,7 @@ class _CESummaryState extends State<CESummaryPage> {
                         buttonWidth, 
                         () async
                         {
-                           _updateConfirmed();
+                           widget.updateCallback();
                         }),
                         c, c, c, c ]] );
       
@@ -274,7 +248,8 @@ class _CESummaryState extends State<CESummaryPage> {
    
    @override
    Widget build(BuildContext context) {
-      
+
+      // XXX appContainer still needed?
       container   = widget.appContainer;   // Neat.  Access parameter in super.
       appState    = container.state;
 
