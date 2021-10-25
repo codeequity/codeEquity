@@ -18,26 +18,32 @@ import 'package:ceFlutter/components/leaf.dart';
 import 'package:ceFlutter/screens/detail_page.dart';
 
 
-class CESummaryPage extends StatefulWidget {
-   var appContainer;
+class CESummaryFrame extends StatefulWidget {
+   final frameHeightUsed;
+   var   appContainer;
    final updateCallback;
    final updateCompleteCallback;
    final allocExpansionCallback;
-   
-   CESummaryPage( {Key key, this.appContainer, this.updateCallback, this.updateCompleteCallback, this.allocExpansionCallback } ) : super(key: key);
+
+   CESummaryFrame(
+      {Key key, this.frameHeightUsed, this.appContainer, this.updateCallback, this.updateCompleteCallback, this.allocExpansionCallback} ) : super(key: key);
 
   @override
   _CESummaryState createState() => _CESummaryState();
 
 }
 
-class _CESummaryState extends State<CESummaryPage> {
+class _CESummaryState extends State<CESummaryFrame> {
 
    var      container;
    AppState appState;
 
    static const maxPaneWidth = 800.0;
 
+   // iphone 5
+   static const frameMinWidth  = 320.0;
+   static const frameMinHeight = 300;       // 568.0;
+   
    @override
    void initState() {
       super.initState();
@@ -196,29 +202,35 @@ class _CESummaryState extends State<CESummaryPage> {
 
       var allocCount = min( allocs.length, 30 );
       var allocWidth = allocs[0].length;
+      var svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
+      print( "Scroll View " + appState.screenHeight.toString() + " " + widget.frameHeightUsed.toString() + " " + svHeight.toString() );
 
-      return SingleChildScrollView( 
-         scrollDirection: Axis.vertical,
-         child: SizedBox(
-            width: maxPaneWidth,
-            height: appState.screenHeight * .8,
-            child: ListView.builder(
-               itemCount: min( allocCount, 20 ),
-               itemBuilder: (BuildContext context, int i)
-               {
-                  if( i >= allocCount ) { print( "Oof" ); return Container( height: 100, width: 50 ); }
-                  else {
-                     return new Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: new List.generate(allocWidth, (int j) {
-                              // print( allocCount.toString() + " " + allocs[i].length.toString() + " " +i.toString() + " " + j.toString() );
-                              return allocs[i][j];
-                           })
-                        );
-                  }
-               })
-            ));
-
+      if( appState.screenHeight < frameMinHeight ) {
+         return makeTitleText( appState, "Really?  Can't we be a little taller?", 300, false, 1, fontSize: 18);
+      }
+      else {
+         return SingleChildScrollView( 
+            scrollDirection: Axis.vertical,
+            child: SizedBox(
+               width: maxPaneWidth,
+               height: svHeight,
+               child: ListView.builder(
+                  itemCount: min( allocCount, 20 ),
+                  itemBuilder: (BuildContext context, int i)
+                  {
+                     if( i >= allocCount ) { print( "Oof" ); return Container( height: 100, width: 50 ); }
+                     else {
+                        return new Row(
+                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                           children: new List.generate(allocWidth, (int j) {
+                                 // print( allocCount.toString() + " " + allocs[i].length.toString() + " " +i.toString() + " " + j.toString() );
+                                 return allocs[i][j];
+                              })
+                           );
+                     }
+                  })
+               ));
+      }
       /*
       return SingleChildScrollView( 
          scrollDirection: Axis.horizontal,

@@ -7,7 +7,7 @@ import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
-import 'package:ceFlutter/screens/summary_page.dart';
+import 'package:ceFlutter/screens/summary_frame.dart';
 
 
 class CEProjectPage extends StatefulWidget {
@@ -21,6 +21,11 @@ class _CEProjectState extends State<CEProjectPage> {
 
    var      container;
    AppState appState;
+
+   // XXX appState
+   // iphone 5
+   static const frameMinWidth  = 320.0;
+   static const frameMinHeight = 568.0;
    
    @override
    void initState() {
@@ -34,7 +39,7 @@ class _CEProjectState extends State<CEProjectPage> {
 
 
    // start CALLBACKS for tab frames
-   // define here .. child widget state (like summaryPage) is disposed of when clicking between frames
+   // define here .. child widget state (like summaryFrame) is disposed of when clicking between frames
 
    Future<void> _updateCallback( ) async {
       appState.peqUpdated = false;
@@ -45,7 +50,7 @@ class _CEProjectState extends State<CEProjectPage> {
    }      
 
    _updateCompleteCallback() {
-      // causes summary_page to update list of allocs in showPalloc
+      // causes summary_frame to update list of allocs in showPalloc
       print( "UCC setstate" );
       setState(() => appState.peqUpdated = true );  
    }
@@ -82,8 +87,11 @@ class _CEProjectState extends State<CEProjectPage> {
       final w = 100;
       if( appState.loaded ) {
 
-         Widget summaryPageWidget = CESummaryPage(
+         // XXX container still useful?
+         // XXX move standard pixel sizes to appstate, out of utils and elsewhere.  
+         Widget summaryFrameWidget = CESummaryFrame(
             appContainer: container,
+            frameHeightUsed: 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
             updateCallback:         _updateCallback,
             updateCompleteCallback: _updateCompleteCallback,
             allocExpansionCallback: _allocExpansionCallback );
@@ -94,7 +102,7 @@ class _CEProjectState extends State<CEProjectPage> {
             children: <Widget>[
                
                makeTitleText( appState, appState.selectedRepo, w*6, false, 1, fontSize: 18),
-               Container( height: 10 ),
+               Container( height: appState.MID_PAD ),
                
                Expanded(
                   child: DefaultTabController(
@@ -103,7 +111,7 @@ class _CEProjectState extends State<CEProjectPage> {
                      child: Padding(
                         padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
                         child: Container(
-                           padding: EdgeInsets.all(5.0),
+                           padding: EdgeInsets.all( appState.TINY_PAD ),
                            decoration: BoxDecoration(
                               color: appState.BACKGROUND,
                               borderRadius: BorderRadius.all(
@@ -128,14 +136,14 @@ class _CEProjectState extends State<CEProjectPage> {
                                        indicatorSize: TabBarIndicatorSize.tab,
                                        indicator: BoxDecoration(
                                           shape: BoxShape.rectangle,
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular( appState.MID_PAD ),
                                           color: Colors.white,
                                           ))),
                                  Expanded(
                                     child: TabBarView(
                                        children: <Widget>[
                                           _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
-                                          _makeTab( () => summaryPageWidget ),
+                                          _makeTab( () => summaryFrameWidget ),
                                           _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
                                           _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
                                           _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
@@ -157,6 +165,9 @@ class _CEProjectState extends State<CEProjectPage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
       
+      appState.screenHeight = MediaQuery.of(context).size.height;
+      appState.screenWidth  = MediaQuery.of(context).size.width;
+
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
          body: _makeBody( context )

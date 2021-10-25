@@ -28,7 +28,7 @@ class _CEHomeState extends State<CEHomePage> {
 
    var      runningLHSHeight;
 
-   // iphone 5: 320px
+   // iphone 5: 320px X 568
    static const lhsPaneMinWidth = 250.0;
    static const lhsPaneMaxWidth = 300.0;
    static const rhsPaneMinWidth = 300.0;
