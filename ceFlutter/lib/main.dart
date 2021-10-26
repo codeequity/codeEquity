@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 //import 'package:flutter_cognito_plugin/flutter_cognito_plugin.dart';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 
@@ -16,6 +18,7 @@ import 'package:ceFlutter/app_state_container.dart';
 
 void main() {
    WidgetsFlutterBinding.ensureInitialized();                // localStore
+
    runApp( new AppStateContainer( child: new CEApp() ));
 }
 
