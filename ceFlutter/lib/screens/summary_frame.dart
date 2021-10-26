@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:math';               
+import 'dart:math';
+import 'dart:ui';    // pointerKinds
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils.dart';
@@ -16,6 +17,17 @@ import 'package:ceFlutter/components/node.dart';
 import 'package:ceFlutter/components/leaf.dart';
 
 import 'package:ceFlutter/screens/detail_page.dart';
+
+// Workaround breaking change 5/2021
+// https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  // Override behavior methods and getters like dragDevices
+  @override
+  Set<PointerDeviceKind> get dragDevices => { 
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+  };
+}
 
 
 class CESummaryFrame extends StatefulWidget {
@@ -196,65 +208,38 @@ class _CESummaryState extends State<CESummaryFrame> {
                         c, c, c, c ]] );
       
 
-      // https://stackoverflow.com/questions/45137297/implementing-a-bidirectional-listview-in-flutter?noredirect=1&lq=1
-      // https://stackoverflow.com/questions/45270900/how-to-implement-nested-listview-in-flutter
-      // https://stackoverflow.com/questions/55385170/flutter-list-view-with-multiple-scroll-direction
-
       var allocCount = min( allocs.length, 30 );
       var allocWidth = allocs[0].length;
-      var svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
-      print( "Scroll View " + appState.screenHeight.toString() + " " + widget.frameHeightUsed.toString() + " " + svHeight.toString() );
+
+      final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
+      //final svWidth  = min( maxPaneWidth, appState.screenWidth );
+      final svWidth  = maxPaneWidth;
 
       if( appState.screenHeight < frameMinHeight ) {
          return makeTitleText( appState, "Really?  Can't we be a little taller?", 300, false, 1, fontSize: 18);
       }
       else {
-         return SingleChildScrollView( 
-            scrollDirection: Axis.vertical,
-            child: SizedBox(
-               width: maxPaneWidth,
-               height: svHeight,
-               child: ListView.builder(
-                  itemCount: min( allocCount, 20 ),
-                  itemBuilder: (BuildContext context, int i)
-                  {
-                     if( i >= allocCount ) { print( "Oof" ); return Container( height: 100, width: 50 ); }
-                     else {
-                        return new Row(
-                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                           children: new List.generate(allocWidth, (int j) {
-                                 // print( allocCount.toString() + " " + allocs[i].length.toString() + " " +i.toString() + " " + j.toString() );
-                                 return allocs[i][j];
-                              })
-                           );
-                     }
-                  })
-               ));
+         var itemCount = min( allocCount, 20 );
+
+         final ScrollController controller = ScrollController();
+
+         return ScrollConfiguration(
+            behavior: MyCustomScrollBehavior(),
+            child: SingleChildScrollView(
+               scrollDirection: Axis.horizontal,
+               child: SizedBox(
+                  height: svHeight,
+                  width: svWidth,
+                  child: ListView(
+                     children: List.generate( 
+                        itemCount,
+                        (indexX) => Row(
+                           children: List.generate( 
+                              allocWidth,
+                              (indexY) => allocs[indexX][indexY] ))
+                        )))));
+         
       }
-      /*
-      return SingleChildScrollView( 
-         scrollDirection: Axis.horizontal,
-         child: SizedBox(
-            width: maxPaneWidth,
-            child:ConstrainedBox( 
-               constraints: new BoxConstraints(
-                  minHeight: 20.0,
-                  maxHeight: appState.screenHeight * .8
-                  ),
-               child: ListView(
-                  scrollDirection: Axis.vertical,
-                  children: allocs[0]
-                  ))
-            ));
-      */
-      
-      /*
-      return Column(
-         crossAxisAlignment: CrossAxisAlignment.start,
-         mainAxisAlignment: MainAxisAlignment.start,
-         children: allocs
-         );
-      */
    }
    
    
