@@ -65,7 +65,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    @override
    void dispose() {
       super.dispose();
-      print( "XXXX SF Disposessed!" );
+      print( "SF Disposessed!" );
    }
 
    // XXX ghUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
@@ -88,7 +88,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    // XXX this could easily be made iterative
    // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
    // header      alloc                   sub alloc                 plan
-   _buildAllocationTree( { notify = true } ) {
+   _buildAllocationTree( ) {
       print( "Build allocation tree" );
       final width = frameMinWidth - 2*appState.FAT_PAD;  
       
@@ -158,23 +158,19 @@ class _CESummaryState extends State<CESummaryFrame> {
       }
       appState.updateAllocTree = false;
 
-      // during build, calling setState is an error.
-      print( "XXXX  BAT notify? $notify" );
-      
-      if( notify ) { widget.updateCompleteCallback(); }
       // print( appState.allocTree.toStr() );
    }
    
 
    // XXX consider making peqSummary a list in appState
-   // re-build alloc tree if updatePeq button triggers, with notification
-   List<List<Widget>> _showPAlloc( { fromGA = false } ) {
-      print( "XXXX  SPA fromGA? $fromGA" );
+   // re-build alloc tree if updatePeq button triggers
+   List<List<Widget>> _showPAlloc( ) {
       List<List<Widget>> allocList = [];
       
-      if( appState.updateAllocTree ) { _buildAllocationTree( notify: !fromGA ); } // XXX cant notify always
+      if( appState.updateAllocTree ) { _buildAllocationTree(); }
       
-      if( ( appState.expansionChanged || fromGA ) && appState.myPEQSummary != null )
+      // When node expansion changes, callback sets state on allocExpanded, which changes node, which changes here, which causes project_page rebuild
+      if( appState.myPEQSummary != null )
       {
          if( appState.myPEQSummary.ghRepo == appState.selectedRepo ) {
             if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
@@ -194,11 +190,9 @@ class _CESummaryState extends State<CESummaryFrame> {
       
       List<List<Widget>> allocs = [];
 
-      final fromGA = true;
-
       var c = Container( width: 1, height: 1 );
       
-      allocs.addAll( _showPAlloc( fromGA: fromGA ) );
+      allocs.addAll( _showPAlloc( ) );
       allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 4, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,

@@ -121,8 +121,9 @@ class Node extends StatelessWidget implements Tree {
      return res;
   }
 
+  // After updating allocs, need to reset initial expansion and vis state of all nodes
   void reset() {
-     print( "Reset alloc tree for $title" );
+     // print( "Reset alloc tree for $title" );
       isVisible     = this.isInitiallyExpanded;
       _tileExpanded = this.isInitiallyExpanded;
       firstPass     = true;
@@ -145,7 +146,7 @@ class Node extends StatelessWidget implements Tree {
      currentDepth = treeDepth;
      path         = ancestors + "/" + title;
 
-     if( isVisible ) {  print( "visible node GET CURRENT  $title "); }
+     // if( isVisible ) {  print( "visible node GET CURRENT  $title "); }
      
      List<List<Widget>> nodes = [];
 
@@ -221,8 +222,6 @@ class Node extends StatelessWidget implements Tree {
   Widget getTile() {
      final height = appState.CELL_HEIGHT;
 
-     print( "XXXX GetTile $stamp" );
-     
      if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] != _tileExpanded ) {
         _tileExpanded = !_tileExpanded;
         print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" );

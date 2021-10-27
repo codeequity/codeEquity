@@ -62,18 +62,15 @@ class _CEProjectState extends State<CEProjectPage> {
       setState(() => appState.updateAllocTree = true );
    }      
 
+   // XXX Is this used?  Also, peqUpdated?
    _updateCompleteCallback() {
       // causes summary_frame to update list of allocs in showPalloc
       print( "UCC setstate" );
       setState(() => appState.peqUpdated = true );
    }
 
-   // XXX combine expansionChanged and expanded[path]?
+   // XXX is expansionChanged still useful?
    _allocExpansionCallback( expansionVal, path ) {
-      print( ".. summary SetState expansionChanged" );
-      // Causes summary nodes to setvis or unsetvis on children
-      setState(() => appState.expansionChanged = expansionVal );
-
       print( ".. summary change allocExpanded $path $expansionVal" );
       // causes node to update internal tile expansion state, which updates trailing icons
       setState(() => appState.allocExpanded[path] = expansionVal );
@@ -100,7 +97,7 @@ class _CEProjectState extends State<CEProjectPage> {
       final w = 100;
       if( appState.loaded ) {
 
-         print( "XXXX PP ReBuild.. means notify setup will be wrong. " );
+         print( "PP ReBuild." );
 
          // XXX container still useful?
          // XXX move standard pixel sizes to appstate, out of utils and elsewhere.
@@ -113,13 +110,6 @@ class _CEProjectState extends State<CEProjectPage> {
             updateCompleteCallback: _updateCompleteCallback,
             allocExpansionCallback: _allocExpansionCallback );
 
-         // XXXX
-         // XXX will instead update last updated date.
-         if( appState.peqUpdated ) {
-            print( "XXXX  PP Reset SFW" );
-            appState.peqUpdated = false;
-         }
-         
          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
