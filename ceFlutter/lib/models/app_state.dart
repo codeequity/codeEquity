@@ -71,6 +71,7 @@ class AppState {
 
    // UI constants
    final double BASE_TXT_HEIGHT = 20.0;     // 14pt font is 19.2 px height
+   final double CELL_HEIGHT     = 50.0;
 
    final double TINY_PAD        =  6.0;     // minimal padding for text
    final double MID_PAD         =  9.0;     // robust padding for text

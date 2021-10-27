@@ -22,6 +22,8 @@ class _CEProjectState extends State<CEProjectPage> {
    var      container;
    AppState appState;
 
+   var pageStamp = "";
+
    // XXX appState
    // iphone 5
    static const frameMinWidth  = 320.0;
@@ -39,28 +41,36 @@ class _CEProjectState extends State<CEProjectPage> {
 
 
    // start CALLBACKS for tab frames
-   // define here .. child widget state (like summaryFrame) is disposed of when clicking between frames
+   // Must define here, since child widget state (like summaryFrame) is disposed of when clicking between frames
 
    Future<void> _updateCallback( ) async {
       appState.peqUpdated = false;
       await updatePEQAllocations( appState.selectedRepo, context, container );
 
+      // Reset tree state to ensure proper open/close with tree.getCurrent, else appState never set
+      if( appState.myPEQSummary.ghRepo == appState.selectedRepo && appState.allocTree != null )
+      {
+         appState.allocExpanded.clear();
+         appState.allocTree.reset();
+      }
+
+      // Reset storage key, otherwise horDiv and colors don't match expansion state
+      print( "Resetting PageStorageKey stamps" );
+      pageStamp = DateTime.now().millisecondsSinceEpoch.toString();
+      
       // causes buildAllocTree to fire
       setState(() => appState.updateAllocTree = true );
    }      
 
+   // XXX Is this used?  Also, peqUpdated?
    _updateCompleteCallback() {
       // causes summary_frame to update list of allocs in showPalloc
       print( "UCC setstate" );
-      setState(() => appState.peqUpdated = true );  
+      setState(() => appState.peqUpdated = true );
    }
 
-   // XXX combine expansionChanged and expanded[path]?
+   // XXX is expansionChanged still useful?
    _allocExpansionCallback( expansionVal, path ) {
-      print( ".. summary SetState expansionChanged" );
-      // Causes summary nodes to setvis or unsetvis on children
-      setState(() => appState.expansionChanged = expansionVal );
-
       print( ".. summary change allocExpanded $path $expansionVal" );
       // causes node to update internal tile expansion state, which updates trailing icons
       setState(() => appState.allocExpanded[path] = expansionVal );
@@ -87,15 +97,19 @@ class _CEProjectState extends State<CEProjectPage> {
       final w = 100;
       if( appState.loaded ) {
 
+         print( "PP ReBuild." );
+
          // XXX container still useful?
-         // XXX move standard pixel sizes to appstate, out of utils and elsewhere.  
+         // XXX move standard pixel sizes to appstate, out of utils and elsewhere.
+         // Rebuild summaryFrame upon peqUpdate, else previous pageStorageKeys don't match new allocs 
          Widget summaryFrameWidget = CESummaryFrame(
             appContainer: container,
+            pageStamp: pageStamp,
             frameHeightUsed: 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
             updateCallback:         _updateCallback,
             updateCompleteCallback: _updateCompleteCallback,
             allocExpansionCallback: _allocExpansionCallback );
-            
+
          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,

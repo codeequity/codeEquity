@@ -56,10 +56,10 @@ class Leaf extends StatelessWidget implements Tree {
 
    @override
    List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} ) {
-      final numWidth = width / 3.0;
-      final height   = 50;
-
       appState     = container.state;
+
+      final numWidth = width / 3.0;
+      final height   = appState.CELL_HEIGHT;
 
       List<List<Widget>> nodes = [];
       if( !isVisible ) { return nodes; }
@@ -100,7 +100,7 @@ class Leaf extends StatelessWidget implements Tree {
   @override
   Widget getTile() {
      // String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( pendingAmount ) + " " + addCommas( accrueAmount );
-     final height = 50.0;
+     final height = appState.CELL_HEIGHT;
 
      return Container(
         width: width,
