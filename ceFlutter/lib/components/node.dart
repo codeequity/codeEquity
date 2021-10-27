@@ -24,7 +24,7 @@ class Node extends StatelessWidget implements Tree {
    bool isVisible;   // controls what tiles get added to display list
    bool firstPass;   // use this to setVis based on isInitiallyExpanded, one time only.
 
-
+   final stamp; 
    final expansion;     // setState callback in screens:summary
    bool _tileExpanded;
    String path;
@@ -34,7 +34,7 @@ class Node extends StatelessWidget implements Tree {
    
    AppState appState;
    
-   Node(this.title, this.allocAmount, this.icon, this.width, this.expansion, {this.isInitiallyExpanded = false, this.header = false, this.currentDepth = 0} ) {
+   Node(this.title, this.allocAmount, this.icon, this.width, this.stamp, this.expansion, {this.isInitiallyExpanded = false, this.header = false, this.currentDepth = 0} ) {
       isVisible = this.isInitiallyExpanded;
       _tileExpanded = this.isInitiallyExpanded;
       firstPass = true;
@@ -57,9 +57,9 @@ class Node extends StatelessWidget implements Tree {
      return null;
   }
 
-  Tree convertToNode( Leaf child ) {
+  Tree convertToNode( Leaf child, stamp ) {
      assert( child.getPlanAmount() == 0 && child.getAccrueAmount() == 0 );
-     Node newNode = Node( child.getTitle(), child.getAllocAmount(), child.icon, child.width, expansion );
+     Node newNode = Node( child.getTitle(), child.getAllocAmount(), child.icon, child.width, stamp, expansion );
      bool converted = false;
      
      // find and replace in list
@@ -121,17 +121,31 @@ class Node extends StatelessWidget implements Tree {
      return res;
   }
 
+  void reset() {
+     print( "Reset alloc tree for $title" );
+      isVisible     = this.isInitiallyExpanded;
+      _tileExpanded = this.isInitiallyExpanded;
+      firstPass     = true;
+
+      if( firstPass & isInitiallyExpanded ) {
+        firstPass = false;
+        leaves.forEach((Tree child) => child.setVis( true ));
+      }
+
+      leaves.forEach(( (child) { if( child is Node ) { child.reset(); }} ));      
+  }
+  
   @override
   List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} ) {
-     final numWidth = width / 3.0;
-     final height   = 50;
-
      appState    = container.state;
+
+     final numWidth = width / 3.0;
+     final height   = appState.CELL_HEIGHT;
      
      currentDepth = treeDepth;
      path         = ancestors + "/" + title;
 
-     // if( isVisible ) {  print( "visible node GET CURRENT  $title "); }
+     if( isVisible ) {  print( "visible node GET CURRENT  $title "); }
      
      List<List<Widget>> nodes = [];
 
@@ -187,7 +201,7 @@ class Node extends StatelessWidget implements Tree {
      isVisible = true;
      if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {
         // Should only get here for nodes, given allocExpanded above... oops.. ok.  tree
-        leaves.forEach( (child) => child..reopenKids() );
+        leaves.forEach( (child) => child.reopenKids() );
      }
   }
 
@@ -205,8 +219,10 @@ class Node extends StatelessWidget implements Tree {
 
   @override
   Widget getTile() {
-     final height = 50.0;  // XXX
+     final height = appState.CELL_HEIGHT;
 
+     print( "XXXX GetTile $stamp" );
+     
      if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] != _tileExpanded ) {
         _tileExpanded = !_tileExpanded;
         print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" );
@@ -222,7 +238,7 @@ class Node extends StatelessWidget implements Tree {
               // children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
               trailing: Icon( _tileExpanded ? Icons.arrow_drop_down_circle : Icons.arrow_drop_down ),
               title: makeTableText( appState, "$title", width, height, false, 1, mux: currentDepth * .5 ),
-              key: new PageStorageKey(path),
+              key: new PageStorageKey(path + stamp),
               initiallyExpanded: isInitiallyExpanded,
               onExpansionChanged: ((expanded) {
                     print( "*** $title expanded? $expanded" );
