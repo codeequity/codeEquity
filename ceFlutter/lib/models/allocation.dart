@@ -47,7 +47,7 @@ class Allocation {
       String res = "\n" + category.toString();
       res += "\n    " + enumToStr( allocType ) + " ceUID and ghUserName: " + ceUID + " " + ghUserName;
       res += "\n    Amount: "+ amount.toString() + " of which vested %: " + vestedPerc.toString();
-      res += "\n    Source PEQs: " + sourcePeqs.toString();
+      res += "\n    Source PEQs: " + sourcePeq.toString();
       res += "\n    Notes: " + notes;
       return res;
    }

@@ -610,7 +610,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
          }
       }
       else {
-         print( "Error.  Action add on peqType of " + peq.peqType );
+         print( "Error.  Action add on peqType of " + peq.peqType.toString() );
          notYetImplemented( context );
       }
    }
@@ -628,14 +628,15 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       else if( peq.peqType == PeqType.allocation ) { sub = subAllc; }
       else if( peq.peqType == PeqType.plan )       { sub = subPlan; }
       else if( peq.peqType == PeqType.pending )    { sub = subProp; }
-      else if( peq.peqType == PeqType.grand )      { sub = subAccr; }
+      else if( peq.peqType == PeqType.grant )      { sub = subAccr; }
 
+      /*
       // iterate over assignees
       for( var assignee in assignees ) {
          print( "\n Assignee: " + assignee );
          
          // Peq must be in allocations, somewhere.  Find it.
-         let sourceAlloc = appState.myPEQSummary.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ) );
+         var sourceAlloc = appState.myPEQSummary.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ) );
          if( sourceAlloc == null ) { print( "Error.  Can't move an allocation that does not exist" ); }
          
          adjustSummaryAlloc( appState, peq.id, sub, "", -1 * splitAmount, peq.peqType, assignee );
@@ -647,7 +648,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
          adjustSummaryAlloc( appState, peq.id, subAccr, "",  splitAmount, PeqType.grant, assignee );
          
       }
-
+      */
       
    }
    else { notYetImplemented( context ); }

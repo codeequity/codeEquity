@@ -95,7 +95,7 @@ class samInstance():
             logging.error( e )
 
         try: 
-            cmd  = "sam package --template-file " + template + " --output-template " + templPack
+            cmd  = "sam package --template-file " + template + " --output-template-file " + templPack
             cmd += " --s3-bucket " + deployBucket
             logging.info( cmd )
             val = check_output(cmd, shell=True).decode('utf-8')    
