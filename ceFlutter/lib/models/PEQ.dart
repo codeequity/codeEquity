@@ -97,6 +97,7 @@ class PEQ {
       res += "\n    projectSub: " + ghProjectSub.toString() + " projId: " + ghProjectId + ", issue: " + ghIssueId;
       res += "\n    holder: " + ceHolderId.toString();
       res += "\n    GHholder: " + ghHolderId.toString();
+      res += "\n";
 
       return res;
    }

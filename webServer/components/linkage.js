@@ -39,6 +39,7 @@ class Linkage {
 	for( const loc of locData ) {
 	    this.addLoc( authData, fn, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId );
 	}
+	utils.refreshLinkageSummary( authData, fn, locData );
 
 	blPromise = await blPromise;  // no val here, just ensures locData is set
 	this.populateLinkage( authData, fn, baseLinks );
@@ -86,7 +87,7 @@ class Linkage {
     }
 
     
-    // Note: be good to init in order of most recently and most active repos.
+    // Note: Run init in order of most recently and most active repos.
     // populateCEServer migrates a project into CE.  lots of extra checks.
     // init here is to handle a server restart, only 'remembers' official CE projects.
     async init( authData ) {
@@ -149,6 +150,7 @@ class Linkage {
     }
 
 
+    // For testing, locData grabbed from server and queried, do NOT modify AWS.
     fromJsonLocs( locData ) {
 	this.links = {};
 	console.log( "Creating ghLinks.locs from json data" );
@@ -159,7 +161,8 @@ class Linkage {
 	}
     }
 
-    addLoc( authData, repo, projName, projId, colName, colId ) {
+    // ProjectID is the kanban project.  repo:pid  is 1:many
+    addLoc( authData, repo, projName, projId, colName, colId, pushAWS = false ) {
 	colId  = colId.toString();
 	projId = projId.toString();
 	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
@@ -173,6 +176,9 @@ class Linkage {
 	loc.GHColumnId    = colId;
 	loc.GHColumnName  = colName;
 
+	// No need to wait
+	if( pushAWS ) { utils.updateLinkageSummary( authData, loc ); } 
+	
 	return loc;
     }
     

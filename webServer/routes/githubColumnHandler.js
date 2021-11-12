@@ -32,7 +32,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    const loc = locs == -1 ? locs : locs[0];
 	    assert( loc != -1 );
 	    
-	    ghLinks.addLoc( authData, pd.GHFullName, loc.GHProjectName, pd.GHProjectId, pd.GHColumnName, pd.GHColumnId );
+	    ghLinks.addLoc( authData, pd.GHFullName, loc.GHProjectName, pd.GHProjectId, pd.GHColumnName, pd.GHColumnId, true );
 	}
 	break;
     case 'edited':
