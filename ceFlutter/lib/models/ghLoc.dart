@@ -25,8 +25,8 @@ class GHLoc {
    
    String toString() {
       String res = "";
-      res += "\n    Project:" + ghProjectName + " (" + ghProjectId + ")";
-      res += "\n    Column:" +  ghColumnName  + " (" + ghColumnId  + ")";
+      res += "\n    Project: " + ghProjectName + " (" + ghProjectId + ")";
+      res += "\n    Column:  " +  ghColumnName + " (" + ghColumnId  + ")";
       return res;
    }
 

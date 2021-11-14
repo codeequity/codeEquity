@@ -60,8 +60,6 @@ class PEQ {
       
    factory PEQ.fromJson(Map<String, dynamic> json) {
 
-      print( "fromming " + json['PEQId'] );
-
       var dynamicSub   = json['GHProjectSub'];
       var dynamicAssCE = json['CEHolderId'];
       var dynamicAssGH = json['GHHolderId'];

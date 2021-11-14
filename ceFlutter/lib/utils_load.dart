@@ -26,6 +26,8 @@ import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
 import 'package:ceFlutter/models/allocation.dart';
+import 'package:ceFlutter/models/Linkage.dart';
+import 'package:ceFlutter/models/ghLoc.dart';
 
 // XXX strip context, container where not needed
 
@@ -280,6 +282,24 @@ Future<PEQSummary> fetchPEQSummary( context, container, postData ) async {
    }
 }
 
+Future<Linkage> fetchGHLinkage( context, container, postData ) async {
+   String shortName = "fetchGHLinkage";
+
+   final response = await postIt( shortName, json.encode( postData ), container );
+
+   if (response.statusCode == 201) {
+      final ghl = json.decode(utf8.decode(response.bodyBytes));
+      Linkage ghLinks = Linkage.fromJson(ghl);
+      return ghLinks;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no GitHub Linkage data found" );
+      return null;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchGHLinkage( context, container, postData ); }
+   }
+}
+
 Future<PEQRaw> fetchPEQRaw( context, container, postData ) async {
    String shortName = "fetchPEQRaw";
    final response = await postIt( shortName, postData, container );
@@ -376,6 +396,13 @@ Future<void> reloadMyProjects( context, container ) async {
       postData['GHRepo'] = ghRepo;
       var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postData };
       appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
+
+      // Get linkage
+      pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postData };
+      appState.myGHLinks  = await fetchGHLinkage( context, container, pd );
+
+      print( "Got Links?" );
+      print( appState.myGHLinks.toString() );
       
       if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
       
@@ -630,29 +657,48 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       else if( peq.peqType == PeqType.pending )    { sub = subProp; }
       else if( peq.peqType == PeqType.grant )      { sub = subAccr; }
 
-      /*
-      // iterate over assignees
+      // iterate over assignees  
       for( var assignee in assignees ) {
          print( "\n Assignee: " + assignee );
          
          // Peq must be in allocations, somewhere.  Find it.
-         var sourceAlloc = appState.myPEQSummary.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ) );
+         var sourceAlloc = appState.myPEQSummary.allocations.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ),
+                                                                         orElse: () => null );
          if( sourceAlloc == null ) { print( "Error.  Can't move an allocation that does not exist" ); }
-         
          adjustSummaryAlloc( appState, peq.id, sub, "", -1 * splitAmount, peq.peqType, assignee );
-         let sourceAlloc = appState.myPEQSummary.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ) );
-         if( sourceAlloc != null ) { print( "Error.  Allocation should not longer exist" ); }
+
+         var tAlloc = appState.myPEQSummary.allocations.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ),
+                                                                    orElse: () => null );
+         if( tAlloc != null ) { print( "Error.  Allocation should not longer exist" ); }
 
          // Move to column.. Need to get name.
-         // ghGet is public-only.  Our projects may be private.  Have initial PAT...
-         adjustSummaryAlloc( appState, peq.id, subAccr, "",  splitAmount, PeqType.grant, assignee );
+         assert( pact.subject.length == 3 );
+         
+         var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectId == pact.subject[1] && a.ghColumnId == pact.subject[2], orElse: () => null );
+         assert( loc != null );
+
+         print( "  .. relocating to " + loc.toString() );
+         var tsub = subAccr;
+         tsub.add( loc.ghColumnName );
+         adjustSummaryAlloc( appState, peq.id, tsub, "",  splitAmount, peq.peqType, assignee );   // peqType is wrong, often.
          
       }
-      */
+
+      // XXX are all relos within same project?  What about unassigned:unassigned - that is just "confirm/add", yes?
+      
+      // XXX
+      // Confirm.. but peqType is not up to date with current relo.
+      // To up date peqType, need to match column names with reserved cols.... but that resides in server as well.  DARG!  add to linkage?
+      
+      // XXX Need to adjust PEQ
       
    }
    else { notYetImplemented( context ); }
 
+   print( "current allocs" );
+   for( var alloc in appState.myPEQSummary.allocations ) {
+      if( subAllc[0] == alloc.category[0] ) { print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() ); }
+   }
 }
 
 

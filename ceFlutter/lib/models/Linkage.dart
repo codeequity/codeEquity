@@ -7,7 +7,7 @@ class Linkage {
    final String      id;
    final String      ghRepo;        // reponame is form /owner/repo, so is unique
    final String      lastMod;
-   final List<ghLoc> locations;   
+   final List<GHLoc> locations;   
 
    Linkage({ this.id, this.ghRepo, this.lastMod, this.locations });
 
@@ -15,10 +15,10 @@ class Linkage {
    factory Linkage.fromJson(Map<String, dynamic> json) {
 
       // locations in dynamo is list<map<string>>
-      List<ghLoc> locs = [];
+      List<GHLoc> locs = [];
       var dynamicAlloc = json['Locations'];  
-      dynamicAlloc.forEach((m) { locs.add( ghLocation.fromJson( m ) ); });
-      
+      dynamicAlloc.forEach((m) { if( m.length == 4 ) { locs.add( GHLoc.fromJson( m ) ); } });  // linkage can have empty maps
+
       return Linkage(
          id:            json['CELinkageId'],
          ghRepo:        json['GHRepo'],
@@ -28,7 +28,7 @@ class Linkage {
    }
    
    String toString() {
-      String res = "\n" + Locations for ghRepo + ", last modified: " + lastMod;
+      String res = "\n  Locations for ghRepo, last modified: " + lastMod;
       locations.forEach((loc) => res += "\n     " + loc.toString() );
       return res;
    }
