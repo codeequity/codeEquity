@@ -8,6 +8,7 @@ import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
+import 'package:ceFlutter/screens/home_page.dart';
 
 class CEAddGHPage extends StatefulWidget {
    CEAddGHPage({Key key}) : super(key: key);
@@ -55,6 +56,9 @@ class _CEAddGHState extends State<CEAddGHPage> {
                () async
                {
                   bool associated = await associateGithub( context, container, pat.text );
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
+                  Navigator.push( context, newPage );
+                  
                }),
             Container( width: w ),
             ]);

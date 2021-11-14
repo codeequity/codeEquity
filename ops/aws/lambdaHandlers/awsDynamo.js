@@ -491,26 +491,35 @@ async function putLinkage( summary ) {
     let oldSummary = await getLinkage( summary.GHRepo );  
     
     // write new summary
-    summary.CELinkageID = oldSummary == -1 ? randAlpha(10) : oldSummary.CELinkageId;
+    summary.CELinkageId = oldSummary == -1 ? randAlpha(10) : oldSummary.CELinkageId;
     return await writeLinkHelp( summary );
 }
 
 async function updateLinkage( newLoc ) {
     // get any entry with summary.GHRepo, overwrite
     let oldSummary = await getLinkage( newLoc.GHRepo );
-    assert( oldSummary != -1 );
+
+    // Note!  First created project in repo will not have summary.
+    if( oldSummary == -1 ) {
+	oldSummary = {};
+	oldSummary.CELinkageId = randAlpha(10);
+	oldSummary.GHRepo      = newLoc.GHRepo; 
+    }
 
     // Update according to newLoc
     oldSummary.lastMod = newLoc.lastMod;
     let foundLoc = false;
-    for( const loc of oldSummary.Locations ) {
-	// Catch name change
-	if( loc.GHProjectId == newLoc.GHProjectId && loc.GHColumnId == newLoc.GHColumnId ) {
-	    loc.GHProjectName = newLoc.GHProjectName;
-	    loc.GHColumnName  = newLoc.GHColumnName;
-	    foundLoc = true;
+    if( 'Locations' in oldSummary ) {
+	for( const loc of oldSummary.Locations ) {
+	    // Catch name change
+	    if( loc.GHProjectId == newLoc.GHProjectId && loc.GHColumnId == newLoc.GHColumnId ) {
+		loc.GHProjectName = newLoc.GHProjectName;
+		loc.GHColumnName  = newLoc.GHColumnName;
+		foundLoc = true;
+	    }
 	}
     }
+    else { oldSummary.Locations = []; }
 
     // Add, if not already present
     if( !foundLoc ) {
@@ -761,8 +770,8 @@ async function unIngest( tableName, query ) {
 	Limit: 99,
     };
     let unprocPromise = paginatedScan( params );
-    const pacts   = await unprocPromise;
-    const pactIds = pacts.map( pact => pact.PEQActionId );
+    let pacts   = await unprocPromise;
+    let pactIds = pacts.map( pact => pact.PEQActionId );
     
     let promises = [];
     pactIds.forEach(function (pactId) {
@@ -774,6 +783,29 @@ async function unIngest( tableName, query ) {
 	
 	promises.push( bsdb.update( params ).promise() );
     });
+
+
+    // All locked should be unlocked.
+    const lParams = {
+        TableName: tableName,
+        FilterExpression: 'GHRepo = :ghrepo AND Locked = :true',
+        ExpressionAttributeValues: { ':ghrepo': query.GHRepo , ':true': "true" },
+	Limit: 99,
+    };
+    unprocPromise = paginatedScan( lParams );
+    pacts   = await unprocPromise;
+    pactIds = pacts.map( pact => pact.PEQActionId );
+    
+    pactIds.forEach(function (pactId) {
+	const params = {
+	    TableName: tableName,
+	    Key: {"PEQActionId": pactId },
+	    UpdateExpression: 'set Locked = :false',
+	    ExpressionAttributeValues: { ':false': "false" }};
+	
+	promises.push( bsdb.update( params ).promise() );
+    });
+
 
     // Promises execute in parallel, collect in order
     return await Promise.all( promises )

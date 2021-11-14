@@ -103,12 +103,14 @@ class _CEHomeState extends State<CEHomePage> {
       repoChunks.add( _repoBar );
       chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
-      // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
-      // if( gha.ceProject.any(( bool p ) => !p )) {}
-      for( var i = 0; i < gha.repos.length; i++ ) {
-         if( !gha.ceProject[i] ) {
-            repoChunks.add( _makeRepoChunk( gha.repos[i] ));
-            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+      if( gha != -1 ) {
+         // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
+         // if( gha.ceProject.any(( bool p ) => !p )) {}
+         for( var i = 0; i < gha.repos.length; i++ ) {
+            if( !gha.ceProject[i] ) {
+               repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+               chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+            }
          }
       }
       repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
@@ -165,38 +167,39 @@ class _CEHomeState extends State<CEHomePage> {
       acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
       runningLHSHeight += appState.BASE_TXT_HEIGHT;
 
-      if( appState.myGHAccounts != null || appState.ghUpdated ) {
+      // if( appState.myGHAccounts != null || appState.ghUpdated ) {
 
+      if( appState.myGHAccounts.length <= 0 ) {
+         acctList.addAll( _makeRepos( -1 ) );
+      }
+      else {
          for( final gha in appState.myGHAccounts ) {
             acctList.addAll( _makeCEProjs( gha ));
             acctList.addAll( _makeRepos( gha ));
          }
-         
-         appState.ghUpdated = false;
-         final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
-         final wrapPoint = lhsMaxWidth + vBarWidth + rhsPaneMinWidth;
-         
-         // Wrapped?  Reduce height to make room for rhsPane
-         var lhsHeight = appState.screenHeight * .946; // room for top bar
-         if( appState.screenWidth < wrapPoint ) {
-            lhsHeight = min( lhsHeight, runningLHSHeight );
-         }
-
-         return ConstrainedBox(
-            constraints: new BoxConstraints(
-               minHeight: appState.BASE_TXT_HEIGHT,
-               minWidth: lhsPaneMinWidth,
-               maxHeight: lhsHeight,
-               maxWidth:  lhsMaxWidth
-               ),
-            child: ListView(
-               scrollDirection: Axis.vertical,
-               children: acctList
-               ));
       }
-      else { 
-         return CircularProgressIndicator();
+      
+      appState.ghUpdated = false;
+      final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
+      final wrapPoint = lhsMaxWidth + vBarWidth + rhsPaneMinWidth;
+      
+      // Wrapped?  Reduce height to make room for rhsPane
+      var lhsHeight = appState.screenHeight * .946; // room for top bar
+      if( appState.screenWidth < wrapPoint ) {
+         lhsHeight = min( lhsHeight, runningLHSHeight );
       }
+      
+      return ConstrainedBox(
+         constraints: new BoxConstraints(
+            minHeight: appState.BASE_TXT_HEIGHT,
+            minWidth: lhsPaneMinWidth,
+            maxHeight: lhsHeight,
+            maxWidth:  lhsMaxWidth
+            ),
+         child: ListView(
+            scrollDirection: Axis.vertical,
+            children: acctList
+            ));
    }
    
    Widget _makeActivityZone() {

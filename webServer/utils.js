@@ -755,8 +755,6 @@ async function refreshLinkageSummary( authData, ghRepo, locData ) {
 
     let pd = { "Endpoint": shortName, "summary": summary }; 
     return await wrappedPostAWS( authData, shortName, pd );
-    
-    console.log( "... done refreshing linkage summary" );
 }
 
 // Called via linkage:addLoc from project/col handlers, and from ghUtils when creating unclaimed, ACCR, etc.
@@ -772,8 +770,6 @@ async function updateLinkageSummary( authData, loc ) {
 
     let pd = { "Endpoint": shortName, "newLoc": newLoc }; 
     return await wrappedPostAWS( authData, shortName, pd );
-    
-    console.log( "... done refreshing linkage summary" );
 }
 
 

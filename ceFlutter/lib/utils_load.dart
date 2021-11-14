@@ -460,8 +460,8 @@ void adjustSummaryAlloc( appState, peqId, List<String> sub, String subsub, split
          else if( !alloc.sourcePeq.contains( peqId ) && splitAmount > 0 ) { alloc.sourcePeq.add( peqId ); }
          else {
             // This should not be overly harsh.  Negotiations can remove then re-add.
-            print( "Uh oh.  AdjustSummaryAlloc $splitAmount $peqId " + alloc.toString() );
-            assert( false );
+            print( "Error.  XXX.  Uh oh.  AdjustSummaryAlloc $splitAmount $peqId " + alloc.toString() );
+            // assert( false );
          }
          
          return;

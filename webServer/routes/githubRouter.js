@@ -281,8 +281,16 @@ router.post('/:location?', async function (req, res) {
 	    tag = "iss"+parseInt(issueNum);
 	}
 	else {
-	    let cardContent = req.body['project_card']['note'].split('\n');
-	    tag = "*"+cardContent[0].substring(0,8)+"*";
+	    //  random timing.  thanks GQL.  XXX can not assert.
+	    if( req.body['project_card']['note'] == null )
+	    {
+		assert( action == 'deleted' );
+		tag = "<title deleted>";
+	    }
+	    else {
+		let cardContent = req.body['project_card']['note'].split('\n');
+		tag = "*"+cardContent[0].substring(0,8)+"*";
+	    }
 	}
 	tag = tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
     }
