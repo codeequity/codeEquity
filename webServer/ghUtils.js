@@ -952,7 +952,7 @@ async function rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, i
 	    let progCol = await createColumn( authData, projId, progName, "first" );
 	    console.log( "Creating new column:", progName );
 	    colId = progCol.data.id; 
-	    ghLinks.addLoc( authData, fullName, projName, projId, progName, colId );
+	    ghLinks.addLoc( authData, fullName, projName, projId, progName, colId, true );
 	}
     }
     
@@ -1050,7 +1050,7 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
 	await authData.ic.projects.createForRepo({ owner: pd.GHOwner, repo: pd.GHRepo, name: unClaimed, body: body })
 	    .then((project) => {
 		unClaimedProjId = project.data.id;
-		ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, config.EMPTY, -1 );
+		ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, config.EMPTY, -1, true );
 	    })
 	    .catch( e => unClaimedProjId = errorHandler( "createUnClaimedProject", e, createUnClaimedProject, authData, ghLinks, pd ));
     }
@@ -1074,7 +1074,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
 	    .then((column) => {
 		unClaimedColId = column.data.id;
-		ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, colName, unClaimedColId );
+		ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, colName, unClaimedColId, true );
 	    })
 	    .catch( e => unClaimedColId = errorHandler( "createUnClaimedColumn", e, createUnClaimedColumn, authData, ghLinks, pd, unClaimedProjId, issueId, accr ));
     }
@@ -1242,19 +1242,19 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 	if( progCol ) {
 	    progCol = await progCol;
-	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, progName, progCol.data.id );
+	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, progName, progCol.data.id, true );
 	}
 
 	if( pendCol ) {
 	    pendCol = await pendCol;
 	    foundReqCol[config.PROJ_PEND + 1] = pendCol.data.id;
-	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, pendName, pendCol.data.id );
+	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, pendName, pendCol.data.id, true );
 	}
 
 	if( accrCol ) {
 	    accrCol = await accrCol;
 	    foundReqCol[config.PROJ_ACCR + 1] = accrCol.data.id;
-	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, accrName, accrCol.data.id );			
+	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, accrName, accrCol.data.id, true );			
 	}
     }
     console.log( "Layout:", foundReqCol );

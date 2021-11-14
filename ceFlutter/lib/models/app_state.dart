@@ -93,7 +93,7 @@ class AppState {
       peqUpdated = false;
 
       myGHAccounts = [];
-      ghUpdated = false;
+      ghUpdated = false;      // XXX not in use?
 
       allocTree = null;
       updateAllocTree = false;

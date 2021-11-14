@@ -94,6 +94,14 @@ Resources:
         Name: PEQSummaryId
         Type: String
 
+  LinkageTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: CELinkage
+      PrimaryKey:
+        Name: CELinkageId
+        Type: String
+
 
 # SAM implicit API does not handle edge, cors properly. Explicit is
   #     required, meaning swagger def is required as well.
@@ -154,7 +162,7 @@ Resources:
     Properties:
       CodeUri: ./lambdaHandlers/
       Handler: awsDynamo.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       Timeout: 180
       Description: AWS Handler
       Events:
@@ -183,6 +191,8 @@ Resources:
           TableName: !Ref PEQRawTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PEQSummaryTable 
+       - DynamoDBCrudPolicy:
+          TableName: !Ref LinkageTable 
 
 
 

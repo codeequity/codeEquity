@@ -90,7 +90,9 @@ class PEQAction {
       res += "\n    " + enumToStr(verb) + ", " + enumToStr(action) + " " + subject.toString();
       res += "\n    entry made: " + entryDate;
       res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();
-      res += "\n    " + note;
+      if( note != null && note != "" ) {
+         res += "\n    " + note;
+      }
       return res;
    }
 

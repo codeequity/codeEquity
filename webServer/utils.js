@@ -242,6 +242,17 @@ async function setPopulated( authData, repo ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+// XXX
+async function pushLocs( authData, repo, locs ) {
+    console.log( authData.who, "Push loc data to AWS: ", repo );
+
+    let shortName = "PutLoc";
+    let postData = { "Endpoint": shortName, "GHRepo": repo, "Set": "false" };
+    
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+    
+
 // This needs to occur after linkage is overwritten.
 // Provide good subs no matter if using Master project indirection, or flat projects.
 async function getProjectSubs( authData, ghLinks, repoName, projName, colName ) {
@@ -720,6 +731,48 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     }
 }
 
+async function refreshLinkageSummary( authData, ghRepo, locData ) {
+    console.log( "Refreshing linkage summary" );
+
+    let locs = [];
+    for( const loc of locData ) {
+	let aloc = {};
+	
+	aloc.GHProjectId   = loc.GHProjectId;
+	aloc.GHProjectName = loc.GHProjectName;
+	aloc.GHColumnId    = loc.GHColumnId;
+	aloc.GHColumnName  = loc.GHColumnName;
+
+	locs.push( aloc );
+    }
+
+    let summary = {};
+    summary.GHRepo    = ghRepo;
+    summary.LastMod   = getToday();
+    summary.Locations = locs;
+
+    let shortName = "RecordLinkage"; 
+
+    let pd = { "Endpoint": shortName, "summary": summary }; 
+    return await wrappedPostAWS( authData, shortName, pd );
+}
+
+// Called via linkage:addLoc from project/col handlers, and from ghUtils when creating unclaimed, ACCR, etc.
+async function updateLinkageSummary( authData, loc ) {
+    console.log( "Updating linkage summary" );
+
+    let newLoc = {};
+    newLoc.GHRepo    = loc.GHRepo;
+    newLoc.LastMod   = getToday();
+    newLoc.Location  = loc;
+
+    let shortName = "UpdateLinkage"; 
+
+    let pd = { "Endpoint": shortName, "newLoc": newLoc }; 
+    return await wrappedPostAWS( authData, shortName, pd );
+}
+
+
 async function getRaw( authData, pactId ) {
     // console.log( authData.who, "Get raw PAction", pactId );
 
@@ -960,6 +1013,9 @@ exports.millisDiff = millisDiff;
 exports.getToday = getToday;
 exports.resolve = resolve;
 exports.processNewPEQ = processNewPEQ;
+
+exports.refreshLinkageSummary = refreshLinkageSummary;
+exports.updateLinkageSummary  = updateLinkageSummary;
 
 exports.getRaw   = getRaw; 
 exports.getPActs = getPActs;

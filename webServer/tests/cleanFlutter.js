@@ -15,10 +15,11 @@ async function clearIngested( authData, td ) {
 
 async function clearSummary( authData, td ) {
     const sums = await utils.getSummaries( authData, { "GHRepo": td.GHFullName });
-    const sumIds = sums.map( summary => [summary.PEQSummaryId] );    
-    console.log( "Clearing summaries for", sumIds );
-
-    let success = await utils.cleanDynamo( authData, "CEPEQSummary", sumIds );
+    if( sums != -1 ) {
+	const sumIds = sums.map( summary => [summary.PEQSummaryId] );    
+	console.log( "Clearing summaries for", sumIds );
+	await utils.cleanDynamo( authData, "CEPEQSummary", sumIds );
+    }
 }
 
 async function runTests() {

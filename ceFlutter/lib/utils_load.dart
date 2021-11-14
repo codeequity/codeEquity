@@ -439,7 +439,7 @@ Future<void> updateCEUID( appState, PEQAction pact, PEQ peq, context, container 
 
 
 
-void adjustSummaryAlloc( appState, List<String> sub, String subsub, splitAmount, PeqType peqType, String assignee ) {
+void adjustSummaryAlloc( appState, peqId, List<String> sub, String subsub, splitAmount, PeqType peqType, String assignee ) {
    
    assert( appState.myPEQSummary.allocations != null );
    
@@ -455,9 +455,15 @@ void adjustSummaryAlloc( appState, List<String> sub, String subsub, splitAmount,
          alloc.amount = alloc.amount + splitAmount;
          assert( alloc.amount >= 0 );
 
-         if( alloc.amount == 0 ) {
-            appState.myPEQSummary.allocations.remove( alloc );
+         if     ( alloc.amount == 0 )                                     { appState.myPEQSummary.allocations.remove( alloc ); }
+         else if( alloc.sourcePeq.contains(  peqId ) && splitAmount < 0 ) { alloc.sourcePeq.remove( peqId ); }
+         else if( !alloc.sourcePeq.contains( peqId ) && splitAmount > 0 ) { alloc.sourcePeq.add( peqId ); }
+         else {
+            // This should not be overly harsh.  Negotiations can remove then re-add.
+            print( "Error.  XXX.  Uh oh.  AdjustSummaryAlloc $splitAmount $peqId " + alloc.toString() );
+            // assert( false );
          }
+         
          return;
       }
    }
@@ -466,51 +472,86 @@ void adjustSummaryAlloc( appState, List<String> sub, String subsub, splitAmount,
    assert( peqType != PeqType.end && splitAmount >= 0 );
    
    // Create allocs, if not already updated.. 1 per assignee
+   assert( splitAmount > 0 );
    print( " ... adding new allocation" );
    if( subsub != "" ) { suba.add( subsub ); }
-   Allocation alloc = new Allocation( category: suba, amount: splitAmount, allocType: peqType,
+   Allocation alloc = new Allocation( category: suba, amount: splitAmount, sourcePeq: [peqId], allocType: peqType,
                                       ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "" );
    appState.myPEQSummary.allocations.add( alloc );
 }
 
 
+/* 
+   Basic Flow, based on makeIssue, add label, make project card, add assignee x 2, close, accrue
+   
+   makeIssue
+   add label
+   hYMgLYxllp   confirm add	---	<empty>	      [ { "S" : "DAcWeodOvb" } ]
+                 peq psub: [Software Contributions, Data Security]
+                 actual location: unclaimed:unclaimed
+
+   makeProjCard
+   oJHIzkqTwP   confirm relocate---	<empty>	      [ { "S" : "DAcWeodOvb" }, { "S" : "13302090" }, { "S" : "15978796" } ]
+                 pact sub: peqID, destination project ID, destination column ID
+                 peq psub: [Software Contributions, Data Security]  
+                 location in GH: dataSec:planned
+
+https://github.com/ariCETester/CodeEquityTester/projects/428#column-15978796
+   add assignees
+   GMpDtDUucD   confirm change	---	add assignee  [ { "S" : "DAcWeodOvb" }, { "S" : "ariCETester" } ]
+   HGyfhTfPCl   confirm change	---	add assignee  [ { "S" : "DAcWeodOvb" }, { "S" : "codeequity" } ]
+   YIQBiXPbru   confirm notice	---	<empty>	      [ { "S" : "DAcWeodOvb" } ]
+   fjbjbYCcYn   propose accrue	---	<empty>	      [ { "S" : "DAcWeodOvb" } ]
+   JhkTqESCvR   confirm accrue	---	<empty>	      [ { "S" : "DAcWeodOvb" } ]
+*/
+
+
+// XXX string constants in here?
+// XXX need to be updating PEQ in AWS after processing!  Ouch... slow, but could speed it up..
 // XXX Hmm.. why is "allocated" treated differently than "planned", "proposed" and "accrued" ?  that's why the length sort.
 //     Fix this before timestamp sort.  also interacts with adjustSummaryAlloc
 // XXX this may need updating if allow 1:many ce/gh association.  maybe limit ce login to 1:1 - pick before see stuff.
 // Assignees use gh names instead of ce ids - user comfort
 void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
+   print( "\n-------------------------------" );
    print( "processing " + enumToStr(pact.verb) + " " + enumToStr(pact.action) + ", " + enumToStr(peq.peqType) + " for " + peq.amount.toString() );
-   final appState  = container.state;
+   final appState = container.state;
 
    // Wait here, else summary may be inaccurate
    await updateCEUID( appState, pact, peq, context, container );
 
    // Create, if need to
    if( appState.myPEQSummary == null ) {
-      print( "Create new appstate PSum" );
+      print( "Create new appstate PSum\n" );
       String pid = randomAlpha(10);
       appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: peq.ghRepo,
                                               targetType: "repo", targetId: peq.ghProjectId, lastMod: getToday(), allocations: [] );
    }
 
+   // XXX LabelTest dubs ends up with peqType == grant.  all others are plan or alloc
+   List<String> subAllc = new List<String>.from( peq.ghProjectSub );
+   List<String> subProp = new List<String>.from( peq.ghProjectSub ); subProp.add( "Pending" );
+   List<String> subPlan = new List<String>.from( peq.ghProjectSub ); subPlan.add( "Planned" );
+   List<String> subAccr = new List<String>.from( peq.ghProjectSub ); subAccr.add( "Accrued" );
+
+   List<String> assignees = peq.ghHolderId;
+   if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }
+   int splitAmount = (peq.amount / assignees.length).floor();
+   
    if( pact.action == PActAction.notice ) {
       print( "Peq Action is a notice event: " + pact.subject.toString() );
       print( "updated CEUID if available - no other action needed." );
    }
    else if( pact.action == PActAction.accrue ) {
+      // Once see action accrue, should have already seen peqType.pending
       print( "Accrue PAct " + enumToStr( pact.action ) + " " + enumToStr( pact.verb ));
       List<String> sub = new List<String>.from( peq.ghProjectSub );
 
-      List<String> assignees = peq.ghHolderId;
-      if( assignees.length == 0 ) {
+      if( assignees.length == 1 && assignees[0] == "Unassigned" ) {
          print( "WARNING.  Must have assignees in order to accrue!" );
          return;
       }
-      int splitAmount = (peq.amount / assignees.length).floor();
       
-      List<String> subProp = new List<String>.from( peq.ghProjectSub ); subProp.add( "Pending" );
-      List<String> subPlan = new List<String>.from( peq.ghProjectSub ); subPlan.add( "Planned" );
-      List<String> subAccr = new List<String>.from( peq.ghProjectSub ); subAccr.add( "Accrued" );
       // iterate over assignees
       for( var assignee in assignees ) {
          print( "\n Assignee: " + assignee );
@@ -519,21 +560,21 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
          String newType = "";
          if( pact.verb == PActVerb.propose ) {
             // add propose, rem plan
-            adjustSummaryAlloc( appState, subProp, "", splitAmount, PeqType.pending, assignee );
-            adjustSummaryAlloc( appState, subPlan, "", -1 * splitAmount, PeqType.plan, assignee );
+            adjustSummaryAlloc( appState, peq.id, subProp, "", splitAmount, PeqType.pending, assignee );
+            adjustSummaryAlloc( appState, peq.id, subPlan, "", -1 * splitAmount, PeqType.plan, assignee );
             newType = enumToStr( PeqType.pending );
          }
          else if( pact.verb == PActVerb.reject ) {
             // rem propose, add plan
-            adjustSummaryAlloc( appState, subProp, "", -1 * splitAmount, PeqType.pending, assignee );
-            adjustSummaryAlloc( appState, subPlan, "", splitAmount, PeqType.plan, assignee );
+            adjustSummaryAlloc( appState, peq.id, subProp, "", -1 * splitAmount, PeqType.pending, assignee );
+            adjustSummaryAlloc( appState, peq.id, subPlan, "", splitAmount, PeqType.plan, assignee );
             newType = enumToStr( PeqType.plan );
          }
          // XXX  HERE
          else if( pact.verb == PActVerb.confirm ) {
             // rem propose, add accrue
-            adjustSummaryAlloc( appState, subProp, "", -1 * splitAmount, PeqType.pending, assignee );
-            adjustSummaryAlloc( appState, subAccr, "",  splitAmount, PeqType.grant, assignee );
+            adjustSummaryAlloc( appState, peq.id, subProp, "", -1 * splitAmount, PeqType.pending, assignee );
+            adjustSummaryAlloc( appState, peq.id, subAccr, "",  splitAmount, PeqType.grant, assignee );
             newType = enumToStr( PeqType.grant );
          }
          else {
@@ -551,28 +592,64 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       }
    }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
-
+      // When adding, should only see peqType alloc or plan
       if( peq.peqType == PeqType.allocation ) {
 
          String pt = peq.ghIssueTitle;
-         adjustSummaryAlloc( appState, peq.ghProjectSub, pt, peq.amount, PeqType.allocation, EMPTY );
+         adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, pt, peq.amount, PeqType.allocation, EMPTY );
       }
       else if( peq.peqType == PeqType.plan ) {
          print( "Plan PEQ" );
 
          List<String> sub = new List<String>.from( peq.ghProjectSub ); sub.add( "Planned" );
          
-         List<String> assignees = peq.ghHolderId;
-         if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }
-         int splitAmount = (peq.amount / assignees.length).floor();
-
          // iterate over assignees
          for( var assignee in assignees ) {
             print( "\n Assignee: " + assignee );
-            adjustSummaryAlloc( appState, sub, "", splitAmount, PeqType.plan, assignee );
+            adjustSummaryAlloc( appState, peq.id, sub, "", splitAmount, PeqType.plan, assignee );
          }
       }
-      else { notYetImplemented( context ); }
+      else {
+         print( "Error.  Action add on peqType of " + peq.peqType.toString() );
+         notYetImplemented( context );
+      }
+   }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate ) {
+      // Relocate, peqType can be anything
+
+      // peq will be from the past.
+      // psub:  [Software Contributions, Data Security]
+      // alloc: [Software Contributions, Data Security, Planned, Unassigned]
+      // note:  [DAcWeodOvb, 13302090, 15978796]
+      print( "Relo PEQ" );
+      
+      List<String> sub = [];
+      if     ( peq.peqType == PeqType.end )        { sub = subAllc; }
+      else if( peq.peqType == PeqType.allocation ) { sub = subAllc; }
+      else if( peq.peqType == PeqType.plan )       { sub = subPlan; }
+      else if( peq.peqType == PeqType.pending )    { sub = subProp; }
+      else if( peq.peqType == PeqType.grant )      { sub = subAccr; }
+
+      /*
+      // iterate over assignees
+      for( var assignee in assignees ) {
+         print( "\n Assignee: " + assignee );
+         
+         // Peq must be in allocations, somewhere.  Find it.
+         var sourceAlloc = appState.myPEQSummary.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ) );
+         if( sourceAlloc == null ) { print( "Error.  Can't move an allocation that does not exist" ); }
+         
+         adjustSummaryAlloc( appState, peq.id, sub, "", -1 * splitAmount, peq.peqType, assignee );
+         let sourceAlloc = appState.myPEQSummary.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ) );
+         if( sourceAlloc != null ) { print( "Error.  Allocation should not longer exist" ); }
+
+         // Move to column.. Need to get name.
+         // ghGet is public-only.  Our projects may be private.  Have initial PAT...
+         adjustSummaryAlloc( appState, peq.id, subAccr, "",  splitAmount, PeqType.grant, assignee );
+         
+      }
+      */
+      
    }
    else { notYetImplemented( context ); }
 
@@ -639,7 +716,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    todos.sort((a, b) => a.item1.timeStamp.compareTo(b.item1.timeStamp));
 
    // XXX Probably want another pass to stack up all updateCEUIDs.  Most can lay ontop of one another.
-   print( "Will now process " + todoPActions.length.toString() + " pactions for " + foundPeqs.toString() + " peqs." );
+   print( "Will now process " + todoPActions.length.toString() + " pactions for " + foundPeqs.toString() + " non-unique peqs." );
    for( var tup in todos ) {
       final pa = tup.item1;
       final pp = tup.item2;

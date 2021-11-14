@@ -415,7 +415,7 @@ Done with GitHub for the moment, Connie opens the CE Flutter app to see what has
 
 This second example follows Jessie converting an existing GitHub project board into a CodeEquity
 project.  Jessie is already a contributor to several repositories owned by other people, and is the
-owner of several others.  Jessie is exited by the possibility of attracting more developers, and has
+owner of several others.  Jessie is excited by the possibility of attracting more developers, and has
 decided to convert the BookShare FrontEnd (or BookShareFE) 
 project into a CodeEquity project.  The BookShareFE project is part of the BookShare repository in
 GitHub, and both the repo and the project are already in active use.

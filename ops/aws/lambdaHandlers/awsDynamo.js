@@ -77,6 +77,8 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
     else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
+    else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
+    else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood", context.awsRequestId));
 	return;
@@ -455,6 +457,83 @@ async function putPerson( newPerson ) {
     return personPromise.then(() => success( true ));
 }
 
+async function getLinkage( ghRepo ) {
+    const params = {
+        TableName: 'CELinkage',
+        FilterExpression: 'GHRepo = :ghRepo',
+        ExpressionAttributeValues: { ":ghRepo": ghRepo }
+    };
+
+    let lPromise = paginatedScan( params );
+    return lPromise.then((l) => {
+	if( l.length >= 1 ) {
+	    assert( l.length == 1 );
+	    console.log( "Found linkage summary ", l[0].CELinkageId );
+	    return l[0];
+	}
+	else return -1;
+    });
+}
+
+// Write an already well-formed summary
+async function writeLinkHelp( summary ) {
+    const params = {
+        TableName: 'CELinkage',
+	Item:      summary
+    };
+
+    let pPromise = bsdb.put( params ).promise();
+    return pPromise.then(() => success( summary.CELinkageId ));
+}
+
+async function putLinkage( summary ) {
+    // get any entry with summary.GHRepo, overwrite
+    let oldSummary = await getLinkage( summary.GHRepo );  
+    
+    // write new summary
+    summary.CELinkageId = oldSummary == -1 ? randAlpha(10) : oldSummary.CELinkageId;
+    return await writeLinkHelp( summary );
+}
+
+async function updateLinkage( newLoc ) {
+    // get any entry with summary.GHRepo, overwrite
+    let oldSummary = await getLinkage( newLoc.GHRepo );
+
+    // Note!  First created project in repo will not have summary.
+    if( oldSummary == -1 ) {
+	oldSummary = {};
+	oldSummary.CELinkageId = randAlpha(10);
+	oldSummary.GHRepo      = newLoc.GHRepo; 
+    }
+
+    // Update according to newLoc
+    oldSummary.lastMod = newLoc.lastMod;
+    let foundLoc = false;
+    if( 'Locations' in oldSummary ) {
+	for( const loc of oldSummary.Locations ) {
+	    // Catch name change
+	    if( loc.GHProjectId == newLoc.GHProjectId && loc.GHColumnId == newLoc.GHColumnId ) {
+		loc.GHProjectName = newLoc.GHProjectName;
+		loc.GHColumnName  = newLoc.GHColumnName;
+		foundLoc = true;
+	    }
+	}
+    }
+    else { oldSummary.Locations = []; }
+
+    // Add, if not already present
+    if( !foundLoc ) {
+	let aloc = {};
+	aloc.GHProjectId   = newLoc.GHProjectId;
+	aloc.GHProjectName = newLoc.GHProjectName;
+	aloc.GHColumnId    = newLoc.GHColumnId;
+	aloc.GHColumnName  = newLoc.GHColumnName;
+	oldSummary.Locations.push( aloc );
+    }
+
+    return await writeLinkHelp( oldSummary );
+}
+
 async function checkSetGHPop( repo, setVal ) {
 
     let params = { TableName: 'CERepoStatus' };
@@ -691,8 +770,8 @@ async function unIngest( tableName, query ) {
 	Limit: 99,
     };
     let unprocPromise = paginatedScan( params );
-    const pacts   = await unprocPromise;
-    const pactIds = pacts.map( pact => pact.PEQActionId );
+    let pacts   = await unprocPromise;
+    let pactIds = pacts.map( pact => pact.PEQActionId );
     
     let promises = [];
     pactIds.forEach(function (pactId) {
@@ -704,6 +783,29 @@ async function unIngest( tableName, query ) {
 	
 	promises.push( bsdb.update( params ).promise() );
     });
+
+
+    // All locked should be unlocked.
+    const lParams = {
+        TableName: tableName,
+        FilterExpression: 'GHRepo = :ghrepo AND Locked = :true',
+        ExpressionAttributeValues: { ':ghrepo': query.GHRepo , ':true': "true" },
+	Limit: 99,
+    };
+    unprocPromise = paginatedScan( lParams );
+    pacts   = await unprocPromise;
+    pactIds = pacts.map( pact => pact.PEQActionId );
+    
+    pactIds.forEach(function (pactId) {
+	const params = {
+	    TableName: tableName,
+	    Key: {"PEQActionId": pactId },
+	    UpdateExpression: 'set Locked = :false',
+	    ExpressionAttributeValues: { ':false': "false" }};
+	
+	promises.push( bsdb.update( params ).promise() );
+    });
+
 
     // Promises execute in parallel, collect in order
     return await Promise.all( promises )
