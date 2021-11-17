@@ -88,8 +88,8 @@ class PEQAction {
       String res = "\nPEQAction for ceUserId: " + ceUID;
       res += "\n    ghUser: " + ghUserName + ", repo: " + ghRepo;
       res += "\n    " + enumToStr(verb) + ", " + enumToStr(action) + " " + subject.toString();
-      res += "\n    entry made: " + entryDate;
-      res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();
+      // res += "\n    entry made: " + entryDate;
+      // res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();
       if( note != null && note != "" ) {
          res += "\n    " + note;
       }

@@ -10,7 +10,8 @@ import 'package:ceFlutter/models/PEQ.dart';
 // This is not intended to be independently stored in dynamo, only in association with PEQSummary
 
 class Allocation {
-   final List<String> category;        // i.e. [founding], [software contributions, awsOperations]
+   final List<String> category;        // i.e. [founding], [Software Contributions, Data Security, Planned, Unassigned]
+   final List<String> categoryBase;    // i.e. category, minus "planned", assignee
    int                amount;          // amount of provisional equity for this category
    List<String>       sourcePeq;       // all PEQs that make up the total for this category.  
    PeqType            allocType;
@@ -22,17 +23,19 @@ class Allocation {
    Allocation({this.category, this.amount, this.sourcePeq, this.allocType, this.ceUID, this.ghUserName, this.vestedPerc, this.notes });
 
    // Not explicitly constructed in lambda handler - watch caps
-   dynamic toJson() => {'Category': category, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
+   dynamic toJson() => {'Category': category, 'CategoryBase: categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
                            'CEUID': ceUID, 'GHUserName': ghUserName, 
                            'Vested': vestedPerc, 'Notes': notes };
    
    factory Allocation.fromJson(Map<String, dynamic> json) {
 
-      var dynamicCat    = json['Category'];
-      var dynamicSource = json['SourcePEQ'];
+      var dynamicCat     = json['Category'];
+      var dynamicCatBase = json['CategoryBase'];
+      var dynamicSource  = json['SourcePEQ'];
 
       return Allocation(
          category:      new List<String>.from(dynamicCat),
+         categoryBase:  new List<String>.from(dynamicCatBase),
          amount:        json['Amount'],
          sourcePeq:     new List<String>.from(dynamicSource),
          allocType:     enumFromStr<PeqType>( json['AllocType'], PeqType.values ),

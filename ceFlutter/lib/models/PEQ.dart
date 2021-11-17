@@ -87,13 +87,12 @@ class PEQ {
    }
    
    String toString() {
-      String res = "\n" + ghRepo + " PEQs";
-      res += "\n    active? " + active.toString();
+      String res = "\n" + ghRepo + " PEQs, active? " + active.toString();
       res += "\n   " + amount.toString() + " PEQ, for: " + ghIssueTitle;
-      res += "\n    grantor: " + ceGrantorId;
+      // res += "\n    grantor: " + ceGrantorId;
       res += "\n    type: " + enumToStr(peqType) + ", accrued: " + accrualDate + ", vested %: " + vestedPerc.toString();
       res += "\n    projectSub: " + ghProjectSub.toString() + " projId: " + ghProjectId + ", issue: " + ghIssueId;
-      res += "\n    holder: " + ceHolderId.toString();
+      // res += "\n    holder: " + ceHolderId.toString();
       res += "\n    GHholder: " + ghHolderId.toString();
       res += "\n";
 
