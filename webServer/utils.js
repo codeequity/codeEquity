@@ -483,13 +483,16 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
 
     // Confirm call chain is as expected.  Do NOT want to be modifying ACCR peq vals
     assert( link.GHColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
-    
+
     let newPEQ = await getPeq( authData, pd.GHIssueId );
-    console.log( "Updating peq", newPEQ.PEQId, peqVal );
-    updatePEQVal( authData, newPEQ.PEQId, peqVal );
+
+    // do NOT update aws.. rely on ceFlutter to update values during ingest, using pact.  otherwise, when a split happens after
+    // the initial peq has been ingested, if ingest is ignoring this pact, new value will not be picked up correctly.
+    // console.log( "Updating peq", newPEQ.PEQId, peqVal );
+    // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
     recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-		     config.PACTVERB_CONF, "change", [newPEQ.PEQId], "peq val update", 
+		     config.PACTVERB_CONF, "change", [newPEQ.PEQId], "peq val update",   // XXX formalize
 		     getToday(), pd.reqBody );
 }
 

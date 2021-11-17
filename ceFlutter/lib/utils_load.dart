@@ -466,7 +466,7 @@ Future<void> updateCEUID( appState, PEQAction pact, PEQ peq, context, container 
 
 
 // One allocation per category.. i.e. project:column:pallocCat or project:column:assignee.  Could also be project:project is first is the master proj
-void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmount, PeqType peqType, Allocation source = null ) {
+void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmount, PeqType peqType, {Allocation source = null} ) {
    
    assert( appState.myPEQSummary.allocations != null );
 
@@ -477,8 +477,8 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
       suba.add( subCat );
    }
    else {
-      suba   = source;
-      subCat = source.last;
+      suba   = source.category;
+      subCat = source.category.last;
    }
    
    print( "Adjust summary allocation " + suba.toString() );
@@ -508,10 +508,11 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    assert( peqType != PeqType.end && splitAmount >= 0 );
    assert( source == null );
    assert( splitAmount > 0 );
+   assert( peqType == PeqType.allocation || suba.length >= 3 );
 
-   // depending on peqType, suba will be the base (allocation), or will have an extra "plan" attached.
+   // depending on peqType, suba will be the base (allocation), or will have an extra "plan" "assignee" attached.
    String assignee      = peqType == PeqType.allocation ? "" : subCat;
-   List<String> catBase = peqType == PeqType.allocation ? suba : suba.sublist(0, suba.length-1);
+   List<String> catBase = peqType == PeqType.allocation ? suba : suba.sublist(0, suba.length-2);
    
    // Create allocs, if not already updated
    print( " ... adding new Allocation" );
@@ -558,6 +559,7 @@ note:  [DAcWeodOvb, 13302090, 15978796]
 // Updating PEQ.........  safe to change assignees, types, etc. on the fly?  must be sure not being used below.
 //                        regardless, if no uningested PActs involve PEQ, PEQ should be pristine.  clean, not dirty.
 
+// XXX reverse index by peqId would save a lot of lookups
 // XXX need to be updating PEQ in AWS after processing!  Ouch... slow, but could speed it up..
 // XXX Hmm.. why is "allocated" treated differently than "planned", "proposed" and "accrued" ?  that's why the length sort.
 //     Fix this before timestamp sort.  also interacts with adjustSummaryAlloc
@@ -568,7 +570,7 @@ note:  [DAcWeodOvb, 13302090, 15978796]
 // ceServer will...
 //    not modify PAct after issuing it.
 //    not modify peq.peqType, peq.id after initial creation
-//    modify peq.amount for current peq after split.
+//    not modify peq.amount after initial creation
 //    modify peq.GHProjectSub after first relo from unclaimed to initial home
 //    set assignees only if issue existed before it was PEQ (pacts wont see this assignment)
 // ---------------
@@ -590,32 +592,28 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    }
 
    List<Allocation> appAllocs = appState.myPEQSummary.allocations;
-   
-   // XXX reverse index by peqId would save a lot of lookups
-   // Has PEQ already entered system?  Use it, else get one time fix from peq.
-   // Note.  The first time a peq enters the system, peq.ghProjectSub is 'unclaimed'.  However,
-   //        after label + attach to card, ceServer rewrites peq.ghProjectSub to reflect the new home.
-   List<String> subBase = [];
-   Allocation ka = appAllocs.firstWhere( (a) => a.sourcePeq.contains( peq.id ), orElse: () => -1 );
-   subBase =  ka == -1 ? peq.GHProjectSub : ka.categoryBase; 
 
-   // Set assignees.  Incoming PEQ holderIds are only useful if related issue was assigned before it was PEQ.  Otherwise, not updated by ceServer.
-   // So, allocations rule, if they exist.  Otherwise, this should be an add.
-   // Issue:card is 1:1, so peq only shows up in 1 category until assignees.  
+   // is PEQ already a Known Alloc?  Always use it when possible - is the most accurate current view during ingest.
+   // remember, issue:card is 1:1, and issue+assignee has exactly 1 allocation in appState (makes up alloc.category)
+   // peq.projsub? unclaimed, or updated to reflect first home outside unclaimed.  only.
+   // peq.ghUser?  empty, or reflects only issues assigned before becoming peq.  
+   // peq.amount?  full initial peq amount for the issue, independent of number of assignees.  assigneeShares are identical per assignee per issue.
    List<String> assignees = [];
-   bool foundAlloc = false;
+   Allocation ka          = null;
    for( Allocation alloc in appAllocs.where( (a) => a.sourcePeq.contains( peq.id ) )) {
       assignees.add( alloc.ghUserName );
-      foundAlloc = true;
+      ka = alloc;
    }
-   if( !foundAlloc ) {
+   if( ka == null ) {
       assert( pact.verb == PActVerb.confirm && pact.action == PActAction.add );
       assignees = peq.ghHolderId;
       if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }
    }
-   int splitAmount = (peq.amount / assignees.length).floor();
 
+   List<String> subBase = ka == null ? peq.ghProjectSub                        : ka.categoryBase; 
+   int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.amount;
    
+
    // propose accrue == pending.   confirm accrue == grant.  others are plan.  end?
    if( pact.action == PActAction.notice ) {
       print( "Peq Action is a notice event: " + pact.subject.toString() );
@@ -640,20 +638,20 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
          String newType = "";
          if( pact.verb == PActVerb.propose ) {
             // add propose, rem plan
-            adjustSummaryAlloc( appState, peq.id, subProp, assignee, splitAmount, PeqType.pending ); 
-            adjustSummaryAlloc( appState, peq.id, subPlan, assignee, -1 * splitAmount, PeqType.plan );
+            adjustSummaryAlloc( appState, peq.id, subProp, assignee, assigneeShare, PeqType.pending ); 
+            adjustSummaryAlloc( appState, peq.id, subPlan, assignee, -1 * assigneeShare, PeqType.plan );
             newType = enumToStr( PeqType.pending );
          }
          else if( pact.verb == PActVerb.reject ) {
             // rem propose, add plan
-            adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * splitAmount, PeqType.pending );
-            adjustSummaryAlloc( appState, peq.id, subPlan, assignee, splitAmount, PeqType.plan);
+            adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * assigneeShare, PeqType.pending );
+            adjustSummaryAlloc( appState, peq.id, subPlan, assignee, assigneeShare, PeqType.plan);
             newType = enumToStr( PeqType.plan );
          }
          else if( pact.verb == PActVerb.confirm ) {
             // rem propose, add accrue
-            adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * splitAmount, PeqType.pending );
-            adjustSummaryAlloc( appState, peq.id, subAccr, assignee,  splitAmount, PeqType.grant );
+            adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * assigneeShare, PeqType.pending );
+            adjustSummaryAlloc( appState, peq.id, subAccr, assignee,  assigneeShare, PeqType.grant );
             newType = enumToStr( PeqType.grant );
          }
          else {
@@ -661,11 +659,13 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
             assert( false );
          }
 
+         /*
          var postData = {};
          postData['PEQId']    = peq.id;
          postData['PeqType']  = newType;
          var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
          await updateDynamo( context, container, json.encode( pd ), "UpdatePEQ" );
+         */
       }
    }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
@@ -673,7 +673,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       if( peq.peqType == PeqType.allocation ) {
          // Note.. title will be set to future value here. Will create redundant 'change' in future ingest item
          String pt = peq.ghIssueTitle;
-         adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, pt, peq.amount, PeqType.allocation );  // XXX peq.amount?
+         adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, pt, peq.amount, PeqType.allocation ); 
       }
       else if( peq.peqType == PeqType.plan ) {
          print( "Plan PEQ" );
@@ -682,7 +682,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
          // iterate over assignees
          for( var assignee in assignees ) {
             print( "\n Assignee: " + assignee );
-            adjustSummaryAlloc( appState, peq.id, subPlan, assignee, splitAmount, PeqType.plan );
+            adjustSummaryAlloc( appState, peq.id, subPlan, assignee, assigneeShare, PeqType.plan );
          }
       }
       else {
@@ -692,59 +692,54 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate ) {
       // Note.  The only cross-project moves allowed are from unclaimed: to a new home.  This move is programmatic via ceServer.
-      //        ceServer does not ..... XXXX
-      // XXX speedup.  eliminate redundant remove/add when sourceAlloc.category == tsub (first peq add, then first relo to initial project home).
 
       print( "Relo PEQ" );
 
-      var sourceAlloc = appAllocs.firstWhere( (a) => a.sourcePeq.contains( peq.id ), orElse: () => -1 );
+      Allocation sourceAlloc = ka != null ? ka : -1;
       assert( sourceAlloc != -1 );
+      assert( sourceAlloc.category.length >= 1 );
 
       // Get name of new column home
       assert( pact.subject.length == 3 );
       var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectId == pact.subject[1] && a.ghColumnId == pact.subject[2], orElse: () => null );
       assert( loc != null );
 
-      // XXX XXX XXXX XXXX
-      // NOTE peq.psub IS the correct initial home after unclaimed residence.
-      //      in relo.  if alloc.cat is unclaimed (haven't seen init home yet), use peq.  else, use column (only moves within proj)..    
-      //      what if relo 2x?
-      //       first relo uses peq.  all others must be within project, so column name is perfect.
+      // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
+      // So, (if no existing alloc, use psub - can't happen).  If alloc.cat is not unclaimed, use column (only moves within proj).
+      // If alloc.cat is unclaimed, ceServer will move across projects.  use psub.   Test col.  Will be stable even with multiple relos, since
+      // psub is only overwritten the first time after unclaimed is claimed.
       // pallocs do not have assignees
-      // XXX This will not hold up when move is across projects.  E.g. unclaimed:unclaimed.
-      if( sourceAlloc.sourceType == PeqType.allocation ) {
+      if( sourceAlloc.allocType == PeqType.allocation ) {
          // Remove it
-         adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * splitAmount, sourceAlloc.allocType, sourceAlloc );
+         adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, sourceAlloc.allocType, source: sourceAlloc );
 
          print( "  .. relocating to " + loc.toString() );
-         var tsub = subBase;
-         adjustSummaryAlloc( appState, peq.id, sourceAlloc., assignee, splitAmount, sourceAlloc.allocType ); 
          
+         if( sourceAlloc.category[0] == "Unclaimed" ) {   // XXX formalize
+            adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, peq.ghIssueTitle, assigneeShare, sourceAlloc.allocType ); 
+         }
+         else {
+            // Have at least proj, col, title.
+            assert( sourceAlloc.category.length >= 2 );
+            List<String> suba = new List<String>.from( sourceAlloc.category.sublist(0, sourceAlloc.category.length-2) );
+            suba.add( loc.ghColumnName );
+            adjustSummaryAlloc( appState, peq.id, suba, sourceAlloc.category.last, assigneeShare, sourceAlloc.allocType ); 
+         }
       }
       else
       {
-         // iterate over assignees  XXX nah... iterate over where peq.id.  check assignees.contains()
-         for( var assignee in assignees ) {
-            print( "\n Assignee: " + assignee );
+         // Exactly one alloc per peq.id,assignee pair
+         for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.contains( peq.id ) )) {
+            assert( assignees.contains( sourceAlloc.ghUserName ));
             
-            // Peq must be in allocations, somewhere.  There is exactly one.  Find it, remove it.
-            var sourceAlloc = appAllocs.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ), orElse: () => null );
-            if( sourceAlloc == null ) { print( "Error.  Can't move an allocation that does not exist" ); assert( false );}
-            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * splitAmount, sourceAlloc.allocType, sourceAlloc );
-            
-            // XXX early testing only, remove
-            var tAlloc = appAllocs.firstWhere( (a) => a.sourcePeq.contains( peq.id ) && a.category.contains( assignee ), orElse: () => null );
-            if( tAlloc != null ) { print( "Error.  Allocation should not longer exist" ); }
-            
-            // Add to new home (column). Need to get name.
-            assert( pact.subject.length == 3 );
-            var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectId == pact.subject[1] && a.ghColumnId == pact.subject[2], orElse: () => null );
-            assert( loc != null );
+            print( "\n Assignee: " + sourceAlloc.ghUserName );
+            // remove
+            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, sourceAlloc.allocType, source: sourceAlloc );
             
             print( "  .. relocating to " + loc.toString() );
             var tsub = subBase;
             tsub.add( loc.ghColumnName );
-            adjustSummaryAlloc( appState, peq.id, tsub, assignee, splitAmount, sourceAlloc.allocType ); 
+            adjustSummaryAlloc( appState, peq.id, tsub, sourceAlloc.ghUserName, assigneeShare, sourceAlloc.allocType ); 
          }
       }
       
@@ -753,37 +748,29 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
 
       // Hmmm...  peq.ghHolder will only inform us of the latest status, not all the changes in the middle.
       //          Ingest needs to track all the changes in the middle 
-      
+
+      // XXX !!! need "remove assignee" !!!
+      // XXX !!! need "peq val update" !!!
       if( pact.note == "add assignee" ) {    // XXX formalize this
          print( "Add assignee: " + pact.subject.last );
 
          var curAssign  = [ pact.subject.last ];
-         // Count the current assignees != unassigned.  readjust splitAmount.
-         for( assign in assignes ) {
+         // Count the current assignees != unassigned.  readjust assigneeShare.
+         for( String assign in assignees ) {
             if( assign != "Unassigned" ) { curAssign.add( assign ); }   // XXX formalize this            
          }
-         
-         var sourceType = -1;
-         var baseCat    = [];
-         var oldBaseCat = [];
-         // Get baseCat.  Do some error checking as well.. else would be a firstwhere
-         for( Allocation alloc in appAllocs.where( (a) => a.sourcePeq.contains( peq.id ) )) {
-            oldBaseCat = baseCat;
-            var lalloc = alloc.category.length;
-            baseCat    = alloc.category.sublist( 0, lalloc - 1 );
-            sourceType = alloc.allocType;
 
-            assert( sourceType != PeqType.allocation );
-            assert( oldBaseCat == [] || oldBaseCat == baseCat );  // only assignees should be changing
-         }
+         assert( ka != null );
+         assert( ka.allocType != PeqType.allocation );
 
-         var curSplitAmount = (peq.amount / curAssign.length).floor();  // XXX peq.amount
+         var sourceType     = ka.allocType;
+         var baseCat        = ka.category.sublist( 0, ka.category.length-1 );
+         var curSplitAmount = ( ka.amount * assignees.length / curAssign.length ).floor();  
 
-         // Second, remove all old, add all current with new splitAmounts
-         assert( sourceType != -1 );
+         // Remove all old, add all current with new assigneeShares
          for( var assign in assignees ) {
-            print( "Remove " + baseCat.toString + " " + assign + " " + splitAmount.toString() );
-            adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * splitAmount, sourceType );
+            print( "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
+            adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
          }
          for( var assign in curAssign ) {
             print( "Add " + assign + " " + curSplitAmount.toString() );

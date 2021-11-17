@@ -20,10 +20,10 @@ class Allocation {
    double             vestedPerc;      // granted or accrued
    final String       notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
 
-   Allocation({this.category, this.amount, this.sourcePeq, this.allocType, this.ceUID, this.ghUserName, this.vestedPerc, this.notes });
+   Allocation({this.category, this.categoryBase, this.amount, this.sourcePeq, this.allocType, this.ceUID, this.ghUserName, this.vestedPerc, this.notes });
 
    // Not explicitly constructed in lambda handler - watch caps
-   dynamic toJson() => {'Category': category, 'CategoryBase: categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
+   dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
                            'CEUID': ceUID, 'GHUserName': ghUserName, 
                            'Vested': vestedPerc, 'Notes': notes };
    
