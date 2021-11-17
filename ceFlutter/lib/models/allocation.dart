@@ -9,11 +9,14 @@ import 'package:ceFlutter/models/PEQ.dart';
 // PEQSummary collects these to present an overall provisional equity structure.
 // This is not intended to be independently stored in dynamo, only in association with PEQSummary
 
+// 1 Alloc per project/{project}/column/assignee .. so 1 peq      : m allocations  where m = number of assignees.
+//                                                     1 assignee : n allocations where n = number of peqs for assignee
+
 class Allocation {
    final List<String> category;        // i.e. [founding], [Software Contributions, Data Security, Planned, Unassigned]
    final List<String> categoryBase;    // i.e. category, minus "planned", assignee
    int                amount;          // amount of provisional equity for this category
-   List<String>       sourcePeq;       // all PEQs that make up the total for this category.  
+   Map<String,int>    sourcePeq;       // all peqId:value that make up the total for this category. 
    PeqType            allocType;
    final String       ceUID;           // if Plan or Grant, who is it for
    final String       ghUserName;      // ghUser associated with ceUID
@@ -33,11 +36,14 @@ class Allocation {
       var dynamicCatBase = json['CategoryBase'];
       var dynamicSource  = json['SourcePEQ'];
 
+      Map<String,int> sp = {};
+      dynamicSource.forEach((k,v) { sp[k] = v; });
+      
       return Allocation(
          category:      new List<String>.from(dynamicCat),
          categoryBase:  new List<String>.from(dynamicCatBase),
          amount:        json['Amount'],
-         sourcePeq:     new List<String>.from(dynamicSource),
+         sourcePeq:     sp,
          allocType:     enumFromStr<PeqType>( json['AllocType'], PeqType.values ),
          ceUID:         json['CEUID'],
          ghUserName:    json['ghUserName'],

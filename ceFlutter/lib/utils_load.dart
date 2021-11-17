@@ -490,9 +490,9 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
          alloc.amount = alloc.amount + splitAmount;
          assert( alloc.amount >= 0 );
 
-         if     ( alloc.amount == 0 )                                     { appState.myPEQSummary.allocations.remove( alloc ); }
-         else if( alloc.sourcePeq.contains(  peqId ) && splitAmount < 0 ) { alloc.sourcePeq.remove( peqId ); }
-         else if( !alloc.sourcePeq.contains( peqId ) && splitAmount > 0 ) { alloc.sourcePeq.add( peqId ); }
+         if     ( alloc.amount == 0 )                                        { appState.myPEQSummary.allocations.remove( alloc ); }
+         else if( alloc.sourcePeq.containsKey(  peqId ) && splitAmount < 0 ) { alloc.sourcePeq.remove( peqId ); }
+         else if( !alloc.sourcePeq.containsKey( peqId ) && splitAmount > 0 ) { alloc.sourcePeq[ peqId ] = splitAmount; }
          else {
             // This should not be overly harsh.  Negotiations can remove then re-add.
             print( "Error.  XXX.  Uh oh.  AdjustSummaryAlloc $splitAmount $peqId " + alloc.toString() );
@@ -516,7 +516,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    
    // Create allocs, if not already updated
    print( " ... adding new Allocation" );
-   Allocation alloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: [peqId], allocType: peqType,
+   Allocation alloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: {peqId: splitAmount}, allocType: peqType,
                                       ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "" );
    appState.myPEQSummary.allocations.add( alloc );
 }
@@ -576,7 +576,7 @@ note:  [DAcWeodOvb, 13302090, 15978796]
 // ---------------
 void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    print( "\n-------------------------------" );
-   print( "processing " + enumToStr(pact.verb) + " " + enumToStr(pact.action) + ", " + enumToStr(peq.peqType) + " for " + peq.amount.toString() );
+   print( "processing " + enumToStr(pact.verb) + " " + enumToStr(pact.action) + ", " + enumToStr(peq.peqType) + " for " + peq.amount.toString() + ", " + peq.ghIssueTitle );
    final appState = container.state;
 
    // Wait here, else summary may be inaccurate
@@ -594,13 +594,13 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    List<Allocation> appAllocs = appState.myPEQSummary.allocations;
 
    // is PEQ already a Known Alloc?  Always use it when possible - is the most accurate current view during ingest.
-   // remember, issue:card is 1:1, and issue+assignee has exactly 1 allocation in appState (makes up alloc.category)
+   // remember, issue:card is 1:1.  1 allocation is proj/{proj}/column/assignee with a set of member peqId:peqValues
    // peq.projsub? unclaimed, or updated to reflect first home outside unclaimed.  only.
    // peq.ghUser?  empty, or reflects only issues assigned before becoming peq.  
    // peq.amount?  full initial peq amount for the issue, independent of number of assignees.  assigneeShares are identical per assignee per issue.
    List<String> assignees = [];
    Allocation ka          = null;
-   for( Allocation alloc in appAllocs.where( (a) => a.sourcePeq.contains( peq.id ) )) {
+   for( Allocation alloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
       assignees.add( alloc.ghUserName );
       ka = alloc;
    }
@@ -611,7 +611,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    }
 
    List<String> subBase = ka == null ? peq.ghProjectSub                        : ka.categoryBase; 
-   int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.amount;
+   int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.sourcePeq[ peq.id ];
    
 
    // propose accrue == pending.   confirm accrue == grant.  others are plan.  end?
@@ -729,7 +729,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       else
       {
          // Exactly one alloc per peq.id,assignee pair
-         for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.contains( peq.id ) )) {
+         for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
             assert( assignees.contains( sourceAlloc.ghUserName ));
             
             print( "\n Assignee: " + sourceAlloc.ghUserName );
@@ -765,7 +765,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
 
          var sourceType     = ka.allocType;
          var baseCat        = ka.category.sublist( 0, ka.category.length-1 );
-         var curSplitAmount = ( ka.amount * assignees.length / curAssign.length ).floor();  
+         var curSplitAmount = ( assigneeShare * assignees.length / curAssign.length ).floor();  
 
          // Remove all old, add all current with new assigneeShares
          for( var assign in assignees ) {
