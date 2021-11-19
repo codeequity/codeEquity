@@ -104,6 +104,8 @@ async function testLabel( authData, ghLinks, td ) {
 	
 	// 6. unlabel, label
 	await tu.remLabel( authData, td, issueData, label );
+	// second add can happen before del.  Then after del, label not found.  wait..
+	await tu.settleWithVal( "LabelTest remove peqLabel", labNotInIssueHelp, authData, td, label.name, issueData[0] );
 	await tu.addLabel( authData, td, issueData[1], label.name ); 
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsProg, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 6" );

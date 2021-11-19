@@ -512,7 +512,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     {
 	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toBacnLoc.colId, issPlanDat[0] );
 	await utils.sleep( 4000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, testStatus, {peq: true, lblCount: 3 } );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, 1000, testStatus, {peq: true, lblCount: 3 } );
 
 	tu.testReport( testStatus, "Incremental resolve A" );
     }
@@ -522,7 +522,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	// At this point, plan lval is 500
 	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toPendLoc.colId, issPlanDat[0] );
 	await utils.sleep( 3000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, testStatus, {peq: true, lblCount: 3 } );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, 1000, testStatus, {peq: true, lblCount: 3 } );
 
 	tu.testReport( testStatus, "Incremental resolve B" );
     }
@@ -541,7 +541,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     {
 	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toProgLoc.colId, issMoonDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, testStatus, {peq: false, lblCount: 2 } );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, -1, testStatus, {peq: false, lblCount: 2 } );
 
 	tu.testReport( testStatus, "Incremental resolve D" );
     }

@@ -836,6 +836,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     let labelCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )  ? specials.lblCount    : 1;
     let assignCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" ) ? specials.assignees   : false;
     let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : "open";
+    let opVal       = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )     ? specials.opVal       : false;
     
     console.log( "Check Allocation", loc.projName, loc.colName, labelVal );
     let subTest = [ 0, 0, []];
@@ -848,7 +849,8 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     subTest = checkEq( issue.state, state,                    subTest, "Issue state" );
 
     const lname = labelVal.toString() + " " + config.ALLOC_LABEL;
-    subTest = checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );    
+    subTest = checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );
+    labelVal = opVal ? opVal : labelVal;
 
     // CHECK github location
     cards = await getCards( authData, loc.colId );
@@ -912,7 +914,8 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let labelVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
     let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
     let skipPeqPID   = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipPeqPID" )   ? specials.skipPeqPID   : false;
-    let assignCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assign" )       ? specials.assign       : false; 
+    let assignCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assign" )       ? specials.assign       : false;
+    let opVal        = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )        ? specials.opVal        : false;
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal, assignCnt );
     let subTest = [ 0, 0, []];
@@ -932,7 +935,8 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     if( assignCnt ) { subTest = checkEq( issue.assignees.length, assignCnt, subTest, "Assignee count" ); }
     
     const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
-    const lval  = labelVal ? labelVal : 1000;
+    let   lval  = labelVal ? labelVal : 1000;
+    lval        = opVal    ? opVal    : lval;    // resolve, original issue peq amount is not updated.  label is.
 
     subTest = checkEq( typeof issue.labels !== 'undefined', true, subTest, "labels not yet ready" );
     
@@ -1398,7 +1402,9 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
     return await settle( subTest, testStatus, checkNewbornIssue, authData, ghLinks, td, issueData, testStatus, specials );
 }
 
-async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials ) {
+// origVal is peq label value before split.  New labels will be 1/2.  orig peq.amount will not change.  new peq amount will be 1/2.
+// opVal   is original peq.amount.  If split peq, then split it again, peq.amount is 4x the label, until ceFlutter ingest.
+async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origVal, opVal, testStatus, specials ) {
     let situated   = typeof specials !== 'undefined' && specials.hasOwnProperty( "peq" )        ? specials.peq        : false;
     let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
     let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
@@ -1428,10 +1434,11 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
 	if( typeof issLink !== 'undefined' && typeof splitLink !== 'undefined' ) {
 	    const card      = await getCard( authData, issLink.GHCardId );
 	    const splitCard = await getCard( authData, splitLink.GHCardId );
-	    
+
+	    // NOTE: orig issue will not adjust initial peq value.  new issue will be set with new value.  label is up to date tho.
 	    if( situated ) {
 		let lval = origVal / 2;
-		subTest = await checkSituatedIssue( authData, ghLinks, td, origLoc, issDat,   card,      subTest, {label: lval, lblCount: labelCnt} );
+		subTest = await checkSituatedIssue( authData, ghLinks, td, origLoc, issDat,   card,      subTest, {opVal: opVal, label: lval, lblCount: labelCnt} );
 		subTest = await checkSituatedIssue( authData, ghLinks, td, newLoc,  splitDat, splitCard, subTest, {label: lval, lblCount: labelCnt } );
 	    }
 	    else {
@@ -1490,7 +1497,7 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
 	    const splitCard = await getCard( authData, splitLink.GHCardId );
 	    
 	    let lval = origVal / 2;
-	    testStatus = await checkAlloc( authData, ghLinks, td, origLoc, issDat,   card,      testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+	    testStatus = await checkAlloc( authData, ghLinks, td, origLoc, issDat, card, testStatus, {opVal: origVal, val: lval, lblCount: labelCnt, assignees: assignCnt } );
 	    testStatus = await checkAlloc( authData, ghLinks, td, newLoc,  splitDat, splitCard, testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
 	}
 	
@@ -1547,9 +1554,9 @@ async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, test
 }
 
 async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatus, specials ) {
-
     console.log( "Check No Card", title, cardId );
-    
+    let subTest = [ 0, 0, []];    
+
     // default is -1 peq
     // Send skipAll if peq exists, is active, and checked elsewhere.
     // send checkpeq if peq is inactive.
@@ -1560,13 +1567,13 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     let cards  = await getCards( authData, loc.colId );
     if( cards != -1 ) { 
 	let card   = cards.find( card => card.id == cardId );
-	testStatus = checkEq( typeof card === "undefined", true,  testStatus, "Card should not exist" );
+	subTest = checkEq( typeof card === "undefined", true,  subTest, "Card should not exist" );
     }
 
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId.toString() );
-    testStatus = checkEq( typeof link === "undefined", true,      testStatus, "Link should not exist" );
+    subTest = checkEq( typeof link === "undefined", true, subTest, "Link should not exist" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     if( !skipAllPeq ) {
@@ -1575,16 +1582,16 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
 	let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
 	if( checkPeq ) {
 	    let peq = peqs[0];
-	    testStatus = checkEq( peq.Active, "false",                  testStatus, "peq should be inactive" );
-	    testStatus = checkEq( peq.GHIssueTitle, title,              testStatus, "peq title is wrong" );
-	    testStatus = checkEq( peq.CEGrantorId, config.EMPTY,        testStatus, "peq grantor wrong" );
+	    subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
+	    subTest = checkEq( peq.GHIssueTitle, title,              subTest, "peq title is wrong" );
+	    subTest = checkEq( peq.CEGrantorId, config.EMPTY,        subTest, "peq grantor wrong" );
 	}
 	else {
-	    testStatus = checkEq( peqs, -1,                             testStatus, "Peq should not exist" );
+	    subTest = checkEq( peqs, -1,                             subTest, "Peq should not exist" );
 	}
     }
 
-    return testStatus;
+    return await settle( subTest, testStatus, checkNoCard, authData, ghLinks, td, loc, cardId, title, testStatus, specials );
 }
 
 async function checkPact( authData, ghLinks, td, title, verb, action, note, testStatus, specials ) {
