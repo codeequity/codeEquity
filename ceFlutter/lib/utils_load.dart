@@ -456,11 +456,11 @@ Future<void> updateCEUID( appState, PEQAction pact, PEQ peq, context, container 
       postData['CEGrantorId'] = ceGrantor;
       var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
       
-      print( "Start update peq" );
+      // print( "Start update peq" );
       print( postData );
       // Do await, processPEQs needs holders
       await updateDynamo( context, container, json.encode( pd ), "UpdatePEQ" );
-      print( "Finish update peq" );
+      // print( "Finish update peq" );
    }
 }
 
@@ -486,7 +486,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    // Update, if already in place
    for( var alloc in appState.myPEQSummary.allocations ) {
       if( suba.toString() == alloc.category.toString() ) {
-         print( " ... matched category: " + suba.toString()  );
+         // print( " ... matched category: " + suba.toString()  );
          alloc.amount = alloc.amount + splitAmount;
          assert( alloc.amount >= 0 );
 
@@ -519,6 +519,94 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    Allocation alloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: {peqId: splitAmount}, allocType: peqType,
                                       ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "" );
    appState.myPEQSummary.allocations.add( alloc );
+}
+
+// Oh boy.  dart extensions are ugly, dart templates via abstract are much worse.  For now, 
+void swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
+   assert( indexi < alist.length );
+   assert( indexj < alist.length );
+   Tuple2<PEQAction, PEQ> elti = alist[indexi];
+   alist[indexi] = alist[indexj];
+   alist[indexj] = elti;
+}
+
+// In a handful of cases, like BLAST issue testing, some operations can arrive in a bad order.  Reorder, as needed.
+// 
+// Case 1: "add assignee" arrives before the peq issue is added.
+//         PPA has strict guidelines from ceServer for when info in peq is valid - typically first 'confirm' 'add'.  assert protected.
+// 
+// Need to have seen a 'confirm' 'add' before another action, in order for the allocation to be in a good state.
+// This will either occur in current ingest batch, or is already present in mySummary from a previous update.
+// Remember, all peqs are already in aws, either active or inactive, so no point to look there.
+// XXX really need to save some of this work.
+// XXX hashmap would probably speed this up a fair amount
+void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) async {
+
+   final appState           = container.state;
+   List<String>    kp       = []; // known peqs 
+   Map<String,List<int>> dp = {}; // demoted peq: list of positions in todos   
+
+   // build kp from mySummary.  Only active peqs are part of allocations.
+   if( appState.myPEQSummary != null ) {
+      for( Allocation alloc in appState.myPEQSummary.allocations ) { kp = kp + alloc.sourcePeq.keys; }
+      kp = kp.toSet().toList();  // if this way to remove duplicates turns out to be slow, use hashmap
+   }
+
+   print( "Initial known peq-allocs: " + kp.toString() );
+
+   // look through current ingest batch for issues to resolve.
+   for( int i = 0; i < todos.length; i++ ) {
+      PEQAction pact = todos[i].item1;
+      PEQ       peq  = todos[i].item2;
+
+      print( i.toString() + ": Working on " + peq.ghIssueTitle + ": " + peq.id );
+
+      if( peq.id == "-1" ) { continue; }
+      bool deleted = false;
+      
+      // print( pact );
+      // print( peq );
+      
+      // update kp
+      if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
+         assert( !kp.contains( peq.id ) );
+         kp.add( peq.id );
+         print( "   Adding known peq " + peq.ghIssueTitle + " " + peq.id );
+      }
+      else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete ) {
+         assert( kp.contains( peq.id ) );
+         kp.remove( peq.id );
+         deleted = true;
+         print( "   Removing known peq " + peq.ghIssueTitle + " " + peq.id + " " + peq.active.toString());
+      }
+
+      // print( "    KP: " + kp.toString() );
+      
+      // update demotion status.
+      // Undemote if have demoted from earlier, and just saw confirm add.  If so, swap all down one.
+      if( dp.containsKey( peq.id ) && kp.contains( peq.id ) ) {
+         assert( dp[peq.id].length > 0 );
+         dp[peq.id].sort();
+
+         // sort is lowest to highest.  Keep swapping current todo up the chain in reverse order, has the effect of pushing all down.
+         int confirmAdd = i;
+         for( int j = dp[peq.id].length-1; j >= 0; j-- ) {
+            print( "   moving todo at position:" + confirmAdd.toString() + " to position:" + dp[peq.id][j].toString() );
+            swap( todos, dp[peq.id][j], confirmAdd );
+            confirmAdd = j;
+         }
+
+         dp.remove( peq.id );
+         print( "   peq: " + peq.ghIssueTitle + " " + peq.id + " UN-demoted." );
+      }
+      // demote if needed
+      else if( !kp.contains( peq.id ) && !deleted ) {
+         if( !dp.containsKey( peq.id ) ) { dp[peq.id] = []; }
+         dp[peq.id].add( i );  
+         print( "   demoting peq: " + peq.ghIssueTitle + " " + peq.id );
+      }
+
+   }
 }
 
 
@@ -749,15 +837,14 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       // Hmmm...  peq.ghHolder will only inform us of the latest status, not all the changes in the middle.
       //          Ingest needs to track all the changes in the middle 
 
-      // XXX !!! need "remove assignee" !!!
       // XXX !!! need "peq val update" !!!
       if( pact.note == "add assignee" ) {    // XXX formalize this
          print( "Add assignee: " + pact.subject.last );
 
          var curAssign  = [ pact.subject.last ];
-         // Count the current assignees != unassigned.  readjust assigneeShare.
+         // Count the current assignees != unassigned.  readjust assigneeShare.  Ignore duplicate adds (blast).
          for( String assign in assignees ) {
-            if( assign != "Unassigned" ) { curAssign.add( assign ); }   // XXX formalize this            
+            if( assign != "Unassigned" && !curAssign.contains( assign ) ) { curAssign.add( assign ); }   // XXX formalize this            
          }
 
          assert( ka != null );
@@ -773,6 +860,35 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
             adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
          }
          for( var assign in curAssign ) {
+            print( "Add " + assign + " " + curSplitAmount.toString() );
+            adjustSummaryAlloc( appState, peq.id, baseCat, assign, curSplitAmount, sourceType );
+         }
+      }
+      else if( pact.note == "remove assignee" ) {    // XXX formalize this
+         print( "Remove assignee: " + pact.subject.last );
+
+         int originalSize = assignees.length;
+         
+         assert( assignees.contains( pact.subject.last ));
+         assert( ka != null );
+         assert( ka.allocType != PeqType.allocation );
+
+         var sourceType = ka.allocType;
+         var baseCat    = ka.category.sublist( 0, ka.category.length-1 );
+
+         // Remove all old allocs
+         for( var assign in assignees ) {
+            print( "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
+            adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+         }
+
+         // Remove, then readjust assigneeShare
+         assignees.remove( pact.subject.last );
+         if( assignees.length == 0 ) { assignees.add( "Unassigned" ); }// XXX formalize this
+
+         var curSplitAmount = ( assigneeShare * originalSize / assignees.length ).floor();  
+
+         for( var assign in assignees ) {
             print( "Add " + assign + " " + curSplitAmount.toString() );
             adjustSummaryAlloc( appState, peq.id, baseCat, assign, curSplitAmount, sourceType );
          }
@@ -851,8 +967,9 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    for( var tup in todos ) {
       final pa = tup.item1;
       final pp = tup.item2;
-      print( "   " + pa.timeStamp.toString() + " <pact,peq> " + pa.id + " " + pp.id + " " + enumToStr(pa.verb) + " " + enumToStr(pa.action) + " " + pa.note + " " + pa.subject.toString());
+      print(  "   " + pa.timeStamp.toString() + " <pact,peq> " + pa.id + " " + pp.id + " " + enumToStr(pa.verb) + " " + enumToStr(pa.action) + " " + pa.note + " " + pa.subject.toString());
    }
+   await fixOutOfOrder( todos, context, container );
    for( var tup in todos ) {
       await processPEQAction( tup.item1, tup.item2, context, container );
    }
