@@ -395,7 +395,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'transferred':
 	// (open issue in new repo, delete project card, transfer issue)
 	// Transfer IN:  do nothing.  comes as newborn issue, no matter what it was in previous repo
-	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.
+	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.  GH will send delete card.
 	{
 	    if( pd.reqBody.changes.new_repository.full_name != pd.GHRepo ) {
 		console.log( authData.who, "Transfer out.  Cleanup." );

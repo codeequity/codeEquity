@@ -693,7 +693,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       ka = alloc;
    }
    if( ka == null ) {
-      assert( pact.verb == PActVerb.confirm && pact.action == PActAction.add );
+      assert( pact.verb == PActVerb.confirm && ( pact.action == PActAction.add || pact.action == PActAction.delete ));
       assignees = peq.ghHolderId;
       if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }
    }
@@ -756,6 +756,12 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
          */
       }
    }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete ) {
+      // This can be called as part of a transfer out, in which this is a no-op.
+      if( ka != null ) {
+         // XXX
+      }
+   }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
       // When adding, will only see peqType alloc or plan
       if( peq.peqType == PeqType.allocation ) {
@@ -765,7 +771,11 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       }
       else if( peq.peqType == PeqType.plan ) {
          print( "Plan PEQ" );
-         List<String> subPlan = new List<String>.from( subBase ); subPlan.add( "Planned" );
+         var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectName == subBase.last, orElse: () => null );
+         List<String> subPlan = new List<String>.from( subBase );
+
+         // If last portion of sub cat is a project, then we are not in a flat project.
+         if( loc != null && subBase.last != "UnClaimed" ) { subPlan.add( "Planned" ); }    // XXX formalize
          
          // iterate over assignees
          for( var assignee in assignees ) {
@@ -781,53 +791,91 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate ) {
       // Note.  The only cross-project moves allowed are from unclaimed: to a new home.  This move is programmatic via ceServer.
 
-      print( "Relo PEQ" );
+      // Delete only.
+      if( pact.note == "Transfer out" ) {  // XXX formalize
+         print( "Transfer out of repository" );
+         // XXX Should inform participants.  Otherwise, this just disappears.
+         // XXX Can transfer accrued........?
 
-      Allocation sourceAlloc = ka != null ? ka : -1;
-      assert( sourceAlloc != -1 );
-      assert( sourceAlloc.category.length >= 1 );
+         Allocation sourceAlloc = ka != null ? ka : -1;
+         assert( sourceAlloc != -1 );
+         assert( sourceAlloc.category.length >= 1 );
 
-      // Get name of new column home
-      assert( pact.subject.length == 3 );
-      var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectId == pact.subject[1] && a.ghColumnId == pact.subject[2], orElse: () => null );
-      assert( loc != null );
-
-      // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
-      // So, (if no existing alloc, use psub - can't happen).  If alloc.cat is not unclaimed, use column (only moves within proj).
-      // If alloc.cat is unclaimed, ceServer will move across projects.  use psub.   Test col.  Will be stable even with multiple relos, since
-      // psub is only overwritten the first time after unclaimed is claimed.
-      // pallocs do not have assignees
-      if( sourceAlloc.allocType == PeqType.allocation ) {
-         // Remove it
-         adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, sourceAlloc.allocType, source: sourceAlloc );
-
-         print( "  .. relocating to " + loc.toString() );
-         
-         if( sourceAlloc.category[0] == "Unclaimed" ) {   // XXX formalize
-            adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, peq.ghIssueTitle, assigneeShare, sourceAlloc.allocType ); 
+         if( sourceAlloc.allocType == PeqType.allocation ) {
+            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, sourceAlloc.allocType, source: sourceAlloc );
          }
-         else {
-            // Have at least proj, col, title.
-            assert( sourceAlloc.category.length >= 2 );
-            List<String> suba = new List<String>.from( sourceAlloc.category.sublist(0, sourceAlloc.category.length-2) );
-            suba.add( loc.ghColumnName );
-            adjustSummaryAlloc( appState, peq.id, suba, sourceAlloc.category.last, assigneeShare, sourceAlloc.allocType ); 
-         }
-      }
-      else
-      {
-         // Exactly one alloc per peq.id,assignee pair
-         for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
-            assert( assignees.contains( sourceAlloc.ghUserName ));
+         else
+         {
+            // Exactly one alloc per peq.id,assignee pair
+            List<Allocation> reloAlloc = [];  // category, ghUserName, allocType
             
-            print( "\n Assignee: " + sourceAlloc.ghUserName );
-            // remove
+            // avoid concurrent mod of list
+            for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+               Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
+               reloAlloc.add( miniAlloc );
+            }
+            
+            for( var remAlloc in reloAlloc ) {
+               assert( assignees.contains( remAlloc.ghUserName ));
+               print( "\n Assignee: " + remAlloc.ghUserName );
+               adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
+            }
+         }
+         
+      }
+      else {
+         print( "Relo PEQ" );
+         
+         Allocation sourceAlloc = ka != null ? ka : -1;
+         assert( sourceAlloc != -1 );
+         assert( sourceAlloc.category.length >= 1 );
+         
+         // Get name of new column home
+         assert( pact.subject.length == 3 );
+         var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectId == pact.subject[1] && a.ghColumnId == pact.subject[2], orElse: () => null );
+         assert( loc != null );
+         
+         // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
+         // So, (if no existing alloc, use psub - can't happen).  If alloc.cat is not unclaimed, use column (only moves within proj).
+         // If alloc.cat is unclaimed, ceServer will move across projects.  use psub.   Test col.  Will be stable even with multiple relos, since
+         // psub is only overwritten the first time after unclaimed is claimed.
+         // pallocs do not have assignees
+         if( sourceAlloc.allocType == PeqType.allocation ) {
+            // Remove it
             adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, sourceAlloc.allocType, source: sourceAlloc );
             
             print( "  .. relocating to " + loc.toString() );
-            var tsub = subBase;
-            tsub.add( loc.ghColumnName );
-            adjustSummaryAlloc( appState, peq.id, tsub, sourceAlloc.ghUserName, assigneeShare, sourceAlloc.allocType ); 
+            
+            if( sourceAlloc.category[0] == "Unclaimed" ) {   // XXX formalize
+               adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, peq.ghIssueTitle, assigneeShare, sourceAlloc.allocType ); 
+            }
+            else {
+               // Have at least proj, col, title.
+               assert( sourceAlloc.category.length >= 2 );
+               List<String> suba = new List<String>.from( sourceAlloc.category.sublist(0, sourceAlloc.category.length-2) );
+               suba.add( loc.ghColumnName );
+               adjustSummaryAlloc( appState, peq.id, suba, sourceAlloc.category.last, assigneeShare, sourceAlloc.allocType ); 
+            }
+         }
+         else
+         {
+            // Exactly one alloc per peq.id,assignee pair
+            List<Allocation> reloAlloc = [];  // category, ghUserName, allocType
+            
+            // avoid concurrent mod of list
+            for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+               Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
+               reloAlloc.add( miniAlloc );
+            }
+            
+            for( var remAlloc in reloAlloc ) {
+               assert( assignees.contains( remAlloc.ghUserName ));
+               print( "\n Assignee: " + remAlloc.ghUserName );
+               adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
+               
+               print( "  .. relocating to " + loc.toString() );
+               adjustSummaryAlloc( appState, peq.id, subBase + [loc.ghColumnName], remAlloc.ghUserName, assigneeShare, remAlloc.allocType );
+            }
          }
       }
       
