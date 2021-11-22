@@ -190,8 +190,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    if( ceProjectLayout[0] == -1 ) { console.log( "Project does not have recognizable CE column layout.  No action taken." ); }
 		    else {
 			// Must wait.  Move card can fail if, say, no assignees
-			let success = await gh.moveIssueCard( authData, ghLinks, pd, 'closed', ceProjectLayout ); 
-			if( success ) {
+			let newColId = await gh.moveIssueCard( authData, ghLinks, pd, 'closed', ceProjectLayout ); 
+			if( newCOlId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
 			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.GHFullName,
@@ -283,8 +283,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    else {
 		// Must wait.  Move card can fail if, say, no assignees
-		let success = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
-		if( success ) {
+		let newColId = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
+		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
 		    let peqId = ( await( ghSafe.validatePEQ( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
 		    if( peqId == -1 ) {
@@ -295,9 +295,13 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			// Closed: 
 			let verb = config.PACTVERB_PROP;
 			let paction = config.PACTACT_ACCR;
-			if( action == "reopened" ) { verb = config.PACTVERB_REJ; }
-			
 			let subject = [ peqId.toString() ];
+
+			if( action == "reopened" ) {
+			    verb = config.PACTVERB_REJ;
+			    subject = [ peqId.toString(), newColId.toString() ];
+			}
+			
 			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
 					       verb, paction, subject, "",
 					       utils.getToday(), pd.reqBody );

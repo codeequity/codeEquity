@@ -188,8 +188,8 @@ async function testLabel( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label flat 5" );
 
 	// PEQ is rebuilt below, when it is re-activated.
-	flatPend.projSub = [ td.flatTitle ];
-	flatAccr.projSub = [ td.flatTitle ];
+	flatPend.projSub = [ td.flatTitle, config.PROJ_COLS[config.PROJ_PEND] ];
+	flatAccr.projSub = [ td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] ];
 
 	// 5. relabel (OK here, negotiating)
 	await tu.addLabel( authData, td, issueData[1], label500.name );    
@@ -266,6 +266,7 @@ async function testAssignment( authData, ghLinks, td ) {
     // XXX HARSH.  If rem notification arrives late (out of order), CE will see "accr", then add assignee2 back after "d", then fail the next check.
     //     Can't check jobq, jobs already gone.  Can't check GH, it's in a good state.  No local state to check.. yet.....
     //     Impact only occurs when rem assignee right before rapid-fire close + accr, then assignee is added back in.  Low risk of occurence, but bad when it happens.
+    //     11/22/21 2x
     await  utils.sleep( 10000 );
 
     await tu.closeIssue( authData, td, assData );
@@ -346,7 +347,8 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "A" );
 	
 	// 1. close
-	await tu.addAssignee( authData, td, issueData, ASSIGNEE1 );	
+	await tu.addAssignee( authData, td, issueData, ASSIGNEE1 );
+	await tu.settleWithVal( "Ensure assignee in place", assignPresentHelp, authData, td, issueData, ASSIGNEE1 );
 	await tu.closeIssue( authData, td, issueData );
 	await utils.sleep( 1000 );
 
@@ -731,6 +733,16 @@ async function labNotInIssueHelp( authData, td, labName, issId ) {
 	    break;
 	}
     }
+    return retVal;
+}
+
+async function assignPresentHelp( authData, td, issDat, assignee ) {
+    let retVal = false;
+
+    let iss = await tu.findIssue( authData, td, issDat[0] );
+    let ass = iss.assignees.find( a => a.login == assignee );
+    if( typeof ass !== 'undefined' ) { retVal = true; }
+
     return retVal;
 }
 

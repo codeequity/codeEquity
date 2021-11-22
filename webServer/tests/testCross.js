@@ -11,6 +11,23 @@ var ghSafe  = ghUtils.githubSafe;
 const testData = require( './testData' );
 const tu = require('./testUtils');
 
+
+async function cardPresentHelp( authData, colId, issName ) {
+    let retVal = false;
+
+    let allCards  = await tu.getCards( authData, colId );
+
+    for( let i = 0; i < allCards.length; i++ ) {
+	console.log( "CROSS XXX: ", issName, allCards[i].content_url.split('/').pop() );
+    }
+    
+    let c = allCards.find( card => card.content_url.split('/').pop() == issName ); 
+    if( typeof c !== 'undefined' ) { print( "CROSS XXX RV: " ); retVal = true; }
+
+    return retVal;
+}
+
+
 // Requires config.TEST_OWNER to have installed the codeEquity app for all repos, not just one.
 // Requires config.CROSS_TEST_REPO & config.TEST_REPO to allow both config.CE_USER and config.TEST_OWNER to have R/W access
 // This way, authData is shared.   td is NOT shared.
@@ -72,7 +89,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     await utils.sleep( 2000 );
 
     const cardX  = await tu.makeProjectCard( authDataX, ghLinks, tdX.GHFullName, crossLoc.colId, issDatX[0] );
-    await utils.sleep( 1000 );
+    await tu.settleWithVal( "Cross test make cross card", cardPresentHelp, authData, crossLoc.colId, issDatX[2] );
     
     testStatus = await tu.checkSituatedIssue( authDataX, ghLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1, assign: 2});
     

@@ -153,7 +153,7 @@ async function checkMove( authData, ghLinks, td, issueData, colId, meltCard, tes
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = tu.checkEq( meltPeq.GHProjectSub.length, 2,              subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.GHProjectSub.length, 3,              subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
     subTest = tu.checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );

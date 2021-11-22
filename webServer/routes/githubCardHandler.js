@@ -61,9 +61,16 @@ async function recordMove( authData, reqBody, fullName, oldCol, newCol, link, pe
 	assert( false );
     }
 
+    let subject = [peq.PEQId];
+    if( verb == config.PACTVERB_REJ && newCol >= 0 ) {
+	let locs = ghLinks.getLocs( authData, { "repo": fullName, "colName": config.PROJ_COLS[newCol] } );
+	assert( locs != -1 );
+	subject = [ peq.PEQId, locs[0].GHColumnName ];
+    }
+    
     // Don't wait
     utils.recordPEQAction( authData, config.EMPTY, reqBody['sender']['login'], fullName, 
-			   verb, action, [peq.PEQId], "", 
+			   verb, action, subject, "", 
 			   utils.getToday(), reqBody );
 }
 
@@ -255,7 +262,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		link.GHColumnId    = card.column_url.split('/').pop();
 		link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 
-		const psub = [ link.GHProjectName ];
+		const psub = [ link.GHProjectName, link.GHColumnName ];
 
 		// No need to wait
 		peq = await peq;

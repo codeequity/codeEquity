@@ -339,7 +339,7 @@ async function getFlatLoc( authData, projId, projName, colName ) {
     // if( colName == config.PROJ_COLS[config.PROJ_ACCR] ) { ptype = "grant"; }
 
     let psub = [projName, colName];
-    if( config.PROJ_COLS.includes( colName ) ) { psub = [projName]; }
+    // if( config.PROJ_COLS.includes( colName ) ) { psub = [projName]; }
 	
     let loc = {};
     loc.projId   = projId;
@@ -356,7 +356,8 @@ async function getFullLoc( authData, masterColName, projId, projName, colName ) 
 
     let loc = await getFlatLoc( authData, projId, projName, colName );
 
-    loc.projSub  = config.PROJ_COLS.includes( colName ) ? [masterColName, projName] : [masterColName, projName, colName];
+    // loc.projSub  = config.PROJ_COLS.includes( colName ) ? [masterColName, projName] : [masterColName, projName, colName];
+    loc.projSub  = [masterColName, projName, colName];
     
     return loc;
 }
@@ -729,7 +730,7 @@ async function settleWithVal( fname, func, ...params ) {
 	await delayTimer( func.name );
 	retVal = await func( ...params );
 
-	if( CETestDelayCounts[func.name] > 2 ) { console.log( ...params ); }
+	if( CETestDelayCounts[func.name] > 2 ) { console.log( params.slice(1) ); }  // don't print authData
     }
     CETestDelayCounts[func.name] = 0;
     return retVal;
@@ -793,40 +794,44 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
     
     cards      = await getCards( authData, loc.colId );   
     let mCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
-    subTest = checkEq( mCard.length, 1,                       subTest, "Card claimed" );
-    subTest = checkEq( mCard[0].id, card.id,                  subTest, "Card claimed" );
-    
 
-    // CHECK dynamo Peq.  inactive
-    // Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
-    // Unclaimed may not have happened if peq'd a carded issue
-    let peqs      = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
-    subTest = checkEq( issuePeqs.length, 1,                      subTest, "Peq count" );
-    for( const peq of issuePeqs ) {
-	subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
-	subTest = checkEq( peq.GHIssueTitle, issueData[2],       subTest, "peq title is wrong" );
-	subTest = checkEq( peq.CEGrantorId, config.EMPTY,        subTest, "peq grantor wrong" );
+    subTest = checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
+    if( typeof mCard[0] !== 'undefined' ) {
+
+	subTest = checkEq( mCard.length, 1,                       subTest, "Card claimed" );
+	subTest = checkEq( mCard[0].id, card.id,                  subTest, "Card claimed" );
+
+	// CHECK dynamo Peq.  inactive
+	// Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
+	// Unclaimed may not have happened if peq'd a carded issue
+	let peqs      = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+	let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+	subTest = checkEq( issuePeqs.length, 1,                      subTest, "Peq count" );
+	for( const peq of issuePeqs ) {
+	    subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
+	    subTest = checkEq( peq.GHIssueTitle, issueData[2],       subTest, "peq title is wrong" );
+	    subTest = checkEq( peq.CEGrantorId, config.EMPTY,        subTest, "peq grantor wrong" );
+	}
+	let peqId = issuePeqs[0].GHProjectSub[0] == "UnClaimed" ? issuePeqs[1].PEQId : issuePeqs[0].PEQId;
+	
+	
+	// CHECK dynamo Pact
+	let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	let issuePacts = pacts.filter((pact) => pact.Subject[0] == peqId );
+	
+	// Must have been a PEQ before. Depeq'd with unlabel, or delete.
+	issuePacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
+	let lastPact = issuePacts[ issuePacts.length - 1 ];
+	
+	let hr     = await hasRaw( authData, lastPact.PEQActionId );
+	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
+	subTest = checkEq( lastPact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
+	subTest = checkEq( lastPact.Action, config.PACTACT_DEL,     subTest, "PAct Verb"); 
+	subTest = checkEq( lastPact.GHUserName, config.TESTER_BOT,  subTest, "PAct user name" ); 
+	subTest = checkEq( lastPact.Ingested, "false",              subTest, "PAct ingested" );
+	subTest = checkEq( lastPact.Locked, "false",                subTest, "PAct locked" );
     }
-    let peqId = issuePeqs[0].GHProjectSub[0] == "UnClaimed" ? issuePeqs[1].PEQId : issuePeqs[0].PEQId;
     
-    
-    // CHECK dynamo Pact
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-    let issuePacts = pacts.filter((pact) => pact.Subject[0] == peqId );
-
-    // Must have been a PEQ before. Depeq'd with unlabel, or delete.
-    issuePacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let lastPact = issuePacts[ issuePacts.length - 1 ];
-    
-    let hr     = await hasRaw( authData, lastPact.PEQActionId );
-    subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-    subTest = checkEq( lastPact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
-    subTest = checkEq( lastPact.Action, config.PACTACT_DEL,     subTest, "PAct Verb"); 
-    subTest = checkEq( lastPact.GHUserName, config.TESTER_BOT,  subTest, "PAct user name" ); 
-    subTest = checkEq( lastPact.Ingested, "false",              subTest, "PAct ingested" );
-    subTest = checkEq( lastPact.Locked, "false",                subTest, "PAct locked" );
-
     return await settle( subTest, testStatus, checkDemotedIssue, authData, ghLinks, td, loc, issueData, card, testStatus );
 }
 
@@ -855,53 +860,58 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     // CHECK github location
     cards = await getCards( authData, loc.colId );
     let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
-    subTest = checkEq( mCard.length, 1,                           subTest, "Card claimed" );
-    subTest = checkEq( mCard[0].id, card.id,                      subTest, "Card claimed" );
 
-    // CHECK linkage
-    let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
-    let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
-    subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
-    subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
-    subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
-    subTest = checkEq( link.GHIssueTitle, issueData[2],           subTest, "Linkage Card Title" );
-    subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
-    subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
-    subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
-
-    // CHECK dynamo Peq
-    let allPeqs  =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
-    subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
-    let peq = peqs[0];
-
-    assignCnt = assignCnt ? assignCnt : 0;
+    subTest = checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
+    if( typeof mCard[0] !== 'undefined' ) {
     
-    subTest = checkEq( peq.PeqType, config.PEQTYPE_ALLOC,       subTest, "peq type invalid" );        
-    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-    subTest = checkEq( peq.GHHolderId.length, assignCnt,        subTest, "peq gh holders wrong" );      
-    subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
-    subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-    subTest = checkEq( peq.Amount, labelVal,                    subTest, "peq amount" );
-    subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
-    subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq project id bad" );
-    for( let i = 0; i < loc.projSub.length; i++ ) {
-	subTest = checkEq( peq.GHProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" );
-    }
-
-    // CHECK dynamo Pact
-    let allPacts  = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-    let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-    subTest = checkGE( pacts.length, 1,                         subTest, "PAct count" );  
-    
-    // Could have been many operations on this.
-    for( const pact of pacts ) {
-	let hr  = await hasRaw( authData, pact.PEQActionId );
-	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
-	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
-	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+	subTest = checkEq( mCard.length, 1,                           subTest, "Card claimed" );
+	subTest = checkEq( mCard[0].id, card.id,                      subTest, "Card claimed" );
+	
+	// CHECK linkage
+	let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+	let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+	subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
+	subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
+	subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
+	subTest = checkEq( link.GHIssueTitle, issueData[2],           subTest, "Linkage Card Title" );
+	subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
+	subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
+	subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
+	
+	// CHECK dynamo Peq
+	let allPeqs  =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+	let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+	subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
+	let peq = peqs[0];
+	
+	assignCnt = assignCnt ? assignCnt : 0;
+	
+	subTest = checkEq( peq.PeqType, config.PEQTYPE_ALLOC,       subTest, "peq type invalid" );        
+	subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+	subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+	subTest = checkEq( peq.GHHolderId.length, assignCnt,        subTest, "peq gh holders wrong" );      
+	subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
+	subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
+	subTest = checkEq( peq.Amount, labelVal,                    subTest, "peq amount" );
+	subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
+	subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq project id bad" );
+	for( let i = 0; i < loc.projSub.length; i++ ) {
+	    subTest = checkEq( peq.GHProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" );
+	}
+	
+	// CHECK dynamo Pact
+	let allPacts  = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+	subTest = checkGE( pacts.length, 1,                         subTest, "PAct count" );  
+	
+	// Could have been many operations on this.
+	for( const pact of pacts ) {
+	    let hr  = await hasRaw( authData, pact.PEQActionId );
+	    subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
+	    subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	    subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+	    subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+	}
     }
 
     return await settle( subTest, testStatus, checkAlloc, authData, ghLinks, td, loc, issueData, card, testStatus, specials );
@@ -963,6 +973,13 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
 
     // Long GH pauses show their fury here, more likely than not.
+    if( typeof mCard[0] === 'undefined' ) {
+	console.log( "mCard failure. issDat: ", issueData.toString() );
+	console.log( "               card: ", card.content_url );
+	console.log( "               loc: ", loc );
+	console.log( "               loc: ", loc.projSub.toString() );
+    }
+    
     subTest = checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
     subTest = checkEq( typeof card     !== 'undefined', true,     subTest, "Card not yet ready" );
     if( typeof mCard[0] !== 'undefined' && typeof card !== 'undefined' ) {
@@ -989,7 +1006,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 	subTest     = checkEq( typeof peq !== 'undefined', true,        subTest, "peq not ready yet" );
 
 	if( typeof peq !== 'undefined' ) {
-	    
+
 	    assignCnt = assignCnt ? assignCnt : 0;
 	
 	    subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
@@ -1599,7 +1616,8 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
     let subTest = [ 0, 0, []];
     
     let subject = typeof specials !== 'undefined' && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
-    let depth   = typeof specials !== 'undefined' && specials.hasOwnProperty( "depth" ) ? specials.depth : 1;
+    // Allow for notification out of order.. pacts are not usually awaited
+    let depth   = typeof specials !== 'undefined' && specials.hasOwnProperty( "depth" ) ? specials.depth : 3;
 
     let pact = {};
     let pacts = {};
@@ -1615,6 +1633,8 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
     else { pacts = allPacts; }
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
+    depth = min( depth, pact.length );
+    
     let foundPAct = false;
     for( let i = pacts.length - depth; i < pacts.length; i++ ) {
 	const pact = pacts[i];
@@ -1681,7 +1701,7 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     subTest = checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = checkEq( meltPeq.GHProjectSub.length, 2,              subTest, "peq project sub invalid" );
+    subTest = checkEq( meltPeq.GHProjectSub.length, 3,              subTest, "peq project sub invalid" );
     subTest = checkEq( meltPeq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
     subTest = checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );
@@ -1729,7 +1749,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     subTest = checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = checkEq( meltPeq.GHProjectSub.length, 2,              subTest, "peq project sub invalid" );
+    subTest = checkEq( meltPeq.GHProjectSub.length, 3,              subTest, "peq project sub invalid" );
     subTest = checkEq( meltPeq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
     subTest = checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
@@ -1754,6 +1774,11 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     let addA2  = meltPacts[len-3];   // add assignee 2
     let remA1  = meltPacts[len-2];   // rem assignee 1
     let remA2  = meltPacts[len-1];   // rem assignee 2
+    let foundRelo = false;
+    let foundChan = 0;
+    let foundRA   = 0;
+    let foundA1   = false; 
+    let foundA2   = false;
     for( const pact of [addMP, addA1, addA2, remA1, remA2] ) {
 	let hr  = await hasRaw( authData, pact.PEQActionId );
 	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
@@ -1761,21 +1786,23 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
 	subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+
+	// Because PActs can be reordered on the way in, just check for exists, not order.
+	if( pact.Action == config.PACTACT_RELO || pact.Action == config.PACTACT_ADD ) { foundRelo = true; }
+	if( pact.Action == config.PACTACT_CHAN )                                      { foundChan++; }
+
+	if( pact.Note == "remove assignee" ) {
+	    foundRA++;
+	    if( pact.Subject[1] == ass1 ) { foundA1 = true; }
+	    if( pact.Subject[1] == ass2 ) { foundA2 = true; }
+	}
+
     }
-
-    // XXX Dangerous test, PActs can get reordered on the way in.
-    //     First reorder: add vs relocate.
-
-    let addRelo = ( addMP.Action == config.PACTACT_RELO || addMP.Action == config.PACTACT_ADD );
-    if( !addRelo ) { config.log( "PAct action", addRelo, "is not add or relo" ); }
-    
-    subTest = checkEq( addRelo, true,                               subTest, "PAct action"); 
-    subTest = checkEq( remA1.Action, config.PACTACT_CHAN,           subTest, "PAct action"); 
-    subTest = checkEq( remA2.Action, config.PACTACT_CHAN,           subTest, "PAct action");
-    let assignees = ( remA1.Subject[1] == ass1 && remA2.Subject[1] == ass2 ) || ( remA1.Subject[1] == ass2 && remA2.Subject[1] == ass1 );
-    subTest = checkEq( assignees, true,                             subTest, "PAct sub"); 
-    subTest = checkEq( remA1.Note, "remove assignee",               subTest, "PAct note"); 
-    subTest = checkEq( remA2.Note, "remove assignee",               subTest, "PAct note"); 
+    subTest = checkEq( foundRelo, true,           subTest, "PAct add/relo"); 
+    subTest = checkEq( foundChan, 2,              subTest, "PAct change count"); 
+    subTest = checkEq( foundRA  , 2,              subTest, "PAct assignee count");
+    subTest = checkEq( foundA1  , true,           subTest, "PAct sub A1");
+    subTest = checkEq( foundA2  , true,           subTest, "PAct sub A2");
 
     return await settle( subTest, testStatus, checkNoAssignees, authData, td, ass1, ass2, issueData, testStatus );
 }

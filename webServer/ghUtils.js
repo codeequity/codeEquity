@@ -1385,7 +1385,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
     //     Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
     if( success ) { success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName ); }
     
-    return success;
+    return success ? newColId : false;
 }
 
 // Note. alignment risk

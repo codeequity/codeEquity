@@ -267,8 +267,10 @@ async function getProjectSubs( authData, ghLinks, repoName, projName, colName ) 
 	if( links != -1 ) { projSub = [ links[0]['GHColumnName'], projName ]; }
 	else              { projSub = [ projName ]; }
 
+	// No, induces too many special cases, with no return.
 	// If col isn't a CE organizational col, add to psub
-	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
+	// if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
+	projSub.push( colName ); 
     }
 	    
     // console.log( "... returning", projSub.toString() );
@@ -414,7 +416,8 @@ async function rebuildPeq( authData, link, oldPeq ) {
     postData.GHIssueTitle = link.GHIssueTitle;
     postData.Active       = "true";
 
-    if( config.PROJ_COLS.includes( link.GHColumnName ) ) { postData.GHProjectSub = [ link.GHProjectName ]; }
+    // No.  No special cases, otherwise flat project handling makes things tricky in a useless way.
+    // if( config.PROJ_COLS.includes( link.GHColumnName ) ) { postData.GHProjectSub = [ link.GHProjectName ]; }
     
     newPEQId = await recordPEQ(	authData, postData );
     assert( newPEQId != -1 );
@@ -492,7 +495,7 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
     // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
     recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-		     config.PACTVERB_CONF, "change", [newPEQ.PEQId], "peq val update",   // XXX formalize
+		     config.PACTVERB_CONF, "change", [newPEQ.PEQId, peqVal], "peq val update",   // XXX formalize
 		     getToday(), pd.reqBody );
 }
 
