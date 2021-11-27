@@ -575,9 +575,17 @@ async function remAssignee( authData, td, issueNumber, assignee ) {
     await utils.sleep( MIN_DELAY );
 }
 
-async function moveCard( authData, cardId, columnId ) {
+async function moveCard( authData, td, cardId, columnId, specials ) {
     await authData.ic.projects.moveCard({ card_id: cardId, position: "top", column_id: columnId })
 	.catch( e => { console.log( authData.who, "Move card failed.", e );	});
+
+    let issNum  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issNum" )  ? specials.issNum : false;
+
+    if( issNum ) { 
+	let query = "project_card moved iss" + issNum + " " + td.GHFullName;
+	await settleWithVal( "moveCard", findNotice, query );
+    }
+    
     await utils.sleep( MIN_DELAY );
 }
 
@@ -1275,6 +1283,8 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 
 async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials ) {
 
+    let assignCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "preAssign" )       ? specials.preAssign : 0;
+
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 
     console.log( "Check newly accrued issue", loc.projName, loc.colName );
@@ -1289,13 +1299,35 @@ async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, ca
     // CHECK dynamo Pact  smallest number is add, move.  check move (confirm accr)
     let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-    subTest = checkGE( pacts.length, 2,                         subTest, "PAct count" );         
-    
+    subTest = checkGE( pacts.length, 2,                         subTest, "PAct count" );
+
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     let pact = pacts[ pacts.length - 1];
     subTest = checkEq( pact.Verb, config.PACTVERB_CONF,                    subTest, "PAct Verb"); 
     subTest = checkEq( pact.Action, config.PACTACT_ACCR,                   subTest, "PAct Action");
 
+    // Note that occasionally during a blast open, notification arrival can be: issue opened, then assigned then labeled.
+    //      in this case, peq will have ghHolders.  Typically, the label notification comes first, in which case there will not be.
+    //      Must check for either ghHolder, or assignement PAct.  Both cases are valid for GH.. More typical usage:
+    //         * peq issue is assigned, get assignment notification
+    //         * non peq assigned issue, which has not been tracked, gets a peq label.
+    let foundAssignment = false;
+    foundAssignment = assignCnt > 0 && peq.GHHolderId.length == assignCnt;
+
+    if( !foundAssignment ) {
+	for( let i = 0; i < pacts.length; i++ ) {
+	    const pact = pacts[i];
+	    if( pact.Action == config.PACTACT_CHAN &&
+		pact.Verb   == config.PACTVERB_CONF &&
+		pact.Note   == "add assignee" ) {
+		foundAssignment = true;
+		break;
+	    }
+	}
+    }
+    
+    subTest = checkEq( foundAssignment, true,      subTest, "peq holders wrong" );
+    
     return await settle( subTest, testStatus, checkNewlyAccruedIssue, authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 }
 
@@ -1626,35 +1658,46 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
     // Either check last related to PEQ, or just find latest.
 
     if( title != -1 ) {
-	// Risky test - will fail if unrelated peqs with same title exist.  Do not use with remIssue/rebuildIssue.  No card may have inactive peq
+	// modestly risky test - will fail if unrelated peqs with same title exist.  Do not use with remIssue/rebuildIssue.  No card may have inactive peq
 	let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
 	pacts    = allPacts.filter((pact) => pact.Subject[0] == peqs[0].PEQId );
     }
     else { pacts = allPacts; }
     
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    depth = min( depth, pact.length );
+    depth = pacts.length >= depth ? depth : pacts.length;
     
     let foundPAct = false;
     for( let i = pacts.length - depth; i < pacts.length; i++ ) {
 	const pact = pacts[i];
 	// console.log( i, pact );
-	foundPAct = true;
-	foundPAct = foundPAct && pacts.length >= 1; 
-	foundPAct = foundPAct && pact.Verb == verb;
-	foundPAct = foundPAct && pact.Action == action;
-	foundPAct = foundPAct && pact.Note == note;
-	
-	if( subject != -1 ) {
-	    foundPAct = foundPAct && pact.Subject.length == subject.length;
-	    for( let i = 0; i < subject.length; i++ ) {
-		foundPAct = foundPAct && pact.Subject[i] == subject[i];
+	if( pact.Action == action ) {
+	    foundPAct = true;
+	    foundPAct = foundPAct && pacts.length >= 1; 
+	    foundPAct = foundPAct && pact.Verb == verb;
+	    foundPAct = foundPAct && pact.Action == action;
+	    foundPAct = foundPAct && pact.Note == note;
+	    
+	    if( subject != -1 ) {
+		foundPAct = foundPAct && pact.Subject.length == subject.length;
+		for( let i = 0; i < subject.length; i++ ) {
+		    foundPAct = foundPAct && pact.Subject[i] == subject[i];
+		}
 	    }
+	    // console.log( verb, action, note, subject, depth, foundPAct );
+	    if( foundPAct ) { break; }
 	}
-	// console.log( verb, action, note, subject, depth, foundPAct );
-	if( foundPAct ) { break; }
     }
+
     subTest = checkEq( foundPAct, true,                     subTest, "pact bad" );
+
+    if( !foundPAct ) {
+	console.log( "Pact bad?  darg.  ", depth, pacts.length );
+	for( let i = pacts.length - depth; i < pacts.length; i++ ) {
+	    const pact = pacts[i];
+	    console.log( i, pact );
+	}
+    }
 
     return await settle( subTest, testStatus, checkPact, authData, ghLinks, td, title, verb, action, note, testStatus, specials );
 }
@@ -1799,7 +1842,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
 
     }
     subTest = checkEq( foundRelo, true,           subTest, "PAct add/relo"); 
-    subTest = checkEq( foundChan, 2,              subTest, "PAct change count"); 
+    subTest = checkEq( foundChan, 4,              subTest, "PAct change count"); 
     subTest = checkEq( foundRA  , 2,              subTest, "PAct assignee count");
     subTest = checkEq( foundA1  , true,           subTest, "PAct sub A1");
     subTest = checkEq( foundA2  , true,           subTest, "PAct sub A2");

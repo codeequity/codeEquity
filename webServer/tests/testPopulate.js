@@ -494,7 +494,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     await tu.closeIssue( authData, td, issPendDat );
 
     await tu.closeIssue( authData, td, issAccrDat );
-    await tu.moveCard( authData, cardAccr.id, accrLoc.colId );
+    await tu.moveCard( authData, td, cardAccr.id, accrLoc.colId );
 
     await utils.sleep( 2000 );	
     testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );

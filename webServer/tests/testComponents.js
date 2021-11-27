@@ -85,19 +85,19 @@ async function testLabel( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label 2" );
 	
 	// 3. move to accr (untracked), watch it bounce back
-	await tu.moveCard( authData, card.id, td.dsAccrID );
+	await tu.moveCard( authData, td, card.id, td.dsAccrID );
 	await utils.sleep( tu.GH_DELAY );
 	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 3" );
 	
 	// 4. move to pend, bounce
-	await tu.moveCard( authData, card.id, td.dsPendID );
+	await tu.moveCard( authData, td, card.id, td.dsPendID );
 	await utils.sleep( tu.GH_DELAY );
 	testStatus = await tu.checkDemotedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 4" );
 	
 	// 5. move to prog (untracked), label
-	await tu.moveCard( authData, card.id, td.dsProgID );
+	await tu.moveCard( authData, td, card.id, td.dsProgID );
 	await tu.addLabel( authData, td, issueData[1], label.name );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsProg, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 5" );
@@ -112,7 +112,7 @@ async function testLabel( authData, ghLinks, td ) {
 	
 	// 7. move to accr, unlabel (fail)
 	await tu.addAssignee( authData, td, issueData, ASSIGNEE1 );   // can't ACCR without this.    
-	await tu.moveCard( authData, card.id, td.dsAccrID );
+	await tu.moveCard( authData, td, card.id, td.dsAccrID, {issNum: issueData[1]} );
 	await tu.remLabel( authData, td, issueData, label );          // will be added back
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsAccr, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 7" );
@@ -198,7 +198,7 @@ async function testLabel( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label flat 6" );
 	
 	// 6. move to accr
-	await tu.moveCard( authData, card.id, flatAccr.colId );
+	await tu.moveCard( authData, td, card.id, flatAccr.colId, {issNum: issueData[1]} );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {label: 500, assign: 1 } );
 	tu.testReport( testStatus, "Label flat 7" );
     }
@@ -240,7 +240,7 @@ async function testAssignment( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, assData, ASSIGNEE1 );
     await tu.addAssignee( authData, td, assData, ASSIGNEE2 );
     testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1, ASSIGNEE2], assData, testStatus );
-    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, config.PACTVERB_CONF, config.PACTACT_CHAN, "add assignee", testStatus );    
+    testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, config.PACTVERB_CONF, config.PACTACT_CHAN, "add assignee", testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
 
@@ -258,7 +258,7 @@ async function testAssignment( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, assData, ASSIGNEE2 );
 
     // 5. move to Prog
-    await tu.moveCard( authData, assCard.id, td.dsProgID );
+    await tu.moveCard( authData, td, assCard.id, td.dsProgID, {issNum: assData[1]} );
     testStatus = await tu.checkProgAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
 
     // 6. test ACCR
@@ -270,7 +270,7 @@ async function testAssignment( authData, ghLinks, td ) {
     await  utils.sleep( 10000 );
 
     await tu.closeIssue( authData, td, assData );
-    await tu.moveCard( authData, assCard.id, td.dsAccrID );
+    await tu.moveCard( authData, td, assCard.id, td.dsAccrID, {issNum: assData[1]} );
     // Add, fail
     await tu.addAssignee( authData, td, assData, ASSIGNEE2 );
     testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1], assData, testStatus );
@@ -385,7 +385,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "E" );
 
 	// 5. move to eggs
-	await tu.moveCard( authData, card.id, eggs.colId );
+	await tu.moveCard( authData, td, card.id, eggs.colId, {issNum: issueData[1]} );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, eggs, issueData, card, testStatus, {"state": "open" } );
 
 	tu.testReport( testStatus, "F" );
@@ -409,7 +409,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "I" );
 
 	// 9. move to accr
-	await tu.moveCard( authData, card.id, flatAccr.colId );
+	await tu.moveCard( authData, td, card.id, flatAccr.colId, {issNum: issueData[1]} );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
 
 	tu.testReport( testStatus, "J" );
@@ -421,7 +421,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "K" );
 
 	// 10. move to PEND (fail)
-	await tu.moveCard( authData, card.id, flatPend.colId );
+	await tu.moveCard( authData, td, card.id, flatPend.colId );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
 
 	tu.testReport( testStatus, "L" );
@@ -466,7 +466,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "C" );
 
 	// 4. move to stripes
-	await tu.moveCard( authData, card.id, stripes.colId );
+	await tu.moveCard( authData, td, card.id, stripes.colId, {issNum: issueData[1]} );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, stripes, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "D" );
@@ -490,7 +490,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "G" );
 
 	// 8. move to accr
-	await tu.moveCard( authData, card.id, ghoAccr.colId );
+	await tu.moveCard( authData, td, card.id, ghoAccr.colId, {issNum: issueData[1]} );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, ghoAccr, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "H" );
@@ -656,14 +656,14 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await tu.closeIssue( authData, td, issDatAgho2 );
 
 	// Accrue
-	await tu.moveCard( authData, aghoCard1.id, ghoAccr.colId );
-	await tu.moveCard( authData, aghoCard2.id, ghoAccr.colId );
+	await tu.moveCard( authData, td, aghoCard1.id, ghoAccr.colId, {issNum: issDatAgho1[1]} );
+	await tu.moveCard( authData, td, aghoCard2.id, ghoAccr.colId, {issNum: issDatAgho2[1]} );
 
 	await utils.sleep( 1000 );
 	// Often unneeded, but useful if doing this as a one-off test
 	await tu.refreshUnclaimed( authData, td );
-	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho1, aghoCard1, testStatus );
-	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho2, aghoCard2, testStatus );
+	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho1, aghoCard1, testStatus, {preAssign: 1} );
+	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho2, aghoCard2, testStatus, {preAssign: 1} );
 
 	tu.testReport( testStatus, "accrued A" );
 	
@@ -798,7 +798,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 	// Close & accrue
 	await tu.closeIssue( authData, td, issPendDat );
 	await tu.closeIssue( authData, td, issAccrDat );
-	await tu.moveCard( authData, cardAccr.id, ghoAccr.colId );
+	await tu.moveCard( authData, td, cardAccr.id, ghoAccr.colId, {issNum: issAccrDat[1]} );
 
 	await utils.sleep( 2000 );	
 	testStatus = await tu.checkNewbornIssue( authData, ghLinks, td, issNewbDat, testStatus, {lblCount: 1} );
@@ -935,7 +935,7 @@ async function testProjColMods( authData, ghLinks, td ) {
 	// Close & accrue
 	await tu.closeIssue( authData, td, issPendDat );
 	await tu.closeIssue( authData, td, issAccrDat );
-	await tu.moveCard( authData, cardAccr.id, accrLoc.colId );
+	await tu.moveCard( authData, td, cardAccr.id, accrLoc.colId, {issNum: issAccrDat[1]} );
 
 	await utils.sleep( 2000 );	
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
@@ -1025,17 +1025,17 @@ async function testAlloc( authData, ghLinks, td ) {
     
     // Move to stripe OK, not prog/accr
     {
-	await tu.moveCard( authData, cardAlloc.id, stripeLoc.colId );
+	await tu.moveCard( authData, td, cardAlloc.id, stripeLoc.colId, {issNum: issAllocDat[1]} );
 
 	// Peq is now out of date.  Change stripeLoc psub to fit.
 	stripeLoc.projSub[2] = "Stars";
 	
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
-	await tu.moveCard( authData, cardAlloc.id, progLoc.colId );   // FAIL
+	await tu.moveCard( authData, td, cardAlloc.id, progLoc.colId );   // FAIL
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
-	await tu.moveCard( authData, cardAlloc.id, accrLoc.colId );   // FAIL
+	await tu.moveCard( authData, td, cardAlloc.id, accrLoc.colId );   // FAIL
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
 	tu.testReport( testStatus, "Alloc A" );

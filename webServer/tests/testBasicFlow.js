@@ -259,7 +259,7 @@ async function testStepByStep( authData, ghLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "D" ); }
 
     // 5. move to prog
-    await tu.moveCard( authData, meltCard.id, td.dsProgID );
+    await tu.moveCard( authData, td, meltCard.id, td.dsProgID );
     await utils.sleep( 1000 );
     testStatus = await checkMove( authData, ghLinks, td, meltData, td.dsProgID, meltCard, testStatus );
 	
@@ -273,7 +273,7 @@ async function testStepByStep( authData, ghLinks, td ) {
     tu.testReport( testStatus, "F" );
 
     // 7. move to accr
-    await tu.moveCard( authData, meltCard.id, td.dsAccrID );
+    await tu.moveCard( authData, td, meltCard.id, td.dsAccrID );
     await utils.sleep( 1000 );
     testStatus = await checkMove( authData, ghLinks, td, meltData, td.dsAccrID, meltCard, testStatus );
     
@@ -308,7 +308,7 @@ async function testEndpoint( authData, ghLinks, td ) {
     await tu.addAssignee( authData, td, meltData, ASSIGNEE2 );
 
     // 5. move to prog
-    await tu.moveCard( authData, meltCard.id, td.dsProgID );
+    await tu.moveCard( authData, td, meltCard.id, td.dsProgID );
 	
     // 6. close
     await tu.closeIssue( authData, td, meltData );
@@ -319,7 +319,7 @@ async function testEndpoint( authData, ghLinks, td ) {
     await utils.sleep( 1000 );
     
     // 7. move to accr
-    await tu.moveCard( authData, meltCard.id, td.dsAccrID );
+    await tu.moveCard( authData, td, meltCard.id, td.dsAccrID );
 
     await utils.sleep( 1000 );
 

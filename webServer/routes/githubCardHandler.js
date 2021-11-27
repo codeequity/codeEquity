@@ -55,6 +55,7 @@ async function recordMove( authData, reqBody, fullName, oldCol, newCol, link, pe
 	action = config.PACTACT_ACCR;
     }
     else {
+	// XXX This can indicate a dropped notification.  Need to recover in some cases, this one is probably safe.
 	console.log( authData.who, "Verb, action combo not understood", oldCol, newCol, peq.PeqType );
 	console.log( reqBody );
 	console.log( link );

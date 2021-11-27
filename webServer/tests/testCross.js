@@ -12,17 +12,13 @@ const testData = require( './testData' );
 const tu = require('./testUtils');
 
 
-async function cardPresentHelp( authData, colId, issName ) {
+async function cardPresentHelp( authData, colId, issNum ) {
     let retVal = false;
 
     let allCards  = await tu.getCards( authData, colId );
-
-    for( let i = 0; i < allCards.length; i++ ) {
-	console.log( "CROSS XXX: ", issName, allCards[i].content_url.split('/').pop() );
-    }
     
-    let c = allCards.find( card => card.content_url.split('/').pop() == issName ); 
-    if( typeof c !== 'undefined' ) { print( "CROSS XXX RV: " ); retVal = true; }
+    let c = allCards.find( card => card.content_url.split('/').pop() == issNum ); 
+    if( typeof c !== 'undefined' ) { console.log( "CROSS XXX RV: " ); retVal = true; }
 
     return retVal;
 }
@@ -89,7 +85,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     await utils.sleep( 2000 );
 
     const cardX  = await tu.makeProjectCard( authDataX, ghLinks, tdX.GHFullName, crossLoc.colId, issDatX[0] );
-    await tu.settleWithVal( "Cross test make cross card", cardPresentHelp, authData, crossLoc.colId, issDatX[2] );
+    await tu.settleWithVal( "Cross test make cross card", cardPresentHelp, authData, crossLoc.colId, issDatX[1] );
     
     testStatus = await tu.checkSituatedIssue( authDataX, ghLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1, assign: 2});
     
