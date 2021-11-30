@@ -835,8 +835,10 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
     let variables = {"issueId": issueId, "repoId": toRepoId };
     query = JSON.stringify({ query, variables });
 
-    await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+    let ret = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "transferIssueGQL", e, transferIssueGQL, authData, issueId, toRepoId ));
+
+    console.log( "TI_GQL:", ret );
 }
 
 

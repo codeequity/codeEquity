@@ -276,19 +276,26 @@ void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
       if( pact.note != "Transfer out" ) {  // XXX formalize
          if( ka.allocType == PeqType.allocation ) {
             print( "\n Delete allocation: " + ka.category.toString() );
-            adjustSummaryAlloc( appState, peq.id, ka.categoryBase, ka.category.last, assigneeShare, PeqType.allocation );
+            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1*assigneeShare, PeqType.allocation, source: sourceAlloc );
          }
          else {
-            for( var assignee in assignees ) {
-               print( "\n Delete: " + ka.category.toString() + " " + assignee );
-               adjustSummaryAlloc( appState, peq.id, ka.category, assignee, assigneeShare, ka.allocType );
+            print( "\n Delete: " + ka.category.toString() );
+            List<Allocation> remAllocs = [];  // category, ghUserName, allocType
+            
+            // avoid concurrent mod of list
+            for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+               Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
+               remAllocs.add( miniAlloc );
+            }
+            for( var remAlloc in remAllocs ) {
+               adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1*assigneeShare, ka.allocType, source: remAlloc );
             }
          }
       }
    }
 }
 
-void _add( appState, pact, peq, assignees, assigneeShare, subBase ) {
+void _add( context, appState, pact, peq, assignees, assigneeShare, subBase ) {
    // When adding, will only see peqType alloc or plan
    if( peq.peqType == PeqType.allocation ) {
       // Note.. title will be set to future value here. Will create redundant 'change' in future ingest item
@@ -297,15 +304,21 @@ void _add( appState, pact, peq, assignees, assigneeShare, subBase ) {
    }
    else if( peq.peqType == PeqType.plan ) {
       print( "Plan PEQ" );
-
+      
       /* XXX
+      // If last portion of sub cat is a project, then we are not in a flat project.
       var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectName == subBase.last, orElse: () => null );
       List<String> subPlan = new List<String>.from( subBase );
-      
-      // If last portion of sub cat is a project, then we are not in a flat project.
       if( loc != null && subBase.last != "UnClaimed" ) { subPlan.add( "Planned" ); }    // XXX formalize
-      */
       
+      // iterate over assignees
+      for( var assignee in assignees ) {
+         print( "\n Assignee: " + assignee );
+         if( loc == null ) { adjustSummaryAlloc( appState, peq.id, subBase, assignee, assigneeShare, PeqType.plan ); }
+         else              { adjustSummaryAlloc( appState, peq.id, subPlan, assignee, assigneeShare, PeqType.plan ); }
+      }
+      */
+
       // iterate over assignees
       for( var assignee in assignees ) {
          print( "\n Assignee: " + assignee );
@@ -323,7 +336,11 @@ void _add( appState, pact, peq, assignees, assigneeShare, subBase ) {
 void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
 
    List<Allocation> appAllocs = appState.myPEQSummary.allocations;
-   
+   var baseCat                = subBase.sublist( 0, subBase.length-1 );  // remove old column
+
+   // print( "subBase: " + subBase.toString() );
+   // print( "baseCat: " + baseCat.toString() );
+
    // Delete only.
    if( pact.note == "Transfer out" ) {  // XXX formalize
       print( "Transfer out of repository" );
@@ -365,7 +382,7 @@ void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
       
       // Get name of new column home
       assert( pact.subject.length == 3 );
-      var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectId == pact.subject[1] && a.ghColumnId == pact.subject[2], orElse: () => null );
+      GHLoc loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectId == pact.subject[1] && a.ghColumnId == pact.subject[2], orElse: () => null );
       assert( loc != null );
       
       // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
@@ -407,7 +424,7 @@ void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
             adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
             
             print( "  .. relocating to " + loc.toString() );
-            adjustSummaryAlloc( appState, peq.id, subBase + [loc.ghColumnName], remAlloc.ghUserName, assigneeShare, remAlloc.allocType );
+            adjustSummaryAlloc( appState, peq.id, baseCat + [loc.ghColumnName], remAlloc.ghUserName, assigneeShare, remAlloc.allocType );
          }
       }
    }
@@ -417,9 +434,12 @@ void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
 //      Ingest needs to track all the changes in the middle 
 void _change( appState, pact, peq, assignees, assigneeShare, ka ) {
    assert( ka != null );
-   assert( ka.allocType != PeqType.allocation );
       
+   var sourceType     = ka.allocType;
+   var baseCat        = ka.category.sublist( 0, ka.category.length-1 );
+
    if( pact.note == "add assignee" ) {    // XXX formalize this
+      assert( ka.allocType != PeqType.allocation );
       print( "Add assignee: " + pact.subject.last );
       
       var curAssign  = [ pact.subject.last ];
@@ -428,8 +448,6 @@ void _change( appState, pact, peq, assignees, assigneeShare, ka ) {
          if( assign != "Unassigned" && !curAssign.contains( assign ) ) { curAssign.add( assign ); }   // XXX formalize this            
       }
       
-      var sourceType     = ka.allocType;
-      var baseCat        = ka.category.sublist( 0, ka.category.length-1 );
       var curSplitAmount = ( assigneeShare * assignees.length / curAssign.length ).floor();  
       
       // Remove all old, add all current with new assigneeShares
@@ -443,14 +461,12 @@ void _change( appState, pact, peq, assignees, assigneeShare, ka ) {
       }
    }
    else if( pact.note == "remove assignee" ) {    // XXX formalize this
+      assert( ka.allocType != PeqType.allocation );
       print( "Remove assignee: " + pact.subject.last );
       
       int originalSize = assignees.length;
       
       assert( assignees.contains( pact.subject.last ));
-      
-      var sourceType = ka.allocType;
-      var baseCat    = ka.category.sublist( 0, ka.category.length-1 );
       
       // Remove all old allocs
       for( var assign in assignees ) {
@@ -470,24 +486,40 @@ void _change( appState, pact, peq, assignees, assigneeShare, ka ) {
       }
    }
    else if( pact.note == "peq val update" ) { // XXX formalize this
-      print( "Peq val update, new val: ", pact.subject.last.toString() );
-      
-      var baseCat    = ka.category.sublist( 0, ka.category.length-1 );
-      
-      // Remove all old allocs
-      for( var assign in assignees ) {
-         print( "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+      print( "Peq val update, new val: " + pact.subject.last );
+
+      if( ka.allocType != PeqType.allocation ) {
+         // Remove all old allocs
+         for( var assign in assignees ) {
+            print( "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
+            adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+         }
+         
+         var curSplitAmount = ( int.parse( pact.subject.last ) / assignees.length ).floor();  
+         
+         for( var assign in assignees ) {
+            print( "Add " + assign + " " + curSplitAmount.toString() );
+            adjustSummaryAlloc( appState, peq.id, baseCat, assign, curSplitAmount, sourceType );
+         }
       }
-      
-      var curSplitAmount = ( pact.subject.last / assignees.length ).floor();  
-      
-      for( var assign in assignees ) {
-         print( "Add " + assign + " " + curSplitAmount.toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, curSplitAmount, sourceType );
+      else {
+         // Remove old alloc
+         assert( assignees.length == 1 );
+         String aTitle = ka.category.last;
+         print( "Remove " + baseCat.toString() + " " + aTitle + " " + assigneeShare.toString() );
+         adjustSummaryAlloc( appState, peq.id, baseCat, aTitle, -1 * assigneeShare, sourceType );
+         
+         var curSplitAmount = ( int.parse( pact.subject.last ) / assignees.length ).floor();  
+         
+         print( "Add " + aTitle + " " + curSplitAmount.toString() );
+         adjustSummaryAlloc( appState, peq.id, baseCat, aTitle, curSplitAmount, sourceType );
       }
       
    }
+}
+
+void _notice() {
+   print( "Notice actions are no-ops" );
 }
 
 
@@ -573,7 +605,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       ka = alloc;
    }
    if( ka == null ) {
-      assert( pact.verb == PActVerb.confirm && ( pact.action == PActAction.add || pact.action == PActAction.delete ));
+      assert( pact.verb == PActVerb.confirm && ( pact.action == PActAction.add || pact.action == PActAction.delete || pact.action == PActAction.notice ));
       assignees = peq.ghHolderId;
       if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }
    }
@@ -581,22 +613,21 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    List<String> subBase = ka == null ? peq.ghProjectSub                        : ka.categoryBase; 
    int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.sourcePeq[ peq.id ];
    
-
+   // XXX switch
    // propose accrue == pending.   confirm accrue == grant.  others are plan.  end?
-   if( pact.action == PActAction.notice ) {
-      print( "Peq Action is a notice event: " + pact.subject.toString() );
-      print( "updated CEUID if available - no other action needed." );
-   }
-   else if( pact.action == PActAction.accrue )                                    { _accrue( appState, pact, peq, assignees, assigneeShare, subBase ); }
+   if     ( pact.action == PActAction.accrue )                                    { _accrue( appState, pact, peq, assignees, assigneeShare, subBase ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete )   { _delete( appState, pact, peq, assignees, assigneeShare, ka      ); }
-   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add )      { _add(    appState, pact, peq, assignees, assigneeShare, subBase ); }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add )      { _add(    context, appState, pact, peq, assignees, assigneeShare, subBase ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate ) { _relo(   appState, pact, peq, assignees, assigneeShare, ka, subBase ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.change )   { _change( appState, pact, peq, assignees, assigneeShare, ka ); }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.notice )   { _notice(); }
    else { notYetImplemented( context ); }
 
    print( "current allocs" );
    for( var alloc in appAllocs ) {
-      if( subBase[0] == alloc.category[0] ) { print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() ); }
+      if( subBase.length > 0 ) {  // notices have no subs
+         if( subBase[0] == alloc.category[0] ) { print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() ); }
+      }
    }
 }
 
@@ -624,6 +655,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    List<String> pactIds = [];
    List<String> peqIds = [];
 
+   print( "Building peqPActs" );
    // Build pact peq pairs for active 'todo' PActions.  First, need to get ids where available
    for( var pact in todoPActions ) {
       // print( pact.toString() );
@@ -634,7 +666,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    }
 
    // XXX Could preprocess peqIds to cut aws workload.. remove dups, bad peqs, etc.
-   
+
    // This returns in order of request, including duplicates
    String PeqIds = json.encode( peqIds );
    List<PEQ> todoPeqs = await fetchPEQs( context, container,'{ "Endpoint": "GetPEQsById", "PeqIds": $PeqIds }' );

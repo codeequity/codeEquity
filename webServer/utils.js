@@ -495,7 +495,7 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
     // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
     recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-		     config.PACTVERB_CONF, "change", [newPEQ.PEQId, peqVal], "peq val update",   // XXX formalize
+		     config.PACTVERB_CONF, "change", [newPEQ.PEQId, peqVal.toString()], "peq val update",   // XXX formalize
 		     getToday(), pd.reqBody );
 }
 

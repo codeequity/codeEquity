@@ -101,7 +101,11 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     const repo   = await tu.findRepo( authData, td );
     const issueX = await tu.findIssue( authDataX, tdX, issDatX[0] );
     const repoX  = await tu.findRepo( authDataX, tdX );
+
     
+    console.log( "TRANSFER BEGINNING" );
+    console.log( "base : ", issue.node_id, repoX.node_id );
+    console.log( "baseX: ", issueX.node_id, repo.node_id );
     await gh.transferIssueGQL( authData, issue.node_id, repoX.node_id );
     await gh.transferIssueGQL( authDataX, issueX.node_id, repo.node_id );
     await utils.sleep( 2000 );

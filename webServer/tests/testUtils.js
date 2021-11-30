@@ -272,6 +272,7 @@ async function getNotices() {
     return await utils.postCE( "testHandler", JSON.stringify( postData ));
 }
 
+
 async function findNotice( query ) {
     let notes = await getNotices();
     CE_Notes.fromJson( notes );

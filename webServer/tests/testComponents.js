@@ -103,9 +103,13 @@ async function testLabel( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label 5" );
 	
 	// 6. unlabel, label
-	await tu.remLabel( authData, td, issueData, label );
+	await tu.remLabel( authData, td, issueData, label, {depth: 2} );
 	// second add can happen before del.  Then after del, label not found.  wait..
 	await tu.settleWithVal( "LabelTest remove peqLabel", labNotInIssueHelp, authData, td, label.name, issueData[0] );
+	// remLabel notice can be slow, and can defeat findNotice in this test since there are a chain of add/rem.
+	// for now, add sleep.  if this arises again, consider a more permanent solution
+	await utils.sleep( 2000 );
+	
 	await tu.addLabel( authData, td, issueData[1], label.name ); 
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsProg, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 6" );
@@ -724,6 +728,11 @@ async function getLabHelp( authData, td, name ) {
     return labelRes.label;
 }
 
+async function issueClosedHelp( authData, td, issId ) {
+    let iss = await tu.findIssue( authData, td, issId );
+    return iss.state == 'closed'; 
+}
+
 async function labNotInIssueHelp( authData, td, labName, issId ) {
     let retVal = true;
     let accrIss = await tu.findIssue( authData, td, issId );
@@ -935,6 +944,8 @@ async function testProjColMods( authData, ghLinks, td ) {
 	// Close & accrue
 	await tu.closeIssue( authData, td, issPendDat );
 	await tu.closeIssue( authData, td, issAccrDat );
+	// closeIssue returns only after notice seen.  but notice-job can be demoted.  be extra sure.
+	await tu.settleWithVal( "closeIssue", issueClosedHelp, authData, td, issAccrDat[0] );	
 	await tu.moveCard( authData, td, cardAccr.id, accrLoc.colId, {issNum: issAccrDat[1]} );
 
 	await utils.sleep( 2000 );	
