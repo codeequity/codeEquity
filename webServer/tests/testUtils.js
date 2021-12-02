@@ -526,9 +526,12 @@ async function blastIssue( authData, td, title, labels, assignees, specials ) {
     return issueData;
 }
 
-async function addLabel( authData, td, issueNumber, labelName ) {
-    await authData.ic.issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, labels: [labelName] })
+async function addLabel( authData, td, issDat, labelName ) {
+    await authData.ic.issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issDat[1], labels: [labelName] })
 	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
+
+    let query = "issue labeled " + issDat[2] + " " + td.GHFullName;
+    await settleWithVal( "label", findNotice, query );
 }	
 
 async function remLabel( authData, td, issueData, label ) {

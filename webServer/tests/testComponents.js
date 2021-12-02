@@ -73,7 +73,7 @@ async function testLabel( authData, ghLinks, td ) {
 	console.log( "Make newly situated issue in dsplan" );
 	let issueData = await tu.makeIssue( authData, td, ISS_LAB, [] );     // [id, number, title]  
 	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
-	await tu.addLabel( authData, td, issueData[1], label.name );
+	await tu.addLabel( authData, td, issueData, label.name );
 	
 	let card  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, issueData[0] );
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, dsPlan, issueData, card, testStatus );
@@ -98,7 +98,7 @@ async function testLabel( authData, ghLinks, td ) {
 	
 	// 5. move to prog (untracked), label
 	await tu.moveCard( authData, td, card.id, td.dsProgID );
-	await tu.addLabel( authData, td, issueData[1], label.name );
+	await tu.addLabel( authData, td, issueData, label.name );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsProg, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 5" );
 	
@@ -110,7 +110,7 @@ async function testLabel( authData, ghLinks, td ) {
 	// for now, add sleep.  if this arises again, consider a more permanent solution
 	await utils.sleep( 2000 );
 	
-	await tu.addLabel( authData, td, issueData[1], label.name ); 
+	await tu.addLabel( authData, td, issueData, label.name ); 
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsProg, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 6" );
 	
@@ -130,7 +130,7 @@ async function testLabel( authData, ghLinks, td ) {
 	console.log( "Make newly situated issue in bacon" );
 	let issueData = await tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, title] 
 	let label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
-	await tu.addLabel( authData, td, issueData[1], label.name );
+	await tu.addLabel( authData, td, issueData, label.name );
 	let card  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, bacon.colId, issueData[0] );
 
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
@@ -138,14 +138,14 @@ async function testLabel( authData, ghLinks, td ) {
 	
 	// 2. add "documentation" twice (fail - will not receive 2nd notification)
 	let docLabel  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "documentation", -1 );	
-	await tu.addLabel( authData, td, issueData[1], docLabel.name );
-	await tu.addLabel( authData, td, issueData[1], docLabel.name );
+	await tu.addLabel( authData, td, issueData, docLabel.name );
+	await tu.addLabel( authData, td, issueData, docLabel.name );
 	testStatus = await checkDubLabel( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 2" );
 	
 	// 3. add 500 peq (fail)
 	let label500  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, halfKP, 500 );	
-	await tu.addLabel( authData, td, issueData[1], label500.name );
+	await tu.addLabel( authData, td, issueData, label500.name );
 	testStatus = await checkDubLabel( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 3" );	
 
@@ -162,7 +162,7 @@ async function testLabel( authData, ghLinks, td ) {
 	tu.testReport( testStatus, "Label flat 1" );
 	
 	// 2. label
-	await tu.addLabel( authData, td, issueData[1], label.name );    
+	await tu.addLabel( authData, td, issueData, label.name );    
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 2" );
 
@@ -196,7 +196,7 @@ async function testLabel( authData, ghLinks, td ) {
 	flatAccr.projSub = [ td.flatTitle, config.PROJ_COLS[config.PROJ_ACCR] ];
 
 	// 5. relabel (OK here, negotiating)
-	await tu.addLabel( authData, td, issueData[1], label500.name );    
+	await tu.addLabel( authData, td, issueData, label500.name );    
 	// re-created peq, i.e. re-peq-labeled.  Gets assignees again.
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus, {label: 500, assign: 1 } );
 	tu.testReport( testStatus, "Label flat 6" );
@@ -232,7 +232,7 @@ async function testAssignment( authData, ghLinks, td ) {
     let assData = await tu.makeIssue( authData, td, ISS_ASS, [] );     // [id, number, title]  
 
     let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
-    await tu.addLabel( authData, td, assData[1], newLabel.name );
+    await tu.addLabel( authData, td, assData, newLabel.name );
 
     let assCard  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, assData[0] );
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, assPlan, assData, assCard, testStatus );
@@ -316,7 +316,7 @@ async function testLabelCarded( authData, ghLinks, td ) {
 	// 2. add label
 	const kp = "1000 " + config.PEQ_LABEL;
 	const label     = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
-	await tu.addLabel( authData, td, issueData[1], label.name );
+	await tu.addLabel( authData, td, issueData, label.name );
 	testStatus     = await tu.checkNewlySituatedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
     }	
 
@@ -1054,13 +1054,13 @@ async function testAlloc( authData, ghLinks, td ) {
 
     // Dub label
     {
-	await tu.addLabel( authData, td, issAllocDat[1], labelBug.name );
+	await tu.addLabel( authData, td, issAllocDat, labelBug.name );
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 	
-	await tu.addLabel( authData, td, issAllocDat[1], label2m.name );  // FAIL
+	await tu.addLabel( authData, td, issAllocDat, label2m.name );  // FAIL
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 
-	await tu.addLabel( authData, td, issAllocDat[1], label1k.name );  // FAIL
+	await tu.addLabel( authData, td, issAllocDat, label1k.name );  // FAIL
 	testStatus = await tu.checkAlloc( authData, ghLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
 
 	tu.testReport( testStatus, "Alloc B" );

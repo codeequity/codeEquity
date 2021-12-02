@@ -9,6 +9,7 @@ class GHLoc {
    final String ghProjectName;
    final String ghColumnId;
    final String ghColumnName;
+   final bool   active;         // ceServer writes in real time, ceFlutter reads after the fact.  May need legacy data during ingest.
 
    GHLoc({this.ghProjectId, this.ghProjectName, this.ghColumnId, this.ghColumnName });
 
@@ -20,6 +21,7 @@ class GHLoc {
          ghProjectName:   json['GHProjectName'],
          ghColumnId:      json['GHColumnId'],
          ghColumnName:    json['GHColumnName'],
+         active:          json['Active'] == "true" ? true : false;
          );
    }
    
@@ -27,6 +29,7 @@ class GHLoc {
       String res = "";
       res += "\n    Project: " + ghProjectName + " (" + ghProjectId + ")";
       res += "\n    Column:  " +  ghColumnName + " (" + ghColumnId  + ")";
+      res += "\n    " + active ? "Active!" : "Inactive.";
       return res;
    }
 

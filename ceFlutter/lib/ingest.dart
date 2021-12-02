@@ -219,7 +219,7 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
 
 
 
-void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int assigneeShare, List<String> subBase ) {
+void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int assigneeShare, Allocation sourceAlloc, List<String> subBase ) {
    // Once see action accrue, should have already seen peqType.pending
    print( "Accrue PAct " + enumToStr( pact.action ) + " " + enumToStr( pact.verb ));
    
@@ -239,8 +239,8 @@ void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int ass
       String newType = "";
       if( pact.verb == PActVerb.propose ) {
          // add propose, rem plan
-         adjustSummaryAlloc( appState, peq.id, subProp, assignee, assigneeShare, PeqType.pending ); 
          adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, PeqType.plan );
+         adjustSummaryAlloc( appState, peq.id, subProp, assignee, assigneeShare, PeqType.pending ); 
          newType = enumToStr( PeqType.pending );
       }
       else if( pact.verb == PActVerb.reject ) {
@@ -250,8 +250,8 @@ void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int ass
          newType = enumToStr( PeqType.plan );
       }
       else if( pact.verb == PActVerb.confirm ) {
-         // rem propose, add accrue
-         adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * assigneeShare, PeqType.pending );
+         // remove any source alloc
+         adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, sourceAlloc.allocType );
          adjustSummaryAlloc( appState, peq.id, subAccr, assignee,  assigneeShare, PeqType.grant );
          newType = enumToStr( PeqType.grant );
       }
@@ -272,11 +272,13 @@ void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int ass
 
 void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
    // This can be called as part of a transfer out, in which this is a no-op.
+   List<Allocation> appAllocs = appState.myPEQSummary.allocations;
+
    if( ka != null ) {
       if( pact.note != "Transfer out" ) {  // XXX formalize
          if( ka.allocType == PeqType.allocation ) {
             print( "\n Delete allocation: " + ka.category.toString() );
-            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1*assigneeShare, PeqType.allocation, source: sourceAlloc );
+            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1*assigneeShare, PeqType.allocation, source: ka );
          }
          else {
             print( "\n Delete: " + ka.category.toString() );
@@ -294,6 +296,12 @@ void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
       }
    }
 }
+
+// Note: there is no transfer in.  transfered peq issues arrive as uncarded newborns, and so are untracked.
+// Note: some early peq states may be unexpected during add.  For example, LabelTest.
+//       When performing a sequence of add/delete/move, an issue can created correctly, then bounced out of reserved into "In Prog",
+//       then unlabeled (untracked), then re-tracked.  In this case, the PEQ is re-created, with the correct column of "In Prog".
+//       From ingest point of view, In Prog === Planned, so no difference in operation.
 
 void _add( context, appState, pact, peq, assignees, assigneeShare, subBase ) {
    // When adding, will only see peqType alloc or plan
@@ -615,7 +623,7 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    
    // XXX switch
    // propose accrue == pending.   confirm accrue == grant.  others are plan.  end?
-   if     ( pact.action == PActAction.accrue )                                    { _accrue( appState, pact, peq, assignees, assigneeShare, subBase ); }
+   if     ( pact.action == PActAction.accrue )                                    { _accrue( appState, pact, peq, assignees, assigneeShare, ka, subBase ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete )   { _delete( appState, pact, peq, assignees, assigneeShare, ka      ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add )      { _add(    context, appState, pact, peq, assignees, assigneeShare, subBase ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate ) { _relo(   appState, pact, peq, assignees, assigneeShare, ka, subBase ); }

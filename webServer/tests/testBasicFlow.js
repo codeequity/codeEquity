@@ -235,7 +235,7 @@ async function testStepByStep( authData, ghLinks, td ) {
     // 2. add peq label
     let kp = "1000 " + config.PEQ_LABEL;    
     let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
-    await tu.addLabel( authData, td, meltData[1], newLabel.name );
+    await tu.addLabel( authData, td, meltData, newLabel.name );
     await utils.sleep( 1000 );  
     await tu.refreshUnclaimed( authData, td );
     testStatus = await checkUnclaimedIssue( authData, ghLinks, td, meltData, testStatus );
@@ -298,7 +298,7 @@ async function testEndpoint( authData, ghLinks, td ) {
     // 2. add peq label
     let kp = "1000 " + config.PEQ_LABEL;
     let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, kp, 1000 );
-    await tu.addLabel( authData, td, meltData[1], newLabel.name );
+    await tu.addLabel( authData, td, meltData, newLabel.name );
     
     // 3. Add to project
     let meltCard  = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, td.dsPlanID, meltData[0] );

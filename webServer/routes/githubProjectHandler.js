@@ -21,7 +21,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	break;
     case 'created':  
 	{
-	    ghLinks.addLoc( authData, pd.GHFullName, pd.GHProjectName, pd.GHProjectId, config.EMPTY, -1, true );
+	    ghLinks.addLoc( authData, pd.GHFullName, pd.GHProjectName, pd.GHProjectId, config.EMPTY, -1, "true", true );
 	}
 	break;
     case 'edited':

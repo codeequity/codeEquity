@@ -70,7 +70,7 @@ async function testPopulate( authData, td ) {
 
     let popLabel    = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
     let singleIssue = await tu.findIssueByName( authData, td, ISS_SINREC );
-    await tu.addLabel( authData, td, singleIssue.number, popLabel.name );       // ready.. set... Go!
+    await tu.addLabel( authData, td, [singleIssue.id, singleIssue.number, singleIssue.title], popLabel.name );       // ready.. set... Go!
 
     await utils.sleep( 15000 );
 
@@ -193,8 +193,9 @@ async function testResolve( authData, ghLinks, td ) {
     // First add a few normal labels
     // At the start, will have 3 triprecs, non are peq
     let tripleIssue = await tu.findIssue( authData, td, ISS_TRIPREC );
-    await tu.addLabel( authData, td, tripleIssue.number, "bug" );       
-    await tu.addLabel( authData, td, tripleIssue.number, "enhancement" );       
+    let tiDat = [tripleIssue.id, tripleIssue.number, tripleIssue.title];
+    await tu.addLabel( authData, td, tiDat, "bug" );       
+    await tu.addLabel( authData, td, tiDat, "enhancement" );       
 
     // Add a peq label
     let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 " + config.PEQ_LABEL, 1000 );
@@ -205,7 +206,7 @@ async function testResolve( authData, ghLinks, td ) {
     //       triage.  Adds a (bigger than this) delay.
     // Note: test setup has 2 random delays.  1: local -> gh rest time.  2: gh -> local.   by-hand has 1.
     console.log( "Send add label" );
-    await tu.addLabel( authData, td, tripleIssue.number, newLabel.name );       
+    await tu.addLabel( authData, td, tiDat, newLabel.name );       
 
     console.log( "Send create card" );
     await ghSafe.createProjectCard( authData, td.dsPlanID, tripleIssue.id, false );  // ready.. set... Go!

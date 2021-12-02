@@ -491,15 +491,17 @@ async function writeLinkHelp( summary ) {
 
 async function putLinkage( summary ) {
     // get any entry with summary.GHRepo, overwrite
-    let oldSummary = await getLinkage( summary.GHRepo );  
+    let oldSummary = await getLinkage( summary.GHRepo );
     
     // write new summary
     summary.CELinkageId = oldSummary == -1 ? randAlpha(10) : oldSummary.CELinkageId;
+    console.log( "overwriting CELinks for", summary.CELinkageId );
     return await writeLinkHelp( summary );
 }
 
 async function updateLinkage( newLoc ) {
     // get any entry with summary.GHRepo, overwrite
+    console.log( "Update linkage", newLoc.toString() );
     let oldSummary = await getLinkage( newLoc.GHRepo );
 
     // Note!  First created project in repo will not have summary.
@@ -513,11 +515,13 @@ async function updateLinkage( newLoc ) {
     oldSummary.lastMod = newLoc.lastMod;
     let foundLoc = false;
     if( 'Locations' in oldSummary ) {
-	for( const loc of oldSummary.Locations ) {
+	for( var loc of oldSummary.Locations ) {
 	    // Catch name change
 	    if( loc.GHProjectId == newLoc.GHProjectId && loc.GHColumnId == newLoc.GHColumnId ) {
+		console.log( "updating with", newLoc.GHProjectName, newLoc.GHColumnName );
 		loc.GHProjectName = newLoc.GHProjectName;
 		loc.GHColumnName  = newLoc.GHColumnName;
+		loc.Active        = newLoc.Active;
 		foundLoc = true;
 	    }
 	}
@@ -527,10 +531,12 @@ async function updateLinkage( newLoc ) {
     // Add, if not already present
     if( !foundLoc ) {
 	let aloc = {};
+	console.log( "Create new for", newLoc.GHProjectName, newLoc.GHColumnName );
 	aloc.GHProjectId   = newLoc.GHProjectId;
 	aloc.GHProjectName = newLoc.GHProjectName;
 	aloc.GHColumnId    = newLoc.GHColumnId;
 	aloc.GHColumnName  = newLoc.GHColumnName;
+	aloc.Active        = newLoc.Active;
 	oldSummary.Locations.push( aloc );
     }
 

@@ -737,28 +737,24 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     }
 }
 
-async function refreshLinkageSummary( authData, ghRepo, locData ) {
+
+// locData can be from GQL, or linkage
+async function refreshLinkageSummary( authData, ghRepo, locData, gql = true ) {
     console.log( "Refreshing linkage summary" );
 
-    let locs = [];
-    for( const loc of locData ) {
-	let aloc = {};
-	
-	aloc.GHProjectId   = loc.GHProjectId;
-	aloc.GHProjectName = loc.GHProjectName;
-	aloc.GHColumnId    = loc.GHColumnId;
-	aloc.GHColumnName  = loc.GHColumnName;
 
-	locs.push( aloc );
+    if( gql ) {
+	for( var loc of locData ) {
+            loc.Active = "true";
+	}
     }
-
+    
     let summary = {};
     summary.GHRepo    = ghRepo;
     summary.LastMod   = getToday();
-    summary.Locations = locs;
+    summary.Locations = locData;
 
     let shortName = "RecordLinkage"; 
-
     let pd = { "Endpoint": shortName, "summary": summary }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }

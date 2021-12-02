@@ -49,7 +49,8 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     let issPopDat = await ghSafe.createIssue( authDataX, tdX.GHOwner, tdX.GHRepo, "A special populate issue", [], false );
     let cardPop   = await ghSafe.createProjectCard( authDataX, crossCid, issPopDat[0] );
     let popLabel  = await gh.findOrCreateLabel( authDataX, tdX.GHOwner, tdX.GHRepo, false, config.POPULATE, -1 );
-    await tu.addLabel( authDataX, tdX, issPopDat[1], popLabel.name );       
+    let ipDat     = [issPopDat[0], issPopDat[1], "A special populate issue" ];
+    await tu.addLabel( authDataX, tdX, ipDat, popLabel.name );       
     await utils.sleep( 1000 );
 
     const LAB = "704 " + config.PEQ_LABEL;
@@ -151,7 +152,8 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
     let issPopDat = await ghSafe.createIssue( authDataM, tdM.GHOwner, tdM.GHRepo, "A special populate issue", [], false );
     let cardPop   = await ghSafe.createProjectCard( authDataM, multiCid, issPopDat[0] );
     let popLabel  = await gh.findOrCreateLabel( authDataM, tdM.GHOwner, tdM.GHRepo, false, config.POPULATE, -1 );
-    await tu.addLabel( authDataM, tdM, issPopDat[1], popLabel.name );       
+    let ipDat     = [issPopDat[0], issPopDat[1], "A special populate issue" ];
+    await tu.addLabel( authDataM, tdM, ipDat, popLabel.name );       
     await utils.sleep( 1000 );
 
     // Labels, Assignees & Locs

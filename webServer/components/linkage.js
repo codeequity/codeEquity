@@ -37,9 +37,12 @@ class Linkage {
 
 	ldPromise = await ldPromise;  // no val here, just ensures locData is set
 	for( const loc of locData ) {
-	    this.addLoc( authData, fn, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId );
+	    this.addLoc( authData, fn, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId, "true" );
 	}
+
+	console.log( "XXX BEFORE XXX", this.toString() );
 	utils.refreshLinkageSummary( authData, fn, locData );
+	console.log( "XXX AFTER XXX", this.toString() );
 
 	blPromise = await blPromise;  // no val here, just ensures locData is set
 	this.populateLinkage( authData, fn, baseLinks );
@@ -156,13 +159,13 @@ class Linkage {
 	console.log( "Creating ghLinks.locs from json data" );
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, loc] of Object.entries( clocs ) ) {
-		this.addLoc( {}, loc.GHRepo, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId );
+		this.addLoc( {}, loc.GHRepo, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId, loc.Active );
 	    }
 	}
     }
 
     // ProjectID is the kanban project.  repo:pid  is 1:many
-    addLoc( authData, repo, projName, projId, colName, colId, pushAWS = false ) {
+    addLoc( authData, repo, projName, projId, colName, colId, active, pushAWS = false ) {
 	colId  = colId.toString();
 	projId = projId.toString();
 	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
@@ -175,6 +178,7 @@ class Linkage {
 	loc.GHProjectName = projName;
 	loc.GHColumnId    = colId;
 	loc.GHColumnName  = colName;
+	loc.Active        = active;
 
 	// No need to wait
 	if( pushAWS ) { utils.updateLinkageSummary( authData, loc ); } 
@@ -267,9 +271,10 @@ class Linkage {
 		match = projId == -1             ? match : match && (loc.GHProjectId   == projId);
 		match = colId == -1              ? match : match && (loc.GHColumnId    == colId);
 		match = repo == config.EMPTY     ? match : match && (loc.GHRepo        == repo);
-		match = projName == config.EMPTY ? match : match && (loc.GHProjectName == projName );
-		match = colName == config.EMPTY  ? match : match && (loc.GHColumnName  == colName );
-
+		match = projName == config.EMPTY ? match : match && (loc.GHProjectName == projName);
+		match = colName == config.EMPTY  ? match : match && (loc.GHColumnName  == colName);
+		match =                                    match && (loc.Active        == "true");
+		
 		if( match ) { locs.push( loc ); }
 	    }
 	}
@@ -362,42 +367,67 @@ class Linkage {
     }
 
     removeLocs({ authData, projId, colId }) {
-	let retVal = false;
-	if( !authData ) { console.log( "missing authData" ); return retVal; }
+	if( !authData ) { console.log( "missing authData" ); return false; }
 
 
 	if( colId )       { console.log( authData.who, "Remove loc for colId:", colId ); }    // one delete
 	else if( projId ) { console.log( authData.who, "Remove locs for projId:", projId ); } // many deletes
 
-	retVal = true;
 
 	let havePID = typeof projId !== 'undefined';
 	let haveCID = typeof colId  !== 'undefined';
+	let repo    = "";
 	
 	// Easy cases, already do not exist
 	if( (!havePID && !haveCID) ||                                              // nothing specified
 	    (havePID && !this.locs.hasOwnProperty( projId )) ||                    // have pid, but already not in locs
 	    (havePID && haveCID && !this.locs[projId].hasOwnProperty( colId ))) {  // have pid & cid, but already not in locs
-	    return retVal;
 	}
-
-	if( havePID && this.locs.hasOwnProperty( projId )) {
-	    if( haveCID && this.locs[projId].hasOwnProperty( colId ))  { delete this.locs[projId][colId];  return retVal; }
-	    if( !haveCID )                                             { delete this.locs[projId];  return retVal; }
+	else if( havePID && this.locs.hasOwnProperty( projId )) {
+	    if( haveCID && this.locs[projId].hasOwnProperty( colId ))
+	    {
+		repo = this.locs[projId][colId].GHRepo;
+		this.locs[projId][colId].Active = "false"; 
+	    }
+	    else if( !haveCID ) {
+		for( var [_, loc] of Object.entries( this.locs[projId] )) {
+		    repo = loc.GHRepo;
+		    loc.Active = "false"; 
+		}
+	    }
 	}
 	// I don't have PID, but I do have CID
 	else {  
 	    for( const [proj,cloc] of Object.entries( this.locs )) {
 		if( cloc.hasOwnProperty( colId )) {
-		    delete this.locs[proj][colId];
+		    repo = this.locs[proj][colId].GHRepo;		    
+		    this.locs[proj][colId].Active = "false";
 		    break;
 		}
 	    }
 	}
+
+	// No need to wait.  Pass a list here, so no-one else need care about internals.
+	if( repo != "" ) {
+	    let locs = [];
+	    for( const [_, cloc] of Object.entries( this.locs ) ) {
+		for( const [_, loc] of Object.entries( cloc )) {
+		    
+		    let aloc = {};
+		    aloc.GHProjectId   = loc.GHProjectId;
+		    aloc.GHProjectName = loc.GHProjectName;
+		    aloc.GHColumnId    = loc.GHColumnId;
+		    aloc.GHColumnName  = loc.GHColumnName;
+		    aloc.Active        = loc.Active;
+		    
+		    locs.push( aloc );
+		}
+	    }
+	    utils.refreshLinkageSummary( authData, repo, locs, false );
+	}
 	
     	// this.showLocs();
-	retVal = true;
-	return retVal;
+	return repo != "";
     }
 
     purge( repo ) {
@@ -432,6 +462,8 @@ class Linkage {
     }
 
     show( count ) {
+	if( Object.keys( this.links ).length <= 0 ) { return ""; }
+	
 	console.log( "IssueId",
 		     "IssueNum",
 		     this.fill( "CardId", 7),
@@ -480,7 +512,7 @@ class Linkage {
 	let printables = [];
 	for( const [_, clocs] of Object.entries( this.locs )) {
 	    for( const [_, loc] of Object.entries( clocs )) {
-		printables.push( loc );
+		if( loc.Active == "true" ) { printables.push( loc ); }
 	    }
 	}
 
@@ -494,9 +526,15 @@ class Linkage {
 			 loc.GHProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.GHProjectId, 10 ),
 			 this.fill( loc.GHProjectName, 15 ),
 			 loc.GHColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.GHColumnId, 10 ),
-			 this.fill( loc.GHColumnName, 20 ),
+			 this.fill( loc.GHColumnName, 20 ), this.fill( loc.Active, 7 )
 		       );
 	}
+    }
+
+    toString() {
+	this.show(10);
+	this.showLocs();
+	return "";
     }
 }
 
