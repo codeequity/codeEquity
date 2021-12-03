@@ -656,8 +656,8 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	const aghoCard2   = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, ghoPend.colId, issDatAgho2[0] );
 
 	// Close
-	await tu.closeIssue( authData, td, issDatAgho1 );
-	await tu.closeIssue( authData, td, issDatAgho2 );
+	await tu.closeIssue( authData, td, issDatAgho1, ghoPend );
+	await tu.closeIssue( authData, td, issDatAgho2, ghoPend );
 
 	// Accrue
 	await tu.moveCard( authData, td, aghoCard1.id, ghoAccr.colId, {issNum: issDatAgho1[1]} );
@@ -806,7 +806,7 @@ async function testLabelMods( authData, ghLinks, td ) {
 
 	// Close & accrue
 	await tu.closeIssue( authData, td, issPendDat );
-	await tu.closeIssue( authData, td, issAccrDat );
+	await tu.closeIssue( authData, td, issAccrDat, ghoPend, cardAccr );
 	await tu.moveCard( authData, td, cardAccr.id, ghoAccr.colId, {issNum: issAccrDat[1]} );
 
 	await utils.sleep( 2000 );	
@@ -943,7 +943,7 @@ async function testProjColMods( authData, ghLinks, td ) {
 
 	// Close & accrue
 	await tu.closeIssue( authData, td, issPendDat );
-	await tu.closeIssue( authData, td, issAccrDat );
+	await tu.closeIssue( authData, td, issAccrDat, pendLoc );
 	// closeIssue returns only after notice seen.  but notice-job can be demoted.  be extra sure.
 	await tu.settleWithVal( "closeIssue", issueClosedHelp, authData, td, issAccrDat[0] );	
 	await tu.moveCard( authData, td, cardAccr.id, accrLoc.colId, {issNum: issAccrDat[1]} );

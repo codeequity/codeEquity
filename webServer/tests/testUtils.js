@@ -177,13 +177,27 @@ async function confirmColumn( authData, ghLinks, fullName, colId ) {
     return locs != -1; 
 }
 
-async function checkIssueState( authData, td, issueData ) {
+
+// If need be, could also add check for issue state
+async function checkLoc( authData, td, issueData, loc ) {
 
     let issue = await findIssue( authData, td, issueData[0] );
     let retVal = true;
     if( typeof issue == 'undefined' || issue == -1 ) { retVal = false; }
-    retVal = retVal && (issue.state == 'open' || issue.state == 'closed' );
 
+    if( retVal ) {
+	if( loc == -1 ) {
+	    retVal = retVal && (issue.state == 'open' || issue.state == 'closed' );
+	}
+	else {
+	    let cards = await getCards( authData, loc.colId );
+	    if( cards == -1 ) { retVal = false; }
+	    else {
+		let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+		if( typeof mCard[0] === 'undefined' ) { retVal = false; }
+	    }
+	}
+    }
     return retVal;
 }
 
@@ -611,16 +625,15 @@ async function remCard( authData, cardId ) {
 
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
-async function closeIssue( authData, td, issueData ) {
+async function closeIssue( authData, td, issueData, loc = -1 ) {
     await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], state: "closed" })
 	.catch( e => { console.log( authData.who, "Close issue failed.", e );	});
 
     let query = "issue closed " + issueData[2] + " " + td.GHFullName;
     await settleWithVal( "closeIssue", findNotice, query );
 
-    // Darg.  closeIssue may be undone (no assignees).  Can't check for issue.state.  Can't check bot-sent, not in ceNotices.
-    // Get state of issue from GH.  If GH or connection is slow, this check will be equally slow.
-    await settleWithVal( "closeIssue state", checkIssueState, authData, td, issueData );
+    // Send loc for serious checks.  Otherwise, just check state of issue from GH - if connection is slow, this will help with pacing.
+    await settleWithVal( "closeIssue finished", checkLoc, authData, td, issueData, loc );
 }
 
 async function reopenIssue( authData, td, issueNumber ) {
