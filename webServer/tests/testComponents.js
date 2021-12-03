@@ -1196,20 +1196,20 @@ async function runTests( authData, ghLinks, td ) {
     let t6 = await testLabelMods( authData, ghLinks, td );
     console.log( "\n\nLabel mods complete." );
     await utils.sleep( 5000 );
-    
+
     let t7 = await testProjColMods( authData, ghLinks, td );
     console.log( "\n\nProjCol mods complete." );
     // await utils.sleep( 5000 );
 
 
     testStatus = tu.mergeTests( testStatus, t1 );
+    testStatus = tu.mergeTests( testStatus, t8 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );
     testStatus = tu.mergeTests( testStatus, t4 );
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
     testStatus = tu.mergeTests( testStatus, t7 );
-    testStatus = tu.mergeTests( testStatus, t8 );
     
     return testStatus
 }

@@ -32,7 +32,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    const loc = locs == -1 ? locs : locs[0];
 	    assert( loc != -1 );
 	    
-	    ghLinks.addLoc( authData, pd.GHFullName, loc.GHProjectName, pd.GHProjectId, pd.GHColumnName, pd.GHColumnId, "true", true );
+	    await ghLinks.addLoc( authData, pd.GHFullName, loc.GHProjectName, pd.GHProjectId, pd.GHColumnName, pd.GHColumnId, "true", true );
 	}
 	break;
     case 'edited':
@@ -57,11 +57,13 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		else {
 		    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "colName": oldName } );
 		    links.forEach( link => link.GHColumnName = newName );
-		    
+
 		    // send 1 PAct to update any peq projSub.  don't wait.
 		    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 					   config.PACTVERB_CONF, config.PACTACT_CHAN, [oldName, newName], "Column rename",
 					   utils.getToday(), pd.reqBody );
+
+		    await ghLinks.addLoc( authData, pd.GHFullName, loc.GHProjectName, pd.GHProjectId, newName, pd.GHColumnId, "true", true );
 		}
 	    }
 	}

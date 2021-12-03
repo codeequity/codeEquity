@@ -177,6 +177,16 @@ async function confirmColumn( authData, ghLinks, fullName, colId ) {
     return locs != -1; 
 }
 
+async function checkIssueState( authData, td, issueData ) {
+
+    let issue = await findIssue( authData, td, issueData[0] );
+    let retVal = true;
+    if( typeof issue == 'undefined' || issue == -1 ) { retVal = false; }
+    retVal = retVal && (issue.state == 'open' || issue.state == 'closed' );
+
+    return retVal;
+}
+
 async function hasRaw( authData, pactId ) {
     let retVal = false;
     let praw = await utils.getRaw( authData, pactId );
@@ -599,15 +609,18 @@ async function remCard( authData, cardId ) {
     await utils.sleep( MIN_DELAY );
 }
 
+// Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
+// Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
 async function closeIssue( authData, td, issueData ) {
     await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], state: "closed" })
 	.catch( e => { console.log( authData.who, "Close issue failed.", e );	});
 
     let query = "issue closed " + issueData[2] + " " + td.GHFullName;
     await settleWithVal( "closeIssue", findNotice, query );
-    // This extra sleep gives CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
-    // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
-    await utils.sleep( GH_DELAY );
+
+    // Darg.  closeIssue may be undone (no assignees).  Can't check for issue.state.  Can't check bot-sent, not in ceNotices.
+    // Get state of issue from GH.  If GH or connection is slow, this check will be equally slow.
+    await settleWithVal( "closeIssue state", checkIssueState, authData, td, issueData );
 }
 
 async function reopenIssue( authData, td, issueNumber ) {

@@ -270,6 +270,10 @@ void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int ass
    }
 }
 
+// Note: for del proj/col, ceFlutter need do nothing special, all handled by ceServer.
+// Delete proj/col with no peqs?  Don't care.
+// Delete proj/col with peqs?     issues remain, series of del card/label are sent.  
+// Delete proj/col with ACCR?     ACCR are relocated
 void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
    // This can be called as part of a transfer out, in which this is a no-op.
    List<Allocation> appAllocs = appState.myPEQSummary.allocations;

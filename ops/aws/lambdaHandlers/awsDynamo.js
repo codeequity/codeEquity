@@ -501,27 +501,26 @@ async function putLinkage( summary ) {
 
 async function updateLinkage( newLoc ) {
     // get any entry with summary.GHRepo, overwrite
-    console.log( "Update linkage", newLoc.toString() );
     let oldSummary = await getLinkage( newLoc.GHRepo );
 
     // Note!  First created project in repo will not have summary.
     if( oldSummary == -1 ) {
 	oldSummary = {};
 	oldSummary.CELinkageId = randAlpha(10);
-	oldSummary.GHRepo      = newLoc.GHRepo; 
+	oldSummary.GHRepo      = newLoc.GHRepo;
+	console.log( "Created new summary object" );
     }
 
-    // Update according to newLoc
-    oldSummary.lastMod = newLoc.lastMod;
+    // Update to catch and overwrite with name changes
+    oldSummary.LastMod = newLoc.LastMod;
     let foundLoc = false;
     if( 'Locations' in oldSummary ) {
 	for( var loc of oldSummary.Locations ) {
-	    // Catch name change
-	    if( loc.GHProjectId == newLoc.GHProjectId && loc.GHColumnId == newLoc.GHColumnId ) {
-		console.log( "updating with", newLoc.GHProjectName, newLoc.GHColumnName );
-		loc.GHProjectName = newLoc.GHProjectName;
-		loc.GHColumnName  = newLoc.GHColumnName;
-		loc.Active        = newLoc.Active;
+	    if( loc.GHProjectId == newLoc.Location.GHProjectId && loc.GHColumnId == newLoc.Location.GHColumnId ) {
+		console.log( "updating with", newLoc.Location.GHProjectName, newLoc.Location.GHColumnName );
+		loc.GHProjectName = newLoc.Location.GHProjectName;
+		loc.GHColumnName  = newLoc.Location.GHColumnName;
+		loc.Active        = newLoc.Location.Active;
 		foundLoc = true;
 	    }
 	}
@@ -531,15 +530,15 @@ async function updateLinkage( newLoc ) {
     // Add, if not already present
     if( !foundLoc ) {
 	let aloc = {};
-	console.log( "Create new for", newLoc.GHProjectName, newLoc.GHColumnName );
-	aloc.GHProjectId   = newLoc.GHProjectId;
-	aloc.GHProjectName = newLoc.GHProjectName;
-	aloc.GHColumnId    = newLoc.GHColumnId;
-	aloc.GHColumnName  = newLoc.GHColumnName;
-	aloc.Active        = newLoc.Active;
+	console.log( "Create new for", newLoc.Location.GHProjectName, newLoc.Location.GHColumnName );
+	aloc.GHProjectId   = newLoc.Location.GHProjectId;
+	aloc.GHProjectName = newLoc.Location.GHProjectName;
+	aloc.GHColumnId    = newLoc.Location.GHColumnId;
+	aloc.GHColumnName  = newLoc.Location.GHColumnName;
+	aloc.Active        = newLoc.Location.Active;
 	oldSummary.Locations.push( aloc );
     }
-
+    
     return await writeLinkHelp( oldSummary );
 }
 

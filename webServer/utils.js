@@ -748,7 +748,7 @@ async function refreshLinkageSummary( authData, ghRepo, locData, gql = true ) {
             loc.Active = "true";
 	}
     }
-    
+
     let summary = {};
     summary.GHRepo    = ghRepo;
     summary.LastMod   = getToday();

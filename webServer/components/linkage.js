@@ -37,12 +37,9 @@ class Linkage {
 
 	ldPromise = await ldPromise;  // no val here, just ensures locData is set
 	for( const loc of locData ) {
-	    this.addLoc( authData, fn, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId, "true" );
+	    this.addLoc( authData, fn, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId, "true", false );
 	}
-
-	console.log( "XXX BEFORE XXX", this.toString() );
 	utils.refreshLinkageSummary( authData, fn, locData );
-	console.log( "XXX AFTER XXX", this.toString() );
 
 	blPromise = await blPromise;  // no val here, just ensures locData is set
 	this.populateLinkage( authData, fn, baseLinks );
@@ -156,6 +153,10 @@ class Linkage {
     // For testing, locData grabbed from server and queried, do NOT modify AWS.
     fromJsonLocs( locData ) {
 	this.links = {};
+
+	// Need to purge first!
+	this.purgeLocs( "TESTING-FROMJSONLOCS" );
+	
 	console.log( "Creating ghLinks.locs from json data" );
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, loc] of Object.entries( clocs ) ) {
@@ -165,7 +166,7 @@ class Linkage {
     }
 
     // ProjectID is the kanban project.  repo:pid  is 1:many
-    addLoc( authData, repo, projName, projId, colName, colId, active, pushAWS = false ) {
+    async addLoc( authData, repo, projName, projId, colName, colId, active, pushAWS = false ) {
 	colId  = colId.toString();
 	projId = projId.toString();
 	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
@@ -180,8 +181,9 @@ class Linkage {
 	loc.GHColumnName  = colName;
 	loc.Active        = active;
 
-	// No need to wait
-	if( pushAWS ) { utils.updateLinkageSummary( authData, loc ); } 
+	// Must wait.. aws dynamo ops handled by multiple threads.. order of processing is not dependable in rapid-fire situations.
+	// No good alternative - refresh could be such that earlier is processed later in dynamo
+	if( pushAWS ) { await utils.updateLinkageSummary( authData, loc ); }
 	
 	return loc;
     }
@@ -386,11 +388,13 @@ class Linkage {
 	else if( havePID && this.locs.hasOwnProperty( projId )) {
 	    if( haveCID && this.locs[projId].hasOwnProperty( colId ))
 	    {
+		assert( repo == "" || repo == this.locs[projId][colId].GHRepo );
 		repo = this.locs[projId][colId].GHRepo;
 		this.locs[projId][colId].Active = "false"; 
 	    }
 	    else if( !haveCID ) {
 		for( var [_, loc] of Object.entries( this.locs[projId] )) {
+		    assert( repo == "" || repo == loc.GHRepo );
 		    repo = loc.GHRepo;
 		    loc.Active = "false"; 
 		}
@@ -400,7 +404,8 @@ class Linkage {
 	else {  
 	    for( const [proj,cloc] of Object.entries( this.locs )) {
 		if( cloc.hasOwnProperty( colId )) {
-		    repo = this.locs[proj][colId].GHRepo;		    
+		    assert( repo == "" || repo == this.locs[proj][colId].GHRepo );
+		    repo = this.locs[proj][colId].GHRepo;
 		    this.locs[proj][colId].Active = "false";
 		    break;
 		}
@@ -412,15 +417,17 @@ class Linkage {
 	    let locs = [];
 	    for( const [_, cloc] of Object.entries( this.locs ) ) {
 		for( const [_, loc] of Object.entries( cloc )) {
-		    
-		    let aloc = {};
-		    aloc.GHProjectId   = loc.GHProjectId;
-		    aloc.GHProjectName = loc.GHProjectName;
-		    aloc.GHColumnId    = loc.GHColumnId;
-		    aloc.GHColumnName  = loc.GHColumnName;
-		    aloc.Active        = loc.Active;
-		    
-		    locs.push( aloc );
+
+		    if( loc.GHRepo == repo ) {
+			let aloc = {};
+			aloc.GHProjectId   = loc.GHProjectId;
+			aloc.GHProjectName = loc.GHProjectName;
+			aloc.GHColumnId    = loc.GHColumnId;
+			aloc.GHColumnName  = loc.GHColumnName;
+			aloc.Active        = loc.Active;
+
+			locs.push( aloc );
+		    }
 		}
 	    }
 	    utils.refreshLinkageSummary( authData, repo, locs, false );
@@ -430,6 +437,18 @@ class Linkage {
 	return repo != "";
     }
 
+    // NOTE: testing will purge every repo
+    purgeLocs( repo ) {
+	let killList = [];	
+	for( const [proj,cloc] of Object.entries( this.locs )) {
+	    for( const [col,loc] of Object.entries( cloc )) {
+		if( repo == "TESTING-FROMJSONLOCS" || loc.GHRepo == repo ) { killList.push( loc.GHProjectId ); }
+	    }
+	}
+	for( const id of killList ) { delete this.locs[id]; }
+	return true;
+    }
+    
     purge( repo ) {
 	console.log( "Removing links, locs for", repo );
 	let killList = [];
@@ -440,12 +459,7 @@ class Linkage {
 	}
 	for( const id of killList ) { delete this.links[id]; }
 
-	for( const [proj,cloc] of Object.entries( this.locs )) {
-	    for( const [col,loc] of Object.entries( cloc )) {
-		if( loc.GHRepo == repo ) { killList.push( loc.GHProjectId ); }
-	    }
-	}
-	for( const id of killList ) { delete this.locs[id]; }
+	this.purgeLocs( repo );
 	
 	return true;
     }
@@ -502,19 +516,23 @@ class Linkage {
     }
 
     showLocs( count ) {
-	console.log( this.fill( "Repo", 20 ),
-		     this.fill( "ProjId", 10 ), 
-		     this.fill( "ProjName", 15 ),
-		     this.fill( "ColId", 10),
-		     this.fill( "ColName", 20)
-		   );
-
 	let printables = [];
 	for( const [_, clocs] of Object.entries( this.locs )) {
 	    for( const [_, loc] of Object.entries( clocs )) {
-		if( loc.Active == "true" ) { printables.push( loc ); }
+		// if( loc.Active == "true" ) { printables.push( loc ); }
+		printables.push( loc );
 	    }
 	}
+
+	if( printables.length > 0 ) {
+	    console.log( this.fill( "Repo", 20 ),
+			 this.fill( "ProjId", 10 ), 
+			 this.fill( "ProjName", 15 ),
+			 this.fill( "ColId", 10),
+			 this.fill( "ColName", 20)
+		       );
+	}
+
 
 	let start = 0;
 	if( typeof count !== 'undefined' ) { start = printables.length - count; }
