@@ -367,7 +367,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	
 	tu.testReport( testStatus, "B" );
 	
-	// 2. close again (no change - looks like notification never sent)
+	// 2. close again (no change - this will NOT generate a notification, or PAct)
 	await tu.closeIssue( authData, td, issueData );
 	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
 	

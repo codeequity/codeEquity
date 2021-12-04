@@ -17,7 +17,7 @@ class Linkage {
       // locations in dynamo is list<map<string>>
       List<GHLoc> locs = [];
       var dynamicAlloc = json['Locations'];  
-      dynamicAlloc.forEach((m) { if( m.length == 4 ) { locs.add( GHLoc.fromJson( m ) ); } });  // linkage can have empty maps
+      dynamicAlloc.forEach((m) { if( m.length >= 1 ) { locs.add( GHLoc.fromJson( m ) ); } });  // linkage can have empty maps
 
       return Linkage(
          id:            json['CELinkageId'],

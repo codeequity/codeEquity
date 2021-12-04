@@ -1488,7 +1488,7 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
     let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
     let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
 
-    console.log( "Check Split", issDat[2], origLoc.colName, newLoc.colName );
+    console.log( "Check Split", issDat[2], origLoc.colName, newLoc.colName, situated.toString() );
     let subTest = [ 0, 0, []];
     
     // Get new issue
@@ -1880,6 +1880,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     return await settle( subTest, testStatus, checkNoAssignees, authData, td, ass1, ass2, issueData, testStatus );
 }
 
+// XXX bad test.  if fails again, mod to allow reordering of PAct
 async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     let subTest = [ 0, 0, []];
@@ -1907,8 +1908,8 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
     let len = meltPacts.length;
     let addA1  = meltPacts[len-3];   // add assignee 1
     let addA2  = meltPacts[len-2];   // add assignee 2
-    let note1  = meltPacts[len-1];   // move to Prog
-    for( const pact of [note1, addA1, addA2] ) {
+    let relo1  = meltPacts[len-1];   // move to Prog
+    for( const pact of [relo1, addA1, addA2] ) {
 	let hr     = await hasRaw( authData, pact.PEQActionId );
 	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
@@ -1916,7 +1917,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
-    subTest = checkEq( note1.Action, config.PACTACT_NOTE,           subTest, "PAct Act"); 
+    subTest = checkEq( relo1.Action, config.PACTACT_RELO,           subTest, "PAct Act"); 
     subTest = checkEq( addA1.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
     subTest = checkEq( addA2.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
     subTest = checkEq( addA1.Subject[1], ass1,                      subTest, "PAct sub"); 

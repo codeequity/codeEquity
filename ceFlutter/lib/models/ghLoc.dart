@@ -11,7 +11,7 @@ class GHLoc {
    final String ghColumnName;
    final bool   active;         // ceServer writes in real time, ceFlutter reads after the fact.  May need legacy data during ingest.
 
-   GHLoc({this.ghProjectId, this.ghProjectName, this.ghColumnId, this.ghColumnName });
+   GHLoc({this.ghProjectId, this.ghProjectName, this.ghColumnId, this.ghColumnName , this.active});
 
    // Direction is ceServer -> aws -> ceFlutter, only.
    factory GHLoc.fromJson(Map<String, dynamic> json) {
@@ -21,7 +21,7 @@ class GHLoc {
          ghProjectName:   json['GHProjectName'],
          ghColumnId:      json['GHColumnId'],
          ghColumnName:    json['GHColumnName'],
-         active:          json['Active'] == "true" ? true : false;
+         active:          json['Active'] == "true" ? true : false
          );
    }
    
@@ -29,7 +29,7 @@ class GHLoc {
       String res = "";
       res += "\n    Project: " + ghProjectName + " (" + ghProjectId + ")";
       res += "\n    Column:  " +  ghColumnName + " (" + ghColumnId  + ")";
-      res += "\n    " + active ? "Active!" : "Inactive.";
+      res += "\n    " + (active ? "Active!" : "Inactive.");
       return res;
    }
 

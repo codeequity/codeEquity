@@ -191,13 +191,13 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    else {
 			// Must wait.  Move card can fail if, say, no assignees
 			let newColId = await gh.moveIssueCard( authData, ghLinks, pd, 'closed', ceProjectLayout ); 
-			if( newCOlId ) {
+			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
 			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.GHFullName,
 								 link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
 
-			    cardHandler.recordMove( authData, pd.reqBody, pd.GHFullName, -1, config.PROJ_PEND, link, peq );
+			    cardHandler.recordMove( authData, ghLinks, pd.reqBody, pd.GHFullName, -1, config.PROJ_PEND, link, peq );
 			}
 		    }
 		}

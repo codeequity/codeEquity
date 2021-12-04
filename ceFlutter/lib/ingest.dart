@@ -227,10 +227,9 @@ void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int ass
       print( "WARNING.  Must have assignees in order to accrue!" );
       return;
    }
-   
-   List<String> subProp = new List<String>.from( subBase ); subProp.last = "Pending";
-   List<String> subDest = new List<String>.from( subBase ); subDest.add( pact.subject.last ); 
-   List<String> subAccr = new List<String>.from( subBase ); subAccr.last = "Accrued";
+
+   List<String> subProp = new List<String>.from( subBase ); subProp.last = "Pending PEQ Approval";  // XXX Where does this name come from in ceFlutter?
+   List<String> subAccr = new List<String>.from( subBase ); subAccr.last = "Accrued";  // XXX 
    
    // iterate over assignees
    for( var assignee in assignees ) {
@@ -245,6 +244,10 @@ void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int ass
       }
       else if( pact.verb == PActVerb.reject ) {
          // rem propose, add plan
+         GHLoc loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghColumnId == pact.subject.last, orElse: () => null );
+         assert( loc != null );
+         List<String> subDest = new List<String>.from( subBase ); subDest.last = loc.ghColumnName;
+         
          adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * assigneeShare, PeqType.pending );
          adjustSummaryAlloc( appState, peq.id, subDest, assignee, assigneeShare, PeqType.plan); 
          newType = enumToStr( PeqType.plan );
@@ -708,10 +711,12 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
    // XXX Probably want another pass to stack up all updateCEUIDs.  Most can lay ontop of one another.
    print( "Will now process " + todoPActions.length.toString() + " pactions for " + foundPeqs.toString() + " non-unique peqs." );
+   var i = 0;
    for( var tup in todos ) {
       final pa = tup.item1;
       final pp = tup.item2;
-      print(  "   " + pa.timeStamp.toString() + " <pact,peq> " + pa.id + " " + pp.id + " " + enumToStr(pa.verb) + " " + enumToStr(pa.action) + " " + pa.note + " " + pa.subject.toString());
+      print( i.toString() + "   " + pa.timeStamp.toString() + " <pact,peq> " + pa.id + " " + pp.id + " " + enumToStr(pa.verb) + " " + enumToStr(pa.action) + " " + pa.note + " " + pa.subject.toString());
+      i++;
    }
    await fixOutOfOrder( todos, context, container );
    for( var tup in todos ) {
