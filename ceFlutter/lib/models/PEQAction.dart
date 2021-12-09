@@ -38,6 +38,7 @@ class PEQAction {
    final List<String> subject;     // update:  <assignee(s)> or
                                    // relocate:  <oldproj, oldcol, oldissue, newproj, newcol, newissue> or
                                    // allocate, accrue, grant:  <PEQId>
+                                   // change, col/proj rename: <projId, oldName, newName>, <colId, oldName, newName>
                                    // notice: <PEQId, "{reopen,close}, moved to column y">
                                    // NOTE: 0th arg is ALWAYS peqId
    

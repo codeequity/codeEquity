@@ -363,13 +363,13 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	flatPend.projSub = [ td.flatTitle, td.col2Title ];
 	flatAccr.projSub = [ td.flatTitle, td.col2Title ];
 	
-	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus, {peqHolder: "maybe"} );
 	
 	tu.testReport( testStatus, "B" );
 	
 	// 2. close again (no change - this will NOT generate a notification, or PAct)
 	await tu.closeIssue( authData, td, issueData );
-	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus, {peqHolder: "maybe"} );
 	
 	tu.testReport( testStatus, "C" );
 
@@ -396,7 +396,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 	
 	// 6. close
 	await tu.closeIssue( authData, td, issueData );
-	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus, {peqHolder: "maybe"} );
 	
 	tu.testReport( testStatus, "G" );
 
@@ -408,7 +408,7 @@ async function testCloseReopen( authData, ghLinks, td ) {
 
 	// 8. close
 	await tu.closeIssue( authData, td, issueData );
-	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue( authData, ghLinks, td, flatPend, issueData, card, testStatus, {peqHolder: "maybe"} );
 	
 	tu.testReport( testStatus, "I" );
 
@@ -950,8 +950,8 @@ async function testProjColMods( authData, ghLinks, td ) {
 
 	await utils.sleep( 2000 );	
 	testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
-	testStatus = await tu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus );
-	testStatus = await tu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
+	testStatus = await tu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {peqHolder: "maybe"} );
+	testStatus = await tu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {peqHolder: "maybe"} );
 
 	tu.testReport( testStatus, "ProjCol mods A" );
 
@@ -960,7 +960,7 @@ async function testProjColMods( authData, ghLinks, td ) {
 	await tu.updateColumn( authData, planLoc.colId, "New plan name" );
 	planLoc.colName = "New plan name";
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, "Column rename", testStatus, {sub:[planName, "New plan name" ]} );
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, "Column rename", testStatus, {sub:[planLoc.colId.toString(), planName, "New plan name" ]} );
 
 	tu.testReport( testStatus, "ProjCol mods B" );
 
@@ -985,7 +985,7 @@ async function testProjColMods( authData, ghLinks, td ) {
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus );
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
-	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, "Project rename", testStatus, {sub:[PROJ_NAME, newProjName]} );	
+	testStatus = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, "Project rename", testStatus, {sub:[projId.toString(), PROJ_NAME, newProjName]} );	
     }
     
     

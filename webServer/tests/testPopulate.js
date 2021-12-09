@@ -503,7 +503,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {peq: true, lblCount: 2 } );
     testStatus = await tu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {peq: true, lblCount: 1 } );
     testStatus = await tu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {peq: true, lblCount: 3 } );
+    if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
     
+    if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
     tu.testReport( testStatus, "Incremental resolve setup" );
 
     // Can't add 2nd card within same project - needs to be cross project.
@@ -515,6 +517,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	await utils.sleep( 4000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, 1000, testStatus, {peq: true, lblCount: 3 } );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve A" );
     }
 
@@ -525,6 +528,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	await utils.sleep( 3000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, 1000, testStatus, {peq: true, lblCount: 3 } );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve B" );
     }
 
@@ -535,6 +539,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issMoonDat, toPendLoc, cardNew.id, testStatus );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve C" );
     }
     
@@ -544,6 +549,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	await utils.sleep( 2000 );
 	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, -1, testStatus, {peq: false, lblCount: 2 } );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve D" );
     }
 
@@ -554,6 +560,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issProgDat, toAccrLoc, cardNew.id, testStatus );
 	
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve E" );
     }
 
@@ -565,6 +572,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issPendDat, toAccrLoc, cardNew.id, testStatus );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve F" );
     }
 

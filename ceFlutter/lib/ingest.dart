@@ -123,7 +123,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    // Create allocs, if not already updated
    print( " ... adding new Allocation" );
    Allocation alloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: {peqId: splitAmount}, allocType: peqType,
-                                      ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "" );
+                                      ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "", ghProjectId: "" );
    appState.myPEQSummary.allocations.add( alloc );
 }
 
@@ -217,7 +217,77 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
    }
 }
 
+// ingest may contain edits to GH projects or columns.
+// For renaming, update peqSummary on dynamo, and build the list of current names for the next ingest
+// Example: ingest todos contains renames of project: aProj -> bProj, and bProj -> cProj
+//    aws dynamo peqs         will contain aproj, or earlier.
+//    myPEQSummary alloctions will contain aProj
+//    myGHLinks ghLocs        will contain cProj
+//    ingest todos            will contain aProj, bProj and cProj
 
+// Todo processing for relo and reject-to uses IDs, so names will be up to date based on myGHLinks.
+// Adds are based on psub, but immediate relos are myGHLinks.
+// The only adds without relos are for unclaimed:unclaimed, which should be name-protected.
+// updateGHNames will update all allocs to cProj, leaving todo's alone as above.
+void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
+   print( "Updating GH Names in appAllocs ");
+   List<Allocation> appAllocs = appState.myPEQSummary.allocations;
+   List<GHLoc>      appLocs   = appState.myGHLinks.locations;
+
+   List<GHLoc> colRenames  = [];
+   List<GHLoc> projRenames = [];
+   // look through current ingest batch renaming events.  Save old here, look up new later.
+   for( int i = 0; i < todos.length; i++ ) {
+      PEQAction pact = todos[i].item1;
+      PEQ       peq  = todos[i].item2;
+      
+      if( pact.verb == PActVerb.confirm && pact.action == PActAction.change ) {
+         if( pact.note == "Column rename" ) {
+            assert( pact.subject.length == 3 );
+            GHLoc loc = appLocs.firstWhere( (a) => a.ghColumnId == pact.subject[0], orElse: () => null );
+            assert( loc != null );
+            colRenames.add( new GHLoc( ghProjectId: loc.ghProjectId, ghColumnId: pact.subject[0], ghColumnName: pact.subject[1] ) );
+         }
+         else if( pact.note == "Project rename" ) {
+            assert( pact.subject.length == 3 );
+            projRenames.add( new GHLoc( ghProjectId: pact.subject[0], ghColumnId: -1, ghColumnName: pact.subject[1] ) );
+         }
+      }
+   }
+
+   // XXX this could be sped up, but any value?
+   // Update allocations.
+   for( Allocation alloc in appAllocs ) {
+      for( proj in projRenames ) {
+         if( alloc.ghProjectId == proj.ghProjectId ) {
+            GHLoc loc = appLocs.firstWhere( (a) => a.ghProjectId == proj.ghProjectId, orElse: () => null );
+            assert( loc != null );
+            print( " .. found project name update: " + proj.ghProjectName + " => " + loc.ghProjectName );
+
+            // pindex can be -1 when there are multiple renames in this ingest stream.  myGHLinks will skip to the final.
+            int pindex = alloc.category.indexOf( proj.ghProjectName );
+            if( pindex >= 0 ) { alloc.category[pindex] = loc.ghProjectName; }
+            
+            pindex = alloc.categoryBase.indexOf( proj.ghProjectName );
+            if( pindex >= 0 ) { alloc.categoryBase[pindex] = loc.ghProjectName; }
+         }
+      }
+      for( col in colRenames ) {
+         if( alloc.ghProjectId == col.ghProjectId ) {
+
+            GHLoc loc = appLocs.firstWhere( (a) => a.ghColumnId == col.ghColumnId, orElse: () => null );
+            assert( loc != null );
+            print( " .. found Column name update: " + col.ghColumnName + " => " + loc.ghColumnName );
+
+            int pindex = alloc.category.indexOf( col.ghColumnName );
+            if( pindex >= 0 ) { alloc.category[pindex] = loc.ghColumnName; }
+
+            pindex = alloc.categoryBase.indexOf( col.ghColumnName );
+            if( pindex >= 0 ) { alloc.categoryBase[pindex] = loc.ghColumnName; }
+         }
+      }
+   }
+}
 
 void _accrue( appState, PEQAction pact, PEQ peq, List<String> assignees, int assigneeShare, Allocation sourceAlloc, List<String> subBase ) {
    // Once see action accrue, should have already seen peqType.pending
@@ -348,6 +418,8 @@ void _add( context, appState, pact, peq, assignees, assigneeShare, subBase ) {
 
 
 // Note.  The only cross-project moves allowed are from unclaimed: to a new home.  This move is programmatic via ceServer.
+// Note.  There is a rare race condition in ceServer that may reorder when recordPeqs arrive.  Specifically, psub
+//        may be unclaimed when expect otherwise.  Relo must then deal with it.
 void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
 
    List<Allocation> appAllocs = appState.myPEQSummary.allocations;
@@ -412,14 +484,14 @@ void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
          print( "  .. relocating to " + loc.toString() );
          
          if( sourceAlloc.category[0] == "Unclaimed" ) {   // XXX formalize
-            adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, peq.ghIssueTitle, assigneeShare, sourceAlloc.allocType ); 
+            adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, peq.ghIssueTitle, assigneeShare, sourceAlloc.allocType, pid: loc.ghProjectId ); 
          }
          else {
             // Have at least proj, col, title.
             assert( sourceAlloc.category.length >= 2 );
             List<String> suba = new List<String>.from( sourceAlloc.category.sublist(0, sourceAlloc.category.length-2) );
             suba.add( loc.ghColumnName );
-            adjustSummaryAlloc( appState, peq.id, suba, sourceAlloc.category.last, assigneeShare, sourceAlloc.allocType ); 
+            adjustSummaryAlloc( appState, peq.id, suba, sourceAlloc.category.last, assigneeShare, sourceAlloc.allocType, pid: loc.ghProjectId ); 
          }
       }
       else
@@ -437,9 +509,25 @@ void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
             assert( assignees.contains( remAlloc.ghUserName ));
             print( "\n Assignee: " + remAlloc.ghUserName );
             adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
+
+            // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
+            if( !baseCat.contains( loc.ghProjectName ) ) {
+               print( "  .. RELO is cross project!  Reconstituting category ");
+
+               Allocation newSource = appAllocs.firstWhere( (a) => a.category.contains( loc.ghProjectName ), orElse: () => null );
+               if( newSource == null ) {
+                  // Possible if project name just changed.
+                  // XXX If proj of MasterCol.proj just changed, will no longer see masterCol.
+                  baseCat = [loc.ghProjectName];
+               }
+               else {
+                  List<String> sourceCat = newSource.category;
+                  baseCat = sourceCat.sublist( 0, sourceCat.indexOf( loc.ghProjectName ) + 1 );
+               }
+            }
             
             print( "  .. relocating to " + loc.toString() );
-            adjustSummaryAlloc( appState, peq.id, baseCat + [loc.ghColumnName], remAlloc.ghUserName, assigneeShare, remAlloc.allocType );
+            adjustSummaryAlloc( appState, peq.id, baseCat + [loc.ghColumnName], remAlloc.ghUserName, assigneeShare, remAlloc.allocType, pid: loc.ghProjectId );
          }
       }
    }
@@ -641,7 +729,8 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    print( "current allocs" );
    for( var alloc in appAllocs ) {
       if( subBase.length > 0 ) {  // notices have no subs
-         if( subBase[0] == alloc.category[0] ) { print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() ); }
+         // if( subBase[0] == alloc.category[0] ) { print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() ); }
+         print( alloc.ghProjectId + " " + alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
       }
    }
 }
@@ -718,7 +807,10 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       print( i.toString() + "   " + pa.timeStamp.toString() + " <pact,peq> " + pa.id + " " + pp.id + " " + enumToStr(pa.verb) + " " + enumToStr(pa.action) + " " + pa.note + " " + pa.subject.toString());
       i++;
    }
+
    await fixOutOfOrder( todos, context, container );
+   await updateGHNames( todos, appState );
+   
    for( var tup in todos ) {
       await processPEQAction( tup.item1, tup.item2, context, container );
    }

@@ -22,13 +22,14 @@ class Allocation {
    final String       ghUserName;      // ghUser associated with ceUID
    double             vestedPerc;      // granted or accrued
    final String       notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
+   final String       ghProjectId;     // a fixed point that chains the category to a specific location in GH
 
-   Allocation({this.category, this.categoryBase, this.amount, this.sourcePeq, this.allocType, this.ceUID, this.ghUserName, this.vestedPerc, this.notes });
+   Allocation({this.category, this.categoryBase, this.amount, this.sourcePeq, this.allocType, this.ceUID, this.ghUserName, this.vestedPerc, this.notes, this.ghProjectId });
 
    // Not explicitly constructed in lambda handler - watch caps
    dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
                            'CEUID': ceUID, 'GHUserName': ghUserName, 
-                           'Vested': vestedPerc, 'Notes': notes };
+                           'Vested': vestedPerc, 'Notes': notes, GHProjectId: ghProjectId };
    
    factory Allocation.fromJson(Map<String, dynamic> json) {
 
@@ -48,12 +49,13 @@ class Allocation {
          ceUID:         json['CEUID'],
          ghUserName:    json['ghUserName'],
          vestedPerc:    json['Vested'],
-         notes:         json['Notes']
+         notes:         json['Notes'],
+         ghProjectId:   json['GHProjectId']
          );
    }
    
    String toString() {
-      String res = "\n" + category.toString();
+      String res = "\n" + category.toString() + "  " + ghProjectId;
       res += "\n    " + enumToStr( allocType ) + " ceUID and ghUserName: " + ceUID + " " + ghUserName;
       res += "\n    Amount: "+ amount.toString() + " of which vested %: " + vestedPerc.toString();
       res += "\n    Source PEQs: " + sourcePeq.toString();

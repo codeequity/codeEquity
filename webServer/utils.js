@@ -424,6 +424,8 @@ async function rebuildPeq( authData, link, oldPeq ) {
     return newPEQId; 
 }
 
+// XXX evaluate extent.  ran into this where recordPeq for open issue (with unclaimed) landed after (makeCard -> gho).
+//     messed up psub, but ingest is managing it.
 // There is a rare race condition that can cause recordPeqData to fail.
 //   label issue.  calls PNP, but does not await.  (PNP will create PEQ, eventually)
 //   create card.  calls PNP, which calls recordPeqData, which checks for unclaimed:relocate and existence of PEQ.  

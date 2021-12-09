@@ -37,7 +37,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		// don't wait
 		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				       config.PACTVERB_CONF, config.PACTACT_CHAN, [oldName, newName], "Project rename",
+				       config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.GHProjectId.toString(), oldName, newName], "Project rename",
 				       utils.getToday(), pd.reqBody );
 
 		// Must wait to prevent out-of-order overwrites.  Could build an addLocs func, but value is low.
