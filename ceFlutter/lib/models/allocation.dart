@@ -29,7 +29,7 @@ class Allocation {
    // Not explicitly constructed in lambda handler - watch caps
    dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
                            'CEUID': ceUID, 'GHUserName': ghUserName, 
-                           'Vested': vestedPerc, 'Notes': notes, GHProjectId: ghProjectId };
+                           'Vested': vestedPerc, 'Notes': notes, ghProjectId: ghProjectId };
    
    factory Allocation.fromJson(Map<String, dynamic> json) {
 

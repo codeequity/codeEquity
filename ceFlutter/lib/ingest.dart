@@ -72,7 +72,7 @@ Future<void> updateCEUID( appState, PEQAction pact, PEQ peq, context, container 
 // XXX may be able to kill categoryBase
 
 // One allocation per category.. i.e. project:column:pallocCat or project:column:assignee.  Could also be project:project is first is the master proj
-void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmount, PeqType peqType, {Allocation source = null} ) {
+void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmount, PeqType peqType, {Allocation source = null, String pid = ""} ) {
    
    assert( appState.myPEQSummary.allocations != null );
 
@@ -123,7 +123,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    // Create allocs, if not already updated
    print( " ... adding new Allocation" );
    Allocation alloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: {peqId: splitAmount}, allocType: peqType,
-                                      ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "", ghProjectId: "" );
+                                      ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "", ghProjectId: pid );
    appState.myPEQSummary.allocations.add( alloc );
 }
 
@@ -199,9 +199,10 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
          // sort is lowest to highest.  Keep swapping current todo up the chain in reverse order, has the effect of pushing all down.
          int confirmAdd = i;
          for( int j = dp[peq.id].length-1; j >= 0; j-- ) {
-            print( "   moving todo at position:" + confirmAdd.toString() + " to position:" + dp[peq.id][j].toString() );
+            print( "   swapping todo at position:" + confirmAdd.toString() + " to position:" + dp[peq.id][j].toString() );
             swap( todos, dp[peq.id][j], confirmAdd );
-            confirmAdd = j;
+            confirmAdd--;
+            assert( confirmAdd >= 0 );
          }
 
          dp.remove( peq.id );
@@ -225,19 +226,20 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
 //    myGHLinks ghLocs        will contain cProj
 //    ingest todos            will contain aProj, bProj and cProj
 
-// Todo processing for relo and reject-to uses IDs, so names will be up to date based on myGHLinks.
+// Todo list processing for relo and reject-to uses IDs, so names will be up to date based on myGHLinks.
 // Adds are based on psub, but immediate relos are myGHLinks.
 // The only adds without relos are for unclaimed:unclaimed, which should be name-protected.
 // updateGHNames will update all allocs to cProj, leaving todo's alone as above.
 void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    print( "Updating GH Names in appAllocs ");
-   List<Allocation> appAllocs = appState.myPEQSummary.allocations;
+   List<Allocation> appAllocs = [];
    List<GHLoc>      appLocs   = appState.myGHLinks.locations;
+   if( appState.myPEQSummary != null ) { appAllocs = appState.myPEQSummary.allocations; }
 
    List<GHLoc> colRenames  = [];
    List<GHLoc> projRenames = [];
    // look through current ingest batch renaming events.  Save old here, look up new later.
-   for( int i = 0; i < todos.length; i++ ) {
+   for( var i = 0; i < todos.length; i++ ) {
       PEQAction pact = todos[i].item1;
       PEQ       peq  = todos[i].item2;
       
@@ -247,18 +249,21 @@ void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             GHLoc loc = appLocs.firstWhere( (a) => a.ghColumnId == pact.subject[0], orElse: () => null );
             assert( loc != null );
             colRenames.add( new GHLoc( ghProjectId: loc.ghProjectId, ghColumnId: pact.subject[0], ghColumnName: pact.subject[1] ) );
+            print( "... col rename " + pact.subject[1] );
          }
          else if( pact.note == "Project rename" ) {
             assert( pact.subject.length == 3 );
-            projRenames.add( new GHLoc( ghProjectId: pact.subject[0], ghColumnId: -1, ghColumnName: pact.subject[1] ) );
+            projRenames.add( new GHLoc( ghProjectId: pact.subject[0], ghColumnId: "-1", ghColumnName: pact.subject[1] ) );
+            print( "... proj rename " + pact.subject[1] );            
          }
       }
    }
 
    // XXX this could be sped up, but any value?
    // Update allocations.
+   print( "... allocations size: " + appAllocs.length.toString() + " " + colRenames.length.toString() + " " + projRenames.length.toString() );
    for( Allocation alloc in appAllocs ) {
-      for( proj in projRenames ) {
+      for( GHLoc proj in projRenames ) {
          if( alloc.ghProjectId == proj.ghProjectId ) {
             GHLoc loc = appLocs.firstWhere( (a) => a.ghProjectId == proj.ghProjectId, orElse: () => null );
             assert( loc != null );
@@ -272,7 +277,7 @@ void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             if( pindex >= 0 ) { alloc.categoryBase[pindex] = loc.ghProjectName; }
          }
       }
-      for( col in colRenames ) {
+      for( GHLoc col in colRenames ) {
          if( alloc.ghProjectId == col.ghProjectId ) {
 
             GHLoc loc = appLocs.firstWhere( (a) => a.ghColumnId == col.ghColumnId, orElse: () => null );
@@ -473,7 +478,7 @@ void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
       assert( loc != null );
       
       // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
-      // So, (if no existing alloc, use psub - can't happen).  If alloc.cat is not unclaimed, use column (only moves within proj).
+      // (if no existing alloc, use psub - can't happen).  If alloc.cat is not unclaimed, use column (only moves within proj).
       // If alloc.cat is unclaimed, ceServer will move across projects.  use psub.   Test col.  Will be stable even with multiple relos, since
       // psub is only overwritten the first time after unclaimed is claimed.
       // pallocs do not have assignees
