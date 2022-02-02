@@ -1072,7 +1072,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const loc = locs.find( loc => loc.GHColumnName == colName );
     if( typeof loc !== 'undefined' ) { unClaimedColId = loc.GHColumnId; }
     if( unClaimedColId == -1 ) {
-	console.log( authData.who, "Creating UnClaimed column" );
+	console.log( authData.who, "Creating UnClaimed column:", colName );
 	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
 	    .then(async (column) => {
 		unClaimedColId = column.data.id;

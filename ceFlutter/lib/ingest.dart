@@ -219,12 +219,12 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
 }
 
 // ingest may contain edits to GH projects or columns.
-// For renaming, update peqSummary on dynamo, and build the list of current names for the next ingest
+// For renaming, will update peqSummary from dynamo, and build the list of current names for the next ingest
 // Example: ingest todos contains renames of project: aProj -> bProj, and bProj -> cProj
-//    aws dynamo peqs         will contain aproj, or earlier.
-//    myPEQSummary alloctions will contain aProj
-//    myGHLinks ghLocs        will contain cProj
-//    ingest todos            will contain aProj, bProj and cProj
+//    aws dynamo peqs          will contain aproj, or earlier.  these will probably stay put
+//    myPEQSummary allocations will contain aProj
+//    myGHLinks ghLocs         will contain cProj
+//    ingest todos             will contain aProj, bProj and cProj
 
 // Todo list processing for relo and reject-to uses IDs, so names will be up to date based on myGHLinks.
 // Adds are based on psub, but immediate relos are myGHLinks.
@@ -513,7 +513,7 @@ void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
          for( var remAlloc in reloAlloc ) {
             assert( assignees.contains( remAlloc.ghUserName ));
             print( "\n Assignee: " + remAlloc.ghUserName );
-            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
+            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.ghProjectId );
 
             // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
             if( !baseCat.contains( loc.ghProjectName ) ) {
@@ -539,12 +539,14 @@ void _relo( appState, pact, peq, assignees, assigneeShare, ka, subBase ) {
 }   
    
 // Note: peq.ghHolder will only inform us of the latest status, not all the changes in the middle.
-//      Ingest needs to track all the changes in the middle 
+//      Ingest needs to track all the changes in the middle
+// XXX If add assignee that is already present, expect to remove all, then re-add all allocs.
+//     this is slow, can cause n separate useless ingest steps - blast, n = #assignees
 void _change( appState, pact, peq, assignees, assigneeShare, ka ) {
-   assert( ka != null );
+   assert( ka != null || pact.note == "Column rename" || pact.note == "Project rename" );
       
-   var sourceType     = ka.allocType;
-   var baseCat        = ka.category.sublist( 0, ka.category.length-1 );
+   var sourceType = ka == null ? "" : ka.allocType;
+   var baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
 
    if( pact.note == "add assignee" ) {    // XXX formalize this
       assert( ka.allocType != PeqType.allocation );
@@ -624,6 +626,37 @@ void _change( appState, pact, peq, assignees, assigneeShare, ka ) {
       }
       
    }
+   else if( pact.note == "recreate" ) {    // XXX formalize this
+      // This should be a rare event, seen after deleting an accrued issue.  ceServer rebuilds and saves a copy if the issue was removed first
+      assert( ka.allocType != PeqType.allocation );
+      assert( pact.subject.length == 2 );
+      print( "Recreate PEQ: " + pact.subject[0] + " --> " + pact.subject[1] );
+
+      // peq is always subject0
+      assert( peq.id == pact.subject[0] );
+      
+      // Remove old allocs for peq
+      for( var assign in assignees ) {
+         print( "Remove " + peq.id + " in " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
+         adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+      }
+
+      // Do NOT Add for new peq, there is a follow-on 'add' pact that does the job
+      // The new peq is added in unclaimed:accrued with unassigned, as is correct.
+      /* 
+      for( var assign in assignees ) {
+         print( "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.toString() );
+         adjustSummaryAlloc( appState, pact.subject[1], baseCat, assign, assigneeShare, sourceType );
+      }
+      */
+   }
+   else if( pact.note == "Column rename" ) {    // XXX formalize this
+      print( "Column rename handled at start of todo processing" );
+   }
+   else if( pact.note == "Project rename" ) {    // XXX formalize this
+      print( "Project rename handled at start of todo processing" );
+   }
+   
 }
 
 void _notice() {
@@ -713,7 +746,9 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
       ka = alloc;
    }
    if( ka == null ) {
-      assert( pact.verb == PActVerb.confirm && ( pact.action == PActAction.add || pact.action == PActAction.delete || pact.action == PActAction.notice ));
+      bool nonPeqChange = pact.action == PActAction.change && ( pact.note == "Column rename" || pact.note == "Project rename" );
+      bool peqChange    = pact.action == PActAction.add || pact.action == PActAction.delete || pact.action == PActAction.notice;
+      assert( pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange ));
       assignees = peq.ghHolderId;
       if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }
    }
@@ -731,11 +766,16 @@ void processPEQAction( PEQAction pact, PEQ peq, context, container ) async {
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.notice )   { _notice(); }
    else { notYetImplemented( context ); }
 
-   print( "current allocs" );
-   for( var alloc in appAllocs ) {
-      if( subBase.length > 0 ) {  // notices have no subs
+   // NOTE: only leaf allocs have PID - is only set during relocation.
+   // NOTE: situated accrued card 1st - YES peq should exist as unclaimed:accrued.  it has been deleted elsewhere.
+   //       furthermore, trip begins and ends as unclaimed:accr, which is good.  in the middle it replicates the journey, which is fine.
+   // NOTE: in all cases, if ingest is halted in the middle, it should be accurate as of last todo, just not necessarily up to date.
+   if( subBase.length > 0 ) {  // notices have no subs
+      print( "current allocs" );
+      for( var alloc in appAllocs ) {
          // if( subBase[0] == alloc.category[0] ) { print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() ); }
-         print( alloc.ghProjectId + " " + alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
+         // print( alloc.ghProjectId + " " + alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
+         print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
       }
    }
 }
@@ -820,6 +860,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       await processPEQAction( tup.item1, tup.item2, context, container );
    }
 
+   print( "Ingest todos finished processing.  Update Dynamo." );
    // XXX Skip this is no change (say, on a series of notices).
    if( appState.myPEQSummary != null ) {
       String psum = json.encode( appState.myPEQSummary );

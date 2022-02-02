@@ -698,7 +698,7 @@ async function testCreateDelete( authData, ghLinks, td ) {
 
 	// 3. Remove one more time
 	await tu.remCard( authData, aghoCard1New.id );      // newborn
-	await tu.remIssue( authData, td, aghoIss2New[0]);  // gone
+	await tu.remIssue( authData, td, aghoIss2New[0]);   // gone
 
 	testStatus = await tu.checkNewbornIssue( authData, ghLinks, td, issDatAgho1, testStatus );
 	testStatus = await tu.checkNoCard( authData, ghLinks, td, uncAccr, aghoCard1New.id, ISS_AGHO1, testStatus, {"peq": true} );
