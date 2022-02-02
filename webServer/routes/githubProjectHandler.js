@@ -21,7 +21,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	break;
     case 'created':  
 	{
-	    ghLinks.addLoc( authData, pd.GHFullName, pd.GHProjectName, pd.GHProjectId, config.EMPTY, -1, true );
+	    await ghLinks.addLoc( authData, pd.GHFullName, pd.GHProjectName, pd.GHProjectId, config.EMPTY, -1, "true", true );
 	}
 	break;
     case 'edited':
@@ -35,10 +35,17 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "projName": oldName } );
 		links.forEach( link => link.GHProjectName = newName );
 
-		// send 1 PAct to update any peq projSub
+		// don't wait
 		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				       config.PACTVERB_CONF, config.PACTACT_CHAN, [oldName, newName], "Project rename",
+				       config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.GHProjectId.toString(), oldName, newName], "Project rename",
 				       utils.getToday(), pd.reqBody );
+
+		// Must wait to prevent out-of-order overwrites.  Could build an addLocs func, but value is low.
+		// Can't do promises.all - must be sequential.
+		const locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": pd.GHProjectId } );
+		for( const loc of locs ) {
+		    await ghLinks.addLoc( authData, pd.GHFullName, newName, pd.GHProjectId, loc.GHColumnName, loc.GHColumnId, "true", true );
+		}
 	    }
 	}
 	break;

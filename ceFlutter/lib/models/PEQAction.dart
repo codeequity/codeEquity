@@ -38,6 +38,7 @@ class PEQAction {
    final List<String> subject;     // update:  <assignee(s)> or
                                    // relocate:  <oldproj, oldcol, oldissue, newproj, newcol, newissue> or
                                    // allocate, accrue, grant:  <PEQId>
+                                   // change, col/proj rename: <projId, oldName, newName>, <colId, oldName, newName>
                                    // notice: <PEQId, "{reopen,close}, moved to column y">
                                    // NOTE: 0th arg is ALWAYS peqId
    
@@ -88,8 +89,8 @@ class PEQAction {
       String res = "\nPEQAction for ceUserId: " + ceUID;
       res += "\n    ghUser: " + ghUserName + ", repo: " + ghRepo;
       res += "\n    " + enumToStr(verb) + ", " + enumToStr(action) + " " + subject.toString();
-      res += "\n    entry made: " + entryDate;
-      res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();
+      // res += "\n    entry made: " + entryDate;
+      // res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();
       if( note != null && note != "" ) {
          res += "\n    " + note;
       }

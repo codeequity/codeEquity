@@ -835,8 +835,10 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
     let variables = {"issueId": issueId, "repoId": toRepoId };
     query = JSON.stringify({ query, variables });
 
-    await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+    let ret = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "transferIssueGQL", e, transferIssueGQL, authData, issueId, toRepoId ));
+
+    console.log( "TI_GQL:", ret );
 }
 
 
@@ -952,7 +954,7 @@ async function rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, i
 	    let progCol = await createColumn( authData, projId, progName, "first" );
 	    console.log( "Creating new column:", progName );
 	    colId = progCol.data.id; 
-	    ghLinks.addLoc( authData, fullName, projName, projId, progName, colId, true );
+	    await ghLinks.addLoc( authData, fullName, projName, projId, progName, colId, "true", true );
 	}
     }
     
@@ -1048,9 +1050,9 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
 	console.log( "Creating UnClaimed project" );
 	let body = "Temporary storage for issues with cards that have not yet been assigned to a column (triage)";
 	await authData.ic.projects.createForRepo({ owner: pd.GHOwner, repo: pd.GHRepo, name: unClaimed, body: body })
-	    .then((project) => {
+	    .then(async (project) => {
 		unClaimedProjId = project.data.id;
-		ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, config.EMPTY, -1, true );
+		await ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, config.EMPTY, -1, "true", true );
 	    })
 	    .catch( e => unClaimedProjId = errorHandler( "createUnClaimedProject", e, createUnClaimedProject, authData, ghLinks, pd ));
     }
@@ -1070,11 +1072,11 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const loc = locs.find( loc => loc.GHColumnName == colName );
     if( typeof loc !== 'undefined' ) { unClaimedColId = loc.GHColumnId; }
     if( unClaimedColId == -1 ) {
-	console.log( authData.who, "Creating UnClaimed column" );
+	console.log( authData.who, "Creating UnClaimed column:", colName );
 	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
-	    .then((column) => {
+	    .then(async (column) => {
 		unClaimedColId = column.data.id;
-		ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, colName, unClaimedColId, true );
+		await ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, colName, unClaimedColId, "true", true );
 	    })
 	    .catch( e => unClaimedColId = errorHandler( "createUnClaimedColumn", e, createUnClaimedColumn, authData, ghLinks, pd, unClaimedProjId, issueId, accr ));
     }
@@ -1242,19 +1244,19 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 	if( progCol ) {
 	    progCol = await progCol;
-	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, progName, progCol.data.id, true );
+	    await ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, progName, progCol.data.id, "true", true );
 	}
 
 	if( pendCol ) {
 	    pendCol = await pendCol;
 	    foundReqCol[config.PROJ_PEND + 1] = pendCol.data.id;
-	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, pendName, pendCol.data.id, true );
+	    await ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, pendName, pendCol.data.id, "true", true );
 	}
 
 	if( accrCol ) {
 	    accrCol = await accrCol;
 	    foundReqCol[config.PROJ_ACCR + 1] = accrCol.data.id;
-	    ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, accrName, accrCol.data.id, true );			
+	    await ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, accrName, accrCol.data.id, "true", true );			
 	}
     }
     console.log( "Layout:", foundReqCol );
@@ -1385,7 +1387,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
     //     Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
     if( success ) { success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName ); }
     
-    return success;
+    return success ? newColId : false;
 }
 
 // Note. alignment risk

@@ -34,7 +34,8 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     let nbi1     = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, "A special populate issue", [], false );
     let card11   = await ghSafe.createProjectCard( authData, mastCol1, nbi1[0] );
     let popLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
-    await tu.addLabel( authData, td, nbi1[1], popLabel.name );       // ready.. set... Go!
+    let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
+    await tu.addLabel( authData, td, nbiDat, popLabel.name );       // ready.. set... Go!
     await utils.sleep( 1000 );
 
     // softCont: dataSecurity, githubOps, unallocated

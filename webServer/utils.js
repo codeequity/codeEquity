@@ -267,8 +267,10 @@ async function getProjectSubs( authData, ghLinks, repoName, projName, colName ) 
 	if( links != -1 ) { projSub = [ links[0]['GHColumnName'], projName ]; }
 	else              { projSub = [ projName ]; }
 
+	// No, induces too many special cases, with no return.
 	// If col isn't a CE organizational col, add to psub
-	if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
+	// if( ! config.PROJ_COLS.includes( colName ) ) { projSub.push( colName ); }
+	projSub.push( colName ); 
     }
 	    
     // console.log( "... returning", projSub.toString() );
@@ -414,13 +416,16 @@ async function rebuildPeq( authData, link, oldPeq ) {
     postData.GHIssueTitle = link.GHIssueTitle;
     postData.Active       = "true";
 
-    if( config.PROJ_COLS.includes( link.GHColumnName ) ) { postData.GHProjectSub = [ link.GHProjectName ]; }
+    // No.  No special cases, otherwise flat project handling makes things tricky in a useless way.
+    // if( config.PROJ_COLS.includes( link.GHColumnName ) ) { postData.GHProjectSub = [ link.GHProjectName ]; }
     
     newPEQId = await recordPEQ(	authData, postData );
     assert( newPEQId != -1 );
     return newPEQId; 
 }
 
+// XXX evaluate extent.  ran into this where recordPeq for open issue (with unclaimed) landed after (makeCard -> gho).
+//     messed up psub, but ingest is managing it.
 // There is a rare race condition that can cause recordPeqData to fail.
 //   label issue.  calls PNP, but does not await.  (PNP will create PEQ, eventually)
 //   create card.  calls PNP, which calls recordPeqData, which checks for unclaimed:relocate and existence of PEQ.  
@@ -483,13 +488,16 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
 
     // Confirm call chain is as expected.  Do NOT want to be modifying ACCR peq vals
     assert( link.GHColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
-    
+
     let newPEQ = await getPeq( authData, pd.GHIssueId );
-    console.log( "Updating peq", newPEQ.PEQId, peqVal );
-    updatePEQVal( authData, newPEQ.PEQId, peqVal );
+
+    // do NOT update aws.. rely on ceFlutter to update values during ingest, using pact.  otherwise, when a split happens after
+    // the initial peq has been ingested, if ingest is ignoring this pact, new value will not be picked up correctly.
+    // console.log( "Updating peq", newPEQ.PEQId, peqVal );
+    // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
     recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
-		     config.PACTVERB_CONF, "change", [newPEQ.PEQId], "peq val update", 
+		     config.PACTVERB_CONF, "change", [newPEQ.PEQId, peqVal.toString()], "peq val update",   // XXX formalize
 		     getToday(), pd.reqBody );
 }
 
@@ -731,28 +739,24 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     }
 }
 
-async function refreshLinkageSummary( authData, ghRepo, locData ) {
+
+// locData can be from GQL, or linkage
+async function refreshLinkageSummary( authData, ghRepo, locData, gql = true ) {
     console.log( "Refreshing linkage summary" );
 
-    let locs = [];
-    for( const loc of locData ) {
-	let aloc = {};
-	
-	aloc.GHProjectId   = loc.GHProjectId;
-	aloc.GHProjectName = loc.GHProjectName;
-	aloc.GHColumnId    = loc.GHColumnId;
-	aloc.GHColumnName  = loc.GHColumnName;
 
-	locs.push( aloc );
+    if( gql ) {
+	for( var loc of locData ) {
+            loc.Active = "true";
+	}
     }
 
     let summary = {};
     summary.GHRepo    = ghRepo;
     summary.LastMod   = getToday();
-    summary.Locations = locs;
+    summary.Locations = locData;
 
     let shortName = "RecordLinkage"; 
-
     let pd = { "Endpoint": shortName, "summary": summary }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }

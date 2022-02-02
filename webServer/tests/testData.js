@@ -62,7 +62,7 @@ class TestData {
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsPlanID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PLAN];
-	loc.projSub  = [this.softContTitle, this.dataSecTitle];
+	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN]];
 	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
@@ -72,7 +72,7 @@ class TestData {
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsProgID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PROG];
-	loc.projSub  = [this.softContTitle, this.dataSecTitle];
+	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG]];
 	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
@@ -83,7 +83,7 @@ class TestData {
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsPendID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PEND];
-	loc.projSub  = [this.softContTitle, this.dataSecTitle];
+	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND]];
 	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
@@ -94,7 +94,7 @@ class TestData {
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsAccrID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_ACCR];
-	loc.projSub  = [this.softContTitle, this.dataSecTitle];
+	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR]];
 	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }

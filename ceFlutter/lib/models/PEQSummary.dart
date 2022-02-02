@@ -12,7 +12,7 @@ class PEQSummary {
    final String           id;
    final String           ghRepo;        // reponame is form /owner/repo, so is unique
    final String           targetType;    // "repo", "contributor"
-   final String           targetId;      // PEQAction:ceUID
+   final String           targetId;      // GHProjectId
    final String           lastMod;
    final List<Allocation> allocations;   
 

@@ -11,6 +11,7 @@ import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/ghAccount.dart';
+import 'package:ceFlutter/models/Linkage.dart';
 
 import 'package:ceFlutter/components/node.dart';
 
@@ -50,7 +51,8 @@ class AppState {
    
    List<PEQ>       myPEQs;                // ??? 
    List<PEQAction> myPEQActions;          // ???
-   PEQSummary myPEQSummary;               // XXX need 1 proj, one my per repo
+   PEQSummary      myPEQSummary;          // XXX need 1 proj, one my per repo
+   Linkage         myGHLinks;             // Current project/column disposition for current repo in github
    bool peqUpdated;
 
    List<GHAccount> myGHAccounts;   

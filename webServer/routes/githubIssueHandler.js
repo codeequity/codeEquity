@@ -190,14 +190,14 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    if( ceProjectLayout[0] == -1 ) { console.log( "Project does not have recognizable CE column layout.  No action taken." ); }
 		    else {
 			// Must wait.  Move card can fail if, say, no assignees
-			let success = await gh.moveIssueCard( authData, ghLinks, pd, 'closed', ceProjectLayout ); 
-			if( success ) {
+			let newColId = await gh.moveIssueCard( authData, ghLinks, pd, 'closed', ceProjectLayout ); 
+			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
 			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.GHFullName,
 								 link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
 
-			    cardHandler.recordMove( authData, pd.reqBody, pd.GHFullName, -1, config.PROJ_PEND, link, peq );
+			    cardHandler.recordMove( authData, ghLinks, pd.reqBody, pd.GHFullName, -1, config.PROJ_PEND, link, peq );
 			}
 		    }
 		}
@@ -283,8 +283,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    else {
 		// Must wait.  Move card can fail if, say, no assignees
-		let success = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
-		if( success ) {
+		let newColId = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
+		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
 		    let peqId = ( await( ghSafe.validatePEQ( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueTitle, ceProjectLayout[0] )) )['PEQId'];
 		    if( peqId == -1 ) {
@@ -295,9 +295,13 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			// Closed: 
 			let verb = config.PACTVERB_PROP;
 			let paction = config.PACTACT_ACCR;
-			if( action == "reopened" ) { verb = config.PACTVERB_REJ; }
-			
 			let subject = [ peqId.toString() ];
+
+			if( action == "reopened" ) {
+			    verb = config.PACTVERB_REJ;
+			    subject = [ peqId.toString(), newColId.toString() ];
+			}
+			
 			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
 					       verb, paction, subject, "",
 					       utils.getToday(), pd.reqBody );
@@ -395,7 +399,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'transferred':
 	// (open issue in new repo, delete project card, transfer issue)
 	// Transfer IN:  do nothing.  comes as newborn issue, no matter what it was in previous repo
-	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.
+	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.  GH will send delete card.
 	{
 	    if( pd.reqBody.changes.new_repository.full_name != pd.GHRepo ) {
 		console.log( authData.who, "Transfer out.  Cleanup." );

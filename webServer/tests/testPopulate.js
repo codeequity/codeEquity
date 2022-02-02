@@ -70,7 +70,7 @@ async function testPopulate( authData, td ) {
 
     let popLabel    = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
     let singleIssue = await tu.findIssueByName( authData, td, ISS_SINREC );
-    await tu.addLabel( authData, td, singleIssue.number, popLabel.name );       // ready.. set... Go!
+    await tu.addLabel( authData, td, [singleIssue.id, singleIssue.number, singleIssue.title], popLabel.name );       // ready.. set... Go!
 
     await utils.sleep( 15000 );
 
@@ -193,8 +193,9 @@ async function testResolve( authData, ghLinks, td ) {
     // First add a few normal labels
     // At the start, will have 3 triprecs, non are peq
     let tripleIssue = await tu.findIssue( authData, td, ISS_TRIPREC );
-    await tu.addLabel( authData, td, tripleIssue.number, "bug" );       
-    await tu.addLabel( authData, td, tripleIssue.number, "enhancement" );       
+    let tiDat = [tripleIssue.id, tripleIssue.number, tripleIssue.title];
+    await tu.addLabel( authData, td, tiDat, "bug" );       
+    await tu.addLabel( authData, td, tiDat, "enhancement" );       
 
     // Add a peq label
     let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 " + config.PEQ_LABEL, 1000 );
@@ -205,7 +206,7 @@ async function testResolve( authData, ghLinks, td ) {
     //       triage.  Adds a (bigger than this) delay.
     // Note: test setup has 2 random delays.  1: local -> gh rest time.  2: gh -> local.   by-hand has 1.
     console.log( "Send add label" );
-    await tu.addLabel( authData, td, tripleIssue.number, newLabel.name );       
+    await tu.addLabel( authData, td, tiDat, newLabel.name );       
 
     console.log( "Send create card" );
     await ghSafe.createProjectCard( authData, td.dsPlanID, tripleIssue.id, false );  // ready.. set... Go!
@@ -494,7 +495,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     await tu.closeIssue( authData, td, issPendDat );
 
     await tu.closeIssue( authData, td, issAccrDat );
-    await tu.moveCard( authData, cardAccr.id, accrLoc.colId );
+    await tu.moveCard( authData, td, cardAccr.id, accrLoc.colId );
 
     await utils.sleep( 2000 );	
     testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
@@ -502,7 +503,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {peq: true, lblCount: 2 } );
     testStatus = await tu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {peq: true, lblCount: 1 } );
     testStatus = await tu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {peq: true, lblCount: 3 } );
+    if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
     
+    if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
     tu.testReport( testStatus, "Incremental resolve setup" );
 
     // Can't add 2nd card within same project - needs to be cross project.
@@ -512,8 +515,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     {
 	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toBacnLoc.colId, issPlanDat[0] );
 	await utils.sleep( 4000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, testStatus, {peq: true, lblCount: 3 } );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, 1000, testStatus, {peq: true, lblCount: 3 } );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve A" );
     }
 
@@ -522,8 +526,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	// At this point, plan lval is 500
 	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toPendLoc.colId, issPlanDat[0] );
 	await utils.sleep( 3000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, testStatus, {peq: true, lblCount: 3 } );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, 1000, testStatus, {peq: true, lblCount: 3 } );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve B" );
     }
 
@@ -534,6 +539,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issMoonDat, toPendLoc, cardNew.id, testStatus );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve C" );
     }
     
@@ -541,8 +547,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     {
 	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, toProgLoc.colId, issMoonDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, testStatus, {peq: false, lblCount: 2 } );
+	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, -1, testStatus, {peq: false, lblCount: 2 } );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve D" );
     }
 
@@ -553,6 +560,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issProgDat, toAccrLoc, cardNew.id, testStatus );
 	
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve E" );
     }
 
@@ -564,6 +572,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
 	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issPendDat, toAccrLoc, cardNew.id, testStatus );
 
+	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve F" );
     }
 

@@ -19,7 +19,7 @@ https://developer.github.com/v3/issues/#create-an-issue
 // PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
-async function recordMove( authData, reqBody, fullName, oldCol, newCol, link, peq ) { 
+async function recordMove( authData, ghLinks, reqBody, fullName, oldCol, newCol, link, peq ) { 
 
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
@@ -32,38 +32,55 @@ async function recordMove( authData, reqBody, fullName, oldCol, newCol, link, pe
 
     let verb   = "";
     let action = "";
-    // Note, eggs and bacon fall into this group
+    // Note, flat projects/cols like eggs and bacon fall into this group
     if( peq['PeqType'] == config.PEQTYPE_ALLOC ||
 	( oldCol <= config.PROJ_PROG && newCol <= config.PROJ_PROG ) ) {
-	// moving between plan, and in-progress has no impact on peq summary
-	verb = config.PACTVERB_CONF;
-	action = config.PACTACT_NOTE;
+	// moving between plan, and in-progress has no impact on peq summary, but does impact summarization
+	verb   = config.PACTVERB_CONF;
+	action = config.PACTACT_RELO;
     }
     else if( oldCol <= config.PROJ_PROG && newCol == config.PROJ_PEND ) {
 	// task complete, waiting for peq approval
-	verb = config.PACTVERB_PROP;
+	verb   = config.PACTVERB_PROP;
 	action = config.PACTACT_ACCR;
     }
     else if( oldCol == config.PROJ_PEND && newCol <= config.PROJ_PROG) {
 	// proposed peq has been rejected
-	verb = config.PACTVERB_REJ;
+	verb   = config.PACTVERB_REJ;
 	action = config.PACTACT_ACCR;
     }
     else if( oldCol <= config.PROJ_PEND && newCol == config.PROJ_ACCR ) {
 	// approved!   PEQ will be updated to "type:accrue" when processed in ceFlutter.
-	verb = config.PACTVERB_CONF;
+	verb   = config.PACTVERB_CONF;
 	action = config.PACTACT_ACCR;
     }
     else {
+	// XXX This can indicate a dropped notification.  Need to recover in some cases, this one is probably safe.
 	console.log( authData.who, "Verb, action combo not understood", oldCol, newCol, peq.PeqType );
 	console.log( reqBody );
 	console.log( link );
 	assert( false );
     }
 
+    let subject = [peq.PEQId];
+    if( verb == config.PACTVERB_REJ && newCol >= 0 ) {
+	let locs = ghLinks.getLocs( authData, { "repo": fullName, "colName": config.PROJ_COLS[newCol] } );
+	assert( locs != -1 );
+	subject = [ peq.PEQId, locs[0].GHColumnName ];
+    }
+    else if( action == config.PACTACT_RELO ) {
+	let cardId = reqBody['project_card']['id'];
+	assert( cardId > 0 );
+
+	let links  = ghLinks.getLinks( authData, { "repo": fullName, "cardId": cardId } );  // linkage already updated
+	assert( links  != -1 && links[0].GHColumnId != -1 );
+
+	subject = [ peq.PEQId, links[0].GHProjectId, links[0].GHColumnId ];
+    }
+    
     // Don't wait
     utils.recordPEQAction( authData, config.EMPTY, reqBody['sender']['login'], fullName, 
-			   verb, action, [peq.PEQId], "", 
+			   verb, action, subject, "", 
 			   utils.getToday(), reqBody );
 }
 
@@ -136,14 +153,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let newColName = gh.getColumnName( authData, ghLinks, pd.GHFullName, newColId );
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 
-	    // Ignore newborn cards.
+	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": cardId } );
 	    if( links == -1 || links[0].GHColumnId == -1 ) {
-		console.log( "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		if( newNameIndex > config.PROJ_PROG ) {
 		    // Don't wait
+		    console.log( "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    gh.moveCard( authData, cardId, oldColId );
 		}
+		else { console.log( "Non-PEQ cards are not tracked.  Ignoring.", cardId ); }
 		return;
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
@@ -193,7 +211,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
 	    }
 	    // Don't wait
-	    recordMove( authData, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, link );
+	    recordMove( authData, ghLinks, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, link );
 	}
 	break;
     case 'deleted' :
@@ -255,7 +273,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		link.GHColumnId    = card.column_url.split('/').pop();
 		link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 
-		const psub = [ link.GHProjectName ];
+		const psub = [ link.GHProjectName, link.GHColumnName ];
 
 		// No need to wait
 		peq = await peq;

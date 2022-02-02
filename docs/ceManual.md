@@ -898,7 +898,7 @@ notifications cover a broad range of interactions with GitHub issues, many of wh
 to CodeEquity. 
 
 The following notification types for issues are ignored by the handler: `opened`, `pinned`, `unpinned`,
-`locked`, `unlocked`, `milestoned`, and `demilstoned`.  It may be surprising to see `opened` as one of
+`locked`, `unlocked`, `milestoned`, and `demilestoned`.  It may be surprising to see `opened` as one of
 the ignored actions.  CodeEquity does not track every issue in a CodeEquity project, just those that
 are PEQ issues.  A PEQ issue can only be created with a `labeled` action.
 

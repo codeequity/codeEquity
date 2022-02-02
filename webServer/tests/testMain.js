@@ -77,7 +77,11 @@ async function runTests() {
 	console.log( "Cold start?  Most recent pact", mrp.EntryDate );
 	await utils.sleep( 8000 );
     }
+
+    // Undo assert to inspect active: false in CELinkage.  Need a test for this.
+    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, wakeyPID, td.softContTitle );
     tu.remProject( authData, wakeyPID );
+    // assert( false );
 
 
     // TESTS
@@ -95,12 +99,12 @@ async function runTests() {
     await testDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
-
+    
     subTest = await testSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-    
+
     subTest = await testFlat.runTests( authData, ghLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 5000 );

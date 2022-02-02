@@ -11,6 +11,19 @@ var ghSafe  = ghUtils.githubSafe;
 const testData = require( './testData' );
 const tu = require('./testUtils');
 
+
+async function cardPresentHelp( authData, colId, issNum ) {
+    let retVal = false;
+
+    let allCards  = await tu.getCards( authData, colId );
+    
+    let c = allCards.find( card => card.content_url.split('/').pop() == issNum ); 
+    if( typeof c !== 'undefined' ) { console.log( "CROSS XXX RV: " ); retVal = true; }
+
+    return retVal;
+}
+
+
 // Requires config.TEST_OWNER to have installed the codeEquity app for all repos, not just one.
 // Requires config.CROSS_TEST_REPO & config.TEST_REPO to allow both config.CE_USER and config.TEST_OWNER to have R/W access
 // This way, authData is shared.   td is NOT shared.
@@ -36,7 +49,8 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     let issPopDat = await ghSafe.createIssue( authDataX, tdX.GHOwner, tdX.GHRepo, "A special populate issue", [], false );
     let cardPop   = await ghSafe.createProjectCard( authDataX, crossCid, issPopDat[0] );
     let popLabel  = await gh.findOrCreateLabel( authDataX, tdX.GHOwner, tdX.GHRepo, false, config.POPULATE, -1 );
-    await tu.addLabel( authDataX, tdX, issPopDat[1], popLabel.name );       
+    let ipDat     = [issPopDat[0], issPopDat[1], "A special populate issue" ];
+    await tu.addLabel( authDataX, tdX, ipDat, popLabel.name );       
     await utils.sleep( 1000 );
 
     const LAB = "704 " + config.PEQ_LABEL;
@@ -72,7 +86,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     await utils.sleep( 2000 );
 
     const cardX  = await tu.makeProjectCard( authDataX, ghLinks, tdX.GHFullName, crossLoc.colId, issDatX[0] );
-    await utils.sleep( 1000 );
+    await tu.settleWithVal( "Cross test make cross card", cardPresentHelp, authData, crossLoc.colId, issDatX[1] );
     
     testStatus = await tu.checkSituatedIssue( authDataX, ghLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1, assign: 2});
     
@@ -88,7 +102,11 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     const repo   = await tu.findRepo( authData, td );
     const issueX = await tu.findIssue( authDataX, tdX, issDatX[0] );
     const repoX  = await tu.findRepo( authDataX, tdX );
+
     
+    console.log( "TRANSFER BEGINNING" );
+    console.log( "base : ", issue.node_id, repoX.node_id );
+    console.log( "baseX: ", issueX.node_id, repo.node_id );
     await gh.transferIssueGQL( authData, issue.node_id, repoX.node_id );
     await gh.transferIssueGQL( authDataX, issueX.node_id, repo.node_id );
     await utils.sleep( 2000 );
@@ -134,7 +152,8 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
     let issPopDat = await ghSafe.createIssue( authDataM, tdM.GHOwner, tdM.GHRepo, "A special populate issue", [], false );
     let cardPop   = await ghSafe.createProjectCard( authDataM, multiCid, issPopDat[0] );
     let popLabel  = await gh.findOrCreateLabel( authDataM, tdM.GHOwner, tdM.GHRepo, false, config.POPULATE, -1 );
-    await tu.addLabel( authDataM, tdM, issPopDat[1], popLabel.name );       
+    let ipDat     = [issPopDat[0], issPopDat[1], "A special populate issue" ];
+    await tu.addLabel( authDataM, tdM, ipDat, popLabel.name );       
     await utils.sleep( 1000 );
 
     // Labels, Assignees & Locs
