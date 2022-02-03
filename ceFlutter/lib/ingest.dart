@@ -2,6 +2,7 @@ import 'dart:convert';  // json encode/decode
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:collection/collection.dart';      // list equals
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:random_string/random_string.dart';
 import 'package:tuple/tuple.dart';
@@ -14,6 +15,8 @@ import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/allocation.dart';
 import 'package:ceFlutter/models/ghLoc.dart';
+
+Function listEq = const ListEquality().equals;
 
 
 // XXX associateGithub has to update appState.idMapGH
@@ -395,20 +398,15 @@ void _add( context, appState, pact, peq, assignees, assigneeShare, subBase ) {
    else if( peq.peqType == PeqType.plan ) {
       print( "Plan PEQ" );
       
-      /* XXX
-      // If last portion of sub cat is a project, then we are not in a flat project.
-      var loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectName == subBase.last, orElse: () => null );
-      List<String> subPlan = new List<String>.from( subBase );
-      if( loc != null && subBase.last != "UnClaimed" ) { subPlan.add( "Planned" ); }    // XXX formalize
-      
-      // iterate over assignees
-      for( var assignee in assignees ) {
-         print( "\n Assignee: " + assignee );
-         if( loc == null ) { adjustSummaryAlloc( appState, peq.id, subBase, assignee, assigneeShare, PeqType.plan ); }
-         else              { adjustSummaryAlloc( appState, peq.id, subPlan, assignee, assigneeShare, PeqType.plan ); }
+      // XXX Speed this up.  This is relevant 1/1000 times, but runs always.  
+      // Generated as part of 'recreate'?  If so, check location then ignore it.
+      List<Allocation> appAllocs = appState.myPEQSummary.allocations;      
+      for( Allocation anAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+         assert( listEq( subBase, ["UnClaimed", "Accrued" ] ));
+         print( "Skipping Add, which was generated as part of Recreate, which was already handled." );
+         return;
       }
-      */
-
+      
       // iterate over assignees
       for( var assignee in assignees ) {
          print( "\n Assignee: " + assignee );
@@ -627,6 +625,9 @@ void _change( appState, pact, peq, assignees, assigneeShare, ka ) {
       
    }
    else if( pact.note == "recreate" ) {    // XXX formalize this
+      // This is only issued when user deletes an accrued issue, which ceServer then recreates in unclaimed.
+      // Note. After 8/2021, Github sends only partial issues in request body during issue delete.  Thanks GQL.
+      //       Assignees may be removed.. safest place to transfer them is here.
       // This should be a rare event, seen after deleting an accrued issue.  ceServer rebuilds and saves a copy if the issue was removed first
       assert( ka.allocType != PeqType.allocation );
       assert( pact.subject.length == 2 );
@@ -643,12 +644,14 @@ void _change( appState, pact, peq, assignees, assigneeShare, ka ) {
 
       // Do NOT Add for new peq, there is a follow-on 'add' pact that does the job
       // The new peq is added in unclaimed:accrued with unassigned, as is correct.
-      /* 
+      // No.
+      // We need assignees for accrued, and in particular need to retain assignees for accrued issues.
+      // Add back here, then ignore subsequent add.
       for( var assign in assignees ) {
          print( "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.toString() );
-         adjustSummaryAlloc( appState, pact.subject[1], baseCat, assign, assigneeShare, sourceType );
+         adjustSummaryAlloc( appState, pact.subject[1], ["UnClaimed", "Accrued" ], assign, assigneeShare, sourceType ); // XXX formalize
       }
-      */
+
    }
    else if( pact.note == "Column rename" ) {    // XXX formalize this
       print( "Column rename handled at start of todo processing" );
