@@ -9,7 +9,17 @@ var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
 
-// linkage is {issueId: {cardId: {} }}
+// Linkage table contains all identifying info related to situated issues or better.
+// linkage is { issueId: { cardId: {} }}
+// linkage is NOT stored in dynamo.
+
+// Loc table is projects and columns per repo.
+
+// Loc table contains all proj/col in repo.  linkage table will only have that info where there are PEQs.
+// All adds to loc update aws, except batch related adds present herein.
+// loc is { projId: { colId: {} }}
+// loc IS stored in dynamo, for speed and privacy benefits during ingest (ceFlutter).
+
 class Linkage {
 
     constructor( ) {

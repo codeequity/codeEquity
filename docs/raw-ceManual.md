@@ -802,7 +802,7 @@ accrue to?
 Accrued PEQ issues should not be modified.  If a user attempts to change an assignee on GitHub
 for an accrued PEQ issue, the handler will undo that change.
 
-##### `edidted` Can not modify an accrued PEQ issue
+##### `edited` Can not modify an accrued PEQ issue
 Accrued PEQ issues should not be modified.  If a user attempts to change the title of an accrued PEQ
 issue on GitHub, the handler will undo that change. 
 

@@ -73,6 +73,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "Uningest")       { resultPromise = unIngest( rb.tableName, rb.query ); }    
     else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.pLink ); }
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
+    else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
     else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
@@ -947,6 +948,42 @@ async function updatePActCE( ceUID, pactId ) {
     let promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));
 }
+
+
+// peq psub: last element is ALWAYS the column name.  Examples: 
+// [ { "S" : "Software Contributions" }, { "S" : "Github Operations" }, { "S" : "Planned" } ]
+// [ { "S" : "UnClaimed" }, { "S" : "UnClaimed" } ]
+// [ { "S" : "Software Contributions" } ]
+// The first comes from master:softCont and softCont:gitOps:Planned
+// The second is a flat structure
+// THe third is from adding an allocation into the master proj.  Master name is redacted.
+
+async function updateColProj( query ) {
+
+    console.log( "Updating col or proj name in peq psubs", query );
+
+    // if proj name mode, every peq in project gets updated.  big change.
+    // XXX if col name change, could be much smaller, but would need to generate list of peqIds in ingest from myGHLinks.  Possible.. 
+
+    // Get all peqs in GHProjId, ghRepo
+    // forach peq, get psub into list<string>
+    //   if Col, update psub.last where matches query.OldName with query.NewName
+    //   if Proj, if psub.len > 1,  update psub.last-1 where matches query.OldName with query.NewName
+    // then update those peqs. promise.all
+    
+    const params = {
+	TableName: 'CEPEQActions',
+	Key: {"PEQActionId": pactId },
+	UpdateExpression: 'set CEUID = :ceuid',
+	ExpressionAttributeValues: { ':ceuid': ceUID }};
+    
+    let promise = bsdb.update( params ).promise();
+    return promise.then(() => success( true ));
+
+}
+
+
+
 
 // Overwrites any existing record
 async function putPSum( psum ) {

@@ -216,6 +216,66 @@ Future<bool> updateDynamo( context, container, postData, shortName ) async {
    }
 }
 
+// Guide is [colId, oldName, newName]
+Future<bool> updateColumnName( context, container, guide ) async {
+
+   print( "Update Column Name: " + guide.toString() );
+   assert( guide.length == 3 );
+
+   // myLocs reflects current state in GH, after the rename.  Use it to get projId before sending rename up to aws
+   final appState  = container.state;
+   final myLocs    = appState.myGHLinks.locations;
+
+   GHLoc loc = myLocs.firstWhere( (a) => a.ghColumnId == guide[0], orElse: () => null );
+   assert( loc != null );
+   assert( loc.ghColumnName == guide[2] );
+
+   // GH column names are unique within project. 
+   var postData = {};
+   postData['GHRepo']      = appState.myGHLinks.ghRepo;
+   postData['GHProjectId'] = loc.ghProjectId;
+   postData['OldName']     = guide[1];
+   postData['NewName']     = guide[2];
+   postData['Column']      = "true";
+   var pd = { "Endpoint": "UpdateColProj", "query": postData }; 
+   
+   final response = await postIt( "UpdateColProj", json.encode( pd ), container );
+   
+   if (response.statusCode == 201) {
+      return true;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await updateColumnName( context, container, guide ); }
+   }
+}
+
+// Guide is [projId, oldName, newName]
+Future<bool> updateProjectName( context, container, guide ) async {
+
+   print( "Update Project Name: " + guide.toString() );
+   assert( guide.length == 3 );
+
+   final appState  = container.state;
+
+   // GH column names are unique within project. 
+   var postData = {};
+   postData['GHRepo']      = appState.myGHLinks.ghRepo;
+   postData['GHProjectId'] = guide[0];
+   postData['OldName']     = guide[1];
+   postData['NewName']     = guide[2];
+   postData['Column']      = "false";
+   var pd = { "Endpoint": "UpdateColProj", "query": postData }; 
+   
+   final response = await postIt( "UpdateColProj", json.encode( pd ), container );
+   
+   if (response.statusCode == 201) {
+      return true;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await updateProjectName( context, container, guide ); }
+   }
+}
+
 Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    String shortName = "fetchPEQs";
    final response = await postIt( shortName, postData, container );
