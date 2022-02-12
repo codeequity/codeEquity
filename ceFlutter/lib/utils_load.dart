@@ -230,16 +230,17 @@ Future<bool> updateColumnName( context, container, guide ) async {
    assert( loc != null );
    assert( loc.ghColumnName == guide[2] );
 
-   // GH column names are unique within project. 
+   // GH column names are unique within project.
+   const shortName = "UpdateColProj";
    var postData = {};
    postData['GHRepo']      = appState.myGHLinks.ghRepo;
    postData['GHProjectId'] = loc.ghProjectId;
    postData['OldName']     = guide[1];
    postData['NewName']     = guide[2];
    postData['Column']      = "true";
-   var pd = { "Endpoint": "UpdateColProj", "query": postData }; 
+   var pd = { "Endpoint": shortName, "query": postData }; 
    
-   final response = await postIt( "UpdateColProj", json.encode( pd ), container );
+   final response = await postIt( shortName, json.encode( pd ), container );
    
    if (response.statusCode == 201) {
       return true;
@@ -256,7 +257,8 @@ Future<bool> updateProjectName( context, container, guide ) async {
    assert( guide.length == 3 );
 
    final appState  = container.state;
-
+   const shortName = "UpdateColProj";
+   
    // GH column names are unique within project. 
    var postData = {};
    postData['GHRepo']      = appState.myGHLinks.ghRepo;
@@ -264,9 +266,9 @@ Future<bool> updateProjectName( context, container, guide ) async {
    postData['OldName']     = guide[1];
    postData['NewName']     = guide[2];
    postData['Column']      = "false";
-   var pd = { "Endpoint": "UpdateColProj", "query": postData }; 
+   var pd = { "Endpoint": shortName, "query": postData }; 
    
-   final response = await postIt( "UpdateColProj", json.encode( pd ), container );
+   final response = await postIt( shortName, json.encode( pd ), container );
    
    if (response.statusCode == 201) {
       return true;

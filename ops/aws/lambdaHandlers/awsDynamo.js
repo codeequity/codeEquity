@@ -81,7 +81,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else {
-	callback( null, errorResponse( "500", "EndPoint request not understood", context.awsRequestId));
+	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
     }
 
@@ -915,7 +915,7 @@ async function updatePEQ( pLink ) {
     if( spinCount >= MAX_SPIN ) { return LOCKED; }
     
     // Only props that get updated
-    let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "GHIssueTitle", "GHProjectSub", "PeqType", "VestedPerc" ];
+    let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "GHHolderId", "GHIssueTitle", "GHProjectSub", "PeqType", "VestedPerc" ];
     let updateVals = buildUpdateParams( pLink, props );
     assert( updateVals.length == 2 );
 
@@ -956,30 +956,66 @@ async function updatePActCE( ceUID, pactId ) {
 // [ { "S" : "Software Contributions" } ]
 // The first comes from master:softCont and softCont:gitOps:Planned
 // The second is a flat structure
-// THe third is from adding an allocation into the master proj.  Master name is redacted.
+// The third is from adding an allocation into the master proj.  Master name is redacted.
 
-async function updateColProj( query ) {
+// Does the old name always match PEQ psub?  Yes, barring out of order arrival.  
+// 1. The only cross project move allowed that can generate a rename is from unclaimed -> new home.  Delete accrued generates a 'recreate'.
+// 2. Peqs can be deactivated, then grossly manipulated while untracked.  But upon re-labelling as a PEQ, all info is updated from ceServer.
+// 3. There may be multiple renames for a given project within one ingest batch.  It is very unlikely that they will arrive out of order.  But possible.
+// 4. Ingest can occur well after new peqs added to new col/proj name.  In which case psub will be correct already.
+// So, require oldName or newName to match dynamo.
+async function updateColProj( update ) {
 
+    // query: GHRepo, GHProjectId, OldName, NewName, Column
     console.log( "Updating col or proj name in peq psubs", query );
-
+    
     // if proj name mode, every peq in project gets updated.  big change.
     // XXX if col name change, could be much smaller, but would need to generate list of peqIds in ingest from myGHLinks.  Possible.. 
 
-    // Get all peqs in GHProjId, ghRepo
-    // forach peq, get psub into list<string>
-    //   if Col, update psub.last where matches query.OldName with query.NewName
-    //   if Proj, if psub.len > 1,  update psub.last-1 where matches query.OldName with query.NewName
-    // then update those peqs. promise.all
-    
-    const params = {
-	TableName: 'CEPEQActions',
-	Key: {"PEQActionId": pactId },
-	UpdateExpression: 'set CEUID = :ceuid',
-	ExpressionAttributeValues: { ':ceuid': ceUID }};
-    
-    let promise = bsdb.update( params ).promise();
-    return promise.then(() => success( true ));
+    // Get all active peqs in GHProjId, ghRepo
+    const query = { GHRepo: update.GHRepo, GHProjectId: update.GHProjectId, Active: "true" };
+    var peqsWrap = await getEntries( "CEPEQs", query );
+    console.log( "Found peqs, raw:", peqsWrap );
 
+    if( peqsWrap.statusCode != 201 ) { return peqsWrap; }
+    else { 
+	//   if Proj, if psub.len > 1,  update psub.last-1 where matches query.OldName with query.NewName
+	assert( peq.GHProjectSub.length >= 1 );
+	for( var peq of peqsWrap.body ) {
+	    console.log( "working on", peq );
+	    // not all peqs in project belong to this column.  
+	    if( update.Column == "true" ) {
+		let lastElt = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
+		if( lastElt == update.OldName ) {
+		    peq.GHProjectSub[ peq.GHProjectSub.length - 1] = update.NewName;
+		    console.log( "Updated column portion of psub", peq.GHIssueTitle, peq.GHProjectSub );
+		}
+	    }
+	    else if( peq.GHProjectSub.length >= 2 ) {
+		let pElt = peq.GHProjectSub[ peq.GHProjectSub.length - 2];
+		assert( pElt == update.OldName || pElt == update.NewName );
+		peq.GHProjectSub[ peq.GHProjectSub.length - 2] = update.NewName;
+		console.log( "Updated project portion of psub", peq.GHIssueTitle, peq.GHProjectSub );
+	    }
+	}
+    }
+
+    let promises = [];
+    for( const peq of peqsWrap ) {
+	const params = {
+	    TableName: 'CEPEQs',
+	    Key: {"PEQId": peq.PEQId},
+	    UpdateExpression: 'set GHProjectSub = :psub',
+	    ExpressionAttributeValues: { ':psub': peq.GHProjectSub }};
+
+	promises.push( bsdb.update( params ).promise() );
+    }
+
+    return await Promise.all( promises )
+	.then((results) => {
+	    console.log( '...promises done' );
+	    return success( true );
+	});
 }
 
 
