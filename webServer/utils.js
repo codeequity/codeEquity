@@ -430,7 +430,7 @@ async function rebuildPeq( authData, link, oldPeq ) {
 //   label issue.  calls PNP, but does not await.  (PNP will create PEQ, eventually)
 //   create card.  calls PNP, which calls recordPeqData, which checks for unclaimed:relocate and existence of PEQ.  
 // await in label does not solve it 100%.   Having bad dependent peq recordings in aws may hurt later.
-// Settlewait.. this has show up once in... hundreds of runs of the full test suite?
+// Settlewait.. this has shown up once in... hundreds of runs of the full test suite?
 // not, dup check could occur in lambda handler, save a round trip
 async function recordPeqData( authData, pd, checkDup, specials ) {
     console.log( authData.who, "Recording peq data for", pd.GHIssueTitle );	

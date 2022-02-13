@@ -400,10 +400,18 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// (open issue in new repo, delete project card, transfer issue)
 	// Transfer IN:  do nothing.  comes as newborn issue, no matter what it was in previous repo
 	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.  GH will send delete card.
+
+	// NOTE.  As of 2/13/2022 GH now keeps labels with transferred issue, although tooltip still contradicts this.
+	//        Do not attempt to remove peq label, authData is incorrect.  Deal properly with Transfer In.
 	{
 	    if( pd.reqBody.changes.new_repository.full_name != pd.GHRepo ) {
 		console.log( authData.who, "Transfer out.  Cleanup." );
 
+		// console.log("******", pd.reqBody.changes.new_issue.labels[0].name.toString() );
+ 		// await utils.settleWithVal( "checkIssue", gh.checkIssue, authData, pd.GHOwner, 
+		// pd.reqBody.changes.new_repository.full_name, parseInt( pd.reqBody.changes.new_issue.number ) );
+		// ghSafe.removePeqLabel( authData, pd.GHOwner, pd.reqBody.changes.new_repository.full_name, parseInt( pd.reqBody.changes.new_issue.number ));
+		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
 		let peq = await utils.getPeq( authData, pd.GHIssueId, false );
 		if( peq != -1 ) {

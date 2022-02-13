@@ -55,6 +55,7 @@ console.log( "*** GH Link Data init ***" );
 initGH();
 
 async function initGH() {
+
     authData.ic  = -1;                // installation client for octokit
     authData.who = "CE SERVER INIT";  // which event is underway
     authData.api = -1;                // api path for aws
@@ -241,7 +242,7 @@ router.post('/:location?', async function (req, res) {
 
     // invisible, mostly
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, ceNotification, req.body, res ); }
-    
+
     console.log( "" );
     let action   = req.body['action'];
     let event    = req.headers['x-github-event'];

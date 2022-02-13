@@ -239,7 +239,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let peq = utils.getPeq( authData, link.GHIssueId );
 
 	    // Is the source a delete issue or transfer? 
-	    let issueExists = await gh.checkIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );  
+	    let issueExists = await gh.checkIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );
+	    if( issueExists == -1 ) { issueExists = false; };
 
 	    // Regular peq?  or ACCR already in unclaimed?  remove it no matter what.
 	    if( !accr || link.GHProjectName == config.UNCLAIMED ) {
