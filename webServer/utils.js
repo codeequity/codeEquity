@@ -23,7 +23,6 @@ var ghSafe  = ghUtils.githubSafe;
 // read apiBasePath
 var fs = require('fs'), json;
 
-
 function getAPIPath() {
     let fname = config.APIPATH_CONFIG_LOC;
     try {
@@ -34,6 +33,7 @@ function getAPIPath() {
 	console.log('Error:', e.stack);
     }
 }
+
 function getCognito() {
     let fname = config.COGNITO_CONFIG_LOC;
     try {
@@ -332,13 +332,10 @@ async function recordPEQ( authData, postData ) {
     let shortName = "RecordPEQ";
     postData.GHIssueTitle = postData.GHIssueTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
 
-    if( postData.PeqType == config.PEQTYPE_ALLOC || postData.PeqType == config.PEQTYPE_PLAN ) {
-	postData.CEGrantorId = config.EMPTY;
-	postData.AccrualDate = config.EMPTY;
-	postData.VestedPerc  = 0.0;
-    }
-
-    postData.CEHolderId   = [];            // no access to this, yet
+    postData.CEGrantorId = postData.hasOwnProperty( "CEGrantorId" ) ? postData.CEGrantorId : config.EMPTY;
+    postData.AccrualDate = postData.hasOwnProperty( "AccrualDate" ) ? postData.AccrualDate : config.EMPTY;
+    postData.VestedPerc  = postData.hasOwnProperty( "VestedPerc" )  ? postData.VestedPerc  : 0.0;
+    postData.CEHolderId  = postData.hasOwnProperty( "CEHolderId" )  ? postData.CEHolderId  : [];
 
     let pd = { "Endpoint": shortName, "newPEQ": postData };
     

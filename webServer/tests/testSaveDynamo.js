@@ -14,10 +14,12 @@ function execAWS_CLI( table ) {
 
     // cmd = "aws dynamodb scan --table-name CEPEQs | jq '{"Ownerships": [.Items[] | {PutRequest: {Item: .}}]}' > testData/testDataCEPEQS.json"
     let fname = "tests/testData/dynamo" + table + "_" + stamp + ".json";
+    let lname = "tests/testData/dynamo" + table +"_latest"    + ".json";
     let cmd = "aws dynamodb scan --table-name " + table + " | jq ";
-    cmd    += "'{\"" + table + "\": [.Items[] | {PutRequest: {Item: .}}]}' > " + fname;
+    cmd    += "'{\"" + table + "\": [.Items[] | {PutRequest: {Item: .}}]}' > ";
 
-    execSync( cmd, { encoding: 'utf-8' });
+    execSync( cmd + fname, { encoding: 'utf-8' });
+    execSync( cmd + lname, { encoding: 'utf-8' });
 
     // if the tablename is bad, scan generates empty input to jq, which then file redirects as told.  No errors.
     // check for empty result to make sure we got something.
