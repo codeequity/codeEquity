@@ -967,7 +967,7 @@ async function updatePActCE( ceUID, pactId ) {
 async function updateColProj( update ) {
 
     // query: GHRepo, GHProjectId, OldName, NewName, Column
-    console.log( "Updating col or proj name in peq psubs", query );
+    console.log( "Updating col or proj name in peq psubs", update );
     
     // if proj name mode, every peq in project gets updated.  big change.
     // XXX if col name change, could be much smaller, but would need to generate list of peqIds in ingest from myGHLinks.  Possible.. 

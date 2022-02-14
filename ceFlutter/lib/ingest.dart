@@ -46,22 +46,17 @@ Future<void> updateCEUID( appState, PEQAction pact, PEQ peq, context, container 
          appState.idMapGH[ peqGHUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$peqGHUser" }', "GetCEUID" );
       }
       String ceUID = appState.idMapGH[ peqGHUser ];
-      if( ceUID == "" ) { ceUID = "GHUSER: " + peqGHUser; }
+      if( ceUID == "" ) { ceUID = "GHUSER: " + peqGHUser; }  // XXX formalize
       peq.ceHolderId.add( ceUID );
    }
 
-   // 0 length is ok, when unassigned.
-   String ceGrantor = EMPTY;
-   // XXX ??? should grantor be CE or GH id?  Maybe depends on ability to permission prot a project column
-   if( pact.action == PActAction.accrue && pact.verb == PActVerb.confirm ) {  ceGrantor = ghu;   }
-   
+   // Ignore CEGrantorId.  Must already be signed up to authorize PEQ, so all IDs will already be correct.
 
    // Update PEQ, if there is one.
    if( peq.id != "-1" ) {
       var postData = {};
       postData['PEQId']       = peq.id;
       postData['CEHolderId']  = peq.ceHolderId;
-      postData['CEGrantorId'] = ceGrantor;
       var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
       
       // print( "Start update peq" );
@@ -357,8 +352,10 @@ void _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo, 
    postData['GHHolderId'] = listEq( assignees, ["Unassigned"]) ? [] : assignees;
 
    if( newType == enumToStr( PeqType.grant )) {
-      postData['AccrualDate'] = getToday();
-      // XXX Should be setting ceGrantorId here
+      postData['AccrualDate'] = pact.entryDate;
+      String ceUID = appState.idMapGH[ pact.ghUserName ];
+      if( ceUID == "" ) { ceUID = "GHUSER: " + pact.ghUserName; }  // XXX formalize
+      postData['CEGrantorId'] = ceUID;
    }
    else { postData['AccrualDate'] = peq.accrualDate; }
    
@@ -368,6 +365,7 @@ void _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo, 
    if( postData['PeqType']      != peq.peqType )              { print( "_accrue changing peqType to "     + postData['PeqType'] ); }
    if( postData['AccrualDate']  != peq.accrualDate )          { print( "_accrue changing accrualDate to " + postData['AccrualDate'] ); }
    if( postData['Amount']       != peq.amount )               { print( "_accrue changing amount to "      + postData['Amount'].toString() ); }
+   if( postData['CEGrantorId']  != peq.ceGrantorId )          { print( "_accrue changing grantor to "     + postData['CEGrantorId'] ); }
    if( !listEq( postData['GHHolderId'],   peq.ghHolderId ))   { print( "_accrue changing assignees to "   + postData['GHHolderId'].toString() ); }
    if( !listEq( postData['GHProjectSub'], peq.ghProjectSub )) { print( "_accrue changing psub to "        + postData['GHProjectSub'].toString() ); }
    
