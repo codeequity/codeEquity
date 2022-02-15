@@ -616,7 +616,10 @@ async function putPeq( newPEQ ) {
 
 async function putPAct( newPAction ) {
 
-    let newId = randAlpha(10);
+    let rewrite = newPAction.hasOwnProperty( "PEQActionId" );
+    assert( !rewrite || newPAction.RawBody == "" );
+    
+    let newId = rewrite ? newPAction.PEQActionId : randAlpha(10);
     console.log( newId, newPAction.Verb, newPAction.Action, newPAction.Subject );
     const params = {
         TableName: 'CEPEQActions',
@@ -636,19 +639,23 @@ async function putPAct( newPAction ) {
 	}
     };
 
-    const paramsR = {
-        TableName: 'CEPEQRaw',
-	Item: {
-	    "PEQRawId":  newId,
-	    "RawBody":   newPAction.RawBody,
-	}
-    };
-
-    let promise = bsdb.transactWrite({
-	TransactItems: [
-	    { Put: params }, 
-	    { Put: paramsR }, 
-	]}).promise();
+    let promise = "";
+    if( rewrite ) { promise = bsdb.put( params ).promise(); }
+    else {
+	const paramsR = {
+            TableName: 'CEPEQRaw',
+	    Item: {
+		"PEQRawId":  newId,
+		"RawBody":   newPAction.RawBody,
+	    }
+	};
+	
+	promise = bsdb.transactWrite({
+	    TransactItems: [
+		{ Put: params }, 
+		{ Put: paramsR }, 
+	    ]}).promise();
+    }
     
     return promise.then(() =>success( newId ));
 }

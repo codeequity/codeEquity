@@ -38,10 +38,10 @@ async function clearSummary( authData, td ) {
 // Only load items for  TEST_OWNER, TEST_REPO.  Need to work through dynamo storage format.
 async function loadPEQ( authData, td ) {
     let fname = baselineLoc + "dynamoCEPEQs.json";
-    console.log( "Loading PEQs from", fname );
 
     const dataStr = getData( fname );
     const peqJson = JSON.parse( dataStr );
+    console.log( "Loading", peqJson.CEPEQs.length.toString(), "PEQs from", fname );
 
     var promises = [];
     for( var aput of peqJson.CEPEQs ) {
@@ -49,7 +49,7 @@ async function loadPEQ( authData, td ) {
 	const id   = aput.PutRequest.Item.PEQId.S;
 	
 	if( repo == td.GHFullName ) {
-	    console.log( "Loading", repo, id );
+	    // console.log( "Loading", repo, id );
 
 	    let postData = {};
 	    postData.PEQId        = id;
@@ -70,6 +70,9 @@ async function loadPEQ( authData, td ) {
 	    postData.CEHolderId   = aput.PutRequest.Item.CEHolderId.L.map( elt => elt.S )
 	    postData.GHProjectSub = aput.PutRequest.Item.GHProjectSub.L.map( elt => elt.S )
 
+	    // Testing, only
+	    postData.Testing      = "true";
+	    
 	    // managed by lambda handler, alone.
 	    // postData.LockId       = aput.PutRequest.Item.LockId.S;   
 
@@ -81,26 +84,41 @@ async function loadPEQ( authData, td ) {
 
 async function loadPAct( authData, td ) {
 
-    // PAct and PActRaw go together
+    // NOTE!  PActRaw doesn't change - no need to overwrite.
     let fname = baselineLoc + "dynamoCEPEQActions.json";
-    let rname = baselineLoc + "dynamoCEPEQRaw.json";
-    console.log( "Loading PEQs from", fname, rname );
+    // let rname = baselineLoc + "dynamoCEPEQRaw.json";
 
     const dataStr  = getData( fname );
-    const rawStr   = getData( rname );
+    // const rawStr   = getData( rname );
     const pactJson = JSON.parse( dataStr );
-    const rawJson  = JSON.parse( rawStr );
+    // const rawJson  = JSON.parse( rawStr );
+    console.log( "Loading", pactJson.CEPEQActions.length.toString(), "PActs from", fname );
 
-    var promises = [];
+    // PEQRawId == PEQActionId
+    // Slower approach when data is small, but more scalable.
+    /*
     var pactIds  = [];
     for( var aput of pactJson.CEPEQActions ) {
 	const repo = aput.PutRequest.Item.GHRepo.S;
 	const id   = aput.PutRequest.Item.PEQActionId.S;
 
-	pactIds.push( id );
+	if( repo == td.GHFullName ) { pactIds.push( id ); }
+    }
+
+    var praw = {};
+    for( var araw of rawJson.CEPEQRaw ) {
+	const pid = araw.PutRequest.Item.PEQRawId.S;
+	if( pactIds.includes( pid  )) { praw.pid = araw.PutRequest.Item.RawBody.S; }
+    }
+    */
+    
+    var promises = [];
+    for( var aput of pactJson.CEPEQActions ) {
+	const repo = aput.PutRequest.Item.GHRepo.S;
+	const id   = aput.PutRequest.Item.PEQActionId.S;
 	
 	if( repo == td.GHFullName ) {
-	    console.log( "Loading", repo, id );
+	    // console.log( "Loading", repo, id );
 
 	    let postData = {};
 	    postData.PEQActionId  = id;
@@ -113,16 +131,14 @@ async function loadPAct( authData, td ) {
 	    postData.Ingested   = aput.PutRequest.Item.Ingested.S;
 	    postData.TimeStamp  = aput.PutRequest.Item.TimeStamp.S;
 	    postData.Verb       = aput.PutRequest.Item.Verb.S;
-	    postData.EntryDate  = aput.PutRequest.Item.EntryDate.S;
+	    postData.Date       = aput.PutRequest.Item.EntryDate.S;
+	    postData.Locked     = aput.PutRequest.Item.Locked.S;
 
+	    postData.RawBody    = "";
+	    
 	    postData.Subject   = aput.PutRequest.Item.Subject.L.map( elt => elt.S )
-
-	    // managed by lambda handler, alone.
-	    // postData.LockId       = aput.PutRequest.Item.LockId.S;
-
-	    // XXX Need raw as part of this
-
-	    promises.push( utils.recordPEQ( authData, postData ) );
+	    
+	    promises.push( utils.rewritePAct( authData, postData ) );
 	}
     }
     await Promise.all( promises );    
@@ -161,11 +177,9 @@ async function runTests() {
 	execSync( cmd, { encoding: 'utf-8' });
     }
 	
-    promises = [];
     // Just overwrite.
-    promises.push( loadPEQ(  authData, td ));
-    promises.push( loadPAct( authData, td ));
-    await Promise.all( promises );
+    await loadPEQ(  authData, td );
+    await loadPAct( authData, td ); 
 }
 
 

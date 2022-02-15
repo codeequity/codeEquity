@@ -305,6 +305,13 @@ async function updatePEQVal( authData, peqId, peqVal ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
+async function rewritePAct( authData, postData ) {
+    let shortName = "RecordPEQAction";
+
+    let pd = { "Endpoint": shortName, "newPAction": postData };
+    return await wrappedPostAWS( authData, shortName, pd );
+}
+
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
 async function recordPEQAction( authData, ceUID, ghUserName, ghRepo, verb, action, subject, note, entryDate, rawBody ) {
     console.log( authData.who, "Recording PEQAction: ", verb, action );
@@ -327,7 +334,7 @@ async function recordPEQAction( authData, ceUID, ghUserName, ghRepo, verb, actio
 }
 
 async function recordPEQ( authData, postData ) {
-    console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.GHIssueTitle );
+    if( !postData.hasOwnProperty( "Testing" )) { console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.GHIssueTitle ); }
 
     let shortName = "RecordPEQ";
     postData.GHIssueTitle = postData.GHIssueTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
@@ -997,6 +1004,7 @@ exports.postCE = postCE;
 exports.getCognito = getCognito;
 exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
+exports.rewritePAct = rewritePAct;
 exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
 exports.rebuildPeq = rebuildPeq;
