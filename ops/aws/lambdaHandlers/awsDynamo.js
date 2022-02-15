@@ -974,41 +974,41 @@ async function updatePActCE( ceUID, pactId ) {
 async function updateColProj( update ) {
 
     // query: GHRepo, GHProjectId, OldName, NewName, Column
-    console.log( "Updating col or proj name in peq psubs", update );
-    
     // if proj name mode, every peq in project gets updated.  big change.
     // XXX if col name change, could be much smaller, but would need to generate list of peqIds in ingest from myGHLinks.  Possible.. 
 
     // Get all active peqs in GHProjId, ghRepo
     const query = { GHRepo: update.GHRepo, GHProjectId: update.GHProjectId, Active: "true" };
     var peqsWrap = await getEntries( "CEPEQs", query );
-    console.log( "Found peqs, raw:", peqsWrap );
+    // console.log( "Found peqs, raw:", peqsWrap );
 
     if( peqsWrap.statusCode != 201 ) { return peqsWrap; }
-    else { 
-	//   if Proj, if psub.len > 1,  update psub.last-1 where matches query.OldName with query.NewName
+
+    const peqs = JSON.parse( peqsWrap.body );
+    // console.log( "Found peqs:", peqs );
+    
+    //   if Proj, if psub.len > 1,  update psub.last-1 where matches query.OldName with query.NewName
+    for( var peq of peqs ) {
 	assert( peq.GHProjectSub.length >= 1 );
-	for( var peq of peqsWrap.body ) {
-	    console.log( "working on", peq );
-	    // not all peqs in project belong to this column.  
-	    if( update.Column == "true" ) {
-		let lastElt = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
-		if( lastElt == update.OldName ) {
-		    peq.GHProjectSub[ peq.GHProjectSub.length - 1] = update.NewName;
-		    console.log( "Updated column portion of psub", peq.GHIssueTitle, peq.GHProjectSub );
-		}
+	console.log( "working on", peq );
+	// not all peqs in project belong to this column.  
+	if( update.Column == "true" ) {
+	    let lastElt = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
+	    if( lastElt == update.OldName ) {
+		peq.GHProjectSub[ peq.GHProjectSub.length - 1] = update.NewName;
+		console.log( "Updated column portion of psub", peq.GHIssueTitle, peq.GHProjectSub );
 	    }
-	    else if( peq.GHProjectSub.length >= 2 ) {
-		let pElt = peq.GHProjectSub[ peq.GHProjectSub.length - 2];
-		assert( pElt == update.OldName || pElt == update.NewName );
-		peq.GHProjectSub[ peq.GHProjectSub.length - 2] = update.NewName;
-		console.log( "Updated project portion of psub", peq.GHIssueTitle, peq.GHProjectSub );
-	    }
+	}
+	else if( peq.GHProjectSub.length >= 2 ) {
+	    let pElt = peq.GHProjectSub[ peq.GHProjectSub.length - 2];
+	    assert( pElt == update.OldName || pElt == update.NewName );
+	    peq.GHProjectSub[ peq.GHProjectSub.length - 2] = update.NewName;
+	    console.log( "Updated project portion of psub", peq.GHIssueTitle, peq.GHProjectSub );
 	}
     }
 
     let promises = [];
-    for( const peq of peqsWrap ) {
+    for( const peq of peqs ) {
 	const params = {
 	    TableName: 'CEPEQs',
 	    Key: {"PEQId": peq.PEQId},

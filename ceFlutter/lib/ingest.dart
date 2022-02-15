@@ -357,7 +357,10 @@ void _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo, 
       if( ceUID == "" ) { ceUID = "GHUSER: " + pact.ghUserName; }  // XXX formalize
       postData['CEGrantorId'] = ceUID;
    }
-   else { postData['AccrualDate'] = peq.accrualDate; }
+   else {
+      postData['AccrualDate'] = peq.accrualDate;
+      postData['CEGrantorId'] = peq.ceGrantorId;
+   }
    
    postData['Amount'] = ( assigneeShare * assignees.length ).toInt();
    postData['GHProjectSub'] = peqLoc;
