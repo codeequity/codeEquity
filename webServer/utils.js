@@ -334,7 +334,7 @@ async function recordPEQAction( authData, ceUID, ghUserName, ghRepo, verb, actio
 }
 
 async function recordPEQ( authData, postData ) {
-    if( !postData.hasOwnProperty( "Testing" )) { console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.GHIssueTitle ); }
+    if( !postData.hasOwnProperty( "silent" )) { console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.GHIssueTitle ); }
 
     let shortName = "RecordPEQ";
     postData.GHIssueTitle = postData.GHIssueTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds

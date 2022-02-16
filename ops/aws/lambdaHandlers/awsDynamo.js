@@ -570,11 +570,13 @@ async function checkSetGHPop( repo, setVal ) {
 
 
 // acquire fine-grained lock
+// Skiplock is ONLY set during cleanLoad for testing purposes
 async function putPeq( newPEQ ) {
 
     // No need to acquire lock if creating a brand-new peq
     if( newPEQ.PEQId == -1 ) { newPEQ.PEQId = randAlpha(10); }
-    else {
+    else if( !newPEQ.hasOwnProperty( 'skipLock' ) || newPEQ.skipLock == "false" )
+    {
 	let spinCount = 0;
 	let peqLockId = randAlpha(10);
 	while( !(await acquireLock( newPEQ.PEQId, peqLockId )) && spinCount < MAX_SPIN )  {

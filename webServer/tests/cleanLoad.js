@@ -37,8 +37,15 @@ async function clearSummary( authData, td ) {
 
 // Only load items for  TEST_OWNER, TEST_REPO.  Need to work through dynamo storage format.
 async function loadPEQ( authData, td ) {
-    let fname = baselineLoc + "dynamoCEPEQs.json";
 
+    // First, remove.
+    const oldPeqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    if( oldPeqs != -1 ) {
+	const opids = oldPeqs.map( peq => [peq.PEQId] );
+	await utils.cleanDynamo( authData, "CEPEQs", opids );				   
+    }
+    
+    let fname = baselineLoc + "dynamoCEPEQs.json";
     const dataStr = getData( fname );
     const peqJson = JSON.parse( dataStr );
     console.log( "Loading", peqJson.CEPEQs.length.toString(), "PEQs from", fname );
@@ -70,8 +77,8 @@ async function loadPEQ( authData, td ) {
 	    postData.CEHolderId   = aput.PutRequest.Item.CEHolderId.L.map( elt => elt.S )
 	    postData.GHProjectSub = aput.PutRequest.Item.GHProjectSub.L.map( elt => elt.S )
 
-	    // Testing, only
-	    postData.Testing      = "true";
+	    postData.silent       = "true";
+	    postData.skipLock     = "true";
 	    
 	    // managed by lambda handler, alone.
 	    // postData.LockId       = aput.PutRequest.Item.LockId.S;   
@@ -84,6 +91,13 @@ async function loadPEQ( authData, td ) {
 
 async function loadPAct( authData, td ) {
 
+    // First, remove.
+    const oldPacts = await utils.getPActs( authData, { "GHRepo": td.GHFullName });
+    if( oldPacts != -1 ) {
+	const opids = oldPacts.map( pact => [pact.PEQActionId] );
+	await utils.cleanDynamo( authData, "CEPEQActions", opids );				   
+    }
+    
     // NOTE!  PActRaw doesn't change - no need to overwrite.
     let fname = baselineLoc + "dynamoCEPEQActions.json";
     // let rname = baselineLoc + "dynamoCEPEQRaw.json";
@@ -164,8 +178,8 @@ async function runTests() {
     authData.pat = await auth.getPAT( td.GHOwner );
 
     let promises = [];
-    // promises.push( clearIngested( authData, td ));
-    // promises.push( clearSummary(  authData, td ));
+    promises.push( clearIngested( authData, td ));
+    promises.push( clearSummary(  authData, td ));
     await Promise.all( promises );
 
     // make true to generate new baseline data.
@@ -177,8 +191,10 @@ async function runTests() {
 	execSync( cmd, { encoding: 'utf-8' });
     }
 	
-    // Just overwrite.
+    // Can't just overwrite, new operations will be in aws and be processed.
     await loadPEQ(  authData, td );
+
+    // PActs are modified (CEUID), so clean these.  Raw is not modded.
     await loadPAct( authData, td ); 
 }
 

@@ -155,7 +155,8 @@ Future<http.Response> ghGet( url ) async {
 
 // XXX awsPost
 Future<http.Response> postIt( String shortName, postData, container ) async {
-   print( shortName );
+
+   if( !postData.contains( "silent" )) { print( shortName ); }  // pd is a string at this point
    final appState  = container.state;
 
    // final gatewayURL = appState.apiBasePath + "/find";

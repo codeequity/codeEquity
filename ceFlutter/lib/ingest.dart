@@ -24,13 +24,15 @@ Function listEq = const ListEquality().equals;
 // set CEUID by matching my peqAction:ghUserName  or peq:ghUserNames to cegithub:ghUsername, then writing that CEOwnerId
 // if there is not yet a corresponding ceUID, use "GHUSER: $ghUserName" in it's place, to be fixed later by associateGitub XXX (done?)
 // NOTE: Expect multiple PActs for each PEQ.  For example, open, close, and accrue
-Future<void> updateCEUID( appState, PEQAction pact, PEQ peq, context, container ) async {
-   print( pact );
-   print( peq );
+Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) async {
+
+   PEQAction pact = tup.item1;
+   PEQ       peq  = tup.item2;
+   
    assert( pact.ceUID == EMPTY );
    String ghu  = pact.ghUserName;
    if( !appState.idMapGH.containsKey( ghu )) {
-      appState.idMapGH[ ghu ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu" }', "GetCEUID" );
+      appState.idMapGH[ ghu ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu", "silent": "true" }', "GetCEUID" );
    }
    String ceu = appState.idMapGH[ ghu ];
    
@@ -43,7 +45,7 @@ Future<void> updateCEUID( appState, PEQAction pact, PEQ peq, context, container 
    peq.ceHolderId = new List<String>();
    for( var peqGHUser in peq.ghHolderId ) {
       if( !appState.idMapGH.containsKey( peqGHUser )) {
-         appState.idMapGH[ peqGHUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$peqGHUser" }', "GetCEUID" );
+         appState.idMapGH[ peqGHUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$peqGHUser", "silent": "true" }', "GetCEUID" );
       }
       String ceUID = appState.idMapGH[ peqGHUser ];
       if( ceUID == "" ) { ceUID = "GHUSER: " + peqGHUser; }  // XXX formalize
@@ -57,13 +59,11 @@ Future<void> updateCEUID( appState, PEQAction pact, PEQ peq, context, container 
       var postData = {};
       postData['PEQId']       = peq.id;
       postData['CEHolderId']  = peq.ceHolderId;
+      postData['silent']      = true;
       var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
       
-      // print( "Start update peq" );
-      print( postData );
       // Do await, processPEQs needs holders
       await updateDynamo( context, container, json.encode( pd ), "UpdatePEQ" );
-      // print( "Finish update peq" );
    }
 }
 
@@ -859,14 +859,13 @@ void processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context,
 
    PEQAction pact = tup.item1;
    PEQ       peq  = tup.item2;
-   
+ 
    print( "\n-------------------------------" );
    print( "processing " + enumToStr(pact.verb) + " " + enumToStr(pact.action) + ", " + enumToStr(peq.peqType) + " for " + peq.amount.toString() + ", " + peq.ghIssueTitle );
    final appState = container.state;
 
-   // Wait here, else summary may be inaccurate
-   // XXX this could be hugely sped up - batch up front.
-   await updateCEUID( appState, pact, peq, context, container );
+   print( pact );
+   print( peq );
 
    // Create, if need to
    if( appState.myPEQSummary == null ) {
@@ -1006,15 +1005,25 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    appState.myGHLinks  = await myLocs;
    await updateGHNames( todos, appState );
 
-   var dynamo = <Future>[];
+   List<Future> dynamo = [];
    var pending = {};
+
+   List<Future> ceuid = [];
+   print( "Updating CE UIDs" );
+   for( var tup in todos ) {
+      // Wait here, else summary may be inaccurate
+      ceuid.add( updateCEUID( appState, tup, context, container ) );
+   }
+   await Future.wait( ceuid );
+   print( "... done (ceuid)" );
+   
    
    for( var tup in todos ) {
       await processPEQAction( tup, dynamo, context, container, pending );
    }
    print( "Finishing updating Dynamo..." );
    await Future.wait( dynamo );
-   print( "... done." );
+   print( "... done (dynamo)" );
 
    print( "Ingest todos finished processing.  Update Dynamo." );
    // XXX Skip this is no change (say, on a series of notices).
