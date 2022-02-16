@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 import 'package:ceFlutter/app_state_container.dart';
 
@@ -66,10 +67,17 @@ class Leaf extends StatelessWidget implements Tree {
 
       // if( isVisible ) { print( "leaf GET CURRENT  $title mod: " + appState.expansionChanged.toString() ); }
 
-      String alloc   = addCommas( getAllocAmount() );
-      String plan    = addCommas( getPlanAmount() );
-      String pending = addCommas( getPendingAmount() );
-      String accrue  = addCommas( getAccrueAmount() );
+      int allocInt = getAllocAmount();
+      int planInt  = getPlanAmount();
+      int pendInt  = getPendingAmount();
+      int accrInt  = getAccrueAmount();
+      int unallocInt = max( 0, allocInt - planInt - pendInt - accrInt );
+      
+      String alloc   = addCommas( allocInt );
+      String plan    = addCommas( planInt );
+      String pending = addCommas( pendInt );
+      String accrue  = addCommas( accrInt );
+      String unalloc = unallocInt == 0 ? "" : addCommas( unallocInt );
       
       List<Widget> anode = [];
       // anode.add( this );
@@ -78,6 +86,7 @@ class Leaf extends StatelessWidget implements Tree {
       anode.add( makeTableText( appState, plan,    numWidth, height, false, 1 ) );
       anode.add( makeTableText( appState, pending, numWidth, height, false, 1 ) );
       anode.add( makeTableText( appState, accrue,  numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState, unalloc, numWidth, height, false, 1 ) );      
       nodes.add( anode );
 
       return nodes;
