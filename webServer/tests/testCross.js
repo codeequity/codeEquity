@@ -114,8 +114,8 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     const newGHIssue = await tu.findIssueByName( authData, td, issDatX[2] );
     const newXIssue  = await tu.findIssueByName( authDataX, tdX, issDat[2] );
     
-    testStatus = await tu.checkNewbornIssue( authDataX, ghLinks, td, [newGHIssue.id, newGHIssue.number, issDatX[2]], testStatus );    
-    testStatus = await tu.checkNewbornIssue( authData, ghLinks, tdX, [newXIssue.id, newXIssue.number, issDat[2]], testStatus );    
+    testStatus = await tu.checkNewbornIssue( authDataX, ghLinks, td, [newGHIssue.id, newGHIssue.number, issDatX[2]], testStatus, {lblCount: 1} );    
+    testStatus = await tu.checkNewbornIssue( authData, ghLinks, tdX, [newXIssue.id, newXIssue.number, issDat[2]], testStatus, {lblCount: 1} );    
 
     // Careful.. peq is gone at this point.   Delete may come after relocate, hence depth
     sub         = [peqX.PEQId, config.TEST_OWNER + "/" + config.TEST_REPO];

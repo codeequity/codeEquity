@@ -23,7 +23,6 @@ var ghSafe  = ghUtils.githubSafe;
 // read apiBasePath
 var fs = require('fs'), json;
 
-
 function getAPIPath() {
     let fname = config.APIPATH_CONFIG_LOC;
     try {
@@ -34,6 +33,7 @@ function getAPIPath() {
 	console.log('Error:', e.stack);
     }
 }
+
 function getCognito() {
     let fname = config.COGNITO_CONFIG_LOC;
     try {
@@ -305,6 +305,13 @@ async function updatePEQVal( authData, peqId, peqVal ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
+async function rewritePAct( authData, postData ) {
+    let shortName = "RecordPEQAction";
+
+    let pd = { "Endpoint": shortName, "newPAction": postData };
+    return await wrappedPostAWS( authData, shortName, pd );
+}
+
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
 async function recordPEQAction( authData, ceUID, ghUserName, ghRepo, verb, action, subject, note, entryDate, rawBody ) {
     console.log( authData.who, "Recording PEQAction: ", verb, action );
@@ -327,18 +334,15 @@ async function recordPEQAction( authData, ceUID, ghUserName, ghRepo, verb, actio
 }
 
 async function recordPEQ( authData, postData ) {
-    console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.GHIssueTitle );
+    if( !postData.hasOwnProperty( "silent" )) { console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.GHIssueTitle ); }
 
     let shortName = "RecordPEQ";
     postData.GHIssueTitle = postData.GHIssueTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds
 
-    if( postData.PeqType == config.PEQTYPE_ALLOC || postData.PeqType == config.PEQTYPE_PLAN ) {
-	postData.CEGrantorId = config.EMPTY;
-	postData.AccrualDate = config.EMPTY;
-	postData.VestedPerc  = 0.0;
-    }
-
-    postData.CEHolderId   = [];            // no access to this, yet
+    postData.CEGrantorId = postData.hasOwnProperty( "CEGrantorId" ) ? postData.CEGrantorId : config.EMPTY;
+    postData.AccrualDate = postData.hasOwnProperty( "AccrualDate" ) ? postData.AccrualDate : config.EMPTY;
+    postData.VestedPerc  = postData.hasOwnProperty( "VestedPerc" )  ? postData.VestedPerc  : 0.0;
+    postData.CEHolderId  = postData.hasOwnProperty( "CEHolderId" )  ? postData.CEHolderId  : [];
 
     let pd = { "Endpoint": shortName, "newPEQ": postData };
     
@@ -430,7 +434,7 @@ async function rebuildPeq( authData, link, oldPeq ) {
 //   label issue.  calls PNP, but does not await.  (PNP will create PEQ, eventually)
 //   create card.  calls PNP, which calls recordPeqData, which checks for unclaimed:relocate and existence of PEQ.  
 // await in label does not solve it 100%.   Having bad dependent peq recordings in aws may hurt later.
-// Settlewait.. this has show up once in... hundreds of runs of the full test suite?
+// Settlewait.. this has shown up once in... hundreds of runs of the full test suite?
 // not, dup check could occur in lambda handler, save a round trip
 async function recordPeqData( authData, pd, checkDup, specials ) {
     console.log( authData.who, "Recording peq data for", pd.GHIssueTitle );	
@@ -1000,6 +1004,7 @@ exports.postCE = postCE;
 exports.getCognito = getCognito;
 exports.getCEServer = getCEServer;
 exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
+exports.rewritePAct = rewritePAct;
 exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
 exports.rebuildPeq = rebuildPeq;

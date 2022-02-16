@@ -6,6 +6,7 @@
         "start": "node ./bin/www",
         "testMain": "node ./tests/testMain.js",
         "cleanFlutter": "node ./tests/cleanFlutter.js",
+        "cleanLoad": "node ./tests/cleanLoad.js",
         "testSetup": "node ./tests/testSetup.js",
         "testDelete": "node ./tests/testDelete.js"
     },

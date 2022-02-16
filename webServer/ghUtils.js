@@ -222,7 +222,7 @@ async function errorHandler( source, e, func, ...params ) {
 	( e.status == 410 && source == "checkIssue" ))
     {
 	console.log( source, "Issue", arguments[6], "already gone" );  
-	return false;
+	return -1;
     }
     else if( e.status == 423 )
     {
@@ -361,7 +361,8 @@ async function checkIssue( authData, owner, repo, issueNum ) {
 	.then( iss => issue = iss.data )
 	.catch( e => retVal = errorHandler( "checkIssue", e, checkIssue, authData, owner, repo, issueNum ));
 
-    if( issue != -1 ) { retVal = await checkExistsGQL( authData, issue.node_id, {issue: true} ); } 
+    if( issue != -1 ) { retVal = await checkExistsGQL( authData, issue.node_id, {issue: true} ); }
+    if( retVal == false ) { retVal = -1; }  // for settleWithVal
     return retVal;
 }
 
