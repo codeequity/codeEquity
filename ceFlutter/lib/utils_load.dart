@@ -205,16 +205,27 @@ Future<String> fetchString( context, container, postData, shortName ) async {
    }
 }
 
-Future<bool> updateDynamo( context, container, postData, shortName ) async {
-   final response = await postIt( shortName, postData, container );
-   
-   if (response.statusCode == 201) {
-      // print( response.body.toString() );         
-      return true;
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await updateDynamo( context, container, postData, shortName ); }
+// This is primarily an ingest utility.
+Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
+   final appState  = container.state;
+
+   if( peqId != -1 ) {
+      appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
    }
+
+   final response = await postIt( shortName, postData, container );
+   bool  res      = false;
+   
+   if (response.statusCode == 201) { res = true; }
+   else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { res = await updateDynamo( context, container, postData, shortName, peqId: peqId ); }
+   }
+   if( peqId != -1 ) {
+      assert( appState.ingestUpdates[peqId] >= 1 );
+      appState.ingestUpdates[peqId] = appState.ingestUpdates[peqId] - 1;
+   }
+   return res;
 }
 
 // Guide is [colId, oldName, newName]
