@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/utils.dart';
@@ -82,7 +83,11 @@ class Node extends StatelessWidget implements Tree {
 
   @override
   int getAllocAmount() {
+     // Unlike the other amounts, which are independently summed, allocations are dependent in a top-down hierarchy.
+     // For example, if githubOps is allocated 2m, and a child card (say, testing) is allocated 500k, the top level allocation is 2m.
+     //              This is because the child card allocation is meant to be a part of the overall alloc for githubOps.
     var sum = allocAmount;
+    if( sum > 0 ) { return sum; }
     leaves.forEach((Tree leaf) => sum += leaf.getAllocAmount());
     return sum;
   }
@@ -152,16 +157,24 @@ class Node extends StatelessWidget implements Tree {
 
      if( !isVisible ) { return nodes; }
 
-     String alloc   = addCommas( getAllocAmount() );
-     String plan    = addCommas( getPlanAmount() );
-     String pending = addCommas( getPendingAmount() );
-     String accrue  = addCommas( getAccrueAmount() );
+     int allocInt = getAllocAmount();
+     int planInt  = getPlanAmount();
+     int pendInt  = getPendingAmount();
+     int accrInt  = getAccrueAmount();
+     int unallocInt = max( 0, allocInt - planInt - pendInt - accrInt );
 
+     String alloc   = addCommas( allocInt );
+     String plan    = addCommas( planInt );
+     String pending = addCommas( pendInt );
+     String accrue  = addCommas( accrInt );
+     String unalloc = unallocInt == 0 ? "" : addCommas( unallocInt );
+        
      if( header ) {
         alloc   = "Allocation";
         plan    = "Planned";
         pending = "Pending";
         accrue  = "Accrued";
+        unalloc = "Remaining";
      }
 
      final priorExpansionState = _tileExpanded;
@@ -174,6 +187,7 @@ class Node extends StatelessWidget implements Tree {
      anode.add( makeTableText( appState, plan, numWidth, height, false, 1 ) );
      anode.add( makeTableText( appState, pending, numWidth, height, false, 1 ) );
      anode.add( makeTableText( appState, accrue, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState, unalloc, numWidth, height, false, 1 ) );
      nodes.add( anode );
 
      if( firstPass & isInitiallyExpanded ) {

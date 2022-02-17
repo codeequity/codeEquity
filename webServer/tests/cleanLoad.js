@@ -89,6 +89,14 @@ async function loadPEQ( authData, td ) {
     await Promise.all( promises );    
 }
 
+// Ug.. toasted raw.  Still have saved.. cheat for now.
+async function loadRaw( authData, td ) {
+    // cmd = "aws dynamodb batch-write-item --request-items file://tests/testData/baselineData/dynamoCEPEQRaw.json";
+    // aws dynamodb scan --table-name "CEPEQRaw" --select "COUNT"
+    // python createCE.py createTestDDBEntries
+}
+
+
 async function loadPAct( authData, td ) {
 
     // First, remove.
@@ -100,39 +108,49 @@ async function loadPAct( authData, td ) {
     
     // NOTE!  PActRaw doesn't change - no need to overwrite.
     let fname = baselineLoc + "dynamoCEPEQActions.json";
-    // let rname = baselineLoc + "dynamoCEPEQRaw.json";
 
     const dataStr  = getData( fname );
-    // const rawStr   = getData( rname );
     const pactJson = JSON.parse( dataStr );
-    // const rawJson  = JSON.parse( rawStr );
     console.log( "Loading", pactJson.CEPEQActions.length.toString(), "PActs from", fname );
 
-    // PEQRawId == PEQActionId
-    // Slower approach when data is small, but more scalable.
-    /*
-    var pactIds  = [];
-    for( var aput of pactJson.CEPEQActions ) {
-	const repo = aput.PutRequest.Item.GHRepo.S;
-	const id   = aput.PutRequest.Item.PEQActionId.S;
-
-	if( repo == td.GHFullName ) { pactIds.push( id ); }
-    }
-
+    // Set to true to load CEPEQRaw.  Requires mod in aws dynamo as well.
+    var loadRaw = false;
     var praw = {};
-    for( var araw of rawJson.CEPEQRaw ) {
-	const pid = araw.PutRequest.Item.PEQRawId.S;
-	if( pactIds.includes( pid  )) { praw.pid = araw.PutRequest.Item.RawBody.S; }
+    if( loadRaw ) {
+	// PEQRawId == PEQActionId
+	// Slower approach when data is small, but more scalable.
+	var pactIds  = [];
+	let rname      = baselineLoc + "dynamoCEPEQRaw.json";
+	const rawStr   = getData( rname );
+	const rawJson  = JSON.parse( rawStr );
+	for( var aput of pactJson.CEPEQActions ) {
+	    const repo = aput.PutRequest.Item.GHRepo.S;
+	    const id   = aput.PutRequest.Item.PEQActionId.S;
+	    
+	    if( repo == td.GHFullName ) { pactIds.push( id ); }
+	}
+	
+	// Skip other repos
+	for( var araw of rawJson.CEPEQRaw ) {
+	    const pid = araw.PutRequest.Item.PEQRawId.S;
+	    if( pactIds.includes( pid  )) {
+		console.log( "put", pid );
+		praw[pid] = araw.PutRequest.Item.RawBody.S;
+	    }
+	    // else { console.log( "FAIL PUT", pid ); }
+	}
     }
-    */
-    
+
     var promises = [];
     for( var aput of pactJson.CEPEQActions ) {
 	const repo = aput.PutRequest.Item.GHRepo.S;
 	const id   = aput.PutRequest.Item.PEQActionId.S;
 	
 	if( repo == td.GHFullName ) {
-	    // console.log( "Loading", repo, id );
+	    if( loadRaw ) {
+		assert( praw.hasOwnProperty( id ) );
+		console.log( "Loading", repo, id, praw[id].length.toString());
+	    }
 
 	    let postData = {};
 	    postData.PEQActionId  = id;
@@ -148,7 +166,7 @@ async function loadPAct( authData, td ) {
 	    postData.Date       = aput.PutRequest.Item.EntryDate.S;
 	    postData.Locked     = aput.PutRequest.Item.Locked.S;
 
-	    postData.RawBody    = "";
+	    postData.RawBody    = loadRaw ? praw[id] : "";
 	    
 	    postData.Subject   = aput.PutRequest.Item.Subject.L.map( elt => elt.S )
 	    
@@ -156,7 +174,7 @@ async function loadPAct( authData, td ) {
 	}
     }
     await Promise.all( promises );    
-    
+
 }
 
 

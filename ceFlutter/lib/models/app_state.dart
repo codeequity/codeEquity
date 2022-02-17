@@ -70,6 +70,7 @@ class AppState {
    Map< String, List<PEQAction> >  userPActs;       // ghUsers : pactions
    Map< String, List<PEQ> >        userPeqs;        // ghUsers : peqs where user was pact actor
    bool                            userPActUpdate;  // need to upate pact list
+   Map< String, int >              ingestUpdates;   // These peqIds have n pending updates waiting to finish.
 
    // UI constants
    final double BASE_TXT_HEIGHT = 20.0;     // 14pt font is 19.2 px height
@@ -108,6 +109,7 @@ class AppState {
       userPActs = new Map<String, List<PEQAction>>();
       userPeqs = new Map<String, List<PEQ>>();
       userPActUpdate = false;
+      ingestUpdates = new Map<String, int>();
    }
 
    init() {

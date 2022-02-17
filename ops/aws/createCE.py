@@ -110,7 +110,10 @@ def splitAndLoad( sam, fileName, tableName ) :
 # CAREFUL (!!!) this writes to dynamo
 def createTestDDBEntries( sam ) :
     # cmd = "aws dynamodb batch-write-item --request-items file://testData/testDataOwnerships.json"
-    splitAndLoad(sam, "testData/testDataPeople.json", "People" )
+    # splitAndLoad(sam, "testData/testDataPeople.json", "People" )
+    # absolute path, or relative from ops.  above relative path is incorrect.
+    splitAndLoad(sam, "../webServer/tests/testData/baselineData/dynamoCEPEQRaw.json", "CEPEQRaw" )
+    
 
     
 def createConfigFiles( sam, Xs = False ):

@@ -51,7 +51,8 @@ class _CESummaryState extends State<CESummaryFrame> {
    var      container;
    AppState appState;
 
-   static const maxPaneWidth = 800.0;
+   static const maxPaneWidth = 950.0;
+   // static const maxPaneWidth = 800.0;
 
    // iphone 5
    static const frameMinWidth  = 320.0;
@@ -191,9 +192,10 @@ class _CESummaryState extends State<CESummaryFrame> {
       List<List<Widget>> allocs = [];
 
       var c = Container( width: 1, height: 1 );
-      
+
+      // XXX Change number of cells?  change padding container 'c', and subtraction from tinypad.
       allocs.addAll( _showPAlloc( ) );
-      allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 4, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c ]] );  // XXX
+      allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
                         "Update PEQ summary?",
@@ -202,7 +204,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                         {
                            widget.updateCallback();
                         }),
-                        c, c, c, c ]] );
+                        c, c, c, c, c ]] );
       
 
       var allocCount = min( allocs.length, 30 );
