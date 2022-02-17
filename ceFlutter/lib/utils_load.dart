@@ -485,21 +485,25 @@ Future<void> reloadMyProjects( context, container ) async {
 }
 
 
-Future<void> updateUserPActions( container, context ) async {
+// XXX Only update if dirty.  Only dirty after updatePeq.
+// NOTE this gets pacts for peqs held by selected user, not pacts that selected user was the actor for.
+Future<void> updateUserPActions( peqs, container, context ) async {
    final appState  = container.state;
    String uname = appState.selectedUser;
    String rname = appState.selectedRepo;
-   appState.userPActs[uname] = await fetchPEQActions( context, container,
-                                                      '{ "Endpoint": "GetPEQActions", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname" }' );
+   String pids = json.encode( peqs );
+   appState.userPActs[uname] = await fetchPEQActions( context, container, '{ "Endpoint": "GetPActsById", "GHRepo": "$rname", "PeqIds": $pids }' );
 }
 
-Future<void> updateUserPeqs( Set<String> peqSet, container, context ) async {
+// XXX Only update if dirty.  Only dirty after updatePeq.
+Future<void> updateUserPeqs( container, context ) async {
    final appState  = container.state;
-   List<String> peqIds = new List<String>.from( peqSet );
-   String PeqIds = json.encode( peqIds );
+
    String uname = appState.selectedUser;
-   // XXX check empty peq is OK
-   appState.userPeqs[uname] = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQsById", "PeqIds": $PeqIds }' );
+   String rname = appState.selectedRepo;
+   print( "Building detail data for " + uname + ":" + rname );
+
+   appState.userPeqs[uname] = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname" }' );
 }
 
 

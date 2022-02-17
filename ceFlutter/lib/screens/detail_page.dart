@@ -81,12 +81,18 @@ class _CEDetailState extends State<CEDetailPage> {
             postData['PEQRawId'] = pact.id;
             var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQRaw", "query": postData }; 
             PEQRaw pr = await fetchPEQRaw( context, container, json.encode( pd ));
+            print( "gotraw" );
+            print( pr );
             var encoder = new JsonEncoder.withIndent("  ");
+            print( "encoder" );
             var prj = json.decode( pr.rawReqBody );
+            print( "decoder" );
             String prettyRaw = encoder.convert(prj);
+            print( "pr" );
 
             // Let makeBody handle the json
             Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000);
+            print( "prw" );
             popScroll( context, "Raw Github Action:", prw, () => _closeRaw() );            
          },
          child: makeBodyText( appState, apact, textWidth, false, 1 )
@@ -109,7 +115,7 @@ class _CEDetailState extends State<CEDetailPage> {
             peqPAct[peq.id].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
                
             for( final pact in peqPAct[peq.id] ) {
-               print( "PL added " + pact.id );
+               // print( "PL added " + pact.id );
                pactList.add( _makePAct( pact ) );
             }
             
@@ -154,25 +160,22 @@ class _CEDetailState extends State<CEDetailPage> {
                ]));
    }
 
-   // XXX this needs to include pacts for any user, as long as it hits the given peq.
-   //     internal state does not support this
+   // Find peqs held by user, then all pacts for those peqs.
+   // Active only, for now.
    void rebuildPActions( container, context ) async {
-      print( "rebuiding userPactions for selected user. " );
-      await updateUserPActions( container, context );
 
-      // get unique PEQ ids, sort reverse config order.  Add pact.   sort most recent first within each bucket.
-      Set<String> peqs = new Set<String> ();
+      await updateUserPeqs( container, context );
+      List<String> peqs = appState.userPeqs[ appState.selectedUser ].map((peq) => peq.id ).toList();
+
+      await updateUserPActions( peqs, container, context );      
+
+      // populate peqPAct to avoid multiple trips through pacts
       for( var pact in appState.userPActs[ appState.selectedUser ] ) {
          assert( pact.subject.length > 0 );
          String peqId = pact.subject[0]; 
-         peqs.add( peqId );
-
-         // populate peqPAct to avoid multiple trips through pacts
          if( peqPAct[peqId] == null ) { peqPAct[peqId] = [ pact ]; }
          else                         { peqPAct[peqId].add( pact ); }
-         
       }
-      await updateUserPeqs( peqs, container, context );
       
       appState.userPActUpdate = false;
       setState(() => userPActUpdated = true );

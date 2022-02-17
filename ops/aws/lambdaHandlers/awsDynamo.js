@@ -68,6 +68,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
+    else if( endPoint == "GetPActsById")   { resultPromise = getPActsById( rb.GHRepo, rb.PeqIds ); }
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
     else if( endPoint == "Uningest")       { resultPromise = unIngest( rb.tableName, rb.query ); }    
@@ -318,7 +319,7 @@ async function getEntries( tableName, query ) {
     let props = [];
     switch( tableName ) {
     case "CEPEQs":
-	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "GHHolderId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
 	break;
     case "CEPEQActions":
 	props = [ "PEQActionId", "CEUID", "GHUserName", "GHRepo", "Verb", "Action", "Subject", "Ingested"];
@@ -619,7 +620,7 @@ async function putPeq( newPEQ ) {
 async function putPAct( newPAction ) {
 
     let rewrite = newPAction.hasOwnProperty( "PEQActionId" );
-    assert( !rewrite || newPAction.RawBody == "" );
+    assert( !rewrite || newPAction.RawBody == "" );  // comment out for loadRaw
     
     let newId = rewrite ? newPAction.PEQActionId : randAlpha(10);
     console.log( newId, newPAction.Verb, newPAction.Action, newPAction.Subject );
@@ -642,7 +643,7 @@ async function putPAct( newPAction ) {
     };
 
     let promise = "";
-    if( rewrite ) { promise = bsdb.put( params ).promise(); }
+    if( rewrite ) { promise = bsdb.put( params ).promise(); }  // set to false for loadRaw
     else {
 	const paramsR = {
             TableName: 'CEPEQRaw',
@@ -670,15 +671,15 @@ async function getPeq( uid, ghUser, ghRepo ) {
     const params = { TableName: 'CEPEQs', Limit: 99, };
 
     if( uid != "" ) {
-        params.FilterExpression = 'contains( CEHolderId, :ceid) AND GHRepo = :ghrepo';
-        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo };
+        params.FilterExpression = 'contains( CEHolderId, :ceid) AND GHRepo = :ghrepo AND Active = :true';
+        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo, ":true": true };
     }
     else {
-        params.FilterExpression = 'contains( GHHolderId, :id) AND GHRepo = :ghrepo';
-        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo };
+        params.FilterExpression = 'contains( GHHolderId, :id) AND GHRepo = :ghrepo AND Active = :true';
+        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo, ":true": true };
     }
 
-    console.log( "Looking for peqs");
+    console.log( "Looking for peqs", params);
     let peqPromise = paginatedScan( params );
     return peqPromise.then((peqs) => {
 	console.log( "Found peqs ", peqs );
@@ -872,6 +873,39 @@ async function getPeqsById( peqIds ) {
 		    res.push( -1 );
 		}
 	    });
+	    
+	    if( res.length > 0 ) { return success( res ); }
+	    else                 { return NO_CONTENT; }
+	});
+}
+
+// XXX narrow this to subject[0]?
+// Dynamo - to have a filterExpression that is, say, x in <a list>,
+// you must construct the expression and the expressionAttrVals piece by piece, explicitly.  Then ordering is in question.
+// For now, use promises.all to ensure ordering and skip explicit construction.  more aws calls, buuuuttt....
+// NOTE: ignore locks on read
+async function getPActsById( ghRepo, peqIds ) {
+
+    console.log( "Get pacts by peq id", peqIds );
+
+    let promises = [];
+    peqIds.forEach(function (peqId) {
+	const params = {
+	    TableName: 'CEPEQActions',
+	    FilterExpression: 'contains( Subject, :peqId) AND GHRepo = :ghrepo',
+	    ExpressionAttributeValues: { ":peqId": peqId, ":ghrepo": ghRepo }};
+	
+	promises.push( paginatedScan( params ) );
+    });
+
+    // Promises execute in parallel, collect in order
+    return await Promise.all( promises )
+	.then((results) => {
+	    console.log( '...promises done' );
+	    let res = [];
+	    // console.log( results );
+	    // console.log( res );
+	    results.forEach( function ( pact ) { res.push.apply( res, pact ); });
 	    
 	    if( res.length > 0 ) { return success( res ); }
 	    else                 { return NO_CONTENT; }
