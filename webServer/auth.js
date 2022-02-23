@@ -19,8 +19,6 @@ var config    = require('./config');
 // repo:  name of a repository with GitHub App installed
 async function getInstallationAccessToken(owner, repo, app, jwt) {
 
-
-
     const result = await fetch(`https://api.github.com/repos/${owner}/${repo}/installation`,
 			       {
 				   headers: {
@@ -31,7 +29,7 @@ async function getInstallationAccessToken(owner, repo, app, jwt) {
     
     const installationId = (await result.json()).id;
     const installationAccessToken = await app.getInstallationAccessToken({ installationId });
-
+    
     return installationAccessToken;
 };
 
@@ -67,6 +65,8 @@ async function getInstallationClient(owner, repo, source) {
 	    console.log( "Get Install Client failed.", e );
 	    return "";
 	});
+
+    // console.log( "Get AUTH for", owner, repo, credPath, jwt.substring(0,15), installationAccessToken.substring( 0,50) );
 
     return getInstallationClientFromToken(installationAccessToken);
 }

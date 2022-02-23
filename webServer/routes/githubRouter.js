@@ -186,6 +186,16 @@ async function switcher( authData, ghLinks, pd, sender, event, action, tag, res,
     // clear justDeleted every time, unless possibly part of delete issue blast.
     // if( event != 'issue' || action != 'deleted' ) { justDeleted = {}; }
 
+    /* XXX REVISIT
+    // Bolt-on for Transfer into ceProj.  Since 2/2022 GH is passing (and creating) PEQ labels with transferred issues.
+    if( action == "transferred" && event == "issue" ) {
+	console.log( "Getting auth for transfer repository" );
+	// Not checking for ceProj here (too slow), auth may fail
+	await getGHAuths( authData, pd.GHOwner, pd.reqBody.changes.new_repository.name );
+	authData.icXfer = typeof authData.ic === 'undefined' ? -1 : authData.ic;
+    }
+    */
+
     await getGHAuths( authData, pd.GHOwner, pd.GHRepo );
     
     switch( event ) {

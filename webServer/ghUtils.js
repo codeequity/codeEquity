@@ -981,6 +981,7 @@ async function removeLabel( authData, owner, repo, issueNum, label ) {
 }
 
 
+// issueNum is an int
 async function getLabels( authData, owner, repo, issueNum ) {
     var labels = -1;
     await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
