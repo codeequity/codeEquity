@@ -649,7 +649,7 @@ async function remIssue( authData, td, issueId ) {
 
     let issue     = await findIssue( authData, td, issueId );
     let endpoint  = config.GQL_ENDPOINT;
-    let query     = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
+    let query     = "mutation( $id:ID! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
     let variables = {"id": issue.node_id };
     query         = JSON.stringify({ query, variables });
     
@@ -657,6 +657,7 @@ async function remIssue( authData, td, issueId ) {
 
     console.log( "remIssue query", query );
     console.log( "remIssue res", res.data );
+    if( typeof res.data === 'undefined' ) { console.log( "ERROR.", res ); }
     
     await utils.sleep( MIN_DELAY );
 }

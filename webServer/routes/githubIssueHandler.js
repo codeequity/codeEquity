@@ -444,7 +444,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
 		let peq = await utils.getPeq( authData, pd.GHIssueId, false );
 		if( peq != -1 ) {
-		    const subject = [ peq.PEQId, newRepoName ];
+		    const subject = [ peq.PEQId, fullRepoName ];
 		    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
 					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
 					   utils.getToday(), pd.reqBody );
