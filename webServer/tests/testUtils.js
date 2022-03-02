@@ -1911,7 +1911,6 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     return await settle( subTest, testStatus, checkNoAssignees, authData, td, ass1, ass2, issueData, testStatus );
 }
 
-// XXX bad test.  if fails again, mod to allow reordering of PAct
 async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     let subTest = [ 0, 0, []];
@@ -1948,11 +1947,11 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
+    let foundAssigns = ( addA1.Subject[1] == ass1 && addA2.Subject[1] == ass2 ) || ( addA2.Subject[1] == ass1 && addA1.Subject[1] == ass2 );
     subTest = checkEq( relo1.Action, config.PACTACT_RELO,           subTest, "PAct Act"); 
     subTest = checkEq( addA1.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
     subTest = checkEq( addA2.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
-    subTest = checkEq( addA1.Subject[1], ass1,                      subTest, "PAct sub"); 
-    subTest = checkEq( addA2.Subject[1], ass2,                      subTest, "PAct sub"); 
+    subTest = checkEq( foundAssigns, true,                          subTest, "PAct sub"); 
     subTest = checkEq( addA1.Note, "add assignee",                  subTest, "PAct note"); 
     subTest = checkEq( addA2.Note, "add assignee",                  subTest, "PAct note"); 
 
