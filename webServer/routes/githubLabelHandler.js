@@ -172,7 +172,21 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    for( const peq of peqs ) {
 		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": peq.GHIssueId });
 		assert( links.length == 1 );
-		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
+
+		// PEQ labels are updated during ingest - they can be out of date.  Make sure issue is not already peq-labeled.
+		let pv = 0;
+		let issueLabels = await gh.getLabels( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum );
+		if( issueLabels != -1 ) {
+		    [pv,_] = ghSafe.theOnePEQ( issueLabels.data );
+		}
+		if( issueLabels == -1 ||  pv <= 0 ) {
+		    console.log( "No peq label conflicts, adding label back" );
+		    ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
+		}
+		else {
+		    console.log( "Looks like peq label was outdated, will not add a 2nd peq label", links[0].GHIssueNum );
+		}
+
 	    }
 	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label delete attempt",

@@ -1023,8 +1023,11 @@ async function addComment( authData, owner, repo, issueNum, msg ) {
 
 async function rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel ) {
     // Don't wait for delete, just for add
-    // XXX wait for it.. remove this await if double label appears again.  looks like GH is re-adding after quick sequence like this
-    await removeLabel( authData, owner, repo, issueNum, oldLabel );
+
+    // wait for it.. remove this await if double label appears again.  looks like GH is re-adding after quick sequence like this
+    // await removeLabel( authData, owner, repo, issueNum, oldLabel );
+
+    removeLabel( authData, owner, repo, issueNum, oldLabel );
     await addLabel( authData, owner, repo, issueNum, newLabel );
 }
 
