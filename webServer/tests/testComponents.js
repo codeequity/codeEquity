@@ -24,22 +24,25 @@ async function checkDubLabel( authData, ghLinks, td, loc, issueData, card, testS
     // CHECK github issues
     let kp = "1000 " + config.PEQ_LABEL;    
     let issue = await tu.findIssue( authData, td, issueData[0] );
-    subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
-    subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
-    subTest = tu.checkEq( issue.labels.length, 2,                subTest, "Issue label" );
-    const labels0 = issue.labels[0].name == kp && issue.labels[1].name == "documentation";
-    const labels1 = issue.labels[1].name == kp && issue.labels[0].name == "documentation";
-    subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
 
-    // CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    peqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
-    let peq = peqs[0];
-
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-    pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-    subTest = tu.checkEq( pacts.length, 2,                         subTest, "PAct count" );     
+    if( issue.labels.length >= 2 ) {
+	subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
+	subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
+	subTest = tu.checkEq( issue.labels.length, 2,                subTest, "Issue label" );
+	const labels0 = issue.labels[0].name == kp && issue.labels[1].name == "documentation";
+	const labels1 = issue.labels[1].name == kp && issue.labels[0].name == "documentation";
+	subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
+	
+	// CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
+	let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+	peqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
+	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
+	let peq = peqs[0];
+	
+	let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+	subTest = tu.checkEq( pacts.length, 2,                         subTest, "PAct count" );     
+    }
     
     return await tu.settle( subTest, testStatus, checkDubLabel, authData, ghLinks, td, loc, issueData, card, testStatus );
 }

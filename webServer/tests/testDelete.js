@@ -35,7 +35,7 @@ async function remIssues( authData, ghLinks, pd ) {
     let endpoint = "https://api.github.com/graphql";
     for( const issue of issues) {
 	const nodeId = issue.node_id;
-	let query = "mutation( $id:String! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
+	let query = "mutation( $id:ID! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
 	let variables = {"id": nodeId };
 	query = JSON.stringify({ query, variables });
 

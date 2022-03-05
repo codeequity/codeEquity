@@ -398,28 +398,60 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	break;
     case 'transferred':
 	// (open issue in new repo, delete project card, transfer issue)
-	// Transfer IN:  do nothing.  comes as newborn issue, no matter what it was in previous repo
+	// NOTE.  As of 2/13/2022 GH is keeping labels with transferred issue, although tooltip still contradicts this.
+	//        Currently, this is in flux.  the payload has new_issue, but the labels&assignees element is empty.
+	// Transfer IN:  Not getting these any longer.
 	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.  GH will send delete card.
+	//
+	// Transfer from non-CE to ceProj: issue arrives as newborn.
+	// Transfer out of ceProj: as above xfer out.
 
-	// NOTE.  As of 2/13/2022 GH now keeps labels with transferred issue, although tooltip still contradicts this.
-	//        Do not attempt to remove peq label, authData is incorrect.  Deal properly with Transfer In.
+	// Transfer from ceProj to ceProj: issue arrives with peq labels, assignees.  Receiving transferOut notification with .changes
+	// https://docs.github.com/en/issues/tracking-your-work-with-issues/transferring-an-issue-to-another-repository
+	// only xfer between repos 1) owned by same person/org; 2) where you have write access to both
+	
 	{
 	    if( pd.reqBody.changes.new_repository.full_name != pd.GHRepo ) {
 		console.log( authData.who, "Transfer out.  Cleanup." );
+		const fullRepoName = pd.reqBody.changes.new_repository.full_name;
+		const newRepoName = pd.reqBody.changes.new_repository.name;
+		const newIssNum   = pd.reqBody.changes.new_issue.number;
 
-		// console.log("******", pd.reqBody.changes.new_issue.labels[0].name.toString() );
- 		// await utils.settleWithVal( "checkIssue", gh.checkIssue, authData, pd.GHOwner, 
-		// pd.reqBody.changes.new_repository.full_name, parseInt( pd.reqBody.changes.new_issue.number ) );
-		// ghSafe.removePeqLabel( authData, pd.GHOwner, pd.reqBody.changes.new_repository.full_name, parseInt( pd.reqBody.changes.new_issue.number ));
+		/* XXX REVISIT
+		// Check for xfer to another ceProject (i.e. ceServer-enabled repo).
+		const status = await utils.getRepoStatus( authData, fullRepoName );
+		const ceProj = status != -1 && status.Populated == "true" ? true : false;
+
+		if( ceProj ) {
+		    // Switch auths
+		    let baseAuth = authData.ic;
+		    authData.ic = authData.icXfer;
+		    assert( authData.ic != -1 );
+		    console.log( authData.who, newIssNum.toString(), "Landed in ceProject", newRepoName );
+		    let newLabs = await gh.getLabels( authData, pd.GHOwner, newRepoName, newIssNum );
+		    console.log( "New labels:", newLabs.data );
+
+		    // Owner must be the same according to GH
+		    let newAssigns = await gh.getAssignees( authData, pd.GHOwner, newRepoName, newIssNum );
+		    console.log( "New Assignees:", newAssigns.data );
+		    // XXX Will need to move this to unclaimed:unclaimed
+
+		    // Switch back auths
+		    authData.ic = baseAuth; 
+		}
+		*/
 		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
 		let peq = await utils.getPeq( authData, pd.GHIssueId, false );
 		if( peq != -1 ) {
-		    const subject = [ peq.PEQId, pd.reqBody.changes.new_repository.full_name ];
+		    const subject = [ peq.PEQId, fullRepoName ];
 		    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
 					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
 					   utils.getToday(), pd.reqBody );
 		}
+	    }
+	    else {
+		console.log( "WARNING.  Seeing transfer in notification for first time. GH project mgmt has changed, revisit." );
 	    }
 	}
 	break;
