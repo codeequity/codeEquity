@@ -31,36 +31,14 @@ void main() {
    
    group('ceFlutter Test Group, good user', () {
 
-        testWidgets('Xoog', (WidgetTester tester) async {
+        testWidgets('Login pass', (WidgetTester tester) async {
 
-              // runApp( AppStateContainer( child: new CEApp() ));
-              print( "Pre-app" );
               await tester.pumpWidget( AppStateContainer( child: new CEApp() ));
-
-              print( "Splash" );
               await tester.pumpAndSettle();
+
               final splash = find.text( 'CodeEquity' );
               expect(splash, findsOneWidget);
 
-              /*
-    expect(
-        find.byWidgetPredicate((widget) =>
-            widget is AppBar &&
-            widget.title is Text &&
-            (widget.title as Text).data.startsWith("ToDoApp")),
-        findsOneWidget);
-
- expect(
-      find.byWidgetPredicate((widget) =>
-      widget is Text &&
-          widget.data.contains("Enter an email")  ),
-      findsOneWidget);
-
-              */
-              
- 
-              
-              print( "Login page" );
               await tester.pumpAndSettle(Duration(seconds: 5));
               
               bool known = true;

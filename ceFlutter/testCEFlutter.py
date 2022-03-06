@@ -80,9 +80,8 @@ def runCmd( cmd, filterExp ):
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
 def runTest( testName, noBuild = True ):
     logging.info( "" )
-    
-    # cmd = "flutter drive --target=test_driver/" + testName + " -d web-server"
-    # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=test_driver/" + testName + " -d web-server"
+
+    # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName + " -d web-server"
     cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
@@ -94,8 +93,6 @@ def runTest( testName, noBuild = True ):
 
 """
 Common failure modes: 
-1. Debug build, widget response time is highly variable - isPresent timeouts may need tweaking
-2. scrollUntilVisible is sensitive.  May need some additional scrollIntoView(s)
 
 """
 def runTests():
@@ -106,7 +103,7 @@ def runTests():
 
     tsum = runTest( "login_pass_test.dart", False )
     resultsSum  += tsum
-    
+
     #tsum = runTest( "login_fail.dart", False )
     #resultsSum  += tsum
 
