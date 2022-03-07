@@ -104,8 +104,8 @@ def runTests():
     tsum = runTest( "login_pass_test.dart", False )
     resultsSum  += tsum
 
-    #tsum = runTest( "login_fail.dart", False )
-    #resultsSum  += tsum
+    tsum = runTest( "login_fail_test.dart", False )
+    resultsSum  += tsum
 
     #tsum = runTest( "content.dart", False )
     #resultsSum  += tsum

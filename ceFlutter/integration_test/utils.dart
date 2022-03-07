@@ -1,4 +1,4 @@
-import 'dart:io';
+// import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
@@ -36,13 +36,12 @@ Future<bool> verifyOnLaunchPage( WidgetTester tester ) async {
    expect( loginButton, findsOneWidget);
 
    // framing
-   expect( find.text( 'CodeEquity' ),             findsOneWidget );
-   expect( find.text( 'Simple Idea' ),            findsOneWidget );
-   expect( find.text( 'Github Founder' ),         findsOneWidget );
-   expect( find.text( 'create something' ),       findsOneWidget );
-
-   expect( find.image( FileImage(File('images/ceFlutter.jpeg' ))), findsOneWidget );   
-   
+   expect( find.text( 'CodeEquity' ),                findsOneWidget );
+   expect( find.text( 'Simple Idea' ),               findsOneWidget );
+   expect( find.textContaining('GitHub Founder' ),   findsOneWidget );
+   expect( find.textContaining('create something' ), findsOneWidget );
+   expect( find.byType( Image ),                     findsOneWidget );   
+ 
    return true;
 }
 
@@ -56,7 +55,7 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    // framing
    expect( find.text( 'Activity' ),             findsOneWidget );
    expect( find.text( 'Code Equity Projects' ), findsOneWidget );
-   expect( find.text( 'Github Repositories' ),  findsOneWidget );
+   expect( find.text( 'GitHub Repositories' ),  findsOneWidget );
    expect( find.byKey(const Key( 'New' )),      findsOneWidget );
    expect( find.byKey(const Key( 'Add' )),      findsOneWidget );
 
@@ -102,10 +101,18 @@ Future<bool> login( WidgetTester tester, known ) async {
    String tname = TESTER_NAME;
    tname += known ? "" : "1234321";
    await tester.enterText( userName, tname );
+   await tester.pumpAndSettle();
    await tester.enterText( password, TESTER_PASSWD );
+   await tester.pumpAndSettle(); // want to see the masked entry in passwd
+   
    // Login, jump to homepage
+   print( "Tapping" );
    await tester.tap( login2Button );
-   await tester.pumpAndSettle(Duration(seconds: 15));
+   await tester.pumpAndSettle();
+   print( "Wait 17");
+   await tester.pumpAndSettle(Duration(seconds: 17));
+   print( "Wait 2");
+   await tester.pumpAndSettle(Duration(seconds: 2));
 
    // XXX Verify toast 'user not found' ?  Shows up faster.. but toasting is probably changing.
    // verify topbar icons

@@ -43,29 +43,11 @@ void main() {
               
               bool known = true;
               await login( tester, known );
+              await logout( tester );
 
+              await login( tester, known );
+              await logout( tester );
 
-              await Future.delayed(const Duration(seconds: 5), (){});
-              
-              /*
-              test('Signin for known user', () async {
-                    bool known = true;
-                    await login( tester, known );
-                 });
-              
-              test('Logout.', () async {
-                    await logout( tester );
-                 });
-              
-              test('Login.', () async {
-                    bool known = true;
-                    await login( tester, known );
-                 });
-              
-              test('Logout.', () async {
-                    await logout( tester );
-                 });
-              */
            });
   
       });
