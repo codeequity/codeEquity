@@ -35,8 +35,13 @@ class _CELoginState extends State<CELoginPage> {
 
   void _signin( userName, userPassword, container, appState ) async {
      final wrapper = cognitoSignupWrapper(context, () async {
+
+           Stopwatch stopwatch = new Stopwatch()..start();
            appState.cogUser = await appState.cogUserService.login( userName, userPassword );
+           print('Cog Login executed in ${stopwatch.elapsed}');
+           stopwatch.reset();
            bool success = await container.finalizeUser( false );
+           print('container.finalizeUser executed in ${stopwatch.elapsed}');           
            if( success ) {
               appState.loaded = true;
               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());

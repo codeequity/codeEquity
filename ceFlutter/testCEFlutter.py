@@ -56,6 +56,7 @@ def clean( output, filterExp ) :
                 break
         if keep :
             if( "ceFlutter Test Group" in output or
+                "Subtest:" in output             or
                 "tests passed!" in output        or
                 "tests failed!" in output           ) :
                 resultsSum = output
@@ -78,11 +79,16 @@ def runCmd( cmd, filterExp ):
 
 
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
-def runTest( testName, noBuild = True ):
+# Hmm.  Running in release mode does not work well.  Basic entering text fails.. 
+def runTest( testName, noBuild = True, optimized = False ):
     logging.info( "" )
 
     # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName + " -d web-server"
     cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+
+    if optimized :
+        cmd = cmd + " --release"
+
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
     # poll for realtime stdout
@@ -101,11 +107,14 @@ def runTests():
 
     resultsSum = ""
 
-    tsum = runTest( "login_pass_test.dart", False )
+    tsum = runTest( "launch_test.dart", False, False )
     resultsSum  += tsum
 
-    tsum = runTest( "login_fail_test.dart", False )
-    resultsSum  += tsum
+    #tsum = runTest( "login_pass_test.dart", False, False )
+    #resultsSum  += tsum
+
+    #tsum = runTest( "login_fail_test.dart", False, False )
+    #resultsSum  += tsum
 
     #tsum = runTest( "content.dart", False )
     #resultsSum  += tsum

@@ -10,6 +10,8 @@ import 'package:integration_test/integration_test.dart';
 
 import 'package:ceFlutter/customIcons.dart';
 
+import 'package:ceFlutter/main.dart';
+import 'package:ceFlutter/app_state_container.dart';
 
 
 
@@ -25,6 +27,20 @@ const TESTER_PASSWD = "passWD123";
 //       final Finder loginButton = find.byWidgetPredicate((widget) => widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Login" ) ?? false ));
 //       ? indicates text could be null (otherwise contains compile-fails).
 //      ?? gives a default value if contains is null (else boolean compile-fails).
+
+
+Future<bool> restart( WidgetTester tester ) async {
+
+   await tester.pumpWidget( AppStateContainer( child: new CEApp() ));
+   await tester.pumpAndSettle();
+   
+   final splash = find.text( 'CodeEquity' );
+   expect(splash, findsOneWidget);
+   
+   await tester.pumpAndSettle(Duration(seconds: 5));
+   return true;
+}
+
 
 Future<bool> verifyOnLaunchPage( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'Login' )),                 findsOneWidget );
@@ -42,6 +58,19 @@ Future<bool> verifyOnLaunchPage( WidgetTester tester ) async {
    expect( find.textContaining('create something' ), findsOneWidget );
    expect( find.byType( Image ),                     findsOneWidget );   
  
+   return true;
+}
+
+Future<bool> verifyOnSignupPage( WidgetTester tester ) async {
+   expect( find.byKey( const Key( 'username' )),     findsOneWidget );
+   expect( find.byKey( const Key( 'password')),      findsOneWidget );
+   expect( find.byKey( const Key( 'email address')), findsOneWidget );
+
+   final Finder confirmButton = find.byWidgetPredicate((widget) =>
+                                                       widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Send confirmation code" )
+                                                                                                             ?? false ));
+   expect( confirmButton, findsOneWidget);
+
    return true;
 }
 
@@ -106,12 +135,10 @@ Future<bool> login( WidgetTester tester, known ) async {
    await tester.pumpAndSettle(); // want to see the masked entry in passwd
    
    // Login, jump to homepage
-   print( "Tapping" );
    await tester.tap( login2Button );
    await tester.pumpAndSettle();
-   print( "Wait 17");
-   await tester.pumpAndSettle(Duration(seconds: 17));
-   print( "Wait 2");
+   print( "Wait 15");
+   await tester.pumpAndSettle(Duration(seconds: 15));
    await tester.pumpAndSettle(Duration(seconds: 2));
 
    // XXX Verify toast 'user not found' ?  Shows up faster.. but toasting is probably changing.

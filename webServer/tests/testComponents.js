@@ -8,7 +8,6 @@ const auth = require( '../auth' );
 const testData = require( './testData' );
 const tu = require('./testUtils');
 
-const ISS_ASS   = "AssignTest";
 const ISS_LAB   = "LabelTest";
 const ISS_LAB2  = "LabelTest Dubs";
 const ISS_LAB3  = "LabelTest Carded";
@@ -226,6 +225,7 @@ async function testAssignment( authData, ghLinks, td ) {
     await tu.refreshFlat( authData, td );
     await tu.refreshUnclaimed( authData, td );
 
+    const ISS_ASS   = "AssignTest";
     const VERBOSE = true;
     const assPlan = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     
@@ -277,9 +277,16 @@ async function testAssignment( authData, ghLinks, td ) {
     await  utils.sleep( 10000 );
 
     await tu.closeIssue( authData, td, assData );
+
+    // XXX HARSH.  If move to accrue notification arrives late, addAssignee will pass.  This is not expected to be an uncommon, fast sequence.
+    //     3/8/21 fail, move notification is 8 seconds after assignment!
+    //     Could settlewait here, but this issue is too important, allows someone to modify an accrued issue. 
     await tu.moveCard( authData, td, assCard.id, td.dsAccrID, {issNum: assData[1]} );
+    await  utils.sleep( 10000 );
     // Add, fail
     await tu.addAssignee( authData, td, assData, ASSIGNEE2 );
+
+    
     testStatus = await tu.checkAssignees( authData, td, [ASSIGNEE1], assData, testStatus );
     testStatus = await tu.checkPact( authData, ghLinks, td, ISS_ASS, config.PACTVERB_CONF, config.PACTACT_NOTE, "Bad assignment attempted", testStatus );
 
