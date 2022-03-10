@@ -29,29 +29,39 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 // At least, no need to recompile/reconnect within same group.
 // Summaries are hamstrung as well, since 1 fail within a group kills reporting for the whole group.
 
-// check state.. that'd be good..
+// check app_state.. that'd be good..
 // https://blog.gskinner.com/archives/2021/06/flutter-a-deep-dive-into-integration_test-library.html
+
+// Note: testWidgets callbacks are async.  The args to testWidgets are set immediately, but callback definitions are not.
+//       So, for example, repeated chunks of descr="x"; testWidget() wherein callback has report(descr)   fails, since descr for report is set to last value.
 void main() {
 
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
    
-   group('ceFlutter Test Group: Launch', () {
+   group('ceFlutter Test Group - Launch', () {
 
-         testWidgets('Subtest: Login known', (WidgetTester tester) async {
-
+         testWidgets('Login known', (WidgetTester tester) async {
+               
                await restart( tester );
                
                bool known = true;
                await login( tester, known );
-               await logout( tester );
 
-               // toooooo sloooooow thanks flutter
-               // await login( tester, known );
-               // await logout( tester );
+               report( 'Login known' );
+            });
+
+         testWidgets('Login again on restart without logout', (WidgetTester tester) async {
                
+               await restart( tester );
+
+               // Did not logout of previous session.  Should load directly to homepage after splash.
+               expect( await verifyOnHomePage( tester ), true );
+               await logout( tester );
+               
+               report( 'Login again on restart without logout' );
             });
          
-         testWidgets('Subtest: Login unknown', (WidgetTester tester) async {
+         testWidgets( 'Login unknown', (WidgetTester tester) async {
                
                await restart( tester );
 
@@ -70,9 +80,10 @@ void main() {
                await tester.enterText( password, "" );
                await tester.pumpAndSettle(); // want to see the masked entry in passwd
                
+               report( 'Login unknown' );
             });
 
-         testWidgets('Subtest: Signup framing', (WidgetTester tester) async {
+         testWidgets('Signup framing', (WidgetTester tester) async {
 
                await restart( tester );
                
@@ -84,8 +95,9 @@ void main() {
 
                expect( await verifyOnSignupPage( tester ), true );
                
+               report( 'Signup framing' );
             });
-         
+
       });
 
 }

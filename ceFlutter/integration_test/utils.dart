@@ -1,4 +1,4 @@
-// import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
@@ -107,6 +107,11 @@ Future<bool> verifyOnProfilePage( WidgetTester tester ) async {
    return true;
 }
 
+void report( descr ) {
+   print( "Subtest: " + descr + " completed.\n" );
+}
+
+
 Future<bool> login( WidgetTester tester, known ) async {
 
    expect( await verifyOnLaunchPage( tester ), true );
@@ -136,9 +141,12 @@ Future<bool> login( WidgetTester tester, known ) async {
    
    // Login, jump to homepage
    await tester.tap( login2Button );
-   await tester.pumpAndSettle();
-   print( "Wait 15");
-   await tester.pumpAndSettle(Duration(seconds: 15));
+   print( "first pump" );
+   await tester.pumpAndSettle(); // for auth
+   print( "second pump" );
+   await tester.pumpAndSettle(); // for .. toast?
+   print( "third pump" );
+   await tester.pumpAndSettle(Duration(seconds: 2)); // for aws
    await tester.pumpAndSettle(Duration(seconds: 2));
 
    // XXX Verify toast 'user not found' ?  Shows up faster.. but toasting is probably changing.

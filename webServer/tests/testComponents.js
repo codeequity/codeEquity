@@ -676,8 +676,11 @@ async function testCreateDelete( authData, ghLinks, td ) {
 	await utils.sleep( 1000 );
 	// Often unneeded, but useful if doing this as a one-off test
 	await tu.refreshUnclaimed( authData, td );
-	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho1, aghoCard1, testStatus, {preAssign: 1} );
-	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho2, aghoCard2, testStatus, {preAssign: 1} );
+	// peqHolder maybe to allow more careful assign test in checkNewly to take place, instead of using checkSit
+	// if gh assignment occurs fast, and ceServer label notification processing is slow, processNewPeq will see gh.getAssignees before
+	// recording first aws PEQ.
+	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho1, aghoCard1, testStatus, {preAssign: 1, peqHolder: "maybe"} );
+	testStatus = await tu.checkNewlyAccruedIssue( authData, ghLinks, td, ghoAccr, issDatAgho2, aghoCard2, testStatus, {preAssign: 1, peqHolder: "maybe"} );
 
 	tu.testReport( testStatus, "accrued A" );
 	
