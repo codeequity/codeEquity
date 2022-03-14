@@ -2,6 +2,7 @@
 
 import sys
 import os
+import signal
 import platform
 import logging
 import time
@@ -28,6 +29,15 @@ def validateConfiguration():
         goodConfig = False
         
     return goodConfig
+
+def closeListeners():
+    # chromeDriver
+    cmd = "ps -efl | grep chromedriver | grep -v grep"
+    val = check_output( cmd, shell=True).decode('utf-8')
+    if( len(val) > 5 ) :
+        pid = val.split()
+        print( "Killing chromedriver at " + pid[3] )
+        os.kill( int(pid[3]), signal.SIGTERM )
 
 
 def verifyEmulator():
@@ -58,7 +68,8 @@ def clean( output, filterExp ) :
             if( "ceFlutter Test Group" in output or
                 "Subtest:" in output             or
                 "tests passed!" in output        or
-                "tests failed!" in output           ) :
+                "[E]" in output                  or
+                "Test failed" in output           ) :
                 resultsSum = output
             print( output.strip() )
     return resultsSum
@@ -122,12 +133,20 @@ def runTests():
     #tsum = runTest( "sharing.dart", False )
     #resultsSum  += tsum
 
-    logging.info( "" );
-    logging.info( "" );
-    logging.info( "================================" );
-    logging.info( "Summary:" );
-    logging.info( "================================" );
-    logging.info( resultsSum );
+    # New tearDown, and subsequent error reporting appears to be async, separate from group.
+    time.sleep(3)
+    
+    logger = logging.getLogger()
+    logger.handlers[0].flush()
+    logging.info( "" )
+    logging.info( "" )
+    logging.info( "================================" )
+    logging.info( "Summary:" )
+    logging.info( "================================" )
+    logging.info( "================================" )
+    logging.info( resultsSum )
+    logging.info( "================================" )
+    logging.info( "================================" )
 
     os.chdir( "../" )
 
@@ -149,6 +168,7 @@ def main( cmd ):
         thread.join()
         logging.info( "thread finished...exiting" )
 
+    closeListeners()
     
     
 if __name__ == "__main__":

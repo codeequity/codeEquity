@@ -74,6 +74,21 @@ Future<bool> verifyOnSignupPage( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> verifyOnSignupConfirmPage( WidgetTester tester ) async {
+   expect( find.byKey( const Key( 'username' )),     findsOneWidget );
+   expect( find.byKey( const Key( 'password')),      findsOneWidget );
+   expect( find.byKey( const Key( 'email address')), findsOneWidget );
+   expect( find.byKey( const Key( 'confirmation code')), findsOneWidget );
+
+   final Finder confirmButton = find.byWidgetPredicate((widget) =>
+                                                       widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Confirm signup, and Log in" )
+                                                                                                             ?? false ));
+   expect( confirmButton, findsOneWidget);
+
+   return true;
+}
+
+
 Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    // Top bar
    expect( find.byIcon( customIcons.home_here ), findsOneWidget );
@@ -107,8 +122,10 @@ Future<bool> verifyOnProfilePage( WidgetTester tester ) async {
    return true;
 }
 
-void report( descr ) {
-   print( "Subtest: " + descr + " completed.\n" );
+void report( descr, {group = false} ) {
+   final pre  = group ? "ceFlutter Test Group: " : "Subtest: ";
+   final post = group ? "" : " completed.";
+   print( pre + descr + post + "\n" );
 }
 
 
