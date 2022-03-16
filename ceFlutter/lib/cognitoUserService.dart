@@ -246,6 +246,14 @@ cognitoSignupWrapper(context, fn) {
                {
                   toasty = "Username or password is incorrect";
                }
+               else if( e.toString().contains("Member must satisfy") )
+               {
+                  toasty = "Username needs 1+ chars, no whitespace allowed.";
+               }
+               else
+               {
+                  print(e);
+               }
             }
             break;
          case 'CodeMismatchException': { toasty = "Code mismatch exception."; }

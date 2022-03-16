@@ -78,7 +78,13 @@ Future<bool> verifyOnSignupConfirmPage( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'username' )),     findsOneWidget );
    expect( find.byKey( const Key( 'password')),      findsOneWidget );
    expect( find.byKey( const Key( 'email address')), findsOneWidget );
-   expect( find.byKey( const Key( 'confirmation code')), findsOneWidget );
+   print( "CHECK CHECK CHECK" );
+
+   Finder cc = find.byKey( const Key( 'confirmation code'));
+   int wat = tester.widgetList<TextField>( cc ).length;
+   print( "XXX By Key: " + wat.toString() );
+
+   expect( cc, findsOneWidget );
 
    final Finder confirmButton = find.byWidgetPredicate((widget) =>
                                                        widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Confirm signup, and Log in" )

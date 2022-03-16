@@ -52,13 +52,31 @@ class _CESignupState extends State<CESignupPage> {
 
       String message = "";  
 
+      // This is a tricky thing to get right in all cases.
+      // For example, allow xyz+tester@gmail.com, don't allow %2@gmail.com
+      // Could go wild and follow RFC2822, buuut.. just do most basic and rely on user to resolve.
+      bool malformedEmail( email ) {
+         bool retVal = true;
+
+         // a@b.c
+         retVal = retVal && ( '@'.allMatches( email ).length == 1 ? true : false );
+         retVal = retVal && ( email.length >= 5 ? true : false );
+         
+         return !retVal;
+      }
 
       final signupButton = makeActionButton( appState, "Send confirmation code", cognitoSignupWrapper(context, () async {
                final email = appState.attributeController.text;
-               await appState.cogUserService.signUp( email, appState.passwordController.text, appState.usernameController.text );
-               showToast( "Code sent to your email");
-               print( "Code sent to email" );
-               setState(() { showCC = true; });
+               if( malformedEmail( email )) {
+                  showToast( "Email address is empty or malformed." );
+               }
+               else {
+                  await appState.cogUserService.signUp( email, appState.passwordController.text, appState.usernameController.text );
+                  showToast( "Code sent to your email");
+                  print( "Code sent to email" );
+                  setState(() { showCC = true; });
+               }
+               
             }));
 
       final confirmSignupButton = makeActionButton( appState, "Confirm signup, and Log in", cognitoSignupWrapper(context, () async {

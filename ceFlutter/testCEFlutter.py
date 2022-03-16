@@ -67,8 +67,9 @@ def clean( output, filterExp ) :
         if keep :
             if( "ceFlutter Test Group" in output or
                 "Subtest:" in output             or
-                "tests passed!" in output        or
+                "tests passed" in output        or
                 "[E]" in output                  or
+                "Failure in method" in output    or
                 "Test failed" in output           ) :
                 resultsSum = output
             print( output.strip() )
@@ -133,22 +134,31 @@ def runTests():
     #tsum = runTest( "sharing.dart", False )
     #resultsSum  += tsum
 
-    # New tearDown, and subsequent error reporting appears to be async, separate from group.
-    time.sleep(3)
-    
+    # Somehow, combination of new teardown for integration_test and popen is
+    # defeating attempts to leave summary below all error messages.
     logger = logging.getLogger()
     logger.handlers[0].flush()
+    sys.stderr.flush()
+
+    # Force it.  Keep the flush above to catch teardown errors
     logging.info( "" )
     logging.info( "" )
     logging.info( "================================" )
     logging.info( "Summary:" )
     logging.info( "================================" )
-    logging.info( "================================" )
     logging.info( resultsSum )
     logging.info( "================================" )
-    logging.info( "================================" )
 
+    summary  = "\n"
+    summary += "\n"
+    summary += "================================\n"
+    summary += "Summary:\n"
+    summary += "================================\n"
+    summary += resultsSum + "\n"
+    summary += "================================\n"
+    
     os.chdir( "../" )
+    return summary
 
 
 def main( cmd ):
@@ -161,7 +171,8 @@ def main( cmd ):
     assert( validateConfiguration() )
     assert( verifyEmulator() )
 
-    if( cmd == "" ) : runTests()
+    summary = ""
+    if( cmd == "" ) : summary = runTests()
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()
@@ -169,6 +180,8 @@ def main( cmd ):
         logging.info( "thread finished...exiting" )
 
     closeListeners()
+
+    print( summary )
     
     
 if __name__ == "__main__":

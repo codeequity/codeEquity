@@ -1,10 +1,11 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
-
-import 'package:fluttertoast/fluttertoast.dart';
+import 'dart:async';   // timer
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
+import 'package:fluttertoast/fluttertoast.dart';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
 
 import 'utils.dart';
 
@@ -29,7 +30,9 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 
 Future<bool> signupInputTesting( WidgetTester tester ) async {
    bool retVal = true;
-   final String uname = "ceTester integration";
+   bool expectPass = true;
+      
+   final String uname = "ceFlutTester4";
    final String pword = "passWD123";
    final String email = "ari@codeequity.net";
 
@@ -52,67 +55,80 @@ Future<bool> signupInputTesting( WidgetTester tester ) async {
    expect( confirmButton, findsOneWidget);
 
    // Missing uname
+   print( "  .. check missing uname" );
    await tester.enterText( unameField, "" );
    await tester.enterText( pwordField, pword );
    await tester.enterText( emailField, email );
    await tester.pumpAndSettle();
    await tester.tap( confirmButton );
-   await tester.pumpAndSettle();
-
+   await tester.pumpAndSettle( Duration(seconds:1) );
    // XXX toast check
-   // Did not move on
-   print( "  .. check missing uname" );
    expect( await verifyOnSignupPage( tester ), true );
 
    // Missing pword
+   print( "  .. check missing pword" );
    await tester.enterText( unameField, uname );
    await tester.enterText( pwordField, ""    );
    await tester.enterText( emailField, email );
    await tester.pumpAndSettle();
    await tester.tap( confirmButton );
-   await tester.pumpAndSettle();
-   print( "  .. check missing pword" );
+   await tester.pumpAndSettle( Duration(seconds:1) );
    expect( await verifyOnSignupPage( tester ), true );
 
    // Bad pword
+   print( "  .. check bad pword" );
    await tester.enterText( unameField, uname );
    await tester.enterText( pwordField, badPword );
    await tester.enterText( emailField, email );
    await tester.pumpAndSettle();
    await tester.tap( confirmButton );
-   await tester.pumpAndSettle();
-   print( "  .. check bad pword" );
+   await tester.pumpAndSettle( Duration(seconds:1) );
    expect( await verifyOnSignupPage( tester ), true );
 
 
    // Missing email
+   print( "  .. check missing email" );
    await tester.enterText( unameField, uname );
    await tester.enterText( pwordField, pword );
    await tester.enterText( emailField, "" );
    await tester.pumpAndSettle();
    await tester.tap( confirmButton );
-   await tester.pumpAndSettle();
-   print( "  .. check missing email" );
-   expect( await verifyOnSignupPage( tester ), true );
+   await tester.pumpAndSettle( Duration(seconds:1) );
+   expectPass = await verifyOnSignupPage( tester );
+   if( !expectPass ) {
+      print( "?????????????" );
+      await tester.pumpAndSettle( Duration(seconds:10) );      
+   }
+   expect( expectPass, true );
 
    // Bad email
+   print( "  .. check bad email" );
    await tester.enterText( unameField, uname );
    await tester.enterText( pwordField, pword );
    await tester.enterText( emailField, badEmail );
    await tester.pumpAndSettle();
    await tester.tap( confirmButton );
-   await tester.pumpAndSettle();
-   print( "  .. check bad email" );
-   expect( await verifyOnSignupPage( tester ), true );
+   await tester.pumpAndSettle( Duration(seconds:1) );
+   expectPass = await verifyOnSignupPage( tester );
+   if( !expectPass ) {
+      print( "?????????????" );
+      await tester.pumpAndSettle( Duration(seconds:10) );      
+   }
+   assert( expectPass );
+   expect( expectPass, true );
 
    // All good.
+   print( "  .. check all good" );
+   await Timer( Duration(seconds:3), () {   print( "  .. Waiting..." ); } );
    await tester.enterText( unameField, uname );
    await tester.enterText( pwordField, pword );
-   await tester.enterText( emailField, badEmail );
+   await tester.enterText( emailField, email );
    await tester.pumpAndSettle();
    await tester.tap( confirmButton );
-   await tester.pumpAndSettle();
-   print( "  .. check all good" );
+   // Give cog signup a (big) chance to send code via email
+   await tester.pumpAndSettle( Duration(seconds:3) );
+   await tester.pumpAndSettle( Duration(seconds:3) );
+   await tester.pumpAndSettle( Duration(seconds:1) );
    expect( await verifyOnSignupConfirmPage( tester ), true );
    
    return retVal;
