@@ -1,107 +1,210 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // key
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 //import 'package:test/test.dart';
 
-import 'package:flutter/foundation.dart'; // key
+
+import 'package:ceFlutter/customIcons.dart';
+
+import 'package:ceFlutter/main.dart';
+import 'package:ceFlutter/app_state_container.dart';
+
+
 
 const TESTER_NAME   = "rmusick2000";
 const TESTER_PASSWD = "passWD123";
 
 // https://medium.com/flutter-community/testing-flutter-ui-with-flutter-driver-c1583681e337
 
+// https://docs.flutter.dev/cookbook/testing/widget/introduction
+// https://api.flutter.dev/flutter/flutter_test/CommonFinders-class.html
+
+// Note: null safety
+//       final Finder loginButton = find.byWidgetPredicate((widget) => widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Login" ) ?? false ));
+//       ? indicates text could be null (otherwise contains compile-fails).
+//      ?? gives a default value if contains is null (else boolean compile-fails).
 
 
-Future<bool> login( WidgetTester driver, known ) async {
+Future<bool> restart( WidgetTester tester ) async {
 
-   // final Finder loginButton = find.byValueKey('Login');
-   // final Finder loginButton = find.byKey('Login');
-
-   final Finder loginButton = find.text( 'Login' );
-   expect( loginButton, findsOneWidget );
-
-   final Finder cnaButton = find.text( 'Create New Account' );
-   expect( cnaButton, findsOneWidget );
-
-   final Finder guestButton = find.text( 'Look around as a guest' );
-   expect( guestButton, findsOneWidget );
-
-   // ? indicates text could be null (otherwise contains compile-fails).
-   // ?? gives a default value if contains is null (else boolean compile-fails).
-   expect( find.byWidgetPredicate((widget) => widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Login" ) ?? false )),
-           findsOneWidget);
-
-   final Finder aButton = find.text( 'Boogers' );
-   expect( aButton, findsOneWidget );
-
-
-   //final Finder loginButton = find.byKey(const Key( 'Login' ));
+   await tester.pumpWidget( AppStateContainer( child: new CEApp() ));
+   await tester.pumpAndSettle();
    
-   // Verify key launch page buttons
-   // await driver.waitFor( find.byKey('Create New Account') );
-   // await driver.waitFor( loginButton );
+   final splash = find.text( 'CodeEquity' );
+   expect(splash, findsOneWidget);
+   
+   await tester.pumpAndSettle(Duration(seconds: 5));
+   return true;
+}
 
-   // Jump to login page
-   //await driver.tap( loginButton );
-   await driver.pumpAndSettle();
 
-   /*
-   final Finder userName = find.byKey('username');
-   final password = find.byKey('password');
+Future<bool> verifyOnLaunchPage( WidgetTester tester ) async {
+   expect( find.byKey( const Key( 'Login' )),                 findsOneWidget );
+   expect( find.byKey( const Key( 'Create New Account')),     findsOneWidget );
+   expect( find.byKey( const Key( 'Look around as a guest')), findsOneWidget );
+   expect( find.byKey( const Key( 'Boogers' )),               findsNothing );
 
-   // will re-find login on current page
-   await driver.waitFor( userName );
-   await driver.waitFor( password );
-   await driver.waitFor( loginButton );
+   final Finder loginButton = find.byWidgetPredicate((widget) => widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Login" ) ?? false ));
+   expect( loginButton, findsOneWidget);
 
-   // Enter u/p and attempt to login
-   String tname = TESTER_NAME;
-   tname += known ? "" : "1234321";
-   await enterText( driver, userName, tname );
-   await enterText( driver, password, TESTER_PASSWD );
-   // Login, jump to homepage
-   await driver.tap( loginButton );
+   // framing
+   expect( find.text( 'CodeEquity' ),                findsOneWidget );
+   expect( find.text( 'Simple Idea' ),               findsOneWidget );
+   expect( find.textContaining('GitHub Founder' ),   findsOneWidget );
+   expect( find.textContaining('create something' ), findsOneWidget );
+   expect( find.byType( Image ),                     findsOneWidget );   
+ 
+   return true;
+}
 
-   // verify topbar, botbar icons
-   // These show up quickly.
-   if( known ) { expect( await verifyOnHomePage( driver ), true );  }
-   else {
-      // can't apply key to toast, so... look for no app bar, yes login stuff
-      expect( await isPresent( driver, find.byValueKey( 'homeIcon' ) ), false );
-      expect( await isPresent( driver, find.byValueKey( 'homeHereIcon' ) ), false );
+Future<bool> verifyOnSignupPage( WidgetTester tester ) async {
+   expect( find.byKey( const Key( 'username' )),     findsOneWidget );
+   expect( find.byKey( const Key( 'password')),      findsOneWidget );
+   expect( find.byKey( const Key( 'email address')), findsOneWidget );
 
-      await driver.waitFor( userName );
-      await driver.waitFor( password );
-      await driver.waitFor( loginButton );
-   }
-   */
+   final Finder confirmButton = find.byWidgetPredicate((widget) =>
+                                                       widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Send confirmation code" )
+                                                                                                             ?? false ));
+   expect( confirmButton, findsOneWidget);
+
+   return true;
+}
+
+Future<bool> verifyOnSignupConfirmPage( WidgetTester tester ) async {
+   expect( find.byKey( const Key( 'username' )),     findsOneWidget );
+   expect( find.byKey( const Key( 'password')),      findsOneWidget );
+   expect( find.byKey( const Key( 'email address')), findsOneWidget );
+   print( "CHECK CHECK CHECK" );
+
+   Finder cc = find.byKey( const Key( 'confirmation code'));
+   int wat = tester.widgetList<TextField>( cc ).length;
+   print( "XXX By Key: " + wat.toString() );
+
+   expect( cc, findsOneWidget );
+
+   final Finder confirmButton = find.byWidgetPredicate((widget) =>
+                                                       widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Confirm signup, and Log in" )
+                                                                                                             ?? false ));
+   expect( confirmButton, findsOneWidget);
+
+   return true;
+}
+
+
+Future<bool> verifyOnHomePage( WidgetTester tester ) async {
+   // Top bar
+   expect( find.byIcon( customIcons.home_here ), findsOneWidget );
+   expect( find.byIcon( customIcons.loan ),      findsOneWidget );
+   expect( find.byIcon( customIcons.profile ),   findsOneWidget );
+   expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
+
+   // framing
+   expect( find.text( 'Activity' ),             findsOneWidget );
+   expect( find.text( 'Code Equity Projects' ), findsOneWidget );
+   expect( find.text( 'GitHub Repositories' ),  findsOneWidget );
+   expect( find.byKey(const Key( 'New' )),      findsOneWidget );
+   expect( find.byKey(const Key( 'Add' )),      findsOneWidget );
+
+   // testing ceproject
+   expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
    
    return true;
 }
 
-Future<bool> logout( WidgetTester driver ) async {
+Future<bool> verifyOnProfilePage( WidgetTester tester ) async {
+   // Top bar
+   expect( find.byIcon( customIcons.home ),         findsOneWidget );
+   expect( find.byIcon( customIcons.loan ),         findsOneWidget );
+   expect( find.byIcon( customIcons.profile_here ), findsOneWidget );
+   expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 
-   /*
+   // framing
+   expect( find.byKey(const Key( 'Logout' )),      findsOneWidget );
+
+   return true;
+}
+
+void report( descr, {group = false} ) {
+   final pre  = group ? "ceFlutter Test Group: " : "Subtest: ";
+   final post = group ? "" : " completed.";
+   print( pre + descr + post + "\n" );
+}
+
+
+Future<bool> login( WidgetTester tester, known ) async {
+
+   expect( await verifyOnLaunchPage( tester ), true );
+
+   final Finder loginButton = find.byKey(const Key( 'Login' ));
+   expect( loginButton, findsOneWidget);
+
+   // Jump to login page
+   await tester.tap( loginButton );
+   await tester.pumpAndSettle();
+
+   final Finder userName     = find.byKey(const Key('username'));
+   final Finder password     = find.byKey(const Key('password'));
+   final Finder login2Button = find.byKey(const Key('Login' ));
+
+   expect( userName,     findsOneWidget );
+   expect( password,     findsOneWidget );
+   expect( login2Button, findsOneWidget );
+   
+   // Enter u/p and attempt to login
+   String tname = TESTER_NAME;
+   tname += known ? "" : "1234321";
+   await tester.enterText( userName, tname );
+   await tester.pumpAndSettle();
+   await tester.enterText( password, TESTER_PASSWD );
+   await tester.pumpAndSettle(); // want to see the masked entry in passwd
+   
+   // Login, jump to homepage
+   await tester.tap( login2Button );
+   print( "first pump" );
+   await tester.pumpAndSettle(); // for auth
+   print( "second pump" );
+   await tester.pumpAndSettle(); // for .. toast?
+   print( "third pump" );
+   await tester.pumpAndSettle(Duration(seconds: 2)); // for aws
+   await tester.pumpAndSettle(Duration(seconds: 2));
+
+   // XXX Verify toast 'user not found' ?  Shows up faster.. but toasting is probably changing.
+   // verify topbar icons
+   if( known ) { expect( await verifyOnHomePage( tester ), true );  }
+   else {
+      expect( find.byIcon( customIcons.home_here ), findsNothing );
+      
+      expect( userName,     findsOneWidget );
+      expect( password,     findsOneWidget );
+      expect( login2Button, findsOneWidget );
+   }
+
+   
+   return true;
+}
+
+Future<bool> logout( WidgetTester tester ) async {
+
    // Go to profile page
-   SerializableFinder profileIcon = find.byValueKey( 'profileIcon' );
-   expect( await isPresent( driver, profileIcon ), true );
-   await driver.tap( profileIcon ); 
+   final Finder profilePage = find.byIcon( customIcons.profile );
+   expect( profilePage,   findsOneWidget );
+   await tester.tap( profilePage );
+   await tester.pumpAndSettle();
 
-   // Logout
-   SerializableFinder profileHereIcon = find.byValueKey( 'profileHereIcon' );
-   SerializableFinder logoutButton = find.byValueKey('Logout');
-   expect( await isPresent( driver, profileHereIcon ), true );
-   expect( await isPresent( driver, logoutButton ), true );
-   await driver.tap( logoutButton );
+   expect( await verifyOnProfilePage( tester ), true );
 
+   final Finder logoutButton = find.byKey( const Key('Logout'));
+   expect( logoutButton, findsOneWidget );
+   await tester.tap( logoutButton );
+   await tester.pumpAndSettle();
+   
    // Verify signin page
-   await driver.waitFor( find.byValueKey('Create New Account') );
-   await driver.waitFor( find.byValueKey('Login') );
-   expect( await isPresent( driver, profileIcon ), false );
-   expect( await isPresent( driver, profileHereIcon ), false );
+   expect( await verifyOnLaunchPage( tester ), true );
 
-   */
    return true;
 }
 
@@ -119,6 +222,7 @@ Future<bool> isPresent( FlutterDriver driver, SerializableFinder finder, [int ti
    }
 }
 
+/*
 Future<bool> enterText( FlutterDriver driver, SerializableFinder txtField, String data ) async {
    // verify text not already in UI.. note this is overly aggressive, as it fails if data shows up in another widget.
    if( data != "" ) { expect( await isPresent( driver, find.text( data ) ), false ); }
@@ -132,17 +236,8 @@ Future<bool> enterText( FlutterDriver driver, SerializableFinder txtField, Strin
 
    return true;
 }
+*/
 
-// XXXXXXXXXXXXX
-Future<bool> verifyOnHomePage( FlutterDriver driver ) async {
-   expect( await isPresent( driver, find.byValueKey( 'myLibraryIcon' ), 8000), true );  // on top bar, but..
-   expect( await isPresent( driver, find.byValueKey( 'homeHereIcon' ), 5000), true );   // landed here on bot bar
-   
-   // Default name of private lib, selected by default upon login.
-   // This takes longer, once it shows up, fully loaded.
-   expect( await isPresent( driver, find.byValueKey( 'My Books' )), true );  
-   return true;
-}
 
 Future<bool> verifyEditLib( FlutterDriver driver, String libName, [String newName = ""] ) async {
    expect( await isPresent( driver, find.byValueKey( 'Selected: ' + libName ), 2000), true );

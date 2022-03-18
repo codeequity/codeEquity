@@ -436,8 +436,9 @@ async function rebuildPeq( authData, link, oldPeq ) {
 // await in label does not solve it 100%.   Having bad dependent peq recordings in aws may hurt later.
 // Settlewait.. this has shown up once in... hundreds of runs of the full test suite?
 // not, dup check could occur in lambda handler, save a round trip
+// NOTE PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
+//      creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
 async function recordPeqData( authData, pd, checkDup, specials ) {
-    console.log( authData.who, "Recording peq data for", pd.GHIssueTitle );	
     let newPEQId = -1;
     let newPEQ = -1
     if( checkDup ) { 
@@ -464,6 +465,8 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.GHIssueId    = pd.GHIssueId.toString();  // gh issue id
     postData.GHIssueTitle = pd.GHIssueTitle;          // gh issue title
     postData.Active       = "true";
+
+    console.log( authData.who, "Recording peq data for", pd.GHIssueTitle, postData.GHHolderId.toString() );	
 
     // Don't wait if already have Id
     if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }

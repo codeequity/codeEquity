@@ -139,7 +139,11 @@ class UserService {
       bool isConfirmed;
       try {
          showToast( "Authenticating.. can take a few seconds." );
+
+         Stopwatch stopwatch = new Stopwatch()..start();
          _session = await _cognitoUser.authenticateUser(authDetails);
+         print(' ...authenticate executed in ${stopwatch.elapsed}');
+         
          isConfirmed = true;
       } on CognitoClientException catch (e) {
          if (e.code == 'UserNotConfirmedException') {
@@ -152,8 +156,11 @@ class UserService {
       if (!_session.isValid()) {
          return null;
       }
-      
+
+      Stopwatch stopwatch = new Stopwatch()..start();      
       final attributes = await _cognitoUser.getUserAttributes();
+      print(' ...getAttribs executed in ${stopwatch.elapsed}');
+         
       final user = User.fromUserAttributes(attributes);
       user.confirmed = isConfirmed;
       user.hasAccess = true;
@@ -238,6 +245,14 @@ cognitoSignupWrapper(context, fn) {
                else if( e.toString().contains("User does not exist") )
                {
                   toasty = "Username or password is incorrect";
+               }
+               else if( e.toString().contains("Member must satisfy") )
+               {
+                  toasty = "Username needs 1+ chars, no whitespace allowed.";
+               }
+               else
+               {
+                  print(e);
                }
             }
             break;

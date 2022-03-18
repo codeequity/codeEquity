@@ -2,6 +2,7 @@
 
 import sys
 import os
+import signal
 import platform
 import logging
 import time
@@ -28,6 +29,15 @@ def validateConfiguration():
         goodConfig = False
         
     return goodConfig
+
+def closeListeners():
+    # chromeDriver
+    cmd = "ps -efl | grep chromedriver | grep -v grep"
+    val = check_output( cmd, shell=True).decode('utf-8')
+    if( len(val) > 5 ) :
+        pid = val.split()
+        print( "Killing chromedriver at " + pid[3] )
+        os.kill( int(pid[3]), signal.SIGTERM )
 
 
 def verifyEmulator():
@@ -56,8 +66,11 @@ def clean( output, filterExp ) :
                 break
         if keep :
             if( "ceFlutter Test Group" in output or
-                "tests passed!" in output        or
-                "tests failed!" in output           ) :
+                "Subtest:" in output             or
+                "tests passed" in output        or
+                "[E]" in output                  or
+                "Failure in method" in output    or
+                "Test failed" in output           ) :
                 resultsSum = output
             print( output.strip() )
     return resultsSum
@@ -78,12 +91,16 @@ def runCmd( cmd, filterExp ):
 
 
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
-def runTest( testName, noBuild = True ):
+# Hmm.  Running in release mode does not work well.  Basic entering text fails.. 
+def runTest( testName, noBuild = True, optimized = False ):
     logging.info( "" )
-    
-    # cmd = "flutter drive --target=test_driver/" + testName + " -d web-server"
-    # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=test_driver/" + testName + " -d web-server"
+
+    # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName + " -d web-server"
     cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+
+    if optimized :
+        cmd = cmd + " --release"
+
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
     # poll for realtime stdout
@@ -94,8 +111,6 @@ def runTest( testName, noBuild = True ):
 
 """
 Common failure modes: 
-1. Debug build, widget response time is highly variable - isPresent timeouts may need tweaking
-2. scrollUntilVisible is sensitive.  May need some additional scrollIntoView(s)
 
 """
 def runTests():
@@ -104,10 +119,13 @@ def runTests():
 
     resultsSum = ""
 
-    tsum = runTest( "login_pass_test.dart", False )
+    tsum = runTest( "launch_test.dart", False, False )
     resultsSum  += tsum
-    
-    #tsum = runTest( "login_fail.dart", False )
+
+    #tsum = runTest( "login_pass_test.dart", False, False )
+    #resultsSum  += tsum
+
+    #tsum = runTest( "login_fail_test.dart", False, False )
     #resultsSum  += tsum
 
     #tsum = runTest( "content.dart", False )
@@ -116,14 +134,31 @@ def runTests():
     #tsum = runTest( "sharing.dart", False )
     #resultsSum  += tsum
 
-    logging.info( "" );
-    logging.info( "" );
-    logging.info( "================================" );
-    logging.info( "Summary:" );
-    logging.info( "================================" );
-    logging.info( resultsSum );
+    # Somehow, combination of new teardown for integration_test and popen is
+    # defeating attempts to leave summary below all error messages.
+    logger = logging.getLogger()
+    logger.handlers[0].flush()
+    sys.stderr.flush()
 
+    # Force it.  Keep the flush above to catch teardown errors
+    logging.info( "" )
+    logging.info( "" )
+    logging.info( "================================" )
+    logging.info( "Summary:" )
+    logging.info( "================================" )
+    logging.info( resultsSum )
+    logging.info( "================================" )
+
+    summary  = "\n"
+    summary += "\n"
+    summary += "================================\n"
+    summary += "Summary:\n"
+    summary += "================================\n"
+    summary += resultsSum + "\n"
+    summary += "================================\n"
+    
     os.chdir( "../" )
+    return summary
 
 
 def main( cmd ):
@@ -136,13 +171,17 @@ def main( cmd ):
     assert( validateConfiguration() )
     assert( verifyEmulator() )
 
-    if( cmd == "" ) : runTests()
+    summary = ""
+    if( cmd == "" ) : summary = runTests()
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()
         thread.join()
         logging.info( "thread finished...exiting" )
 
+    closeListeners()
+
+    print( summary )
     
     
 if __name__ == "__main__":

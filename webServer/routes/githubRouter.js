@@ -328,7 +328,7 @@ router.post('/:location?', async function (req, res) {
 
     let newStamp = utils.getMillis();
     ceArrivals.add( newStamp );
-    console.log( "Notification:", event, action, tag, jobId, "for", owner, repo, newStamp );
+    console.log( "Notification:", event, action, tag, jobId, "for", owner +"/"+ repo, newStamp );
     ceNotification.push( event+" "+action+" "+tag+" "+fullName );
 
     // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
