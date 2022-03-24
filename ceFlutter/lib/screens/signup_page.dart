@@ -1,3 +1,4 @@
+import 'dart:async';   // timer  XXXXXXXXXXXXXXXX
 import 'dart:convert';  // json encode/decode
 
 import 'package:flutter/material.dart';
@@ -41,7 +42,9 @@ class _CESignupState extends State<CESignupPage> {
    @override
    Widget build(BuildContext context) {
 
-      
+
+      print( "REBUILD SIGNUP" );
+
       final container = AppStateContainer.of(context);
       final appState = container.state;
       
@@ -142,11 +145,11 @@ class _CESignupState extends State<CESignupPage> {
                            SizedBox( height: 5.0),
                            emailField,
                            SizedBox( height: 5.0),
-                           Visibility( visible: showCC, child: confirmationCodeField ),
+                           Visibility( key: Key("confirmation code visNode") , visible: showCC, child: confirmationCodeField ),
                            SizedBox( height: 5.0),
                            Visibility( visible: !showCC, child: signupButton ),
                            SizedBox( height: 5.0),
-                           Visibility( visible: showCC, child: confirmSignupButton ),
+                           Visibility( key: Key("confirm signup button visNode"), visible: showCC, child: confirmSignupButton ),
                            SizedBox( height: 5.0),
                            Text( appState.cogUser.confirmed?.toString() ?? "UserState here", style: TextStyle(fontStyle: FontStyle.italic))
                            ])))

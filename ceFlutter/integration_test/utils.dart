@@ -41,6 +41,18 @@ Future<bool> restart( WidgetTester tester ) async {
    return true;
 }
 
+// The keyName is the name of the visibility node key
+Future<bool> checkVisNode( WidgetTester tester, String keyName, bool visVal ) async {
+
+   final Finder vn = find.byKey( Key( keyName ));
+   expect( vn, findsOneWidget );
+
+   final Visibility visNode = tester.widget(vn);
+
+   expect(visNode.visible , visVal);
+
+   return true;
+}
 
 Future<bool> verifyOnLaunchPage( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'Login' )),                 findsOneWidget );
@@ -71,6 +83,9 @@ Future<bool> verifyOnSignupPage( WidgetTester tester ) async {
                                                                                                              ?? false ));
    expect( confirmButton, findsOneWidget);
 
+   await checkVisNode( tester, "confirmation code visNode", false );
+   await checkVisNode( tester, "confirm signup button visNode", false );
+   
    return true;
 }
 
@@ -78,19 +93,11 @@ Future<bool> verifyOnSignupConfirmPage( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'username' )),     findsOneWidget );
    expect( find.byKey( const Key( 'password')),      findsOneWidget );
    expect( find.byKey( const Key( 'email address')), findsOneWidget );
-   print( "CHECK CHECK CHECK" );
 
-   Finder cc = find.byKey( const Key( 'confirmation code'));
-   int wat = tester.widgetList<TextField>( cc ).length;
-   print( "XXX By Key: " + wat.toString() );
-
-   expect( cc, findsOneWidget );
-
-   final Finder confirmButton = find.byWidgetPredicate((widget) =>
-                                                       widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Confirm signup, and Log in" )
-                                                                                                             ?? false ));
-   expect( confirmButton, findsOneWidget);
-
+   // XXX https://github.com/flutter/flutter/issues/48490   oof
+   await checkVisNode( tester, "confirmation code visNode", true );
+   await checkVisNode( tester, "confirm signup button visNode", true );
+   
    return true;
 }
 
@@ -169,7 +176,7 @@ Future<bool> login( WidgetTester tester, known ) async {
    print( "second pump" );
    await tester.pumpAndSettle(); // for .. toast?
    print( "third pump" );
-   await tester.pumpAndSettle(Duration(seconds: 2)); // for aws
+   await tester.pumpAndSettle(Duration(seconds: 5)); // for aws
    await tester.pumpAndSettle(Duration(seconds: 2));
 
    // XXX Verify toast 'user not found' ?  Shows up faster.. but toasting is probably changing.
