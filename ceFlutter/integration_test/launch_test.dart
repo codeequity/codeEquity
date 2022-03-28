@@ -118,6 +118,7 @@ Future<bool> signupInputTesting( WidgetTester tester ) async {
    //                     comment this call out, passes.  Stack harm?  or _userPool depends on SharedPreferences, which is a keystore that.. maybe?
    //                     depends on dart:web_sql.  The web_sql package was just removed from dart this past month.
    //                     Wait to see how this shakes out before pursuing.   2/2022  https://github.com/dart-lang/sdk/blob/main/CHANGELOG.md
+   //                     Hmm.. may just be integration_test.. missing uri does not show up in flutter run -d chrome
    /*
    print( "  .. check all good" );
    await Timer( Duration(seconds:3), () {   print( "  .. Waiting..." ); } );

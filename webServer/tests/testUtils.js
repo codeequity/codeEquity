@@ -1627,7 +1627,7 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
 	subTest = await checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
     }
     
-    return await settle( subTest, testStatus, checkAllocSplit, authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials );
+    return await settle( subTest, testStatus, checkAllocSplit, authData, ghLinks, td, issDat, origLoc, newLoc, origVal, opVal, testStatus, specials );
 }
 
 async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, testStatus ) {
