@@ -400,6 +400,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// (open issue in new repo, delete project card, transfer issue)
 	// NOTE.  As of 2/13/2022 GH is keeping labels with transferred issue, although tooltip still contradicts this.
 	//        Currently, this is in flux.  the payload has new_issue, but the labels&assignees element is empty.
+	//        Also, as is, this is violating 1:1 issue:card
 	// Transfer IN:  Not getting these any longer.
 	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.  GH will send delete card.
 	//
@@ -451,6 +452,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		}
 	    }
 	    else {
+		// XXX 
 		console.log( "WARNING.  Seeing transfer in notification for first time. GH project mgmt has changed, revisit." );
 	    }
 	}

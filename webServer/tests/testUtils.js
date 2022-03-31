@@ -291,6 +291,7 @@ async function getLocs( authData, ghLinks, query ) {
     return ghLinks.getLocs( authData, query );
 }
 
+
 async function getNotices() {
     let postData = {"Endpoint": "Testing", "Request": "getNotices" };
     return await utils.postCE( "testHandler", JSON.stringify( postData ));

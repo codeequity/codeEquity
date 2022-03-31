@@ -651,9 +651,9 @@ async function getRepoLabelsGQL( PAT, owner, repo, data, cursor ) {
 	for( let i = 0; i < labels.edges.length; i++ ) {
 	    const label  = labels.edges[i].node;
 	    let datum = {};
-	    datum.labelId    = label.id;
-	    datum.labelName  = label.name;
-	    datum.labelDesc  = label.description
+	    datum.id    = label.id;
+	    datum.name  = label.name;
+	    datum.description  = label.description
 	    data.push( datum );
 	}
 	// Wait.  Data is modified
@@ -717,9 +717,9 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 	    for( let j = 0; j < issue.labels.edges.length; j++ ) {
 		const label = issue.labels.edges[j].node;
 		let lum = {};
-		lum.labelId    = label.id;
-		lum.labelName  = label.name;
-		lum.labelDesc  = label.description
+		lum.id    = label.id;
+		lum.name  = label.name;
+		lum.description = label.description
 		labels.push( lum );
 	    }
 	    datum.labels = labels;
