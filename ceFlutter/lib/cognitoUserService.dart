@@ -187,7 +187,8 @@ class UserService {
       }
       return _session.isValid();
    }
-   
+
+   // XXX Note, user not being caught here - wait for confirmation code.  Could remove lower portion
    Future<User> signUp(String email, String password, String name) async {
       CognitoUserPoolData data;
       final userAttributes = [ AttributeArg(name: 'email', value: email )];

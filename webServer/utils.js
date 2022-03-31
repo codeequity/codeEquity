@@ -991,6 +991,18 @@ async function ingestPActs( authData, pactIds ) {
 }
 
 // UNIT TESTING ONLY!!
+// Get linkage table on aws, without requiring server 
+async function getStoredLocs( authData, repo ) {
+    console.log( authData.who, "get CELinkage TESTING ONLY", repo )
+
+    let shortName = "GetEntry";
+    let query     = { "GHRepo": repo };
+    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+// UNIT TESTING ONLY!!
 async function failHere( source ) {
     console.log( "Error.  Fake internal server error for", source );
     assert( false );
@@ -1044,8 +1056,9 @@ exports.demoteJob     = demoteJob;
 exports.settleWithVal = settleWithVal;
 
 // TESTING ONLY
-exports.ingestPActs = ingestPActs;       // TESTING ONLY
-exports.TEST_EH     = TEST_EH;           // TESTING ONLY
-exports.TEST_EH_PCT = TEST_EH_PCT;       // TESTING ONLY
-exports.FAKE_ISE    = FAKE_ISE;          // TESTING ONLY
-exports.failHere    = failHere;          // TESTING ONLY
+exports.ingestPActs   = ingestPActs;      // TESTING ONLY
+exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
+exports.TEST_EH       = TEST_EH;          // TESTING ONLY
+exports.TEST_EH_PCT   = TEST_EH_PCT;      // TESTING ONLY
+exports.FAKE_ISE      = FAKE_ISE;         // TESTING ONLY
+exports.failHere      = failHere;         // TESTING ONLY

@@ -291,6 +291,7 @@ async function getLocs( authData, ghLinks, query ) {
     return ghLinks.getLocs( authData, query );
 }
 
+
 async function getNotices() {
     let postData = {"Endpoint": "Testing", "Request": "getNotices" };
     return await utils.postCE( "testHandler", JSON.stringify( postData ));
@@ -1571,7 +1572,7 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
 	}
     }
     
-    return await settle( subTest, testStatus, checkSplit, authData, ghLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials );
+    return await settle( subTest, testStatus, checkSplit, authData, ghLinks, td, issDat, origLoc, newLoc, origVal, opVal, testStatus, specials );
 }
 
 

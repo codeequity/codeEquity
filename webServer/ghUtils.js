@@ -163,6 +163,14 @@ var githubUtils = {
 	return createUnClaimedCard( authData, ghLinks, pd, issueId, accr );
     },
 
+    getRepoLabelsGQL: function( PAT, owner, repo, data, cursor ) {
+	return getRepoLabelsGQL( PAT, owner, repo, data, cursor );
+    },
+
+    getRepoIssuesGQL: function( PAT, owner, repo, data, cursor ) {
+	return getRepoIssuesGQL( PAT, owner, repo, data, cursor );
+    },
+
     getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
 	return getBasicLinkDataGQL( PAT, owner, repo, data, cursor );
     },
@@ -605,6 +613,123 @@ function populateRequest( labels ) {
 
     return retVal;
 }
+
+async function getRepoLabelsGQL( PAT, owner, repo, data, cursor ) {
+    const query1 = `
+    query baseConnection($owner: String!, $repo: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    labels(first: 100) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node { id name description }}
+		}}}`;
+    
+    const queryN = `
+    query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    labels(first: 100) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node { id name description }}
+		}}}`;
+
+    
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let issues = -1;
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "getRepoLabelsGQL", e, getRepoLabelsGQL, PAT, owner, repo, data, cursor ));  // probably never seen
+
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	await errorHandler( "getRepoLabelsGQL", res, getRepoLabelsGQL, PAT, owner, repo, data, cursor ); 
+    }
+    else {
+	labels = res.data.repository.labels;
+	for( let i = 0; i < labels.edges.length; i++ ) {
+	    const label  = labels.edges[i].node;
+	    let datum = {};
+	    datum.id    = label.id;
+	    datum.name  = label.name;
+	    datum.description  = label.description
+	    data.push( datum );
+	}
+	// Wait.  Data is modified
+	if( labels != -1 && labels.pageInfo.hasNextPage ) { await getRepoLabelsGQL( PAT, owner, repo, data, labels.pageInfo.endCursor ); }
+    }
+}
+
+async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
+    const query1 = `
+    query baseConnection($owner: String!, $repo: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    issues(first: 100) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node {
+		    id databaseId url number title
+		    labels(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { id name description }}}
+
+		}}}}}`;
+    
+    const queryN = `
+    query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    issues(first: 100) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node {
+		    id databaseId url number title
+		    labels(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { id name description }}}
+
+		}}}}}`;
+
+    
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let issues = -1;
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "getRepoIssuesGQL", e, getRepoIssuesGQL, PAT, owner, repo, data, cursor ));  // probably never seen
+
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	await errorHandler( "getRepoIssuesGQL", res, getRepoIssuesGQL, PAT, owner, repo, data, cursor ); 
+    }
+    else {
+	issues = res.data.repository.issues;
+	for( let i = 0; i < issues.edges.length; i++ ) {
+	    const issue  = issues.edges[i].node;
+	    assert( !issue.labels.pageInfo.hasNextPage );
+	    let datum = {};
+	    datum.issueId     = issue.databaseId;
+	    datum.issueURL    = issue.url
+	    datum.issueNumber = issue.number;
+	    datum.issueTitle  = issue.title;
+	    let labels = [];
+	    for( let j = 0; j < issue.labels.edges.length; j++ ) {
+		const label = issue.labels.edges[j].node;
+		let lum = {};
+		lum.id    = label.id;
+		lum.name  = label.name;
+		lum.description = label.description
+		labels.push( lum );
+	    }
+	    datum.labels = labels;
+	    data.push( datum );
+	}
+	// Wait.  Data is modified
+	if( issues != -1 && issues.pageInfo.hasNextPage ) { await getRepoIssuesGQL( PAT, owner, repo, data, issues.pageInfo.endCursor ); }
+    }
+}
+
 
 // GraphQL to init link table
 // Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
