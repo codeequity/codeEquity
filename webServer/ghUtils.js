@@ -670,11 +670,17 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 		pageInfo { hasNextPage, endCursor },
 		edges { node {
 		    id databaseId url number title
+		    projectCards(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { databaseId 
+                                       project { databaseId name } 
+                                       column { databaseId name } }}
+                    },
 		    labels(first: 100) {
 			pageInfo { hasNextPage, endCursor },
-			edges { node { id name description }}}
-
-		}}}}}`;
+			edges { node { id name description }}
+                    }
+     }}}}}`;
     
     const queryN = `
     query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
@@ -684,12 +690,17 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 		pageInfo { hasNextPage, endCursor },
 		edges { node {
 		    id databaseId url number title
+		    projectCards(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { databaseId 
+                                       project { databaseId name } 
+                                       column { databaseId name } }}
+                    },
 		    labels(first: 100) {
 			pageInfo { hasNextPage, endCursor },
-			edges { node { id name description }}}
-
-		}}}}}`;
-
+			edges { node { id name description }}
+                    }
+     }}}}}`;
     
     let query     = cursor == -1 ? query1 : queryN;
     let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
@@ -708,11 +719,20 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 	for( let i = 0; i < issues.edges.length; i++ ) {
 	    const issue  = issues.edges[i].node;
 	    assert( !issue.labels.pageInfo.hasNextPage );
+	    assert( !issue.projectCards.pageInfo.hasNextPage );  
 	    let datum = {};
 	    datum.issueId     = issue.databaseId;
 	    datum.issueURL    = issue.url
 	    datum.issueNumber = issue.number;
 	    datum.issueTitle  = issue.title;
+	    // peq issues are 1:1, ignore the rest
+	    if( issue.projectCards.edges.length == 1 ) {
+		const card = issue.projectCards.edges[0].node;
+		datum.projectId   = card.project.databaseId;
+		datum.projectName = card.project.name;
+		datum.columnId    = card.column.databaseId;
+		datum.columnName  = card.column.name;
+	    }
 	    let labels = [];
 	    for( let j = 0; j < issue.labels.edges.length; j++ ) {
 		const label = issue.labels.edges[j].node;

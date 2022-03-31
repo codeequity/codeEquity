@@ -3,9 +3,9 @@ var assert = require('assert');
 const awsAuth   = require( '../awsAuth' );
 const auth      = require( "../auth");
 const config    = require('../config');
-const utils     = require( "../utils");
+const utils     = require( '../utils');
 
-const ghUtils = require( "../ghUtils");
+const ghUtils = require( '../ghUtils');
 var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
@@ -25,6 +25,12 @@ async function getGHTestIssues( authData, td ) {
     return res;
 }
 
+async function getGHTestLocs( authData, td ) {
+    let res = [];
+    await gh.getRepoColsGQL( authData.pat, td.GHOwner, td.GHRepo, res, -1 );
+    return res;
+}
+
 async function getAWSTestPeqs( authData, td ) {
     let res = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     return res;
@@ -32,7 +38,8 @@ async function getAWSTestPeqs( authData, td ) {
 
 async function getAWSTestLocs( authData, td ) {
     let res = await utils.getStoredLocs( authData, td.GHFullName );
-    return res;
+    res = typeof res === 'undefined' ? {Locations:[]} : res;
+    return res.Locations;
 }
 
 
@@ -48,9 +55,9 @@ function showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs ) {
     if( ghIssues.length > 0 ) {
 	console.log( "GH Issues: " );
 	for( var issue of ghIssues ) {
-	    console.log( authData.who, issue.issueTitle, issue.issueNumber, issue.issueId, issue.issueURL );
+	    console.log( authData.who, issue.issueTitle, issue.issueNumber, issue.issueId, issue.projectId, issue.projectName, issue.columnId, issue.columnName );
 	    for( var label of issue.labels ) {
-		console.log( "                       ", label.name, "**", label.description, label.id );
+		console.log( "        ", label.name, "**", label.description.substring(0,8) );
 	    }
 	}
     }
@@ -62,10 +69,10 @@ function showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs ) {
 	}
     }
 
-    if( awsLocs.hasOwnProperty( 'Locations' ) && awsLocs.Locations.length > 0 ) {
-	console.log( "AWS Link:" );
+    if( awsLocs.length > 0 ) {
+	console.log( "AWS Loc:" );
 	let limit = 0;
-	for( var loc of awsLocs.Locations ) {
+	for( var loc of awsLocs ) {
 	    console.log( loc.Active, loc.GHProjectId, loc.GHProjectName, loc.GHColumnId, loc.GHColumnName );
 	    if( limit++ > 50 ) {
 		break;
@@ -74,7 +81,7 @@ function showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs ) {
     }
 }
 
-function preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs ) {
+function preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs, ghLocs ) {
 
     showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs );
     console.log( "\n\n\n");
@@ -94,7 +101,7 @@ function preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs ) {
 	for( var peq of awsPeqs ) {
 	    if( peq.Active == "true" ) {
 		let issue = ghIssues.find( iss => iss.issueId == peq.GHIssueId );
-		if( typeof issue == 'undefined' ) { peqNoIss.push( peq ); }
+		if( typeof issue === 'undefined' ) { peqNoIss.push( peq ); }
 		else if( issue.peqValue <= 0 )    { peqNoLab.push( peq ); }
 	    }
 	    else {
@@ -108,26 +115,64 @@ function preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs ) {
 	for( var issue of ghIssues ) {
 	    if( issue.peqValue > 0 ) {
 		let peq = awsPeqs.find( p => p.GHIssueId == issue.issueId && p.Active == "true" );
-		if( typeof peq == 'undefined' ) { issNoPeq.push( issue ); }
+		if( typeof peq === 'undefined' ) { issNoPeq.push( issue ); }
 	    }
 	}
     }
 
-    console.log( "Number of peqs with no matching issues:    ", peqNoIss.length.toString() );
+
+    // GH:(issue has peq label).proj,col,repo exists in AWS with active=true
+    let issNoLoc = [];
+    if( ghIssues.length > 0 ) {
+	for( var issue of ghIssues ) {
+	    if( issue.peqValue > 0 ) {
+		let loc = awsLocs.find( l => l.Active == "true" && l.GHProjectId == issue.projectId && l.GHColumnId == issue.columnId );
+		if( typeof loc === 'undefined' || loc.GHProjectName != issue.projectName || loc.GHColumnName != issue.columnName ) { issNoLoc.push( issue ); }
+	    }
+	}
+    }
+    
+    // AWS(proj,col where active=true) has GH:(issue with peq label and matching proj,col,repo)
+    let locNoIss = [];
+    let locNoLoc = [];
+    if( awsLocs.length > 0 ) {
+	for( var loc of awsLocs ) {
+	    if( loc.Active == "true" ) {
+		let issue = ghIssues.find( iss => iss.projectId == loc.GHProjectId && iss.columnId == loc.GHColumnId );
+		if( typeof issue === 'undefined' || issue.projectName != loc.GHProjectName || issue.columnName != loc.GHColumnName ) { locNoIss.push( loc ); }
+	    }
+	}
+	// No issues for these locs, which is O.K.  Check the locs exist in GH.
+	// Ignore aws internal locs, namely project placeholders with no column info.
+	for( var loc of locNoIss ) {
+	    let ghLoc = ghLocs.find( l => l.GHProjectId == loc.GHProjectId && l.GHColumnId == loc.GHColumnId );
+	    if( ( typeof ghLoc === 'undefined' || ghLoc.GHProjectName != loc.GHProjectName || ghLoc.GHColumnName != loc.GHColumnName ) &&
+		( loc.GHColumnId != -1 && loc.GHColumnName != config.EMPTY ) )
+	    { locNoLoc.push( loc ) }
+	}
+    }
+    
+    console.log( "SANITY", "peqNoIss", peqNoIss.length.toString(), "Number of peqs with no matching issues." );
     showRaw( authData, [], [], peqNoIss, [] );
 
-    console.log( "\nNumber of peqs with no matching peq labels:", peqNoLab.length.toString() );
+    console.log( "SANITY", "peqNoLab", peqNoLab.length.toString(), "Number of peqs with no matching peq labels." );
     showRaw( authData, [], [], peqNoLab, [] );
 
-    console.log( "\nNumber of inactive peqs but with issues with peq labels:", peqInactiveBut.length.toString() );
+    console.log( "SANITY", "peqInactiveBut", peqInactiveBut.length.toString(), "Number of inactive peqs but with issues with peq labels." );
     showRaw( authData, [], [], peqInactiveBut, [] );
 
-    console.log( "\nNumber of issues with no active peqs:      ", issNoPeq.length.toString() );
+    console.log( "SANITY", "issNoPeq", issNoPeq.length.toString(), "Number of issues with no active peqs." );
     showRaw( authData, [], issNoPeq, [], [] );
+
+    console.log( "SANITY", "issNoLoc", issNoLoc.length.toString(), "Number of issues with no matching loc." );
+    showRaw( authData, [], issNoLoc, [], [] );
+
+    console.log( "SANITY", "locNoLoc", locNoLoc.length.toString(), "Number of locs with no matching issue or ghLoc." );
+    showRaw( authData, [], [], [], locNoLoc );
     
 }
 
-
+// XXX confirm this offline mode is sensible.  Alternative: get ghLocs directly from ceServer.  Which mods are not written out immediately?
 // Testing consistency checks
 // Get current state in GH  for ariCETester/CodeEquityTester
 // Get current state in AWS for the same
@@ -160,20 +205,22 @@ async function runTests() {
     //     * AWS:(peq.active=false).id !exist in GH:(issue s.t. issue has peq label)
     // CELinkage
     //     * GH:(issue has peq label).proj,col,repo exists in AWS with active=true
-    //     * AWS(proj,col where active=true) has GH:(issue with peq label and matching proj,col,repo)
+    //     * AWS(proj,col where active=true) has GH:(issue with peq label and matching proj,col,repo).. false.  Just has to exist, not be occupied.
 
     let promises = [];
     let ghLabels = [];
     let ghIssues = [];
     let awsPeqs  = [];
     let awsLocs  = [];
+    let ghLocs   = [];
     promises.push( getGHTestLabels( authData, td ).then( res => ghLabels = res ));
     promises.push( getGHTestIssues( authData, td ).then( res => ghIssues = res ));
     promises.push( getAWSTestPeqs( authData, td  ).then( res => awsPeqs = res ));
     promises.push( getAWSTestLocs( authData, td  ).then( res => awsLocs = res ));
+    promises.push( getGHTestLocs( authData, td  ).then( res => ghLocs = res ));
     await Promise.all( promises );
 
-    preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs );
+    preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs, ghLocs );
 
     // Post-ingest
     //     * All pre-ingest tests remain true
