@@ -11,6 +11,13 @@ var ghSafe  = ghUtils.githubSafe;
 
 const testData = require( './testData' );
 
+// NOTE:
+// Sanity checker's main job is to inform when things have gone wrong.
+// Sanity does some limited repair, however:
+//   1) often there are several possible causes that are hard to distinguish
+//   2) during regression testing, a single failure will typically cause a chain of failures down the line
+//   3) it is very involved to manage repairs beyond a single failure.
+// In light of the above, the job is to warn, then recommend common causes to user.  Consider repair down the road.
 
 
 async function getGHTestLabels( authData, td ) {
@@ -43,8 +50,13 @@ async function getAWSTestLocs( authData, td ) {
 }
 
 
-function showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs ) {
+function showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs, preview ) {
 
+    if(( ghLabels.length + ghIssues.length + awsPeqs.length + awsLocs.length > 0 ) && typeof preview !== 'undefined' ) {
+	console.log( "----------------------" );
+	console.log( preview );
+    }
+    
     if( ghLabels.length > 0 ) {
 	console.log( "GH Labels: " );
 	for( var label of ghLabels ) {
@@ -81,7 +93,103 @@ function showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs ) {
     }
 }
 
-function preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs, ghLocs ) {
+// Active peq in AWS with no matching issue id in GH
+// Possible causes, single failure:
+//  - missing notification:  remove issue                                          remedy: deleteIssue logic
+//  - missing notification:  remove/edit label  x no.  issue would still exist
+//  - missing notification:  remove card        x no.  issue would still exist
+//  - missing notification:  remove proj/col    x no.  remove proj/col generates remove issue.
+//  - create split issue failed                 x no.  requires multiple failures in resolve:rebuildIssue/rebuildCard
+//  - missing aws update:    aws update lost    o does paction exist?  if not, single fail points to GH
+//  - missing notification:  transfer           o is issueId in other owned repos?
+async function repairPeqNoIss( authData, td, peqNoIss ) {
+
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+
+    let repos = [];
+    await gh.getReposGQL( authData.pat, td.GHOwner, repos, -1 );
+
+    // XXX Note: ceFlutter deactivate peq will need to run ceServer deleteIssue/Card logic.
+    for( var peq of peqNoIss ) {
+	let foundAltCause = false;
+	// Check for paction
+	let issuePacts = pacts.filter( pact => pact.Subject[0] == peq.PEQId && pact.Action == config.PACTACT_DEL );
+	if( issuePacts != -1 ) {
+	    // If a pact was sent, then we got the notification.
+	    console.log( "Peq:", peq.GHIssueId, peq.GHIssueTitle, "has corresponding peq action for AWS.  This raises the odds that AWS missed an update." );
+	    foundAltCause = true;
+	    // Note.  If this was deletion of ACCR issue, ceServer would reconstruct the GH issue and move the card to unclaimed:accr.
+	    //        If it was deleted again, the aws peq would be inactive.  So in neither case should it trigger this condition.
+	    console.log( "   Remediation: If the issue was removed from Github on purpose, edit the PEQ in ceFlutter to deactivate it." );
+	}
+
+	// get full issue by id
+	for( var repo of repos ) {
+	    let issue = [];
+	    await gh.getRepoIssueGQL( authData.pat, td.GHOwner, repo, peq.GHIssueId, issue, -1 );
+	    if( issue.length > 0 ) {
+		console.log( "Peq:", peq.GHIssueId, peq.GHIssueTitle, "was found in repo:", repo, "implying a transfer took place." );
+		foundAltCause = true;
+		console.log( "   Remediation: If the issue was transferred to another repo, edit the PEQ in ceFlutter for this repo to deactivate it." );
+	    }
+	}
+
+	if( !foundAltCause ) {
+	    console.log( "Peq:", peq.GHIssueId, peq.GHIssueTitle, "was not found in another Github repo, nor is there evidence of a missing update for AWS." );
+	    console.log( "   It is likely that ceServer did not receive Github's delete notification. " );
+	    console.log( "   Remediation: If the issue was removed from Github on purpose, edit the PEQ in ceFlutter to deactivate it." );
+	}
+
+    }
+
+}
+
+// Active peq in aws with matching issue in GH, but no peq label
+// Possible causes, single failure:
+//  - missing notification:  remove/edit label                                     remedy: make inactive if not accr
+//  - missing aws update:    aws update lost    o does paction exist?  if not, single fail points to GH
+//  - create split issue failed                 ? check possibilities
+function repairPeqNoLab( peqNoLab ){
+}
+
+// Inactive peq in aws, but matching issueId in GH with peq label
+// Possible causes, single failure:
+//  - missing notification:  add peq label after remove 
+//  - missing aws update:    aws update lost    o does paction exist?  if not, single fail points to GH
+function repairPeqInactiveBut( peqInactiveBut ){
+}
+
+// Issue with peq label in GH, no matching active peq in aws
+// This differs from peqInactiveBut in cases where aws peq was never created so no matching id
+// Possible causes, single failure:
+//  - transfer in:                              Most likely.  xfer is now keeping labels.
+//  - missing notification:  add peq label 1st time
+//  - missing notification:  open issue
+//  - missing notification:  make project card  x no.  would at least be in unclaimed, single failure
+function repairIssNoPeq( issNoPeq ){
+}
+
+// Issue with peq label in GH, active in aws but no matching proj/col in aws
+// Possible causes, single failure:
+//  - transfer in:                              Most likely.  xfer is now keeping labels.
+//  - missing notification:  create col/proj    ? confirm ceServer code path here
+//  - missing notification:  edit col/proj      
+//  - missing notification:  delete card        o does project card exist in GH?  is GH col/proj defined?
+//  - missing notification:  move card          x no.  would at least see proj col after create
+//  - missing aws update:    aws update lost    o does paction exist?  
+function repairIssNoLoc( issNoLoc ){
+}
+
+// Active loc in aws with no matching loc in gh
+// Possible causes, single failure:
+//  - missing notification:  edit col/proj
+//  - missing notification:  delete col/proj    
+//  - missing aws update:    aws update lost    o does paction exist?  this is a theme
+function repairLocNoLoc( locNoLoc ){
+}
+
+
+async function preIngestCheck( authData, td, ghLabels, ghIssues, awsPeqs, awsLocs, ghLocs ) {
 
     showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs );
     console.log( "\n\n\n");
@@ -131,7 +239,8 @@ function preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs, ghLocs 
 	    }
 	}
     }
-    
+
+    // XXX roundabout way to compute there.  The first section is unnecessary, it is not a bug
     // AWS(proj,col where active=true) has GH:(issue with peq label and matching proj,col,repo)
     let locNoIss = [];
     let locNoLoc = [];
@@ -153,22 +262,27 @@ function preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs, ghLocs 
     }
     
     console.log( "SANITY", "peqNoIss", peqNoIss.length.toString(), "Number of peqs with no matching issues." );
-    showRaw( authData, [], [], peqNoIss, [] );
-
     console.log( "SANITY", "peqNoLab", peqNoLab.length.toString(), "Number of peqs with no matching peq labels." );
-    showRaw( authData, [], [], peqNoLab, [] );
-
     console.log( "SANITY", "peqInactiveBut", peqInactiveBut.length.toString(), "Number of inactive peqs but with issues with peq labels." );
-    showRaw( authData, [], [], peqInactiveBut, [] );
-
     console.log( "SANITY", "issNoPeq", issNoPeq.length.toString(), "Number of issues with no active peqs." );
-    showRaw( authData, [], issNoPeq, [], [] );
-
     console.log( "SANITY", "issNoLoc", issNoLoc.length.toString(), "Number of issues with no matching loc." );
-    showRaw( authData, [], issNoLoc, [], [] );
-
     console.log( "SANITY", "locNoLoc", locNoLoc.length.toString(), "Number of locs with no matching issue or ghLoc." );
-    showRaw( authData, [], [], [], locNoLoc );
+
+    showRaw( authData, [], [], peqNoIss, [], "PeqNoIss" );
+    showRaw( authData, [], [], peqNoLab, [], "PeqNoLab" );
+    showRaw( authData, [], [], peqInactiveBut, [], "PeqInactiveBut" );
+    showRaw( authData, [], issNoPeq, [], [], "IssNoPeq" );
+    showRaw( authData, [], issNoLoc, [], [], "IssNoLoc" );
+    showRaw( authData, [], [], [], locNoLoc, "LocNoLoc" );
+
+    // POSSIBLE REPAIRS
+
+    await repairPeqNoIss( authData, td, peqNoIss );
+    repairPeqNoLab( peqNoLab );
+    repairPeqInactiveBut( peqInactiveBut );
+    repairIssNoPeq( issNoPeq );
+    repairIssNoLoc( issNoLoc );
+    repairLocNoLoc( locNoLoc );
     
 }
 
@@ -220,7 +334,7 @@ async function runTests() {
     promises.push( getGHTestLocs( authData, td  ).then( res => ghLocs = res ));
     await Promise.all( promises );
 
-    preIngestCheck( authData, ghLabels, ghIssues, awsPeqs, awsLocs, ghLocs );
+    await preIngestCheck( authData, td, ghLabels, ghIssues, awsPeqs, awsLocs, ghLocs );
 
     // Post-ingest
     //     * All pre-ingest tests remain true
