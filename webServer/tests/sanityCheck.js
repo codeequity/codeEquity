@@ -102,10 +102,10 @@ function showRaw( authData, ghLabels, ghIssues, awsPeqs, awsLocs, preview ) {
 //  - create split issue failed                 x no.  requires multiple failures in resolve:rebuildIssue/rebuildCard
 //  - missing aws update:    aws update lost    o does paction exist?  if not, single fail points to GH
 //  - missing notification:  transfer           o is issueId in other owned repos?
-async function repairPeqNoIss( authData, td, peqNoIss ) {
+async function repairPeqNoIss( authData, td, pacts, peqNoIss ) {
 
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-
+    if( peqNoIss == -1 ) { return; }
+    
     let repos = [];
     await gh.getReposGQL( authData.pat, td.GHOwner, repos, -1 );
 
@@ -147,16 +147,56 @@ async function repairPeqNoIss( authData, td, peqNoIss ) {
 // Active peq in aws with matching issue in GH, but no peq label
 // Possible causes, single failure:
 //  - missing notification:  remove/edit label                                     remedy: make inactive if not accr
-//  - missing aws update:    aws update lost    o does paction exist?  if not, single fail points to GH
-//  - create split issue failed                 ? check possibilities
+//  - missing aws update:    aws update lost    x no.  on remove or edit, ceServer drives mods, would require multiple failures.
+//  - create split issue failed                 x no, as with peqNoIss
 function repairPeqNoLab( peqNoLab ){
+    if( peqNoLab == -1 ) { return; }
+
+    for( var peq of peqNoLab ) {
+	let foundAltCause = false;
+
+	// Check for paction?  No.  On remove or edit peq label, ceServer will
+	// carry out multiple actions, like creating a new label, updating labels, rejecting delete, and so on.
+	// Hard to see how a single missing aws update would lead to peqNoLab.
+
+	if( !foundAltCause ) {
+	    console.log( "Peq:", peq.GHIssueId, peq.GHIssueTitle, "was reviewed." );
+	    console.log( "   It is likely that ceServer did not receive Github's delete or edit label (away from PEQ) notification. " );
+	    console.log( "   Remediation: A label can impact many issues.  If the label was deleted or edited intentionally,");
+	    console.log( "                re-create the original label in GitHub, then delete (or edit) it again." );
+	}
+	
+    }    
 }
 
 // Inactive peq in aws, but matching issueId in GH with peq label
 // Possible causes, single failure:
 //  - missing notification:  add peq label after remove 
 //  - missing aws update:    aws update lost    o does paction exist?  if not, single fail points to GH
-function repairPeqInactiveBut( peqInactiveBut ){
+function repairPeqInactiveBut( pacts, peqInactiveBut ){
+
+    if( peqInactiveBut == -1 ) { return; }
+
+    for( var peq of peqInactiveBut ) {
+	let foundAltCause = false;
+
+	// Check for paction
+	let issuePacts = pacts.filter( pact => pact.Subject[0] == peq.PEQId && pact.Action == config.PACTACT_ADD );
+	if( issuePacts != -1 ) {
+	    // If a pact was sent, then we got the notification.
+	    console.log( "Peq:", peq.GHIssueId, peq.GHIssueTitle, "has corresponding peq action for AWS.  This raises the odds that AWS missed an update." );
+	    console.log( "   Remediation: In Github, remove the PEQ label from this issue, then add it again." );
+	    foundAltCause = true;
+	}
+
+	if( !foundAltCause ) {
+	    console.log( "Peq:", peq.GHIssueId, peq.GHIssueTitle, "was reviewed." );
+	    console.log( "   It is likely that ceServer did not receive Github's add label notification. " );
+	    console.log( "   Remediation: In Github, remove the PEQ label from this issue, then add it again." );
+	}
+	
+    }
+    
 }
 
 // Issue with peq label in GH, no matching active peq in aws
@@ -167,6 +207,18 @@ function repairPeqInactiveBut( peqInactiveBut ){
 //  - missing notification:  open issue
 //  - missing notification:  make project card  x no.  would at least be in unclaimed, single failure
 function repairIssNoPeq( issNoPeq ){
+    if( issNoPeq == -1 ) { return; }
+
+    for( var iss of issNoPeq ) {
+	let foundAltCause = false;
+
+	if( !foundAltCause ) {
+	    console.log( "Issue:", iss.issueId, iss.issueTitle, "was reviewed." );
+	    console.log( "   The most likely failure at this point in time is that the issue was transferred in from another repository." );
+	    console.log( "   Github began keeping labels on transferred issues in Feb 2022.  Documentation indicates the opposite should happen.  Wait and see. " );
+	    console.log( "   Remediation: In Github, remove the PEQ label from this issue, then add it again." );
+	}
+    }
 }
 
 // Issue with peq label in GH, active in aws but no matching proj/col in aws
@@ -174,18 +226,51 @@ function repairIssNoPeq( issNoPeq ){
 //  - transfer in:                              Most likely.  xfer is now keeping labels.
 //  - missing notification:  create col/proj    ? confirm ceServer code path here
 //  - missing notification:  edit col/proj      
-//  - missing notification:  delete card        o does project card exist in GH?  is GH col/proj defined?
+//  - missing notification:  delete card        o does project card exist in GH?  is GH col/proj defined?  i.e. violate 1:1?
 //  - missing notification:  move card          x no.  would at least see proj col after create
 //  - missing aws update:    aws update lost    o does paction exist?  
 function repairIssNoLoc( issNoLoc ){
+    if( issNoLoc == -1 ) { return; }
+    for( var iss of issNoLoc ) {
+	let foundAltCause = false;
+
+	if( !foundAltCause ) {
+	    console.log( "Issue:", iss.issueId, iss.issueTitle, "was reviewed." );
+	    console.log( "   The most likely failure at this point in time is that the issue was transferred in from another repository." );
+	    console.log( "   Github began keeping labels on transferred issues in Feb 2022.  Documentation indicates the opposite should happen.  Wait and see. " );
+	    console.log( "   Remediation: In Github, remove the PEQ label from this issue, then add it again." );
+	}
+    }
 }
 
 // Active loc in aws with no matching loc in gh
 // Possible causes, single failure:
 //  - missing notification:  edit col/proj
-//  - missing notification:  delete col/proj    
+//  - missing notification:  delete col/proj    GH will send a slew of delete issue/card.  These can be treated as empty, meaning no PActs sent for the del col.
 //  - missing aws update:    aws update lost    o does paction exist?  this is a theme
-function repairLocNoLoc( locNoLoc ){
+function repairLocNoLoc( pacts, locNoLoc ){
+    if( locNoLoc == -1 ) { return; }
+    for( var loc of locNoLoc ) {
+	let foundAltCause = false;
+
+	// Check for paction
+	let locPacts = pacts.filter( pact => ( pact.Subject[0] == loc.GHColumnId && pact.Note == "Column rename" ) ||
+				             ( pact.Subject[0] == loc.GHProjectId && pact.Note == "Project rename" ) );  // XXX formalize
+	if( locPacts != -1 ) {
+	    // If a pact was sent, then we got the notification.
+	    console.log( "Loc:", loc.GHProjectName, loc.GHColumnName, "has corresponding peq action for AWS.  This raises the odds that AWS missed an update." );
+	    console.log( "   Remediation: In ceFlutter, update the column or project that was edited." );
+	    foundAltCause = true;
+	}
+
+	if( !foundAltCause ) {
+	    console.log( "Loc:", loc.GHProjectName, loc.GHColumnName, "was reviewed." );
+	    console.log( "   It is likely that ceServer did not receive Github's edit or delete notification. " );
+	    console.log( "   Remediation: In ceFlutter, update the column or project that was edited." );
+	}
+	
+    }
+
 }
 
 
@@ -276,13 +361,17 @@ async function preIngestCheck( authData, td, ghLabels, ghIssues, awsPeqs, awsLoc
     showRaw( authData, [], [], [], locNoLoc, "LocNoLoc" );
 
     // POSSIBLE REPAIRS
-
-    await repairPeqNoIss( authData, td, peqNoIss );
+    // All share the possibility of aws missing an update.
+    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    
+    await repairPeqNoIss( authData, td, pacts, peqNoIss );
     repairPeqNoLab( peqNoLab );
-    repairPeqInactiveBut( peqInactiveBut );
+    repairPeqInactiveBut( pacts, peqInactiveBut );
     repairIssNoPeq( issNoPeq );
     repairIssNoLoc( issNoLoc );
-    repairLocNoLoc( locNoLoc );
+    repairLocNoLoc( pacts, locNoLoc );
+
+    console.log( "\n\n" );
     
 }
 

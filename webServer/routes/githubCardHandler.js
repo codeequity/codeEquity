@@ -152,23 +152,24 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    
 	    let newColName = gh.getColumnName( authData, ghLinks, pd.GHFullName, newColId );
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
+	    console.log( authData.who, "attempting to move card to", newColName );
 
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": cardId } );
 	    if( links == -1 || links[0].GHColumnId == -1 ) {
 		if( newNameIndex > config.PROJ_PROG ) {
 		    // Don't wait
-		    console.log( "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
+		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    gh.moveCard( authData, cardId, oldColId );
 		}
-		else { console.log( "Non-PEQ cards are not tracked.  Ignoring.", cardId ); }
+		else { console.log( authData.who, "Non-PEQ cards are not tracked.  Ignoring.", cardId ); }
 		return;
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
 
 	    // Do not allow move out of ACCR
 	    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
-		console.log( "WARNING.  Can't move Accrued issue.  Move not processed.", cardId );
+		console.log( authData.who, "WARNING.  Can't move Accrued issue.  Move not processed.", cardId );
 		gh.moveCard( authData, cardId, oldColId );
 		return;
 	    }
