@@ -167,8 +167,16 @@ var githubUtils = {
 	return getRepoLabelsGQL( PAT, owner, repo, data, cursor );
     },
 
+    getReposGQL: function( PAT, owner, data, cursor ) {
+	return getReposGQL( PAT, owner, data, cursor );
+    },
+
     getRepoIssuesGQL: function( PAT, owner, repo, data, cursor ) {
 	return getRepoIssuesGQL( PAT, owner, repo, data, cursor );
+    },
+
+    getRepoIssueGQL: function( PAT, owner, repo, issueDatabaseId, data, cursor ) {
+	return getRepoIssueGQL( PAT, owner, repo, issueDatabaseId, data, cursor );
     },
 
     getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
@@ -661,6 +669,54 @@ async function getRepoLabelsGQL( PAT, owner, repo, data, cursor ) {
     }
 }
 
+async function getReposGQL( PAT, owner, data, cursor ) {
+    const query1 = `
+    query baseConnection($queryString: String!) 
+    {
+        repositoryOwner( login: $queryString ) {
+            repositories (first:100) {
+               pageInfo { hasNextPage, endCursor },
+               edges {node{ id name }}}
+        }}`;
+    
+    const queryN = `
+    query nthConnection($queryString: String!, $cursor: String!) 
+    {
+        repositoryOwner( login: $queryString ) {
+            repositories (first:100) {
+               pageInfo { hasNextPage, endCursor },
+               edges {node{ id name isArchived }}}
+        }}`;
+
+    
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"queryString": owner } : {"queryString": owner, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let issues = -1;
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "getReposGQL", e, getReposGQL, PAT, owner, data, cursor ));  // probably never seen
+
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	await errorHandler( "getReposGQL", res, getReposGQL, PAT, owner, data, cursor ); 
+    }
+    else {
+	let repos = res.data.repositoryOwner.repositories;
+	for( let i = 0; i < repos.edges.length; i++ ) {
+	    const repo  = repos.edges[i].node;
+	    let datum = {};
+	    datum.id    = repo.id;
+	    datum.name  = repo.name;
+	    data.push( datum );
+	}
+	// Wait.  Data is modified
+	if( repos != -1 && repos.pageInfo.hasNextPage ) { await getReposGQL( PAT, owner, data, repos.pageInfo.endCursor ); }
+    }
+}
+
+
+
 async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
     const query1 = `
     query baseConnection($owner: String!, $repo: String!) 
@@ -670,11 +726,17 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 		pageInfo { hasNextPage, endCursor },
 		edges { node {
 		    id databaseId url number title
+		    projectCards(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { databaseId 
+                                       project { databaseId name } 
+                                       column { databaseId name } }}
+                    },
 		    labels(first: 100) {
 			pageInfo { hasNextPage, endCursor },
-			edges { node { id name description }}}
-
-		}}}}}`;
+			edges { node { id name description }}
+                    }
+     }}}}}`;
     
     const queryN = `
     query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
@@ -684,12 +746,17 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 		pageInfo { hasNextPage, endCursor },
 		edges { node {
 		    id databaseId url number title
+		    projectCards(first: 100) {
+			pageInfo { hasNextPage, endCursor },
+			edges { node { databaseId 
+                                       project { databaseId name } 
+                                       column { databaseId name } }}
+                    },
 		    labels(first: 100) {
 			pageInfo { hasNextPage, endCursor },
-			edges { node { id name description }}}
-
-		}}}}}`;
-
+			edges { node { id name description }}
+                    }
+     }}}}}`;
     
     let query     = cursor == -1 ? query1 : queryN;
     let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
@@ -708,11 +775,20 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 	for( let i = 0; i < issues.edges.length; i++ ) {
 	    const issue  = issues.edges[i].node;
 	    assert( !issue.labels.pageInfo.hasNextPage );
+	    assert( !issue.projectCards.pageInfo.hasNextPage );  
 	    let datum = {};
 	    datum.issueId     = issue.databaseId;
 	    datum.issueURL    = issue.url
 	    datum.issueNumber = issue.number;
 	    datum.issueTitle  = issue.title;
+	    // peq issues are 1:1, ignore the rest
+	    if( issue.projectCards.edges.length == 1 ) {
+		const card = issue.projectCards.edges[0].node;
+		datum.projectId   = card.project.databaseId;
+		datum.projectName = card.project.name;
+		datum.columnId    = card.column.databaseId;
+		datum.columnName  = card.column.name;
+	    }
 	    let labels = [];
 	    for( let j = 0; j < issue.labels.edges.length; j++ ) {
 		const label = issue.labels.edges[j].node;
@@ -730,6 +806,65 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
     }
 }
 
+// GH has three reference types for an issue: number, databaseId, and nodeId.
+//    Oddly, the databaseId, which is described as "the primary key from the database" is the worst choice to keep,
+//           since this is the only reference that does not have a direct api to retrieve it.  Bah.
+//           Unfortunately, this is the reference kept by CodeEquity.
+//    Seems that best way to do this would be with search.  But search 'query' is hardly documented at all,
+//           and search terms are well hidden.  So, for example, below fails because databaseId is not queriable?
+//        search( first:1, type: ISSUE, query: $queryString ) {
+//            edges{ node ... on Issue { id databaseId url number title }}
+//        queryString: "repo:ariCETester/ceTesterAlt is:issue databaseId:1190745883"
+//    So.. do this the hard way.  grunk.
+
+async function getRepoIssueGQL( PAT, owner, repo, issueDatabaseId, data, cursor ) {
+    const query1 = `
+    query baseConnection($owner: String!, $repo: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    issues(first: 100) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node { id databaseId url number title }}
+     }}}`;
+    
+    const queryN = `
+    query nthConnection($owner: String!, $repo: String!, $cursor: String!) 
+    {
+	repository(owner: $owner, name: $repo) {
+	    issues(first: 100) {
+		pageInfo { hasNextPage, endCursor },
+		edges { node { id databaseId url number title }}
+     }}}`;
+    
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo } : {"owner": owner, "repo": repo, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let issues = -1;
+    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "getRepoIssueGQL", e, getRepoIssueGQL, PAT, owner, repo, issueDatabaseId, data, cursor ));  // probably never seen
+
+    // postGH masks errors, catch here.
+    if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
+	await errorHandler( "getRepoIssueGQL", res, getRepoIssueGQL, PAT, owner, repo, issueDatabaseId, data, cursor ); 
+    }
+    else {
+	issues = res.data.repository.issues;
+	for( let i = 0; i < issues.edges.length; i++ ) {
+	    const issue  = issues.edges[i].node;
+	    if( issue.databaseId == issueDatabaseId ) {
+		let datum = {};
+		datum.issueId     = issue.databaseId;
+		datum.issueURL    = issue.url
+		datum.issueNumber = issue.number;
+		datum.issueTitle  = issue.title;
+		data.push( datum );
+	    }
+	}
+	// Wait.  Data is modified
+	if( issues != -1 && issues.pageInfo.hasNextPage ) { await getRepoIssueGQL( PAT, owner, repo, issueDatabaseId, data, issues.pageInfo.endCursor ); }
+    }
+}
 
 // GraphQL to init link table
 // Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.

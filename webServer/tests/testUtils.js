@@ -1011,7 +1011,8 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     if( !assignCnt ) {
-	let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+	let tCard = [1,2,3]; 
+	if( cards != -1 ) { tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false ); }
 	subTest = checkEq( tCard.length, 0,                           subTest, "No unclaimed" );
     }
 
