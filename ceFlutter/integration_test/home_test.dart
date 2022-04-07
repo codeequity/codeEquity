@@ -88,6 +88,9 @@ void main() {
          expect( await addGHProject( tester ), true );
          expect( await addRepo( tester ), true );
 
+         expect( await verifyOnHomePage( tester ), true );
+         await logout( tester );         
+
          report( 'Homepage Basics' );
       });
 }

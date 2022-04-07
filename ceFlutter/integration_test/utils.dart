@@ -151,6 +151,24 @@ Future<bool> verifyOnAddGHPage( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
+   // Top bar
+   expect( find.byIcon( customIcons.home_here ), findsOneWidget );
+   expect( find.byIcon( customIcons.loan ),      findsOneWidget );   // XXX rename these icons!
+   expect( find.byIcon( customIcons.profile ),   findsOneWidget );
+   expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
+
+   // framing
+   expect( find.text( 'ariCETester/CodeEquityTester' ),    findsOneWidget );  
+   expect( find.text( 'Approvals' ),                       findsOneWidget );  
+   expect( find.text( 'PEQ Summary' ),                     findsOneWidget );  
+   expect( find.text( 'Contributors' ),                    findsOneWidget );  
+   expect( find.text( 'Equity Plan' ),                     findsOneWidget );  
+   expect( find.text( 'Agreements' ),                      findsOneWidget );  
+   
+   return true;
+}
+
 void report( descr, {group = false} ) {
    final pre  = group ? "ceFlutter Test Group: " : "Subtest: ";
    final post = group ? "" : " completed.";
