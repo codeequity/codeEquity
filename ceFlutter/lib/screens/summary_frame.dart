@@ -186,7 +186,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    
 
    Widget getAllocation( context ) {
-      
+      print( "SF: Remake allocs" );
       final buttonWidth = 100;
       
       List<List<Widget>> allocs = [];

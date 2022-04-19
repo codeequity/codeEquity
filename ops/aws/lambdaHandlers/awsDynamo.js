@@ -49,6 +49,10 @@ exports.handler = (event, context, callback) => {
     }
 
     console.log('Received event: ', event.body);
+    console.log('Authorization: ', event.requestContext.authorizer.claims['cognito:username'],  );
+    console.log('Authorization: ', event.requestContext.authorizer.claims['auth_time'],  );
+    console.log('Authorization: ', event.requestContext.authorizer.claims['exp'],  );
+    console.log('Authorization: ', event.requestContext.authorizer.claims['sub'],  );
 
     const username = event.requestContext.authorizer.claims['cognito:username'];
     const rb = JSON.parse(event.body);

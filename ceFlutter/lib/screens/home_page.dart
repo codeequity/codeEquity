@@ -74,9 +74,12 @@ class _CEHomeState extends State<CEHomePage> {
    Widget _makeRepoChunk( String repoName ) {
       final textWidth = appState.screenWidth * .4;
       return GestureDetector(
-         onTap: ()
+         onTap: () async
          {
-            appState.selectedRepo = repoName;
+            appState.selectedRepo = repoName;  
+
+            await reloadRepo( context, container );
+            
             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
             Navigator.push( context, newPage );
          },

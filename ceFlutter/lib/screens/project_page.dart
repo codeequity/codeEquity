@@ -104,9 +104,9 @@ class _CEProjectState extends State<CEProjectPage> {
          // XXX move standard pixel sizes to appstate, out of utils and elsewhere.
          // Rebuild summaryFrame upon peqUpdate, else previous pageStorageKeys don't match new allocs 
          Widget summaryFrameWidget = CESummaryFrame(
-            appContainer: container,
-            pageStamp: pageStamp,
-            frameHeightUsed: 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
+            appContainer:           container,
+            pageStamp:              pageStamp,
+            frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
             updateCallback:         _updateCallback,
             updateCompleteCallback: _updateCompleteCallback,
             allocExpansionCallback: _allocExpansionCallback );
