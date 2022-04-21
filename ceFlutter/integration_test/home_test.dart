@@ -93,5 +93,24 @@ void main() {
 
          report( 'Homepage Basics' );
       });
+
+   // XXX
+   // Check that GHAccounts match what should show up for different testers when login/logout/login/relogin
+   testWidgets('Homepage GHAccount Consistency', skip:skip, (WidgetTester tester) async {
+         
+         await restart( tester );
+         
+         bool known = true;
+         await login( tester, known );
+         await login( tester, known, tester2:true );
+
+         expect( await addGHProject( tester ), true );
+         expect( await addRepo( tester ), true );
+
+         expect( await verifyOnHomePage( tester ), true );
+         await logout( tester );         
+
+         report( 'Homepage GHAccount Consistency' );
+      });
 }
      

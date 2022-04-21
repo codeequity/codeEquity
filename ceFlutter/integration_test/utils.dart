@@ -14,8 +14,10 @@ import 'package:ceFlutter/main.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 
-const TESTER_NAME   = "rmusick2000";
+const TESTER_NAME   = "ariCETester";
+const TESTER2_NAME  = "connieCE";     // READ ONLY account for these tests
 const TESTER_PASSWD = "passWD123";
+
 
 // https://medium.com/flutter-community/testing-flutter-ui-with-flutter-driver-c1583681e337
 
@@ -176,7 +178,7 @@ void report( descr, {group = false} ) {
 }
 
 
-Future<bool> login( WidgetTester tester, known ) async {
+Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
 
    expect( await verifyOnLaunchPage( tester ), true );
 
@@ -196,7 +198,7 @@ Future<bool> login( WidgetTester tester, known ) async {
    expect( login2Button, findsOneWidget );
    
    // Enter u/p and attempt to login
-   String tname = TESTER_NAME;
+   String tname = tester2 ? TESTER2_NAME : TESTER_NAME;
    tname += known ? "" : "1234321";
    await tester.enterText( userName, tname );
    await tester.pumpAndSettle();

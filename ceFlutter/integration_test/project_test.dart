@@ -118,9 +118,9 @@ void main() {
          report( 'Project Basics' );
       });
 
+
    testWidgets('Project contents', skip:skip, (WidgetTester tester) async {
 
-         // XXX resolve ari vs rm2k first
          // peq summary
          // update peq summary
          report( 'Project contents' );
