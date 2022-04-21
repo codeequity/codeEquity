@@ -11,6 +11,13 @@ from os import path
 from subprocess import call, check_output, Popen, PIPE, STDOUT
 import shlex
 
+# to keep chromedriver up to date(r)
+# pip install webdriver-manager
+# pip install selenium
+#from selenium import webdriver
+#from webdriver_manager.chrome import ChromeDriverManager
+
+
 #from threading import Thread
 #import concurrent.futures
 
@@ -45,7 +52,12 @@ def verifyEmulator():
     # flutter devices always shows chrome web-javascript, no matter if chromedriver is actually running.
     goodConfig = True
     if( call("ps -efl | grep chromedriver | grep -v grep", shell=True) != 0 ) :
-        call( "~/chromeDriver/chromedriver --port=4444&", shell=True )
+
+        # hmm painful to run this in the background.
+        # old chromedriver?  run below, then: cd; ln -s /home/musick/.wdm/drivers/chromedriver/linux64/100.0.4896.60/chromedriver
+        # driver = webdriver.Chrome(ChromeDriverManager().install())
+        call( "chromedriver --port=4444&", shell=True )
+        
         # XXX Can we detect when this is ready?
         # XXX Can auto-wipe user data?
         time.sleep(10)
@@ -111,6 +123,8 @@ def runTest( testName, noBuild = True, optimized = False ):
 
 """
 Common failure modes: 
+1. Chromedriver is out of date.  
+   Uncomment selenium and driver-related lines, rerun, relink, good to go.  Yes, this could be automated.
 
 """
 def runTests():
@@ -119,14 +133,14 @@ def runTests():
 
     resultsSum = ""
 
-    tsum = runTest( "launch_test.dart", False, False )
+    # tsum = runTest( "launch_test.dart", False, False )
+    # resultsSum  += tsum
+
+    #tsum = runTest( "home_test.dart", False, False )
+    #resultsSum  += tsum
+
+    tsum = runTest( "project_test.dart", False, False )
     resultsSum  += tsum
-
-    #tsum = runTest( "login_pass_test.dart", False, False )
-    #resultsSum  += tsum
-
-    #tsum = runTest( "login_fail_test.dart", False, False )
-    #resultsSum  += tsum
 
     #tsum = runTest( "content.dart", False )
     #resultsSum  += tsum

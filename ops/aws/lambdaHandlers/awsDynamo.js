@@ -49,6 +49,10 @@ exports.handler = (event, context, callback) => {
     }
 
     console.log('Received event: ', event.body);
+    console.log('Authorization: ', event.requestContext.authorizer.claims['cognito:username'],  );
+    console.log('Authorization: ', event.requestContext.authorizer.claims['auth_time'],  );
+    console.log('Authorization: ', event.requestContext.authorizer.claims['exp'],  );
+    console.log('Authorization: ', event.requestContext.authorizer.claims['sub'],  );
 
     const username = event.requestContext.authorizer.claims['cognito:username'];
     const rb = JSON.parse(event.body);
@@ -1124,7 +1128,7 @@ async function getPEQActionsFromGH( ghUserName ) {
     return gPromise.then((peqas) => peqas );
 }
 
-// Conditional update would have been nice as an extra check, but dynamo has issues with expressoinAttrVal vs. conditionalExpression
+// Conditional update would have been nice as an extra check, but dynamo has issues with expressionAttrVal vs. conditionalExpression
 // Is OK without it, since all peqa have already matched the condition.
 async function updatePEQActions( peqa, ceUID ) {
     
@@ -1136,8 +1140,8 @@ async function updatePEQActions( peqa, ceUID ) {
             ':ceuid':  ceUID,
         }
     };
-    console.log( "update peqa where gh is", peqa.GHUserName, peqa.PEQActionId, ceUID);
-    assert( peqa.CEUID == "" );
+    console.log( "update peqa where gh is", peqa.GHUserName, peqa.PEQActionId, peqa.CEUID, ceUID);
+    assert( peqa.CEUID == "" || peqa.CEUID == ceUID );
 
     let uPromise = bsdb.update( paramsU ).promise();
     return uPromise.then(() => true );

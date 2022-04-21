@@ -38,7 +38,7 @@ class _CELoginState extends State<CELoginPage> {
 
            Stopwatch stopwatch = new Stopwatch()..start();
            appState.cogUser = await appState.cogUserService.login( userName, userPassword );
-           print('Cog Login executed in ${stopwatch.elapsed}');
+           print('Cog Login executed in ${stopwatch.elapsed} for ' + userName );
            stopwatch.reset();
            bool success = await container.finalizeUser( false );
            print('container.finalizeUser executed in ${stopwatch.elapsed}');           

@@ -186,7 +186,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    
 
    Widget getAllocation( context ) {
-      
+      print( "SF: Remake allocs" );
       final buttonWidth = 100;
       
       List<List<Widget>> allocs = [];
@@ -198,7 +198,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
-                        "Update PEQ summary?",
+                        "Update PEQ Summary?",
                         buttonWidth, 
                         () async
                         {

@@ -109,7 +109,7 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
                     title: new Text( scrollHeader ),
                     content: scrollBody,
                     actions: <Widget>[
-                       new FlatButton(
+                       new TextButton(
                           key: Key( 'dismiss' ),
                           child: new Text("Dismiss"),
                           onPressed: dismissFunc )
@@ -125,11 +125,11 @@ void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFu
                     title: new Text( confirmHeader ),
                     content: new Text( confirmBody ),
                     actions: <Widget>[
-                       new FlatButton(
+                       new TextButton(
                           key: Key( 'confirmContinue' ),
                           child: new Text("Continue"),
                           onPressed: okFunc ),
-                       new FlatButton(
+                       new TextButton(
                           key: Key( 'cancelContinue' ),
                           child: new Text("Cancel"),
                           onPressed: cancelFunc )

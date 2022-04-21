@@ -957,7 +957,7 @@ void processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context,
 //   notice:'PEQ label edit attempt'
 
 Future<void> updatePEQAllocations( repoName, context, container ) async {
-   print( "Updating allocations for ghRepo" );
+   print( "Updating allocations for ghRepo: " + repoName );
 
    final appState  = container.state;
 
@@ -1025,6 +1025,8 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
    print( "Complete myLoc update" );
    appState.myGHLinks  = await myLocs;
+   if( appState.myGHLinks == null ) { return; }
+   
    await updateGHNames( todos, appState );
 
    List<Future> dynamo = [];

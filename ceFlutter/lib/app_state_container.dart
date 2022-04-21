@@ -141,11 +141,13 @@ class _AppStateContainerState extends State<AppStateContainer> {
 
   Future<bool> finalizeUser( newUser ) async {
      assert( state.newUser == newUser );
-     print( "Finalize User" );
+     String name  = state.cogUser.name ?? "";
+     String email = state.cogUser.email ?? "";
+     print( "Finalize User " + name + " " + email );
      
      // XXX ooh temp workaround only
      final cookie = await _db.collection('userNames').doc('userName').get();
-     // print( "XXX " + cookie.toString() );
+     // print( "XXX erm... " + cookie.toString() );
      
      if( state.cogUser.confirmed ) {
         await getAuthTokens( false );

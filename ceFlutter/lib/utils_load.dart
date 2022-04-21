@@ -228,6 +228,7 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
    return res;
 }
 
+// Called from ingest, which has up to date linkage
 // Guide is [colId, oldName, newName]
 Future<bool> updateColumnName( context, container, guide ) async {
 
@@ -262,6 +263,7 @@ Future<bool> updateColumnName( context, container, guide ) async {
    }
 }
 
+// Called from ingest, which has up to date linkage
 // Guide is [projId, oldName, newName]
 Future<bool> updateProjectName( context, container, guide ) async {
 
@@ -430,58 +432,56 @@ Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async 
    }
 }
 
+// Called each time click different repo on homepage
+Future<void> reloadRepo( context, container ) async {
+   
+   final appState  = container.state;
+
+   String ghRepo = appState.selectedRepo;
+   String uid    = appState.userId;
+   print( "Loading " + ghRepo + " for " + uid );
+
+   // XXX could be thousands... too much.  Just get uningested, most recent, etc.
+   // Get all PEQ data related to the selected repo.  
+   appState.myPEQs = await fetchPEQs( context, container,
+                                      '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
+   
+   // XXX Really just want mine?  Hmmmmmmmm.......no.  get all for peqs above.
+   // XXX could be thousands... too much.   Just get uningested, most recent, etc.
+   // To get here, user has both a CEUID and an association with ghUserLogin
+   // Any PEQActions recorded from github before the user had a CELogin will have been updated as soon as the linkage was created.
+   appState.myPEQActions = await fetchPEQActions( context, container,
+                                                  '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
+   
+   var postData = {};
+   postData['GHRepo'] = ghRepo;
+   var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postData };
+   appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
+   
+   // Get linkage
+   pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postData };
+   appState.myGHLinks  = await fetchGHLinkage( context, container, pd );
+
+   print( "Got Links?" );
+   appState.myGHLinks == null ? print( "nope - no associated repo" ) : print( appState.myGHLinks.toString() );
+
+   if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
+}
+
 
 // Called on signin
 Future<void> reloadMyProjects( context, container ) async {
    print( "reloadMyProjects" );
    final appState  = container.state;
 
-   if( appState.userId == "" ) {
-      appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
-   }
+   appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
    print( "UID: " + appState.userId );
    assert( appState.userId != "" );
    String uid   = appState.userId;
 
    appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "$uid"  }' );
-
-   // NOTE PEQ holder can only be CE user.  Otherwise, no agreements.
-   // XXX could store 'lastViewed' with ghAccount.  For now, default is first.
-   // XXX breaks if no repo yet
-   if( appState.myGHAccounts.length > 0 ) {
-      print( "My GH Accts:" );
-      print( appState.myGHAccounts );
-      String ghUser = appState.myGHAccounts[0].ghUserName;
-      String ghRepo = appState.myGHAccounts[0].repos[4];    // XXX XXX XXX
-      appState.selectedRepo = ghRepo;
-
-      // XXX could be thousands... too much.  Just get uningested, most recent, etc.
-      // Get all PEQ data related to the selected repo.  
-      appState.myPEQs = await fetchPEQs( context, container,
-                                         '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
-
-      // XXX Really just want mine?  Hmmmmmmmm.......no.  get all for peqs above.
-      // XXX could be thousands... too much.   Just get uningested, most recent, etc.
-      // To get here, user has both a CEUID and an association with ghUserLogin
-      // Any PEQActions recorded from github before the user had a CELogin will have been updated as soon as the linkage was created.
-      appState.myPEQActions = await fetchPEQActions( context, container,
-                                                      '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "GHUserName": "", "GHRepo": "$ghRepo" }' );
-
-      var postData = {};
-      postData['GHRepo'] = ghRepo;
-      var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postData };
-      appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
-
-      // Get linkage
-      pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postData };
-      appState.myGHLinks  = await fetchGHLinkage( context, container, pd );
-
-      print( "Got Links?" );
-      print( appState.myGHLinks.toString() );
-      
-      if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
-      
-   }
+   print( "My GH Accts:" );
+   print( appState.myGHAccounts );
 }
 
 

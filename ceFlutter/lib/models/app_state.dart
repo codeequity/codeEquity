@@ -88,15 +88,16 @@ class AppState {
    initAppData() {
       loaded = false;
 
-      userId = "";
-      idMapGH = new Map<String, String>();
-      myPEQs = [];
+      userId       = "";
+      idMapGH      = new Map<String, String>();
+      myPEQs       = [];
       myPEQActions = [];
       myPEQSummary = null;
-      peqUpdated = false;
+      peqUpdated   = false;
 
       myGHAccounts = [];
-      ghUpdated = false;      // XXX not in use?
+      myGHLinks    = null;
+      ghUpdated    = false;      // XXX not in use?
 
       allocTree = null;
       updateAllocTree = false;
