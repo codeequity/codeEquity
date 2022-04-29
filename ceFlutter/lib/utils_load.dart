@@ -479,6 +479,7 @@ Future<void> reloadMyProjects( context, container ) async {
    assert( appState.userId != "" );
    String uid   = appState.userId;
 
+   // FetchGH sets ghAccounts.ceProjs
    appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "$uid"  }' );
    print( "My GH Accts:" );
    print( appState.myGHAccounts );   
@@ -547,13 +548,9 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
       if( newLogin ) {
          newAssoc = true;
          
-         // XXX
-         /*  
-           // This only returns github accounts that are owned by current user(!).  Actually want subscriptions too.
-           String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
-           print( "\n\nGet gh accts from " + subUrl );
-           repos = await getSubscriptions( container, subUrl );
-         */
+         // This only returns github accounts that are owned by current user(!).  Actually want subscriptions too.
+         // String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
+         // repos = await getSubscriptions( container, subUrl );
          
          List<String> repos = [];
          print( "Repo stream" );
@@ -563,15 +560,6 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
             print( 'Repo: ${r.fullName}' );
             repos.add( r.fullName );
          }
-         
-         /*
-         await repoStream.listen( (Repository data) {
-               print( 'Repo: ${data.fullName}' );
-               repos.add( data.fullName );
-            });
-         */
-         // repoStream.listen( (Repository data) => print( 'Data: ${data.fullName}' ) );
-         // repoStream.listen( (Repository data) => repos.add( data.fullName ) );
          print( "Repo done " + repos.toString() );
    
          String pid = randomAlpha(10);
@@ -582,10 +570,9 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          String postData = '{ "Endpoint": "PutGHA", "NewGHA": $newGHA }';
          await updateDynamo( context, container, postData, "PutGHA" );
 
-         // appState.myGHAccounts.add( myGHAcct );
-         // Fetch sets ceProj
-         if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
-         appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "${appState.userId}"  }' );
+         await reloadMyProjects( context, container );
+         // if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
+         // appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "${appState.userId}"  }' );
 
       }
 

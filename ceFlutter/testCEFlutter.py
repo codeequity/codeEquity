@@ -117,7 +117,8 @@ def runTest( testName, noBuild = True, optimized = False ):
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
     # poll for realtime stdout
-    tmpSum = runCmd( cmd, grepFilter )
+    tmpSum  = "\n"
+    tmpSum += runCmd( cmd, grepFilter )
     
     return tmpSum
 
