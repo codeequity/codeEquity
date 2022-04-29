@@ -79,8 +79,9 @@ def clean( output, filterExp ) :
         if keep :
             if( "ceFlutter Test Group" in output or
                 "Subtest:" in output             or
-                "tests passed" in output        or
+                "tests passed" in output         or
                 "[E]" in output                  or
+                "Actual:" in output              or
                 "Failure in method" in output    or
                 "Test failed" in output           ) :
                 resultsSum = output
@@ -116,7 +117,8 @@ def runTest( testName, noBuild = True, optimized = False ):
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
     # poll for realtime stdout
-    tmpSum = runCmd( cmd, grepFilter )
+    tmpSum  = "\n"
+    tmpSum += runCmd( cmd, grepFilter )
     
     return tmpSum
 
@@ -133,11 +135,11 @@ def runTests():
 
     resultsSum = ""
 
-    # tsum = runTest( "launch_test.dart", False, False )
-    # resultsSum  += tsum
+    tsum = runTest( "launch_test.dart", False, False )
+    resultsSum  += tsum
 
-    #tsum = runTest( "home_test.dart", False, False )
-    #resultsSum  += tsum
+    tsum = runTest( "home_test.dart", False, False )
+    resultsSum  += tsum
 
     tsum = runTest( "project_test.dart", False, False )
     resultsSum  += tsum

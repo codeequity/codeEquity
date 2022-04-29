@@ -1141,7 +1141,7 @@ async function updatePEQActions( peqa, ceUID ) {
         }
     };
     console.log( "update peqa where gh is", peqa.GHUserName, peqa.PEQActionId, peqa.CEUID, ceUID);
-    assert( peqa.CEUID == "" || peqa.CEUID == ceUID );
+    assert( peqa.CEUID == "---" || peqa.CEUID == ceUID );
 
     let uPromise = bsdb.update( paramsU ).promise();
     return uPromise.then(() => true );

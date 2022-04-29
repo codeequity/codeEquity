@@ -74,7 +74,7 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   final bool skip = false;
+   final bool skip = true;
    
    report( 'Home', group:true );
    
@@ -94,20 +94,37 @@ void main() {
          report( 'Homepage Basics' );
       });
 
-   // XXX
+
    // Check that GHAccounts match what should show up for different testers when login/logout/login/relogin
-   testWidgets('Homepage GHAccount Consistency', skip:skip, (WidgetTester tester) async {
+   testWidgets('Homepage GHAccount Consistency', skip:false, (WidgetTester tester) async {
          
          await restart( tester );
-         
          bool known = true;
+
+         print("XXX LOGIN ARI" );
          await login( tester, known );
+         expect( await verifyAriHome( tester ), true );         
+         await logout( tester );
+         
+         print("XXX LOGIN CON" );
          await login( tester, known, tester2:true );
+         expect( await verifyConnieHome( tester ), true );         
 
-         expect( await addGHProject( tester ), true );
-         expect( await addRepo( tester ), true );
 
-         expect( await verifyOnHomePage( tester ), true );
+         print("XXX RESTART" );
+         await restart( tester );
+         await tester.pumpAndSettle();         
+         await tester.pumpAndSettle( Duration( seconds:1 ));
+
+         
+         print("XXX VERIFY no login CON" );
+         expect( await verifyConnieHome( tester ), true );         
+         await logout( tester );
+
+         print("XXX LOGIN ARI" );
+         await login( tester, known );
+         expect( await verifyAriHome( tester ), true );         
+
          await logout( tester );         
 
          report( 'Homepage GHAccount Consistency' );

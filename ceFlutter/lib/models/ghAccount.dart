@@ -5,7 +5,7 @@ class GHAccount {
    String       ceOwnerId;
    String       ghUserName;
    List<String> repos;       // note repos may be ghUserName/repo or <someOtherUser>/repo
-   List<bool>   ceProject;   // 1:1 with repos 
+   List<bool>   ceProject;   // 1:1 with repos.  NOTE: this is set in utils_load:reloadMyProjects from awsDynamo on fetch.
 
    GHAccount({this.id, this.ceOwnerId, this.ghUserName, this.repos, this.ceProject});
    

@@ -117,11 +117,35 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    expect( find.byKey(const Key( 'New' )),      findsOneWidget );
    expect( find.byKey(const Key( 'Add' )),      findsOneWidget );
 
-   // testing ceproject
+   // testing ceproject - no.
+   
+   return true;
+}
+
+Future<bool> verifyAriHome( WidgetTester tester ) async {
+   expect( await verifyOnHomePage( tester ), true );   
+
+   //  Three CE Projects
+   expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
+   expect( find.byKey( const Key('ariCETester/ceTesterAlt' )), findsOneWidget );
+   expect( find.byKey( const Key('connieCE/CodeEquityTester' )),    findsOneWidget );   
+   
+   return true;
+}
+
+Future<bool> verifyConnieHome( WidgetTester tester ) async {
+
+   expect( await verifyOnHomePage( tester ), true );   
+
+   // Four CE Projects
+   expect( find.byKey( const Key('connieCE/CodeEquityTester' )),    findsOneWidget );
+   expect( find.byKey( const Key('connieCE/GarlicBeer' )),          findsOneWidget );
+   expect( find.byKey( const Key('ariCETester/ceTesterAlt' )),      findsOneWidget );
    expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
    
    return true;
 }
+
 
 Future<bool> verifyOnProfilePage( WidgetTester tester ) async {
    // Top bar
@@ -172,7 +196,7 @@ Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
 }
 
 void report( descr, {group = false} ) {
-   final pre  = group ? "ceFlutter Test Group: " : "Subtest: ";
+   final pre  = group ? "ceFlutter Test Group: " : "   Subtest: ";
    final post = group ? "" : " completed.";
    print( pre + descr + post + "\n" );
 }
