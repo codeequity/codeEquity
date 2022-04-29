@@ -481,7 +481,7 @@ Future<void> reloadMyProjects( context, container ) async {
 
    appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "$uid"  }' );
    print( "My GH Accts:" );
-   print( appState.myGHAccounts );
+   print( appState.myGHAccounts );   
 }
 
 
@@ -529,36 +529,66 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
 
    // NOTE id, node_id are available if needed
    String patLogin = "";
-   List<String> repos = null;
    await github.users.getCurrentUser().then((final CurrentUser user) {
          patLogin = user.login;
       }).catchError((e) {
             print( "Could not validate github acct." + e.toString() );
             showToast( "Github validation failed.  Please try again." );
          });
-
+   
+   List<String> repos = null;
    bool newAssoc = false;
    if( patLogin != "" ) {
       print( "Goot, Got Auth'd.  " + patLogin );
       
       bool newLogin = true;
-      appState.myGHAccounts.forEach((acct) => newLogin = newLogin && ( acct.ghUserName != patLogin ) );
+      appState.myGHAccounts.forEach((acct) => newLogin = ( newLogin && ( acct.ghUserName != patLogin )) );
 
       if( newLogin ) {
          newAssoc = true;
-         String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
-         repos = await getSubscriptions( container, subUrl );
-
+         
+         // XXX
+         /*  
+           // This only returns github accounts that are owned by current user(!).  Actually want subscriptions too.
+           String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
+           print( "\n\nGet gh accts from " + subUrl );
+           repos = await getSubscriptions( container, subUrl );
+         */
+         
+         List<String> repos = [];
+         print( "Repo stream" );
+         var repoStream =  await github.repositories.listRepositories( type: 'all' );
+         print( "Repo listen" );
+         await for (final r in repoStream) {
+            print( 'Repo: ${r.fullName}' );
+            repos.add( r.fullName );
+         }
+         
+         /*
+         await repoStream.listen( (Repository data) {
+               print( 'Repo: ${data.fullName}' );
+               repos.add( data.fullName );
+            });
+         */
+         // repoStream.listen( (Repository data) => print( 'Data: ${data.fullName}' ) );
+         // repoStream.listen( (Repository data) => repos.add( data.fullName ) );
+         print( "Repo done " + repos.toString() );
+   
          String pid = randomAlpha(10);
          GHAccount myGHAcct = new GHAccount( id: pid, ceOwnerId: appState.userId, ghUserName: patLogin, repos: repos );
          
-         appState.myGHAccounts.add( myGHAcct );
          
          String newGHA = json.encode( myGHAcct );
          String postData = '{ "Endpoint": "PutGHA", "NewGHA": $newGHA }';
          await updateDynamo( context, container, postData, "PutGHA" );
 
+         // appState.myGHAccounts.add( myGHAcct );
+         // Fetch sets ceProj
+         if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
+         appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "${appState.userId}"  }' );
+
       }
+
    }
    return newAssoc;
 }
