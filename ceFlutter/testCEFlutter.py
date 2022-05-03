@@ -109,7 +109,7 @@ def runTest( testName, noBuild = True, optimized = False ):
     logging.info( "" )
 
     # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName + " -d web-server"
-    cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if optimized :
         cmd = cmd + " --release"
@@ -147,8 +147,6 @@ def runTests():
     #tsum = runTest( "content.dart", False )
     #resultsSum  += tsum
 
-    #tsum = runTest( "sharing.dart", False )
-    #resultsSum  += tsum
 
     # Somehow, combination of new teardown for integration_test and popen is
     # defeating attempts to leave summary below all error messages.

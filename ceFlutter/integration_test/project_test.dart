@@ -83,13 +83,29 @@ Future<bool> agreementsTabFraming( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> ariSummaryFraming( WidgetTester tester ) async {
+   expect( find.text( 'Category' ),               findsOneWidget );
+   expect( find.text( 'Software Contributions' ), findsOneWidget );
+   expect( find.text( 'Business Operations' ),    findsOneWidget );
+   expect( find.text( 'UnClaimed' ),              findsOneWidget );
+   expect( find.text( 'A Pre-Existing Project' ), findsOneWidget );
+   expect( find.text( 'New ProjCol Proj' ),       findsOneWidget );
+
+   expect( find.text( 'Allocation' ), findsOneWidget );
+   expect( find.text( 'Planned' ),    findsOneWidget );
+   expect( find.text( 'Pending' ),    findsOneWidget );
+   expect( find.text( 'Accrued' ),    findsOneWidget );
+   expect( find.text( 'Remaining' ),  findsOneWidget );
+   return true;
+}
+
 
 void main() {
 
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   final bool skip = false;
+   final bool skip = true;
    
    report( 'Project', group:true );
    
@@ -119,10 +135,34 @@ void main() {
       });
 
 
-   testWidgets('Project contents', skip:skip, (WidgetTester tester) async {
+   testWidgets('Project contents', skip:false, (WidgetTester tester) async {
 
-         // peq summary
-         // update peq summary
+         await restart( tester );
+         await login( tester, true );
+
+         // Login checks for homepage, but verify this is Ari before testing contents
+         expect( await verifyAriHome( tester ), true );         
+
+         final Finder ariLink = find.byKey( const Key('ariCETester/CodeEquityTester' ));
+         await tester.tap( ariLink );
+         print( "pumping" );
+         await tester.pumpAndSettle( Duration( seconds: 5 ));
+         print( "pumping" );
+         await tester.pumpAndSettle( Duration( seconds: 3 ));
+
+         expect( await verifyOnProjectPage( tester ), true );
+
+         // This leaves us in summary frame
+         expect( await peqSummaryTabFraming( tester ),   true );
+
+         
+         // final scrollableFinder = find.descendant( of: find.byType(ListView), matching: find.byType(Scrollable), );
+         // final scrollableFinder = find.ancestor( of: find.byType(ListView), matching: find.byType(Scrollable), );
+
+         expect( await ariSummaryFraming( tester ), true );
+
+         await logout( tester );         
+
          report( 'Project contents' );
       });
 
