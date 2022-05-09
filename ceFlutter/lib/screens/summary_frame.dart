@@ -177,6 +177,8 @@ class _CESummaryState extends State<CESummaryFrame> {
             if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
             print( "_showPalloc Update alloc" );
             allocList.addAll( appState.allocTree.getCurrent( container ) );
+
+            //print( appState.allocTree.toStr() );
          }
       }
       else { return []; }
@@ -230,9 +232,11 @@ class _CESummaryState extends State<CESummaryFrame> {
                   height: svHeight,
                   width: svWidth,
                   child: ListView(
-                     children: List.generate( 
+                     // key: Key( 'verticalSummaryScroll' ), 
+                     children: List.generate(
                         itemCount,
                         (indexX) => Row(
+                           key: Key( 'allocsTable ' + indexX.toString() ),                           
                            children: List.generate( 
                               allocWidth,
                               (indexY) => allocs[indexX][indexY] ))

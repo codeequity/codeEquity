@@ -135,11 +135,11 @@ def runTests():
 
     resultsSum = ""
 
-    tsum = runTest( "launch_test.dart", False, False )
-    resultsSum  += tsum
+    #tsum = runTest( "launch_test.dart", False, False )
+    #resultsSum  += tsum
 
-    tsum = runTest( "home_test.dart", False, False )
-    resultsSum  += tsum
+    #tsum = runTest( "home_test.dart", False, False )
+    #resultsSum  += tsum
 
     tsum = runTest( "project_test.dart", False, False )
     resultsSum  += tsum

@@ -42,6 +42,16 @@ Future<bool> restart( WidgetTester tester ) async {
    return true;
 }
 
+// pumpAndSettle interacts poorly with drag (and maybe others?) as of 5/2022.
+// When a duration is included, the test exits early.
+Future<bool> pumpSettle( WidgetTester tester, int delaySecs ) async {
+
+   await tester.pumpAndSettle();
+   await Future.delayed(Duration(seconds: delaySecs));   
+   await tester.pumpAndSettle();
+   return true;
+}
+
 // The keyName is the name of the visibility node key
 Future<bool> checkVisNode( WidgetTester tester, String keyName, bool visVal ) async {
 
