@@ -28,62 +28,63 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 //     - "Category, UnClaimed, UnClaimed, Unassigned": ["0", "1,709", "0", "0"] github shows 709
 const Map<String,List<String>> ALLOCS_GOLD =
 {
-"Category": ["7,000,000", "12,840", "2,500", "11,001"],
+   "Category 0": ["Category", "7,000,000", "12,840", "2,500", "11,001"],
+      
+      "Software Contributions 1": ["Category, Software Contributions", "5,500,000", "2,001", "1,500", "6,501"],
+      
+      "Data Security 2":    ["Category, Software Contributions, Data Security", "1,000,000", "250", "0", "4,000"],
+      "Accrued 3":          ["Category, Software Contributions, Data Security, Accrued", "0", "0", "0", "4,000"],
+      
+      "codeequity 4":           ["Category, Software Contributions, Data Security, Accrued, codeequity", "0", "0", "0", "1,000"],
+      "ariCETester 5":          ["Category, Software Contributions, Data Security, Accrued, ariCETester", "0", "0", "0", "3,000"],
+      "Pending PEQ Approval 6": ["Category, Software Contributions, Data Security, Pending PEQ Approval", "0", "250", "0", "0"],
+      "Unassigned 7":           ["Category, Software Contributions, Data Security, Pending PEQ Approval, Unassigned", "0", "250", "0", "0"],
 
-"Category, Software Contributions": ["5,500,000", "2,001", "1,500", "6,501"],
+      "Github Operations 8":     ["Category, Software Contributions, Github Operations", "1,500,000", "1,751", "1,500", "2,501"],
+      "In Progress 9":           ["Category, Software Contributions, Github Operations, In Progress", "0", "1,000", "0", "0"],
+      "codeequity 10":           ["Category, Software Contributions, Github Operations, In Progress, codeequity", "0", "1,000", "0", "0"],
+      "Pending PEQ Approval 11": ["Category, Software Contributions, Github Operations, Pending PEQ Approval", "0", "0", "1,500", "0"],
+      "ariCETester 12":          ["Category, Software Contributions, Github Operations, Pending PEQ Approval, ariCETester", "0", "0", "750", "0"],
+      "codeequity 13":           ["Category, Software Contributions, Github Operations, Pending PEQ Approval, codeequity", "0", "0", "750", "0"],
+      "Accrued 14":              ["Category, Software Contributions, Github Operations, Accrued", "0", "0", "0", "2,501"],
+      "ariCETester 15":          ["Category, Software Contributions, Github Operations, Accrued, ariCETester", "0", "0", "0", "2,000"],
+      "codeequity 16":           ["Category, Software Contributions, Github Operations, Accrued, codeequity", "0", "0", "0", "501"],
+      "Planned 17":              ["Category, Software Contributions, Github Operations, Planned", "0", "751", "0", "0"],
+      "ariCETester 18":          ["Category, Software Contributions, Github Operations, Planned, ariCETester", "0", "250", "0", "0"],
+      "Unassigned 19":           ["Category, Software Contributions, Github Operations, Planned, Unassigned", "0", "501", "0", "0"],
+      "Stars 20":                ["Category, Software Contributions, Github Operations, Stars", "500,000", "0", "0", "0"],
+      "IR Alloc 21":             ["Category, Software Contributions, Github Operations, Stars, IR Alloc", "500,000", "0", "0", "0"],
+      "Stripes 22":              ["Category, Software Contributions, Github Operations, Stripes", "1,000,000", "0", "0", "0"],
+      "Component Alloc 23":      ["Category, Software Contributions, Github Operations, Stripes, Component Alloc", "1,000,000", "0", "0", "0"],
 
-"Category, Software Contributions, Data Security": ["1,000,000", "250", "0", "4,000"],
-"Category, Software Contributions, Data Security, Accrued": ["0", "0", "0", "4,000"],
-"Category, Software Contributions, Data Security, Accrued, codeequity": ["0", "0", "0", "1,000"],
-"Category, Software Contributions, Data Security, Accrued, ariCETester": ["0", "0", "0", "3,000"],
-"Category, Software Contributions, Data Security, Pending PEQ Approval": ["0", "250", "0", "0"],
-"Category, Software Contributions, Data Security, Pending PEQ Approval, Unassigned": ["0", "250", "0", "0"],
+      "Unallocated 24":         ["Category, Software Contributions, Unallocated", "3,000,000", "0", "0", "0"],
 
-"Category, Software Contributions, Github Operations": ["1,500,000", "1,751", "1,500", "2,501"],
-"Category, Software Contributions, Github Operations, In Progress": ["0", "1,000", "0", "0"],
-"Category, Software Contributions, Github Operations, In Progress, codeequity": ["0", "1,000", "0", "0"],
-"Category, Software Contributions, Github Operations, Pending PEQ Approval": ["0", "0", "1,500", "0"],
-"Category, Software Contributions, Github Operations, Pending PEQ Approval, ariCETester": ["0", "0", "750", "0"],
-"Category, Software Contributions, Github Operations, Pending PEQ Approval, codeequity": ["0", "0", "750", "0"],
-"Category, Software Contributions, Github Operations, Accrued": ["0", "0", "0", "2,501"],
-"Category, Software Contributions, Github Operations, Accrued, ariCETester": ["0", "0", "0", "2,000"],
-"Category, Software Contributions, Github Operations, Accrued, codeequity": ["0", "0", "0", "501"],
-"Category, Software Contributions, Github Operations, Planned": ["0", "751", "0", "0"],
-"Category, Software Contributions, Github Operations, Planned, ariCETester": ["0", "250", "0", "0"],
-"Category, Software Contributions, Github Operations, Planned, Unassigned": ["0", "501", "0", "0"],
-"Category, Software Contributions, Github Operations, Stars": ["500,000", "0", "0", "0"],
-"Category, Software Contributions, Github Operations, Stars, IR Alloc": ["500,000", "0", "0", "0"],
-"Category, Software Contributions, Github Operations, Stripes": ["1,000,000", "0", "0", "0"],
-"Category, Software Contributions, Github Operations, Stripes, Component Alloc": ["1,000,000", "0", "0", "0"],
+      "Business Operations 25": ["Category, Business Operations", "1,000,000", "0", "0", "0"],
+      "Unallocated 26":         ["Category, Business Operations, Unallocated", "1,000,000", "0", "0", "0"],
 
-"Category, Software Contributions, Unallocated": ["3,000,000", "0", "0", "0"],
+      "UnClaimed 27":           ["Category, UnClaimed", "0", "8,339", "0", "2,000"],
+      "UnClaimed 28":           ["Category, UnClaimed, UnClaimed", "0", "8,339", "0", "0"],
+      "ariCETester 29":         ["Category, UnClaimed, UnClaimed, ariCETester", "0", "3,467", "0", "0"],
+      "codeequity 30":          ["Category, UnClaimed, UnClaimed, codeequity", "0", "2,411", "0", "0"],
+      "Unassigned 31":          ["Category, UnClaimed, UnClaimed, Unassigned", "0", "1,709", "0", "0"],
+      "connieCE 32":            ["Category, UnClaimed, UnClaimed, connieCE", "0", "752", "0", "0"],
+      "Accrued 33":             ["Category, UnClaimed, Accrued", "0", "0", "0", "2,000"],
+      "ariCETester 34":         ["Category, UnClaimed, Accrued, ariCETester", "0", "0", "0", "2,000"],
 
-"Category, Business Operations": ["1,000,000", "0", "0", "0"],
-"Category, Business Operations, Unallocated": ["1,000,000", "0", "0", "0"],
+      "A Pre-Existing Project 35":   ["Category, A Pre-Existing Project", "500,000", "1,500", "0", "1,500"],
+      "Bacon 36":                    ["Category, A Pre-Existing Project, Bacon", "500,000", "1,500", "0", "0"],
+      "Unassigned 37":               ["Category, A Pre-Existing Project, Bacon, Unassigned", "0", "1,500", "0", "0"],
+      "IR Alloc split: IwBRvVYU 38": ["Category, A Pre-Existing Project, Bacon, IR Alloc split: IwBRvVYU", "500,000", "0", "0", "0"],
+      "Accrued 39":                  ["Category, A Pre-Existing Project, Accrued", "0", "0", "0", "1,500"],
+      "ariCETester 40":              ["Category, A Pre-Existing Project, Accrued, ariCETester", "0", "0", "0", "1,500"],
 
-"Category, UnClaimed": ["0", "8,339", "0", "2,000"],
-"Category, UnClaimed, UnClaimed": ["0", "8,339", "0", "0"],
-"Category, UnClaimed, UnClaimed, ariCETester": ["0", "3,467", "0", "0"],
-"Category, UnClaimed, UnClaimed, codeequity": ["0", "2,411", "0", "0"],
-"Category, UnClaimed, UnClaimed, Unassigned": ["0", "1,709", "0", "0"],
-"Category, UnClaimed, UnClaimed, connieCE": ["0", "752", "0", "0"],
-"Category, UnClaimed, Accrued": ["0", "0", "0", "2,000"],
-"Category, UnClaimed, Accrued, ariCETester": ["0", "0", "0", "2,000"],
-
-"Category, A Pre-Existing Project": ["500,000", "1,500", "0", "1,500"],
-"Category, A Pre-Existing Project, Bacon": ["500,000", "1,500", "0", "0"],
-"Category, A Pre-Existing Project, Bacon, Unassigned": ["0", "1,500", "0", "0"],
-"Category, A Pre-Existing Project, Bacon, IR Alloc split: IwBRvVYU": ["500,000", "0", "0", "0"],
-"Category, A Pre-Existing Project, Accrued": ["0", "0", "0", "1,500"],
-"Category, A Pre-Existing Project, Accrued, ariCETester": ["0", "0", "0", "1,500"],
-
-"Category, New ProjCol Proj": ["0", "1,000", "1,000", "1,000"],
-"Category, New ProjCol Proj, New plan name": ["0", "1,000", "0", "0"],
-"Category, New ProjCol Proj, New plan name, Unassigned": ["0", "1,000", "0", "0"],
-"Category, New ProjCol Proj, Pending PEQ Approval": ["0", "0", "1,000", "0"],
-"Category, New ProjCol Proj, Pending PEQ Approval, codeequity": ["0", "0", "1,000", "0"],
-"Category, New ProjCol Proj, Accrued": ["0", "0", "0", "1,000"],
-"Category, New ProjCol Proj, Accrued, ariCETester": ["0", "0", "0", "1,000"],
+      "New ProjCol Proj 41":     ["Category, New ProjCol Proj", "0", "1,000", "1,000", "1,000"],
+      "New plan name 42":        ["Category, New ProjCol Proj, New plan name", "0", "1,000", "0", "0"],
+      "Unassigned 43":           ["Category, New ProjCol Proj, New plan name, Unassigned", "0", "1,000", "0", "0"],
+      "Pending PEQ Approval 44": ["Category, New ProjCol Proj, Pending PEQ Approval", "0", "0", "1,000", "0"],
+      "codeequity 45":           ["Category, New ProjCol Proj, Pending PEQ Approval, codeequity", "0", "0", "1,000", "0"],
+      "Accrued 46":              ["Category, New ProjCol Proj, Accrued", "0", "0", "0", "1,000"],
+      "ariCETester 47":          ["Category, New ProjCol Proj, Accrued, ariCETester", "0", "0", "0", "1,000"],
 };
 
 
@@ -177,17 +178,26 @@ String getFromMakeTableText( Widget elt ) {
    return retVal;
 }
 
-// XXX ? move these accessors next to original functions?
 // from Node.  Walk down node and leaf tiles in alloc table.  
 String getFromNode( Widget elt ) {
    String retVal = "";
-   if( elt is Container ) {
+   if( elt is Container && elt.child is ListTileTheme ) {
       var listTile  = elt.child as ListTileTheme;
       var expansion = listTile.child as ExpansionTile;
-      var pad       = expansion.title as Padding;
-      var container = pad.child as Container;
-      var nodeText  = container.child as Text; 
-      retVal        = nodeText.data ?? "";
+
+      retVal        = getFromMakeTableText( expansion.title );
+   }
+   return retVal;
+}
+
+// from Node, then _pactDetail
+String getFromLeaf( Widget elt ) {
+   String retVal = "";
+   if( elt is Container && elt.child is ListTile ) {
+      var listTile  = elt.child as ListTile;
+      var gd        = listTile.title as GestureDetector;
+
+      retVal        = getFromMakeTableText( gd.child ?? gd );
    }
    return retVal;
 }
@@ -206,39 +216,34 @@ Finder findArrow( Widget elt ) {
 }
 
 
-Future<bool> printElt( WidgetTester tester, String keyName ) async {
+Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
    final Finder generatedAllocRow = find.byKey( Key( keyName ));
    expect( generatedAllocRow, findsOneWidget );
 
    var allocRow = generatedAllocRow.evaluate().single.widget as Row;
    var allocs   = allocRow.children as List;
 
-   String aRow = "";
+   List<String> aRow = [];
    for( final elt in allocs ) {
       String t = getFromMakeTableText( elt );
-      aRow += t == "" ? t : t + " || ";
+      if( t != "" ) { aRow.add( t ); }
 
       t = getFromNode( elt );
-      aRow += t == "" ? t : t + " || ";
+      if( t != "" ) { aRow.add( t ); }
 
-      if( keyName == "allocsTable 3" ) {
-         final Finder arrow = findArrow( elt );
-         if( tester.widgetList<Icon>( arrow ).length > 0 ) {
-            print( "T   A   P  " );
-            await tester.tap( arrow );
-            await tester.pumpAndSettle( Duration( seconds: 2 ));
-         }
-      }
+      t = getFromLeaf( elt );
+      if( t != "" ) { aRow.add( t ); }
    }
-   print( aRow );
-   return true;
+
+   return aRow;
 }
 
-Future<bool> expandAllocs( WidgetTester tester, int num ) async {
+Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
 
-   // Note: key is generated exactly once.
+   // Note: key is generated exactly once each time you expand or shrink a node.  
    //       So, for example, row 2 is generated for first render.  Then, if scroll it offscreen, finder can no longer find it (say, to tap it).
-   for( var i = 1; i < num; i++ ) {
+   //       So, for example, rows: a, b, c.  expand #3 c: a b c d, d is #4.  shrink b: a c d, d is #3.
+   for( var i = min; i < max; i++ ) {
 
       final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + i.toString() ));
       // Darg.  Uggggly
@@ -251,7 +256,7 @@ Future<bool> expandAllocs( WidgetTester tester, int num ) async {
             for( final elt in allocs ) {
                count++;
                if( count != 1 ) { continue; }
-               print( "Tap i: " + i.toString() + "  count: " + count.toString() );
+               // print( "Tap i: " + i.toString() + "  count: " + count.toString() );
                final Finder arrow = findArrow( elt );
                if( tester.widgetList<Icon>( arrow ).length > 0 ) {
                   // print( "Tap i: " + i.toString() + "  count: " + count.toString() );
@@ -265,18 +270,10 @@ Future<bool> expandAllocs( WidgetTester tester, int num ) async {
    return true;
 }
 
-// https://stackoverflow.com/questions/48081917/flutter-listview-not-scrollable-not-bouncing
-Future<bool> ariSummaryContent( WidgetTester tester ) async {
 
-   // await printElt( tester, 'allocsTable 0' );
-   // await printElt( tester, 'allocsTable 1' );
-   // await printElt( tester, 'allocsTable 2' );
-   // await printElt( tester, 'allocsTable 3' );
+// As we continue expanding, the distance between the last entry and the last fully expanded entry shrinks. 
+Future<bool> expandAll( WidgetTester tester ) async {
 
-   // First, expand.  Then test drag down.  Then start checking.
-   await expandAllocs( tester, 10 );
-
-   // final listFinder   = find.byKey( const Key( 'verticalSummaryScroll' ));
    final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
    final bottomFinder = find.text( "A Pre-Existing Project" );
@@ -286,49 +283,127 @@ Future<bool> ariSummaryContent( WidgetTester tester ) async {
    // Maybe next year.  use drag for now - it can stop if 1 pixel of the widget is showing, so add a little extra afterwards
    // await tester.scrollUntilVisible( bottomFinder, 500.0, scrollable:listFinder );
 
-   // XXX pumpAndSettle with duration after drag causes method to exit prematurely (!!)
-   print( "Down!" );
+   await expandAllocs( tester, 1, 10 );
    await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
    await tester.drag( listFinder, Offset(0.0, -50.0) );
-   await tester.pumpAndSettle( Duration( seconds: 2 ));
 
-   print( "Up!" );
-   await tester.dragUntilVisible( topFinder, listFinder, Offset(0.0, 50.0) );
-   await tester.drag( listFinder, Offset(0.0, 50.0) );
-   // await tester.pumpAndSettle( Duration( seconds: 2 ));
-   // await tester.pumpAndSettle( Duration( seconds: 1 ));
-   await tester.pumpAndSettle();
-
-   // Which is it?
-   print( "Down!" );
+   await expandAllocs( tester, 11, 18 );   
    await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
    await tester.drag( listFinder, Offset(0.0, -50.0) );
-   // await tester.pumpAndSettle( Duration( seconds: 2 ));
-   await tester.pumpAndSettle();
-   print( "Expand!" );
-   await expandAllocs( tester, 2 );
-   await pumpSettle(tester, 2);
+   await pumpSettle( tester, 2 );
 
-   // await tester.pumpAndSettle();
-   // await Future.delayed(Duration(seconds: 2));
-   // await tester.pumpAndSettle();
+   // now expand 2 at a time 
+   var min = 19;
+   for( var i = 21; i <= 41; i = i+2 ) {
+      await expandAllocs( tester, min, i );
+      min = i;
+      await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
+      await tester.drag( listFinder, Offset(0.0, -50.0) );
+      await tester.pumpAndSettle();
+   }
+   await pumpSettle( tester, 2 );
 
-   print( "Up!" );
-   await tester.dragUntilVisible( topFinder, listFinder, Offset(0.0, 50.0) );
+   // finally just 1
+   for( var i = min+1; i <= 47; i++ ) {
+      await expandAllocs( tester, min, i );
+      min = i;
+      await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
+      await tester.drag( listFinder, Offset(0.0, -50.0) );
+      await tester.pumpAndSettle();
+   }
+   await pumpSettle( tester, 2 );
+   
+   
+   return true;
+}
+
+
+// This is gritty.  Could check parentage to disambiguate into ALLOCS_GOLD.
+// Instead, disambiguate based on fully expanded index.
+Future<bool> checkAllocs( WidgetTester tester, int min, int max ) async {
+
+   print( "\n" );
+   for( var i = min; i <= max; i++ ) {
+
+      final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + i.toString() ));  
+      expect( generatedAllocRow, findsOneWidget );
+      
+      List<String> allocs = await getElt( tester, "allocsTable " + i.toString() );
+
+      // First elt in allocs is used as key for allocs_gold
+      // allocs is from ceFlutter, has short title, then numbers.
+      // allocs_gold is const above, is a map to a list<str> with long title, then numbers.
+      
+      String agKey         = allocs[0] + " " + i.toString();
+      List<String> agVals  = ALLOCS_GOLD[ agKey ] ?? [];
+      // print( "  checking " + agKey + ": " + agVals.sublist(1,5).toString() );
+      
+      for( var j = 1; j < 5; j++ ) { expect( allocs[j], agVals[j] ); }
+
+      // Check remaining val once or twice
+      if( i == 0 ) {
+         int tot = int.parse( agVals[1] );
+         int rem = int.parse( allocs[5] ); // note: agVals does not have [5]th val
+         int plan = 0;
+         for( var j = 2; j < 5; j++ ) { plan += int.parse( agVals[j] ); }
+         expect( tot - plan, rem );
+      }
+   }
+   return true;
+}
+
+
+Future<bool> checkAll( WidgetTester tester ) async {
+
+   final listFinder   = find.byType( ListView );
+   final topFinder    = find.text( "Category" );
+
+   // Move to top
+   await tester.dragUntilVisible( topFinder, listFinder, Offset(0.0, 100.0) );
    await tester.drag( listFinder, Offset(0.0, 50.0) );
-   // await tester.pumpAndSettle( Duration( seconds: 2 ));
-   // await tester.pumpAndSettle( Duration( seconds: 1 ));
    await tester.pumpAndSettle();
+   await checkAllocs( tester, 1, 10 );
 
-   print( "Anything closed?" );
-   await tester.pumpAndSettle( Duration( seconds: 5 ));
+   // cell height is 50
+   await tester.drag( listFinder, Offset(0.0, -500.0) );
+   await tester.pumpAndSettle();
+   await checkAllocs( tester, 11, 20 );
 
-   print( "Expand!" );
-   await expandAllocs( tester, 2 );
-   await pumpSettle(tester, 2);
+   await tester.drag( listFinder, Offset(0.0, -500.0) );
+   await tester.pumpAndSettle();
+   await checkAllocs( tester, 21, 30 );
 
-   print( "Anything closed?" );
-   await tester.pumpAndSettle( Duration( seconds: 5 ));
+   await tester.drag( listFinder, Offset(0.0, -500.0) );
+   await tester.pumpAndSettle();
+   await checkAllocs( tester, 31, 40 );
+
+   await tester.drag( listFinder, Offset(0.0, -500.0) );
+   await tester.pumpAndSettle();
+   await checkAllocs( tester, 41, 47 );
+
+   await pumpSettle( tester, 2 );
+   
+   
+   return true;
+}
+
+
+
+Future<bool> ariSummaryContent( WidgetTester tester ) async {
+
+   final listFinder   = find.byType( ListView );
+   final topFinder    = find.text( "Category" );
+   final bottomFinder = find.text( "A Pre-Existing Project" );
+
+   // await getElt( tester, 'allocsTable 0' );
+
+   // First, expand.  Then test drag down.  Then start checking.
+   await expandAll( tester );
+
+   await checkAll( tester ); 
+
+   // Close all, finish.
+   // await closeAll( tester );
    
    print( "Done!" );
    
@@ -341,7 +416,11 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   final bool skip = true;
+   bool skip = true;
+
+   // override?  Run it.
+   var override = const String.fromEnvironment('override');
+   if( override == "True" ) { skip = false; }
    
    report( 'Project', group:true );
    

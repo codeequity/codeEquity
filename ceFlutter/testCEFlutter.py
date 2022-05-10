@@ -18,7 +18,7 @@ import shlex
 #from webdriver_manager.chrome import ChromeDriverManager
 
 
-#from threading import Thread
+from threading import Thread
 #import concurrent.futures
 
 
@@ -105,7 +105,7 @@ def runCmd( cmd, filterExp ):
 
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
 # Hmm.  Running in release mode does not work well.  Basic entering text fails.. 
-def runTest( testName, noBuild = True, optimized = False ):
+def runTest( testName, override, noBuild = True, optimized = False ):
     logging.info( "" )
 
     # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName + " -d web-server"
@@ -113,6 +113,9 @@ def runTest( testName, noBuild = True, optimized = False ):
 
     if optimized :
         cmd = cmd + " --release"
+
+    if override :
+        cmd = cmd + " --dart-define override=True"
 
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
@@ -129,24 +132,26 @@ Common failure modes:
    Uncomment selenium and driver-related lines, rerun, relink, good to go.  Yes, this could be automated.
 
 """
-def runTests():
+def runTests( override = False ):
 
     #os.chdir( "./" )
 
     resultsSum = ""
 
-    #tsum = runTest( "launch_test.dart", False, False )
-    #resultsSum  += tsum
+    if override:
+        tsum = runTest( "launch_test.dart", override, False, False )
+        resultsSum  += tsum
 
-    #tsum = runTest( "home_test.dart", False, False )
-    #resultsSum  += tsum
+        tsum = runTest( "home_test.dart", override, False, False )
+        resultsSum  += tsum
 
-    tsum = runTest( "project_test.dart", False, False )
+
+    # Focus area
+    tsum = runTest( "project_test.dart", override, False, False )
     resultsSum  += tsum
 
-    #tsum = runTest( "content.dart", False )
-    #resultsSum  += tsum
 
+    
 
     # Somehow, combination of new teardown for integration_test and popen is
     # defeating attempts to leave summary below all error messages.
@@ -174,6 +179,9 @@ def runTests():
     os.chdir( "../" )
     return summary
 
+# allow cronjob to turn all tests on.
+def overrideAllOn():
+    runTests( override = True )
 
 def main( cmd ):
     #print locals()
