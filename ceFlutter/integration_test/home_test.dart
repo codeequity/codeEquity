@@ -74,7 +74,11 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   final bool skip = true;
+   bool skip = true;
+
+   // override?  Run it.
+   var override = const String.fromEnvironment('override');
+   if( override == "True" ) { skip = false; }
    
    report( 'Home', group:true );
    
@@ -96,7 +100,7 @@ void main() {
 
 
    // Check that GHAccounts match what should show up for different testers when login/logout/login/relogin
-   testWidgets('Homepage GHAccount Consistency', skip:false, (WidgetTester tester) async {
+   testWidgets('Homepage GHAccount Consistency', skip:skip, (WidgetTester tester) async {
          
          await restart( tester );
          bool known = true;

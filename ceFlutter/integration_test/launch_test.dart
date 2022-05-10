@@ -156,7 +156,12 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   final bool skipLogin = false;
+   
+   bool skipLogin = true;
+
+   // override?  Run it.
+   var override = const String.fromEnvironment('override');
+   if( override == "True" ) { skipLogin = false; }
    
    report( 'Launch', group:true );
    

@@ -177,6 +177,8 @@ class _CESummaryState extends State<CESummaryFrame> {
             if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
             print( "_showPalloc Update alloc" );
             allocList.addAll( appState.allocTree.getCurrent( container ) );
+
+            //print( appState.allocTree.toStr() );
          }
       }
       else { return []; }
@@ -206,7 +208,8 @@ class _CESummaryState extends State<CESummaryFrame> {
                         }),
                         c, c, c, c, c ]] );
       
-
+      // allocCount changes with each expand/contract
+      // print( "getAllocs, count: " + allocs.length.toString() );
       var allocCount = min( allocs.length, 30 );
       var allocWidth = allocs[0].length;
 
@@ -218,7 +221,9 @@ class _CESummaryState extends State<CESummaryFrame> {
          return makeTitleText( appState, "Really?  Can't we be a little taller?", frameMinHeight, false, 1, fontSize: 18);
       }
       else {
-         var itemCount = min( allocCount, 20 );
+         // No.  generate all, otherwise when scroll, bottom rows may not exist.
+         // var itemCount = min( allocCount, 50 );
+         var itemCount = max( allocCount, allocs.length );
 
          final ScrollController controller = ScrollController();
 
@@ -230,9 +235,11 @@ class _CESummaryState extends State<CESummaryFrame> {
                   height: svHeight,
                   width: svWidth,
                   child: ListView(
-                     children: List.generate( 
+                     // key: Key( 'verticalSummaryScroll' ), 
+                     children: List.generate(
                         itemCount,
                         (indexX) => Row(
+                           key: Key( 'allocsTable ' + indexX.toString() ),                           
                            children: List.generate( 
                               allocWidth,
                               (indexY) => allocs[indexX][indexY] ))
