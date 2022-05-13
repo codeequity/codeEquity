@@ -261,7 +261,7 @@ Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
                if( tester.widgetList<Icon>( arrow ).length > 0 ) {
                   // print( "Tap i: " + i.toString() + "  count: " + count.toString() );
                   await tester.tap( arrow );
-                  await tester.pumpAndSettle( Duration( seconds: 1 ));
+                  await tester.pumpAndSettle();
                }
             }
       }
@@ -314,6 +314,55 @@ Future<bool> expandAll( WidgetTester tester ) async {
    await pumpSettle( tester, 2 );
    
    
+   return true;
+}
+
+// What is actually visible from the table??
+Future<bool> showVisible( WidgetTester tester ) async {
+   
+   for( var i = 0; i < 50; i++ ) {
+      final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + i.toString() ));
+      if( tester.widgetList<Row>( generatedAllocRow ).length > 0 ) {
+         var row = await getElt( tester, "allocsTable " + i.toString() ); 
+         print( "allocsTable " + i.toString() + " is visible as " + row[0] );
+      }
+   }
+   return true;
+   
+}
+
+// All generatedRows are, well, generated.  Just not all are visible.
+Future<bool> closeAll( WidgetTester tester ) async {
+
+   // Magic sequence
+   List<String> t = [ "allocsTable 3", "allocsTable 4", "allocsTable 6", "allocsTable 7", "allocsTable 8", "allocsTable 9", "allocsTable 10", "allocsTable 11" ];
+   t = t +          [ "allocsTable 2", "allocsTable 3", "allocsTable 1", "allocsTable 2", "allocsTable 4", "allocsTable 5"];
+   t = t +          [ "allocsTable 3", "allocsTable 5", "allocsTable 6", "allocsTable 4", "allocsTable 6", "allocsTable 7", "allocsTable 8", "allocsTable 5"];
+
+   // Start from the top
+   final listFinder   = find.byType( ListView );
+   final topFinder    = find.text( "Category" );
+   await tester.dragUntilVisible( topFinder, listFinder, Offset(0.0, 200.0) );
+   await tester.drag( listFinder, Offset(0.0, 50.0) );
+
+   // await showVisible( tester );
+   
+   for( var elt in t ) {
+      print( "   ... working " + elt );
+      final Finder generatedAllocRow = find.byKey( Key( elt ) );
+      expect( generatedAllocRow, findsOneWidget );
+
+      var allocRow = generatedAllocRow.evaluate().single.widget as Row;
+      var allocs   = allocRow.children as List;
+
+      final Finder arrow = findArrow( allocs[0] );
+      expect( arrow, findsOneWidget ); 
+
+      await tester.tap( arrow );
+      await pumpSettle( tester, 1 );
+      
+   }
+
    return true;
 }
 
@@ -402,8 +451,8 @@ Future<bool> ariSummaryContent( WidgetTester tester ) async {
 
    await checkAll( tester ); 
 
-   // Close all, finish.
-   // await closeAll( tester );
+   await closeAll( tester );
+   await pumpSettle( tester, 2 );
    
    print( "Done!" );
    
@@ -450,7 +499,7 @@ void main() {
       });
 
 
-   testWidgets('Project contents', skip:false, (WidgetTester tester) async {
+   testWidgets('Project contents', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -469,11 +518,6 @@ void main() {
 
          // This leaves us in summary frame
          expect( await peqSummaryTabFraming( tester ),   true );
-
-         
-         // final scrollableFinder = find.descendant( of: find.byType(ListView), matching: find.byType(Scrollable), );
-         // final scrollableFinder = find.ancestor( of: find.byType(ListView), matching: find.byType(Scrollable), );
-
          expect( await ariSummaryFraming( tester ), true );
          expect( await ariSummaryContent( tester ), true );
 
@@ -482,5 +526,43 @@ void main() {
          report( 'Project contents' );
       });
 
+   testWidgets('Project frame coherence', skip:false, (WidgetTester tester) async {
+
+         await restart( tester );
+         await login( tester, true );
+
+         // Login checks for homepage, but verify this is Ari before testing contents
+         expect( await verifyAriHome( tester ), true );         
+
+         final Finder ariLink = find.byKey( const Key('ariCETester/CodeEquityTester' ));
+         await tester.tap( ariLink );
+         print( "pumping" );
+         await tester.pumpAndSettle( Duration( seconds: 5 ));
+         print( "pumping" );
+         await tester.pumpAndSettle( Duration( seconds: 3 ));
+
+         expect( await verifyOnProjectPage( tester ), true );
+
+         // This leaves us in summary frame
+
+         // Will be two chunks that are partially expanded.  make sure no ops impact values.
+         // expand a bunch.
+         // close middle
+         // expand, close, expand check check check
+         // expand towards bottom until can scroll
+         // scroll up down up, check
+         // tab out, back in, check.
+         // expand, close, expand check check check
+         // scroll down
+         // expand, close, expand check check check
+         // scroll up, check 
+         
+         await logout( tester );         
+
+         report( 'Project contents' );
+      });
+
+
+   // Next test: detail pages
 }
      

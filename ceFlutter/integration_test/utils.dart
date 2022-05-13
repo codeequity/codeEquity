@@ -38,7 +38,7 @@ Future<bool> restart( WidgetTester tester ) async {
    final splash = find.text( 'CodeEquity' );
    expect(splash, findsOneWidget);
    
-   await tester.pumpAndSettle(Duration(seconds: 5));
+   await pumpSettle(tester, 5);
    return true;
 }
 
@@ -246,8 +246,9 @@ Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
    print( "second pump" );
    await tester.pumpAndSettle(); // for .. toast?
    print( "third pump" );
-   await tester.pumpAndSettle(Duration(seconds: 5)); // for aws
-   await tester.pumpAndSettle(Duration(seconds: 2));
+   await pumpSettle(tester, 5); // for aws
+   await pumpSettle(tester, 2);
+   await pumpSettle(tester, 1); // Ugggg debug cognito is soooooo slow
 
    // XXX Verify toast 'user not found' ?  Shows up faster.. but toasting is probably changing.
    // verify topbar icons

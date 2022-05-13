@@ -145,7 +145,6 @@ def runTests( override = False ):
         tsum = runTest( "home_test.dart", override, False, False )
         resultsSum  += tsum
 
-
     # Focus area
     tsum = runTest( "project_test.dart", override, False, False )
     resultsSum  += tsum
@@ -179,9 +178,6 @@ def runTests( override = False ):
     os.chdir( "../" )
     return summary
 
-# allow cronjob to turn all tests on.
-def overrideAllOn():
-    runTests( override = True )
 
 def main( cmd ):
     #print locals()
@@ -195,6 +191,7 @@ def main( cmd ):
 
     summary = ""
     if( cmd == "" ) : summary = runTests()
+    elif( cmd == "overrideAllOn" ) : summary = runTests( override = True )
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()
