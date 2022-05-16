@@ -115,6 +115,7 @@ Future<bool> verifyOnSignupConfirmPage( WidgetTester tester ) async {
 
 Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    // Top bar
+   await pumpSettle( tester, 1 );
    expect( find.byIcon( customIcons.home_here ), findsOneWidget );
    expect( find.byIcon( customIcons.loan ),      findsOneWidget );
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
@@ -214,6 +215,7 @@ void report( descr, {group = false} ) {
 
 Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
 
+   await pumpSettle(tester, 2);
    expect( await verifyOnLaunchPage( tester ), true );
 
    final Finder loginButton = find.byKey(const Key( 'Login' ));

@@ -243,7 +243,7 @@ Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
    // Note: key is generated exactly once each time you expand or shrink a node.  
    //       So, for example, row 2 is generated for first render.  Then, if scroll it offscreen, finder can no longer find it (say, to tap it).
    //       So, for example, rows: a, b, c.  expand #3 c: a b c d, d is #4.  shrink b: a c d, d is #3.
-   for( var i = min; i < max; i++ ) {
+   for( var i = min; i <= max; i++ ) {
 
       final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + i.toString() ));
       // Darg.  Uggggly
@@ -265,7 +265,7 @@ Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
                }
             }
       }
-      else { print( "Could not find allocTable row" ); }
+      else { print( "Could not find allocTable row " + i.toString() ); }
    }
    return true;
 }
@@ -294,9 +294,9 @@ Future<bool> expandAll( WidgetTester tester ) async {
 
    // now expand 2 at a time 
    var min = 19;
-   for( var i = 21; i <= 41; i = i+2 ) {
+   for( var i = 20; i <= 30; i = i+2 ) {
       await expandAllocs( tester, min, i );
-      min = i;
+      min = i+1;
       await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
       await tester.drag( listFinder, Offset(0.0, -50.0) );
       await tester.pumpAndSettle();
@@ -305,8 +305,7 @@ Future<bool> expandAll( WidgetTester tester ) async {
 
    // finally just 1
    for( var i = min+1; i <= 47; i++ ) {
-      await expandAllocs( tester, min, i );
-      min = i;
+      await expandAllocs( tester, i, i );
       await tester.dragUntilVisible( bottomFinder, listFinder, Offset(0.0, -50.0) );
       await tester.drag( listFinder, Offset(0.0, -50.0) );
       await tester.pumpAndSettle();
@@ -331,6 +330,26 @@ Future<bool> showVisible( WidgetTester tester ) async {
    
 }
 
+Future<bool> toggleTableEntry( WidgetTester tester, int flutterPos, String agKey ) async {
+
+   String elt = flutterPos == -1 ? agKey: "allocsTable " + flutterPos.toString();
+   print( "Toggle " + elt );
+   final Finder generatedAllocRow = find.byKey( Key( elt ) );
+   expect( generatedAllocRow, findsOneWidget );
+   
+   var allocRow = generatedAllocRow.evaluate().single.widget as Row;
+   var allocs   = allocRow.children as List;
+
+   final Finder arrow = findArrow( allocs[0] );
+   expect( arrow, findsOneWidget ); 
+
+   await tester.tap( arrow );
+   await pumpSettle( tester, 1 );
+
+   return true;
+}
+
+
 // All generatedRows are, well, generated.  Just not all are visible.
 Future<bool> closeAll( WidgetTester tester ) async {
 
@@ -349,20 +368,26 @@ Future<bool> closeAll( WidgetTester tester ) async {
    
    for( var elt in t ) {
       print( "   ... working " + elt );
-      final Finder generatedAllocRow = find.byKey( Key( elt ) );
-      expect( generatedAllocRow, findsOneWidget );
-
-      var allocRow = generatedAllocRow.evaluate().single.widget as Row;
-      var allocs   = allocRow.children as List;
-
-      final Finder arrow = findArrow( allocs[0] );
-      expect( arrow, findsOneWidget ); 
-
-      await tester.tap( arrow );
-      await pumpSettle( tester, 1 );
-      
+      await toggleTableEntry( tester, -1, elt );
    }
 
+   return true;
+}
+
+Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey ) async {
+
+   final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));  
+   expect( generatedAllocRow, findsOneWidget );
+   
+   List<String> allocs = await getElt( tester, "allocsTable " + flutterPos.toString() );
+   
+   // First elt in allocs is used as key for allocs_gold
+   // allocs is from ceFlutter, has short title, then numbers.
+   // allocs_gold is const above, is a map to a list<str> with long title, then numbers.
+   
+   List<String> agVals  = ALLOCS_GOLD[ agKey ] ?? [];
+   for( var j = 1; j < 5; j++ ) { expect( allocs[j], agVals[j] ); }
+   
    return true;
 }
 
@@ -374,6 +399,7 @@ Future<bool> checkAllocs( WidgetTester tester, int min, int max ) async {
    print( "\n" );
    for( var i = min; i <= max; i++ ) {
 
+      print( "checking allocsTable " + i.toString());  
       final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + i.toString() ));  
       expect( generatedAllocRow, findsOneWidget );
       
@@ -545,6 +571,24 @@ void main() {
 
          // This leaves us in summary frame
 
+         // expand depth-first to depth 4.  verify kids.  
+         await expandAllocs( tester, 1, 3 );
+         await checkAllocs( tester, 1, 6 );  // checks all of swCont, first path fully expanded
+         await checkOffsetAlloc( tester, 7, "Github Operations 8" );
+         await checkOffsetAlloc( tester, 8, "Unallocated 24" );
+
+         // close d2, verify
+         await toggleTableEntry( tester, 1, "" );
+         await checkOffsetAlloc( tester, 1, "Software Contributions 1" );
+         await checkOffsetAlloc( tester, 2, "Business Operations 25" );
+            
+         // open d2, verify 
+         await toggleTableEntry( tester, 1, "" );
+         await checkAllocs( tester, 1, 6 );  // checks all of swCont, first path fully expanded
+         await checkOffsetAlloc( tester, 7, "Github Operations 8" );
+         await checkOffsetAlloc( tester, 8, "Unallocated 24" );
+
+
          // Will be two chunks that are partially expanded.  make sure no ops impact values.
          // expand a bunch.
          // close middle
@@ -559,7 +603,7 @@ void main() {
          
          await logout( tester );         
 
-         report( 'Project contents' );
+         report( 'Project frame coherence' );
       });
 
 

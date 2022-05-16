@@ -22,6 +22,10 @@ from threading import Thread
 #import concurrent.futures
 
 
+# python testCEFlutter.py overrideAllOn
+# python testCEFlutter.py
+
+
 def validateConfiguration():
     logging.info("Validating local environment")
     goodConfig = True
