@@ -88,20 +88,23 @@ const Map<String,List<String>> ALLOCS_GOLD =
 };
 
 
-Future<bool> peqSummaryTabFraming( WidgetTester tester ) async {
+Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false } ) async {
    expect( await verifyOnProjectPage( tester ), true );
    final Finder tab = find.byKey( const Key('PEQ Summary' ));
    await tester.tap( tab );
-   await tester.pumpAndSettle( Duration( seconds:1 ));
+   await pumpSettle( tester, 1 );
 
    expect( find.text('Category'), findsOneWidget );
    expect( find.text('Allocation'), findsOneWidget );
    expect( find.text('Planned'), findsOneWidget );
    expect( find.text('Pending'), findsOneWidget );
-   expect( find.text('Accrued'), findsOneWidget );
    expect( find.text('Remaining'), findsOneWidget );
 
-   expect( find.byKey(const Key( 'Update PEQ Summary?' )), findsOneWidget );
+   // if called with some summaryframes expanded, this could or would fail
+   if( !ignoreAccrued ) {
+      expect( find.text('Accrued'), findsOneWidget );
+      expect( find.byKey(const Key( 'Update PEQ Summary?' )), findsOneWidget );
+   }
 
    return true;
 }
@@ -386,7 +389,10 @@ Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey
    // allocs_gold is const above, is a map to a list<str> with long title, then numbers.
    
    List<String> agVals  = ALLOCS_GOLD[ agKey ] ?? [];
-   for( var j = 1; j < 5; j++ ) { expect( allocs[j], agVals[j] ); }
+   for( var j = 1; j < 5; j++ ) {
+      if( allocs[j] != agVals[j] ) { print( allocs.toString() + "   " + agVals.toString() ); }
+      expect( allocs[j], agVals[j] );
+   }
    
    return true;
 }
@@ -485,6 +491,16 @@ Future<bool> ariSummaryContent( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> _checkHelper( tester ) async {
+   await checkAllocs( tester, 1, 6 );  
+   await checkOffsetAlloc( tester, 7, "Github Operations 8" );
+   await checkOffsetAlloc( tester, 8, "Unallocated 24" );
+   await checkOffsetAlloc( tester, 11, "A Pre-Existing Project 35" );
+   await checkOffsetAlloc( tester, 12, "Bacon 36" );
+   await checkOffsetAlloc( tester, 13, "Unassigned 37" );
+   await checkOffsetAlloc( tester, 14, "IR Alloc split: IwBRvVYU 38" );
+   return true;
+}
 
 void main() {
 
@@ -571,35 +587,79 @@ void main() {
 
          // This leaves us in summary frame
 
+         // EXPAND 1st group
          // expand depth-first to depth 4.  verify kids.  
          await expandAllocs( tester, 1, 3 );
          await checkAllocs( tester, 1, 6 );  // checks all of swCont, first path fully expanded
          await checkOffsetAlloc( tester, 7, "Github Operations 8" );
          await checkOffsetAlloc( tester, 8, "Unallocated 24" );
 
-         // close d2, verify
+         // close group1, verify
          await toggleTableEntry( tester, 1, "" );
          await checkOffsetAlloc( tester, 1, "Software Contributions 1" );
          await checkOffsetAlloc( tester, 2, "Business Operations 25" );
             
-         // open d2, verify 
+         // open group1, verify 
          await toggleTableEntry( tester, 1, "" );
          await checkAllocs( tester, 1, 6 );  // checks all of swCont, first path fully expanded
          await checkOffsetAlloc( tester, 7, "Github Operations 8" );
          await checkOffsetAlloc( tester, 8, "Unallocated 24" );
 
+         
+         // EXPAND 2nd group
+         await toggleTableEntry( tester, 1, "" );  // close group1
+         await expandAllocs( tester, 4, 5 );
+         await toggleTableEntry( tester, 8, "" );  
+         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project 35" );
+         await checkOffsetAlloc( tester, 5, "Bacon 36" );
+         await checkOffsetAlloc( tester, 6, "Unassigned 37" );
+         await checkOffsetAlloc( tester, 7, "IR Alloc split: IwBRvVYU 38" );
+         await checkOffsetAlloc( tester, 8, "Accrued 39");
+         await checkOffsetAlloc( tester, 9, "ariCETester 40");
+         await checkOffsetAlloc( tester, 10,"New ProjCol Proj 41" );
+         
+         // close group2, verify
+         await toggleTableEntry( tester, 4, "" );
+         await checkOffsetAlloc( tester, 1, "Software Contributions 1" );
+         await checkOffsetAlloc( tester, 2, "Business Operations 25" );
+         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project 35" );
+         await checkOffsetAlloc( tester, 5, "New ProjCol Proj 41" );
+            
+         // OPEN 2nd group
+         await toggleTableEntry( tester, 4, "" );  
+         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project 35" );
+         await checkOffsetAlloc( tester, 5, "Bacon 36" );
+         await checkOffsetAlloc( tester, 6, "Unassigned 37" );
+         await checkOffsetAlloc( tester, 7, "IR Alloc split: IwBRvVYU 38" );
+         await checkOffsetAlloc( tester, 8, "Accrued 39");
+         await checkOffsetAlloc( tester, 9, "ariCETester 40");
+         await checkOffsetAlloc( tester, 10,"New ProjCol Proj 41" );
 
-         // Will be two chunks that are partially expanded.  make sure no ops impact values.
-         // expand a bunch.
-         // close middle
-         // expand, close, expand check check check
-         // expand towards bottom until can scroll
+         // OPEN 1st group
+         await toggleTableEntry( tester, 1, "" );
+         await _checkHelper( tester );
+         
+         // cell height is 50
+         final listFinder   = find.byType( ListView );         
+         await tester.drag( listFinder, Offset(0.0, -300.0) );
+         await tester.drag( listFinder, Offset(0.0, -50.0) );
+         await tester.pumpAndSettle();
+         print( "DOWN" );
+         
+         await checkOffsetAlloc( tester, 15, "Accrued 39");
+         await checkOffsetAlloc( tester, 16, "ariCETester 40");
+         await checkOffsetAlloc( tester, 17, "New ProjCol Proj 41" );
+         
          // scroll up down up, check
-         // tab out, back in, check.
-         // expand, close, expand check check check
-         // scroll down
-         // expand, close, expand check check check
-         // scroll up, check 
+         print( "UPUP" );
+         await tester.drag( listFinder, Offset(0.0, 300.0) );
+         await tester.pumpAndSettle();
+         await _checkHelper( tester );
+
+         // tab out, back in
+         await contributorsTabFraming( tester );
+         await peqSummaryTabFraming( tester, ignoreAccrued: true );
+         await _checkHelper( tester );         
          
          await logout( tester );         
 
