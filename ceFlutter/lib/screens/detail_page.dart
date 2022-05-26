@@ -183,7 +183,10 @@ class _CEDetailState extends State<CEDetailPage> {
    
    @override
       Widget build(BuildContext context) {
-      
+
+      print( "BUILD DETAIL" );
+      print( "is context null ? " + (context == null).toString() );
+            
       container   = AppStateContainer.of(context);
       appState    = container.state;
 

@@ -152,6 +152,7 @@ class Node extends StatelessWidget implements Tree {
      path         = ancestors + "/" + title;
 
      // if( isVisible ) {  print( "visible node GET CURRENT  $title "); }
+     // print( "Is appstate null for $title? "+ (appState == null).toString() );
      
      List<List<Widget>> nodes = [];
 
@@ -212,9 +213,10 @@ class Node extends StatelessWidget implements Tree {
   // If this just opened, re-vis any kid that was opened before - can save open/close state this way
   @override
   reopenKids() {
-     print( "Reopening previously expanded $title kids" );
+     print( "Reopening previously expanded $title, and their kids" );
      isVisible = true;
-     if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {
+     // Note: appState is null if reopen was called for a child below that has not yet been seen (generated).
+     if( appState != null && appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {
         // Should only get here for nodes, given allocExpanded above... oops.. ok.  tree
         leaves.forEach( (child) => child.reopenKids() );
      }

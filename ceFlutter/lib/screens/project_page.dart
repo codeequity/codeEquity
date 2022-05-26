@@ -9,6 +9,7 @@ import 'package:ceFlutter/ingest.dart';
 import 'package:ceFlutter/models/app_state.dart';
 
 import 'package:ceFlutter/screens/summary_frame.dart';
+import 'package:ceFlutter/screens/detail_page.dart';
 
 
 class CEProjectPage extends StatefulWidget {
@@ -63,6 +64,13 @@ class _CEProjectState extends State<CEProjectPage> {
       setState(() => appState.updateAllocTree = true );
    }      
 
+   Future<void> _detailCallback() async {
+      print( "is context null ? " + (context == null).toString() );
+      // appState.selectedUser = ghUserLogin;
+      // appState.userPActUpdate = true;            
+      Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
+   }
+   
    // XXX Is this used?  Also, peqUpdated?
    _updateCompleteCallback() {
       // causes summary_frame to update list of allocs in showPalloc
@@ -108,6 +116,7 @@ class _CEProjectState extends State<CEProjectPage> {
             pageStamp:              pageStamp,
             frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
             updateCallback:         _updateCallback,
+            detailCallback:         _detailCallback,
             updateCompleteCallback: _updateCompleteCallback,
             allocExpansionCallback: _allocExpansionCallback );
 

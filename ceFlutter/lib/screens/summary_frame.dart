@@ -35,11 +35,19 @@ class CESummaryFrame extends StatefulWidget {
    var   appContainer;
    final pageStamp;
    final updateCallback;
+   final detailCallback;
    final updateCompleteCallback;
    final allocExpansionCallback;
 
    CESummaryFrame(
-      {Key key, this.appContainer, this.pageStamp, this.frameHeightUsed, this.updateCallback, this.updateCompleteCallback, this.allocExpansionCallback} ) : super(key: key);
+      {Key key,
+            this.appContainer,
+            this.pageStamp,
+            this.frameHeightUsed,
+            this.updateCallback,
+            this.detailCallback,
+            this.updateCompleteCallback,
+            this.allocExpansionCallback} ) : super(key: key);
 
   @override
   _CESummaryState createState() => _CESummaryState();
@@ -77,10 +85,10 @@ class _CESummaryState extends State<CESummaryFrame> {
       return GestureDetector(
          onTap: () async 
          {
-            print( "pactDetail fired for: " + ghUserLogin );
             appState.selectedUser = ghUserLogin;
-            appState.userPActUpdate = true;            
-            Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
+            appState.userPActUpdate = true;
+            print( "pactDetail fired for: " + ghUserLogin );
+            widget.detailCallback();
          },
          child: makeTableText( appState, ghUserLogin, width, height, false, 1, mux: depth * .5 )
          );
@@ -89,7 +97,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    // XXX this could easily be made iterative
    // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
    // header      alloc                   sub alloc                 plan
-   _buildAllocationTree( ) {
+   _buildAllocationTree() {
       print( "Build allocation tree" );
       final width = frameMinWidth - 2*appState.FAT_PAD;  
       
@@ -165,7 +173,7 @@ class _CESummaryState extends State<CESummaryFrame> {
 
    // XXX consider making peqSummary a list in appState
    // re-build alloc tree if updatePeq button triggers
-   List<List<Widget>> _showPAlloc( ) {
+   List<List<Widget>> _showPAlloc() {
       List<List<Widget>> allocList = [];
       
       if( appState.updateAllocTree ) { _buildAllocationTree(); }
@@ -196,7 +204,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       var c = Container( width: 1, height: 1 );
 
       // XXX Change number of cells?  change padding container 'c', and subtraction from tinypad.
-      allocs.addAll( _showPAlloc( ) );
+      allocs.addAll( _showPAlloc() );
       allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
