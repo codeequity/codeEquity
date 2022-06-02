@@ -65,9 +65,6 @@ class _CEProjectState extends State<CEProjectPage> {
    }      
 
    Future<void> _detailCallback() async {
-      print( "is context null ? " + (context == null).toString() );
-      // appState.selectedUser = ghUserLogin;
-      // appState.userPActUpdate = true;            
       Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
    }
    

@@ -49,7 +49,7 @@ async function getInstallationClient(owner, repo, source) {
     let credPath = config.CREDS_PATH;
     if( source != config.CE_USER &&
 	( owner == config.TEST_OWNER || owner == config.CROSS_TEST_OWNER || owner == config.MULTI_TEST_OWNER ) &&
-	( repo == config.TEST_REPO   || repo == config.CROSS_TEST_REPO   || owner == config.MULTI_TEST_OWNER )) {
+	( repo == config.TEST_REPO   || repo == config.FLUTTER_TEST_REPO || repo == config.CROSS_TEST_REPO   || owner == config.MULTI_TEST_OWNER )) {
 	credPath = config.CREDS_TPATH;
     }
     

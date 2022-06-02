@@ -102,12 +102,7 @@ async function testFlatProject( authData, ghLinks, td ) {
 }
 
 
-async function runTests( authData, ghLinks ) {
-
-    let td = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
-    td.GHRepo       = config.TEST_REPO;
-    td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
+async function runTests( authData, ghLinks, td ) {
 
     console.log( "Flat CE project structure =================" );
 

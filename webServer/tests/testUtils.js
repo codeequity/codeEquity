@@ -1886,6 +1886,9 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     let foundA1   = false; 
     let foundA2   = false;
     for( const pact of [addMP, addA1, addA2, remA1, remA2] ) {
+	subTest = checkEq( typeof pact === 'undefined', false,  subTest, "Pact not there yet" );
+	if( typeof pact === 'undefined' ) { break; }
+	    
 	let hr  = await hasRaw( authData, pact.PEQActionId );
 	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 

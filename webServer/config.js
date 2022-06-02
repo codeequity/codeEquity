@@ -23,12 +23,15 @@ const CREDS_TPATH       = "../ops/github/auth/ghAppTestCredentials";
 
 const TEST_PAT_PATH     = "../ops/github/auth/ghAriPAT";
 const CROSS_PAT_PATH    = "../ops/github/auth/ghAriPAT";
+const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT"; 
+
 const TEST_OWNER        = "ariCETester";
 const TEST_REPO         = "CodeEquityTester";
+const FLUTTER_TEST_REPO = "ceFlutterTester";
+
 const CROSS_TEST_OWNER  = "ariCETester";          
 const CROSS_TEST_REPO   = "ceTesterAlt";
 
-const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT"; 
 const MULTI_TEST_OWNER  = "connieCE";
 const MULTI_TEST_REPO   = "CodeEquityTester";
 
@@ -153,6 +156,7 @@ exports.CROSS_PAT_PATH   = CROSS_PAT_PATH
 exports.MULTI_PAT_PATH   = MULTI_PAT_PATH
 exports.TEST_OWNER       = TEST_OWNER;
 exports.TEST_REPO        = TEST_REPO;
+exports.FLUTTER_TEST_REPO = FLUTTER_TEST_REPO;
 exports.CROSS_TEST_OWNER = CROSS_TEST_OWNER;
 exports.CROSS_TEST_REPO  = CROSS_TEST_REPO;
 exports.MULTI_TEST_OWNER = MULTI_TEST_OWNER;

@@ -29,7 +29,7 @@ async function runTests() {
     // TEST_REPO auth
     let td          = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
-    td.GHRepo       = config.TEST_REPO;
+    td.GHRepo       = config.FLUTTER_TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
     let authData = {};

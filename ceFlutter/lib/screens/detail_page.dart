@@ -164,6 +164,7 @@ class _CEDetailState extends State<CEDetailPage> {
    // Active only, for now.
    void rebuildPActions( container, context ) async {
 
+      print( "Rebuild PActions" );
       await updateUserPeqs( container, context );
       List<String> peqs = appState.userPeqs[ appState.selectedUser ].map((peq) => peq.id ).toList();
 

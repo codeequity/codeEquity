@@ -22,6 +22,9 @@ const testData = require( './testData' );
 
 async function runTests() {
 
+    const args = process.argv.slice(2);
+    let flutterTest = ( args[0] == "ceFlutter" );
+
     // GH Linkage table
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
     let ghLinks = new links.Linkage();
@@ -29,11 +32,11 @@ async function runTests() {
     // TEST_REPO auth
     let td          = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
-    td.GHRepo       = config.TEST_REPO;
+    td.GHRepo       = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
     let authData = {};
-    authData.who = "<TEST: Main> ";
+    authData.who = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
     authData.ic  = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
     authData.api = utils.getAPIPath() + "/find";
     authData.cog = await awsAuth.getCogIDToken();
@@ -74,7 +77,7 @@ async function runTests() {
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
     const mrp = pacts != -1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
     if( utils.getToday() != mrp.EntryDate ) {
-	console.log( "Cold start?  Most recent pact", mrp.EntryDate );
+	console.log( "Cold start?  Most recent pact", mrp.EntryDate, wakeyPID.toString() );
 	await utils.sleep( 8000 );
     }
 
@@ -91,7 +94,7 @@ async function runTests() {
 
     // Save dynamo data
 
-    subTest = await testSaveDynamo.runTests( );
+    subTest = await testSaveDynamo.runTests( flutterTest );
     console.log( "\n\nSave Dynamo complete" );
     await utils.sleep( 1000 );
     testStatus = tu.mergeTests( testStatus, subTest );
@@ -115,7 +118,7 @@ async function runTests() {
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
     
-    subTest = await testCross.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
+    subTest = await testCross.runTests( flutterTest, authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
