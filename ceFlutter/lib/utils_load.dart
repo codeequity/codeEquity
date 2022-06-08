@@ -186,12 +186,24 @@ Future<bool> checkFailure( response, shortName, context, container ) async {
    }
    else {
       print( "RESPONSE: " + response.statusCode.toString() + " " + json.decode(utf8.decode(response.bodyBytes)).toString());
-      throw Exception( shortName + ': AWS data failed to load.');
+      throw Exception( shortName + ': AWS data failed to load, or update.');
    }
 
    return retval;
 }
 
+
+Future<String> fetchPAT( context, container, postData, shortName ) async {
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      final gha = json.decode(utf8.decode(response.bodyBytes));
+      return gha['PAT'];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchPAT( context, container, postData, shortName ); }
+   }
+}
 
 Future<String> fetchString( context, container, postData, shortName ) async {
    final response = await postIt( shortName, postData, container );
@@ -482,9 +494,51 @@ Future<void> reloadMyProjects( context, container ) async {
    // FetchGH sets ghAccounts.ceProjs
    appState.myGHAccounts = await fetchGHAcct( context, container, '{ "Endpoint": "GetGHA", "PersonId": "$uid"  }' );
    print( "My GH Accts:" );
-   print( appState.myGHAccounts );   
+   print( appState.myGHAccounts );
 }
 
+// Called upon refresh.. maybe someday on signin (via app_state_container:finalizeUser)
+// XXX This needs to check if PAT is known, query.
+// XXX update docs, pat-related
+Future<void> updateProjects( context, container ) async {
+   final appState  = container.state;
+   
+   // Iterate over all known GHAccounts.
+   for( GHAccount acct in appState.myGHAccounts ) {
+      
+      // get from gh
+      // XXX combine with assocGH?  split out GHUtils?
+
+      // Each ghUser (acct.ghUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
+      var pd = { "Endpoint": "GetEntry", "tableName": "CEGithub", "query": { "GHUserName": acct.ghUserName } };
+      final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
+         
+      var github = await GitHub(auth: Authentication.withToken( PAT ));   
+      await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.ghUserName ); })
+         .catchError((e) {
+               print( "Could not validate github acct." + e.toString() );
+               showToast( "Github validation failed.  Please try again." );
+            });
+
+      List<String> repos = [];
+      var repoStream =  await github.repositories.listRepositories( type: 'all' );
+      print( "Repo listen" );
+      await for (final r in repoStream) {
+         print( 'Repo: ${r.fullName}' );
+         repos.add( r.fullName );
+      }
+      print( "Repo done " + repos.toString() );
+
+      acct.repos = repos;
+         
+      // write to dynamo.
+      String newGHA = json.encode( acct );
+      String postData = '{ "Endpoint": "PutGHA", "NewGHA": $newGHA, "update": "true", "pat": ""  }';
+      await updateDynamo( context, container, postData, "PutGHA" );
+   }
+
+   await reloadMyProjects( context, container );
+}
 
 // XXX Only update if dirty.  Only dirty after updatePeq.
 // NOTE this gets pacts for peqs held by selected user, not pacts that selected user was the actor for.
@@ -567,7 +621,7 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          
          
          String newGHA = json.encode( myGHAcct );
-         String postData = '{ "Endpoint": "PutGHA", "NewGHA": $newGHA }';
+         String postData = '{ "Endpoint": "PutGHA", "NewGHA": $newGHA, "udpate": "false", "pat": $personalAccessToken }';
          await updateDynamo( context, container, postData, "PutGHA" );
 
          await reloadMyProjects( context, container );

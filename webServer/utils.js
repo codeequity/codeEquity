@@ -314,7 +314,7 @@ async function rewritePAct( authData, postData ) {
 
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
 async function recordPEQAction( authData, ceUID, ghUserName, ghRepo, verb, action, subject, note, entryDate, rawBody ) {
-    console.log( authData.who, "Recording PEQAction: ", verb, action );
+    console.log( authData.who, "Recording PEQAction: ", verb, action, ceUID );
 
     let shortName = "RecordPEQAction";
 

@@ -28,13 +28,17 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
 
    PEQAction pact = tup.item1;
    PEQ       peq  = tup.item2;
-   
-   assert( pact.ceUID == EMPTY );
+
    String ghu  = pact.ghUserName;
    if( !appState.idMapGH.containsKey( ghu )) {
       appState.idMapGH[ ghu ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu", "silent": "true" }', "GetCEUID" );
    }
    String ceu = appState.idMapGH[ ghu ];
+
+   // Too aggressive.  If run 'refresh repos' from homepage, ghAccount is rewritten with new repo list, at which point pacts are updated with 'new' ceuid.
+   //                  This is done because in some (many?) cases, pacts are created by a gh user before that user has a CEUID.
+   // assert( pact.ceUID == EMPTY );
+   assert( pact.ceUID == EMPTY || pact.ceUID == ceu );
    
    if( ceu != "" ) {
       // Don't await here, CEUID not used during processPEQ
@@ -422,7 +426,7 @@ void _delete( appState, pact, peq, List<Future> dynamo, assignees, assigneeShare
 
 // Note: there is no transfer in.  transfered peq issues arrive as uncarded newborns, and so are untracked.
 // Note: some early peq states may be unexpected during add.  For example, LabelTest.
-//       When performing a sequence of add/delete/move, an issue can created correctly, then bounced out of reserved into "In Prog",
+//       When performing a sequence of add/delete/move, an issue can be created correctly, then bounced out of reserved into "In Prog",
 //       then unlabeled (untracked), then re-tracked.  In this case, the PEQ is re-created, with the correct column of "In Prog".
 //       From ingest point of view, In Prog === Planned, so no difference in operation.
 

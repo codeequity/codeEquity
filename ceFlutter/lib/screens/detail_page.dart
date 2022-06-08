@@ -164,6 +164,7 @@ class _CEDetailState extends State<CEDetailPage> {
    // Active only, for now.
    void rebuildPActions( container, context ) async {
 
+      print( "Rebuild PActions" );
       await updateUserPeqs( container, context );
       List<String> peqs = appState.userPeqs[ appState.selectedUser ].map((peq) => peq.id ).toList();
 
@@ -183,7 +184,10 @@ class _CEDetailState extends State<CEDetailPage> {
    
    @override
       Widget build(BuildContext context) {
-      
+
+      print( "BUILD DETAIL" );
+      print( "is context null ? " + (context == null).toString() );
+            
       container   = AppStateContainer.of(context);
       appState    = container.state;
 

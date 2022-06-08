@@ -12,7 +12,6 @@ async function createFlatProject( authData, ghLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
     td.masterPID  = await tu.makeProject( authData, td, FLAT_PROJ, "" );
-
     let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, "Eggs" );
     let mastCol2  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, "Bacon" );
 
@@ -102,12 +101,7 @@ async function testFlatProject( authData, ghLinks, td ) {
 }
 
 
-async function runTests( authData, ghLinks ) {
-
-    let td = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
-    td.GHRepo       = config.TEST_REPO;
-    td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
+async function runTests( authData, ghLinks, td ) {
 
     console.log( "Flat CE project structure =================" );
 

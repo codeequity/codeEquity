@@ -25,9 +25,9 @@ async function cardPresentHelp( authData, colId, issNum ) {
 
 
 // Requires config.TEST_OWNER to have installed the codeEquity app for all repos, not just one.
-// Requires config.CROSS_TEST_REPO & config.TEST_REPO to allow both config.CE_USER and config.TEST_OWNER to have R/W access
+// Requires config.CROSS_TEST_REPO & config.TEST_REPO & config.FLUTTER_TEST_REPO to allow both config.CE_USER and config.TEST_OWNER to have R/W access
 // This way, authData is shared.   td is NOT shared.
-async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
+async function testCrossRepo( flutterTest, authData, authDataX, ghLinks, td, tdX ) {
 
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
@@ -40,6 +40,7 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
 
     assert( config.CROSS_TEST_OWNER == config.TEST_OWNER );
     assert( config.CROSS_TEST_REPO  != config.TEST_REPO );
+    assert( config.CROSS_TEST_REPO  != config.FLUTTER_TEST_REPO );
 
     // Setup.
     // Add populate label to testProject2, to invoke repostatus
@@ -117,8 +118,10 @@ async function testCrossRepo( authData, authDataX, ghLinks, td, tdX ) {
     testStatus = await tu.checkNewbornIssue( authDataX, ghLinks, td, [newGHIssue.id, newGHIssue.number, issDatX[2]], testStatus, {lblCount: 1} );    
     testStatus = await tu.checkNewbornIssue( authData, ghLinks, tdX, [newXIssue.id, newXIssue.number, issDat[2]], testStatus, {lblCount: 1} );    
 
+    let testRepo = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
+	
     // Careful.. peq is gone at this point.   Delete may come after relocate, hence depth
-    sub         = [peqX.PEQId, config.TEST_OWNER + "/" + config.TEST_REPO];
+    sub         = [peqX.PEQId, config.TEST_OWNER + "/" + testRepo];
     testStatus  = await tu.checkPact( authDataX, ghLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer out", testStatus, {sub: sub, depth: 2} );
     sub         = [peq.PEQId, config.TEST_OWNER + "/" + config.CROSS_TEST_REPO];
     testStatus  = await tu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer out", testStatus, {sub: sub, depth: 2} );
@@ -252,14 +255,14 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
 
 
 
-async function runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM ) {
+async function runTests( flutterTest, authData, authDataX, authDataM, ghLinks, td, tdX, tdM ) {
 
 
     console.log( "Cross tests =================" );
 
     let testStatus = [ 0, 0, []];
 
-    let t1 = await testCrossRepo( authData, authDataX, ghLinks, td, tdX );
+    let t1 = await testCrossRepo( flutterTest, authData, authDataX, ghLinks, td, tdX );
     console.log( "\n\nCross Repo test complete." );
     await utils.sleep( 5000 );
 

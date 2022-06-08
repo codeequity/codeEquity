@@ -38,7 +38,7 @@ Future<bool> restart( WidgetTester tester ) async {
    final splash = find.text( 'CodeEquity' );
    expect(splash, findsOneWidget);
    
-   await tester.pumpAndSettle(Duration(seconds: 5));
+   await pumpSettle(tester, 5);
    return true;
 }
 
@@ -115,6 +115,7 @@ Future<bool> verifyOnSignupConfirmPage( WidgetTester tester ) async {
 
 Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    // Top bar
+   await pumpSettle( tester, 1 );
    expect( find.byIcon( customIcons.home_here ), findsOneWidget );
    expect( find.byIcon( customIcons.loan ),      findsOneWidget );
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
@@ -135,7 +136,8 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
 Future<bool> verifyAriHome( WidgetTester tester ) async {
    expect( await verifyOnHomePage( tester ), true );   
 
-   //  Three CE Projects
+   //  Four CE Projects
+   expect( find.byKey( const Key('ariCETester/ceFlutterTester' )), findsOneWidget );
    expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
    expect( find.byKey( const Key('ariCETester/ceTesterAlt' )), findsOneWidget );
    expect( find.byKey( const Key('connieCE/CodeEquityTester' )),    findsOneWidget );   
@@ -195,12 +197,33 @@ Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
    expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 
    // framing
-   expect( find.text( 'ariCETester/CodeEquityTester' ),    findsOneWidget );  
+   expect( find.text( 'ariCETester/ceFlutterTester' ),     findsOneWidget );  
    expect( find.text( 'Approvals' ),                       findsOneWidget );  
    expect( find.text( 'PEQ Summary' ),                     findsOneWidget );  
    expect( find.text( 'Contributors' ),                    findsOneWidget );  
    expect( find.text( 'Equity Plan' ),                     findsOneWidget );  
    expect( find.text( 'Agreements' ),                      findsOneWidget );  
+   
+   return true;
+}
+
+Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
+   expect( await verifyOnProjectPage( tester ), true );
+
+   expect( find.byKey( const Key( 'Update PEQ Summary?' )), findsOneWidget );
+   
+   expect( find.text( 'Category' ),               findsNothing );
+   expect( find.text( 'Software Contributions' ), findsNothing );
+   expect( find.text( 'Business Operations' ),    findsNothing );
+   expect( find.text( 'UnClaimed' ),              findsNothing );
+   expect( find.text( 'A Pre-Existing Project' ), findsNothing );
+   expect( find.text( 'New ProjCol Proj' ),       findsNothing );
+
+   expect( find.text( 'Allocation' ), findsNothing );
+   expect( find.text( 'Planned' ),    findsNothing );
+   expect( find.text( 'Pending' ),    findsNothing );
+   expect( find.text( 'Accrued' ),    findsNothing );
+   expect( find.text( 'Remaining' ),  findsNothing );
    
    return true;
 }
@@ -214,6 +237,7 @@ void report( descr, {group = false} ) {
 
 Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
 
+   await pumpSettle(tester, 2);
    expect( await verifyOnLaunchPage( tester ), true );
 
    final Finder loginButton = find.byKey(const Key( 'Login' ));
@@ -246,8 +270,9 @@ Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
    print( "second pump" );
    await tester.pumpAndSettle(); // for .. toast?
    print( "third pump" );
-   await tester.pumpAndSettle(Duration(seconds: 5)); // for aws
-   await tester.pumpAndSettle(Duration(seconds: 2));
+   await pumpSettle(tester, 5); // for aws
+   await pumpSettle(tester, 2);
+   await pumpSettle(tester, 1); // Ugggg debug cognito is soooooo slow
 
    // XXX Verify toast 'user not found' ?  Shows up faster.. but toasting is probably changing.
    // verify topbar icons

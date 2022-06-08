@@ -7,14 +7,20 @@ const execSync = require('child_process').execSync;
 
 
 // time stamp is on file.  just want limited queue.  Easiest is by hour.
-function execAWS_CLI( table ) {
+function execAWS_CLI( table, flutterTest ) {
     let success = true;
-    let stamp = utils.getMillis( true )
+    const d = new Date();
+    let stamp = d.getDate().toString();
     console.log( "Saving AWS Dynamo table:", table );
 
     // cmd = "aws dynamodb scan --table-name CEPEQs | jq '{"Ownerships": [.Items[] | {PutRequest: {Item: .}}]}' > testData/testDataCEPEQS.json"
     let fname = "tests/testData/dynamo" + table + "_" + stamp + ".json";
     let lname = "tests/testData/dynamo" + table +"_latest"    + ".json";
+    if( flutterTest ) {
+	fname = "tests/flutterTestData/dynamo" + table + "_" + stamp + ".json";
+	lname = "tests/flutterTestData/dynamo" + table +"_latest"    + ".json";
+    }
+	
     let cmd = "aws dynamodb scan --table-name " + table + " | jq ";
     cmd    += "'{\"" + table + "\": [.Items[] | {PutRequest: {Item: .}}]}' > ";
 
@@ -33,30 +39,30 @@ function execAWS_CLI( table ) {
 
 
 // NOTE: Will need to be set up to run createCE.py (i.e. aws cli, etc) in order to run this.
-async function runTests( ) {
+async function runTests( flutterTest ) {
 
     let testStatus = [ 0, 0, []];
     let success = false;
 
-    success = execAWS_CLI( "CEPEQs" );
+    success = execAWS_CLI( "CEPEQs", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save PEQ Table" );
 
-    success = execAWS_CLI( "CEPEQActions" );
+    success = execAWS_CLI( "CEPEQActions", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save PAct Table" );
 
-    success = execAWS_CLI( "CEPEQSummary" );
+    success = execAWS_CLI( "CEPEQSummary", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save Peq Summary Table" );
 
-    success = execAWS_CLI( "CEPEQRaw" );
+    success = execAWS_CLI( "CEPEQRaw", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save raw PAct Table" );
 
-    success = execAWS_CLI( "CERepoStatus" );
+    success = execAWS_CLI( "CERepoStatus", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save Repo Status Table" );
 
-    success = execAWS_CLI( "CEPeople" );
+    success = execAWS_CLI( "CEPeople", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save People Table" );
 
-    success = execAWS_CLI( "CEAgreements" );
+    success = execAWS_CLI( "CEAgreements", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save Agreements Table" );
 
     return testStatus

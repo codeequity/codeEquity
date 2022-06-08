@@ -29,7 +29,7 @@ Future<bool> addGHProject( WidgetTester tester ) async {
 
    final Finder addGHPButton = find.byKey(const Key( 'New' ));
    await tester.tap( addGHPButton );
-   await tester.pumpAndSettle( Duration( seconds:1 ));
+   await pumpSettle( tester, 1 );
 
    // XXX Not yet implemented
    expect( await verifyOnHomePage( tester ), true );
@@ -43,7 +43,7 @@ Future<bool> addRepo( WidgetTester tester ) async {
 
    final Finder addGHRButton = find.byKey(const Key( 'Add' ));
    await tester.tap( addGHRButton );
-   await tester.pumpAndSettle( Duration( seconds:1 ));
+   await pumpSettle(tester, 1);
 
    expect( await verifyOnAddGHPage( tester ), true );
 
@@ -51,9 +51,9 @@ Future<bool> addRepo( WidgetTester tester ) async {
    final Finder gpatText     = find.byKey( const Key( 'Github Personal Access Token' ));
    final Finder enableButton = find.byKey( const Key( 'Enable Github access' ));
    await tester.enterText( gpatText, "boogy woogy" );
-   await tester.pumpAndSettle( Duration( seconds:1 ));
+   await pumpSettle(tester, 1);
    await tester.tap( enableButton );
-   await tester.pumpAndSettle( Duration( seconds:1 ));
+   await pumpSettle(tester, 1);
    expect( await verifyOnHomePage( tester ), true );
 
    // XXX Actual entry
@@ -74,7 +74,7 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   bool skip = true;
+   bool skip = false;
 
    // override?  Run it.
    var override = const String.fromEnvironment('override');
@@ -105,27 +105,27 @@ void main() {
          await restart( tester );
          bool known = true;
 
-         print("XXX LOGIN ARI" );
+         print("LOGIN ARI" );
          await login( tester, known );
          expect( await verifyAriHome( tester ), true );         
          await logout( tester );
          
-         print("XXX LOGIN CON" );
+         print("LOGIN CON" );
          await login( tester, known, tester2:true );
          expect( await verifyConnieHome( tester ), true );         
 
 
-         print("XXX RESTART" );
+         print("RESTART" );
          await restart( tester );
          await tester.pumpAndSettle();         
-         await tester.pumpAndSettle( Duration( seconds:1 ));
+         await pumpSettle(tester, 1);
 
          
-         print("XXX VERIFY no login CON" );
+         print("VERIFY no login CON" );
          expect( await verifyConnieHome( tester ), true );         
          await logout( tester );
 
-         print("XXX LOGIN ARI" );
+         print("LOGIN ARI" );
          await login( tester, known );
          expect( await verifyAriHome( tester ), true );         
 

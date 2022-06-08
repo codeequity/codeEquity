@@ -5,8 +5,9 @@
     "scripts": {
         "start": "node ./bin/www",
         "testMain": "node ./tests/testMain.js",
+        "testFlutter": "node ./tests/testMain.js ceFlutter",
         "sanityCheck": "node ./tests/sanityCheck.js",
-        "cleanFlutter": "node ./tests/cleanFlutter.js",
+        "cleanFlutter": "node ./tests/cleanLoad.js",
         "cleanLoad": "node ./tests/cleanLoad.js",
         "testSetup": "node ./tests/testSetup.js",
         "testDelete": "node ./tests/testDelete.js"
