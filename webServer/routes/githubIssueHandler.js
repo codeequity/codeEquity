@@ -23,6 +23,7 @@ var ghSafe  = ghUtils.githubSafe;
 async function deleteIssue( authData, ghLinks, pd ) {
 
     let tstart = Date.now();
+
     // Either not carded, or delete card already fired successfully.  No-op.
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
     if( links == -1 ) return;
@@ -33,7 +34,17 @@ async function deleteIssue( authData, ghLinks, pd ) {
     // [pd.peqValue, _] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
     // if( pd.peqValue <= 0 ) return;
 
-    // PEQ.  Card is gone, issue is gone.  Delete card will handle all but the one case below, in which case it leaves link intact.
+    // After June, 2022, Github behavior when deleting a situated issue has taken a wrong turn.
+    // Delete issue notification is generate immediately.  good.
+    // Delete card notification is only generated after human browses the project board (!!!!!), at which time the human will see:
+    //        'You can not see this card.  This card references something that has spammy content.'
+    
+    // Carded, not tracked (i.e. not peq).  We know issue was deleted - don't know if card was.
+    // Remove card now, as of 6/2022.  If delCard was already called, links above would already by -1, won't get here.
+    if( link.GHColumnId == -1 ) {
+	gh.removeCard( authData, link.GHCardId );
+	return;
+    }
 
     // ACCR, not unclaimed, deleted issue.
     if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
@@ -79,6 +90,15 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
 			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
+    }
+    else {
+	// Here, have a peq issue that is not ACCR/!unclaimed.
+	// delCard action & notice is no longer automatic - call here.  CardHandler handles all the details.
+
+	// XXX can NOT remove this card - seems to be protected internal GH junk.  Must wait for it to
+	//     disappear on its own.  UGLY.
+	// gh.removeCard( authData, link.GHCardId );
+	cardHandler.deleteCard( authData, ghLinks, pd, link.GHCardId );
     }
     console.log( "Delete", Date.now() - tstart );
 }
@@ -253,7 +273,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	break;
     case 'deleted':
 	// Delete card of carded issue sends 1 notification.  Delete issue of carded issue sends two: card, issue, in random order.
-	// This must be robust given differnet notification order of { delIssue, delCard} 
+	// This must be robust given different notification order of { delIssue, delCard}
+
+	// NOTE!!  As of 6/8/2022 the above is no longer true.  delIssue notification is generated, delCard is.. well.. see deleteIssue comments.
 	
 	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
