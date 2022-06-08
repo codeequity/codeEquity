@@ -136,7 +136,8 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
 Future<bool> verifyAriHome( WidgetTester tester ) async {
    expect( await verifyOnHomePage( tester ), true );   
 
-   //  Three CE Projects
+   //  Four CE Projects
+   expect( find.byKey( const Key('ariCETester/ceFlutterTester' )), findsOneWidget );
    expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
    expect( find.byKey( const Key('ariCETester/ceTesterAlt' )), findsOneWidget );
    expect( find.byKey( const Key('connieCE/CodeEquityTester' )),    findsOneWidget );   
@@ -196,12 +197,33 @@ Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
    expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 
    // framing
-   expect( find.text( 'ariCETester/CodeEquityTester' ),    findsOneWidget );  
+   expect( find.text( 'ariCETester/ceFlutterTester' ),     findsOneWidget );  
    expect( find.text( 'Approvals' ),                       findsOneWidget );  
    expect( find.text( 'PEQ Summary' ),                     findsOneWidget );  
    expect( find.text( 'Contributors' ),                    findsOneWidget );  
    expect( find.text( 'Equity Plan' ),                     findsOneWidget );  
    expect( find.text( 'Agreements' ),                      findsOneWidget );  
+   
+   return true;
+}
+
+Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
+   expect( await verifyOnProjectPage( tester ), true );
+
+   expect( find.byKey( const Key( 'Update PEQ Summary?' )), findsOneWidget );
+   
+   expect( find.text( 'Category' ),               findsNothing );
+   expect( find.text( 'Software Contributions' ), findsNothing );
+   expect( find.text( 'Business Operations' ),    findsNothing );
+   expect( find.text( 'UnClaimed' ),              findsNothing );
+   expect( find.text( 'A Pre-Existing Project' ), findsNothing );
+   expect( find.text( 'New ProjCol Proj' ),       findsNothing );
+
+   expect( find.text( 'Allocation' ), findsNothing );
+   expect( find.text( 'Planned' ),    findsNothing );
+   expect( find.text( 'Pending' ),    findsNothing );
+   expect( find.text( 'Accrued' ),    findsNothing );
+   expect( find.text( 'Remaining' ),  findsNothing );
    
    return true;
 }

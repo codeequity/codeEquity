@@ -10,7 +10,7 @@ const testData       = require( './testData' );
 var   fs       = require('fs'), json;
 const execSync = require('child_process').execSync;
 
-const baselineLoc = "./tests/testData/baselineData/";
+const baselineLoc = "./tests/flutterTestData/";
 
 function getData( fname ) {
     try {
@@ -35,7 +35,7 @@ async function clearSummary( authData, td ) {
 }
 
 
-// Only load items for  TEST_OWNER, TEST_REPO.  Need to work through dynamo storage format.
+// Only load items for  TEST_OWNER, FLUTTER_TEST_REPO.  Need to work through dynamo storage format.
 async function loadPEQ( authData, td ) {
 
     // First, remove.
@@ -45,11 +45,12 @@ async function loadPEQ( authData, td ) {
 	await utils.cleanDynamo( authData, "CEPEQs", opids );				   
     }
     
-    let fname = baselineLoc + "dynamoCEPEQs.json";
+    let fname = baselineLoc + "dynamoCEPEQs_latest.json";
     const dataStr = getData( fname );
     const peqJson = JSON.parse( dataStr );
-    console.log( "Loading", peqJson.CEPEQs.length.toString(), "PEQs from", fname );
+    console.log( "Reading", peqJson.CEPEQs.length.toString(), "PEQs from", fname );
 
+    let peqCount = 0;
     var promises = [];
     for( var aput of peqJson.CEPEQs ) {
 	const repo = aput.PutRequest.Item.GHRepo.S;
@@ -57,6 +58,7 @@ async function loadPEQ( authData, td ) {
 	
 	if( repo == td.GHFullName ) {
 	    // console.log( "Loading", repo, id );
+	    peqCount++;
 
 	    let postData = {};
 	    postData.PEQId        = id;
@@ -82,18 +84,12 @@ async function loadPEQ( authData, td ) {
 	    
 	    // managed by lambda handler, alone.
 	    // postData.LockId       = aput.PutRequest.Item.LockId.S;   
-
+	    
 	    promises.push( utils.recordPEQ( authData, postData ) );
 	}
     }
+    console.log( "Inserting ", peqCount.toString(), "peqs." );
     await Promise.all( promises );    
-}
-
-// Ug.. toasted raw.  Still have saved.. cheat for now.
-async function loadRaw( authData, td ) {
-    // cmd = "aws dynamodb batch-write-item --request-items file://tests/testData/baselineData/dynamoCEPEQRaw.json";
-    // aws dynamodb scan --table-name "CEPEQRaw" --select "COUNT"
-    // python createCE.py createTestDDBEntries
 }
 
 
@@ -107,20 +103,21 @@ async function loadPAct( authData, td ) {
     }
     
     // NOTE!  PActRaw doesn't change - no need to overwrite.
-    let fname = baselineLoc + "dynamoCEPEQActions.json";
+    let fname = baselineLoc + "dynamoCEPEQActions_latest.json";
 
     const dataStr  = getData( fname );
     const pactJson = JSON.parse( dataStr );
-    console.log( "Loading", pactJson.CEPEQActions.length.toString(), "PActs from", fname );
+    console.log( "Reading", pactJson.CEPEQActions.length.toString(), "PActs from", fname );
 
-    // Set to true to load CEPEQRaw.  Requires mod in aws dynamo as well.
-    var loadRaw = false;
     var praw = {};
+    var loadRaw = false;
+    /*
+    // Set to true to load CEPEQRaw.  Requires mod in aws dynamo as well.
     if( loadRaw ) {
 	// PEQRawId == PEQActionId
 	// Slower approach when data is small, but more scalable.
 	var pactIds  = [];
-	let rname      = baselineLoc + "dynamoCEPEQRaw.json";
+	let rname      = baselineLoc + "dynamoCEPEQRaw_latest.json";
 	const rawStr   = getData( rname );
 	const rawJson  = JSON.parse( rawStr );
 	for( var aput of pactJson.CEPEQActions ) {
@@ -140,13 +137,16 @@ async function loadPAct( authData, td ) {
 	    // else { console.log( "FAIL PUT", pid ); }
 	}
     }
+    */
 
+    let pactCount = 0;
     var promises = [];
     for( var aput of pactJson.CEPEQActions ) {
 	const repo = aput.PutRequest.Item.GHRepo.S;
 	const id   = aput.PutRequest.Item.PEQActionId.S;
 	
 	if( repo == td.GHFullName ) {
+	    pactCount++;
 	    if( loadRaw ) {
 		assert( praw.hasOwnProperty( id ) );
 		console.log( "Loading", repo, id, praw[id].length.toString());
@@ -173,6 +173,7 @@ async function loadPAct( authData, td ) {
 	    promises.push( utils.rewritePAct( authData, postData ) );
 	}
     }
+    console.log( "Inserting ", pactCount.toString(), "pacts." );
     await Promise.all( promises );    
 
 }
@@ -185,7 +186,7 @@ async function runTests() {
     // TEST_REPO auth
     let td          = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
-    td.GHRepo       = config.TEST_REPO;
+    td.GHRepo       = config.FLUTTER_TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
     let authData = {};
@@ -200,14 +201,17 @@ async function runTests() {
     promises.push( clearSummary(  authData, td ));
     await Promise.all( promises );
 
+    /* 
+    // No longer needed.. 
     // make true to generate new baseline data.
     if( false ) {
 	subTest = await testSaveDynamo.runTests( );
 	console.log( "\n\nSave Dynamo complete" );
 	await utils.sleep( 1000 );
-	let cmd = "./tests/testData/baselineData/create.sh";
+	let cmd = "./tests/flutterTestData/baselineData/create.sh";
 	execSync( cmd, { encoding: 'utf-8' });
     }
+    */
 	
     // Can't just overwrite, new operations will be in aws and be processed.
     await loadPEQ(  authData, td );

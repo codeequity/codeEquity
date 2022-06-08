@@ -73,6 +73,7 @@ class _CEAddGHState extends State<CEAddGHPage> {
    
    Widget _makeAssociateGH() {
 
+      // XXX This is not clearly true.  Need PAT each time refresh GH repos, since have to use listRepositories.
       // XXX <Profile> should be clickable, take you to profile.
       String ghExplain   = "CodeEquity will authenticate your account with Github one time only.  ";
       ghExplain         += "You can undo this association at any time under <Profile>.  ";

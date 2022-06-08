@@ -12,7 +12,6 @@ async function createFlatProject( authData, ghLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
     td.masterPID  = await tu.makeProject( authData, td, FLAT_PROJ, "" );
-
     let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, "Eggs" );
     let mastCol2  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, "Bacon" );
 

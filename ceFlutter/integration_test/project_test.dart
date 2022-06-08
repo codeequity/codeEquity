@@ -19,7 +19,7 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 // check app_state.. that'd be good..
 // https://blog.gskinner.com/archives/2021/06/flutter-a-deep-dive-into-integration_test-library.html
 
-// Gold standard for testing ingest and summary frame for ariCETester/CodeEquityTester
+// Gold standard for testing ingest and summary frame for ariCETester/ceFlutterTester
 // XXX Category should show ["7,000,000", "12,840", "2,500", "11,001"] in ceFlutter
 // XXX Test for presence in gold not replicated in ceFlutter
 // XXX Discrepencies:
@@ -504,6 +504,8 @@ Future<bool> _checkHelper( tester ) async {
 
 void main() {
 
+   String repo = "ariCETester/ceFlutterTester";
+   
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -520,7 +522,7 @@ void main() {
          await restart( tester );
          await login( tester, true );
 
-         final Finder ariLink = find.byKey( const Key('ariCETester/CodeEquityTester' ));
+         final Finder ariLink = find.byKey( Key( repo ));
          await tester.tap( ariLink );
          print( "pumping" );
          await tester.pumpAndSettle( Duration( seconds: 5 ));
@@ -541,7 +543,9 @@ void main() {
       });
 
 
-   testWidgets('Project contents', skip:skip, (WidgetTester tester) async {
+   // NOTE: testCEFlutter.py always runs 'npm clean' before this
+   //       it is possible to depend on process_run and run from here, but that clutters deps
+   testWidgets('Project contents, ingest', skip:false, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -549,26 +553,34 @@ void main() {
          // Login checks for homepage, but verify this is Ari before testing contents
          expect( await verifyAriHome( tester ), true );         
 
-         final Finder ariLink = find.byKey( const Key('ariCETester/CodeEquityTester' ));
+         final Finder ariLink = find.byKey( Key( repo ));
          await tester.tap( ariLink );
          print( "pumping" );
          await tester.pumpAndSettle( Duration( seconds: 5 ));
          print( "pumping" );
          await tester.pumpAndSettle( Duration( seconds: 3 ));
 
-         expect( await verifyOnProjectPage( tester ), true );
+         expect( await verifyEmptyProjectPage( tester ), true );
+         
+         final Finder updateButton = find.byKey( const Key( 'Update PEQ Summary?' ));
+         expect( updateButton, findsOneWidget );
+         await tester.tap( updateButton );
+         print( "Long pump" );
+         await pumpSettle( tester, 40 );
+         print( "short pump" );
+         await pumpSettle( tester, 4 );
 
-         // This leaves us in summary frame
+         // Make sure it all shows up
          expect( await peqSummaryTabFraming( tester ),   true );
          expect( await ariSummaryFraming( tester ), true );
          expect( await ariSummaryContent( tester ), true );
 
          await logout( tester );         
 
-         report( 'Project contents' );
+         report( 'Project contents, ingest' );
       });
 
-   testWidgets('Project frame coherence', skip:false, (WidgetTester tester) async {
+   testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -576,7 +588,7 @@ void main() {
          // Login checks for homepage, but verify this is Ari before testing contents
          expect( await verifyAriHome( tester ), true );         
 
-         final Finder ariLink = find.byKey( const Key('ariCETester/CodeEquityTester' ));
+         final Finder ariLink = find.byKey( Key( repo ));
          await tester.tap( ariLink );
          print( "pumping" );
          await tester.pumpAndSettle( Duration( seconds: 5 ));

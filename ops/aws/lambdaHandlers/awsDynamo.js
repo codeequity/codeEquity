@@ -7,8 +7,9 @@ var assert = require('assert');
 // NOTE, as of 5/20 dynamo supports empty strings.  yay.  Save this for sets & etc.
 const EMPTY = "---EMPTY---";  
 
+// On a large ingest, MAX_SPIN 20 is insufficient.  Bump to 50.
 const SPIN_DELAY = 200; // spin wait on fine-grained lock conflict
-const MAX_SPIN   = 20;  // how many times will we retry
+const MAX_SPIN   = 50;  // how many times will we retry
 
 const NO_CONTENT = {
 		statusCode: 204,
@@ -81,7 +82,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
     else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
-    else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA ); }
+    else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
@@ -275,6 +276,9 @@ async function getEntry( tableName, query ) {
     switch( tableName ) {
     case "CEPeople":
 	props = ["PersonId", "UserName", "Email", "First", "Last"];
+	break;
+    case "CEGithub":
+	props = ["GHUserName"];
 	break;
     case "CEPEQs":
 	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
@@ -1115,6 +1119,7 @@ async function getGHA( uid ) {
 
 // XXX this gets all, not just needing update
 // XXX as it is, replace with getPeqActions
+// XXX NOTE: this also gets all from all repos belonging to ghUserName.  Not wrong, but too sloppy.
 async function getPEQActionsFromGH( ghUserName ) {
     const params = {
         TableName: 'CEPEQActions',
@@ -1147,30 +1152,48 @@ async function updatePEQActions( peqa, ceUID ) {
     return uPromise.then(() => true );
 }
 
-async function putGHA( newGHAcct ) {
-    const paramsP = {
-        TableName: 'CEGithub',
-	Item: {
-	    "GHAccountId": newGHAcct.id, 
-	    "CEOwnerId":   newGHAcct.ceOwnerId,
-	    "GHUserName":  newGHAcct.ghUserName,
-	    "Repos":       newGHAcct.repos
-	}
-    };
+async function putGHA( newGHAcct, update, pat ) {
+    if( update == "true" ) {
+	const params = {
+            TableName: 'CEGithub',
+	    Key: { "GHAccountId": newGHAcct.id },
+	    UpdateExpression: 'set CEOwnerId = :ceoid, GHUserName = :ghun, Repos = :repos',
+	    ExpressionAttributeValues: { ':ceoid': newGHAcct.ceOwnerId, ':ghun': newGHAcct.ghUserName, ':repos': newGHAcct.repos }
+	};
+	
+	console.log( "GHAcct update repos");
+	let ghaPromise = bsdb.update( params ).promise();
+	await ghaPromise;
+    }
+    else {
+	const params = {
+            TableName: 'CEGithub',
+	    Item: {
+		"GHAccountId": newGHAcct.id, 
+		"CEOwnerId":   newGHAcct.ceOwnerId,
+		"GHUserName":  newGHAcct.ghUserName,
+		"Repos":       newGHAcct.repos,
+		"PAT":         pat
+	    }
+	};
+	
+	console.log( "GHAcct put repos");
+	let ghaPromise = bsdb.put( params ).promise();
+	await ghaPromise;
+    }
 
-    console.log( "GHAcct put repos");
 
-    let ghaPromise = bsdb.put( paramsP ).promise();
-    await ghaPromise;
-
-    // Must update any PEQActions created before ghUser had ceUID
-    // Suure would be nice to have a real 'update where'.   bah
-    // Majority of cases will be 0 or just a few PEQActions without a CE UID, 
-    // especially since a PEQAction requires a PEQ label.
     let updated = true;
-    const ghPEQA = await getPEQActionsFromGH( newGHAcct.ghUserName );
-    await ghPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newGHAcct.ceOwnerId ));
-    console.log( "putGHA returning", updated );
+    if( update == "false" ) {
+	// Must update any PEQActions created before ghUser had ceUID
+	// Suure would be nice to have a real 'update where'.   bah
+	// Majority of cases will be 0 or just a few PEQActions without a CE UID, 
+	// especially since a PEQAction requires a PEQ label.
+	const ghPEQA = await getPEQActionsFromGH( newGHAcct.ghUserName );
+	await ghPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newGHAcct.ceOwnerId ));
+	console.log( "putGHA returning", updated );
+    }
+
     return success( updated );
 }
 

@@ -124,6 +124,35 @@ class _CEHomeState extends State<CEHomePage> {
       runningLHSHeight += chunkHeight;
       return repoChunks;
    }
+
+   List<Widget> _makeRefresh() {
+      List<Widget> refresh = [];
+
+      final textWidth = min( lhsPaneMaxWidth - (2*appState.FAT_PAD + appState.TINY_PAD), appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
+      Widget button = makeActionButtonFixed(
+         appState,
+         "Refresh Repo List",
+         textWidth,
+         () async
+         {
+            await updateProjects( context, container );
+            setState(() => appState.ghUpdated = true );            
+         }); 
+      
+      Widget buttonRow = Row(
+         crossAxisAlignment: CrossAxisAlignment.center,
+         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+         children: <Widget>[ Container( width: appState.FAT_PAD),
+                             button,
+                             Container( width: appState.FAT_PAD),
+            ]);
+      
+      refresh.add( buttonRow );
+      refresh.add( Container( height: appState.BASE_TXT_HEIGHT ));
+
+      runningLHSHeight += 2*appState.BASE_TXT_HEIGHT;
+      return refresh;
+   }
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeCEProjs( gha ) {
@@ -169,18 +198,22 @@ class _CEHomeState extends State<CEHomePage> {
       // Whitespace
       acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
       runningLHSHeight += appState.BASE_TXT_HEIGHT;
+      
+      // print( "SHOW " + appState.ghUpdated.toString() );
+      if( appState.myGHAccounts != null || appState.ghUpdated ) {
 
-      // if( appState.myGHAccounts != null || appState.ghUpdated ) {
-
-      if( appState.myGHAccounts.length <= 0 ) {
-         acctList.addAll( _makeRepos( -1 ) );
-      }
-      else {
-         for( final gha in appState.myGHAccounts ) {
-            acctList.addAll( _makeCEProjs( gha ));
-            acctList.addAll( _makeRepos( gha ));
+         if( appState.myGHAccounts.length <= 0 ) {
+            acctList.addAll( _makeRepos( -1 ) );
+         }
+         else {
+            for( final gha in appState.myGHAccounts ) {
+               acctList.addAll( _makeCEProjs( gha ));
+               acctList.addAll( _makeRepos( gha ));
+            }
          }
       }
+      
+      acctList.addAll( _makeRefresh() );
       
       appState.ghUpdated = false;
       final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.

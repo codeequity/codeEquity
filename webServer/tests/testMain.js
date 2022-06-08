@@ -69,7 +69,6 @@ async function runTests() {
     authDataM.pat = await auth.getPAT( tdM.GHOwner );
 
 
-    
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up
     const wakeyPID = await tu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
@@ -86,18 +85,11 @@ async function runTests() {
     tu.remProject( authData, wakeyPID );
     // assert( false );
 
-
+    
     // TESTS
 
     let testStatus = [ 0, 0, []];
     let subTest = "";
-
-    // Save dynamo data
-
-    subTest = await testSaveDynamo.runTests( flutterTest );
-    console.log( "\n\nSave Dynamo complete" );
-    await utils.sleep( 1000 );
-    testStatus = tu.mergeTests( testStatus, subTest );
 
     await testDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
@@ -133,6 +125,14 @@ async function runTests() {
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
+    // Save dynamo data if run was successful
+    if( testStatus[1] == 0 ) {
+	subTest = await testSaveDynamo.runTests( flutterTest );
+	console.log( "\n\nSave Dynamo complete" );
+	await utils.sleep( 1000 );
+	testStatus = tu.mergeTests( testStatus, subTest );
+    }
+    
     tu.testReport( testStatus, "================= Testing complete =================" );
 
 }

@@ -39,8 +39,6 @@ async function runTests() {
     authData.cog = await awsAuth.getCogIDToken();
     authData.pat = await auth.getPAT( td.GHOwner );
 
-
-    
     let promises = [];
     promises.push( clearIngested( authData, td ) );
     promises.push( clearSummary( authData, td ) );

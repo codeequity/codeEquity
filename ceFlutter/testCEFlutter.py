@@ -14,8 +14,8 @@ import shlex
 # to keep chromedriver up to date(r)
 # pip install webdriver-manager
 # pip install selenium
-#from selenium import webdriver
-#from webdriver_manager.chrome import ChromeDriverManager
+# from selenium import webdriver
+# from webdriver_manager.chrome import ChromeDriverManager
 
 
 from threading import Thread
@@ -58,7 +58,8 @@ def verifyEmulator():
     if( call("ps -efl | grep chromedriver | grep -v grep", shell=True) != 0 ) :
 
         # hmm painful to run this in the background.
-        # old chromedriver?  run below, then: cd; ln -s /home/musick/.wdm/drivers/chromedriver/linux64/100.0.4896.60/chromedriver
+        # old chromedriver?  run below, then: cd ~/bin; ln -s /home/musick/.wdm/drivers/chromedriver/linux64/100.0.4896.60/chromedriver
+        # old chromedriver?  run below, then: cd ~/bin; rm chromedriver; ln -s /home/musick/.wdm/drivers/chromedriver/linux64/102.0.5005.61/chromedriver
         # driver = webdriver.Chrome(ChromeDriverManager().install())
         call( "chromedriver --port=4444&", shell=True )
         
@@ -126,6 +127,11 @@ def runTest( testName, override, noBuild = True, optimized = False ):
     # poll for realtime stdout
     tmpSum  = "\n"
     tmpSum += runCmd( cmd, grepFilter )
+
+    # XXX As of 5/2022, new chrome interacts poorly with Ubuntu.  Bash is losing it's mind after a test, basically locking terminal.
+    # reset in-between cmds helps.  Lin only.  Slows things down.
+    # cmd = "/usr/bin/reset"
+    #runCmd( cmd, [] )
     
     return tmpSum
 
@@ -142,6 +148,7 @@ def runTests( override = False ):
 
     resultsSum = ""
 
+    # Nightly, only area ---------
     if override:
         tsum = runTest( "launch_test.dart", override, False, False )
         resultsSum  += tsum
@@ -149,7 +156,12 @@ def runTests( override = False ):
         tsum = runTest( "home_test.dart", override, False, False )
         resultsSum  += tsum
 
-    # Focus area
+    # Focus area ------------------
+
+    # Always clean dynamo summaries and 'ingested' tags first.
+    cmd = "npm run cleanFlutter --prefix ../webServer"
+    npmRun = runCmd( cmd, [] )
+    logging.info( npmRun )
     tsum = runTest( "project_test.dart", override, False, False )
     resultsSum  += tsum
 

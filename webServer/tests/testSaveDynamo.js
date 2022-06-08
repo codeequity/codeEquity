@@ -9,7 +9,8 @@ const execSync = require('child_process').execSync;
 // time stamp is on file.  just want limited queue.  Easiest is by hour.
 function execAWS_CLI( table, flutterTest ) {
     let success = true;
-    let stamp = utils.getMillis( true )
+    const d = new Date();
+    let stamp = d.getDate().toString();
     console.log( "Saving AWS Dynamo table:", table );
 
     // cmd = "aws dynamodb scan --table-name CEPEQs | jq '{"Ownerships": [.Items[] | {PutRequest: {Item: .}}]}' > testData/testDataCEPEQS.json"

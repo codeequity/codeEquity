@@ -449,6 +449,10 @@ async function updateProject( authData, projId, name ) {
 
 async function makeColumn( authData, ghLinks, fullName, projId, name ) {
     // First, wait for projId, can lag
+
+    // There should be NO need for this, but most GH failures start here.  Notification never sent along.
+    await utils.sleep( 2000 );
+
     await settleWithVal( "confirmProj", confirmProject, authData, ghLinks, fullName, projId );
     
     let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
@@ -1037,13 +1041,16 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 	// CHECK linkage
 	let links  = await linksP;
 	let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
-	subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
-	subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
-	subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
-	subTest = checkEq( link.GHIssueTitle, issueData[2],           subTest, "Linkage Card Title" );
-	subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
-	subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
-	subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
+	subTest = checkEq( link !== 'undefined', true,               subTest, "Wait for link" );
+	if( link !== 'undefined' ) {
+	    subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
+	    subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
+	    subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
+	    subTest = checkEq( link.GHIssueTitle, issueData[2],          subTest, "Linkage Card Title" );
+	    subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
+	    subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
+	    subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
+	}
 	
 	// CHECK dynamo Peq
 	let allPeqs = await peqsP;

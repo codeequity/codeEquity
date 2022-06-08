@@ -65,16 +65,19 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     
     let dsPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.dataSecTitle });
     subTest = tu.checkEq( dsPeqs.length, 1,                           subTest, "Number of datasec peq objects" );
-    subTest = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
-    subTest = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], subTest, "Project sub" );
-
+    subTest = tu.checkEq( dsPeqs[0] !== 'undefined', true,            subTest, "Peq not in place yet" );
+    if( dsPeqs[0] !== 'undefined' ) {
+	subTest = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,    subTest, "PeqType" );
+	subTest = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], subTest, "Project sub" );
+    }
+	
     let unPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.unallocTitle });
     subTest = tu.checkEq( unPeqs.length, 2,                           subTest, "Number of unalloc peq objects" );
     subTest = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
     subTest = tu.checkEq( typeof unPeqs[0] !== 'undefined', true,             subTest, "have unpeq 0" );
     subTest = tu.checkEq( typeof unPeqs[1] !== 'undefined', true,             subTest, "have unpeq 1" );
 
-    if( typeof unPeqs[0] !== 'undefined' && typeof unPeqs[1] !== 'undefined' ) {
+    if( typeof dsPeqs[0] !== 'undefined' && unPeqs[0] !== 'undefined' && typeof unPeqs[1] !== 'undefined' ) {
 	
 	let busTest = unPeqs[0].GHProjectSub.includes(td.busOpsTitle) || unPeqs[1].GHProjectSub.includes( td.busOpsTitle );
 	subTest = tu.checkEq( busTest, true,                              subTest, "Project subs for unalloc" );    
