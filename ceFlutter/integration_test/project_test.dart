@@ -566,7 +566,7 @@ void main() {
          expect( updateButton, findsOneWidget );
          await tester.tap( updateButton );
          print( "Long pump" );
-         await pumpSettle( tester, 40 );
+         await pumpSettle( tester, 80 );
          print( "short pump" );
          await pumpSettle( tester, 4 );
 

@@ -594,6 +594,11 @@ async function putPeq( newPEQ ) {
 	}
 	if( spinCount >= MAX_SPIN ) { return LOCKED; }
     }
+
+    if( !newPEQ.hasOwnProperty( 'GHRepo' ) || !newPEQ.hasOwnProperty( 'GHProjectId' ) || !newPEQ.hasOwnProperty( 'Amount' ) ) {
+	console.log( "Peq malformed", newPEQ.toString() );
+	return BAD_SEMANTICS;
+    }
     
     const params = {
         TableName: 'CEPEQs',

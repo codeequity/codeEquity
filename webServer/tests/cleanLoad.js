@@ -53,6 +53,7 @@ async function loadPEQ( authData, td ) {
     let peqCount = 0;
     var promises = [];
     for( var aput of peqJson.CEPEQs ) {
+	// console.log( aput.toString() );
 	const repo = aput.PutRequest.Item.GHRepo.S;
 	const id   = aput.PutRequest.Item.PEQId.S;
 	
