@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'dart:typed_data';
+import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -41,6 +42,19 @@ String getToday() {
    date += now.year.toString();
    return date;
 }
+
+String randAlpha(length) {
+   var result           = '';
+   var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+   var charactersLength = characters.length;
+   var rng = Random();
+   for ( var i = 0; i < length; i++ ) {
+      result += characters[ rng.nextInt( charactersLength ) ];
+   }
+   return result;
+}
+
+
 
 // XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {

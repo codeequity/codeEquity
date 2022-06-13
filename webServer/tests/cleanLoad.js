@@ -6,6 +6,7 @@ const config         = require('../config');
 const utils          = require( "../utils");
 const testSaveDynamo = require( './testSaveDynamo' );
 const testData       = require( './testData' );
+var links            = require('../components/linkage.js');
 
 var   fs       = require('fs'), json;
 const execSync = require('child_process').execSync;
@@ -179,6 +180,39 @@ async function loadPAct( authData, td ) {
 
 }
 
+async function loadLinkage( authData, td ) {
+
+    // First, remove.  In this case, not ghLinks, but stored aws.
+    utils.clearLinkage( authData, td );
+
+    // Next, load, ingest stored
+    let fname      = baselineLoc + "dynamoCELinkage_latest.json";
+    const dataStr  = getData( fname );
+    const linkJson = JSON.parse( dataStr );
+    console.log( "Reading", linkJson.CELinkage.length.toString(), "Linkages from", fname );
+
+    for( let repoNum = 0; repoNum < linkJson.length; repoNum++ ) {
+	let locSummary = linkJson[repoNum].PutRequest.Item;
+	let repo    = locSummary.GHRepo.S;
+
+	if( repo == td.GHFullName ) {
+	    let locs    = locSummary.Locations.L;
+	    let ghLinks = new links.Linkage();
+	    for( let i = 0; i < locs.length; i++  ) {
+		let loc = locs[i].M;
+		
+		if( i == locs.length - 1 ) {
+		    ghLinks.addLoc( authData, repo, loc.GHProjectName.S, loc.GHProjectId.S, loc.GHColumnName.S, loc.GHColumnId.S, loc.Active.S, false);
+		}
+		else {
+		    ghLinks.addLoc( authData, repo, loc.GHProjectName.S, loc.GHProjectId.S, loc.GHColumnName.S, loc.GHColumnId.S, loc.Active.S, true);
+		}
+	    }
+	}
+    }
+    console.log( "Inserted fresh linkage " );
+}
+
 
 
 async function runTests() {
@@ -218,7 +252,11 @@ async function runTests() {
     await loadPEQ(  authData, td );
 
     // PActs are modified (CEUID), so clean these.  Raw is not modded.
-    await loadPAct( authData, td ); 
+    await loadPAct( authData, td );
+
+    // Load Linkage.  This means if last generate run failed, linkage table will be out of date with GH, 
+    // but in synch with loaded PEQ/PAct.  Ingest requires linkage.
+    await loadLinkage( authData, td );
 }
 
 

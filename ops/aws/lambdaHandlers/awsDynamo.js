@@ -384,6 +384,9 @@ async function removeEntries( tableName, ids ) {
     case "CEPEQSummary": 
 	pkey1 = "PEQSummaryId";
 	break;
+    case "CELinkage":
+	pkey1 = "CELinkageId";
+	break;
     default:
 	assert( false );
     }
@@ -1091,7 +1094,7 @@ async function putPSum( psum ) {
 	}
     };
 
-    console.log( "PEQSummary put");
+    console.log( "PEQSummary put", psum.id.toString());
 
     let promise = bsdb.put( params ).promise();
     return promise.then(() => success( true ));

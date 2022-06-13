@@ -783,6 +783,15 @@ async function updateLinkageSummary( authData, loc ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
+async function clearLinkage( authData, td ) {
+    let shortName = "GetEntry";
+    let query     = { "GHRepo": td.GHFullName };
+    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
+    let oldLinks  = await wrappedPostAWS( authData, shortName, postData );
+    if( oldLinks != -1 ) { await cleanDynamo( authData, "CELinkage", [ oldLinks.CELinkageId ] );   }
+}
+
+
 
 async function getRaw( authData, pactId ) {
     // console.log( authData.who, "Get raw PAction", pactId );
@@ -1040,6 +1049,7 @@ exports.processNewPEQ = processNewPEQ;
 
 exports.refreshLinkageSummary = refreshLinkageSummary;
 exports.updateLinkageSummary  = updateLinkageSummary;
+exports.clearLinkage          = clearLinkage;
 
 exports.getRaw   = getRaw; 
 exports.getPActs = getPActs;

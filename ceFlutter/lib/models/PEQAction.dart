@@ -1,5 +1,3 @@
-import 'package:random_string/random_string.dart';
-
 import 'package:ceFlutter/utils.dart';
 
 // Assignees split evenly

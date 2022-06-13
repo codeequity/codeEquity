@@ -36,7 +36,7 @@ dependencies:
   amazon_cognito_identity_dart_2: ^1.0.5
   http: ^0.13.3
   fluttertoast: ^7.0.4
-  random_string: ^1.1.0
+  #random_string: ^1.1.0
   github: ^8.1.1
   image: ^3.0.2
   tuple: ^1.0.3

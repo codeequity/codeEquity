@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:random_string/random_string.dart';   // randomAlpha
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:http/http.dart' as http;
 import 'package:tuple/tuple.dart';
@@ -159,7 +158,6 @@ Future<http.Response> postIt( String shortName, postData, container ) async {
    if( !postData.contains( "silent" )) { print( shortName ); }  // pd is a string at this point
    final appState  = container.state;
 
-   // final gatewayURL = appState.apiBasePath + "/find";
    final gatewayURL = Uri.parse( appState.apiBasePath + "/find" );
 
    if( appState.idToken == "" ) { print( "Access token appears to be empty!"); }
@@ -221,6 +219,8 @@ Future<String> fetchString( context, container, postData, shortName ) async {
 Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
+   // print( "updateDynamo " + postData );
+   
    if( peqId != -1 ) {
       appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
    }
@@ -616,7 +616,7 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          }
          print( "Repo done " + repos.toString() );
    
-         String pid = randomAlpha(10);
+         String pid = randAlpha(10);
          GHAccount myGHAcct = new GHAccount( id: pid, ceOwnerId: appState.userId, ghUserName: patLogin, repos: repos );
          
          
