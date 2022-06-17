@@ -1089,6 +1089,10 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
       // XXX Integration testing causes 2 writes to dynamo per update.  psum.id is rebuilt as part of that(!)
       //     Leave this in place until integration testing framework is fixed.  See 6/2022 bug.
+      // XXX the testing fwk writes second summary after 3 seconds.  Crazy.
+      print( "XXX waiting 5s for integration test fwk to finish being bad" );
+      await Future.delayed(Duration(seconds: 5));
+      print( "XXX done" );
       await cleanSummary( context, container );
    }
 
@@ -1097,8 +1101,6 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       String newPIDs = json.encode( pactIds );
       final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
    }
-
-   assert( false );
 
 }
 

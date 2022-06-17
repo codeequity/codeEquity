@@ -227,16 +227,17 @@ Future<bool> cleanSummary( context, container ) async {
    var response  = await postIt( shortName, json.encode( postData ), container );
 
    if (response.statusCode == 201) {
-      print( utf8.decode(response.bodyBytes ) );
+      //print( utf8.decode(response.bodyBytes ) );
       final summaries = json.decode(utf8.decode(response.bodyBytes));
       
       // Repair dup from testing fwk.  Just keep 1.
+      print( "Summary count: " + summaries.length.toString() );
       assert( summaries.length == 1 || summaries.length == 2 );
       if( summaries.length > 1 ) {
          final badId = summaries[0]["PEQSummaryId"] == appState.myPEQSummary.id ? summaries[1]["PEQSummaryId"] : summaries[0]["PEQSummaryId"];
 
          shortName = "RemoveEntries";
-         postData  = {"Endpoint": shortName, "tableName": "CEPEQSummary", "ids": [badId] };
+         postData  = {"Endpoint": shortName, "tableName": "CEPEQSummary", "ids": [[badId]] };
          response  = await postIt( shortName, json.encode( postData ), container );
          
          if (response.statusCode == 201) { retVal = true; }
