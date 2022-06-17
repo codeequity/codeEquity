@@ -215,6 +215,43 @@ Future<String> fetchString( context, container, postData, shortName ) async {
    }
 }
 
+// XXX workaround, related to ingest integration testing framework bug 6/2022
+Future<bool> cleanSummary( context, container ) async {
+   final appState  = container.state;
+   bool retVal = false;
+
+   print( "In cleanSummary" );
+   
+   var shortName = "GetEntries";
+   var postData  = {"Endpoint": shortName, "tableName": "CEPEQSummary", "query": {"GHRepo": appState.myPEQSummary.ghRepo} };
+   var response  = await postIt( shortName, json.encode( postData ), container );
+
+   if (response.statusCode == 201) {
+      print( utf8.decode(response.bodyBytes ) );
+      final summaries = json.decode(utf8.decode(response.bodyBytes));
+      
+      // Repair dup from testing fwk.  Just keep 1.
+      assert( summaries.length == 1 || summaries.length == 2 );
+      if( summaries.length > 1 ) {
+         final badId = summaries[0]["PEQSummaryId"] == appState.myPEQSummary.id ? summaries[1]["PEQSummaryId"] : summaries[0]["PEQSummaryId"];
+
+         shortName = "RemoveEntries";
+         postData  = {"Endpoint": shortName, "tableName": "CEPEQSummary", "ids": [badId] };
+         response  = await postIt( shortName, json.encode( postData ), container );
+         
+         if (response.statusCode == 201) { retVal = true; }
+      }
+      else { retVal = true; }
+   }
+
+   if( !retVal ) {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await cleanSummary( context, container ); }
+   }
+
+   return retVal;
+}
+
 // This is primarily an ingest utility.
 Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
@@ -233,6 +270,7 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { res = await updateDynamo( context, container, postData, shortName, peqId: peqId ); }
    }
+
    if( peqId != -1 ) {
       assert( appState.ingestUpdates[peqId] >= 1 );
       appState.ingestUpdates[peqId] = appState.ingestUpdates[peqId] - 1;

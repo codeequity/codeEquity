@@ -51,9 +51,9 @@ String randAlpha(length) {
    for ( var i = 0; i < length; i++ ) {
       result += characters[ rng.nextInt( charactersLength ) ];
    }
+   print( "Ralph returning " + result );
    return result;
 }
-
 
 
 // XXX after update from 3.X to 7.X, move to web, background color is wrong

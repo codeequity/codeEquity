@@ -512,10 +512,13 @@ async function putLinkage( summary ) {
     return await writeLinkHelp( summary );
 }
 
+// NOTE: if this is called multiple times with new repo, new locs, very quickly, more than 1 thread can pass the test, creating multiple
+//       linkages.  Which is bad.
 async function updateLinkage( newLoc ) {
     // get any entry with summary.GHRepo, overwrite
     let oldSummary = await getLinkage( newLoc.GHRepo );
 
+    // XXX not thread-safe, see above
     // Note!  First created project in repo will not have summary.
     if( oldSummary == -1 ) {
 	oldSummary = {};
@@ -1076,7 +1079,6 @@ async function updateColProj( update ) {
 	    return success( true );
 	});
 }
-
 
 
 

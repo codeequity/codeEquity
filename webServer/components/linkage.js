@@ -269,7 +269,7 @@ class Linkage {
 	    assert( false );
 	}
 
-	const repo = query.repo;
+	const repo      = query.repo;
 	const projId    = query.hasOwnProperty( "projId" )   ? query.projId.toString() : -1;
 	const colId     = query.hasOwnProperty( "colId" )    ? query.colId.toString()  : -1;
 	const projName  = query.hasOwnProperty( "projName" ) ? query.projName          : config.EMPTY;

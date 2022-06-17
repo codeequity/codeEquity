@@ -242,15 +242,6 @@ async function setPopulated( authData, repo ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-// XXX
-async function pushLocs( authData, repo, locs ) {
-    console.log( authData.who, "Push loc data to AWS: ", repo );
-
-    let shortName = "PutLoc";
-    let postData = { "Endpoint": shortName, "GHRepo": repo, "Set": "false" };
-    
-    return await wrappedPostAWS( authData, shortName, postData );
-}
     
 
 // This needs to occur after linkage is overwritten.
@@ -788,7 +779,11 @@ async function clearLinkage( authData, td ) {
     let query     = { "GHRepo": td.GHFullName };
     let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
     let oldLinks  = await wrappedPostAWS( authData, shortName, postData );
-    if( oldLinks != -1 ) { await cleanDynamo( authData, "CELinkage", [ oldLinks.CELinkageId ] );   }
+    
+    if( oldLinks != -1 ) {
+	console.log( "Clearing linkage id:", oldLinks.CELinkageId );	
+	await cleanDynamo( authData, "CELinkage", [ [ oldLinks.CELinkageId ] ] );
+    }
 }
 
 

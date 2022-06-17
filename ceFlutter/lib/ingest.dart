@@ -918,15 +918,6 @@ void processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context,
    print( pact );
    print( peq );
 
-   // Create, if need to
-   if( appState.myPEQSummary == null ) {
-      // Oddly, use of random_string package:randomAlpha here led to having two summaries written.
-      String pid = randAlpha(10);
-      print( "Create new appstate PSum " + pid + "\n" );
-      appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: peq.ghRepo,
-                                              targetType: "repo", targetId: peq.ghProjectId, lastMod: getToday(), allocations: [] );
-   }
-
    List<Allocation> appAllocs = appState.myPEQSummary.allocations;
 
    // is PEQ already a Known Alloc?  Always use it when possible - is the most accurate current view during ingest.
@@ -1070,8 +1061,15 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    }
    await Future.wait( ceuid );
    print( "... done (ceuid)" );
-   
 
+   // Create, if need to
+   if( appState.myPEQSummary == null && todos.length > 0) {
+      String pid = randAlpha(10);
+      print( "Create new appstate PSum " + pid + "\n" );
+      appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: todos[0].item2.ghRepo,
+                                              targetType: "repo", targetId: todos[0].item2.ghProjectId, lastMod: getToday(), allocations: [] );
+   }
+   
    appState.ingestUpdates.clear();
    for( var tup in todos ) {
       await processPEQAction( tup, dynamo, context, container, pending );
@@ -1080,13 +1078,18 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    await Future.wait( dynamo );
    print( "... done (dynamo)" );
 
+   
    print( "Ingest todos finished processing.  Update Dynamo." );
-   // XXX Skip this is no change (say, on a series of notices).
+   // XXX Skip this if no change (say, on a series of notices).
    if( appState.myPEQSummary != null ) {
-
+      
       String psum = json.encode( appState.myPEQSummary );
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
       await updateDynamo( context, container, postData, "PutPSum" );
+
+      // XXX Integration testing causes 2 writes to dynamo per update.  psum.id is rebuilt as part of that(!)
+      //     Leave this in place until integration testing framework is fixed.  See 6/2022 bug.
+      await cleanSummary( context, container );
    }
 
    // unlock, set ingested
@@ -1094,5 +1097,8 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       String newPIDs = json.encode( pactIds );
       final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
    }
+
+   assert( false );
+
 }
 
