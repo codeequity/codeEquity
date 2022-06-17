@@ -1683,12 +1683,21 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     let skipAllPeq = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipAllPeq" ) ? specials.skipAllPeq : false;    
 
     // CHECK github card
+    // XXX XXX XXX 6/8 notes.  This is no longer dependable, ATM
+    /*
     let cards  = await getCards( authData, loc.colId );
     if( cards != -1 ) { 
 	let card   = cards.find( card => card.id == cardId );
 	subTest = checkEq( typeof card === "undefined", true,  subTest, "Card should not exist" );
     }
-
+    */
+    let cards  = await getCards( authData, loc.colId );
+    if( cards != -1 ) { 
+	let card   = cards.find( card => card.id == cardId );
+	if( typeof card === "undefined") { console.log( "XXX ERROR.  Card", title, cardId, "was rightfully deleted this time." ); }
+	else                             { console.log( "XXX ERROR.  Card", title, cardId, "was wrongfully NOT deleted this time." ); }
+    }
+    
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId.toString() );

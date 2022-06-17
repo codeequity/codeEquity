@@ -384,6 +384,9 @@ async function removeEntries( tableName, ids ) {
     case "CEPEQSummary": 
 	pkey1 = "PEQSummaryId";
 	break;
+    case "CELinkage":
+	pkey1 = "CELinkageId";
+	break;
     default:
 	assert( false );
     }
@@ -509,10 +512,13 @@ async function putLinkage( summary ) {
     return await writeLinkHelp( summary );
 }
 
+// NOTE: if this is called multiple times with new repo, new locs, very quickly, more than 1 thread can pass the test, creating multiple
+//       linkages.  Which is bad.
 async function updateLinkage( newLoc ) {
     // get any entry with summary.GHRepo, overwrite
     let oldSummary = await getLinkage( newLoc.GHRepo );
 
+    // XXX not thread-safe, see above
     // Note!  First created project in repo will not have summary.
     if( oldSummary == -1 ) {
 	oldSummary = {};
@@ -593,6 +599,11 @@ async function putPeq( newPEQ ) {
 	    await sleep( SPIN_DELAY );
 	}
 	if( spinCount >= MAX_SPIN ) { return LOCKED; }
+    }
+
+    if( !newPEQ.hasOwnProperty( 'GHRepo' ) || !newPEQ.hasOwnProperty( 'GHProjectId' ) || !newPEQ.hasOwnProperty( 'Amount' ) ) {
+	console.log( "Peq malformed", newPEQ.toString() );
+	return BAD_SEMANTICS;
     }
     
     const params = {
@@ -1071,7 +1082,6 @@ async function updateColProj( update ) {
 
 
 
-
 // Overwrites any existing record
 async function putPSum( psum ) {
     const params = {
@@ -1086,7 +1096,7 @@ async function putPSum( psum ) {
 	}
     };
 
-    console.log( "PEQSummary put");
+    console.log( "PEQSummary put", psum.id.toString());
 
     let promise = bsdb.put( params ).promise();
     return promise.then(() => success( true ));

@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';      // list equals
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:random_string/random_string.dart';
 import 'package:tuple/tuple.dart';
 
 import 'package:ceFlutter/utils.dart';
@@ -145,17 +144,22 @@ void swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 // 
 // Case 1: "add assignee" arrives before the peq issue is added.
 //         PPA has strict guidelines from ceServer for when info in peq is valid - typically first 'confirm' 'add'.  assert protected.
+// Case 2: "add" arrives before a deleted accrued issue is recreated.
+//         recreate already handles the add - need to tamp down on this one, which is automatic if it follows.
 // 
 // Need to have seen a 'confirm' 'add' before another action, in order for the allocation to be in a good state.
 // This will either occur in current ingest batch, or is already present in mySummary from a previous update.
 // Remember, all peqs are already in aws, either active or inactive, so no point to look there.
-// XXX really need to save some of this work.
+// XXX really need to save some of this work (i.e. not always redo it).
 // XXX hashmap would probably speed this up a fair amount
+// XXX could speed up recreate bit.. no need to scan again
+// XXX minor - in theory recreate.source peq could come from myPEQSummary while recreate is in ingest batch.  vastly improbable...
 void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) async {
 
-   final appState           = container.state;
-   List<String>    kp       = []; // known peqs 
-   Map<String,List<int>> dp = {}; // demoted peq: list of positions in todos   
+   final appState            = container.state;
+   List<String>           kp = []; // known peqs, with todo index
+   Map<String,List<int>>  dp = {}; // demoted peq: list of positions in todos
+   List<String>           rt = []; // recreate targets
 
    // build kp from mySummary.  Only active peqs are part of allocations.
    if( appState.myPEQSummary != null ) {
@@ -165,6 +169,8 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
 
    print( "Initial known peq-allocs: " + kp.toString() );
 
+   // Case 1.  Fairly generic - if operation depends on peq, but haven't added it yet, swap the operation with the following confirm.add
+   // Case 2.  Very specific  - if confirm.add matches subsequent recreate target, swap
    // look through current ingest batch for issues to resolve.
    for( int i = 0; i < todos.length; i++ ) {
       PEQAction pact = todos[i].item1;
@@ -178,7 +184,7 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
       // print( pact );
       // print( peq );
       
-      // update kp
+      // update known peqs and recreate targets with current todo.
       if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
          assert( !kp.contains( peq.id ) );
          kp.add( peq.id );
@@ -189,6 +195,24 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
          kp.remove( peq.id );
          deleted = true;
          print( "   Removing known peq " + peq.ghIssueTitle + " " + peq.id + " " + peq.active.toString());
+      }
+      else if ( pact.note == "recreate" ) {    // XXX formalize
+         assert( pact.subject.length == 2 );   // pact.subject[0] --> pact.subject[1]
+         if( kp.contains( pact.subject[1] )) {
+            print( "Add occured before recreate - swapping." );
+            int kpIndex = -1;
+            for( int j = 0; j < i; j++ ) {
+               if( todos[j].item1.verb == PActVerb.confirm && todos[j].item1.action == PActAction.add ) {
+                  kpIndex = j;
+                  continue;
+               }
+            }
+            assert( kpIndex >= 0 );  // XXX if this fails, see vastly improbable above.
+            swap( todos, kpIndex, i );
+            // At this point, todo at position i is the faulty add, which will be ignored.
+            // XXX it is possible that there is an earlier assignment.  check for this and warn, or treat recreate as official kp in swap below.
+            continue;
+         }
       }
 
       // print( "    KP: " + kp.toString() );
@@ -211,7 +235,7 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
          dp.remove( peq.id );
          print( "   peq: " + peq.ghIssueTitle + " " + peq.id + " UN-demoted." );
       }
-      // demote if needed
+      // demote if needed.  Needed if working on peq that hasn't been added yet.
       else if( !kp.contains( peq.id ) && !deleted ) {
          if( !dp.containsKey( peq.id ) ) { dp[peq.id] = []; }
          dp[peq.id].add( i );  
@@ -220,6 +244,7 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
 
    }
 }
+
 
 // ingest may contain edits to GH projects or columns.
 // For renaming, will update peqSummary from dynamo, and build the list of current names for the next ingest
@@ -893,14 +918,6 @@ void processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context,
    print( pact );
    print( peq );
 
-   // Create, if need to
-   if( appState.myPEQSummary == null ) {
-      print( "Create new appstate PSum\n" );
-      String pid = randomAlpha(10);
-      appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: peq.ghRepo,
-                                              targetType: "repo", targetId: peq.ghProjectId, lastMod: getToday(), allocations: [] );
-   }
-
    List<Allocation> appAllocs = appState.myPEQSummary.allocations;
 
    // is PEQ already a Known Alloc?  Always use it when possible - is the most accurate current view during ingest.
@@ -1044,8 +1061,15 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    }
    await Future.wait( ceuid );
    print( "... done (ceuid)" );
-   
 
+   // Create, if need to
+   if( appState.myPEQSummary == null && todos.length > 0) {
+      String pid = randAlpha(10);
+      print( "Create new appstate PSum " + pid + "\n" );
+      appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: todos[0].item2.ghRepo,
+                                              targetType: "repo", targetId: todos[0].item2.ghProjectId, lastMod: getToday(), allocations: [] );
+   }
+   
    appState.ingestUpdates.clear();
    for( var tup in todos ) {
       await processPEQAction( tup, dynamo, context, container, pending );
@@ -1054,12 +1078,22 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    await Future.wait( dynamo );
    print( "... done (dynamo)" );
 
+   
    print( "Ingest todos finished processing.  Update Dynamo." );
-   // XXX Skip this is no change (say, on a series of notices).
+   // XXX Skip this if no change (say, on a series of notices).
    if( appState.myPEQSummary != null ) {
+      
       String psum = json.encode( appState.myPEQSummary );
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
       await updateDynamo( context, container, postData, "PutPSum" );
+
+      // XXX Integration testing causes 2 writes to dynamo per update.  psum.id is rebuilt as part of that(!)
+      //     Leave this in place until integration testing framework is fixed.  See 6/2022 bug.
+      // XXX the testing fwk writes second summary after 3 seconds.  Crazy.
+      print( "XXX waiting 5s for integration test fwk to finish being bad" );
+      await Future.delayed(Duration(seconds: 5));
+      print( "XXX done" );
+      await cleanSummary( context, container );
    }
 
    // unlock, set ingested
@@ -1067,5 +1101,6 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       String newPIDs = json.encode( pactIds );
       final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
    }
+
 }
 

@@ -2,7 +2,6 @@ import 'dart:async';   // timer  XXXXXXXXXXXXXXXX
 import 'dart:convert';  // json encode/decode
 
 import 'package:flutter/material.dart';
-import 'package:random_string/random_string.dart';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 
 import 'package:ceFlutter/utils.dart';
@@ -104,7 +103,7 @@ class _CESignupState extends State<CESignupPage> {
 
                if( success ) {
 
-                  String pid = randomAlpha(10);
+                  String pid = randAlpha(10);
                   appState.userId = pid;
                   
                   Person user = new Person( id: pid, firstName: "Marion", lastName: "Star", userName: appState.usernameController.text,

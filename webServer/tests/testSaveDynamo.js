@@ -65,6 +65,9 @@ async function runTests( flutterTest ) {
     success = execAWS_CLI( "CEAgreements", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save Agreements Table" );
 
+    success = execAWS_CLI( "CELinkage", flutterTest );
+    testStatus = tu.checkEq( success, true, testStatus, "save Linkage Table" );
+
     return testStatus
 }
 

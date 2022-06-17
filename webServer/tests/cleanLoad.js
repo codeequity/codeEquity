@@ -6,6 +6,7 @@ const config         = require('../config');
 const utils          = require( "../utils");
 const testSaveDynamo = require( './testSaveDynamo' );
 const testData       = require( './testData' );
+var links            = require('../components/linkage.js');
 
 var   fs       = require('fs'), json;
 const execSync = require('child_process').execSync;
@@ -53,6 +54,7 @@ async function loadPEQ( authData, td ) {
     let peqCount = 0;
     var promises = [];
     for( var aput of peqJson.CEPEQs ) {
+	// console.log( aput.toString() );
 	const repo = aput.PutRequest.Item.GHRepo.S;
 	const id   = aput.PutRequest.Item.PEQId.S;
 	
@@ -178,6 +180,36 @@ async function loadPAct( authData, td ) {
 
 }
 
+async function loadLinkage( authData, td ) {
+
+    // no need to remove, refresh overwrites
+
+    // load, ingest stored
+    let fname      = baselineLoc + "dynamoCELinkage_latest.json";
+    const dataStr  = getData( fname );
+    const linkJson = JSON.parse( dataStr );
+    console.log( "Reading", linkJson.CELinkage.length.toString(), "Linkages from", fname );
+
+    for( let repoNum = 0; repoNum < linkJson.CELinkage.length; repoNum++ ) {
+	let locSummary = linkJson.CELinkage[repoNum].PutRequest.Item;
+	let repo    = locSummary.GHRepo.S;
+	
+	if( repo == td.GHFullName ) {
+	    let locs    = locSummary.Locations.L;
+	    let ghLinks = new links.Linkage();
+	    for( let i = 0; i < locs.length; i++  ) {
+		let loc = locs[i].M;
+		ghLinks.addLoc( authData, repo, loc.GHProjectName.S, loc.GHProjectId.S, loc.GHColumnName.S, loc.GHColumnId.S, loc.Active.S, false);
+	    }
+
+	    var locsL = ghLinks.getLocs( authData, { "repo": repo } );
+	    await utils.refreshLinkageSummary( authData, repo, locsL, false );
+	    break;
+	}
+    }
+    console.log( "Inserted fresh linkage " );
+}
+
 
 
 async function runTests() {
@@ -201,23 +233,16 @@ async function runTests() {
     promises.push( clearSummary(  authData, td ));
     await Promise.all( promises );
 
-    /* 
-    // No longer needed.. 
-    // make true to generate new baseline data.
-    if( false ) {
-	subTest = await testSaveDynamo.runTests( );
-	console.log( "\n\nSave Dynamo complete" );
-	await utils.sleep( 1000 );
-	let cmd = "./tests/flutterTestData/baselineData/create.sh";
-	execSync( cmd, { encoding: 'utf-8' });
-    }
-    */
-	
     // Can't just overwrite, new operations will be in aws and be processed.
     await loadPEQ(  authData, td );
 
     // PActs are modified (CEUID), so clean these.  Raw is not modded.
-    await loadPAct( authData, td ); 
+    await loadPAct( authData, td );
+
+    // Load Linkage.  This means if last generate run failed, linkage table will be out of date with GH, 
+    // but in synch with loaded PEQ/PAct.  Ingest requires linkage.
+    await loadLinkage( authData, td );
+    
 }
 
 

@@ -26,6 +26,7 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 //     - "Category, Software Contributions, Data Security, Pending PEQ Approval, Unassigned": ["0", "250", "0", "0"],   ir plan split is assigned
 //     - "Category, UnClaimed, Accrued, ariCETester": ["0", "0", "0", "2,000"] does not exist (possibly one of the intentional deletes)
 //     - "Category, UnClaimed, UnClaimed, Unassigned": ["0", "1,709", "0", "0"] github shows 709
+//     - Entry 38, 'split' would actually have a random tag after the name, but that is hard to match in checkAllocs
 const Map<String,List<String>> ALLOCS_GOLD =
 {
    "Category 0": ["Category", "7,000,000", "12,840", "2,500", "11,001"],
@@ -74,7 +75,7 @@ const Map<String,List<String>> ALLOCS_GOLD =
       "A Pre-Existing Project 35":   ["Category, A Pre-Existing Project", "500,000", "1,500", "0", "1,500"],
       "Bacon 36":                    ["Category, A Pre-Existing Project, Bacon", "500,000", "1,500", "0", "0"],
       "Unassigned 37":               ["Category, A Pre-Existing Project, Bacon, Unassigned", "0", "1,500", "0", "0"],
-      "IR Alloc split: IwBRvVYU 38": ["Category, A Pre-Existing Project, Bacon, IR Alloc split: IwBRvVYU", "500,000", "0", "0", "0"],
+      "IR Alloc split 38":           ["Category, A Pre-Existing Project, Bacon, IR Alloc split: IwBRvVYU", "500,000", "0", "0", "0"],
       "Accrued 39":                  ["Category, A Pre-Existing Project, Accrued", "0", "0", "0", "1,500"],
       "ariCETester 40":              ["Category, A Pre-Existing Project, Accrued, ariCETester", "0", "0", "0", "1,500"],
 
@@ -416,8 +417,12 @@ Future<bool> checkAllocs( WidgetTester tester, int min, int max ) async {
       // allocs_gold is const above, is a map to a list<str> with long title, then numbers.
       
       String agKey         = allocs[0] + " " + i.toString();
+
+      // Special case, this is a 'split' entry, which has a random tag.  remove the random tag before checking.
+      if( i == 38 && agKey.contains( "IR Alloc split" ) ) { agKey = "IR Alloc split " + i.toString(); }
+      
       List<String> agVals  = ALLOCS_GOLD[ agKey ] ?? [];
-      // print( "  checking " + agKey + ": " + agVals.sublist(1,5).toString() );
+      print( "  checking " + agKey + ": " + agVals.sublist(1,5).toString() );
       
       for( var j = 1; j < 5; j++ ) { expect( allocs[j], agVals[j] ); }
 
@@ -566,7 +571,7 @@ void main() {
          expect( updateButton, findsOneWidget );
          await tester.tap( updateButton );
          print( "Long pump" );
-         await pumpSettle( tester, 40 );
+         await pumpSettle( tester, 85 );
          print( "short pump" );
          await pumpSettle( tester, 4 );
 

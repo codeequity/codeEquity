@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:random_string/random_string.dart';   // randomAlpha
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:http/http.dart' as http;
 import 'package:tuple/tuple.dart';
@@ -159,7 +158,6 @@ Future<http.Response> postIt( String shortName, postData, container ) async {
    if( !postData.contains( "silent" )) { print( shortName ); }  // pd is a string at this point
    final appState  = container.state;
 
-   // final gatewayURL = appState.apiBasePath + "/find";
    final gatewayURL = Uri.parse( appState.apiBasePath + "/find" );
 
    if( appState.idToken == "" ) { print( "Access token appears to be empty!"); }
@@ -217,10 +215,50 @@ Future<String> fetchString( context, container, postData, shortName ) async {
    }
 }
 
+// XXX workaround, related to ingest integration testing framework bug 6/2022
+Future<bool> cleanSummary( context, container ) async {
+   final appState  = container.state;
+   bool retVal = false;
+
+   print( "In cleanSummary" );
+   
+   var shortName = "GetEntries";
+   var postData  = {"Endpoint": shortName, "tableName": "CEPEQSummary", "query": {"GHRepo": appState.myPEQSummary.ghRepo} };
+   var response  = await postIt( shortName, json.encode( postData ), container );
+
+   if (response.statusCode == 201) {
+      //print( utf8.decode(response.bodyBytes ) );
+      final summaries = json.decode(utf8.decode(response.bodyBytes));
+      
+      // Repair dup from testing fwk.  Just keep 1.
+      print( "Summary count: " + summaries.length.toString() );
+      assert( summaries.length == 1 || summaries.length == 2 );
+      if( summaries.length > 1 ) {
+         final badId = summaries[0]["PEQSummaryId"] == appState.myPEQSummary.id ? summaries[1]["PEQSummaryId"] : summaries[0]["PEQSummaryId"];
+
+         shortName = "RemoveEntries";
+         postData  = {"Endpoint": shortName, "tableName": "CEPEQSummary", "ids": [[badId]] };
+         response  = await postIt( shortName, json.encode( postData ), container );
+         
+         if (response.statusCode == 201) { retVal = true; }
+      }
+      else { retVal = true; }
+   }
+
+   if( !retVal ) {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await cleanSummary( context, container ); }
+   }
+
+   return retVal;
+}
+
 // This is primarily an ingest utility.
 Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
+   // print( "updateDynamo " + postData );
+   
    if( peqId != -1 ) {
       appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
    }
@@ -233,6 +271,7 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { res = await updateDynamo( context, container, postData, shortName, peqId: peqId ); }
    }
+
    if( peqId != -1 ) {
       assert( appState.ingestUpdates[peqId] >= 1 );
       appState.ingestUpdates[peqId] = appState.ingestUpdates[peqId] - 1;
@@ -616,7 +655,7 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          }
          print( "Repo done " + repos.toString() );
    
-         String pid = randomAlpha(10);
+         String pid = randAlpha(10);
          GHAccount myGHAcct = new GHAccount( id: pid, ceOwnerId: appState.userId, ghUserName: patLogin, repos: repos );
          
          

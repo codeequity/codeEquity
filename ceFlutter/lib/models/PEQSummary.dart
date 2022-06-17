@@ -1,7 +1,4 @@
-import 'package:random_string/random_string.dart';
-
 import 'package:ceFlutter/models/allocation.dart';
-
 
 // ceFlutter use only
 

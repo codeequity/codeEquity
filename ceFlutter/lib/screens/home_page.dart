@@ -13,7 +13,6 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/screens/add_gh_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 
-
 class CEHomePage extends StatefulWidget {
    CEHomePage({Key key}) : super(key: key);
 

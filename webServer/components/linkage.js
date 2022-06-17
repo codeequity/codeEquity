@@ -114,7 +114,7 @@ class Linkage {
 	}
 	await Promise.all( promises );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
-	this.show();
+	this.show(10);
 	//this.showLocs();
     }
 
@@ -269,7 +269,7 @@ class Linkage {
 	    assert( false );
 	}
 
-	const repo = query.repo;
+	const repo      = query.repo;
 	const projId    = query.hasOwnProperty( "projId" )   ? query.projId.toString() : -1;
 	const colId     = query.hasOwnProperty( "colId" )    ? query.colId.toString()  : -1;
 	const projName  = query.hasOwnProperty( "projName" ) ? query.projName          : config.EMPTY;

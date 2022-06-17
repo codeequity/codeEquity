@@ -84,6 +84,80 @@ async function recordMove( authData, ghLinks, reqBody, fullName, oldCol, newCol,
 			   utils.getToday(), reqBody );
 }
 
+// NOTE: after 6/2022, delete notification is not dependably sent by GH upon delete situated issue.
+//       However, it may, eventually, be sent.  Must be able to ignore multiple notices for the same event.
+async function deleteCard( authData, ghLinks, pd, cardId ) {
+    // Not carded?  no-op.  or maybe delete issue arrived first.
+    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": cardId });
+    if( links == -1 ) { return; }
+    
+    let link    = links[0];
+    const accr  = link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR];
+    let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card was deleted.";
+    comment    += " PEQ issues require a 1:1 mapping between issues and cards.";
+    
+    // Carded, untracked (i.e. not peq)?   Just remove linkage, since GH removed card.
+    if( link.GHColumnId == -1 ) {
+	ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
+	return;
+    }
+    
+    // PEQ.  Card is gone in GH, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
+    // Wait later
+    let peq = utils.getPeq( authData, link.GHIssueId );
+    
+    // Is the source a delete issue or transfer? 
+    let issueExists = await gh.checkIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );
+    if( issueExists == -1 ) { issueExists = false; };
+    
+    // Regular peq?  or ACCR already in unclaimed?  remove it no matter what.
+    if( !accr || link.GHProjectName == config.UNCLAIMED ) {
+	console.log( authData.who, "Removing peq", accr, issueExists );
+	if( issueExists ) {
+	    let success = await ghSafe.removePeqLabel( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );
+	    // Don't wait
+	    if( success ) { ghSafe.addComment( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment ); }
+	}
+	ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
+	
+	// no need to wait.
+	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
+	peq = await peq;
+	utils.removePEQ( authData, peq.PEQId );
+	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
+	let note   = accr ? "Disconnected issue" : "";
+	utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+			       config.PACTVERB_CONF, action, [peq.PEQId], note,
+			       utils.getToday(), pd.reqBody );
+    }
+    // ACCR, not in unclaimed.  
+    else if( issueExists ) {
+	console.log( authData.who, "Moving ACCR", accr, issueExists, link.GHIssueId );
+	// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
+	//           card creation can fail, and results can be uncertain at this point.  
+	let card = await gh.createUnClaimedCard( authData, ghLinks, pd, parseInt( link.GHIssueId ), accr );  
+	link.GHCardId      = card.id.toString();
+	link.GHProjectId   = card.project_url.split('/').pop();
+	link.GHProjectName = config.UNCLAIMED;
+	link.GHColumnId    = card.column_url.split('/').pop();
+	link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
+	
+	const psub = [ link.GHProjectName, link.GHColumnName ];
+	
+	// No need to wait
+	peq = await peq;
+	utils.updatePEQPSub( authData, peq.PEQId, psub );
+	utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+			       config.PACTVERB_CONF, config.PACTACT_RELO, [peq.PEQId, link.GHProjectId, link.GHColumnId], "",
+			       utils.getToday(), pd.reqBody );
+	
+    }
+    // ACCR, not unclaimed, but issue deleted.  Delete issue must handle this since we don't have label, allocation.
+    else {
+	console.log( authData.who, "Issue handler will recreate ACCR in unclaimed", accr, issueExists );
+    }
+}
+
 
 // Card operations: no PEQ label, not related to CodeEquity.  No action.
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
@@ -219,77 +293,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Source of notification: delete card, delete (carded) issue, delete col, delete proj, xfer
 	// From here, can't tell which source, or which order of arrival, just know GH has already deleted the card, and maybe the issue.
 	// No matter the source, delete card must manage linkage, peq, pact, etc.
-	{
-	    // Not carded?  no-op.  or maybe delete issue arrived first.
-	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": pd.reqBody.project_card.id } );
-	    if( links == -1 ) { return; }
-
-	    let link    = links[0];
-	    const accr  = link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR];
-	    let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card was deleted.";
-	    comment    += " PEQ issues require a 1:1 mapping between issues and cards.";
-
-	    // Carded, untracked?   Just remove linkage, since GH removed card.
-	    if( link.GHColumnId == -1 ) {
-		ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
-		return;
-	    }
-
-	    // PEQ.  Card is gone in GH, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
-	    // Wait later
-	    let peq = utils.getPeq( authData, link.GHIssueId );
-
-	    // Is the source a delete issue or transfer? 
-	    let issueExists = await gh.checkIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );
-	    if( issueExists == -1 ) { issueExists = false; };
-
-	    // Regular peq?  or ACCR already in unclaimed?  remove it no matter what.
-	    if( !accr || link.GHProjectName == config.UNCLAIMED ) {
-		console.log( authData.who, "Removing peq", accr, issueExists );
-		if( issueExists ) {
-		    let success = await ghSafe.removePeqLabel( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );
-		    // Don't wait
-		    if( success ) { ghSafe.addComment( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment ); }
-		}
-		ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
-
-		// no need to wait.
-		// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
-		peq = await peq;
-		utils.removePEQ( authData, peq.PEQId );
-		let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
-		let note   = accr ? "Disconnected issue" : "";
-		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				       config.PACTVERB_CONF, action, [peq.PEQId], note,
-				       utils.getToday(), pd.reqBody );
-	    }
-	    // ACCR, not in unclaimed.  
-	    else if( issueExists ) {
-		console.log( authData.who, "Moving ACCR", accr, issueExists, link.GHIssueId );
-		// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
-		//           card creation can fail, and results can be uncertain at this point.  
-		let card = await gh.createUnClaimedCard( authData, ghLinks, pd, parseInt( link.GHIssueId ), accr );  
-		link.GHCardId      = card.id.toString();
-		link.GHProjectId   = card.project_url.split('/').pop();
-		link.GHProjectName = config.UNCLAIMED;
-		link.GHColumnId    = card.column_url.split('/').pop();
-		link.GHColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
-
-		const psub = [ link.GHProjectName, link.GHColumnName ];
-
-		// No need to wait
-		peq = await peq;
-		utils.updatePEQPSub( authData, peq.PEQId, psub );
-		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
-				       config.PACTVERB_CONF, config.PACTACT_RELO, [peq.PEQId, link.GHProjectId, link.GHColumnId], "",
-				       utils.getToday(), pd.reqBody );
-		
-	    }
-	    // ACCR, not unclaimed, but issue deleted.  Delete issue must handle this since we don't have label, allocation.
-	    else {
-		console.log( authData.who, "Issue handler will recreate ACCR in unclaimed", accr, issueExists );
-	    }
-	}
+	await deleteCard( authData, ghLinks, pd, pd.reqBody.project_card.id );
 	break;
     case 'edited' :
 	// Only newborn can be edited.   Track issue-free creation above.
@@ -311,3 +315,4 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 exports.handler    = handler;
 exports.recordMove = recordMove;
+exports.deleteCard = deleteCard;
