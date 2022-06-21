@@ -241,6 +241,11 @@ Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
    expect( await verifyOnLaunchPage( tester ), true );
 
    final Finder loginButton = find.byKey(const Key( 'Login' ));
+
+   // Wait for a bit, slow sometimes
+   // if( tester.widgetList<Row>( generatedAllocRow ).length > 0 ) {
+   await pumpSettle(tester, 1);
+   
    expect( loginButton, findsOneWidget);
 
    // Jump to login page

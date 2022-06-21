@@ -75,7 +75,7 @@ const Map<String,List<String>> ALLOCS_GOLD =
       "A Pre-Existing Project 35":   ["Category, A Pre-Existing Project", "500,000", "1,500", "0", "1,500"],
       "Bacon 36":                    ["Category, A Pre-Existing Project, Bacon", "500,000", "1,500", "0", "0"],
       "Unassigned 37":               ["Category, A Pre-Existing Project, Bacon, Unassigned", "0", "1,500", "0", "0"],
-      "IR Alloc split 38":           ["Category, A Pre-Existing Project, Bacon, IR Alloc split: IwBRvVYU", "500,000", "0", "0", "0"],
+      "IR Alloc split 38":           ["Category, A Pre-Existing Project, Bacon, IR Alloc split", "500,000", "0", "0", "0"],
       "Accrued 39":                  ["Category, A Pre-Existing Project, Accrued", "0", "0", "0", "1,500"],
       "ariCETester 40":              ["Category, A Pre-Existing Project, Accrued, ariCETester", "0", "0", "0", "1,500"],
 
@@ -109,6 +109,7 @@ Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false 
 
    return true;
 }
+
 
 Future<bool> approvalsTabFraming( WidgetTester tester ) async {
    expect( await verifyOnProjectPage( tester ), true );
@@ -390,6 +391,9 @@ Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey
    // allocs_gold is const above, is a map to a list<str> with long title, then numbers.
    
    List<String> agVals  = ALLOCS_GOLD[ agKey ] ?? [];
+   if( agVals.length < 5 ) {
+      print( "CheckOffsetAlloc failed to get agVals. " + agKey + " " + flutterPos.toString() );
+   }
    for( var j = 1; j < 5; j++ ) {
       if( allocs[j] != agVals[j] ) { print( allocs.toString() + "   " + agVals.toString() ); }
       expect( allocs[j], agVals[j] );
@@ -413,7 +417,7 @@ Future<bool> checkAllocs( WidgetTester tester, int min, int max ) async {
       List<String> allocs = await getElt( tester, "allocsTable " + i.toString() );
 
       // First elt in allocs is used as key for allocs_gold
-      // allocs is from ceFlutter, has short title, then numbers.
+      // allocs is from the displayed table in ceFlutter, has short title, then numbers.
       // allocs_gold is const above, is a map to a list<str> with long title, then numbers.
       
       String agKey         = allocs[0] + " " + i.toString();
@@ -503,7 +507,7 @@ Future<bool> _checkHelper( tester ) async {
    await checkOffsetAlloc( tester, 11, "A Pre-Existing Project 35" );
    await checkOffsetAlloc( tester, 12, "Bacon 36" );
    await checkOffsetAlloc( tester, 13, "Unassigned 37" );
-   await checkOffsetAlloc( tester, 14, "IR Alloc split: IwBRvVYU 38" );
+   await checkOffsetAlloc( tester, 14, "IR Alloc split 38" );
    return true;
 }
 
@@ -514,7 +518,8 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   bool skip = true;
+   // bool skip = true;
+   bool skip = false;
 
    // override?  Run it.
    var override = const String.fromEnvironment('override');
@@ -536,7 +541,10 @@ void main() {
 
          expect( await verifyOnProjectPage( tester ), true );
 
-         expect( await peqSummaryTabFraming( tester ),   true );
+         // ceFlutterTester was just cleared.  This will not yet exist.
+         // expect( await peqSummaryTabFraming( tester ),   true );
+         expect( await verifyEmptyProjectPage( tester ), true );         
+
          expect( await approvalsTabFraming( tester ),    true );
          expect( await contributorsTabFraming( tester ), true );
          expect( await equityPlanTabFraming( tester ),   true );
@@ -630,7 +638,7 @@ void main() {
          await checkOffsetAlloc( tester, 4, "A Pre-Existing Project 35" );
          await checkOffsetAlloc( tester, 5, "Bacon 36" );
          await checkOffsetAlloc( tester, 6, "Unassigned 37" );
-         await checkOffsetAlloc( tester, 7, "IR Alloc split: IwBRvVYU 38" );
+         await checkOffsetAlloc( tester, 7, "IR Alloc split 38" );
          await checkOffsetAlloc( tester, 8, "Accrued 39");
          await checkOffsetAlloc( tester, 9, "ariCETester 40");
          await checkOffsetAlloc( tester, 10,"New ProjCol Proj 41" );
@@ -647,7 +655,7 @@ void main() {
          await checkOffsetAlloc( tester, 4, "A Pre-Existing Project 35" );
          await checkOffsetAlloc( tester, 5, "Bacon 36" );
          await checkOffsetAlloc( tester, 6, "Unassigned 37" );
-         await checkOffsetAlloc( tester, 7, "IR Alloc split: IwBRvVYU 38" );
+         await checkOffsetAlloc( tester, 7, "IR Alloc split 38" );
          await checkOffsetAlloc( tester, 8, "Accrued 39");
          await checkOffsetAlloc( tester, 9, "ariCETester 40");
          await checkOffsetAlloc( tester, 10,"New ProjCol Proj 41" );
