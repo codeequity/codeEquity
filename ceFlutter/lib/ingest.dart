@@ -1082,18 +1082,9 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    print( "Ingest todos finished processing.  Update Dynamo." );
    // XXX Skip this if no change (say, on a series of notices).
    if( appState.myPEQSummary != null ) {
-      
       String psum = json.encode( appState.myPEQSummary );
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
       await updateDynamo( context, container, postData, "PutPSum" );
-
-      // XXX Integration testing causes 2 writes to dynamo per update.  psum.id is rebuilt as part of that(!)
-      //     Leave this in place until integration testing framework is fixed.  See 6/2022 bug.
-      // XXX the testing fwk writes second summary after 3 seconds.  Crazy.
-      print( "XXX waiting 5s for integration test fwk to finish being bad" );
-      await Future.delayed(Duration(seconds: 5));
-      print( "XXX done" );
-      await cleanSummary( context, container );
    }
 
    // unlock, set ingested

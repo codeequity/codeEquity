@@ -128,11 +128,6 @@ def runTest( testName, override, noBuild = True, optimized = False ):
     tmpSum  = "\n"
     tmpSum += runCmd( cmd, grepFilter )
 
-    # XXX As of 5/2022, new chrome interacts poorly with Ubuntu.  Bash is losing it's mind after a test, basically locking terminal.
-    # reset in-between cmds helps.  Lin only.  Slows things down.
-    # cmd = "/usr/bin/reset"
-    #runCmd( cmd, [] )
-    
     return tmpSum
 
 

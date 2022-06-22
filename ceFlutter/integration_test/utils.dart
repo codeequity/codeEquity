@@ -44,8 +44,9 @@ Future<bool> restart( WidgetTester tester ) async {
 
 // pumpAndSettle interacts poorly with drag (and maybe others?) as of 5/2022.
 // When a duration is included, the test exits early.
-Future<bool> pumpSettle( WidgetTester tester, int delaySecs ) async {
+Future<bool> pumpSettle( WidgetTester tester, int delaySecs, {bool verbose = false} ) async {
 
+   if( verbose ) { print( "pumping, delay: " + delaySecs.toString() ); }
    await tester.pumpAndSettle();
    await Future.delayed(Duration(seconds: delaySecs));   
    await tester.pumpAndSettle();
@@ -241,6 +242,11 @@ Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
    expect( await verifyOnLaunchPage( tester ), true );
 
    final Finder loginButton = find.byKey(const Key( 'Login' ));
+
+   // Wait for a bit, slow sometimes
+   // if( tester.widgetList<Row>( generatedAllocRow ).length > 0 ) {
+   await pumpSettle(tester, 1);
+   
    expect( loginButton, findsOneWidget);
 
    // Jump to login page
