@@ -30,6 +30,7 @@ class _CELoginState extends State<CELoginPage> {
   @override
   void dispose() {
     super.dispose();
+    print( "LP Disposessed!" );
   }
 
 

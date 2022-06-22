@@ -1082,9 +1082,34 @@ async function updateColProj( update ) {
 
 
 
-// Overwrites any existing record
+// Overwrites any existing record by ID.
+// XXX Due to https://github.com/flutter/flutter/issues/67090, if repo exists already but with different id, don't write.
 async function putPSum( psum ) {
+
+    // XXX START workaround: Remove this once issue 67090 is resolved
     const params = {
+        TableName: 'CEPEQSummary',
+        FilterExpression: 'GHRepo = :ghr',
+        ExpressionAttributeValues: { ":ghr": psum.ghRepo },
+	Limit: 99,
+    };
+    let gPromise = paginatedScan( params );
+    let skip = false;
+    await gPromise.then((ps) => {
+	for( const eps of ps ) {
+	    if( eps.PEQSummaryId != psum.id ) {
+		// Oops.  We have an existing summary for repo with a different ID.  Don't write this new, second copy.
+		assert( eps.Allocations.length == psum.allocations.length );
+		console.log( "Found duplicate repo, will not write current.", eps.PEQSummaryId.toString(), psum.id, psum.ghRepo, eps.Allocations.length.toString() );
+		skip = true;
+	    }
+	    
+	}
+    });
+    if( skip ) { return success( true ); }
+    // XXX END
+
+    const paramsP = {
         TableName: 'CEPEQSummary',
 	Item: {
 	    "PEQSummaryId": psum.id, 
@@ -1098,7 +1123,7 @@ async function putPSum( psum ) {
 
     console.log( "PEQSummary put", psum.id.toString());
 
-    let promise = bsdb.put( params ).promise();
+    let promise = bsdb.put( paramsP ).promise();
     return promise.then(() => success( true ));
 }
 

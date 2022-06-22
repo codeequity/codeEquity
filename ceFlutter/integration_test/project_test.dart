@@ -18,6 +18,7 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 */
 // check app_state.. that'd be good..
 // https://blog.gskinner.com/archives/2021/06/flutter-a-deep-dive-into-integration_test-library.html
+// https://github.com/flutter/flutter/tree/master/packages/flutter/test/material
 
 // Gold standard for testing ingest and summary frame for ariCETester/ceFlutterTester
 // XXX Category should show ["7,000,000", "12,840", "2,500", "11,001"] in ceFlutter
@@ -534,10 +535,8 @@ void main() {
 
          final Finder ariLink = find.byKey( Key( repo ));
          await tester.tap( ariLink );
-         print( "pumping" );
-         await tester.pumpAndSettle( Duration( seconds: 5 ));
-         print( "pumping" );
-         await tester.pumpAndSettle( Duration( seconds: 3 ));
+         await pumpSettle( tester, 5, verbose: true ); 
+         await pumpSettle( tester, 3, verbose: true ); 
 
          expect( await verifyOnProjectPage( tester ), true );
 
@@ -568,20 +567,16 @@ void main() {
 
          final Finder ariLink = find.byKey( Key( repo ));
          await tester.tap( ariLink );
-         print( "pumping" );
-         await tester.pumpAndSettle( Duration( seconds: 5 ));
-         print( "pumping" );
-         await tester.pumpAndSettle( Duration( seconds: 3 ));
+         await pumpSettle( tester, 5, verbose: true ); 
+         await pumpSettle( tester, 3, verbose: true ); 
 
          expect( await verifyEmptyProjectPage( tester ), true );
          
          final Finder updateButton = find.byKey( const Key( 'Update PEQ Summary?' ));
          expect( updateButton, findsOneWidget );
          await tester.tap( updateButton );
-         print( "Long pump" );
-         await pumpSettle( tester, 85 );
-         print( "short pump" );
-         await pumpSettle( tester, 4 );
+         await pumpSettle( tester, 85, verbose: true );
+         await pumpSettle( tester, 4, verbose: true );
 
          // Make sure it all shows up
          expect( await peqSummaryTabFraming( tester ),   true );
@@ -591,7 +586,7 @@ void main() {
          await logout( tester );         
 
          report( 'Project contents, ingest' );
-      });
+      }, semanticsEnabled: false );
 
    testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
 
@@ -603,10 +598,8 @@ void main() {
 
          final Finder ariLink = find.byKey( Key( repo ));
          await tester.tap( ariLink );
-         print( "pumping" );
-         await tester.pumpAndSettle( Duration( seconds: 5 ));
-         print( "pumping" );
-         await tester.pumpAndSettle( Duration( seconds: 3 ));
+         await pumpSettle( tester, 5, verbose: true ); 
+         await pumpSettle( tester, 3, verbose: true ); 
 
          expect( await verifyOnProjectPage( tester ), true );
 

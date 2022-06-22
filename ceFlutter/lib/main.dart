@@ -69,6 +69,7 @@ class _CESplashPageState extends State<CESplashPage> {
   @override
   void dispose() {
      super.dispose();
+     print( "Main dispose" );
   }
 
   void _startTimer( attempts ) {

@@ -39,6 +39,7 @@ class _CEProjectState extends State<CEProjectPage> {
    @override
    void dispose() {
       super.dispose();
+      print( "PP Disposessed!" );
    }
 
 

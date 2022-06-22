@@ -198,6 +198,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
      state.attributeController.dispose();
      state.confirmationCodeController.dispose();
      super.dispose();
+     print( "Container dispose" );
   }
 
   

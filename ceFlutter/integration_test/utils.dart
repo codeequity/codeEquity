@@ -44,8 +44,9 @@ Future<bool> restart( WidgetTester tester ) async {
 
 // pumpAndSettle interacts poorly with drag (and maybe others?) as of 5/2022.
 // When a duration is included, the test exits early.
-Future<bool> pumpSettle( WidgetTester tester, int delaySecs ) async {
+Future<bool> pumpSettle( WidgetTester tester, int delaySecs, {bool verbose = false} ) async {
 
+   if( verbose ) { print( "pumping, delay: " + delaySecs.toString() ); }
    await tester.pumpAndSettle();
    await Future.delayed(Duration(seconds: delaySecs));   
    await tester.pumpAndSettle();
