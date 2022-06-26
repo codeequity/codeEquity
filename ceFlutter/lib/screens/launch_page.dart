@@ -26,6 +26,7 @@ class _CELaunchPageState extends State<CELaunchPage> {
   @override
   void dispose() {
      super.dispose();
+     print( "launch dispose" );
   }
 
     

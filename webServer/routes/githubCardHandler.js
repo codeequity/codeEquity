@@ -86,6 +86,7 @@ async function recordMove( authData, ghLinks, reqBody, fullName, oldCol, newCol,
 
 // NOTE: after 6/2022, delete notification is not dependably sent by GH upon delete situated issue.
 //       However, it may, eventually, be sent.  Must be able to ignore multiple notices for the same event.
+// UPDATE: End of 6/2022, delete notification is back to normal. 
 async function deleteCard( authData, ghLinks, pd, cardId ) {
     // Not carded?  no-op.  or maybe delete issue arrived first.
     let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": cardId });
@@ -315,4 +316,4 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 exports.handler    = handler;
 exports.recordMove = recordMove;
-exports.deleteCard = deleteCard;
+//exports.deleteCard = deleteCard;

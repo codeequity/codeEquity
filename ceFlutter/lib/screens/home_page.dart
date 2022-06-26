@@ -43,6 +43,7 @@ class _CEHomeState extends State<CEHomePage> {
    @override
    void dispose() {
       super.dispose();
+      print( "HP dispose" );
    }
 
    Widget _newCEProjButton() {

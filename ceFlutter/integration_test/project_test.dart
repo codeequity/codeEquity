@@ -481,7 +481,8 @@ Future<bool> checkAll( WidgetTester tester ) async {
 
 
 Future<bool> ariSummaryContent( WidgetTester tester ) async {
-
+   // return true;
+   
    final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
    final bottomFinder = find.text( "A Pre-Existing Project" );
@@ -557,7 +558,7 @@ void main() {
 
    // NOTE: testCEFlutter.py always runs 'npm clean' before this
    //       it is possible to depend on process_run and run from here, but that clutters deps
-   testWidgets('Project contents, ingest', skip:false, (WidgetTester tester) async {
+   testWidgets('Project contents, ingest', skip:false, semanticsEnabled:false, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -586,7 +587,7 @@ void main() {
          await logout( tester );         
 
          report( 'Project contents, ingest' );
-      }, semanticsEnabled: false );
+      });
 
    testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
 
