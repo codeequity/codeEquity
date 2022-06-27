@@ -141,7 +141,8 @@ class _CELaunchPageState extends State<CELaunchPage> {
                 context,
                 MaterialPageRoute(builder: (context) => CESignupPage()));
         }));
-    
+
+    print( "Build launch page" );
     // print( "launch recalc screen size " + devHeight.toString() + " " + devWidth.toString() + " WF: " + widthFactor.toStringAsFixed(2) );
     return Scaffold(
        body: Center(

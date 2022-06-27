@@ -21,6 +21,8 @@ class CELoginPage extends StatefulWidget {
 class _CELoginState extends State<CELoginPage> {
 
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
+   TextEditingController usernameController;
+   TextEditingController passwordController;
    
    @override
    void initState() {
@@ -35,6 +37,7 @@ class _CELoginState extends State<CELoginPage> {
 
 
   void _signin( userName, userPassword, container, appState ) async {
+     print( "Signin building wrapper" );
      final wrapper = cognitoSignupWrapper(context, () async {
 
            Stopwatch stopwatch = new Stopwatch()..start();
@@ -49,6 +52,7 @@ class _CELoginState extends State<CELoginPage> {
               Navigator.push( context, newPage );
            }
         });
+     print( "Signin calling wrapper" );
      wrapper();
   }
 
@@ -64,8 +68,8 @@ class _CELoginState extends State<CELoginPage> {
      else {
         // Wait for Cognito logout callback to finish executing
         Timer(Duration(seconds: duration), () {
-              if( appState.passwordController.text != "" ) { _logoutLogin( freeName, freePass, attempts + 1, container, appState ); }
-              else                                        { _signin( freeName, freePass, container, appState ); }
+              if( passwordController.text != "" ) { _logoutLogin( freeName, freePass, attempts + 1, container, appState ); }
+              else                                { _signin( freeName, freePass, container, appState ); }
            });
      }
   }
@@ -122,12 +126,15 @@ class _CELoginState extends State<CELoginPage> {
      final container = AppStateContainer.of(context);
      final appState = container.state;
 
+     usernameController = new TextEditingController();
+     passwordController = new TextEditingController();
 
-     final usernameField = makeInputField( appState, "username", false, appState.usernameController );
-     final passwordField = makeInputField( appState, "password", true, appState.passwordController );
+     final usernameField = makeInputField( appState, "username", false, usernameController );
+     final passwordField = makeInputField( appState, "password", true,  passwordController );
      final loginButton = makeActionButton( appState, 'Login', (() async {
-              String userName = appState.usernameController.text;
-              String userPassword = appState.passwordController.text;
+              print( "Start login button callback" );
+              String userName = usernameController.text;
+              String userPassword = passwordController.text;
 
               // Enable rotating tester logins
               // have to sign in first, in order to get auth tokens to check locked.
@@ -142,10 +149,14 @@ class _CELoginState extends State<CELoginPage> {
                  _loginLogoutLogin(0, container, appState );
               }
               else {
+                 print( "Start login button signin" );
                  _signin( userName, userPassword, container, appState );
+                 
               }
            }));
 
+     print( "build login page" );
+     
      return Scaffold(
       body: Center(
 

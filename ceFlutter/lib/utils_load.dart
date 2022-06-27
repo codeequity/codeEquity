@@ -36,12 +36,6 @@ Future<void> logoutWait( context, container, appState ) async {
    final wrapper = (() async {
          try {
             appState.cogUser = await appState.cogUserService.signOut();
-            
-            // Rebuilding page below, don't need to setState (which isn't available here). 
-            appState.usernameController.clear();
-            appState.passwordController.clear();
-            appState.attributeController.clear();
-            appState.confirmationCodeController.clear();
          } catch(e, stacktrace) {
             print(e);
             print(stacktrace);

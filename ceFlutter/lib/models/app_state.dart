@@ -36,10 +36,6 @@ class AppState {
    bool newUser;          // signup: newuser creating a login has some special requirements during setup
    
    String apiBasePath;                         // where to find lambda interface to aws
-   TextEditingController usernameController;   // XXX move out
-   TextEditingController passwordController;   // XXX move out
-   TextEditingController attributeController;  // XXX move out
-   TextEditingController confirmationCodeController;  // XXX move out
    double screenHeight;
    double screenWidth;
 
@@ -133,11 +129,6 @@ class AppState {
       newUser = false;
       
       apiBasePath = "";
-      usernameController = TextEditingController();
-      passwordController = TextEditingController();
-      attributeController = TextEditingController();
-      confirmationCodeController = TextEditingController();
-
       initAppData();
    }
 

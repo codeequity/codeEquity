@@ -290,7 +290,7 @@ class _CEHomeState extends State<CEHomePage> {
       appState.screenWidth  = MediaQuery.of(context).size.width;
       runningLHSHeight = 0;
       
-      // print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
+      print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
       // print( getToday() );
       
       return Scaffold(

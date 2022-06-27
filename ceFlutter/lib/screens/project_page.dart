@@ -190,6 +190,8 @@ class _CEProjectState extends State<CEProjectPage> {
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;
 
+      print( "build project page" );
+      
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),
          body: _makeBody( context )

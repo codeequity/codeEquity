@@ -193,10 +193,6 @@ class _AppStateContainerState extends State<AppStateContainer> {
   
   @override
   void dispose() {
-     state.usernameController.dispose();
-     state.passwordController.dispose();
-     state.attributeController.dispose();
-     state.confirmationCodeController.dispose();
      super.dispose();
      print( "Container dispose" );
   }
