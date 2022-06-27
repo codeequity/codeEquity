@@ -280,10 +280,10 @@ Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
 // As we continue expanding, the distance between the last entry and the last fully expanded entry shrinks. 
 Future<bool> expandAll( WidgetTester tester ) async {
 
-   final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
    final bottomFinder = find.text( "A Pre-Existing Project" );
-
+   final listFinder   = find.byType( ListView );
+   
    // Scroll until the item to be found appears.  
    // ScrollUntilVis would be great, but wow. https://github.com/flutter/flutter/issues/88762
    // Maybe next year.  use drag for now - it can stop if 1 pixel of the widget is showing, so add a little extra afterwards
@@ -481,7 +481,6 @@ Future<bool> checkAll( WidgetTester tester ) async {
 
 
 Future<bool> ariSummaryContent( WidgetTester tester ) async {
-
    final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
    final bottomFinder = find.text( "A Pre-Existing Project" );
@@ -490,7 +489,6 @@ Future<bool> ariSummaryContent( WidgetTester tester ) async {
 
    // First, expand.  Then test drag down.  Then start checking.
    await expandAll( tester );
-
    await checkAll( tester ); 
 
    await closeAll( tester );
@@ -527,8 +525,10 @@ void main() {
    if( override == "True" ) { skip = false; }
    
    report( 'Project', group:true );
-   
-   testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
+
+   // XXX
+   // testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
+   testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
          
          await restart( tester );
          await login( tester, true );
@@ -577,7 +577,7 @@ void main() {
          await tester.tap( updateButton );
          await pumpSettle( tester, 85, verbose: true );
          await pumpSettle( tester, 4, verbose: true );
-
+         
          // Make sure it all shows up
          expect( await peqSummaryTabFraming( tester ),   true );
          expect( await ariSummaryFraming( tester ), true );
@@ -586,7 +586,7 @@ void main() {
          await logout( tester );         
 
          report( 'Project contents, ingest' );
-      }, semanticsEnabled: false );
+      });
 
    testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
 

@@ -38,14 +38,17 @@ async function deleteIssue( authData, ghLinks, pd ) {
     // Delete issue notification is generate immediately.  good.
     // Delete card notification is only generated after human browses the project board (!!!!!), at which time the human will see:
     //        'You can not see this card.  This card references something that has spammy content.'
-    
+
+    // Update, GH delete behavior has been reverted. Reverting to original method, no special cases required during ingest
     // Carded, not tracked (i.e. not peq).  We know issue was deleted - don't know if card was.
     // Remove card now, as of 6/2022.  If delCard was already called, links above would already by -1, won't get here.
-    if( link.GHColumnId == -1 ) {
-	gh.removeCard( authData, link.GHCardId );
-	return;
-    }
+    // if( link.GHColumnId == -1 ) {
+    // gh.removeCard( authData, link.GHCardId );
+    // return;
+    // }
 
+    // PEQ.  Card is gone, issue is gone.  Delete card will handle all but the one case below, in which case it leaves link intact.
+    
     // ACCR, not unclaimed, deleted issue.
     if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 
@@ -91,15 +94,16 @@ async function deleteIssue( authData, ghLinks, pd ) {
 			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }
-    else {
+    // Revert 6/2022
+    // else {
 	// Here, have a peq issue that is not ACCR/!unclaimed.
 	// delCard action & notice is no longer automatic - call here.  CardHandler handles all the details.
 
 	// XXX can NOT remove this card - seems to be protected internal GH junk.  Must wait for it to
 	//     disappear on its own.  UGLY.
 	// gh.removeCard( authData, link.GHCardId );
-	cardHandler.deleteCard( authData, ghLinks, pd, link.GHCardId );
-    }
+        // cardHandler.deleteCard( authData, ghLinks, pd, link.GHCardId );
+    // }
     console.log( "Delete", Date.now() - tstart );
 }
 

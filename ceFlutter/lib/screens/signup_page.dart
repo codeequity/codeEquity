@@ -23,6 +23,10 @@ class CESignupPage extends StatefulWidget {
 
 class _CESignupState extends State<CESignupPage> {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
+   TextEditingController usernameController;
+   TextEditingController passwordController;
+   TextEditingController attributeController;
+   TextEditingController confirmationCodeController;
 
    // Always create with false.  When logout, all stacks pop, recreate is with false.
    bool showCC = false;
@@ -46,11 +50,16 @@ class _CESignupState extends State<CESignupPage> {
 
       final container = AppStateContainer.of(context);
       final appState = container.state;
+
+      usernameController = new TextEditingController();
+      passwordController = new TextEditingController();
+      attributeController = new TextEditingController();
+      confirmationCodeController = new TextEditingController();
       
-      final usernameField = makeInputField( appState, "username", false, appState.usernameController );
-      final passwordField = makeInputField( appState, "password", true, appState.passwordController );
-      final emailField    = makeInputField( appState, "email address", false, appState.attributeController );
-      final confirmationCodeField = makeInputField( appState, "confirmation code", false, appState.confirmationCodeController );
+      final usernameField = makeInputField( appState, "username", false, usernameController );
+      final passwordField = makeInputField( appState, "password", true, passwordController );
+      final emailField    = makeInputField( appState, "email address", false, attributeController );
+      final confirmationCodeField = makeInputField( appState, "confirmation code", false, confirmationCodeController );
 
       String message = "";  
 
@@ -68,12 +77,12 @@ class _CESignupState extends State<CESignupPage> {
       }
 
       final signupButton = makeActionButton( appState, "Send confirmation code", cognitoSignupWrapper(context, () async {
-               final email = appState.attributeController.text;
+               final email = attributeController.text;
                if( malformedEmail( email )) {
                   showToast( "Email address is empty or malformed." );
                }
                else {
-                  await appState.cogUserService.signUp( email, appState.passwordController.text, appState.usernameController.text );
+                  await appState.cogUserService.signUp( email, passwordController.text, usernameController.text );
                   showToast( "Code sent to your email");
                   print( "Code sent to email" );
                   setState(() { showCC = true; });
@@ -83,8 +92,8 @@ class _CESignupState extends State<CESignupPage> {
 
       final confirmSignupButton = makeActionButton( appState, "Confirm signup, and Log in", cognitoSignupWrapper(context, () async {
                bool acctConfirmed = false;
-               acctConfirmed = await appState.cogUserService.confirmAccount( appState.usernameController.text,
-                                                                               appState.confirmationCodeController.text );
+               acctConfirmed = await appState.cogUserService.confirmAccount( usernameController.text,
+                                                                               confirmationCodeController.text );
                if( acctConfirmed ) { print( "Account confirmed." ); }
                else {
                   print( "Account confirmation failure.  Bad confirmation code?" );
@@ -92,7 +101,7 @@ class _CESignupState extends State<CESignupPage> {
                }
 
                appState.newUser = true;
-               appState.cogUser = await appState.cogUserService.login( appState.usernameController.text, appState.passwordController.text );
+               appState.cogUser = await appState.cogUserService.login( usernameController.text, passwordController.text );
                print( "Login complete." );
 
                if( !appState.cogUser.confirmed ) {
@@ -106,8 +115,8 @@ class _CESignupState extends State<CESignupPage> {
                   String pid = randAlpha(10);
                   appState.userId = pid;
                   
-                  Person user = new Person( id: pid, firstName: "Marion", lastName: "Star", userName: appState.usernameController.text,
-                                            email: appState.attributeController.text, locked: false, imagePng: null, image: null );
+                  Person user = new Person( id: pid, firstName: "Marion", lastName: "Star", userName: usernameController.text,
+                                            email: attributeController.text, locked: false, imagePng: null, image: null );
                   
                   String newUser = json.encode( user );
                   String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $newUser }';

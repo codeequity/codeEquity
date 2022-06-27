@@ -129,6 +129,7 @@ class UserService {
    
    // Login user
    Future<User> login(String name, String password) async {
+      print( "Cog start login" );
       _cognitoUser = CognitoUser(name, _userPool, storage: _userPool.storage);
 
       final authDetails = AuthenticationDetails(
@@ -138,6 +139,7 @@ class UserService {
       
       bool isConfirmed;
       try {
+         print( "Show toast" );
          showToast( "Authenticating.. can take a few seconds." );
 
          Stopwatch stopwatch = new Stopwatch()..start();
