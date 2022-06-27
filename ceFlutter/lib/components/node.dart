@@ -199,7 +199,7 @@ class Node extends StatelessWidget implements Tree {
      // setVis on all kids that are allocExpanded to true.
      // no need to check allocExpanded.. if kids not yet opened, very little extra work is done
      if( priorExpansionState != _tileExpanded && _tileExpanded ) {
-        print( "!!! !!! $title just opened." );
+        if( appState.verbose >= 2 ) { print( "!!! !!! $title just opened." ); }
         reopenKids();
      }
 
@@ -213,7 +213,7 @@ class Node extends StatelessWidget implements Tree {
   // If this just opened, re-vis any kid that was opened before - can save open/close state this way
   @override
   reopenKids() {
-     print( "Reopening previously expanded $title, and their kids" );
+     if( appState.verbose >= 2 ) { print( "Reopening previously expanded $title, and their kids" ); }
      isVisible = true;
      // Note: appState is null if reopen was called for a child below that has not yet been seen (generated).
      if( appState != null && appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {
@@ -226,7 +226,7 @@ class Node extends StatelessWidget implements Tree {
   // If vis was set true, only me.  Else, myself and all kids are invis
   @override
   setVis( visible ) {
-     print( "VISIBLE  $title :" + visible.toString() );
+     if( appState != null && appState.verbose >= 2 ) { print( "VISIBLE  $title :" + visible.toString() ); }
      isVisible = visible;
      if( !visible ) {
         leaves.forEach( (child) => child.setVis( visible ) );
@@ -240,7 +240,7 @@ class Node extends StatelessWidget implements Tree {
 
      if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] != _tileExpanded ) {
         _tileExpanded = !_tileExpanded;
-        print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" );
+        if( appState.verbose >= 2 ) { print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" ); }
      }
      
      // XXX consider using font for clickability?

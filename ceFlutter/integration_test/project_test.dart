@@ -526,9 +526,7 @@ void main() {
    
    report( 'Project', group:true );
 
-   // XXX
-   // testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
-   testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+   testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
          
          await restart( tester );
          await login( tester, true );

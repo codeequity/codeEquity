@@ -94,7 +94,7 @@ class Leaf extends StatelessWidget implements Tree {
 
   @override
   setVis( visible ) {
-     print( "Leaf vis? $visible" );
+     if( appState != null && appState.verbose >= 2 ) { print( "Leaf vis? $visible" ); }
      isVisible = visible;
   }
 

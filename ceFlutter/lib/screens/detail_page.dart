@@ -34,7 +34,6 @@ class _CEDetailState extends State<CEDetailPage> {
    
    @override
    void initState() {
-      print( "DetailPage INIT" );
       peqPAct = new Map<String, List<PEQAction>>();
       userPActUpdated = false;
       pactList = new List<Widget>();
@@ -49,7 +48,7 @@ class _CEDetailState extends State<CEDetailPage> {
 
 
    void _closeRaw() {
-      print( "closeRaw" );
+      if( appState.verbose >= 2 ) { print( "closeRaw" ); }
       Navigator.of( context ).pop(); 
    }
    
@@ -73,7 +72,7 @@ class _CEDetailState extends State<CEDetailPage> {
       final textWidth = appState.screenWidth * .6;
       String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.entryDate;
       // return makeBodyText( appState, apact, textWidth, false, 1 );
-      print( ".. GD for " + pact.id );
+      if( appState.verbose >= 2 ) { print( ".. GD for " + pact.id ); }
       return GestureDetector(
          onTap: () async
          {
@@ -185,13 +184,13 @@ class _CEDetailState extends State<CEDetailPage> {
    @override
       Widget build(BuildContext context) {
 
-      print( "BUILD DETAIL" );
-      print( "is context null ? " + (context == null).toString() );
+      if( appState.verbose >= 2 ) { print( "BUILD DETAIL" ); }
+      if( appState.verbose >= 2 ) { print( "is context null ? " + (context == null).toString() ); }
             
       container   = AppStateContainer.of(context);
       appState    = container.state;
 
-      print( "\nBuild Detail page " + appState.userPActUpdate.toString() );
+      if( appState.verbose >= 2 ) { print( "\nBuild Detail page " + appState.userPActUpdate.toString() ); }
 
       if( appState.userPActUpdate ) { rebuildPActions( container, context );  }
       

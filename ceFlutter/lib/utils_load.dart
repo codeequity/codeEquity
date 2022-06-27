@@ -469,8 +469,10 @@ Future<void> reloadRepo( context, container ) async {
    pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postData };
    appState.myGHLinks  = await fetchGHLinkage( context, container, pd );
 
-   print( "Got Links?" );
-   appState.myGHLinks == null ? print( "nope - no associated repo" ) : print( appState.myGHLinks.toString() );
+   if( appState.verbose >= 2 ) {
+      print( "Got Links?" ); 
+      appState.myGHLinks == null ? print( "nope - no associated repo" ) : print( appState.myGHLinks.toString() );
+   }
 
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
 }

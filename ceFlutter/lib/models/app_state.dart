@@ -33,6 +33,9 @@ class AppState {
    UserService cogUserService;
    User cogUser;
 
+   // Dev aid
+   int verbose;           // controls how much is printed to terminal. 0 hardly anything. 3 everything.
+   
    bool newUser;          // signup: newuser creating a login has some special requirements during setup
    
    String apiBasePath;                         // where to find lambda interface to aws
@@ -111,7 +114,8 @@ class AppState {
 
    init() {
       screenHeight = -1;
-      screenWidth = -1;
+      screenWidth  = -1;
+      verbose      = 1;
       
       // Cognito values
       authRetryCount = 0;

@@ -6,6 +6,8 @@ import 'package:ceFlutter/screens/signup_page.dart';
 import 'package:ceFlutter/utils.dart';  
 import 'package:ceFlutter/app_state_container.dart';
 
+import 'package:ceFlutter/models/app_state.dart';
+
 
 
 class CELaunchPage extends StatefulWidget {
@@ -18,6 +20,9 @@ class CELaunchPage extends StatefulWidget {
 
 class _CELaunchPageState extends State<CELaunchPage> {
 
+   var      container;
+   AppState appState;
+
    @override
    void initState() {
       super.initState();
@@ -26,7 +31,7 @@ class _CELaunchPageState extends State<CELaunchPage> {
   @override
   void dispose() {
      super.dispose();
-     print( "launch dispose" );
+     if( appState.verbose >= 2 ) { print( "launch dispose" ); }
   }
 
     
@@ -110,8 +115,8 @@ class _CELaunchPageState extends State<CELaunchPage> {
   @override
   Widget build(BuildContext context) {
 
-    final container = AppStateContainer.of(context);
-    final appState = container.state;
+    container = AppStateContainer.of(context);
+    appState  = container.state;
 
     final devWidth  = MediaQuery.of(context).size.width;
     final devHeight = MediaQuery.of(context).size.height;
@@ -142,7 +147,7 @@ class _CELaunchPageState extends State<CELaunchPage> {
                 MaterialPageRoute(builder: (context) => CESignupPage()));
         }));
 
-    print( "Build launch page" );
+    if( appState.verbose >= 2 ) { print( "Build launch page" ); }
     // print( "launch recalc screen size " + devHeight.toString() + " " + devWidth.toString() + " WF: " + widthFactor.toStringAsFixed(2) );
     return Scaffold(
        body: Center(
