@@ -16,10 +16,13 @@ const ASSIGNEE2 = "codeequity";
 // Newborn issues are not carded, by definition.  Too clunky in projects if we were to do so.
 async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus ) {
 
+    console.log( "Check Newborn Issue", issueData);
+    let subTest = [ 0, 0, []];
+
     // CHECK github issues
     let meltIssue = await tu.findIssue( authData, td, issueData[0] );
-    testStatus = tu.checkEq( meltIssue.id, issueData[0].toString(),     testStatus, "Github issue troubles" );
-    testStatus = tu.checkEq( meltIssue.number, issueData[1].toString(), testStatus, "Github issue troubles" );
+    subTest = tu.checkEq( meltIssue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
+    subTest = tu.checkEq( meltIssue.number, issueData[1].toString(), subTest, "Github issue troubles" );
     
     // CHECK github location  .. should not be present.  This is overkill, but will do it once.
     let projs = await tu.getProjects( authData, td );
@@ -28,20 +31,20 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus )
     for( const proj of projs ) { cols = cols.concat( await tu.getColumns( authData, proj.id )); }
     for( const col of cols )   { cards = cards.concat( await tu.getCards( authData, col.id )); }
     let meltCards = cards.filter((card) => card.hasOwnProperty( 'content_url' ) && card.content_url.split('/').pop() == issueData[1].toString() );
-    testStatus = tu.checkEq( meltCards.length, 0,    testStatus, "invalid card" );
+    subTest = tu.checkEq( meltCards.length, 0,    subTest, "invalid card" );
     
     
     // CHECK dynamo linkage
     let links    = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
     let meltLink = links.filter((link) => link.GHIssueId == issueData[0] );
-    testStatus = tu.checkEq( meltLink.length, 0, testStatus, "invalid linkage" );
+    subTest = tu.checkEq( meltLink.length, 0, subTest, "invalid linkage" );
     
     // CHECK dynamo Peq
     let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
-    testStatus = tu.checkEq( meltPeqs.length, 0, testStatus, "invalid peq" );
+    subTest = tu.checkEq( meltPeqs.length, 0, subTest, "invalid peq" );
     
-    return testStatus;
+    return await tu.settle( subTest, testStatus, checkNewbornIssue, authData, ghLinks, td, issueData, testStatus );
 }
 
 
@@ -232,6 +235,7 @@ async function testStepByStep( authData, ghLinks, td ) {
     
     // 1. Create issue 
     let meltData = await tu.makeIssue( authData, td, ISS_FLOW, [] );               // [id, number, title]  (mix str/int)
+    // NOTE this check is local, not testUtils.  1-time overkill check
     testStatus = await checkNewbornIssue( authData, ghLinks, td, meltData, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "A" ); }

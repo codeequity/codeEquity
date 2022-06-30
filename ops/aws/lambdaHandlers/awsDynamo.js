@@ -691,14 +691,14 @@ async function getPeq( uid, ghUser, ghRepo ) {
 
     if( uid != "" ) {
         params.FilterExpression = 'contains( CEHolderId, :ceid) AND GHRepo = :ghrepo AND Active = :true';
-        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo, ":true": true };
+        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo, ":true": "true" };
     }
     else {
         params.FilterExpression = 'contains( GHHolderId, :id) AND GHRepo = :ghrepo AND Active = :true';
-        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo, ":true": true };
+        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo, ":true": "true" };
     }
 
-    console.log( "Looking for peqs", params);
+    // console.log( "Looking for peqs", params);
     let peqPromise = paginatedScan( params );
     return peqPromise.then((peqs) => {
 	console.log( "Found peqs ", peqs );

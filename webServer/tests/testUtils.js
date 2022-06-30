@@ -779,7 +779,7 @@ async function settleWithVal( fname, func, ...params ) {
 	await delayTimer( func.name );
 	retVal = await func( ...params );
 
-	if( CETestDelayCounts[func.name] > 2 ) { console.log( params.slice(1) ); }  // don't print authData
+	if( CETestDelayCounts[func.name] > 2 ) { console.log( "SWV:", params.slice(1) ); }  // don't print authData
     }
     CETestDelayCounts[func.name] = 0;
     return retVal;
@@ -1160,6 +1160,11 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
 
     // CHECK dynamo Peq
+    // If peq holders fail, especially during blast, one possibility is that GH never recorded the second assignment.
+    // This happened 6/29/22.  To be fair, blast is punishing - requests on same issue arrive inhumanly fast, like 10x.
+    // It is also possible that the test is too stringent even if GH succeeds.  From utils:recordpeqdata:
+    //     PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
+    //     creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
     let allPeqs =  await peqsP;
     let peqs    = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     let peq = peqs[0];
@@ -1227,12 +1232,18 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, car
     const peq = peqs[0];
 
     // CHECK dynamo Pact
+    // Note that assignee pact can arrive after confirm close.  Ingest is OK with this.  allow.
     const allPacts = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    const pact = pacts[ pacts.length - 1];
-    subTest = checkEq( pact.Verb, config.PACTVERB_PROP,     subTest, "PAct Verb"); 
-    subTest = checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action"); 
+    let foundProp = false;
+    for( const pact of pacts.slice(-2) ) {
+	if( pact.Verb == config.PACTVERB_PROP && pact.Action == config.PACTACT_ACCR ) {
+	    foundProp = true;
+	    break;
+	}
+    }
+    subTest = checkEq( foundProp, true, subTest, "PAct Prop Accr not found"); 
 
     return await settle( subTest, testStatus, checkNewlyClosedIssue, authData, ghLinks, td, loc, issueData, card, testStatus, specials );
 }

@@ -70,7 +70,7 @@ class _CEDetailState extends State<CEDetailPage> {
    // XXX rawbody -> prettier list of string
    Widget _makePAct( pact ) {
       final textWidth = appState.screenWidth * .6;
-      String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.entryDate;
+      String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.subject.toString() + " " + pact.note + " " + pact.entryDate;
       // return makeBodyText( appState, apact, textWidth, false, 1 );
       if( appState.verbose >= 2 ) { print( ".. GD for " + pact.id ); }
       return GestureDetector(
@@ -80,18 +80,12 @@ class _CEDetailState extends State<CEDetailPage> {
             postData['PEQRawId'] = pact.id;
             var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQRaw", "query": postData }; 
             PEQRaw pr = await fetchPEQRaw( context, container, json.encode( pd ));
-            print( "gotraw" );
-            print( pr );
             var encoder = new JsonEncoder.withIndent("  ");
-            print( "encoder" );
             var prj = json.decode( pr.rawReqBody );
-            print( "decoder" );
             String prettyRaw = encoder.convert(prj);
-            print( "pr" );
 
             // Let makeBody handle the json
             Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000);
-            print( "prw" );
             popScroll( context, "Raw Github Action:", prw, () => _closeRaw() );            
          },
          child: makeBodyText( appState, apact, textWidth, false, 1 )
@@ -184,13 +178,12 @@ class _CEDetailState extends State<CEDetailPage> {
    @override
       Widget build(BuildContext context) {
 
-      if( appState.verbose >= 2 ) { print( "BUILD DETAIL" ); }
-      if( appState.verbose >= 2 ) { print( "is context null ? " + (context == null).toString() ); }
-            
       container   = AppStateContainer.of(context);
       appState    = container.state;
 
-      if( appState.verbose >= 2 ) { print( "\nBuild Detail page " + appState.userPActUpdate.toString() ); }
+      if( appState.verbose >= 3 ) { print( "BUILD DETAIL" ); }
+      if( appState.verbose >= 3 ) { print( "is context null ? " + (context == null).toString() ); }
+      if( appState.verbose >= 3 ) { print( "\nBuild Detail page " + appState.userPActUpdate.toString() ); }
 
       if( appState.userPActUpdate ) { rebuildPActions( container, context );  }
       
