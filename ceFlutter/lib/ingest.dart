@@ -33,7 +33,7 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
 
    String ghu  = pact.ghUserName;
    if( !appState.idMapGH.containsKey( ghu )) {
-      appState.idMapGH[ ghu ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu", "silent": "true" }', "GetCEUID" );
+      appState.idMapGH[ ghu ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu" }', "GetCEUID" );
    }
    String ceu = appState.idMapGH[ ghu ];
 
@@ -51,7 +51,7 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
    peq.ceHolderId = new List<String>();
    for( var peqGHUser in peq.ghHolderId ) {
       if( !appState.idMapGH.containsKey( peqGHUser )) {
-         appState.idMapGH[ peqGHUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$peqGHUser", "silent": "true" }', "GetCEUID" );
+         appState.idMapGH[ peqGHUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$peqGHUser" }', "GetCEUID" );
       }
       String ceUID = appState.idMapGH[ peqGHUser ];
       if( ceUID == "" ) { ceUID = "GHUSER: " + peqGHUser; }  // XXX formalize
@@ -65,7 +65,6 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
       var postData = {};
       postData['PEQId']       = peq.id;
       postData['CEHolderId']  = peq.ceHolderId;
-      postData['silent']      = true;
       var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
       
       // Do await, processPEQs needs holders
@@ -79,7 +78,7 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
 void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmount, PeqType peqType, {Allocation source = null, String pid = ""} ) {
    
    assert( appState.myPEQSummary.allocations != null );
-
+   
    // subCat is either assignee, or palloc title (if peqType is alloc)
    List<String> suba = new List<String>.from( cat );
    if( source == null ) {
@@ -99,6 +98,29 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
       if( suba.toString() == alloc.category.toString() ) {
          // print( " ... matched category: " + suba.toString()  );
          alloc.amount = alloc.amount + splitAmount;
+
+         // XXX pull this out as func.  may need more cases down the road.
+         // Assignee notices can arrive late.  If correction here is obvious, do it.
+         // Case 1: assignee notice arrives after propose accrue, then reject accrue.  Problem is on adjust down, not up.
+         //         in this case, attempt to remove from [path, Pending PEQ Approval, assignee] but alloc is actually in [path, X, assignee]
+         if( alloc.amount < 0 ) {
+            print( "WARNING.  Detected negative allocation, likely due to out of order Notifications.  Attempting to repair." );
+            for( var allocActual in appState.myPEQSummary.allocations ) {
+               if( allocActual.sourcePeq.containsKey( peqId ) &&
+                   allocActual.category.last == suba.last     &&
+                   listEq( allocActual.category.sublist( 0, allocActual.category.length - 2 ), suba.sublist( 0, suba.length - 2 ) )) {
+
+                  print( "... found where the late assignment allocation went: " + allocActual.category.toString() );
+                  alloc.amount       = alloc.amount       - splitAmount;
+                  allocActual.amount = allocActual.amount + splitAmount;
+                  assert( allocActual.amount >= 0 && splitAmount < 0 );
+                  if ( allocActual.amount == 0 )  { appState.myPEQSummary.allocations.remove( allocActual ); }
+                  else                            { allocActual.sourcePeq.remove( peqId ); }
+                  
+                  return;                  
+               }
+            }
+         }
          assert( alloc.amount >= 0 );
 
          if     ( alloc.amount == 0 )                                        { appState.myPEQSummary.allocations.remove( alloc ); }
