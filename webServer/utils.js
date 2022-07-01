@@ -807,6 +807,15 @@ async function getPActs( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function getPRaws( authData, query ) {
+    // console.log( authData.who, "Get PEQActions:", query );
+
+    let shortName = "GetEntries";
+    let postData  = { "Endpoint": shortName, "tableName": "CEPEQRaw", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
 async function getPeqs( authData, query ) {
     // console.log( "Get PEQs for a given repo:", query);
 
@@ -1048,7 +1057,8 @@ exports.clearLinkage          = clearLinkage;
 
 exports.getRaw   = getRaw; 
 exports.getPActs = getPActs;
-exports.getPeqs = getPeqs;
+exports.getPRaws = getPRaws;
+exports.getPeqs  = getPeqs;
 exports.getSummaries = getSummaries;
 exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;

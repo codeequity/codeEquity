@@ -65,8 +65,8 @@ class _CEProjectState extends State<CEProjectPage> {
       setState(() => appState.updateAllocTree = true );
    }      
 
-   Future<void> _detailCallback() async {
-      Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage()));
+   Future<void> _detailCallback( List<String> category ) async {
+      Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: category )));
    }
    
    // XXX Is this used?  Also, peqUpdated?
@@ -104,7 +104,7 @@ class _CEProjectState extends State<CEProjectPage> {
       final w = 100;
       if( appState.loaded ) {
 
-         print( "PP ReBuild." );
+         if( appState.verbose >= 2 ) { print( "PP ReBuild." ); }
 
          // XXX container still useful?
          // XXX move standard pixel sizes to appstate, out of utils and elsewhere.
@@ -190,7 +190,7 @@ class _CEProjectState extends State<CEProjectPage> {
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;
 
-      print( "build project page" );
+      if( appState.verbose >= 2 ) { print( "build project page" ); }
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),

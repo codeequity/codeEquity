@@ -1,4 +1,6 @@
-import 'dart:convert';  // json encode/decode
+import 'dart:convert';     // json encode/decode
+
+import 'package:collection/collection.dart'; // list eq
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +16,7 @@ import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/components/node.dart';
 import 'package:ceFlutter/components/leaf.dart';
 
-
+Function eq = const ListEquality().equals;
 
 class CEDetailPage extends StatefulWidget {
    CEDetailPage({Key key}) : super(key: key);
@@ -25,16 +27,19 @@ class CEDetailPage extends StatefulWidget {
 
 class _CEDetailState extends State<CEDetailPage> {
 
+   List<String> category;  // pass by navigator in projectpage callback
    var      container;
    AppState appState;
 
-   bool userPActUpdated;
+   bool                         userPActUpdated;
    Map<String, List<PEQAction>> peqPAct;
-   List<Widget> pactList;
+   List<PEQ>                    selectedPeqs;
+   List<Widget>                 pactList;
    
    @override
    void initState() {
       peqPAct = new Map<String, List<PEQAction>>();
+      selectedPeqs = new List<PEQ>();
       userPActUpdated = false;
       pactList = new List<Widget>();
       
@@ -94,6 +99,8 @@ class _CEDetailState extends State<CEDetailPage> {
       
    }
 
+   // XXX peqPAct is new for each detailPage, i.e. for each selection.
+   //     information overlaps with selectedPeqs.. resolve
    // XXX don't circle if empty.  buuuut, for now, OK.
    Widget _showPActList() {
 
@@ -102,13 +109,13 @@ class _CEDetailState extends State<CEDetailPage> {
 
          pactList.clear();
          // XXX save anything here?  
-         for( final peq in  appState.userPeqs[ appState.selectedUser ] ) {
+         for( final peq in selectedPeqs ) {
             pactList.add( _makePeq( peq ) );
 
             peqPAct[peq.id].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
                
             for( final pact in peqPAct[peq.id] ) {
-               // print( "PL added " + pact.id );
+               print( "PL added " + pact.id );
                pactList.add( _makePAct( pact ) );
             }
             
@@ -158,9 +165,15 @@ class _CEDetailState extends State<CEDetailPage> {
    void rebuildPActions( container, context ) async {
 
       print( "Rebuild PActions" );
-      await updateUserPeqs( container, context );
-      List<String> peqs = appState.userPeqs[ appState.selectedUser ].map((peq) => peq.id ).toList();
 
+      // Get all peqs for user.  Then, pare the list down to match selection
+      await updateUserPeqs( container, context );
+
+      // If ingest is not up to date, this filter breaks
+      List<String> cat  = category.sublist(0, category.length - 1 );
+      selectedPeqs      = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub, cat )).toList();
+      List<String> peqs = selectedPeqs.map((peq) => peq.id ).toList();
+      
       await updateUserPActions( peqs, container, context );      
 
       // populate peqPAct to avoid multiple trips through pacts
@@ -178,6 +191,7 @@ class _CEDetailState extends State<CEDetailPage> {
    @override
       Widget build(BuildContext context) {
 
+      category    = ModalRoute.of(context).settings.arguments;
       container   = AppStateContainer.of(context);
       appState    = container.state;
 

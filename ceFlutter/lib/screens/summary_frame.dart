@@ -79,18 +79,19 @@ class _CESummaryState extends State<CESummaryFrame> {
 
    // XXX ghUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
-   //     detail page..?  
-   _pactDetail( ghUserLogin, width, depth ) {
+   //     detail page..?
+   _pactDetail( path, width, depthM1 ) {
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
          {
+            String ghUserLogin = path[ depthM1 ];
             appState.selectedUser = ghUserLogin;
             appState.userPActUpdate = true;
-            if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + ghUserLogin ); }
-            widget.detailCallback();
+            if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
+            widget.detailCallback( path );
          },
-         child: makeTableText( appState, ghUserLogin, width, height, false, 1, mux: depth * .5 )
+         child: makeTableText( appState, path[ depthM1 ], width, height, false, 1, mux: (depthM1+1) * .5 )
          );
    }
    
@@ -142,7 +143,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
                   int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount : 0 );
                   int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
-                  Widget details = _pactDetail( alloc.category[i], width, i+1 );
+                  Widget details = _pactDetail( alloc.category, width, i );
                   Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }
@@ -183,7 +184,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       {
          if( appState.myPEQSummary.ghRepo == appState.selectedRepo ) {
             if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
-            print( "_showPalloc Update alloc" );
+            if( appState.verbose >= 2 ) { print( "_showPalloc Update alloc" ); }
             allocList.addAll( appState.allocTree.getCurrent( container ) );
 
             //print( appState.allocTree.toStr() );

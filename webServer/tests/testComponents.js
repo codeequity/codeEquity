@@ -120,7 +120,8 @@ async function testLabel( authData, ghLinks, td ) {
 	await tu.addAssignee( authData, td, issueData, ASSIGNEE1 );   // can't ACCR without this.    
 	await tu.moveCard( authData, td, card.id, td.dsAccrID, {issNum: issueData[1]} );
 	await tu.remLabel( authData, td, issueData, label );          // will be added back
-	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsAccr, issueData, card, testStatus );
+	// Assignee may be processed before relabel.. 
+	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, dsAccr, issueData, card, testStatus, {peqHolder: "maybe"} );
 	tu.testReport( testStatus, "Label 7" );
     }	
 
@@ -321,7 +322,7 @@ async function testLabelCarded( authData, ghLinks, td ) {
 	console.log( "Make carded issue" );
 	const issueData = await tu.makeIssue( authData, td, ISS_LAB3, [] );     // [id, number, title] 
 	const card      = await tu.makeProjectCard( authData, ghLinks, td.GHFullName, bacon.colId, issueData[0] );
-	testStatus     = await tu.checkUntrackedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
+	testStatus      = await tu.checkUntrackedIssue( authData, ghLinks, td, bacon, issueData, card, testStatus );
 
 	// 2. add label
 	const kp = "1000 " + config.PEQ_LABEL;

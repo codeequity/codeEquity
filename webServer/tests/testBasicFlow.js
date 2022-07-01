@@ -54,12 +54,15 @@ async function checkUnclaimedIssue( authData, ghLinks, td, issueData, testStatus
     // CHECK github issues
     let kp = "1000 " + config.PEQ_LABEL;
     let meltIssue = await tu.findIssue( authData, td, issueData[0] );
-    let subTest = [ 0, 0, []];    
-    subTest = tu.checkEq( meltIssue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
-    subTest = tu.checkEq( meltIssue.number, issueData[1].toString(), subTest, "Github issue troubles" );
-    subTest = tu.checkEq( meltIssue.labels.length, 1,                subTest, "Issue label" );
-    subTest = tu.checkEq( meltIssue.labels[0].name, kp,              subTest, "Issue label" );
-    
+    let subTest = [ 0, 0, []];
+    subTest = tu.checkEq( meltIssue !== 'undefined', true,       subTest, "Wait for GH issue" );
+    if( meltIssue !== 'undefined' ) {
+	subTest = tu.checkEq( meltIssue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
+	subTest = tu.checkEq( meltIssue.number, issueData[1].toString(), subTest, "Github issue troubles" );
+	subTest = tu.checkEq( meltIssue.labels.length, 1,                subTest, "Issue label" );
+	subTest = tu.checkEq( meltIssue.labels[0].name, kp,              subTest, "Issue label" );
+    }
+	
     // CHECK github location
     let cards = await tu.getCards( authData, td.unclaimCID );   // everything here has an issue
 
@@ -159,44 +162,46 @@ async function checkMove( authData, ghLinks, td, issueData, colId, meltCard, tes
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == meltIssue.id );
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
-    subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = tu.checkEq( meltPeq.GHProjectSub.length, 3,              subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-    subTest = tu.checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
-    subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
-    subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
-    subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = tu.checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.GHProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.GHProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
-    subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
-
-    // CHECK Dynamo PAct
-    // Should show relevant change 
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
-    let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
-    subTest = tu.checkGE( meltPacts.length, 4,                     subTest, "PAct count" );
-    
-    meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    const pact = meltPacts[ meltPacts.length - 1];
-
-    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-    console.log( pact.PEQActionId );
-    subTest = tu.checkEq( hasRaw, true,                            subTest, "PAct Raw match" ); 
-    subTest = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
-    subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
-    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
-    if( colId == td.dsProgID ) {
-	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.Action, config.PACTACT_RELO,    subTest, "PAct Action");
-    }
-    else if( colId == td.dsPendID ) {
-	subTest = tu.checkEq( pact.Verb, config.PACTVERB_PROP,     subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action");
-    }
-    else if( colId == td.dsAccrID ) {
-	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action");
+    if( meltPeq !== 'undefined' ) {
+	subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
+	subTest = tu.checkEq( meltPeq.GHProjectSub.length, 3,              subTest, "peq project sub invalid" );
+	subTest = tu.checkEq( meltPeq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+	subTest = tu.checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
+	subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
+	subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
+	subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
+	subTest = tu.checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
+	subTest = tu.checkEq( meltPeq.GHProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
+	subTest = tu.checkEq( meltPeq.GHProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
+	subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
+	
+	// CHECK Dynamo PAct
+	// Should show relevant change 
+	let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
+	subTest = tu.checkGE( meltPacts.length, 4,                     subTest, "PAct count" );
+	
+	meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
+	const pact = meltPacts[ meltPacts.length - 1];
+	
+	let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
+	console.log( pact.PEQActionId );
+	subTest = tu.checkEq( hasRaw, true,                            subTest, "PAct Raw match" ); 
+	subTest = tu.checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+	if( colId == td.dsProgID ) {
+	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
+	    subTest = tu.checkEq( pact.Action, config.PACTACT_RELO,    subTest, "PAct Action");
+	}
+	else if( colId == td.dsPendID ) {
+	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_PROP,     subTest, "PAct Verb"); 
+	    subTest = tu.checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action");
+	}
+	else if( colId == td.dsAccrID ) {
+	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
+	    subTest = tu.checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action");
+	}
     }
 
 
