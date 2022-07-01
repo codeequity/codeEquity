@@ -213,7 +213,7 @@ class Node extends StatelessWidget implements Tree {
   // If this just opened, re-vis any kid that was opened before - can save open/close state this way
   @override
   reopenKids() {
-     if( appState.verbose >= 2 ) { print( "Reopening previously expanded $title, and their kids" ); }
+     if( appState != null && appState.verbose >= 2 ) { print( "Reopening previously expanded $title, and their kids" ); }
      isVisible = true;
      // Note: appState is null if reopen was called for a child below that has not yet been seen (generated).
      if( appState != null && appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {

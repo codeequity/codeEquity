@@ -208,6 +208,17 @@ String getFromLeaf( Widget elt ) {
    return retVal;
 }
 
+// from Node, then _pactDetail
+Finder getGDFromLeaf( Widget elt ) {
+   Finder retVal = find.byKey( Key( "ThisWillNeverBeFoundDuuuuude" ));
+   if( elt is Container && elt.child is ListTile ) {
+      var listTile       = elt.child as ListTile;
+      GestureDetector gd = listTile.title as GestureDetector;
+      retVal             = find.byWidget( gd );
+   }
+   return retVal;
+}
+
 Finder findArrow( Widget elt ) {
    // Finder is nonnullable
    Finder retVal = find.byKey( Key( "ThisWillNeverBeFoundDuuuuude" ));
@@ -242,6 +253,22 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
    }
 
    return aRow;
+}
+
+Future<bool> expandLeaf( WidgetTester tester, int flutterPos, String agKey ) async {
+   expect( await checkOffsetAlloc( tester, flutterPos, agKey ), true );
+
+   final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));
+   expect( generatedAllocRow, findsOneWidget );
+
+   var allocRow = generatedAllocRow.evaluate().single.widget as Row;
+   var allocs   = allocRow.children as List;
+
+   final Finder gd = getGDFromLeaf( allocs[0] );
+   await tester.tap( gd );
+   await tester.pumpAndSettle();
+   
+   return true;
 }
 
 Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
@@ -382,8 +409,8 @@ Future<bool> closeAll( WidgetTester tester ) async {
 
 Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey ) async {
 
-   final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));  
-   expect( generatedAllocRow, findsOneWidget );
+   // final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));  
+   // expect( generatedAllocRow, findsOneWidget );
    
    List<String> allocs = await getElt( tester, "allocsTable " + flutterPos.toString() );
    
@@ -517,8 +544,8 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   // bool skip = true;
-   bool skip = false;
+   bool skip = true;
+   // bool skip = false;
 
    // override?  Run it.
    var override = const String.fromEnvironment('override');
@@ -555,7 +582,7 @@ void main() {
 
    // NOTE: testCEFlutter.py always runs 'npm clean' before this
    //       it is possible to depend on process_run and run from here, but that clutters deps
-   testWidgets('Project contents, ingest', skip:false, (WidgetTester tester) async {
+   testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -680,6 +707,38 @@ void main() {
          await logout( tester );         
 
          report( 'Project frame coherence' );
+      });
+
+   testWidgets('Project Detail Page', skip:false, (WidgetTester tester) async {
+         
+         await restart( tester );
+         await login( tester, true );
+
+         expect( await verifyAriHome( tester ), true );
+         
+         final Finder ariLink = find.byKey( Key( repo ));
+         await tester.tap( ariLink );
+         await pumpSettle( tester, 5, verbose: true ); 
+         await pumpSettle( tester, 3, verbose: true ); 
+
+         expect( await peqSummaryTabFraming( tester ),   true );
+
+         await expandAllocs( tester, 1, 1 );
+         await expandAllocs( tester, 3, 4 );
+         await checkOffsetAlloc( tester, 5, "codeequity 10" );
+
+         await expandLeaf( tester, 5, "codeequity 10" );
+         await pumpSettle( tester, 5 );
+         
+         await tester.pageBack();
+         await pumpSettle( tester, 1 );
+
+         await expandLeaf( tester, 5, "codeequity 10" );
+         await pumpSettle( tester, 5 );
+         
+         await logout( tester );         
+
+         report( 'Project Detail Page' );
       });
 
 
