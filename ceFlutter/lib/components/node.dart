@@ -20,8 +20,8 @@ class Node extends StatelessWidget implements Tree {
    final double width;
    final bool header;
    int  currentDepth;   // for indentation
-
-   final bool isInitiallyExpanded; 
+ 
+   bool isInitiallyExpanded;   // Not final, to help deal with reloading an active page
    bool isVisible;   // controls what tiles get added to display list
    bool firstPass;   // use this to setVis based on isInitiallyExpanded, one time only.
 
@@ -37,7 +37,10 @@ class Node extends StatelessWidget implements Tree {
    
    Node(this.title, this.allocAmount, this.icon, this.width, this.stamp, this.expansion, {this.isInitiallyExpanded = false, this.header = false, this.currentDepth = 0} ) {
       isVisible = this.isInitiallyExpanded;
+
+      // A new node is created each time the summary page is regenerated.  There is an open/close state to work with, but can't access it until the visible path is known.
       _tileExpanded = this.isInitiallyExpanded;
+      
       firstPass = true;
       path = "";
    }
@@ -178,8 +181,15 @@ class Node extends StatelessWidget implements Tree {
         unalloc = "Remaining";
      }
 
+     // Path is known here.  Make _tileExpanded consistent with path state, in case we have paged back into an active summary page
+     if( appState.allocExpanded.containsKey(path) && firstPass ) {
+        _tileExpanded       = appState.allocExpanded[path];
+        isInitiallyExpanded = _tileExpanded;
+     }
+
      final priorExpansionState = _tileExpanded;
-     
+
+     if( appState.verbose >= 2 ) { print( "Before GT expanded? " + _tileExpanded.toString() ); }
      List<Widget> anode = [];
      // anode.add( this );
      anode.add( getTile( ) );
@@ -240,8 +250,10 @@ class Node extends StatelessWidget implements Tree {
 
      if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] != _tileExpanded ) {
         _tileExpanded = !_tileExpanded;
-        if( appState.verbose >= 2 ) { print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" ); }
+        if( appState.verbose >= 3 ) { print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" ); }
      }
+
+     if( appState.verbose >= 2 ) { print( "GT $title " + _tileExpanded.toString() ); }
      
      // XXX consider using font for clickability?
      return Container(
@@ -256,7 +268,7 @@ class Node extends StatelessWidget implements Tree {
               key: new PageStorageKey(path + stamp),
               initiallyExpanded: isInitiallyExpanded,
               onExpansionChanged: ((expanded) {
-                    print( "*** $title expanded? $expanded" );
+                    if( appState.verbose >= 2 ) { print( "*** $title expanded? $expanded" ); }
                     leaves.forEach( (child) => child.setVis( expanded ) );
                     expansion( expanded, path );
                  })

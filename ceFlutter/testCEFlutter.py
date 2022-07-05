@@ -154,9 +154,9 @@ def runTests( override = False ):
     # Focus area ------------------
 
     # Always clean dynamo summaries and 'ingested' tags first.
-    cmd = "npm run cleanFlutter --prefix ../webServer"
-    npmRun = runCmd( cmd, [] )
-    logging.info( npmRun )
+    #cmd = "npm run cleanFlutter --prefix ../webServer"
+    #npmRun = runCmd( cmd, [] )
+    #logging.info( npmRun )
     tsum = runTest( "project_test.dart", override, False, False )
     resultsSum  += tsum
 

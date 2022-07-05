@@ -1,4 +1,5 @@
 import 'dart:async';   // timer
+// import 'dart:html' as html;    // refresh button?
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
@@ -714,6 +715,10 @@ void main() {
          await restart( tester );
          await login( tester, true );
 
+         // This did not regenerate back button
+         // html.window.location.reload();
+         
+         
          expect( await verifyAriHome( tester ), true );
          
          final Finder ariLink = find.byKey( Key( repo ));
@@ -729,7 +734,7 @@ void main() {
 
          await expandLeaf( tester, 5, "codeequity 10" );
          await pumpSettle( tester, 5 );
-         
+
          await tester.pageBack();
          await pumpSettle( tester, 1 );
 

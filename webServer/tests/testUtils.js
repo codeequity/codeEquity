@@ -1161,7 +1161,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
 
     // CHECK dynamo Peq
     // If peq holders fail, especially during blast, one possibility is that GH never recorded the second assignment.
-    // This happened 6/29/22.  To be fair, blast is punishing - requests on same issue arrive inhumanly fast, like 10x.
+    // This happened 6/29/22, 7/5  To be fair, blast is punishing - requests on same issue arrive inhumanly fast, like 10x.
     // It is also possible that the test is too stringent even if GH succeeds.  From utils:recordpeqdata:
     //     PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
     //     creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
