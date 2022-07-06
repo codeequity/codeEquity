@@ -578,43 +578,84 @@ Future<bool> validateRawSituate( WidgetTester tester, String repo, String keyNam
 }
 
 
-// Note: this start with CE10 expanded already.
+// Starts with initial expansion
 Future<bool> validateCE10( WidgetTester tester ) async {
+   await expandAllocs( tester, 1, 1 );
+   await expandAllocs( tester, 3, 4 );
+   await checkOffsetAlloc( tester, 5, "codeequity 10" );
+
    await expandLeaf( tester, 5, "codeequity 10" );
    await pumpSettle( tester, 1 );
-
    String repo   = "ariCETester/ceFlutterTester";
+
+   expect( find.byKey( Key( "IR Prog" ) ), findsOneWidget );
    String d0Name = "0 confirm add";
    String d1Name = "1 confirm change";
    String d2Name = "2 confirm relocate";
-   
-   final Finder detail0 = find.byKey( Key( d0Name ));
-   final Finder detail1 = find.byKey( Key( d1Name ));
-   final Finder detail2 = find.byKey( Key( d2Name ));
-   
-   expect( find.byKey( Key( "IR Prog" ) ), findsOneWidget );
 
-   expect( detail0, findsOneWidget );
-   expect( detail1, findsOneWidget );
-   expect( detail2, findsOneWidget );
-
-   await tester.tap( detail0 );
-   await pumpSettle( tester, 5 );
-   await pumpSettle( tester, 1 );
+   await checkNTap( tester, d0Name );
    expect( await validateRawAdd( tester, repo, "IR Prog", "1000 PEQ", "RawPact" + d0Name ), true );
 
-   await tester.tap( detail1 );
-   await pumpSettle( tester, 5 );
-   await pumpSettle( tester, 1 );
+   await checkNTap( tester, d1Name );
    expect( await validateRawAssign( tester, repo, "IR Prog", "codeequity", "RawPact" + d1Name ), true );
 
-   await tester.tap( detail2 );
-   await pumpSettle( tester, 5 );
-   await pumpSettle( tester, 1 );
+   await checkNTap( tester, d2Name );
    expect( await validateRawSituate( tester, repo, "RawPact" + d2Name ), true );
 
    expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 4, "" );
+   await toggleTableEntry( tester, 3, "" );
+   await toggleTableEntry( tester, 1, "" );
    
+   return true;
+}
+// Starts with initial expansion
+Future<bool> validateAri15( WidgetTester tester ) async {
+   await expandAllocs( tester, 1, 1 );
+   await expandAllocs( tester, 3, 3 );
+   await expandAllocs( tester, 6, 6 );
+   await checkOffsetAlloc( tester, 7, "ariCETester 15" );
+
+   await expandLeaf( tester, 7, "ariCETester 15" );
+   await pumpSettle( tester, 1 );
+
+   String repo   = "ariCETester/ceFlutterTester";
+
+   expect( find.byKey( Key( "IR Accrued" ) ),      findsOneWidget );
+   String ia0Name = "0 confirm add";
+   String ia1Name = "1 confirm change";
+   String ia2Name = "2 confirm relocate";
+   String ia3Name = "3 propose accrue";
+   String ia4Name = "4 confirm accrue";
+
+   await checkNTap( tester, ia0Name );
+   expect( await validateRawAdd( tester, repo, "IR Accrued", "1000 PEQ", "RawPact" + ia0Name ), true );
+
+   // XXX
+
+   
+   expect( find.byKey( Key( "Close Open test" ) ), findsOneWidget );
+   String co0Name = "0 confirm add";
+   String co1Name = "1 confirm relocate";
+   String co2Name = "2 confirm change";
+   String co3Name = "3 propose accrue";
+   String co4Name = "4 reject accrue";
+   String co5Name = "5 confirm relocate";
+   String co6Name = "6 propose accrue";
+   String co7Name = "7 reject accrue";
+   String co8Name = "8 propose accrue";
+   String co9Name = "9 confirm accrue";
+
+   await checkNTap( tester, co0Name );
+   expect( await validateRawAdd( tester, repo, "Close Open test", "1000 PEQ", "RawPact" + co0Name ), true );
+
+   // XXX
+
+   expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 6, "" );
+   await toggleTableEntry( tester, 3, "" );
+   await toggleTableEntry( tester, 1, "" );
+
    return true;
 }
 
@@ -834,12 +875,14 @@ void main() {
 
          expect( await peqSummaryTabFraming( tester ),   true );
 
-         await expandAllocs( tester, 1, 1 );
-         await expandAllocs( tester, 3, 4 );
-         await checkOffsetAlloc( tester, 5, "codeequity 10" );
-
          expect( await validateCE10( tester ), true );
-         // carry out 5-6 checks
+         expect( await validateAri15( tester ), true );
+         // gh:stripes:componentAlloc
+         // unalloc
+         // unclaimed:unclaimed:unassigned
+         // unclaimed:accr:ari
+         // newprojcol:newplanname:unassigned
+         // newprojcol:accr?ari
          
          await logout( tester );         
 

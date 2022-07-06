@@ -239,6 +239,15 @@ bool isPresent( Finder f ) {
    }
 }
 
+Future<bool> checkNTap( WidgetTester tester, String keyName ) async {
+   final Finder tapper = find.byKey( Key( keyName ));
+   expect( tapper, findsOneWidget );
+   await tester.tap( tapper );
+   await pumpSettle( tester, 4 );
+   await pumpSettle( tester, 1 );
+   return true;
+}
+
 // Currently flutter integration_test for web can not make use of browser back button, or refresh button.
 // Implement this with nav bar, for now.  If used popScope instead, would not help forward button.
 // XXX If more than, say, 3 of these bandages are needed, go to popScope.
