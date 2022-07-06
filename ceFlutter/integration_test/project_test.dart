@@ -507,6 +507,32 @@ Future<bool> checkAll( WidgetTester tester ) async {
 }
 
 
+// Note: this start with CE10 expanded already.
+Future<bool> validateCE10( WidgetTester tester ) async {
+   await expandLeaf( tester, 5, "codeequity 10" );
+   await pumpSettle( tester, 1 );
+
+   final Finder detail0 = find.byKey( Key( "0 confirm add" ) );
+   final Finder detail1 = find.byKey( Key( "1 confirm change" ) );
+   final Finder detail2 = find.byKey( Key( "2 confirm relocate" ) );
+   
+   expect( find.byKey( Key( "IR Prog" ) ),            findsOneWidget );
+
+   expect( detail0, findsOneWidget );
+   expect( detail1, findsOneWidget );
+   expect( detail2, findsOneWidget );
+
+   await tester.tap( detail0 );
+   await pumpSettle( tester, 5 );
+   await pumpSettle( tester, 1 );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   expect( await backToSummary( tester ), true );
+   
+   return true;
+}
 
 Future<bool> ariSummaryContent( WidgetTester tester ) async {
    final listFinder   = find.byType( ListView );
@@ -715,16 +741,12 @@ void main() {
          await restart( tester );
          await login( tester, true );
 
-         // This did not regenerate back button
-         // html.window.location.reload();
-         
-         
          expect( await verifyAriHome( tester ), true );
          
          final Finder ariLink = find.byKey( Key( repo ));
          await tester.tap( ariLink );
-         await pumpSettle( tester, 5, verbose: true ); 
-         await pumpSettle( tester, 3, verbose: true ); 
+         await pumpSettle( tester, 2, verbose: true ); 
+         await pumpSettle( tester, 2, verbose: true ); 
 
          expect( await peqSummaryTabFraming( tester ),   true );
 
@@ -732,14 +754,8 @@ void main() {
          await expandAllocs( tester, 3, 4 );
          await checkOffsetAlloc( tester, 5, "codeequity 10" );
 
-         await expandLeaf( tester, 5, "codeequity 10" );
-         await pumpSettle( tester, 5 );
-
-         await tester.pageBack();
-         await pumpSettle( tester, 1 );
-
-         await expandLeaf( tester, 5, "codeequity 10" );
-         await pumpSettle( tester, 5 );
+         expect( await validateCE10( tester ), true );
+         // carry out 5-6 checks
          
          await logout( tester );         
 

@@ -65,19 +65,20 @@ class _CEDetailState extends State<CEDetailPage> {
          proj += p + "::";
       }
       if( proj.length > 2 ) { proj = proj.substring( 0,proj.length - 2 ); }
-      
+
       String apeq =  peq.ghIssueTitle + " (" + proj + ") status: " + enumToStr( peq.peqType ) + " " + peq.amount.toString() + " PEQs";
       if( peq.ghHolderId.length > 0 ) { apeq += "  Holder(s): " + peq.ghHolderId.toString(); }
       if( peq.ceGrantorId != EMPTY ) { apeq += "  Grantor: " + peq.ceGrantorId; }
-      return makeTitleText( appState, apeq, textWidth, false, 1 );
+      return makeTitleText( appState, apeq, textWidth, false, 1, keyTxt: peq.ghIssueTitle );
    }
 
    // XXX rawbody -> prettier list of string
-   Widget _makePAct( pact ) {
+   Widget _makePAct( pact, count ) {
       final textWidth = appState.screenWidth * .6;
       String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.subject.toString() + " " + pact.note + " " + pact.entryDate;
       // return makeBodyText( appState, apact, textWidth, false, 1 );
       if( appState.verbose >= 2 ) { print( ".. GD for " + pact.id ); }
+      String keyName = count.toString() + " " + enumToStr( pact.verb ) + " " + enumToStr( pact.action );
       return GestureDetector(
          onTap: () async
          {
@@ -93,7 +94,7 @@ class _CEDetailState extends State<CEDetailPage> {
             Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000);
             popScroll( context, "Raw Github Action:", prw, () => _closeRaw() );            
          },
-         child: makeBodyText( appState, apact, textWidth, false, 1 )
+         child: makeBodyText( appState, apact, textWidth, false, 1, keyTxt: keyName )
          );
 
       
@@ -113,10 +114,12 @@ class _CEDetailState extends State<CEDetailPage> {
             pactList.add( _makePeq( peq ) );
 
             peqPAct[peq.id].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
-               
+
+            var count = 0;
             for( final pact in peqPAct[peq.id] ) {
                print( "PL added " + pact.id );
-               pactList.add( _makePAct( pact ) );
+               pactList.add( _makePAct( pact, count ) );
+               count++;
             }
             
             pactList.add( makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));            
