@@ -91,7 +91,7 @@ class _CEDetailState extends State<CEDetailPage> {
             String prettyRaw = encoder.convert(prj);
 
             // Let makeBody handle the json
-            Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000);
+            Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000, keyTxt: "RawPact"+keyName);
             popScroll( context, "Raw Github Action:", prw, () => _closeRaw() );            
          },
          child: makeBodyText( appState, apact, textWidth, false, 1, keyTxt: keyName )

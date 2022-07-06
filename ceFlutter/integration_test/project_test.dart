@@ -1,3 +1,4 @@
+import 'dart:convert';  // json encode/decode
 import 'dart:async';   // timer
 // import 'dart:html' as html;    // refresh button?
 
@@ -171,6 +172,15 @@ Future<bool> ariSummaryFraming( WidgetTester tester ) async {
    expect( find.text( 'Accrued' ),    findsOneWidget );
    expect( find.text( 'Remaining' ),  findsOneWidget );
    return true;
+}
+
+String getFromMakeBodyText( Widget elt ) {
+   String retVal = "";
+   if( elt is Container ) {
+      var contText  = elt.child as Text; 
+      retVal        = contText.data ?? "";
+   }
+   return retVal;
 }
 
 // XXX ? move these accessors next to original functions?
@@ -507,16 +517,82 @@ Future<bool> checkAll( WidgetTester tester ) async {
 }
 
 
+Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String keyName ) async {
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Finder rawPact = find.byKey( Key( keyName ) );
+   var pactElt          = rawPact.evaluate().single.widget as Container;
+   String pact          = getFromMakeBodyText( pactElt );
+
+   var pmap = json.decode( pact );
+   expect( pmap['action'],                   "labeled" );
+   expect( pmap['repository']['full_name'],  repo );
+   expect( pmap['issue']['title'],           issueTitle );
+   expect( pmap['label']['name'],            peqLabel );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String keyName ) async {
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Finder rawPact = find.byKey( Key( keyName ) );
+   var pactElt          = rawPact.evaluate().single.widget as Container;
+   String pact          = getFromMakeBodyText( pactElt );
+
+   var pmap = json.decode( pact );
+   expect( pmap['action'],                   "assigned" );
+   expect( pmap['repository']['full_name'],  repo );
+   expect( pmap['issue']['title'],           issueTitle );
+   expect( pmap['assignee']['login'],        assignee );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawSituate( WidgetTester tester, String repo, String keyName ) async {
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Finder rawPact = find.byKey( Key( keyName ) );
+   var pactElt          = rawPact.evaluate().single.widget as Container;
+   String pact          = getFromMakeBodyText( pactElt );
+
+   final Map<String, dynamic> pmap = json.decode( pact );
+   expect( pmap['action'],                  "created" );
+   expect( pmap['repository']['full_name'], repo );
+   expect( pmap.containsKey( "project_card" ), true );
+
+   expect( pmap["project_card"].containsKey( "content_url" ),           true );
+   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
+   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+
 // Note: this start with CE10 expanded already.
 Future<bool> validateCE10( WidgetTester tester ) async {
    await expandLeaf( tester, 5, "codeequity 10" );
    await pumpSettle( tester, 1 );
 
-   final Finder detail0 = find.byKey( Key( "0 confirm add" ) );
-   final Finder detail1 = find.byKey( Key( "1 confirm change" ) );
-   final Finder detail2 = find.byKey( Key( "2 confirm relocate" ) );
+   String repo   = "ariCETester/ceFlutterTester";
+   String d0Name = "0 confirm add";
+   String d1Name = "1 confirm change";
+   String d2Name = "2 confirm relocate";
    
-   expect( find.byKey( Key( "IR Prog" ) ),            findsOneWidget );
+   final Finder detail0 = find.byKey( Key( d0Name ));
+   final Finder detail1 = find.byKey( Key( d1Name ));
+   final Finder detail2 = find.byKey( Key( d2Name ));
+   
+   expect( find.byKey( Key( "IR Prog" ) ), findsOneWidget );
 
    expect( detail0, findsOneWidget );
    expect( detail1, findsOneWidget );
@@ -525,10 +601,18 @@ Future<bool> validateCE10( WidgetTester tester ) async {
    await tester.tap( detail0 );
    await pumpSettle( tester, 5 );
    await pumpSettle( tester, 1 );
+   expect( await validateRawAdd( tester, repo, "IR Prog", "1000 PEQ", "RawPact" + d0Name ), true );
 
-   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await tester.tap( detail1 );
+   await pumpSettle( tester, 5 );
    await pumpSettle( tester, 1 );
-   
+   expect( await validateRawAssign( tester, repo, "IR Prog", "codeequity", "RawPact" + d1Name ), true );
+
+   await tester.tap( detail2 );
+   await pumpSettle( tester, 5 );
+   await pumpSettle( tester, 1 );
+   expect( await validateRawSituate( tester, repo, "RawPact" + d2Name ), true );
+
    expect( await backToSummary( tester ), true );
    
    return true;

@@ -229,15 +229,26 @@ Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
    return true;
 }
 
+bool isPresent( Finder f ) {
+   try {
+      expect( f, findsOneWidget );
+      return true;
+   }
+   catch(e) {
+      return false;
+   }
+}
 
 // Currently flutter integration_test for web can not make use of browser back button, or refresh button.
 // Implement this with nav bar, for now.  If used popScope instead, would not help forward button.
 // XXX If more than, say, 3 of these bandages are needed, go to popScope.
 Future<bool> backToSummary( WidgetTester tester ) async {
-   
-   final Finder homeButton = find.byKey( const Key( 'homeIcon' ) );
-   await tester.tap( homeButton );
-   await pumpSettle( tester, 1 );
+
+   final Finder homeButton     = find.byKey( const Key( 'homeIcon' ) );
+   if( isPresent( homeButton )) {
+      await tester.tap( homeButton );
+      await pumpSettle( tester, 1 );
+   }
 
    // XXX Does this belong here?
    expect( await verifyAriHome( tester ), true );
@@ -245,7 +256,7 @@ Future<bool> backToSummary( WidgetTester tester ) async {
    final Finder ariLink = find.byKey( Key( repo ));   
 
    await tester.tap( ariLink );
-   await pumpSettle( tester, 1 );
+   await pumpSettle( tester, 2 );
 
    return true;
 }
@@ -323,7 +334,7 @@ Future<bool> logout( WidgetTester tester ) async {
    final Finder profilePage = find.byIcon( customIcons.profile );
    expect( profilePage,   findsOneWidget );
    await tester.tap( profilePage );
-   await pumpSettle( tester, 1 );
+   await pumpSettle( tester, 2 );
 
    expect( await verifyOnProfilePage( tester ), true );
 
