@@ -516,15 +516,24 @@ Future<bool> checkAll( WidgetTester tester ) async {
    return true;
 }
 
-
-Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String keyName ) async {
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
-
+Map<String, dynamic> getPact( detailName ) {
+   String keyName       = "RawPact" + detailName;
    final Finder rawPact = find.byKey( Key( keyName ) );
    var pactElt          = rawPact.evaluate().single.widget as Container;
    String pact          = getFromMakeBodyText( pactElt );
 
-   var pmap = json.decode( pact );
+   final Map<String, dynamic> pmap = json.decode( pact );   
+   return pmap;
+}
+
+
+Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
    expect( pmap['action'],                   "labeled" );
    expect( pmap['repository']['full_name'],  repo );
    expect( pmap['issue']['title'],           issueTitle );
@@ -536,14 +545,13 @@ Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle
    return true;
 }
 
-Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String keyName ) async {
+Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
+
+   await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
 
-   final Finder rawPact = find.byKey( Key( keyName ) );
-   var pactElt          = rawPact.evaluate().single.widget as Container;
-   String pact          = getFromMakeBodyText( pactElt );
+   final Map<String, dynamic> pmap = getPact( detailName );
 
-   var pmap = json.decode( pact );
    expect( pmap['action'],                   "assigned" );
    expect( pmap['repository']['full_name'],  repo );
    expect( pmap['issue']['title'],           issueTitle );
@@ -555,22 +563,109 @@ Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTi
    return true;
 }
 
-Future<bool> validateRawSituate( WidgetTester tester, String repo, String keyName ) async {
+Future<bool> validateRawSituate( WidgetTester tester, String repo, String detailName ) async {
+
+   await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
 
-   final Finder rawPact = find.byKey( Key( keyName ) );
-   var pactElt          = rawPact.evaluate().single.widget as Container;
-   String pact          = getFromMakeBodyText( pactElt );
+   final Map<String, dynamic> pmap = getPact( detailName );
 
-   final Map<String, dynamic> pmap = json.decode( pact );
-   expect( pmap['action'],                  "created" );
-   expect( pmap['repository']['full_name'], repo );
+   expect( pmap['action'],                    "created" );
+   expect( pmap['repository']['full_name'],    repo );
    expect( pmap.containsKey( "project_card" ), true );
 
-   expect( pmap["project_card"].containsKey( "content_url" ),           true );
+   expect( pmap["project_card"].containsKey( "content_url" ),        true );
    expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
    expect( pmap["project_card"]["content_url"].contains( repo ),     true );
 
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawMove( WidgetTester tester, String repo, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                    "moved" );
+   expect( pmap['repository']['full_name'],    repo );
+
+   expect( pmap.containsKey( "changes" ),                       true );
+   expect( pmap["changes"].containsKey( "column_id" ),          true );
+   expect( pmap["changes"]["column_id"].containsKey( "from" ),  true );
+
+   expect( pmap.containsKey( "project_card" ),                       true );
+   expect( pmap["project_card"].containsKey( "content_url" ),        true );
+   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
+   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateProposeAccrue( WidgetTester tester, String repo, String issueTitle, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                 "closed" );
+   expect( pmap['issue']['state'],         "closed" );
+   expect( pmap['repository']['full_name'], repo );
+   expect( pmap['issue']['title'],          issueTitle );   
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateConfirmAccrue( WidgetTester tester, String repo, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                 "moved" );
+   expect( pmap['repository']['full_name'], repo );
+
+   expect( pmap.containsKey( "project_card" ),                       true );
+   expect( pmap["project_card"].containsKey( "content_url" ),        true );
+   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
+   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   expect( pmap.containsKey( "changes" ),                       true );
+   expect( pmap["changes"].containsKey( "column_id" ),          true );
+   expect( pmap["changes"]["column_id"].containsKey( "from" ),  true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRejectAccrue( WidgetTester tester, String repo, String issueTitle, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                 "reopened" );
+   expect( pmap['repository']['full_name'], repo );
+
+   expect( pmap['issue']['state'],         "open" );
+   expect( pmap['repository']['full_name'], repo );
+   expect( pmap['issue']['title'],          issueTitle );   
+   
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
    
@@ -586,21 +681,14 @@ Future<bool> validateCE10( WidgetTester tester ) async {
 
    await expandLeaf( tester, 5, "codeequity 10" );
    await pumpSettle( tester, 1 );
+
    String repo   = "ariCETester/ceFlutterTester";
 
-   expect( find.byKey( Key( "IR Prog" ) ), findsOneWidget );
-   String d0Name = "0 confirm add";
-   String d1Name = "1 confirm change";
-   String d2Name = "2 confirm relocate";
-
-   await checkNTap( tester, d0Name );
-   expect( await validateRawAdd( tester, repo, "IR Prog", "1000 PEQ", "RawPact" + d0Name ), true );
-
-   await checkNTap( tester, d1Name );
-   expect( await validateRawAssign( tester, repo, "IR Prog", "codeequity", "RawPact" + d1Name ), true );
-
-   await checkNTap( tester, d2Name );
-   expect( await validateRawSituate( tester, repo, "RawPact" + d2Name ), true );
+   String issue  = "IR Prog";
+   expect( find.byKey( Key( issue ) ), findsOneWidget );
+   expect( await validateRawAdd(       tester, repo, issue, "1000 PEQ",   "00 confirm add" ),      true );
+   expect( await validateRawAssign(    tester, repo, issue, "codeequity", "01 confirm change" ),   true );
+   expect( await validateRawSituate(   tester, repo,                      "02 confirm relocate" ), true );
 
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 4, "" );
@@ -609,6 +697,7 @@ Future<bool> validateCE10( WidgetTester tester ) async {
    
    return true;
 }
+
 // Starts with initial expansion
 Future<bool> validateAri15( WidgetTester tester ) async {
    await expandAllocs( tester, 1, 1 );
@@ -620,37 +709,28 @@ Future<bool> validateAri15( WidgetTester tester ) async {
    await pumpSettle( tester, 1 );
 
    String repo   = "ariCETester/ceFlutterTester";
-
-   expect( find.byKey( Key( "IR Accrued" ) ),      findsOneWidget );
-   String ia0Name = "0 confirm add";
-   String ia1Name = "1 confirm change";
-   String ia2Name = "2 confirm relocate";
-   String ia3Name = "3 propose accrue";
-   String ia4Name = "4 confirm accrue";
-
-   await checkNTap( tester, ia0Name );
-   expect( await validateRawAdd( tester, repo, "IR Accrued", "1000 PEQ", "RawPact" + ia0Name ), true );
-
-   // XXX
-
    
-   expect( find.byKey( Key( "Close Open test" ) ), findsOneWidget );
-   String co0Name = "0 confirm add";
-   String co1Name = "1 confirm relocate";
-   String co2Name = "2 confirm change";
-   String co3Name = "3 propose accrue";
-   String co4Name = "4 reject accrue";
-   String co5Name = "5 confirm relocate";
-   String co6Name = "6 propose accrue";
-   String co7Name = "7 reject accrue";
-   String co8Name = "8 propose accrue";
-   String co9Name = "9 confirm accrue";
+   String issue  = "IR Accrued";
+   expect( find.byKey( Key( issue ) ),  findsOneWidget );
+   expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "00 confirm add" ),      true );
+   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "01 confirm change" ),   true );   
+   expect( await validateRawSituate(    tester, repo,                       "02 confirm relocate" ), true );
+   expect( await validateProposeAccrue( tester, repo, issue,                "03 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                       "04 confirm accrue" ),   true );
 
-   await checkNTap( tester, co0Name );
-   expect( await validateRawAdd( tester, repo, "Close Open test", "1000 PEQ", "RawPact" + co0Name ), true );
-
-   // XXX
-
+   issue = "Close Open test"; 
+   expect( find.byKey( Key( issue ) ),  findsOneWidget );
+   expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "10 confirm add" ),      true );
+   expect( await validateRawSituate(    tester, repo,                       "11 confirm relocate" ), true );   
+   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "12 confirm change" ),   true );
+   expect( await validateProposeAccrue( tester, repo, issue,                "13 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,                "14 reject accrue" ),    true );   
+   expect( await validateRawMove(       tester, repo,                       "15 confirm relocate" ), true );   
+   expect( await validateProposeAccrue( tester, repo, issue,                "16 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,                "17 reject accrue" ),    true );   
+   expect( await validateProposeAccrue( tester, repo, issue,                "18 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                       "19 confirm accrue" ),   true );
+   
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 6, "" );
    await toggleTableEntry( tester, 3, "" );

@@ -73,12 +73,12 @@ class _CEDetailState extends State<CEDetailPage> {
    }
 
    // XXX rawbody -> prettier list of string
-   Widget _makePAct( pact, count ) {
+   Widget _makePAct( pact, peqCount, pactCount ) {
       final textWidth = appState.screenWidth * .6;
       String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.subject.toString() + " " + pact.note + " " + pact.entryDate;
       // return makeBodyText( appState, apact, textWidth, false, 1 );
       if( appState.verbose >= 2 ) { print( ".. GD for " + pact.id ); }
-      String keyName = count.toString() + " " + enumToStr( pact.verb ) + " " + enumToStr( pact.action );
+      String keyName = peqCount.toString() + pactCount.toString() + " " + enumToStr( pact.verb ) + " " + enumToStr( pact.action );
       return GestureDetector(
          onTap: () async
          {
@@ -109,19 +109,20 @@ class _CEDetailState extends State<CEDetailPage> {
          print( "looking for pacts " + appState.selectedUser );
 
          pactList.clear();
+         var peqCount = 0;
          // XXX save anything here?  
          for( final peq in selectedPeqs ) {
             pactList.add( _makePeq( peq ) );
 
             peqPAct[peq.id].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
 
-            var count = 0;
+            var pactCount = 0;
             for( final pact in peqPAct[peq.id] ) {
                print( "PL added " + pact.id );
-               pactList.add( _makePAct( pact, count ) );
-               count++;
+               pactList.add( _makePAct( pact, peqCount, pactCount ) );
+               pactCount++;
             }
-            
+            peqCount++;
             pactList.add( makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));            
          }
 
