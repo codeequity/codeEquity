@@ -171,6 +171,7 @@ class _CEDetailState extends State<CEDetailPage> {
       print( "Rebuild PActions" );
 
       // Get all peqs for user.  Then, pare the list down to match selection
+      // NOTE: allocations, unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.
       await updateUserPeqs( container, context );
 
       // If ingest is not up to date, this filter breaks

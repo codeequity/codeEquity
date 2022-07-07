@@ -80,13 +80,13 @@ class _CESummaryState extends State<CESummaryFrame> {
    // XXX ghUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
    //     detail page..?
-   _pactDetail( path, width, depthM1 ) {
+   _pactDetail( path, width, depthM1, isAlloc ) {
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
          {
             String ghUserLogin = path[ depthM1 ];
-            appState.selectedUser = ghUserLogin;
+            appState.selectedUser = isAlloc ? appState.ALLOC_USER : ghUserLogin;
             appState.userPActUpdate = true;
             if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
             widget.detailCallback( path );
@@ -143,7 +143,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
                   int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount : 0 );
                   int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
-                  Widget details = _pactDetail( alloc.category, width, i );
+                  Widget details = _pactDetail( alloc.category, width, i, alloc.allocType == PeqType.allocation );
                   Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }

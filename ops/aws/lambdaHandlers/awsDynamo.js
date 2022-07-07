@@ -690,6 +690,10 @@ async function getPeq( uid, ghUser, ghRepo ) {
         params.FilterExpression = 'contains( CEHolderId, :ceid) AND GHRepo = :ghrepo AND Active = :true';
         params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo, ":true": "true" };
     }
+    else if( ghUser == "" ) {
+        params.FilterExpression = 'size( GHHolderId ) < :empty AND PeqType = :alloc AND GHRepo = :ghrepo AND Active = :true';
+        params.ExpressionAttributeValues = { ":empty": 5, ":alloc": "allocation", ":ghrepo": ghRepo, ":true": "true" };
+    }
     else {
         params.FilterExpression = 'contains( GHHolderId, :id) AND GHRepo = :ghrepo AND Active = :true';
         params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo, ":true": "true" };

@@ -551,11 +551,11 @@ Future<void> updateUserPActions( peqs, container, context ) async {
 Future<void> updateUserPeqs( container, context ) async {
    final appState  = container.state;
 
-   String uname = appState.selectedUser;
+   String uname = appState.selectedUser == appState.ALLOC_USER ? "" : appState.selectedUser;
    String rname = appState.selectedRepo;
    print( "Building detail data for " + uname + ":" + rname );
 
-   appState.userPeqs[uname] = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname" }' );
+   appState.userPeqs[appState.selectedUser] = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname" }' );
 }
 
 

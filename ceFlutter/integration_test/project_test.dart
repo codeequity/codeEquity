@@ -957,6 +957,8 @@ void main() {
 
          expect( await validateCE10( tester ), true );
          expect( await validateAri15( tester ), true );
+         
+         
          // gh:stripes:componentAlloc
          // unalloc
          // unclaimed:unclaimed:unassigned
