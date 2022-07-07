@@ -113,7 +113,7 @@ class _CEAddGHState extends State<CEAddGHPage> {
          return _makeAssociateGH();
       }
       else {
-         print( "AppState not ? Loaded" );
+         if( appState.verbose >= 1 ) { print( "AppState not ? Loaded" ); }
          return CircularProgressIndicator();
       }
    }

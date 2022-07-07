@@ -107,7 +107,7 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
                        ),
                     actions: <Widget>[
                        new FlatButton(
-                          key: Key( 'dismiss' ),
+                          key: Key( 'Dismiss' ),
                           child: new Text("Dismiss"),
                           onPressed: dismissFunc )
                        ]);
@@ -124,7 +124,7 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
                     content: scrollBody,
                     actions: <Widget>[
                        new TextButton(
-                          key: Key( 'dismiss' ),
+                          key: Key( 'Dismiss' ),
                           child: new Text("Dismiss"),
                           onPressed: dismissFunc )
                        ]);
@@ -243,7 +243,7 @@ Widget makeActionText( appState, title, width, wrap, lines ) {
                                     style: TextStyle(fontSize: 14, color: appState.BUTTON_COLOR, fontWeight: FontWeight.bold))));
 }
 
-Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14 } ) {
+Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, keyTxt = "" } ) {
    // Add as encountered.
    var mux = 1.0;
    if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
@@ -251,11 +251,13 @@ Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14 } ) {
    else if( fontSize == 28 ) { mux = 38.0 / appState.BASE_TXT_HEIGHT; }
    else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
 
+   String keyName = keyTxt == "" ? title : keyTxt; 
+   
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
                         height: appState.BASE_TXT_HEIGHT * lines * mux,
-                        key: Key( title ),
+                        key: Key( keyName ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
 }
@@ -272,11 +274,12 @@ Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 
                                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
 }
 
-Widget makeBodyText( appState, title, width, wrap, lines ) {
+Widget makeBodyText( appState, title, width, wrap, lines, { keyTxt = "" } ) {
+   String keyName = keyTxt == "" ? title : keyTxt;
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
-                        key: Key( title ),
+                        key: Key( keyName ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(height: 2, fontSize: 14))));
 }

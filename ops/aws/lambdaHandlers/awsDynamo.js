@@ -333,7 +333,7 @@ async function getEntries( tableName, query ) {
 	props = [ "PEQActionId", "CEUID", "GHUserName", "GHRepo", "Verb", "Action", "Subject", "Ingested"];
 	break;
     case "CEPEQRaw":
-	props = [ "PEQRawId" ];
+	props = [ "PEQRawId", "GHRepo" ];
 	break;
     case "CERepoStatus": 
 	props = [ "GHRepo" ];
@@ -639,7 +639,6 @@ async function putPeq( newPEQ ) {
 async function putPAct( newPAction ) {
 
     let rewrite = newPAction.hasOwnProperty( "PEQActionId" );
-    assert( !rewrite || newPAction.RawBody == "" );  // comment out for loadRaw
     
     let newId = rewrite ? newPAction.PEQActionId : randAlpha(10);
     console.log( newId, newPAction.Verb, newPAction.Action, newPAction.Subject );
@@ -662,22 +661,20 @@ async function putPAct( newPAction ) {
     };
 
     let promise = "";
-    if( rewrite ) { promise = bsdb.put( params ).promise(); }  // set to false for loadRaw
-    else {
-	const paramsR = {
-            TableName: 'CEPEQRaw',
-	    Item: {
-		"PEQRawId":  newId,
-		"RawBody":   newPAction.RawBody,
-	    }
-	};
-	
-	promise = bsdb.transactWrite({
-	    TransactItems: [
-		{ Put: params }, 
-		{ Put: paramsR }, 
-	    ]}).promise();
-    }
+    const paramsR = {
+        TableName: 'CEPEQRaw',
+	Item: {
+	    "PEQRawId":  newId,
+	    "GHRepo":    newPAction.GHRepo,
+	    "RawBody":   newPAction.RawBody,
+	}
+    };
+    
+    promise = bsdb.transactWrite({
+	TransactItems: [
+	    { Put: params }, 
+	    { Put: paramsR }, 
+	]}).promise();
     
     return promise.then(() =>success( newId ));
 }
@@ -691,14 +688,14 @@ async function getPeq( uid, ghUser, ghRepo ) {
 
     if( uid != "" ) {
         params.FilterExpression = 'contains( CEHolderId, :ceid) AND GHRepo = :ghrepo AND Active = :true';
-        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo, ":true": true };
+        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo, ":true": "true" };
     }
     else {
         params.FilterExpression = 'contains( GHHolderId, :id) AND GHRepo = :ghrepo AND Active = :true';
-        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo, ":true": true };
+        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo, ":true": "true" };
     }
 
-    console.log( "Looking for peqs", params);
+    // console.log( "Looking for peqs", params);
     let peqPromise = paginatedScan( params );
     return peqPromise.then((peqs) => {
 	console.log( "Found peqs ", peqs );

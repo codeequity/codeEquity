@@ -275,7 +275,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    ghLinks.updateLinkage( authData, issueId, cardId, newColId, newColName );
-	    ghLinks.show();
+	    // ghLinks.show();
 	    
 	    // handle issue.  Don't update issue state if not clear reopen/closed
 	    let newIssueState = "";

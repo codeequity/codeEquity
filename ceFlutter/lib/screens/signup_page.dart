@@ -45,11 +45,10 @@ class _CESignupState extends State<CESignupPage> {
    @override
    Widget build(BuildContext context) {
 
-
-      print( "REBUILD SIGNUP" );
-
       final container = AppStateContainer.of(context);
       final appState = container.state;
+
+      if( appState.verbose >= 2 ) { print( "REBUILD SIGNUP" ); }
 
       usernameController = new TextEditingController();
       passwordController = new TextEditingController();

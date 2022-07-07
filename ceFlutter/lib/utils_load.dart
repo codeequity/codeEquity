@@ -149,8 +149,8 @@ Future<http.Response> ghGet( url ) async {
 // XXX awsPost
 Future<http.Response> postIt( String shortName, postData, container ) async {
 
-   if( !postData.contains( "silent" )) { print( shortName ); }  // pd is a string at this point
    final appState  = container.state;
+   if( appState.verbose >= 3 ) { print( shortName ); }  // pd is a string at this point
 
    final gatewayURL = Uri.parse( appState.apiBasePath + "/find" );
 
@@ -469,8 +469,10 @@ Future<void> reloadRepo( context, container ) async {
    pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postData };
    appState.myGHLinks  = await fetchGHLinkage( context, container, pd );
 
-   print( "Got Links?" );
-   appState.myGHLinks == null ? print( "nope - no associated repo" ) : print( appState.myGHLinks.toString() );
+   if( appState.verbose >= 2 ) {
+      print( "Got Links?" ); 
+      appState.myGHLinks == null ? print( "nope - no associated repo" ) : print( appState.myGHLinks.toString() );
+   }
 
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
 }

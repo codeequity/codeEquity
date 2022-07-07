@@ -74,23 +74,24 @@ class _CESummaryState extends State<CESummaryFrame> {
    @override
    void dispose() {
       super.dispose();
-      print( "SF Disposessed!" );
+      if( appState.verbose >= 2 ) { print( "SummaryFrame Disposessed!" ); }
    }
 
    // XXX ghUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
-   //     detail page..?  
-   _pactDetail( ghUserLogin, width, depth ) {
+   //     detail page..?
+   _pactDetail( path, width, depthM1 ) {
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
          {
+            String ghUserLogin = path[ depthM1 ];
             appState.selectedUser = ghUserLogin;
             appState.userPActUpdate = true;
-            print( "pactDetail fired for: " + ghUserLogin );
-            widget.detailCallback();
+            if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
+            widget.detailCallback( path );
          },
-         child: makeTableText( appState, ghUserLogin, width, height, false, 1, mux: depth * .5 )
+         child: makeTableText( appState, path[ depthM1 ], width, height, false, 1, mux: (depthM1+1) * .5 )
          );
    }
    
@@ -98,7 +99,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
    // header      alloc                   sub alloc                 plan
    _buildAllocationTree() {
-      print( "Build allocation tree" );
+      if( appState.verbose >= 1 ) { print( "Build allocation tree" ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;  
       
       appState.allocTree = Node( "Category", 0, null, width, widget.pageStamp, widget.allocExpansionCallback, isInitiallyExpanded:true, header: true );
@@ -116,7 +117,7 @@ class _CESummaryState extends State<CESummaryFrame> {
          // down the road, they become nodes
          for( int i = 0; i < alloc.category.length; i++ ) {
             
-            print( "working on " + alloc.category.toString() + " : " + alloc.category[i] );
+            if( appState.verbose >= 2 ) { print( "working on " + alloc.category.toString() + " : " + alloc.category[i] ); }
             
             bool lastCat = false;
             if( i == alloc.category.length - 1 ) { lastCat = true; }
@@ -129,27 +130,27 @@ class _CESummaryState extends State<CESummaryFrame> {
             }
             else if( childNode == null ) {
                if( !lastCat ) {
-                  print( "... nothing - add node" );
+                  if( appState.verbose >= 2 ) { print( "... nothing - add node" ); }
                   Node tmpNode = Node( alloc.category[i], 0, null, width, widget.pageStamp, widget.allocExpansionCallback );
                   (curNode as Node).addLeaf( tmpNode );
                   curNode = tmpNode;
                }
                else {
-                  print( "... nothing found, last cat, add leaf" );
+                  if( appState.verbose >= 2 ) { print( "... nothing found, last cat, add leaf" ); }
                   // leaf.  amounts stay at leaves
                   
                   int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount : 0 );
                   int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
                   int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount : 0 );
                   int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
-                  Widget details = _pactDetail( alloc.category[i], width, i+1 );
+                  Widget details = _pactDetail( alloc.category, width, i );
                   Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }
             }
             else if( childNode is Node ) {
                if( !lastCat ) {
-                  print( "... found - move on" );
+                  if( appState.verbose >= 2 ) { print( "... found - move on" ); }
                   curNode = childNode;
                }
                else {
@@ -183,7 +184,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       {
          if( appState.myPEQSummary.ghRepo == appState.selectedRepo ) {
             if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
-            print( "_showPalloc Update alloc" );
+            if( appState.verbose >= 2 ) { print( "_showPalloc Update alloc" ); }
             allocList.addAll( appState.allocTree.getCurrent( container ) );
 
             //print( appState.allocTree.toStr() );
@@ -196,7 +197,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    
 
    Widget getAllocation( context ) {
-      print( "SF: Remake allocs" );
+      if( appState.verbose >= 2 ) { print( "SF: Remake allocs" ); }
       final buttonWidth = 100;
       
       List<List<Widget>> allocs = [];
@@ -264,7 +265,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       container   = widget.appContainer;   // Neat.  Access parameter in super.
       appState    = container.state;
 
-      print( "SUMMARY BUILD. " + (appState == Null).toString());
+      if( appState.verbose >= 2 ) { print( "SUMMARY BUILD. " + (appState == Null).toString()); }
 
       return getAllocation( context );
       

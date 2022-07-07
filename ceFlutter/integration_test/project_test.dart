@@ -1,4 +1,6 @@
+import 'dart:convert';  // json encode/decode
 import 'dart:async';   // timer
+// import 'dart:html' as html;    // refresh button?
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
@@ -172,6 +174,15 @@ Future<bool> ariSummaryFraming( WidgetTester tester ) async {
    return true;
 }
 
+String getFromMakeBodyText( Widget elt ) {
+   String retVal = "";
+   if( elt is Container ) {
+      var contText  = elt.child as Text; 
+      retVal        = contText.data ?? "";
+   }
+   return retVal;
+}
+
 // XXX ? move these accessors next to original functions?
 // from utils
 String getFromMakeTableText( Widget elt ) {
@@ -204,6 +215,17 @@ String getFromLeaf( Widget elt ) {
       var gd        = listTile.title as GestureDetector;
 
       retVal        = getFromMakeTableText( gd.child ?? gd );
+   }
+   return retVal;
+}
+
+// from Node, then _pactDetail
+Finder getGDFromLeaf( Widget elt ) {
+   Finder retVal = find.byKey( Key( "ThisWillNeverBeFoundDuuuuude" ));
+   if( elt is Container && elt.child is ListTile ) {
+      var listTile       = elt.child as ListTile;
+      GestureDetector gd = listTile.title as GestureDetector;
+      retVal             = find.byWidget( gd );
    }
    return retVal;
 }
@@ -242,6 +264,22 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
    }
 
    return aRow;
+}
+
+Future<bool> expandLeaf( WidgetTester tester, int flutterPos, String agKey ) async {
+   expect( await checkOffsetAlloc( tester, flutterPos, agKey ), true );
+
+   final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));
+   expect( generatedAllocRow, findsOneWidget );
+
+   var allocRow = generatedAllocRow.evaluate().single.widget as Row;
+   var allocs   = allocRow.children as List;
+
+   final Finder gd = getGDFromLeaf( allocs[0] );
+   await tester.tap( gd );
+   await tester.pumpAndSettle();
+   
+   return true;
 }
 
 Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
@@ -382,8 +420,8 @@ Future<bool> closeAll( WidgetTester tester ) async {
 
 Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey ) async {
 
-   final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));  
-   expect( generatedAllocRow, findsOneWidget );
+   // final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));  
+   // expect( generatedAllocRow, findsOneWidget );
    
    List<String> allocs = await getElt( tester, "allocsTable " + flutterPos.toString() );
    
@@ -478,7 +516,228 @@ Future<bool> checkAll( WidgetTester tester ) async {
    return true;
 }
 
+Map<String, dynamic> getPact( detailName ) {
+   String keyName       = "RawPact" + detailName;
+   final Finder rawPact = find.byKey( Key( keyName ) );
+   var pactElt          = rawPact.evaluate().single.widget as Container;
+   String pact          = getFromMakeBodyText( pactElt );
 
+   final Map<String, dynamic> pmap = json.decode( pact );   
+   return pmap;
+}
+
+
+Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                   "labeled" );
+   expect( pmap['repository']['full_name'],  repo );
+   expect( pmap['issue']['title'],           issueTitle );
+   expect( pmap['label']['name'],            peqLabel );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                   "assigned" );
+   expect( pmap['repository']['full_name'],  repo );
+   expect( pmap['issue']['title'],           issueTitle );
+   expect( pmap['assignee']['login'],        assignee );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawSituate( WidgetTester tester, String repo, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                    "created" );
+   expect( pmap['repository']['full_name'],    repo );
+   expect( pmap.containsKey( "project_card" ), true );
+
+   expect( pmap["project_card"].containsKey( "content_url" ),        true );
+   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
+   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawMove( WidgetTester tester, String repo, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                    "moved" );
+   expect( pmap['repository']['full_name'],    repo );
+
+   expect( pmap.containsKey( "changes" ),                       true );
+   expect( pmap["changes"].containsKey( "column_id" ),          true );
+   expect( pmap["changes"]["column_id"].containsKey( "from" ),  true );
+
+   expect( pmap.containsKey( "project_card" ),                       true );
+   expect( pmap["project_card"].containsKey( "content_url" ),        true );
+   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
+   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateProposeAccrue( WidgetTester tester, String repo, String issueTitle, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                 "closed" );
+   expect( pmap['issue']['state'],         "closed" );
+   expect( pmap['repository']['full_name'], repo );
+   expect( pmap['issue']['title'],          issueTitle );   
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateConfirmAccrue( WidgetTester tester, String repo, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                 "moved" );
+   expect( pmap['repository']['full_name'], repo );
+
+   expect( pmap.containsKey( "project_card" ),                       true );
+   expect( pmap["project_card"].containsKey( "content_url" ),        true );
+   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
+   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   expect( pmap.containsKey( "changes" ),                       true );
+   expect( pmap["changes"].containsKey( "column_id" ),          true );
+   expect( pmap["changes"]["column_id"].containsKey( "from" ),  true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRejectAccrue( WidgetTester tester, String repo, String issueTitle, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                 "reopened" );
+   expect( pmap['repository']['full_name'], repo );
+
+   expect( pmap['issue']['state'],         "open" );
+   expect( pmap['repository']['full_name'], repo );
+   expect( pmap['issue']['title'],          issueTitle );   
+   
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+
+// Starts with initial expansion
+Future<bool> validateCE10( WidgetTester tester ) async {
+   await expandAllocs( tester, 1, 1 );
+   await expandAllocs( tester, 3, 4 );
+   await checkOffsetAlloc( tester, 5, "codeequity 10" );
+
+   await expandLeaf( tester, 5, "codeequity 10" );
+   await pumpSettle( tester, 1 );
+
+   String repo   = "ariCETester/ceFlutterTester";
+
+   String issue  = "IR Prog";
+   expect( find.byKey( Key( issue ) ), findsOneWidget );
+   expect( await validateRawAdd(       tester, repo, issue, "1000 PEQ",   "00 confirm add" ),      true );
+   expect( await validateRawAssign(    tester, repo, issue, "codeequity", "01 confirm change" ),   true );
+   expect( await validateRawSituate(   tester, repo,                      "02 confirm relocate" ), true );
+
+   expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 4, "" );
+   await toggleTableEntry( tester, 3, "" );
+   await toggleTableEntry( tester, 1, "" );
+   
+   return true;
+}
+
+// Starts with initial expansion
+Future<bool> validateAri15( WidgetTester tester ) async {
+   await expandAllocs( tester, 1, 1 );
+   await expandAllocs( tester, 3, 3 );
+   await expandAllocs( tester, 6, 6 );
+   await checkOffsetAlloc( tester, 7, "ariCETester 15" );
+
+   await expandLeaf( tester, 7, "ariCETester 15" );
+   await pumpSettle( tester, 1 );
+
+   String repo   = "ariCETester/ceFlutterTester";
+   
+   String issue  = "IR Accrued";
+   expect( find.byKey( Key( issue ) ),  findsOneWidget );
+   expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "00 confirm add" ),      true );
+   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "01 confirm change" ),   true );   
+   expect( await validateRawSituate(    tester, repo,                       "02 confirm relocate" ), true );
+   expect( await validateProposeAccrue( tester, repo, issue,                "03 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                       "04 confirm accrue" ),   true );
+
+   issue = "Close Open test"; 
+   expect( find.byKey( Key( issue ) ),  findsOneWidget );
+   expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "10 confirm add" ),      true );
+   expect( await validateRawSituate(    tester, repo,                       "11 confirm relocate" ), true );   
+   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "12 confirm change" ),   true );
+   expect( await validateProposeAccrue( tester, repo, issue,                "13 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,                "14 reject accrue" ),    true );   
+   expect( await validateRawMove(       tester, repo,                       "15 confirm relocate" ), true );   
+   expect( await validateProposeAccrue( tester, repo, issue,                "16 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,                "17 reject accrue" ),    true );   
+   expect( await validateProposeAccrue( tester, repo, issue,                "18 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                       "19 confirm accrue" ),   true );
+   
+   expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 6, "" );
+   await toggleTableEntry( tester, 3, "" );
+   await toggleTableEntry( tester, 1, "" );
+
+   return true;
+}
 
 Future<bool> ariSummaryContent( WidgetTester tester ) async {
    final listFinder   = find.byType( ListView );
@@ -517,8 +776,8 @@ void main() {
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-   // bool skip = true;
-   bool skip = false;
+   bool skip = true;
+   // bool skip = false;
 
    // override?  Run it.
    var override = const String.fromEnvironment('override');
@@ -526,9 +785,7 @@ void main() {
    
    report( 'Project', group:true );
 
-   // XXX
-   // testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
-   testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+   testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
          
          await restart( tester );
          await login( tester, true );
@@ -557,7 +814,7 @@ void main() {
 
    // NOTE: testCEFlutter.py always runs 'npm clean' before this
    //       it is possible to depend on process_run and run from here, but that clutters deps
-   testWidgets('Project contents, ingest', skip:false, (WidgetTester tester) async {
+   testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -682,6 +939,34 @@ void main() {
          await logout( tester );         
 
          report( 'Project frame coherence' );
+      });
+
+   testWidgets('Project Detail Page', skip:false, (WidgetTester tester) async {
+         
+         await restart( tester );
+         await login( tester, true );
+
+         expect( await verifyAriHome( tester ), true );
+         
+         final Finder ariLink = find.byKey( Key( repo ));
+         await tester.tap( ariLink );
+         await pumpSettle( tester, 2, verbose: true ); 
+         await pumpSettle( tester, 2, verbose: true ); 
+
+         expect( await peqSummaryTabFraming( tester ),   true );
+
+         expect( await validateCE10( tester ), true );
+         expect( await validateAri15( tester ), true );
+         // gh:stripes:componentAlloc
+         // unalloc
+         // unclaimed:unclaimed:unassigned
+         // unclaimed:accr:ari
+         // newprojcol:newplanname:unassigned
+         // newprojcol:accr?ari
+         
+         await logout( tester );         
+
+         report( 'Project Detail Page' );
       });
 
 

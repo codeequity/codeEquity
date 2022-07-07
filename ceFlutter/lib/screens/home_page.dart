@@ -36,14 +36,13 @@ class _CEHomeState extends State<CEHomePage> {
    
    @override
    void initState() {
-      print( "HOMEPAGE INIT" );
       super.initState();
    }
 
    @override
    void dispose() {
       super.dispose();
-      print( "HP dispose" );
+      if( appState.verbose >= 2 ) { print( "HP dispose" ); }
    }
 
    Widget _newCEProjButton() {
@@ -273,7 +272,7 @@ class _CEHomeState extends State<CEHomePage> {
                   ]);
       }
       else {
-         print( "AppState not ? Loaded" );
+         if( appState.verbose >= 0 ) { print( "AppState not ? Loaded" ); }
          return CircularProgressIndicator();
       }
    }
@@ -290,8 +289,8 @@ class _CEHomeState extends State<CEHomePage> {
       appState.screenWidth  = MediaQuery.of(context).size.width;
       runningLHSHeight = 0;
       
-      print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() );
-      // print( getToday() );
+      if( appState.verbose >= 3 ) { print( "Build Homepage, scaffold x,y: " + appState.screenWidth.toString() + " " + appState.screenHeight.toString() ); }
+      if( appState.verbose >= 3 ) { print( getToday() ); }
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Home" ),

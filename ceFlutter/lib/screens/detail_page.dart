@@ -1,4 +1,6 @@
-import 'dart:convert';  // json encode/decode
+import 'dart:convert';     // json encode/decode
+
+import 'package:collection/collection.dart'; // list eq
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +16,7 @@ import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/components/node.dart';
 import 'package:ceFlutter/components/leaf.dart';
 
-
+Function eq = const ListEquality().equals;
 
 class CEDetailPage extends StatefulWidget {
    CEDetailPage({Key key}) : super(key: key);
@@ -25,17 +27,19 @@ class CEDetailPage extends StatefulWidget {
 
 class _CEDetailState extends State<CEDetailPage> {
 
+   List<String> category;  // pass by navigator in projectpage callback
    var      container;
    AppState appState;
 
-   bool userPActUpdated;
+   bool                         userPActUpdated;
    Map<String, List<PEQAction>> peqPAct;
-   List<Widget> pactList;
+   List<PEQ>                    selectedPeqs;
+   List<Widget>                 pactList;
    
    @override
    void initState() {
-      print( "DetailPage INIT" );
       peqPAct = new Map<String, List<PEQAction>>();
+      selectedPeqs = new List<PEQ>();
       userPActUpdated = false;
       pactList = new List<Widget>();
       
@@ -49,7 +53,7 @@ class _CEDetailState extends State<CEDetailPage> {
 
 
    void _closeRaw() {
-      print( "closeRaw" );
+      if( appState.verbose >= 2 ) { print( "closeRaw" ); }
       Navigator.of( context ).pop(); 
    }
    
@@ -61,19 +65,20 @@ class _CEDetailState extends State<CEDetailPage> {
          proj += p + "::";
       }
       if( proj.length > 2 ) { proj = proj.substring( 0,proj.length - 2 ); }
-      
+
       String apeq =  peq.ghIssueTitle + " (" + proj + ") status: " + enumToStr( peq.peqType ) + " " + peq.amount.toString() + " PEQs";
       if( peq.ghHolderId.length > 0 ) { apeq += "  Holder(s): " + peq.ghHolderId.toString(); }
       if( peq.ceGrantorId != EMPTY ) { apeq += "  Grantor: " + peq.ceGrantorId; }
-      return makeTitleText( appState, apeq, textWidth, false, 1 );
+      return makeTitleText( appState, apeq, textWidth, false, 1, keyTxt: peq.ghIssueTitle );
    }
 
    // XXX rawbody -> prettier list of string
-   Widget _makePAct( pact ) {
+   Widget _makePAct( pact, peqCount, pactCount ) {
       final textWidth = appState.screenWidth * .6;
-      String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.entryDate;
+      String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.subject.toString() + " " + pact.note + " " + pact.entryDate;
       // return makeBodyText( appState, apact, textWidth, false, 1 );
-      print( ".. GD for " + pact.id );
+      if( appState.verbose >= 2 ) { print( ".. GD for " + pact.id ); }
+      String keyName = peqCount.toString() + pactCount.toString() + " " + enumToStr( pact.verb ) + " " + enumToStr( pact.action );
       return GestureDetector(
          onTap: () async
          {
@@ -81,26 +86,22 @@ class _CEDetailState extends State<CEDetailPage> {
             postData['PEQRawId'] = pact.id;
             var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQRaw", "query": postData }; 
             PEQRaw pr = await fetchPEQRaw( context, container, json.encode( pd ));
-            print( "gotraw" );
-            print( pr );
             var encoder = new JsonEncoder.withIndent("  ");
-            print( "encoder" );
             var prj = json.decode( pr.rawReqBody );
-            print( "decoder" );
             String prettyRaw = encoder.convert(prj);
-            print( "pr" );
 
             // Let makeBody handle the json
-            Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000);
-            print( "prw" );
+            Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000, keyTxt: "RawPact"+keyName);
             popScroll( context, "Raw Github Action:", prw, () => _closeRaw() );            
          },
-         child: makeBodyText( appState, apact, textWidth, false, 1 )
+         child: makeBodyText( appState, apact, textWidth, false, 1, keyTxt: keyName )
          );
 
       
    }
 
+   // XXX peqPAct is new for each detailPage, i.e. for each selection.
+   //     information overlaps with selectedPeqs.. resolve
    // XXX don't circle if empty.  buuuut, for now, OK.
    Widget _showPActList() {
 
@@ -108,17 +109,20 @@ class _CEDetailState extends State<CEDetailPage> {
          print( "looking for pacts " + appState.selectedUser );
 
          pactList.clear();
+         var peqCount = 0;
          // XXX save anything here?  
-         for( final peq in  appState.userPeqs[ appState.selectedUser ] ) {
+         for( final peq in selectedPeqs ) {
             pactList.add( _makePeq( peq ) );
 
             peqPAct[peq.id].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
-               
+
+            var pactCount = 0;
             for( final pact in peqPAct[peq.id] ) {
-               // print( "PL added " + pact.id );
-               pactList.add( _makePAct( pact ) );
+               print( "PL added " + pact.id );
+               pactList.add( _makePAct( pact, peqCount, pactCount ) );
+               pactCount++;
             }
-            
+            peqCount++;
             pactList.add( makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));            
          }
 
@@ -165,9 +169,15 @@ class _CEDetailState extends State<CEDetailPage> {
    void rebuildPActions( container, context ) async {
 
       print( "Rebuild PActions" );
-      await updateUserPeqs( container, context );
-      List<String> peqs = appState.userPeqs[ appState.selectedUser ].map((peq) => peq.id ).toList();
 
+      // Get all peqs for user.  Then, pare the list down to match selection
+      await updateUserPeqs( container, context );
+
+      // If ingest is not up to date, this filter breaks
+      List<String> cat  = category.sublist(0, category.length - 1 );
+      selectedPeqs      = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub, cat )).toList();
+      List<String> peqs = selectedPeqs.map((peq) => peq.id ).toList();
+      
       await updateUserPActions( peqs, container, context );      
 
       // populate peqPAct to avoid multiple trips through pacts
@@ -185,13 +195,13 @@ class _CEDetailState extends State<CEDetailPage> {
    @override
       Widget build(BuildContext context) {
 
-      print( "BUILD DETAIL" );
-      print( "is context null ? " + (context == null).toString() );
-            
+      category    = ModalRoute.of(context).settings.arguments;
       container   = AppStateContainer.of(context);
       appState    = container.state;
 
-      print( "\nBuild Detail page " + appState.userPActUpdate.toString() );
+      if( appState.verbose >= 3 ) { print( "BUILD DETAIL" ); }
+      if( appState.verbose >= 3 ) { print( "is context null ? " + (context == null).toString() ); }
+      if( appState.verbose >= 3 ) { print( "\nBuild Detail page " + appState.userPActUpdate.toString() ); }
 
       if( appState.userPActUpdate ) { rebuildPActions( container, context );  }
       

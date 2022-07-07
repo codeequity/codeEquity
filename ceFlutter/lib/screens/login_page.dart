@@ -9,6 +9,8 @@ import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/cognitoUserService.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 
+import 'package:ceFlutter/models/app_state.dart';
+
 
 class CELoginPage extends StatefulWidget {
   CELoginPage({Key key}) : super(key: key);
@@ -23,6 +25,9 @@ class _CELoginState extends State<CELoginPage> {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
    TextEditingController usernameController;
    TextEditingController passwordController;
+
+   var      container;
+   AppState appState;
    
    @override
    void initState() {
@@ -32,12 +37,11 @@ class _CELoginState extends State<CELoginPage> {
   @override
   void dispose() {
     super.dispose();
-    print( "LP Disposessed!" );
+    if( appState.verbose >= 2 ) { print( "LoginPage Disposessed!" ); }
   }
 
 
   void _signin( userName, userPassword, container, appState ) async {
-     print( "Signin building wrapper" );
      final wrapper = cognitoSignupWrapper(context, () async {
 
            Stopwatch stopwatch = new Stopwatch()..start();
@@ -52,7 +56,6 @@ class _CELoginState extends State<CELoginPage> {
               Navigator.push( context, newPage );
            }
         });
-     print( "Signin calling wrapper" );
      wrapper();
   }
 
@@ -123,8 +126,8 @@ class _CELoginState extends State<CELoginPage> {
   @override
   Widget build(BuildContext context) {
 
-     final container = AppStateContainer.of(context);
-     final appState = container.state;
+     container = AppStateContainer.of(context);
+     appState  = container.state;
 
      usernameController = new TextEditingController();
      passwordController = new TextEditingController();
@@ -132,7 +135,6 @@ class _CELoginState extends State<CELoginPage> {
      final usernameField = makeInputField( appState, "username", false, usernameController );
      final passwordField = makeInputField( appState, "password", true,  passwordController );
      final loginButton = makeActionButton( appState, 'Login', (() async {
-              print( "Start login button callback" );
               String userName = usernameController.text;
               String userPassword = passwordController.text;
 
@@ -149,13 +151,12 @@ class _CELoginState extends State<CELoginPage> {
                  _loginLogoutLogin(0, container, appState );
               }
               else {
-                 print( "Start login button signin" );
                  _signin( userName, userPassword, container, appState );
                  
               }
            }));
 
-     print( "build login page" );
+     if( appState.verbose >= 2 ) { print( "build login page" ); }
      
      return Scaffold(
       body: Center(

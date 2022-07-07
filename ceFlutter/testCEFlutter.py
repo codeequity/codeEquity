@@ -50,6 +50,23 @@ def closeListeners():
         print( "Killing chromedriver at " + pid[3] )
         os.kill( int(pid[3]), signal.SIGTERM )
 
+def updateFlutter( cmd ):
+    retVal = True
+    if( cmd != "overrideAllOn" ) :
+        return retVal
+    
+    logging.info( "Updating flutter" )
+    if( call("flutter upgrade", shell=True) != 0 ) :
+        logging.info( "Updating flutter failed." )
+        retVal = False
+
+    logging.info( "Updating flutter packages" )
+    if( call("flutter pub get", shell=True) != 0 ) :
+        logging.info( "Updating flutter packages failed." )
+        retVal = False
+            
+    return retVal
+
 
 def verifyEmulator():
     logging.info( "Ensure emulator (chromedriver) is running" )
@@ -153,10 +170,12 @@ def runTests( override = False ):
 
     # Focus area ------------------
 
-    # Always clean dynamo summaries and 'ingested' tags first.
-    cmd = "npm run cleanFlutter --prefix ../webServer"
-    npmRun = runCmd( cmd, [] )
-    logging.info( npmRun )
+    # Always clean dynamo summaries and 'ingested' tags first for full tests
+    if override:
+        cmd = "npm run cleanFlutter --prefix ../webServer"
+        npmRun = runCmd( cmd, [] )
+        logging.info( npmRun )
+
     tsum = runTest( "project_test.dart", override, False, False )
     resultsSum  += tsum
 
@@ -198,6 +217,7 @@ def main( cmd ):
                         level=logging.INFO)
 
     assert( validateConfiguration() )
+    assert( updateFlutter( cmd ) )
     assert( verifyEmulator() )
 
     summary = ""

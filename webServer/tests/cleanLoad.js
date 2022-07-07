@@ -99,12 +99,17 @@ async function loadPAct( authData, td ) {
 
     // First, remove.
     const oldPacts = await utils.getPActs( authData, { "GHRepo": td.GHFullName });
+    const oldPraws = await utils.getPRaws( authData, { "GHRepo": td.GHFullName });
     if( oldPacts != -1 ) {
 	const opids = oldPacts.map( pact => [pact.PEQActionId] );
 	await utils.cleanDynamo( authData, "CEPEQActions", opids );				   
     }
+    if( oldPraws != -1 ) {
+	const opids = oldPraws.map( praw => [praw.PEQRawId] );
+	await utils.cleanDynamo( authData, "CEPEQRaw", opids );				   
+    }
     
-    // NOTE!  PActRaw doesn't change - no need to overwrite.
+    // NOTE!  PActRaw ids need to match PAct ids
     let fname = baselineLoc + "dynamoCEPEQActions_latest.json";
 
     const dataStr  = getData( fname );
@@ -112,9 +117,8 @@ async function loadPAct( authData, td ) {
     console.log( "Reading", pactJson.CEPEQActions.length.toString(), "PActs from", fname );
 
     var praw = {};
-    var loadRaw = false;
-    /*
-    // Set to true to load CEPEQRaw.  Requires mod in aws dynamo as well.
+    var loadRaw = true;
+
     if( loadRaw ) {
 	// PEQRawId == PEQActionId
 	// Slower approach when data is small, but more scalable.
@@ -139,7 +143,6 @@ async function loadPAct( authData, td ) {
 	    // else { console.log( "FAIL PUT", pid ); }
 	}
     }
-    */
 
     let pactCount = 0;
     var promises = [];
