@@ -114,8 +114,6 @@ class _CEDetailState extends State<CEDetailPage> {
          for( final peq in selectedPeqs ) {
             pactList.add( _makePeq( peq ) );
 
-            peqPAct[peq.id].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
-
             var pactCount = 0;
             for( final pact in peqPAct[peq.id] ) {
                print( "PL added " + pact.id );
@@ -188,6 +186,12 @@ class _CEDetailState extends State<CEDetailPage> {
          if( peqPAct[peqId] == null ) { peqPAct[peqId] = [ pact ]; }
          else                         { peqPAct[peqId].add( pact ); }
       }
+
+      // Sort PAct list oldest first. Sort Peq list newest first.
+      for( final peq in peqs ) {
+         peqPAct[peq].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
+      }
+      selectedPeqs.sort((a,b) => peqPAct[b.id].last.timeStamp.compareTo( peqPAct[a.id].last.timeStamp ));
       
       appState.userPActUpdate = false;
       setState(() => userPActUpdated = true );
