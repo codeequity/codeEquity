@@ -108,7 +108,8 @@ class _CESummaryState extends State<CESummaryFrame> {
          appState.updateAllocTree = false;
          return;
       }
-      
+
+      // These were built during ingest
       for( var alloc in appState.myPEQSummary.allocations ) {
          
          Tree curNode = appState.allocTree;

@@ -169,12 +169,18 @@ class _CEDetailState extends State<CEDetailPage> {
       print( "Rebuild PActions" );
 
       // Get all peqs for user.  Then, pare the list down to match selection
-      // NOTE: allocations, unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.
+      // NOTE: allocations, unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.  XXX
       await updateUserPeqs( container, context );
 
       // If ingest is not up to date, this filter breaks
-      List<String> cat  = category.sublist(0, category.length - 1 );
-      selectedPeqs      = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub, cat )).toList();
+      // if alloc, alloc name is made part of the category list, and is needed to distinguish allocs
+      if( appState.selectedUser == appState.ALLOC_USER ) {
+         selectedPeqs = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub + [p.ghIssueTitle], category )).toList();
+      }
+      else {
+         List<String> cat = category.sublist(0, category.length - 1 );
+         selectedPeqs = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub, cat )).toList();
+      }
       List<String> peqs = selectedPeqs.map((peq) => peq.id ).toList();
       
       await updateUserPActions( peqs, container, context );      
