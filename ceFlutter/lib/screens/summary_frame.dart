@@ -86,7 +86,9 @@ class _CESummaryState extends State<CESummaryFrame> {
          onTap: () async 
          {
             String ghUserLogin = path[ depthM1 ];
-            appState.selectedUser = isAlloc ? appState.ALLOC_USER : ghUserLogin;
+            if( isAlloc )                          { appState.selectedUser = appState.ALLOC_USER; }
+            else if( ghUserLogin == "Unassigned" ) { appState.selectedUser = appState.UNASSIGN_USER; }  // XXX formalize
+            else                                   { appState.selectedUser = ghUserLogin; }
             appState.userPActUpdate = true;
             if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
             widget.detailCallback( path );

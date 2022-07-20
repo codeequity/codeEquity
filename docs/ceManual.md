@@ -361,9 +361,7 @@ issues created:
 Clicking into the *Test PEQ LifeCycle* issue, Connie adds an assignee, then back in the projects
 page, Connie drags and drops the card into the **In Progress** column.
 Connie goes back and forth playing with this a few times before leaving the card in **In
-Progress**.   If Connie were to try dragging the card into the
-**Accrued** column right now, CE Server would move the card back to **In Progress**.  PEQ issues
-can only enter **Accrued** from the **Pending PEQ Approval** column.
+Progress**.   
 
 <p float="left">
   <img src="images/garlicBeerLC3.png" />
@@ -794,13 +792,15 @@ The installation token is not stored in the system.
 ##### Personal Access Token for GitHub (supplied by repo owner using CE Flutter)
 
 The REST API is useful up to a point for a GitHub app, but comes with some serious limitations.  For
-example, you can not delete an issue by using the REST API, which is critical for automated testing.
+example, you can not delete an issue by using the REST API, but that is critical for automated testing.
 For example, cards in a GitHub project point to issues, so it is very easy to find an issue given a
 card.  However, there are no reverse pointers.. if you only have an issue ID, you would need to ask
 GitHub for all projects for the repo, then all columns per project, all cards per column, then
-search all those cards for the desired issue.  This clearly does not scale.
+search all those cards for the desired issue.  This clearly does not scale.  A final example, you can
+list all of the repositories that you own in the REST API, but you can not list all the repositories that
+you contribute to.  CE Flutter needs both.
 
-GitHub's Octokit also provides a GraphQL API, which allows an app to traverse the object hierarchy
+GitHub's Octokit provides a GraphQL API, which allows an app to traverse the object hierarchy
 internal to GitHub within the context of a single query to the system.  In the example above,
 finding a card from an issue is a single, simple GraphQL query, in contrast to the hundreds of
 queries the REST API might require.  The GraphQL API is fast and scalable, but does require access
@@ -808,16 +808,21 @@ to a usable personal access token.
 
 CodeEquity's personal access token is stored along with other server authorization data in
 `ops/github/auth`.  CE Server will use this token by default for all server-related GitHub GraphQL
-requests.  *This token works for all public repositories the have installed the CodeEquity App for
+requests.  *This token works for most requests for all public repositories the have installed the CodeEquity App for
 GitHub.*
 
-If you want to create a CodeEquity project in a *private* repository, then you will need to supply your
-personal access token to CE Server via CE Flutter (instructions will follow).  Private repositories
-restrict access to outsiders, so CodeEquity's personal access token will not be authorized to
-operate on your repo.  Your personal access token will be stored on the AWS Backend, and only used
-for CodeEquity-related operations.  If you want to avoid this, consider making your repo public, or
-alternatively, transfer repo ownership to a different GitHub account from which sharing the personal
-access token with CodeEquity would be more acceptable.
+CodeEquity's personal access token does not have the authority to list the repos that a user contributes to.
+If you want CE Flutter to work for a CodeEquity project that you contribute to, but do not own (this is a
+likely scenario), then you will need to supply your personal access token to CE Server via CE Flutter (instructions
+will follow).
+
+Additionally, If you want to create a CodeEquity project in a *private* repository, then you will
+need to supply your personal access token.  Private repositories restrict access to outsiders, so
+CodeEquity's personal access token will not be authorized to operate on your repo.  Your personal
+access token will be stored on the AWS Backend, and only used for CodeEquity-related operations.
+Note that you can create multiple personal access tokens in Github, and limit which repos each one
+has access to.  So, you can create a personal access token that is shared for all of your CodeEquity
+projects, but grants no authority over your other, non-CodeEquity projects.
 
 Note that CE Server testing is carried out with two other testing accounts, to allow for a full
 collection of cross-repo and multi-user tests.  These accounts also store their personal access
@@ -917,12 +922,11 @@ The `deleted` action ignores non-PEQ issues.  Deleting a PEQ issue will cause Gi
 the issue is a PEQ issue residing in an **Accrued** column, the issue subhandler takes over.
 Accrued PEQ issues are never modified on the AWS Backend, and have a permanent, binding status in
 CodeEquity.  In GitHub, however, apps can be removed and repositories deleted, even those with
-accrued PEQ issues.  CodeEquity, therefore, allows deletion of accrued PEQ issues with a two-step
+accrued PEQ issues.  CodeEquity, therefore, allows deletion of accrued PEQ issues in GitHub with a two-step
 process.  The first delete on the GitHub site retains the PEQ issue (and card), but moves the card
 to the **Accrued** column in the Unclaimed project (both of which are created by the handler if they
 do not already exist).  If an accrued PEQ issue is deleted from the Unclaimed project, the issue
-subhandler will delete the PEQ issue from GitHub (actually, it will remove the card and the PEQ
-label, leaving a non-PEQ issue in place, which can then be finally deleted by hand).
+and the related card will be removed by GitHub, leaving the PEQ issue untouched on the AWS Backend.
 
 The `closed` and `reopened` actions are ignored for both non-PEQ issues and AllocPEQ issues.
 Closing a properly-formed PEQ issue will cause the handler to move the associated card into the **Pending PEQ
@@ -1008,7 +1012,7 @@ handler will recognize this as shorthand for PEQ issue creation.  The handler wi
 the PEQ label, create an issue for that card with the new label, and rebuild the card to point at
 the new issue.
 
-If the user instead created a PEQ issue in GitHub, GitHub initially prevents the assignment of the
+When a user instead creates a PEQ issue in the `New issue` interface in GitHub, GitHub will initially prevent the assignment of the
 issue to a column in a project.  The user must first submit the issue, wait for a bit, then click on
 `triage` in the `Projects` sidebar to assign the issue to a column (i.e. to tell GitHub to create a
 card in the selected project column).  Before that action is taken, the handler must take action to
@@ -1017,6 +1021,18 @@ CodeEquity projects.  To avoid this problem, immediately after the user submits 
 handler will tell GitHub to create a card pointed at the PEQ issue, and place it in the
 **Unclaimed** column of the Unclaimed project.  Once the user does `triage` on the PEQ issue,
 the handler will remove the card that was created in **Unclaimed**.
+
+During `triage`, GitHub allows a user to choose one or more project and column locations within which
+to create a card.  If
+the user chooses, say, to create two cards during `triage`, the handler will take the following actions
+to enforce the 1:1 mapping rule.  First, the handler will create a second PEQ issue identical to the first, 
+except that the name will have a random alpha-numeric tag at the end.  Second, the handler will reduce the 
+PEQ value for both PEQ issues to evenly split the original value.  Finally the handler will tie the first 
+card to the first PEQ issue, and the second card to the second PEQ issue.  For example, before `triage`,
+XXX image XXX original PEQ: name: "add docs" value: 10,000, location: unclaimed:unclaimed.  After `triage` 
+wherein the user selected locations A:B and A:C, 
+the handler will resolve the 1:1 mapping constraint by creating: original PEQ: name "add docs" value:5,000 location: A:B; 
+new PEQ: name "add docs l3khj45kjhasdkjg", value: 5,000 location: A:C.
 
 The `converted` action notification is only generated with a non-PEQ issue, and so is ignored.
 
@@ -1071,8 +1087,7 @@ the card moved out, the handler will move the card back to **Accrued**.
 
 ##### `moved` Allocation PEQs are not useful in some columns.
 An ***AllocPEQ*** label is used to indicate some amount of as-of-yet unplanned work to be carried
-out in a given area.  
-CodeEquity's reserved and suggested project columns, namely: **Planned**, **In Progress**, **Pending
+out in a given area.  CodeEquity's reserved and suggested project columns, namely: **Planned**, **In Progress**, **Pending
 PEQ Approval** and **Accrued** are meant to be used specifically for individual tasks that have
 already been broken down.  If an allocation PEQ is moved to one of these columns, the handler will
 move it back.

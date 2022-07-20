@@ -84,8 +84,8 @@ class AppState {
    final BUTTON_COLOR           = Color(0xff01A0C7);  // XXX
    final BACKGROUND             = Colors.grey[50];    // XXX
 
-   final String ALLOC_USER      = "ilkjdiabaer alloc";   // for use in saving allocations for detail pages
-   final String UNCLAIM_USER    = "ksd98glkjwa unclaim"; // for use in saving unclaimed for detail pages
+   final String ALLOC_USER      = "ilkjdiabaer alloc";    // for use in saving allocations for detail pages
+   final String UNASSIGN_USER   = "ksd98glkjwa unassign"; // for use in saving unassigned for detail pages
    
    initAppData() {
       loaded = false;

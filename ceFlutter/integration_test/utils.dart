@@ -224,7 +224,7 @@ Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
    expect( find.text( 'Planned' ),    findsNothing );
    expect( find.text( 'Pending' ),    findsNothing );
    expect( find.text( 'Accrued' ),    findsNothing );
-   expect( find.text( 'Remaining' ),  findsNothing );
+   expect( find.text( 'Surplus' ),    findsNothing );
    
    return true;
 }

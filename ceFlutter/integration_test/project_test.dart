@@ -102,7 +102,7 @@ Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false 
    expect( find.text('Allocation'), findsOneWidget );
    expect( find.text('Planned'), findsOneWidget );
    expect( find.text('Pending'), findsOneWidget );
-   expect( find.text('Remaining'), findsOneWidget );
+   expect( find.text('Surplus'), findsOneWidget );
 
    // if called with some summaryframes expanded, this could or would fail
    if( !ignoreAccrued ) {
@@ -170,7 +170,7 @@ Future<bool> ariSummaryFraming( WidgetTester tester ) async {
    expect( find.text( 'Planned' ),    findsOneWidget );
    expect( find.text( 'Pending' ),    findsOneWidget );
    expect( find.text( 'Accrued' ),    findsOneWidget );
-   expect( find.text( 'Remaining' ),  findsOneWidget );
+   expect( find.text( 'Surplus' ),  findsOneWidget );
    return true;
 }
 
@@ -527,14 +527,14 @@ Map<String, dynamic> getPact( detailName ) {
 }
 
 
-Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName ) async {
+Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( detailName );
 
-   expect( pmap['action'],                   "labeled" );
+   expect( pmap['action'],                   action );
    expect( pmap['repository']['full_name'],  repo );
    expect( pmap['issue']['title'],           issueTitle );
    expect( pmap['label']['name'],            peqLabel );
@@ -767,6 +767,45 @@ Future<bool> validateAlloc23( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> validateUnAlloc24( WidgetTester tester ) async {
+   await expandAllocs( tester, 1, 1 );
+   await checkOffsetAlloc( tester, 4, "Unallocated 24" );
+
+   await expandLeaf( tester, 4, "Unallocated 24" );
+   await pumpSettle( tester, 1 );
+
+   String repo   = "ariCETester/ceFlutterTester";
+
+   String issue  = "Unallocated";
+   expect( find.byKey( Key( issue ) ), findsOneWidget );
+   expect( await validateRawAdd( tester, repo, issue, "3000000 AllocPEQ",  "00 confirm add", action:"created" ), true );
+   
+   expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 1, "" );
+   
+   return true;
+}
+
+Future<bool> validateUnAssign31( WidgetTester tester ) async {
+   await expandAllocs( tester, 3, 4 );
+   await checkOffsetAlloc( tester, 7, "Unassigned 31" );
+
+   await expandLeaf( tester, 7, "Unassigned 31" );
+   await pumpSettle( tester, 1 );
+
+   String repo   = "ariCETester/ceFlutterTester";
+
+   // String issue  = "Unallocated";
+   // expect( find.byKey( Key( issue ) ), findsOneWidget );
+   // expect( await validateRawAdd( tester, repo, issue, "3000000 AllocPEQ",  "00 confirm add", action:"created" ), true );
+   
+   expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 4, "" );
+   await toggleTableEntry( tester, 3, "" );
+   
+   return true;
+}
+
 Future<bool> ariSummaryContent( WidgetTester tester ) async {
    final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
@@ -986,8 +1025,9 @@ void main() {
          expect( await validateCE10( tester ), true );
          expect( await validateAri15( tester ), true );
          expect( await validateAlloc23( tester ), true );
+         expect( await validateUnAlloc24( tester ), true );
+         //expect( await validateUnAssign31( tester ), true );
          
-         // unalloc
          // unclaimed:unclaimed:unassigned
          // unclaimed:accr:ari
          // newprojcol:newplanname:unassigned

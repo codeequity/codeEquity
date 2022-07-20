@@ -551,13 +551,22 @@ Future<void> updateUserPActions( peqs, container, context ) async {
 Future<void> updateUserPeqs( container, context ) async {
    final appState  = container.state;
 
-   String uname = appState.selectedUser == appState.ALLOC_USER ? "" : appState.selectedUser;
+   // SelectedUser will be adjusted if user clicks on an alloc (summaryFrame)
+   String uname = appState.selectedUser;
+   if( uname == appState.ALLOC_USER || uname == appState.UNASSIGN_USER ) { uname = ""; }
+   
    String rname = appState.selectedRepo;
    print( "Building detail data for " + uname + ":" + rname );
 
-   appState.userPeqs[appState.selectedUser] = await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname" }' );
+   if( appState.selectedUser == appState.ALLOC_USER ) {
+      appState.userPeqs[appState.selectedUser] =
+         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname", "isAlloc": "true" }' );
+   }
+   else {
+      appState.userPeqs[appState.selectedUser] =
+         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "GHUserName": "$uname", "GHRepo": "$rname" }' );
+   }
 }
-
 
 // XXX Consider splitting utils_load to utils_async and githubUtils
 //     Attempt to limit access patterns as:  dyanmo from dart/user, and github from js/ceServer
