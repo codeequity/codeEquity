@@ -419,15 +419,22 @@ async function ingestPActs( authData, issueData ) {
 }
 
 
-
+// XXX XXX XXX
 async function makeProject(authData, td, name, body ) {
+    /*
     let pid = await authData.ic.projects.createForRepo({ owner: td.GHOwner, repo: td.GHRepo, name: name, body: body })
 	.then((project) => { return  project.data.id; })
 	.catch( e => { console.log( authData.who, "Create project failed.", e ); });
-
-    console.log( "MakeProject:", name, pid );
+    */
+    // ghSafe.createProjectGQL( authData.pat, name, body );
+    
+    // console.log( "MakeProject:", name, pid );
+    console.log( "MakeProject:", name );
     await utils.sleep( GH_DELAY );
-    return pid;
+    // return pid;
+
+    //return "PRO_kwHOBP2eE84A3tAp";
+    return 14;
 }
 
 async function remProject( authData, projId ) {

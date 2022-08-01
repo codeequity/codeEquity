@@ -545,17 +545,22 @@ Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle
    return true;
 }
 
-Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
+// Allocs created from makeAllocCard, i.e. create card with peq note.  Raw request body is for cards, CE Server then converts to peq issue.
+// request body is not yet situated
+Future<bool> validateRawAddCard( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( detailName );
 
-   expect( pmap['action'],                   "assigned" );
+   expect( pmap['action'],                   action );
    expect( pmap['repository']['full_name'],  repo );
-   expect( pmap['issue']['title'],           issueTitle );
-   expect( pmap['assignee']['login'],        assignee );
+
+   expect( pmap.containsKey( "project_card" ), true );
+   expect( pmap["project_card"].containsKey( "content_url" ),        false );
+   expect( pmap["project_card"].containsKey( "note" ),               true );
+   expect( pmap["project_card"]["note"].contains( peqLabel ),        true );
 
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
@@ -577,6 +582,24 @@ Future<bool> validateRawSituate( WidgetTester tester, String repo, String detail
    expect( pmap["project_card"].containsKey( "content_url" ),        true );
    expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
    expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                   "assigned" );
+   expect( pmap['repository']['full_name'],  repo );
+   expect( pmap['issue']['title'],           issueTitle );
+   expect( pmap['assignee']['login'],        assignee );
 
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
@@ -778,7 +801,7 @@ Future<bool> validateUnAlloc24( WidgetTester tester ) async {
 
    String issue  = "Unallocated";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
-   expect( await validateRawAdd( tester, repo, issue, "3000000 AllocPEQ",  "00 confirm add", action:"created" ), true );
+   expect( await validateRawAddCard( tester, repo, issue, "<allocation, PEQ: 3,000,000>",  "00 confirm add", action:"created" ), true );
    
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 1, "" );
@@ -1026,7 +1049,7 @@ void main() {
          expect( await validateAri15( tester ), true );
          expect( await validateAlloc23( tester ), true );
          expect( await validateUnAlloc24( tester ), true );
-         //expect( await validateUnAssign31( tester ), true );
+         expect( await validateUnAssign31( tester ), true );
          
          // unclaimed:unclaimed:unassigned
          // unclaimed:accr:ari

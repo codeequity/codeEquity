@@ -42,6 +42,10 @@ var githubSafe = {
 	return createIssue( authData, owner, repo, title, labels, allocation );
     },
 
+    createProjectGQL: function( PAT, name, body ) {
+	return createProjectGQL( PAT, name, body );
+    },
+
     createProjectCard: function( authData, columnId, issueId, justId ) {
 	return createProjectCard( authData, columnId, issueId, justId );
     },
@@ -1100,6 +1104,37 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
 	.catch( e => errorHandler( "transferIssueGQL", e, transferIssueGQL, authData, issueId, toRepoId ));
 
     console.log( "TI_GQL:", ret );
+}
+
+// XXX XXX XXX
+// For testutils.
+// This creates a project, but can not be seen from repo project area.
+async function createProjectGQL( PAT, name, body ) {
+    let projectsBeta = false;
+    let query        = "";
+    let variables    = {};
+
+    if( projectsBeta ) {
+	query = `mutation ($ownerId: ID!, $name: String!) { createProjectV2( input:{ title: $name, ownerId: $ownerId}) { projectV2{id, number}}}`;
+	variables = {"ownerId": "MDQ6VXNlcjgzNzI5OTM5", "name": name };
+    }
+    else {
+	query = `mutation ($ownerId: ID!, $name: String!, $repos:[ID!]) { createProject( input:{ name: $name, ownerId: $ownerId, repositoryIds :$repos }) { project{id, number}}}`;
+	variables = {"ownerId": "MDQ6VXNlcjgzNzI5OTM5", "name": name, "repos": ["R_kgDOHaE3RA"] };
+    }
+
+    query = JSON.stringify({ query, variables });
+
+    let ret = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	.catch( e => errorHandler( "createProjectGQL", e, createProjectGQL, PAT, name, body ));
+
+    console.log( "MP_GQL:", ret );
+    if( projectsBeta ) {
+	console.log( "MP_GQL:", ret.data.createProjectV2.projectV2);	
+    }
+    else 
+    {
+    }
 }
 
 

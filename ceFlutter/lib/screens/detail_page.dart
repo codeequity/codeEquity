@@ -172,6 +172,7 @@ class _CEDetailState extends State<CEDetailPage> {
       // NOTE: allocations, unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.  XXX
       await updateUserPeqs( container, context );
 
+      // XXX update for unassign
       // If ingest is not up to date, this filter breaks
       // if alloc, alloc name is made part of the category list, and is needed to distinguish allocs
       if( appState.selectedUser == appState.ALLOC_USER ) {
