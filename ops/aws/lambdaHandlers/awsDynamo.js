@@ -70,7 +70,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "CheckSetGHPop")  { resultPromise = checkSetGHPop( rb.GHRepo, rb.Set ); }
-    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
+    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo, rb.isAlloc ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
     else if( endPoint == "GetPActsById")   { resultPromise = getPActsById( rb.GHRepo, rb.PeqIds ); }
@@ -683,19 +683,28 @@ async function putPAct( newPAction ) {
 // XXX Slow
 // Get all for uid, app can figure out whether or not to sort by associated ghUser
 // NOTE: ignore locks on read
-async function getPeq( uid, ghUser, ghRepo ) {
-    const params = { TableName: 'CEPEQs', Limit: 99, };
+async function getPeq( uid, ghUser, ghRepo, isAlloc ) {
+    if( isAlloc == "true" ) { isAlloc = true; }
+    else                    { isAlloc = false; }
 
+    console.log( "isAlloc?", isAlloc.toString() );
+    const params = { TableName: 'CEPEQs', Limit: 99, };
+    
     if( uid != "" ) {
         params.FilterExpression = 'contains( CEHolderId, :ceid) AND GHRepo = :ghrepo AND Active = :true';
         params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo, ":true": "true" };
+    }
+    else if( ghUser == "" ) {  // allocation, or unassigned
+	if( isAlloc ) { params.FilterExpression = 'size( GHHolderId ) < :empty AND PeqType = :alloc AND GHRepo = :ghrepo AND Active = :true'; }
+	else {          params.FilterExpression = 'size( GHHolderId ) < :empty AND PeqType <> :alloc AND GHRepo = :ghrepo AND Active = :true'; }
+        params.ExpressionAttributeValues = { ":empty": 5, ":alloc": "allocation", ":ghrepo": ghRepo, ":true": "true" };
     }
     else {
         params.FilterExpression = 'contains( GHHolderId, :id) AND GHRepo = :ghrepo AND Active = :true';
         params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo, ":true": "true" };
     }
 
-    // console.log( "Looking for peqs", params);
+    console.log( "Looking for peqs", params);
     let peqPromise = paginatedScan( params );
     return peqPromise.then((peqs) => {
 	console.log( "Found peqs ", peqs );

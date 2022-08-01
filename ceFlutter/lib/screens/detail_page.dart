@@ -114,8 +114,6 @@ class _CEDetailState extends State<CEDetailPage> {
          for( final peq in selectedPeqs ) {
             pactList.add( _makePeq( peq ) );
 
-            peqPAct[peq.id].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
-
             var pactCount = 0;
             for( final pact in peqPAct[peq.id] ) {
                print( "PL added " + pact.id );
@@ -171,11 +169,19 @@ class _CEDetailState extends State<CEDetailPage> {
       print( "Rebuild PActions" );
 
       // Get all peqs for user.  Then, pare the list down to match selection
+      // NOTE: allocations, unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.  XXX
       await updateUserPeqs( container, context );
 
+      // XXX update for unassign
       // If ingest is not up to date, this filter breaks
-      List<String> cat  = category.sublist(0, category.length - 1 );
-      selectedPeqs      = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub, cat )).toList();
+      // if alloc, alloc name is made part of the category list, and is needed to distinguish allocs
+      if( appState.selectedUser == appState.ALLOC_USER ) {
+         selectedPeqs = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub + [p.ghIssueTitle], category )).toList();
+      }
+      else {
+         List<String> cat = category.sublist(0, category.length - 1 );
+         selectedPeqs = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub, cat )).toList();
+      }
       List<String> peqs = selectedPeqs.map((peq) => peq.id ).toList();
       
       await updateUserPActions( peqs, container, context );      
@@ -187,6 +193,12 @@ class _CEDetailState extends State<CEDetailPage> {
          if( peqPAct[peqId] == null ) { peqPAct[peqId] = [ pact ]; }
          else                         { peqPAct[peqId].add( pact ); }
       }
+
+      // Sort PAct list oldest first. Sort Peq list newest first.
+      for( final peq in peqs ) {
+         peqPAct[peq].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
+      }
+      selectedPeqs.sort((a,b) => peqPAct[b.id].last.timeStamp.compareTo( peqPAct[a.id].last.timeStamp ));
       
       appState.userPActUpdate = false;
       setState(() => userPActUpdated = true );

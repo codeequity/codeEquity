@@ -171,14 +171,14 @@ class Node extends StatelessWidget implements Tree {
      String plan    = addCommas( planInt );
      String pending = addCommas( pendInt );
      String accrue  = addCommas( accrInt );
-     String unalloc = unallocInt == 0 ? "" : addCommas( unallocInt );
+     String unalloc = unallocInt == 0 || currentDepth > 2 ? "" : addCommas( unallocInt );
         
      if( header ) {
         alloc   = "Allocation";
         plan    = "Planned";
         pending = "Pending";
         accrue  = "Accrued";
-        unalloc = "Remaining";
+        unalloc = "Surplus";
      }
 
      // Path is known here.  Make _tileExpanded consistent with path state, in case we have paged back into an active summary page

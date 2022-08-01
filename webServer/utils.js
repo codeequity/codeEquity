@@ -282,7 +282,7 @@ async function updatePEQPSub( authData, peqId, projSub ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
-// Note.   This must be guarded, at a minimum, not ACCR
+// XXX Note.   This must be guarded, at a minimum, not ACCR
 async function updatePEQVal( authData, peqId, peqVal ) {
     console.log( authData.who, "Updating PEQ value after label split", peqVal );
 

@@ -102,7 +102,7 @@ Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false 
    expect( find.text('Allocation'), findsOneWidget );
    expect( find.text('Planned'), findsOneWidget );
    expect( find.text('Pending'), findsOneWidget );
-   expect( find.text('Remaining'), findsOneWidget );
+   expect( find.text('Surplus'), findsOneWidget );
 
    // if called with some summaryframes expanded, this could or would fail
    if( !ignoreAccrued ) {
@@ -170,7 +170,7 @@ Future<bool> ariSummaryFraming( WidgetTester tester ) async {
    expect( find.text( 'Planned' ),    findsOneWidget );
    expect( find.text( 'Pending' ),    findsOneWidget );
    expect( find.text( 'Accrued' ),    findsOneWidget );
-   expect( find.text( 'Remaining' ),  findsOneWidget );
+   expect( find.text( 'Surplus' ),  findsOneWidget );
    return true;
 }
 
@@ -527,14 +527,14 @@ Map<String, dynamic> getPact( detailName ) {
 }
 
 
-Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName ) async {
+Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( detailName );
 
-   expect( pmap['action'],                   "labeled" );
+   expect( pmap['action'],                   action );
    expect( pmap['repository']['full_name'],  repo );
    expect( pmap['issue']['title'],           issueTitle );
    expect( pmap['label']['name'],            peqLabel );
@@ -545,17 +545,22 @@ Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle
    return true;
 }
 
-Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
+// Allocs created from makeAllocCard, i.e. create card with peq note.  Raw request body is for cards, CE Server then converts to peq issue.
+// request body is not yet situated
+Future<bool> validateRawAddCard( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( detailName );
 
-   expect( pmap['action'],                   "assigned" );
+   expect( pmap['action'],                   action );
    expect( pmap['repository']['full_name'],  repo );
-   expect( pmap['issue']['title'],           issueTitle );
-   expect( pmap['assignee']['login'],        assignee );
+
+   expect( pmap.containsKey( "project_card" ), true );
+   expect( pmap["project_card"].containsKey( "content_url" ),        false );
+   expect( pmap["project_card"].containsKey( "note" ),               true );
+   expect( pmap["project_card"]["note"].contains( peqLabel ),        true );
 
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
@@ -577,6 +582,24 @@ Future<bool> validateRawSituate( WidgetTester tester, String repo, String detail
    expect( pmap["project_card"].containsKey( "content_url" ),        true );
    expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
    expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                   "assigned" );
+   expect( pmap['repository']['full_name'],  repo );
+   expect( pmap['issue']['title'],           issueTitle );
+   expect( pmap['assignee']['login'],        assignee );
 
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
@@ -709,33 +732,100 @@ Future<bool> validateAri15( WidgetTester tester ) async {
    await pumpSettle( tester, 1 );
 
    String repo   = "ariCETester/ceFlutterTester";
-   
-   String issue  = "IR Accrued";
+
+   // Most recent first
+   String issue = "Close Open test"; 
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "00 confirm add" ),      true );
-   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "01 confirm change" ),   true );   
-   expect( await validateRawSituate(    tester, repo,                       "02 confirm relocate" ), true );
+   expect( await validateRawSituate(    tester, repo,                       "01 confirm relocate" ), true );   
+   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "02 confirm change" ),   true );
    expect( await validateProposeAccrue( tester, repo, issue,                "03 propose accrue" ),   true );
-   expect( await validateConfirmAccrue( tester, repo,                       "04 confirm accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,                "04 reject accrue" ),    true );   
+   expect( await validateRawMove(       tester, repo,                       "05 confirm relocate" ), true );   
+   expect( await validateProposeAccrue( tester, repo, issue,                "06 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,                "07 reject accrue" ),    true );   
+   expect( await validateProposeAccrue( tester, repo, issue,                "08 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                       "09 confirm accrue" ),   true );
 
-   issue = "Close Open test"; 
+   issue  = "IR Accrued";
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "10 confirm add" ),      true );
-   expect( await validateRawSituate(    tester, repo,                       "11 confirm relocate" ), true );   
-   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "12 confirm change" ),   true );
+   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "11 confirm change" ),   true );   
+   expect( await validateRawSituate(    tester, repo,                       "12 confirm relocate" ), true );
    expect( await validateProposeAccrue( tester, repo, issue,                "13 propose accrue" ),   true );
-   expect( await validateRejectAccrue(  tester, repo, issue,                "14 reject accrue" ),    true );   
-   expect( await validateRawMove(       tester, repo,                       "15 confirm relocate" ), true );   
-   expect( await validateProposeAccrue( tester, repo, issue,                "16 propose accrue" ),   true );
-   expect( await validateRejectAccrue(  tester, repo, issue,                "17 reject accrue" ),    true );   
-   expect( await validateProposeAccrue( tester, repo, issue,                "18 propose accrue" ),   true );
-   expect( await validateConfirmAccrue( tester, repo,                       "19 confirm accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                       "14 confirm accrue" ),   true );
+
    
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 6, "" );
    await toggleTableEntry( tester, 3, "" );
    await toggleTableEntry( tester, 1, "" );
 
+   return true;
+}
+
+// Note: assignments, failed moves, etc. are ignored for summary.  SummaryDetails only record valid PEQ-related actions.
+Future<bool> validateAlloc23( WidgetTester tester ) async {
+   await expandAllocs( tester, 1, 1 );
+   await expandAllocs( tester, 3, 3 );
+   await expandAllocs( tester, 9, 9 );
+   await checkOffsetAlloc( tester, 10, "Component Alloc 23" );
+
+   await expandLeaf( tester, 10, "Component Alloc 23" );
+   await pumpSettle( tester, 1 );
+
+   String repo   = "ariCETester/ceFlutterTester";
+
+   String issue  = "Component Alloc";
+   expect( find.byKey( Key( issue ) ), findsOneWidget );
+   expect( await validateRawAdd(     tester, repo, issue, "1000000 AllocPEQ",  "00 confirm add" ),      true );
+   expect( await validateRawSituate( tester, repo,                             "01 confirm relocate" ), true );
+   expect( await validateRawMove(    tester, repo,                             "02 confirm relocate" ), true );
+   
+   expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 9, "" );
+   await toggleTableEntry( tester, 3, "" );
+   await toggleTableEntry( tester, 1, "" );
+   
+   return true;
+}
+
+Future<bool> validateUnAlloc24( WidgetTester tester ) async {
+   await expandAllocs( tester, 1, 1 );
+   await checkOffsetAlloc( tester, 4, "Unallocated 24" );
+
+   await expandLeaf( tester, 4, "Unallocated 24" );
+   await pumpSettle( tester, 1 );
+
+   String repo   = "ariCETester/ceFlutterTester";
+
+   String issue  = "Unallocated";
+   expect( find.byKey( Key( issue ) ), findsOneWidget );
+   expect( await validateRawAddCard( tester, repo, issue, "<allocation, PEQ: 3,000,000>",  "00 confirm add", action:"created" ), true );
+   
+   expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 1, "" );
+   
+   return true;
+}
+
+Future<bool> validateUnAssign31( WidgetTester tester ) async {
+   await expandAllocs( tester, 3, 4 );
+   await checkOffsetAlloc( tester, 7, "Unassigned 31" );
+
+   await expandLeaf( tester, 7, "Unassigned 31" );
+   await pumpSettle( tester, 1 );
+
+   String repo   = "ariCETester/ceFlutterTester";
+
+   // String issue  = "Unallocated";
+   // expect( find.byKey( Key( issue ) ), findsOneWidget );
+   // expect( await validateRawAdd( tester, repo, issue, "3000000 AllocPEQ",  "00 confirm add", action:"created" ), true );
+   
+   expect( await backToSummary( tester ), true );
+   await toggleTableEntry( tester, 4, "" );
+   await toggleTableEntry( tester, 3, "" );
+   
    return true;
 }
 
@@ -957,8 +1047,10 @@ void main() {
 
          expect( await validateCE10( tester ), true );
          expect( await validateAri15( tester ), true );
-         // gh:stripes:componentAlloc
-         // unalloc
+         expect( await validateAlloc23( tester ), true );
+         expect( await validateUnAlloc24( tester ), true );
+         expect( await validateUnAssign31( tester ), true );
+         
          // unclaimed:unclaimed:unassigned
          // unclaimed:accr:ari
          // newprojcol:newplanname:unassigned
