@@ -261,8 +261,8 @@ class Linkage {
     }
 
     getLocs( authData, query ) {
-	// console.log( authData.who, "get Locs", query );
-	// this.showLocs();
+	console.log( authData.who, "get Locs", query );
+	this.showLocs();
 	    
 	if( typeof query.repo === 'undefined' ) {
 	    console.log( "Error.  Repo was not defined in Locs query." );
