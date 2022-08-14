@@ -4,6 +4,10 @@ const auth = require( "../auth");
 const utils = require( "../utils");
 var config  = require('../config');
 
+var ghUtils = require('../ghUtils');
+var gh      = ghUtils.githubUtils;
+var ghSafe  = ghUtils.githubSafe;
+
 var links     = require('../components/linkage.js');
 var circBuff  = require('../components/circBuff.js');
 
@@ -41,20 +45,24 @@ async function runTests() {
     authData.api = utils.getAPIPath() + "/find";
     authData.cog = await awsAuth.getCogIDToken();
     authData.pat = await auth.getPAT( td.GHOwner );
+    td.GHOwnerId = await ghSafe.getOwnerIdGQL( authData.pat, td.GHOwner );
+    td.GHRepoId  = await ghSafe.getRepoIdGQL( authData.pat, td.GHOwner, td.GHRepo );
 
     // CROSS_TEST_REPO auth
     let tdX = new testData.TestData();
     tdX.GHOwner    = config.CROSS_TEST_OWNER;
     tdX.GHRepo     = config.CROSS_TEST_REPO;
     tdX.GHFullName = tdX.GHOwner + "/" + tdX.GHRepo;
-    
+
     let authDataX = {};
     authDataX.ic  = await auth.getInstallationClient( tdX.GHOwner, tdX.GHRepo, tdX.GHOwner );
     authDataX.who = authData.who;
     authDataX.api = authData.api;
     authDataX.cog = authData.cog;
     authDataX.pat = await auth.getPAT( tdX.GHOwner );
-
+    tdX.GHOwnerId = await ghSafe.getOwnerIdGQL( authDataX.pat, tdX.GHOwner );
+    tdX.GHRepoId  = await ghSafe.getRepoIdGQL( authDataX.pat, tdX.GHOwner, tdX.GHRepo );
+    
     // MULTI_TEST_REPO auth
     let tdM = new testData.TestData();
     tdM.GHOwner    = config.MULTI_TEST_OWNER;
@@ -67,11 +75,15 @@ async function runTests() {
     authDataM.api = authData.api;
     authDataM.cog = authData.cog;
     authDataM.pat = await auth.getPAT( tdM.GHOwner );
-
+    tdM.GHOwnerId = await ghSafe.getOwnerIdGQL( authDataM.pat, tdM.GHOwner );
+    tdM.GHRepoId  = await ghSafe.getRepoIdGQL( authDataM.pat, tdM.GHOwner, tdM.GHRepo );
 
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up
     const wakeyPID = await tu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
+    // StayPut project to keep classics tab in play in GH, for now.
+    // const aPID = await tu.makeProject( authData, td, "ceServer stayPut XYZZYXXK837598", "" );
+
     const pacts    = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
     const mrp = pacts != -1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
@@ -81,8 +93,7 @@ async function runTests() {
     }
 
     // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    // XXX XXX XXX
-    // let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, wakeyPID, td.softContTitle );
+    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, wakeyPID, td.softContTitle );
     tu.remProject( authData, wakeyPID );
     assert( false );
 

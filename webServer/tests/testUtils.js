@@ -419,24 +419,22 @@ async function ingestPActs( authData, issueData ) {
 }
 
 
-// XXX XXX XXX
 async function makeProject(authData, td, name, body ) {
+
     /*
+    // Old rest interface for classic projects no longer works, permissions.  GQL works.
     let pid = await authData.ic.projects.createForRepo({ owner: td.GHOwner, repo: td.GHRepo, name: name, body: body })
 	.then((project) => { return  project.data.id; })
 	.catch( e => { console.log( authData.who, "Create project failed.", e ); });
     */
-    // ghSafe.createProjectGQL( authData.pat, name, body );
+    let pid = await ghSafe.createProjectGQL( td.GHOwnerId, authData.pat, td.GHRepo, td.GHRepoId, name, body, false );
     
-    // console.log( "MakeProject:", name, pid );
-    console.log( "MakeProject:", name );
+    console.log( "MakeProject:", name, pid );
     await utils.sleep( GH_DELAY );
-    // return pid;
-
-    //return "PRO_kwHOBP2eE84A3tAp";
-    return 14;
+    return pid;
 }
 
+// XXX need working gql delete project.
 async function remProject( authData, projId ) {
     await ( authData.ic.projects.delete( {project_id: projId}) )
 	.catch( e => { console.log( authData.who, "Problem in delete Project", e ); });

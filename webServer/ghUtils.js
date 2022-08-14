@@ -42,10 +42,18 @@ var githubSafe = {
 	return createIssue( authData, owner, repo, title, labels, allocation );
     },
 
-    createProjectGQL: function( PAT, name, body ) {
-	return createProjectGQL( PAT, name, body );
+    createProjectGQL: function( ownerId, PAT, repo, repoId, name, body, beta ) {
+	return createProjectGQL( ownerId, PAT, repo, repoId, name, body, beta );
     },
 
+    getOwnerIdGQL: function( PAT, owner ) {
+	return getOwnerIdGQL( PAT, owner );
+    },
+
+    getRepoIdGQL: function( PAT, owner, repo ) {
+	return getRepoIdGQL( PAT, owner, repo );
+    },
+    
     createProjectCard: function( authData, columnId, issueId, justId ) {
 	return createProjectCard( authData, columnId, issueId, justId );
     },
@@ -1106,37 +1114,73 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
     console.log( "TI_GQL:", ret );
 }
 
-// XXX XXX XXX
+
 // For testutils.
-// This creates a project, but can not be seen from repo project area.
-async function createProjectGQL( PAT, name, body ) {
-    let projectsBeta = false;
+async function createProjectGQL( ownerId, PAT, repo, repoId, name, body, beta ) {
     let query        = "";
     let variables    = {};
 
-    if( projectsBeta ) {
+    if( beta ) {
 	query = `mutation ($ownerId: ID!, $name: String!) { createProjectV2( input:{ title: $name, ownerId: $ownerId}) { projectV2{id, number}}}`;
-	variables = {"ownerId": "MDQ6VXNlcjgzNzI5OTM5", "name": name };
+	variables = {"ownerId": ownerId, "name": name };
     }
     else {
 	query = `mutation ($ownerId: ID!, $name: String!, $repos:[ID!]) { createProject( input:{ name: $name, ownerId: $ownerId, repositoryIds :$repos }) { project{id, number}}}`;
-	variables = {"ownerId": "MDQ6VXNlcjgzNzI5OTM5", "name": name, "repos": ["R_kgDOHaE3RA"] };
+	variables = {"ownerId": ownerId, "name": name, "repos": [repoId] };
     }
 
     query = JSON.stringify({ query, variables });
 
-    let ret = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "createProjectGQL", e, createProjectGQL, PAT, name, body ));
+    const ret = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	  .catch( e => errorHandler( "createProjectGQL", e, createProjectGQL, ownerId, PAT, repo, repoId, name, body, beta ));
 
-    console.log( "MP_GQL:", ret );
-    if( projectsBeta ) {
+    let retId = -1;
+    if( beta ) {
 	console.log( "MP_GQL:", ret.data.createProjectV2.projectV2);	
+	if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'createProjectV2' ) && ret.data.createProjectV2.hasOwnProperty( 'projectV2' ) ) {
+	    retId = ret.data.createProjectV2.projectV2.id; 
+	}
     }
     else 
     {
+	console.log( "MP_GQL:", ret.data.createProject.project );
+	if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'createProject' ) && ret.data.createProject.hasOwnProperty( 'project' ) ) {
+	    retId = ret.data.createProject.project.id; 
+	}
     }
+    
+    return retId;
 }
 
+async function getOwnerIdGQL( PAT, owner ) {
+    let query       = `query getOwner($owner: String!) { user(login: $owner) { id } }`;
+    const variables = {"owner": owner};
+
+    query = JSON.stringify({ query, variables });
+
+    const ret = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	  .catch( e => errorHandler( "getOwnerIdGQL", e, getOwnerIdGQL, PAT, owner ));
+
+    // console.log( "owner_GQL:", ret );
+    let retId = -1;
+    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'user' ) ) { retId = ret.data.user.id; }
+    return retId;
+}
+
+async function getRepoIdGQL( PAT, owner, repo ) {
+    let query       = `query getRepo($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) { id } }`;
+    const variables = {"owner": owner, "repo": repo};
+
+    query = JSON.stringify({ query, variables });
+
+    const ret = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+	  .catch( e => errorHandler( "getRepoIdGQL", e, getRepoIdGQL, PAT, owner, repo ));
+
+    console.log( "repo_GQL:", ret );
+    let retId = -1;
+    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
+    return retId;
+}
 
 
 // Add linkage data for all carded issues in a project.

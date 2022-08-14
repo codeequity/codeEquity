@@ -4,6 +4,8 @@ class TestData {
     constructor( ) {
 	this.GHRepo       = config.EMPTY;
 	this.GHOwner      = config.EMPTY;
+	this.GHOwnerId    = config.EMPTY; 
+	this.GHRepoId     = config.EMPTY; 
 	this.GHFullName   = config.EMPTY;
 
 	// A Recommended CE structure

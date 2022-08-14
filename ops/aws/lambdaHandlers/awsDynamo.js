@@ -1193,6 +1193,7 @@ async function updatePEQActions( peqa, ceUID ) {
     return uPromise.then(() => true );
 }
 
+// Note: newGHAcct.id is NOT the same as the GH ownerId
 async function putGHA( newGHAcct, update, pat ) {
     if( update == "true" ) {
 	const params = {
