@@ -12,11 +12,19 @@ const CESERVER_CONFIG_LOC = '../ops/aws/auth/ceServerConfig.json';
 
 // Default path locations:  CodeEquity app
 const CREDS_PATH          = '../ops/github/auth/ghAppCredentials';
-const SERVER_PAT_PATH     = "../ops/github/auth/ghCodeEquityPAT";
+const SERVER_PAT_PATH     = "../ops/github/auth/ghBuilderPAT";
 const SERVER_NOREPO       = "CEServer-Wide";
 
 const GQL_ENDPOINT        = 'https://api.github.com/graphql';
 const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
+
+// Project Management Source
+const PMS_GHC = "GH Classic";   // Github's 'classic' projects that are now largely deprecated
+const PMS_GH2 = "GH Version 2"; // Github's 'Projects Version 2' projects
+
+const PROJ_OPTIONS = [ PMS_GHC, PMS_GH2 ];
+const PROJ_SOURCE  = PROJ_OPTIONS[1];  // Which project management system is the notification source for this effort
+
 
 // For testing .. needs work
 const CREDS_TPATH       = "../ops/github/auth/ghAppTestCredentials";
@@ -139,6 +147,11 @@ exports.ADESC    = ADESC;
 exports.MAIN_PROJ = MAIN_PROJ;
 exports.EMPTY     = EMPTY;
 exports.UNCLAIMED = UNCLAIMED;
+
+exports.PMS_GHC      = PMS_GHC;
+exports.PMS_GH2      = PMS_GH2;
+exports.PROJ_OPTIONS = PROJ_OPTIONS;
+exports.PROJ_SOURCE  = PROJ_SOURCE;
 
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
 exports.COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;

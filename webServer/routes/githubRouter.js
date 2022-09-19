@@ -250,11 +250,13 @@ async function switcher( authData, ghLinks, pd, sender, event, action, tag, res,
 // Notifications from GH webhooks
 router.post('/:location?', async function (req, res) {
 
+    console.log( "XXX XXX XXX XXX" );
+    console.log( req.body, req.headers );
+
     // invisible, mostly
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, ceNotification, req.body, res ); }
 
     console.log( "" );
-    console.log( "XXX XXX XXX XXX" );
     let action   = req.body['action'];
     let event    = req.headers['x-github-event'];
 
