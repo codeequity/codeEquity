@@ -2,9 +2,9 @@ var express = require('express');
 var assert  = require('assert');
 
 const awsAuth = require( '../awsAuth' );
-const auth = require( "../auth");
-var utils = require('../utils');
-var config  = require('../config');
+const auth    = require( "../auth");
+var utils     = require( '../utils');
+var config    = require( '../config');
 
 const peqData = require( '../peqData' );
 var fifoQ     = require('../components/queue.js');
@@ -12,12 +12,15 @@ var links     = require('../components/linkage.js');
 var hist      = require('../components/histogram.js');
 var circBuff  = require('../components/circBuff.js');
 
-var issues    = require('./githubIssueHandler');
-var cards     = require('./githubCardHandler');
-var projects  = require('./githubProjectHandler');
-var columns   = require('./githubColumnHandler');
-var labels    = require('./githubLabelHandler');
 var testing   = require('./githubTestHandler');
+
+var issues    = config.PROJ_SOURCE == config.PMS_GHC ? require('./ghClassic/githubIssueHandler')   : null; 
+var cards     = config.PROJ_SOURCE == config.PMS_GHC ? require('./ghClassic/githubCardHandler')    : null; 
+var projects  = config.PROJ_SOURCE == config.PMS_GHC ? require('./ghClassic/githubProjectHandler') : null; 
+var columns   = config.PROJ_SOURCE == config.PMS_GHC ? require('./ghClassic/githubColumnHandler')  : null; 
+var labels    = config.PROJ_SOURCE == config.PMS_GHC ? require('./ghClassic/githubLabelHandler')   : null; 
+
+var items     = config.PROJ_SOURCE == config.PMS_GH2 ? require('./ghVersion2/githubPV2ItemHandler') : null; 
 
 // CE Job Queue  just fifoQ
 var ceJobs = {};
@@ -156,7 +159,7 @@ async function getNextJob( authData, pdOld, sender, res ) {
 	pd.GHOwner      = jobData.GHOwner;
 	pd.GHRepo       = jobData.GHRepo;
 	pd.reqBody      = jobData.ReqBody;
-	pd.GHFullName   = jobData.ReqBody['repository']['full_name'];
+	pd.GHFullName   = jobData.ReqBody.repository.full_name;
 	
 	// Need a new authData, else source for non-awaited actions is overwritten
 	let ic = {};
@@ -168,7 +171,11 @@ async function getNextJob( authData, pdOld, sender, res ) {
 
 	console.log( "\n\n", authData.who, "Got next job:", ic.who );
 
-	await switcher( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res, jobData.DelayCount, jobData.Stamp );
+	if( config.PROJ_SOURCE == config.PMS_GH2 ) {
+	    await switcherGH2( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res, jobData.DelayCount, jobData.Stamp );
+	} else if( config.PROJ_SOURCE == config.PMS_GHC ) {
+	    await switcherGHC( ic, ghLinks, pd, sender, jobData.Handler, jobData.Action, jobData.Tag, res, jobData.DelayCount, jobData.Stamp );
+	}
     }
     else {
 	console.log( authData.who, "jobs done" );
@@ -180,7 +187,95 @@ async function getNextJob( authData, pdOld, sender, res ) {
     return res.end();
 }
 
-async function switcher( authData, ghLinks, pd, sender, event, action, tag, res, delayCount, origStamp ) {
+function buildJobSummaryGHC( pd, tag, source, reqBody, jobId, stamp, action, event ) {
+
+    if( !reqBody.hasOwnProperty('repository') ) {
+	console.log( "Notification for Delete repository.  CodeEquity does not require these.  Skipping." );
+	return res.end();
+    }
+    
+    let fullName = reqBody.repository.full_name;
+    let repo     = reqBody.repository.name;
+    let owner    = reqBody.repository.owner.login;
+
+    if( event == "issue" )    {
+	tag = (reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
+	source += "issue:";
+    }
+    else if( event == "project_card" ) {
+	source += "card:";
+	if( reqBody.project_card.content_url != null ) {
+	    let issueURL = reqBody.project_card.content_url.split('/');
+	    let issueNum = parseInt( issueURL[issueURL.length - 1] );
+	    tag = "iss"+parseInt(issueNum);
+	}
+	else {
+	    //  random timing.  thanks GQL.  XXX can not assert.
+	    if( reqBody.project_card.note == null )
+	    {
+		assert( action == 'deleted' );
+		tag = "<title deleted>";
+	    }
+	    else {
+		let cardContent = reqBody.project_card.note.split('\n');
+		tag = "*"+cardContent[0].substring(0,8)+"*";
+	    }
+	}
+	tag = tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+    }
+    else {
+	source += event + ":";
+
+	if     ( !reqBody.hasOwnProperty( event ) ) { console.log( reqBody ); }
+	else if( !reqBody[event].hasOwnProperty( 'name' ) ) { console.log( reqBody ); }
+
+	reqBody[event].name.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+	tag = reqBody[event].name;
+    }
+
+    source += action+" "+tag+"> ";
+    console.log( "Notification:", event, action, tag, jobId, "for", owner +"/"+ repo, newStamp );
+
+    pd.GHOwner      = owner;
+    pd.GHRepo       = repo;
+    pd.reqBody      = reqBody;
+    pd.GHFullName   = reqBody.repository.full_name;
+}
+
+function buildJobSummaryGH2( pd, tag, source, reqBody, jobId, newStamp, action, event ) {
+
+    if( !reqBody.hasOwnProperty('organization') ) {
+	console.log( "Organization not present.  CodeEquity requires organizations for Github's Project Version 2.  Skipping." );
+	return res.end();
+    }
+
+    // XXX Very little descriptive information known at this point, very hard to debug/track.  To get, say, an issue name,
+    //     we'd have to wait for a roundtrip query back to GH right now.  ouch!
+    // XXX fullName not known for pv2item.  replace with content_node_id (often issue?)  Repo is (?) no longer relevant
+    let fullName = reqBody.organization.login + "/" + reqBody.projects_v2_item.content_node_id;
+    let repo     = config.EMPTY;
+    let owner    = reqBody.organization.login;
+
+    if( event == "projects_v2_item"  && reqBody.projects_v2_item.content_type == "Issue" ) {
+	tag = fullName; 
+	source += "issue:";
+    }
+    else {
+	source += event + ":";
+	console.log( "Not yet handled", reqBody ); 
+	tag = reqBody[event];
+    }
+
+    source += action+" "+tag+"> ";
+    console.log( "Notification:", event, action, tag, jobId, "for", owner +"/"+ repo, newStamp );
+
+    pd.GHOwner      = owner;
+    pd.GHRepo       = repo;
+    pd.reqBody      = reqBody;
+    pd.GHFullName   = fullName;
+}
+
+async function switcherGHC( authData, ghLinks, pd, sender, event, action, tag, res, delayCount, origStamp ) {
     let retVal = "";
 
     // clear justDeleted every time, unless possibly part of delete issue blast.
@@ -246,6 +341,43 @@ async function switcher( authData, ghLinks, pd, sender, event, action, tag, res,
 }
 
 
+async function switcherGH2( authData, ghLinks, pd, sender, event, action, tag, res, delayCount, origStamp ) {
+    let retVal = "";
+
+    // clear justDeleted every time, unless possibly part of delete issue blast.
+    // if( event != 'issue' || action != 'deleted' ) { justDeleted = {}; }
+
+    await getGHAuths( authData, pd.GHOwner, pd.GHRepo );
+    
+    switch( event ) {
+    case 'projects_v2_item' :
+	{
+	    retVal = await items.handler( authData, ghLinks, pd, action, tag )
+		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
+	}
+	break;
+    case 'issue' :
+	{
+	    console.log( "Issue event arrived - new handler needed" );
+	}
+	break;
+    default:
+	{
+	    console.log( "Event unhandled", event );
+	    retVal = res.json({ status: 400 });
+	    break;
+	}
+    }
+    if( retVal == "postpone" ) {
+	// add current job back into queue.
+	console.log( authData.who, "Delaying this job." );
+	await utils.demoteJob( ceJobs, pd, authData.job, event, sender, tag, delayCount );
+    }
+    console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", delayCount );
+    getNextJob( authData, pd, sender, res );	
+}
+
+
 
 // Notifications from GH webhooks
 router.post('/:location?', async function (req, res) {
@@ -257,12 +389,12 @@ router.post('/:location?', async function (req, res) {
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, ceNotification, req.body, res ); }
 
     console.log( "" );
-    let action   = req.body['action'];
+    let action   = req.body.action;
     let event    = req.headers['x-github-event'];
 
     if( event == "issues" )  { event = "issue"; }
 
-    let sender  = req.body['sender']['login'];
+    let sender  = req.body.sender.login;
     if( sender == config.CE_BOT) {
 	console.log( "Notification for", event, action, "Bot-sent, skipping." );
 	return res.end();
@@ -272,67 +404,21 @@ router.post('/:location?', async function (req, res) {
 	return res.end();
     }
 
-    if( !req.body.hasOwnProperty('repository') ) {
-	console.log( "Notification for Delete repository.  CodeEquity does not require these.  Skipping." );
-	return res.end();
-    }
+    let tag      = "";
+    let source   = "<";
+    let pd       = new peqData.PeqData();
+    let jobId    = utils.randAlpha(10);
+    let newStamp = utils.getMillis();
     
-    let fullName = req.body['repository']['full_name'];
-    let repo     = req.body['repository']['name'];
-    let owner    = req.body['repository']['owner']['login'];
-
-    let tag = "";
-    let source = "<";
-    if( event == "issue" )    {
-	tag = (req.body['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
-	source += "issue:";
-    }
-    else if( event == "project_card" ) {
-	source += "card:";
-	if( req.body['project_card']['content_url'] != null ) {
-	    let issueURL = req.body['project_card']['content_url'].split('/');
-	    let issueNum = parseInt( issueURL[issueURL.length - 1] );
-	    tag = "iss"+parseInt(issueNum);
-	}
-	else {
-	    //  random timing.  thanks GQL.  XXX can not assert.
-	    if( req.body['project_card']['note'] == null )
-	    {
-		assert( action == 'deleted' );
-		tag = "<title deleted>";
-	    }
-	    else {
-		let cardContent = req.body['project_card']['note'].split('\n');
-		tag = "*"+cardContent[0].substring(0,8)+"*";
-	    }
-	}
-	tag = tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-    }
-    else {
-	source += event + ":";
-
-	if     ( !req.body.hasOwnProperty( event ) ) { console.log( req.body ); }
-	else if( !req.body[event].hasOwnProperty( 'name' ) ) { console.log( req.body ); }
-
-	req.body[event].name.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-	tag = req.body[event].name;
-    }
-
-    source += action+" "+tag+"> ";
-    let jobId = utils.randAlpha(10);
+    if     ( config.PROJ_SOURCE == config.PMS_GH2 ) { buildJobSummaryGH2( pd, tag, source, req.body, jobId, newStamp, action, event ); }
+    else if( config.PROJ_SOURCE == config.PMS_GHC ) { buildJobSummaryGHC( pd, tag, source, req.body, jobId, newStamp, action, event ); }
 
     notificationCount++;
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
     if( notificationCount % 50 == 0 ) { ghLinks.show(15); }
 
-    // GH stamps are totally unreliable. Maybe good to the minute, which is not useful.  Use server arrival time.
-    // let newStamp = req.body[event].updated_at;
-    // if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }      // label create doesn't have this
-
-    let newStamp = utils.getMillis();
     ceArrivals.add( newStamp );
-    console.log( "Notification:", event, action, tag, jobId, "for", owner +"/"+ repo, newStamp );
-    ceNotification.push( event+" "+action+" "+tag+" "+fullName );
+    ceNotification.push( event+" "+action+" "+tag+" "+pd.GHFullName );
 
     // Only 1 externally driven job (i.e. triggered from non-CE GH notification) active at any time, per repo/sender.
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activiation from getNext
@@ -348,15 +434,10 @@ router.post('/:location?', async function (req, res) {
     authData.who = source;
     authData.job = jobId;
     
-    console.log( authData.who, "job Q [" + fullName + "] clean, start-er-up" );
+    console.log( authData.who, "job Q [" + pd.GHFullName + "] clean, start-er-up" );
     
-    let pd          = new peqData.PeqData();
-    pd.GHOwner      = owner;
-    pd.GHRepo       = repo;
-    pd.reqBody      = req.body;
-    pd.GHFullName   = req.body['repository']['full_name'];
-
-    await switcher( authData, ghLinks, pd, sender, event, action, tag, res, 0, jobData.Stamp );
+    if(      config.PROJ_SOURCE == config.PMS_GH2 ) { await switcherGH2( authData, ghLinks, pd, sender, event, action, tag, res, 0, jobData.Stamp ); }
+    else if( config.PROJ_SOURCE == config.PMS_GHC ) { await switcherGHC( authData, ghLinks, pd, sender, event, action, tag, res, 0, jobData.Stamp ); }
     
     // avoid socket hangup error, response undefined
     return res.end();

@@ -1,10 +1,10 @@
 var assert = require('assert');
 
-var utils   = require('../utils');
-var ghUtils = require('../ghUtils');
-var config  = require('../config');
+var utils   = require('../../utils');
+var ghUtils = require('../../ghUtils');
+var config  = require('../../config');
 
-const peqData = require( '../peqData' );
+const peqData = require( '../../peqData' );
 var issHan    = require('./githubIssueHandler');
 
 var gh     = ghUtils.githubUtils;

@@ -1,6 +1,6 @@
-var utils       = require('../utils');
-var ghUtils     = require('../ghUtils');
-var config      = require('../config');
+var utils       = require('../../utils');
+var ghUtils     = require('../../ghUtils');
+var config      = require('../../config');
 var assert      = require('assert');
 var cardHandler = require('./githubCardHandler');
 

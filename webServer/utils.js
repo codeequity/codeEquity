@@ -891,12 +891,32 @@ function makeJobData( jid, handler, sender, reqBody, tag, delayCount ) {
     let jobData        = {};
     jobData.QueueId    = jid;
     jobData.Handler    = handler;
-    jobData.GHOwner    = reqBody['repository']['owner']['login'];
-    jobData.GHRepo     = reqBody['repository']['name'];
     jobData.Action     = reqBody['action'];
     jobData.ReqBody    = reqBody;
     jobData.Tag        = tag;
     jobData.DelayCount = delayCount;
+
+    switch( config.PROJ_SOURCE ) {
+    case config.PMS_GH2 :
+	{
+	    jobData.GHOwner    = reqBody['organization']['login'];
+	    jobData.GHRepo     = config.EMPTY;
+	}
+	break;
+    case config.PMS_GHC :
+	{
+	    jobData.GHOwner    = reqBody['repository']['owner']['login'];
+	    jobData.GHRepo     = reqBody['repository']['name'];
+	}
+	break;
+    default :
+	{
+	    // no need to assert.
+	    console.log( "Project source not supported", config.PROJ_SOURCE );
+	    return {};
+	}
+	break;
+    }
 
     // GH stamp not dependable.
     // let newStamp = reqBody[handler].updated_at;

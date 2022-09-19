@@ -121,7 +121,6 @@ const APEQ_COLOR = 'fef2c0';   // github color Alloc PEQ labels
 
 
 
-
 exports.CE_USER   = CE_USER;
 exports.CE_BOT    = CE_BOT;
 exports.TESTER_BOT = TESTER_BOT;
