@@ -30,9 +30,9 @@ ceServer.use(cors());
 ceServer.use(express.static(path.join(__dirname, 'public')));
 ceServer.use(express.static(path.join(__dirname, 'public-flutter')));
 
-var githubRouter = require('./routes/githubRouter');
-ceServer.use('/archive/github', githubRouter);
-ceServer.use('/github/testing', githubRouter);
+var ceRouter = require('./routes/ceRouter');
+ceServer.use('/archive/github', ceRouter);
+ceServer.use('/github/testing', ceRouter);
 
 var flutterRouter      = require('./routes/flutterRouter');
 ceServer.use('/update/github', flutterRouter);

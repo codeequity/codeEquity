@@ -18,6 +18,10 @@ const SERVER_NOREPO       = "CEServer-Wide";
 const GQL_ENDPOINT        = 'https://api.github.com/graphql';
 const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
 
+
+// Host notifier platforms
+const HOST_GH = "Host:GitHub";
+
 // Project Management Source
 const PMS_GHC = "GH Classic";   // Github's 'classic' projects that are now largely deprecated
 const PMS_GH2 = "GH Version 2"; // Github's 'Projects Version 2' projects
@@ -147,6 +151,7 @@ exports.MAIN_PROJ = MAIN_PROJ;
 exports.EMPTY     = EMPTY;
 exports.UNCLAIMED = UNCLAIMED;
 
+exports.HOST_GH      = HOST_GH;
 exports.PMS_GHC      = PMS_GHC;
 exports.PMS_GH2      = PMS_GH2;
 exports.PROJ_OPTIONS = PROJ_OPTIONS;
