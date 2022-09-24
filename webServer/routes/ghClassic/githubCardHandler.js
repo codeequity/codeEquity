@@ -1,8 +1,8 @@
-var utils   = require('../utils');
-var config  = require('../config');
+var utils   = require('../../utils');
+var config  = require('../../config');
 var assert = require('assert');
 
-var ghUtils = require('../ghUtils');
+var ghUtils = require('../../ghUtils');
 var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 

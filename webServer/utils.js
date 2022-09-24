@@ -180,15 +180,15 @@ async function wrappedPostAWS( authData, shortName, postData ) {
 
 
 // Check for stored PAT.  Not available means public repo that uses ceServer PAT
-async function getStoredPAT( authData, owner, repo ) {
-    console.log( authData.who, "Get stored PAT for:", owner, repo );
+async function getStoredPAT( authData, owner ) {
+    console.log( authData.who, "Get stored PAT for:", owner );
 
     let shortName = "GetEntry";
-    let query     = { "GHRepo": owner + "/" + repo };
-    let postData  = { "Endpoint": shortName, "tableName": "CERepoStatus", "query": query };
+    let query     = { "GHUserName": owner };
+    let postData  = { "Endpoint": shortName, "tableName": "CEGithub", "query": query };
 
     let repoStatus = await wrappedPostAWS( authData, shortName, postData );
-    return repoStatus.GHPAT;
+    return repoStatus.PAT;
 }
 
 async function getPeq( authData, issueId, checkActive ) {
@@ -887,15 +887,16 @@ function makeStamp( newStamp ) {
     return h * 3600 + m * 60 + s;
 }
 
-function makeJobData( jid, handler, sender, reqBody, tag, delayCount ) {
+
+function makeJobData( jd, delayCound ) {
     let jobData        = {};
-    jobData.QueueId    = jid;
-    jobData.Handler    = handler;
-    jobData.GHOwner    = reqBody['repository']['owner']['login'];
-    jobData.GHRepo     = reqBody['repository']['name'];
-    jobData.Action     = reqBody['action'];
-    jobData.ReqBody    = reqBody;
-    jobData.Tag        = tag;
+    jobData.QueueId    = jd.QueueId
+    jobData.Host       = jd.Host;
+    jobData.Actor      = jd.Actor;
+    jobData.Event      = jd.Event;
+    jobData.Action     = jd.Action;
+    jobData.ReqBody    = jd.ReqBody;
+    jobData.Tag        = jd.Tag;
     jobData.DelayCount = delayCount;
 
     // GH stamp not dependable.
@@ -913,33 +914,33 @@ function summarizeQueue( ceJobs, msg, limit ) {
     const jobs = ceJobs.jobs.getAll();
     limit = ceJobs.jobs.length < limit ? ceJobs.jobs.length : limit;
     for( let i = 0; i < limit; i++ ) {
-	console.log( "   ", jobs[i].GHOwner, jobs[i].GHRepo, jobs[i].QueueId, jobs[i].Handler, jobs[i].Action, jobs[i].Tag, jobs[i].Stamp, jobs[i].DelayCount );
+	console.log( "   ", jobs[i].QueueId, jobs[i].Host, jobs[i].Tag, jobs[i].Stamp, jobs[i].DelayCount );
     }
 }
 
 // Do not remove top, that is getNextJob's sole perogative
 // add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
-async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
-    console.log( "Demoting", jobId, delayCount );
-    const newJob   = makeJobData( jobId, event, sender, pd.reqBody, tag, delayCount+1 );
+async function demoteJob( ceJobs, jd ) {
+    console.log( "Demoting", jd.QueueId, jd.DelayCount );
+    const newJob = makeJobData( jd, jd.DelayCount+1 );
 
     // This has failed once, during cross repo blast test, when 2 label notifications were sent out
     // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
     // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
     
-    assert( delayCount < config.MAX_DELAYS );  
+    assert( jd.DelayCount < config.MAX_DELAYS );  
     ceJobs.delay++;
     
     // get splice index
     let spliceIndex = 1;
     let jobs = ceJobs.jobs.getAll();
 
-    const stepCost = config.STEP_COST * delayCount;   
+    const stepCost = config.STEP_COST * jd.DelayCount;   
     
     // If nothing else is here yet, delay.  Overall, will delay over a minute 
     if( jobs.length <= 1 ) {
 	console.log( "... empty queue, sleep" );
-	let delay = delayCount > 4 ? stepCost + config.NOQ_DELAY : stepCost;
+	let delay = jd.DelayCount > 4 ? stepCost + config.NOQ_DELAY : stepCost;
 	await sleep( delay );
     }
     else {
@@ -958,8 +959,8 @@ async function demoteJob( ceJobs, pd, jobId, event, sender, tag, delayCount ) {
 }
 
 // Put the job.  Then return first on queue.  Do NOT delete first.
-function checkQueue( ceJobs, jid, handler, sender, reqBody, tag ) {
-    const jobData = makeJobData( jid, handler, sender, reqBody, tag, 0 );
+function checkQueue( ceJobs, jd ) {
+    const jobData = makeJobData( jd, jd.DelayCount );
 
     ceJobs.jobs.push( jobData );
 
