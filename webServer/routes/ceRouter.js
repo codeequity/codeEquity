@@ -44,37 +44,49 @@ console.log( "*** CEROUTER init, GH init ***" );
 // GH Linkage table
 var ghLinks  = new links.Linkage();
 
-initGH();
+init();
 
-async function initGH() {
+async function init() {
 
-    authData.ic  = -1;                // installation client for octokit
-    authData.who = "CE SERVER INIT";  // which event is underway
-    authData.api = -1;                // api path for aws
-    authData.cog = -1;                // cognito id token
-    authData.pat = -1;                // personal access token for gh
-    authData.job = -1;                // currently active job id
+    authData.ic      = -1;                // installation client for octokit
+    authData.who     = "CE SERVER INIT";  // which event is underway
+    authData.api     = -1;                // api path for aws
+    authData.cog     = -1;                // cognito id token
+    authData.pat     = -1;                // personal access token for gh
+    authData.job     = -1;                // currently active job id
+    authData.cogLast = -1;                // when was last token acquired
 
     await initAuth( authData, config.CE_USER, config.SERVER_NOREPO );
     ghLinks.init( authData );  
 }
 
-// Need installation client from octokit for every owner/repo/jwt triplet.  
-//   jwt is per app install, 1 codeEquity for all.
-//   owner and repo can switch with notification.  need multiple.
 async function initAuth( authData, owner, repo ) {
     // Wait later
-    authData.api = utils.getAPIPath() + "/find";
-    authData.cog = awsAuth.getCogIDToken();
+    authData.api     = utils.getAPIPath() + "/find";
+    authData.cog     = awsAuth.getCogIDToken();
+    authData.cogLast = Date.now();
 
     // XXX NOTE this step needed for Linkage init, which needs PAT.  Would prefer alt solution.
     authData.api = await authData.api;
     authData.cog = await authData.cog;
 
-    // Will need to expand this for new platforms
+    // new platforms?  Add here.
     await ghr.ghGetAuths( authData, owner, repo );
 }
 
+
+// Called from host handlers, switchers.  Mainly to allow refreshing host-independent tokens
+async function getAuths( authData, host, org, actor ) {
+    // Cognito auth token expires every hour.  Can make it last longer if needed..
+    const stamp = Date.now();
+    if( stamp - authData.cogLast > 3500000 ) {
+	console.log( "********  Old cognito auth.. refreshing." );
+	authData.cog = await awsAuth.getCogIDToken();	
+	authData.cogLast = Date.now();
+    }
+
+    if( host == config.HOST_GH ) { await ghr.ghGetAuths( authData, org, actor ); }
+}
 
 
 // ceRouter core
@@ -198,3 +210,4 @@ router.post('/:location?', async function (req, res) {
 
 module.exports     = router;
 exports.getNextJob = getNextJob; 
+exports.getAuths   = getAuths;

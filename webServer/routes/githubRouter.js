@@ -28,6 +28,7 @@ var githubPATs     = {};
 // Auths are kept in distinct host.org.actor buckets.  For example, Connie from CodeEquity on GitHub will have different perms than
 //       Connie from CodeEquity on Atlassian.
 // If private repo, get key from aws.  If public repo, use ceServer key.  if tester repos, use config keys.
+// NOTE this is called from ceRouter, only.  
 async function getAuths( authData, org, actor ) {
 
     const host = config.HOST_GH;
@@ -35,6 +36,9 @@ async function getAuths( authData, org, actor ) {
     
     // Only relevant for classic projects (!!)  Even so, keep auth breakdown consistent between parts.
     // Used to be owner/repo.  owner = org, repo = actor (oddly)
+    // Need installation client from octokit for every owner/repo/jwt triplet.  
+    //   jwt is per app install, 1 codeEquity for all.
+    //   owner and repo can switch with notification.  need multiple.
     if( config.PROJ_SOURCE == config.PMS_GHC ) {
 	if( !octokitClients.hasOwnProperty( host ) )            { octokitClients[host] = {};      }
 	if( !octokitClients[host].hasOwnProperty( org ))        { octokitClients[host][org] = {}; }
@@ -92,9 +96,6 @@ async function refreshAuths( authData, host, org, actor) {
 	    }
 	    else { authData.ic  = -1; }
 	    octokitClients[host][org][actor].last = Date.now();
-	    
-	    // XXXXXX
-	    // authData.cog = await awsAuth.getCogIDToken();	
 	}
     }
     return;
@@ -213,7 +214,7 @@ async function switcherGHC( authData, ghLinks, jd, res, origStamp ) {
     pd.reqBody      = jd.ReqBody;
     pd.GHFullName   = jd.ReqBody['repository']['full_name'];
     
-    await getAuths( authData, pd.GHOwner, pd.GHRepo );
+    await ceRouter.getAuths( authData, config.HOST_GH, pd.GHOwner, pd.GHRepo );
     
     switch( jd.Event ) {
     case 'issue' :
@@ -271,7 +272,7 @@ async function switcherGH2( authData, ghLinks, jd, res, origStamp ) {
     pd.GHOrganization = org;
     
     assert( jd.QueueId == authData.job ) ;
-    await getAuths( authData, org, jd.Actor );
+    await ceRouter.getAuths( authData, config.HOST_GH, org, jd.Actor );
     
     switch( jd.Event ) {
     case 'projects_v2_item' :
