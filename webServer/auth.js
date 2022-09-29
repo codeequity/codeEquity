@@ -28,6 +28,10 @@ async function getInstallationAccessToken(owner, repo, app, jwt) {
 			       });
     
     const installationId = (await result.json()).id;
+
+    console.log( "GIAT", await result.json() );
+    console.log( "GIAT", installationId );
+	
     const installationAccessToken = await app.getInstallationAccessToken({ installationId });
     
     return installationAccessToken;
@@ -39,7 +43,7 @@ function getInstallationClientFromToken(installationAccessToken) {
     //return new OctokitRetry({ auth: `token ${installationAccessToken}` });
 }
 
-async function getInstallationClient(owner, repo, source) {
+async function getInstallationClient(owner, repo, actor) {
 
     // Both the codeEquity app, and the ceTester app are installed for local development, both are authorized against the github repo.
     // the codeEquity app contains the webServer - use those credentials for posting to GH, otherwise secondary notification filtering
@@ -47,11 +51,14 @@ async function getInstallationClient(owner, repo, source) {
     // sender, for bot posts, appears to be drawn from the installed app name.
     // Use ceTester creds for testing, codeEquity for everything else
     let credPath = config.CREDS_PATH;
-    if( source != config.CE_USER &&
+    if( actor != config.CE_USER &&
 	( owner == config.TEST_OWNER || owner == config.CROSS_TEST_OWNER || owner == config.MULTI_TEST_OWNER ) &&
 	( repo == config.TEST_REPO   || repo == config.FLUTTER_TEST_REPO || repo == config.CROSS_TEST_REPO   || owner == config.MULTI_TEST_OWNER )) {
 	credPath = config.CREDS_TPATH;
     }
+
+    console.log( "GIC", owner, repo );
+    console.log( "GIC", credPath );
     
     dotenv.config({ path: credPath });
     
@@ -60,6 +67,9 @@ async function getInstallationClient(owner, repo, source) {
     const app = new App({ id: process.env.GITHUB_APP_IDENTIFIER, privateKey: process.env.GITHUB_PRIVATE_KEY.replace(/\\n/g, '\n') });
     const jwt = app.getSignedJsonWebToken();
 
+    console.log( "GIC", app );
+    console.log( "GIC", jwt );
+    
     installationAccessToken = await getInstallationAccessToken( owner, repo, app, jwt )
         .catch( e => {
 	    console.log( "Get Install Client failed.", e );

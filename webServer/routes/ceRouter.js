@@ -6,7 +6,6 @@ const auth    = require( "../auth");
 const utils   = require( '../utils');
 const config  = require( '../config');
 
-const peqData  = require( '../peqData' );
 const fifoQ    = require('../components/queue');
 const links    = require('../components/linkage');
 const hist     = require('../components/histogram');
@@ -56,11 +55,11 @@ async function init() {
     authData.job     = -1;                // currently active job id
     authData.cogLast = -1;                // when was last token acquired
 
-    await initAuth( authData, config.CE_USER, config.SERVER_NOREPO );
+    await initAuth( authData );
     ghLinks.init( authData );  
 }
 
-async function initAuth( authData, owner, repo ) {
+async function initAuth( authData ) {
     // Wait later
     authData.api     = utils.getAPIPath() + "/find";
     authData.cog     = awsAuth.getCogIDToken();
@@ -70,13 +69,11 @@ async function initAuth( authData, owner, repo ) {
     authData.api = await authData.api;
     authData.cog = await authData.cog;
 
-    // new platforms?  Add here.
-    await ghr.ghGetAuths( authData, owner, repo );
 }
 
 
 // Called from host handlers, switchers.  Mainly to allow refreshing host-independent tokens
-async function getAuths( authData, host, org, actor ) {
+async function getAuths( authData, host, pms, org, actor ) {
     // Cognito auth token expires every hour.  Can make it last longer if needed..
     const stamp = Date.now();
     if( stamp - authData.cogLast > 3500000 ) {
@@ -85,7 +82,7 @@ async function getAuths( authData, host, org, actor ) {
 	authData.cogLast = Date.now();
     }
 
-    if( host == config.HOST_GH ) { await ghr.ghGetAuths( authData, org, actor ); }
+    if( host == config.HOST_GH ) { await ghr.ghGetAuths( authData, pms, org, actor ); }
 }
 
 
@@ -109,12 +106,19 @@ async function getNextJob( authData, res ) {
 	
 	// Need a new authData, else source for non-awaited actions is overwritten
 	let ic = {};
-	ic.who = "<"+jobData.Event+": "+jobData.Action+" "+jobData.Tag+"> ";   
-	ic.api = authData.api;
-	ic.cog = authData.cog;
-	ic.pat = authData.pat;
-	ic.job = jobData.QueueId;
+	ic.who     = "<"+jobData.Event+": "+jobData.Action+" "+jobData.Tag+"> ";   
+	ic.api     = authData.api;
+	ic.cog     = authData.cog;
+	ic.cogLast = authData.cogLast;
+	ic.job     = jobData.QueueId;
 
+	// Send authData so cogLast, is correct.
+	// But reset authData.pat to keep parent pat correct.
+	let tmp = authData.pat;
+	getAuths( authData, jobData.Host, jobData.ProjMgmtSys, jobData.Org, jobData.Actor );
+	ic.pat = authData.pat;
+	authData.pat = tmp;
+	
 	console.log( "\n\n", authData.who, "Got next job:", ic.who );
 	await hostHandler( ic, ghLinks, jobData, res, jobData.Stamp );   
     }
@@ -141,15 +145,17 @@ router.post('/:location?', async function (req, res) {
     // invisible, mostly
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, ceNotification, req.body, res ); }
 
-    let jobData        = {};
-    jobData.Host       = "";                 // The host platform sending notifications to ceServer
-    jobData.Actor      = "";                 // The entity that caused this specific notification to be sent
-    jobData.Event      = "";                 // Primary data type for host notice.       Example - GH's 'project_v2_item'
-    jobData.Action     = "";                 // Activity being reported on data type.    Example - project_v2_item 'create'
-    jobData.Tag        = "";                 // host-specific name for object, debugging. Example - iss4810
-    jobData.ReqBody    = req.body;
-    jobData.DelayCount = 0;
-    jobData.QueueId    = utils.randAlpha(10);
+    let jobData         = {};
+    jobData.Host        = "";                 // The host platform sending notifications to ceServer
+    jobData.Org         = "";                 // Within the host, which organization does the notification belong to?  Example, GH version 2's 'organization:login'
+    jobData.ProjMgmtSys = "";                 // Within the host, which project system is being used?  Example: GH classic vs version 2
+    jobData.Actor       = "";                 // The entity that caused this specific notification to be sent
+    jobData.Event       = "";                 // Primary data type for host notice.       Example - GH's 'project_v2_item'
+    jobData.Action      = "";                 // Activity being reported on data type.    Example - project_v2_item 'create'
+    jobData.Tag         = "";                 // host-specific name for object, debugging. Example - iss4810
+    jobData.ReqBody     = req.body;
+    jobData.DelayCount  = 0;
+    jobData.QueueId     = utils.randAlpha(10);
 
     let hostHandler         = null;
     let hostBuildJobSummary = null;
@@ -160,6 +166,10 @@ router.post('/:location?', async function (req, res) {
 	jobData.Actor  = req.body.sender.login;
 	hostHandler    = ghr.ghRouter;
 	hostGetJobData = ghr.ghGetJobSummaryData;
+
+	if( req.body.hasOwnProperty( "projects_v2_item" ) ) { jobData.ProjMgmtSys = config.PMS_GH2; }
+	else                                                { jobData.ProjMgmtSys = config.PMS_GHC; }
+	
     }
     else {
 	console.log( "Warning.  Incoming notification is not from a known platform", req.headers );
@@ -209,5 +219,6 @@ router.post('/:location?', async function (req, res) {
 
 
 module.exports     = router;
+// exports.router     = router;
 exports.getNextJob = getNextJob; 
 exports.getAuths   = getAuths;

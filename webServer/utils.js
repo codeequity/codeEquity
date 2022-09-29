@@ -188,7 +188,8 @@ async function getStoredPAT( authData, owner ) {
     let postData  = { "Endpoint": shortName, "tableName": "CEGithub", "query": query };
 
     let repoStatus = await wrappedPostAWS( authData, shortName, postData );
-    return repoStatus.PAT;
+    if( repoStatus == -1 ) { return -1; }
+    else                   { return repoStatus.PAT; }
 }
 
 async function getPeq( authData, issueId, checkActive ) {
@@ -888,16 +889,23 @@ function makeStamp( newStamp ) {
 }
 
 
-function makeJobData( jd, delayCound ) {
-    let jobData        = {};
-    jobData.QueueId    = jd.QueueId
-    jobData.Host       = jd.Host;
-    jobData.Actor      = jd.Actor;
-    jobData.Event      = jd.Event;
-    jobData.Action     = jd.Action;
-    jobData.ReqBody    = jd.ReqBody;
-    jobData.Tag        = jd.Tag;
-    jobData.DelayCount = delayCount;
+function makeJobData( jd, delayCount ) {
+    if( jd.Host == "" || jd.ProjMgmtSys == "" || jd.Actor == "" ) {
+	console.log( "Warning.  Job does not indicate host, pms or actor.  Skipping." );
+	return -1;
+    }
+    
+    let jobData         = {};
+    jobData.QueueId     = jd.QueueId
+    jobData.Host        = jd.Host;
+    jobData.Org         = jd.Org;
+    jobData.ProjMgmtSys = jd.ProjMgmtSys;
+    jobData.Actor       = jd.Actor;
+    jobData.Event       = jd.Event;
+    jobData.Action      = jd.Action;
+    jobData.ReqBody     = jd.ReqBody;
+    jobData.Tag         = jd.Tag;
+    jobData.DelayCount  = delayCount;
 
     // GH stamp not dependable.
     // let newStamp = reqBody[handler].updated_at;
@@ -924,6 +932,9 @@ async function demoteJob( ceJobs, jd ) {
     console.log( "Demoting", jd.QueueId, jd.DelayCount );
     const newJob = makeJobData( jd, jd.DelayCount+1 );
 
+    // This can't be, since the job was already processed.
+    assert( newJob != -1 );
+    
     // This has failed once, during cross repo blast test, when 2 label notifications were sent out
     // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
     // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
@@ -962,10 +973,11 @@ async function demoteJob( ceJobs, jd ) {
 function checkQueue( ceJobs, jd ) {
     const jobData = makeJobData( jd, jd.DelayCount );
 
-    ceJobs.jobs.push( jobData );
-
-    if( ceJobs.jobs.length > ceJobs.maxDepth ) { ceJobs.maxDepth = ceJobs.jobs.length; }
-    ceJobs.count++;
+    if( jobData != -1 ) {
+	ceJobs.jobs.push( jobData );
+	if( ceJobs.jobs.length > ceJobs.maxDepth ) { ceJobs.maxDepth = ceJobs.jobs.length; }
+	ceJobs.count++;
+    }
 
     summarizeQueue( ceJobs, "\nceJobs, after push", 3 );
     
