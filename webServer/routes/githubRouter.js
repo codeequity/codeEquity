@@ -34,7 +34,8 @@ var githubPATs     = {};
 async function getAuths( authData, pms, org, actor ) {
 
     const host = config.HOST_GH;
-    
+
+    console.log( "GHR auths", pms, org, actor );
     
     // Only relevant for classic projects (!!)  Even so, keep auth breakdown consistent between parts.
     // Need installation client from octokit for every owner/repo/jwt triplet.  

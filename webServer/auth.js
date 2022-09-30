@@ -19,6 +19,7 @@ var config    = require('./config');
 // repo:  name of a repository with GitHub App installed
 async function getInstallationAccessToken(owner, repo, app, jwt) {
 
+    console.log( "Fetching", `https://api.github.com/repos/${owner}/${repo}/installation` );
     const result = await fetch(`https://api.github.com/repos/${owner}/${repo}/installation`,
 			       {
 				   headers: {
@@ -26,11 +27,9 @@ async function getInstallationAccessToken(owner, repo, app, jwt) {
 				       accept: 'application/vnd.github.machine-man-preview+json',
 				   },
 			       });
-    
-    const installationId = (await result.json()).id;
 
-    console.log( "GIAT", await result.json() );
-    console.log( "GIAT", installationId );
+    const installationId = (await result.json()).id;
+    console.log( "GIAT", installationId, owner, repo );
 	
     const installationAccessToken = await app.getInstallationAccessToken({ installationId });
     
@@ -57,18 +56,22 @@ async function getInstallationClient(owner, repo, actor) {
 	credPath = config.CREDS_TPATH;
     }
 
-    console.log( "GIC", owner, repo );
-    console.log( "GIC", credPath );
+    // console.log( "GIC", owner, repo );
+    // console.log( "GIC", credPath );
     
     dotenv.config({ path: credPath });
+
+    // console.log( "Dot results", process.env.GITHUB_APP_IDENTIFIER );
+    // console.log( "Dot results", process.env.GITHUB_PRIVATE_KEY.replace(/\\n/g, '\n') );
     
     // Initialize GitHub App with id:private_key pair and generate JWT which is used for application level authorization
     // Note: js dotenv is crazy stupid about reading the multiline pkey.  needed to add \n, make all 1 line, then strip 
     const app = new App({ id: process.env.GITHUB_APP_IDENTIFIER, privateKey: process.env.GITHUB_PRIVATE_KEY.replace(/\\n/g, '\n') });
+
     const jwt = app.getSignedJsonWebToken();
 
-    console.log( "GIC", app );
-    console.log( "GIC", jwt );
+    // console.log( "GIC app", app );
+    // console.log( "GIC jwt", jwt );
     
     installationAccessToken = await getInstallationAccessToken( owner, repo, app, jwt )
         .catch( e => {
@@ -79,6 +82,7 @@ async function getInstallationClient(owner, repo, actor) {
     // console.log( "Get AUTH for", owner, repo, credPath, jwt.substring(0,15), installationAccessToken.substring( 0,50) );
 
     return getInstallationClientFromToken(installationAccessToken);
+
 }
 
 
