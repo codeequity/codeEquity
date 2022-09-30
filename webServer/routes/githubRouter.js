@@ -4,20 +4,21 @@ const auth    = require( "../auth");
 const utils   = require( '../utils');
 const config  = require( '../config');
 
-const peqData = require( '../peqData' );
 const links   = require( '../components/linkage' );
 
 const ceRouter = require( './ceRouter' );
 
 // PMS_GHC
-var issues    = require('./ghClassic/githubIssueHandler');
-var cards     = require('./ghClassic/githubCardHandler');
-var projects  = require('./ghClassic/githubProjectHandler');
-var columns   = require('./ghClassic/githubColumnHandler');
-var labels    = require('./ghClassic/githubLabelHandler');
+const issues   = require( './ghClassic/githubIssueHandler' );
+const cards    = require( './ghClassic/githubCardHandler' );
+const projects = require( './ghClassic/githubProjectHandler' );
+const columns  = require( './ghClassic/githubColumnHandler' );
+const labels   = require( './ghClassic/githubLabelHandler' );
+const ghcData  = require( './ghClassic/ghcData' );
 
 // PMS_GH2
-var items     = require('./ghVersion2/githubPV2ItemHandler');
+const items   = require( './ghVersion2/githubPV2ItemHandler' );
+const gh2Data = require( './ghVersion2/gh2Data' );
 
 var octokitClients = {};
 var githubPATs     = {};
@@ -206,7 +207,7 @@ async function switcherGHC( authData, ghLinks, jd, res, origStamp ) {
     let retVal = "";
     assert( jd.QueueId == authData.job ) ;
     
-    let pd          = new peqData.PeqData(); // XXX
+    let pd          = new ghcData.GHCData();
     pd.GHOwner      = jd.ReqBody['repository']['owner']['login'];
     pd.GHRepo       = jd.ReqBody['repository']['name'];
     pd.reqBody      = jd.ReqBody;
@@ -267,7 +268,7 @@ async function switcherGH2( authData, ghLinks, jd, res, origStamp ) {
     let retVal = "";
     let org = jd.ReqBody.organization.login;
 
-    let pd            = new peqData.PeqData();                      // XXX
+    let pd            = new gh2Data.GH2Data();
     pd.GHOrganization = org;
     
     assert( jd.QueueId == authData.job ) ;

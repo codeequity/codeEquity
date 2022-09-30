@@ -8,8 +8,6 @@ var utils = require('../utils');
 var ghUtils = require('../ghUtils');
 const tu = require('./testUtils');
 
-const peqData = require( '../peqData' );
-
 var gh     = ghUtils.githubUtils;
 var ghSafe = ghUtils.githubSafe;
 /*
