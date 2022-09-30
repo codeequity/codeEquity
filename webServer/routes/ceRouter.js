@@ -14,7 +14,8 @@ const circBuff = require( '../components/circBuff' );
 const testing  = require( './githubTestHandler' );
 const ghr      = require( './githubRouter' );
 
-const jobData  = require( './jobData' );
+const authDataC = require( '../authData' );
+const jobData   = require( './jobData' );
 
 // INIT  This happens during server startup.
 //       Any major interface will get initialized here, once.
@@ -37,7 +38,7 @@ var ceArrivals = new hist.Histogram( 1, 3, 5, 8, 12, 15, 20, 30 );
 // CE Notification buffer, TESTING ONLY
 var ceNotification = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
 
-var authData = {};
+var authData = new authDataC.AuthData();
 var router   = express.Router();
 
 console.log( "*** CEROUTER init, GH init ***" );
@@ -48,16 +49,10 @@ var ghLinks  = new links.Linkage();
 init();
 
 async function init() {
-
-    authData.ic      = -1;                // installation client for octokit
-    authData.who     = "CE SERVER INIT";  // which event is underway
-    authData.api     = -1;                // api path for aws
-    authData.cog     = -1;                // cognito id token
-    authData.pat     = -1;                // personal access token for gh
-    authData.job     = -1;                // currently active job id
-    authData.cogLast = -1;                // when was last token acquired
+    authData.who = "CE SERVER INIT";
 
     await initAuth( authData );
+
     ghLinks.init( authData );  
 }
 
@@ -70,7 +65,6 @@ async function initAuth( authData ) {
     // XXX NOTE this step needed for Linkage init, which needs PAT.  Would prefer alt solution.
     authData.api = await authData.api;
     authData.cog = await authData.cog;
-
 }
 
 

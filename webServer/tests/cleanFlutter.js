@@ -5,8 +5,8 @@ const auth = require( "../auth");
 const config  = require('../config');
 const utils = require( "../utils");
 
-const testData = require( './testData' );
-
+const testData  = require( './testData' );
+const authDataC = require( '../authData' );
 
 
 async function clearIngested( authData, td ) {
@@ -32,12 +32,13 @@ async function runTests() {
     td.GHRepo       = config.FLUTTER_TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
-    let authData = {};
-    authData.who = "<TEST: Main> ";
-    authData.ic  = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    authData.api = utils.getAPIPath() + "/find";
-    authData.cog = await awsAuth.getCogIDToken();
-    authData.pat = await auth.getPAT( td.GHOwner );
+    let authData     = new authDataC.AuthData();
+    authData.who     = "<TEST: Main> ";
+    authData.ic      = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
+    authData.api     = utils.getAPIPath() + "/find";
+    authData.cog     = await awsAuth.getCogIDToken();
+    authData.cogLast = Date.now();        
+    authData.pat     = await auth.getPAT( td.GHOwner );
 
     let promises = [];
     promises.push( clearIngested( authData, td ) );

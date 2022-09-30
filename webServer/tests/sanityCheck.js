@@ -10,6 +10,7 @@ var gh      = ghUtils.githubUtils;
 var ghSafe  = ghUtils.githubSafe;
 
 const testData = require( './testData' );
+const authDataC = require( '../authData' );
 
 // NOTE:
 // Sanity checker's main job is to inform when things have gone wrong.
@@ -392,12 +393,13 @@ async function runTests() {
     td.GHRepo       = config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
-    let authData = {};
-    authData.who = "<SANITY: Main> ";
-    authData.ic  = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    authData.api = utils.getAPIPath() + "/find";
-    authData.cog = await awsAuth.getCogIDToken();
-    authData.pat = await auth.getPAT( td.GHOwner );
+    let authData     = new authDataC.AuthData();
+    authData.who     = "<SANITY: Main> ";
+    authData.ic      = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
+    authData.api     = utils.getAPIPath() + "/find";
+    authData.cog     = await awsAuth.getCogIDToken();
+    authData.cogLast = Date.now();            
+    authData.pat     = await auth.getPAT( td.GHOwner );
 
 
     // Pre-ingest

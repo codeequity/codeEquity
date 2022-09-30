@@ -19,9 +19,9 @@ function asyncAuthenticateUser(cognitoUser, authenticationDetails) {
   });
 }
 
-async function getCogIDToken() {
-    let poolData = utils.getCognito();
-    let authData = utils.getCEServer();
+async function getCogIDToken( ) {
+    let poolData = utils.getCognito();   // XXX probably does not belong in utils
+    let authData = utils.getCEServer();  // XXX probably does not belong in utils
 
     let userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
     let userData = { Username: authData.Username, Pool: userPool };
