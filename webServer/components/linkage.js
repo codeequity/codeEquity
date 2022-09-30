@@ -120,13 +120,8 @@ class Linkage {
 	if( ceProjects == -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
-	    // XXX
-	    // if( entry.GHRepo == 'connieCE/GarlicBeer' ) {
-	    // if( entry.GHRepo == 'ariCETester/CodeEquityTester' ) {
-		promises.push( this.initOneRepo( authData, entry )
-			       .catch( e => console.log( "Error.  Init Linkage failed.", e )) );
-	//}
-	    //else { console.log( "Temp skipping", entry.GHRepo ); }
+	    promises.push( this.initOneRepo( authData, entry )
+			   .catch( e => console.log( "Error.  Init Linkage failed.", e )) );
 	}
 	await Promise.all( promises );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );

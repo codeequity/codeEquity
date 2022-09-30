@@ -183,7 +183,7 @@ async function checkLoc( authData, td, issueData, loc ) {
 
     let issue = await findIssue( authData, td, issueData[0] );
     let retVal = true;
-    if( typeof issue == 'undefined' || issue == -1 ) { retVal = false; }
+    if( typeof issue === 'undefined' || issue == -1 ) { retVal = false; }
 
     if( retVal ) {
 	if( loc == -1 ) {

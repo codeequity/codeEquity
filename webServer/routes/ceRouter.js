@@ -1,18 +1,20 @@
-const express = require('express');
-const assert  = require('assert');
+const express = require( 'express' );
+const assert  = require( 'assert' );
 
 const awsAuth = require( '../awsAuth' );
-const auth    = require( "../auth");
-const utils   = require( '../utils');
-const config  = require( '../config');
+const auth    = require( '../auth' );
+const utils   = require( '../utils' );
+const config  = require( '../config' );
 
-const fifoQ    = require('../components/queue');
-const links    = require('../components/linkage');
-const hist     = require('../components/histogram');
-const circBuff = require('../components/circBuff');
+const fifoQ    = require( '../components/queue' );
+const links    = require( '../components/linkage' );
+const hist     = require( '../components/histogram' );
+const circBuff = require( '../components/circBuff' );
 
-var testing   = require('./githubTestHandler');
-var ghr       = require('./githubRouter');
+const testing  = require( './githubTestHandler' );
+const ghr      = require( './githubRouter' );
+
+const jobData  = require( './jobData' );
 
 // INIT  This happens during server startup.
 //       Any major interface will get initialized here, once.
@@ -89,12 +91,111 @@ async function getAuths( authData, host, pms, org, actor ) {
 // ceRouter core
 // Build, add jobs, get next job, send to platform handler
 // ****************************************************************
+function stampJob( jd, delayCount ) {
+    if( jd.Host == "" || jd.ProjMgmtSys == "" || jd.Actor == "" ) {
+	console.log( "Warning.  Job does not indicate host, pms or actor.  Skipping." );
+	jd.Stamp = -1;
+	return;
+    }
+
+    jd.DelayCount  = delayCount;
+    jd.Stamp = Date.now();
+}
+
+function summarizeQueue( ceJobs, msg, limit ) {
+    console.log( msg, " Depth", ceJobs.jobs.length, "Max depth", ceJobs.maxDepth, "Count:", ceJobs.count, "Demotions:", ceJobs.delay);
+    const jobs = ceJobs.jobs.getAll();
+    limit = ceJobs.jobs.length < limit ? ceJobs.jobs.length : limit;
+    for( let i = 0; i < limit; i++ ) {
+	console.log( "   ", jobs[i].QueueId, jobs[i].Host, jobs[i].Tag, jobs[i].Stamp, jobs[i].DelayCount );
+    }
+}
+
+// Do not remove top, that is getNextJob's sole perogative
+// add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
+async function demoteJob( ceJobs, jd ) {
+    console.log( "Demoting", jd.QueueId, jd.DelayCount );
+    let oldDelayCount = jd.DelayCount; 
+    stampJob( jd, oldDelayCount+1 );
+
+    // This can't be, since the job was already processed.
+    assert( jd.Stamp != -1 );
+    
+    // This has failed once, during cross repo blast test, when 2 label notifications were sent out
+    // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
+    // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
+    
+    assert( oldDelayCount < config.MAX_DELAYS );  
+    ceJobs.delay++;
+    
+    // get splice index
+    let spliceIndex = 1;
+    let jobs = ceJobs.jobs.getAll();
+
+    const stepCost = config.STEP_COST * oldDelayCount;   
+    
+    // If nothing else is here yet, delay.  Overall, will delay over a minute 
+    if( jobs.length <= 1 ) {
+	console.log( "... empty queue, sleep" );
+	let delay = oldDelayCount > 4 ? stepCost + config.NOQ_DELAY : stepCost;
+	await sleep( delay );
+    }
+    else {
+	// Have to push back at least once.  
+	for( let i = 1; i < jobs.length; i++ ) {
+	    spliceIndex = i+1;
+	    if( jobs[i].Stamp - jd.Stamp > config.MIN_DIFF ) { break;  }
+	}
+    }
+    if( spliceIndex == 1 && jobs.length >= 2 ) { spliceIndex = 2; }  // force progress where possible
+
+    console.log( "Got splice index of", spliceIndex );
+    jobs.splice( spliceIndex, 0, jd );
+
+    summarizeQueue( ceJobs, "\nceJobs, after demotion", 7 );
+}
+
+function purgeQueue( ceJobs ) {
+
+    console.log( "Purging ceJobs" )
+    ceJobs.count = 0;
+    ceJobs.delay = 0;
+
+    // Note, this should not be necessary.
+    if( ceJobs.jobs.length > 0 ) { 
+	summarizeQueue( ceJobs, "Error.  Should not be jobs to purge.", 200 );
+	ceJobs.jobs.purge();
+    }
+}
+
+// Put the job.  Then return first on queue.  Do NOT delete first.
+function checkQueue( ceJobs, jd ) {
+    stampJob( jd, jd.DelayCount );
+
+    if( jd.Stamp != -1 ) {
+	ceJobs.jobs.push( jd );
+	if( ceJobs.jobs.length > ceJobs.maxDepth ) { ceJobs.maxDepth = ceJobs.jobs.length; }
+	ceJobs.count++;
+    }
+
+    summarizeQueue( ceJobs, "\nceJobs, after push", 3 );
+    
+    return ceJobs.jobs.first;
+}
+
+// Remove top of queue, get next top.
+async function getFromQueue( ceJobs ) {
+    
+    ceJobs.jobs.shift();
+    return ceJobs.jobs.first;
+}
+
 
 // Without this call, incoming non-bot jobs that were delayed would not get executed.
 // Only this call will remove from the queue before getting next.
 // Called from host handlers's switcher routines.
 async function getNextJob( authData, res ) {
-    let jobData = await utils.getFromQueue( ceJobs );   
+    let jobData = await getFromQueue( ceJobs );   
     if( jobData != -1 ) {
 
 	let hostHandler = null; 
@@ -145,30 +246,21 @@ router.post('/:location?', async function (req, res) {
     // invisible, mostly
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, ceNotification, req.body, res ); }
 
-    let jobData         = {};
-    jobData.Host        = "";                 // The host platform sending notifications to ceServer
-    jobData.Org         = "";                 // Within the host, which organization does the notification belong to?  Example, GH version 2's 'organization:login'
-    jobData.ProjMgmtSys = "";                 // Within the host, which project system is being used?  Example: GH classic vs version 2
-    jobData.Actor       = "";                 // The entity that caused this specific notification to be sent
-    jobData.Event       = "";                 // Primary data type for host notice.       Example - GH's 'project_v2_item'
-    jobData.Action      = "";                 // Activity being reported on data type.    Example - project_v2_item 'create'
-    jobData.Tag         = "";                 // host-specific name for object, debugging. Example - iss4810
-    jobData.ReqBody     = req.body;
-    jobData.DelayCount  = 0;
-    jobData.QueueId     = utils.randAlpha(10);
+    let jd     = new jobData.JobData();
+    jd.ReqBody = req.body;
 
     let hostHandler         = null;
     let hostBuildJobSummary = null;
 
     // Detect additional platform hosts here
     if( req.headers.hasOwnProperty( 'x-github-event' ) ) {
-	jobData.Host   = config.HOST_GH;
-	jobData.Actor  = req.body.sender.login;
+	jd.Host   = config.HOST_GH;
+	jd.Actor  = req.body.sender.login;
 	hostHandler    = ghr.ghRouter;
 	hostGetJobData = ghr.ghGetJobSummaryData;
 
-	if( req.body.hasOwnProperty( "projects_v2_item" ) ) { jobData.ProjMgmtSys = config.PMS_GH2; }
-	else                                                { jobData.ProjMgmtSys = config.PMS_GHC; }
+	if( req.body.hasOwnProperty( "projects_v2_item" ) ) { jd.ProjMgmtSys = config.PMS_GH2; }
+	else                                                { jd.ProjMgmtSys = config.PMS_GHC; }
 	
     }
     else {
@@ -176,8 +268,8 @@ router.post('/:location?', async function (req, res) {
 	return res.end();
     }
 
-    if( jobData.Actor == config.CE_BOT) {
-	console.log( "Notification for", jobData.Event, jobData.Action, "Bot-sent, skipping." );
+    if( jd.Actor == config.CE_BOT) {
+	console.log( "Notification for", jd.Event, jd.Action, "Bot-sent, skipping." );
 	return res.end();
     }
 
@@ -190,17 +282,17 @@ router.post('/:location?', async function (req, res) {
     let newStamp = utils.getMillis();
 
     // Host platform get job data summary info
-    let ret = hostGetJobData( newStamp, jobData, orgPath, source );
+    let ret = hostGetJobData( newStamp, jd, orgPath, source );
     if( ret == -1 ) { return res.end(); }
     
     ceArrivals.add( newStamp );                                    // how responsive is the server, debugging
-    ceNotification.push( jobData.Event+" "+jobData.Action+" "+jobData.Tag+" "+orgPath );   // testing data
+    ceNotification.push( jd.Event+" "+jd.Action+" "+jd.Tag+" "+orgPath );   // testing data
 
     // Only 1 externally driven job (i.e. triggered from non-CE host platform notification) active at any time
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activation from getNext
-    let qTopJobData = utils.checkQueue( ceJobs, jobData ); 
+    let qTopJobData = checkQueue( ceJobs, jd ); 
     assert( qTopJobData != -1 );
-    if( jobData.QueueId != qTopJobData.QueueId ) {
+    if( jd.QueueId != qTopJobData.QueueId ) {
 	console.log( source, "Busy with job#", qTopJobData.QueueId );
 	return res.end();
     }
@@ -208,10 +300,10 @@ router.post('/:location?', async function (req, res) {
     // Don't set this earlier - authData should only overwrite if it is being processed next.
     // this first jobId is set by getNext to reflect the proposed next job.
     authData.who = source;
-    authData.job = jobData.QueueId;
+    authData.job = jd.QueueId;
     
     console.log( authData.who, "job Q [" + orgPath + "] clean, start-er-up" );
-    await hostHandler( authData, ghLinks, jobData, res, newStamp ); 
+    await hostHandler( authData, ghLinks, jd, res, newStamp ); 
     
     // avoid socket hangup error, response undefined
     return res.end();
@@ -219,6 +311,9 @@ router.post('/:location?', async function (req, res) {
 
 
 module.exports     = router;
-// exports.router     = router;
+
 exports.getNextJob = getNextJob; 
 exports.getAuths   = getAuths;
+
+exports.purgeQueue = purgeQueue;
+exports.demoteJob  = demoteJob;

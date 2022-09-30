@@ -35,7 +35,7 @@ async function getAuths( authData, pms, org, actor ) {
 
     const host = config.HOST_GH;
 
-    console.log( "GHR auths", pms, org, actor );
+    // console.log( "GHR auths", pms, org, actor );
     
     // Only relevant for classic projects (!!)  Even so, keep auth breakdown consistent between parts.
     // Need installation client from octokit for every owner/repo/jwt triplet.  
@@ -60,11 +60,11 @@ async function getAuths( authData, pms, org, actor ) {
     if( !githubPATs[host][org].hasOwnProperty( actor )) {
 	// Wait later
 	let reservedUsers = [config.CE_USER, config.TEST_OWNER, config.CROSS_TEST_OWNER, config.MULTI_TEST_OWNER];
-	console.log( "Get PAT for", actor, "in", host, org );
+	// console.log( "Get PAT for", actor, "in", host, org );
 	githubPATs[host][org][actor] = reservedUsers.includes( actor ) ?  auth.getPAT( actor ) :  utils.getStoredPAT( authData, actor );
     }
     githubPATs[host][org][actor] = await githubPATs[host][org][actor];
-    console.log( "PATTY", githubPATs[host][org][actor] );
+    // console.log( "PATTY", githubPATs[host][org][actor] );
     
     if( githubPATs[host][org][actor] == -1 ) {
 	console.log( "Warning.  Did not find PAT for", actor );
@@ -256,7 +256,7 @@ async function switcherGHC( authData, ghLinks, jd, res, origStamp ) {
     if( retVal == "postpone" ) {
 	// add current job back into queue.
 	console.log( authData.who, "Delaying this job." );
-	await utils.demoteJob( ceJobs, jd ); 
+	await ceRouter.demoteJob( ceJobs, jd ); 
     }
     console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.DelayCount );
     ceRouter.getNextJob( authData, res );	
@@ -295,7 +295,7 @@ async function switcherGH2( authData, ghLinks, jd, res, origStamp ) {
     if( retVal == "postpone" ) {
 	// add current job back into queue.
 	console.log( authData.who, "Delaying this job." );
-	await utils.demoteJob( ceJobs, jd );
+	await ceRouter.demoteJob( ceJobs, jd );
     }
     console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.DelayCount );
     ceRouter.getNextJob( authData, res );	

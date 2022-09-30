@@ -878,6 +878,7 @@ async function settleWithVal( fname, func, ...params ) {
 }
 
 
+// XXX not in use?
 function makeStamp( newStamp ) {
     // newstamp: "2020-12-23T20:55:27Z"
     assert( newStamp.length >= 20 );
@@ -888,122 +889,6 @@ function makeStamp( newStamp ) {
     return h * 3600 + m * 60 + s;
 }
 
-
-function makeJobData( jd, delayCount ) {
-    if( jd.Host == "" || jd.ProjMgmtSys == "" || jd.Actor == "" ) {
-	console.log( "Warning.  Job does not indicate host, pms or actor.  Skipping." );
-	return -1;
-    }
-    
-    let jobData         = {};
-    jobData.QueueId     = jd.QueueId
-    jobData.Host        = jd.Host;
-    jobData.Org         = jd.Org;
-    jobData.ProjMgmtSys = jd.ProjMgmtSys;
-    jobData.Actor       = jd.Actor;
-    jobData.Event       = jd.Event;
-    jobData.Action      = jd.Action;
-    jobData.ReqBody     = jd.ReqBody;
-    jobData.Tag         = jd.Tag;
-    jobData.DelayCount  = delayCount;
-
-    // GH stamp not dependable.
-    // let newStamp = reqBody[handler].updated_at;
-    // if( typeof newStamp === 'undefined' ) { newStamp = "1970-01-01T12:00:00Z"; }   
-    // jobData.Stamp = makeStamp( newStamp );
-    jobData.Stamp = Date.now();
-    //console.log( jobData.Stamp, jobData.Tag );
-    
-    return jobData;
-}
-
-function summarizeQueue( ceJobs, msg, limit ) {
-    console.log( msg, " Depth", ceJobs.jobs.length, "Max depth", ceJobs.maxDepth, "Count:", ceJobs.count, "Demotions:", ceJobs.delay);
-    const jobs = ceJobs.jobs.getAll();
-    limit = ceJobs.jobs.length < limit ? ceJobs.jobs.length : limit;
-    for( let i = 0; i < limit; i++ ) {
-	console.log( "   ", jobs[i].QueueId, jobs[i].Host, jobs[i].Tag, jobs[i].Stamp, jobs[i].DelayCount );
-    }
-}
-
-// Do not remove top, that is getNextJob's sole perogative
-// add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
-async function demoteJob( ceJobs, jd ) {
-    console.log( "Demoting", jd.QueueId, jd.DelayCount );
-    const newJob = makeJobData( jd, jd.DelayCount+1 );
-
-    // This can't be, since the job was already processed.
-    assert( newJob != -1 );
-    
-    // This has failed once, during cross repo blast test, when 2 label notifications were sent out
-    // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
-    // Doubled count, forced depth change, may be sufficient.  If not, change stamp time to next biggest and retry.
-    
-    assert( jd.DelayCount < config.MAX_DELAYS );  
-    ceJobs.delay++;
-    
-    // get splice index
-    let spliceIndex = 1;
-    let jobs = ceJobs.jobs.getAll();
-
-    const stepCost = config.STEP_COST * jd.DelayCount;   
-    
-    // If nothing else is here yet, delay.  Overall, will delay over a minute 
-    if( jobs.length <= 1 ) {
-	console.log( "... empty queue, sleep" );
-	let delay = jd.DelayCount > 4 ? stepCost + config.NOQ_DELAY : stepCost;
-	await sleep( delay );
-    }
-    else {
-	// Have to push back at least once.  
-	for( let i = 1; i < jobs.length; i++ ) {
-	    spliceIndex = i+1;
-	    if( jobs[i].Stamp - newJob.Stamp > config.MIN_DIFF ) { break;  }
-	}
-    }
-    if( spliceIndex == 1 && jobs.length >= 2 ) { spliceIndex = 2; }  // force progress where possible
-
-    console.log( "Got splice index of", spliceIndex );
-    jobs.splice( spliceIndex, 0, newJob );
-
-    summarizeQueue( ceJobs, "\nceJobs, after demotion", 7 );
-}
-
-// Put the job.  Then return first on queue.  Do NOT delete first.
-function checkQueue( ceJobs, jd ) {
-    const jobData = makeJobData( jd, jd.DelayCount );
-
-    if( jobData != -1 ) {
-	ceJobs.jobs.push( jobData );
-	if( ceJobs.jobs.length > ceJobs.maxDepth ) { ceJobs.maxDepth = ceJobs.jobs.length; }
-	ceJobs.count++;
-    }
-
-    summarizeQueue( ceJobs, "\nceJobs, after push", 3 );
-    
-    return ceJobs.jobs.first;
-}
-
-function purgeQueue( ceJobs ) {
-
-    console.log( "Purging ceJobs" )
-    ceJobs.count = 0;
-    ceJobs.delay = 0;
-
-    // Note, this should not be necessary.
-    if( ceJobs.jobs.length > 0 ) { 
-	summarizeQueue( ceJobs, "Error.  Should not be jobs to purge.", 200 );
-	ceJobs.jobs.purge();
-    }
-}
-
-
-// Remove top of queue, get next top.
-async function getFromQueue( ceJobs ) {
-    
-    ceJobs.jobs.shift();
-    return ceJobs.jobs.first;
-}
 
 
 // UNIT TESTING ONLY!!
@@ -1077,10 +962,6 @@ exports.getRepoStatus = getRepoStatus;
 exports.cleanDynamo = cleanDynamo;
 exports.clearIngested = clearIngested;
 
-exports.checkQueue    = checkQueue;
-exports.purgeQueue    = purgeQueue;
-exports.getFromQueue  = getFromQueue;
-exports.demoteJob     = demoteJob;
 exports.settleWithVal = settleWithVal;
 
 // TESTING ONLY

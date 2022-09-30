@@ -19,7 +19,7 @@ var config    = require('./config');
 // repo:  name of a repository with GitHub App installed
 async function getInstallationAccessToken(owner, repo, app, jwt) {
 
-    console.log( "Fetching", `https://api.github.com/repos/${owner}/${repo}/installation` );
+    // console.log( "Fetching", `https://api.github.com/repos/${owner}/${repo}/installation` );
     const result = await fetch(`https://api.github.com/repos/${owner}/${repo}/installation`,
 			       {
 				   headers: {
@@ -29,7 +29,11 @@ async function getInstallationAccessToken(owner, repo, app, jwt) {
 			       });
 
     const installationId = (await result.json()).id;
-    console.log( "GIAT", installationId, owner, repo );
+    // console.log( "GIAT", installationId, owner, repo );
+    if( typeof installationId === 'undefined' ) {
+	console.log( "Warning.  Octokit can't find the app installation for", owner, repo, ".  Is the app installed for your personal account?" );
+	return -1;
+    }
 	
     const installationAccessToken = await app.getInstallationAccessToken({ installationId });
     
@@ -81,6 +85,7 @@ async function getInstallationClient(owner, repo, actor) {
 
     // console.log( "Get AUTH for", owner, repo, credPath, jwt.substring(0,15), installationAccessToken.substring( 0,50) );
 
+    if( installationAccessToken == -1 ) { return -1; }
     return getInstallationClientFromToken(installationAccessToken);
 
 }
