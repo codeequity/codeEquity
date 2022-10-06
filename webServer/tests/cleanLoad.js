@@ -4,7 +4,7 @@ const awsAuth        = require( '../awsAuth' );
 const auth           = require( "../auth");
 const config         = require('../config');
 const utils          = require( "../utils");
-const testSaveDynamo = require( './testSaveDynamo' );
+//const testSaveDynamo = require( './testSaveDynamo' );
 const links          = require('../components/linkage.js');
 
 const testData  = require( './testData' );
@@ -217,7 +217,7 @@ async function loadLinkage( authData, td ) {
 
 
 
-async function runTests() {
+
     console.log( "Clean and recreate ceFlutter testing environment in AWS" );
 
     // TEST_REPO auth

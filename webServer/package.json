@@ -10,7 +10,8 @@
         "cleanFlutter": "node ./tests/cleanLoad.js",
         "cleanLoad": "node ./tests/cleanLoad.js",
         "testSetup": "node ./tests/testSetup.js",
-        "testDelete": "node ./tests/testDelete.js"
+        "testDelete": "node ./tests/testDelete.js",
+	"testSave": "node ./tests/testSaveDynamo.js" 
     },
     "dependencies": {
         "@octokit/app": "^4.2.0",
