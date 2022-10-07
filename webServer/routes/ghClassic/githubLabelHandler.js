@@ -4,7 +4,7 @@ var utils   = require('../../utils');
 var ghUtils = require('../../ghUtils');
 var config  = require('../../config');
 
-const peqData = require( '../../peqData' );
+const ghcData = require( './ghcData' );
 var issHan    = require('./githubIssueHandler');
 
 var gh     = ghUtils.githubUtils;
@@ -108,7 +108,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			// console.log( "Labels for", issue.title, issue.num, newLabel, issueLabels );
 
 			// modify, fill pd
-			let newPD = new peqData.PeqData();
+			let newPD          = new ghcData.GHCData();
 			newPD.GHIssueNum   = issue.num;
 			newPD.GHIssueTitle = issue.title;
 			newPD.GHIssueId    = issue.issueId;

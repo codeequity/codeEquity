@@ -1,6 +1,6 @@
-var config    = require('./config');
+var config    = require('../../config');
 
-class PeqData {
+class GH2Data {
     constructor( ) {
 	this.GHRepo       = config.EMPTY;
 	this.GHOwner      = config.EMPTY;
@@ -19,7 +19,7 @@ class PeqData {
 	this.projSub      = [];
     }
     show() {
-	console.log( "PeqData object contents" );
+	console.log( "GH2Data object contents" );
 	if( this.GHRepo     != config.EMPTY ) { console.log( "this.GHRepo", this.GHRepo ); }
 	if( this.GHOwner    != config.EMPTY ) { console.log( "this.GHOwner", this.GHOwner ); }
 	if( this.GHCreator  != config.EMPTY ) { console.log( "this.GHCreator", this.GHCreator ); }
@@ -41,4 +41,4 @@ class PeqData {
     }
 }
 
-exports.PeqData = PeqData;
+exports.GH2Data = GH2Data;

@@ -19,6 +19,7 @@ var config    = require('./config');
 // repo:  name of a repository with GitHub App installed
 async function getInstallationAccessToken(owner, repo, app, jwt) {
 
+    // console.log( "Fetching", `https://api.github.com/repos/${owner}/${repo}/installation` );
     const result = await fetch(`https://api.github.com/repos/${owner}/${repo}/installation`,
 			       {
 				   headers: {
@@ -26,8 +27,14 @@ async function getInstallationAccessToken(owner, repo, app, jwt) {
 				       accept: 'application/vnd.github.machine-man-preview+json',
 				   },
 			       });
-    
+
     const installationId = (await result.json()).id;
+    // console.log( "GIAT", installationId, owner, repo );
+    if( typeof installationId === 'undefined' ) {
+	console.log( "Warning.  Octokit can't find the app installation for", owner, repo, ".  Is the app installed for your personal account?" );
+	return -1;
+    }
+	
     const installationAccessToken = await app.getInstallationAccessToken({ installationId });
     
     return installationAccessToken;
@@ -39,7 +46,7 @@ function getInstallationClientFromToken(installationAccessToken) {
     //return new OctokitRetry({ auth: `token ${installationAccessToken}` });
 }
 
-async function getInstallationClient(owner, repo, source) {
+async function getInstallationClient(owner, repo, actor) {
 
     // Both the codeEquity app, and the ceTester app are installed for local development, both are authorized against the github repo.
     // the codeEquity app contains the webServer - use those credentials for posting to GH, otherwise secondary notification filtering
@@ -47,19 +54,29 @@ async function getInstallationClient(owner, repo, source) {
     // sender, for bot posts, appears to be drawn from the installed app name.
     // Use ceTester creds for testing, codeEquity for everything else
     let credPath = config.CREDS_PATH;
-    if( source != config.CE_USER &&
+    if( actor != config.CE_USER &&
 	( owner == config.TEST_OWNER || owner == config.CROSS_TEST_OWNER || owner == config.MULTI_TEST_OWNER ) &&
 	( repo == config.TEST_REPO   || repo == config.FLUTTER_TEST_REPO || repo == config.CROSS_TEST_REPO   || owner == config.MULTI_TEST_OWNER )) {
 	credPath = config.CREDS_TPATH;
     }
+
+    // console.log( "GIC", owner, repo );
+    // console.log( "GIC", credPath );
     
     dotenv.config({ path: credPath });
+
+    // console.log( "Dot results", process.env.GITHUB_APP_IDENTIFIER );
+    // console.log( "Dot results", process.env.GITHUB_PRIVATE_KEY.replace(/\\n/g, '\n') );
     
     // Initialize GitHub App with id:private_key pair and generate JWT which is used for application level authorization
     // Note: js dotenv is crazy stupid about reading the multiline pkey.  needed to add \n, make all 1 line, then strip 
     const app = new App({ id: process.env.GITHUB_APP_IDENTIFIER, privateKey: process.env.GITHUB_PRIVATE_KEY.replace(/\\n/g, '\n') });
+
     const jwt = app.getSignedJsonWebToken();
 
+    // console.log( "GIC app", app );
+    // console.log( "GIC jwt", jwt );
+    
     installationAccessToken = await getInstallationAccessToken( owner, repo, app, jwt )
         .catch( e => {
 	    console.log( "Get Install Client failed.", e );
@@ -68,7 +85,9 @@ async function getInstallationClient(owner, repo, source) {
 
     // console.log( "Get AUTH for", owner, repo, credPath, jwt.substring(0,15), installationAccessToken.substring( 0,50) );
 
+    if( installationAccessToken == -1 ) { return -1; }
     return getInstallationClientFromToken(installationAccessToken);
+
 }
 
 

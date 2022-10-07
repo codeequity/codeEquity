@@ -65,23 +65,23 @@ exports.handler = (event, context, callback) => {
     if(      endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
     else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
     else if( endPoint == "RemoveEntries")  { resultPromise = removeEntries( rb.tableName, rb.ids ); }
-    else if( endPoint == "GetID")          { resultPromise = getPersonId( username ); }             // username is local
-    else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.GHUserName ); }           // return varies on no_content
+    else if( endPoint == "GetID")          { resultPromise = getCEUserId( username ); }             // username is local
+    else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.HostUserName ); }           // return varies on no_content
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
-    else if( endPoint == "CheckSetGHPop")  { resultPromise = checkSetGHPop( rb.GHRepo, rb.Set ); }
-    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.GHUserName, rb.GHRepo, rb.isAlloc ); }
+    else if( endPoint == "CheckSetHostPop")  { resultPromise = checkSetHostPop( rb.CEProjectId, rb.Set ); }
+    else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.HostUserName, rb.CEProjectId, rb.isAlloc ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
-    else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.GHUserName, rb.GHRepo ); }
-    else if( endPoint == "GetPActsById")   { resultPromise = getPActsById( rb.GHRepo, rb.PeqIds ); }
-    else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.GHRepo ); }
+    else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.HostUserName, rb.CEProjectId ); }
+    else if( endPoint == "GetPActsById")   { resultPromise = getPActsById( rb.CEProjectId, rb.PeqIds ); }
+    else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.CEProjectId ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
     else if( endPoint == "Uningest")       { resultPromise = unIngest( rb.tableName, rb.query ); }    
     else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.pLink ); }
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
-    else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.PersonId ); }
+    else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.CEUserUd ); }
     else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
@@ -275,28 +275,28 @@ async function getEntry( tableName, query ) {
     // Possibilities for non-paginated (Count 0 or 1) returns
     switch( tableName ) {
     case "CEPeople":
-	props = ["PersonId", "UserName", "Email", "First", "Last"];
+	props = ["CEUserId", "CEUserName", "Email", "First", "Last"];
 	break;
-    case "CEGithub":
-	props = ["GHUserName"];
+    case "CEHostUser":
+	props = ["HostUserName"];
 	break;
     case "CEPEQs":
-	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "CEProjectId", "HostProjectId", "HostIssueId", "HostIssueTitle" ];
 	break;
     case "CEPEQActions":
-	props = [ "PEQActionId", "CEUID", "GHUserName", "GHRepo", "Verb", "Action"];
+	props = [ "PEQActionId", "CEUID", "HostUserName", "CEProjectId", "Verb", "Action"];
 	break;
     case "CEPEQRaw":
 	props = [ "PEQRawId" ];
 	break;
     case "CERepoStatus":
-	props = [ "GHRepo" ];
+	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary":
-	props = [ "GHRepo" ];
+	props = [ "CEProjectId" ];
 	break;
     case "CELinkage":
-	props = [ "GHRepo" ];
+	props = [ "CEProjectId" ];
 	break;
     default:
 	assert( false );
@@ -327,19 +327,19 @@ async function getEntries( tableName, query ) {
     let props = [];
     switch( tableName ) {
     case "CEPEQs":
-	props = [ "PEQId", "Active", "CEGrantorId", "GHHolderId", "PeqType", "Amount", "GHRepo", "GHProjectId", "GHIssueId", "GHIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "HostHolderId", "PeqType", "Amount", "CEProjectId", "HostProjectId", "HostIssueId", "HostIssueTitle" ];
 	break;
     case "CEPEQActions":
-	props = [ "PEQActionId", "CEUID", "GHUserName", "GHRepo", "Verb", "Action", "Subject", "Ingested"];
+	props = [ "PEQActionId", "CEUID", "HostUserName", "CEProjectId", "Verb", "Action", "Subject", "Ingested"];
 	break;
     case "CEPEQRaw":
-	props = [ "PEQRawId", "GHRepo" ];
+	props = [ "PEQRawId", "CEProjectId" ];
 	break;
     case "CERepoStatus": 
-	props = [ "GHRepo" ];
+	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary": 
-	props = [ "GHRepo" ];
+	props = [ "CEProjectId" ];
 	break;
     default:
 	assert( false );
@@ -378,8 +378,8 @@ async function removeEntries( tableName, ids ) {
     case "CEPEQRaw":
 	pkey1 = "PEQRawId";
 	break;
-    case "CERepoStatus": 
-	pkey1 = "GHRepo";
+    case "CEProjects": 
+	pkey1 = "CEProjectId";
 	break;
     case "CEPEQSummary": 
 	pkey1 = "PEQSummaryId";
@@ -416,35 +416,35 @@ async function removeEntries( tableName, ids ) {
 
 
 
-
-async function getPersonId( username ) {
+// get from ce table
+async function getCEUserId( username ) {
     const paramsP = {
         TableName: 'CEPeople',
-        FilterExpression: 'UserName = :uname',
+        FilterExpression: 'CEUserName = :uname',
         ExpressionAttributeValues: { ":uname": username }
     };
 
     let personPromise = paginatedScan( paramsP );
     return personPromise.then((persons) => {
 	assert(persons.length == 1 );
-	console.log( "Found PersonId ", persons[0].PersonId );
-	return success( persons[0].PersonId );
+	console.log( "Found CEUserId ", persons[0].CEUserId );
+	return success( persons[0].CEUserId );
     });
 }
 
-
-async function getCEUID( ghUser ) {
+// get from host table
+async function getCEUID( hostUser ) {
     const params = {
-        TableName: 'CEGithub',
-        FilterExpression: 'GHUserName = :uname',
-        ExpressionAttributeValues: { ":uname": ghUser }
+        TableName: 'CEHostUser',
+        FilterExpression: 'HostUserName = :uname',
+        ExpressionAttributeValues: { ":uname": hostUser }
     };
 
     let promise = paginatedScan( params );
-    return promise.then((gh) => {
-	if( gh.length == 1 ) {
-	    console.log( "Found ceOwnerId ", gh[0].CEOwnerId );
-	    return success( gh[0].CEOwnerId );
+    return promise.then((host) => {
+	if( host.length == 1 ) {
+	    console.log( "Found ceUserId ", host[0].CEUserId );
+	    return success( host[0].CEUserId );
 	}
 	else {
 	    // may not be one yet
@@ -459,10 +459,10 @@ async function putPerson( newPerson ) {
     const paramsPP = {
 	TableName: 'CEPeople',
 	Item: {
-	    "PersonId": newPerson.id,
+	    "CEUserId": newPerson.id,
 	    "First":    newPerson.firstName,
 	    "Last":     newPerson.lastName,
-	    "UserName": newPerson.userName,
+	    "CEUserName": newPerson.userName,
 	    "Email":    newPerson.email,
 	    "Locked":   newPerson.locked,
 	    "ImagePng": newPerson.imagePng            
@@ -473,11 +473,11 @@ async function putPerson( newPerson ) {
     return personPromise.then(() => success( true ));
 }
 
-async function getLinkage( ghRepo ) {
+async function getLinkage( ceProjectId ) {
     const params = {
         TableName: 'CELinkage',
-        FilterExpression: 'GHRepo = :ghRepo',
-        ExpressionAttributeValues: { ":ghRepo": ghRepo }
+        FilterExpression: 'CEProjectId = :anid',
+        ExpressionAttributeValues: { ":anid": ceProjectId }
     };
 
     let lPromise = paginatedScan( params );
@@ -503,8 +503,8 @@ async function writeLinkHelp( summary ) {
 }
 
 async function putLinkage( summary ) {
-    // get any entry with summary.GHRepo, overwrite
-    let oldSummary = await getLinkage( summary.GHRepo );
+    // get any entry with summary.CEProjectId, overwrite
+    let oldSummary = await getLinkage( summary.CEProjectId );
     
     // write new summary
     summary.CELinkageId = oldSummary == -1 ? randAlpha(10) : oldSummary.CELinkageId;
@@ -515,15 +515,15 @@ async function putLinkage( summary ) {
 // NOTE: if this is called multiple times with new repo, new locs, very quickly, more than 1 thread can pass the test, creating multiple
 //       linkages.  Which is bad.
 async function updateLinkage( newLoc ) {
-    // get any entry with summary.GHRepo, overwrite
-    let oldSummary = await getLinkage( newLoc.GHRepo );
+    // get any entry with summary.CEProjectId, overwrite
+    let oldSummary = await getLinkage( newLoc.CEProjectId );
 
     // XXX not thread-safe, see above
     // Note!  First created project in repo will not have summary.
     if( oldSummary == -1 ) {
 	oldSummary = {};
 	oldSummary.CELinkageId = randAlpha(10);
-	oldSummary.GHRepo      = newLoc.GHRepo;
+	oldSummary.CEProjectId = newLoc.CEProjectId;
 	console.log( "Created new summary object" );
     }
 
@@ -532,11 +532,12 @@ async function updateLinkage( newLoc ) {
     let foundLoc = false;
     if( 'Locations' in oldSummary ) {
 	for( var loc of oldSummary.Locations ) {
-	    if( loc.GHProjectId == newLoc.Location.GHProjectId && loc.GHColumnId == newLoc.Location.GHColumnId ) {
-		console.log( "updating with", newLoc.Location.GHProjectName, newLoc.Location.GHColumnName );
-		loc.GHProjectName = newLoc.Location.GHProjectName;
-		loc.GHColumnName  = newLoc.Location.GHColumnName;
-		loc.Active        = newLoc.Location.Active;
+	    if( loc.HostProjectId == newLoc.Location.HostProjectId && loc.HostColumnId == newLoc.Location.HostColumnId ) {
+		console.log( "updating with", newLoc.Location.HostProjectName, newLoc.Location.HostColumnName );
+		loc.HostRepoName    = newLoc.Location.HostRepoName;
+		loc.HostProjectName = newLoc.Location.HostProjectName;
+		loc.HostColumnName  = newLoc.Location.HostColumnName;
+		loc.Active          = newLoc.Location.Active;
 		foundLoc = true;
 	    }
 	}
@@ -546,25 +547,26 @@ async function updateLinkage( newLoc ) {
     // Add, if not already present
     if( !foundLoc ) {
 	let aloc = {};
-	console.log( "Create new for", newLoc.Location.GHProjectName, newLoc.Location.GHColumnName );
-	aloc.GHProjectId   = newLoc.Location.GHProjectId;
-	aloc.GHProjectName = newLoc.Location.GHProjectName;
-	aloc.GHColumnId    = newLoc.Location.GHColumnId;
-	aloc.GHColumnName  = newLoc.Location.GHColumnName;
-	aloc.Active        = newLoc.Location.Active;
+	console.log( "Create new for", newLoc.Location.HostProjectName, newLoc.Location.HostColumnName );
+	aloc.HostProjectId   = newLoc.Location.HostProjectId;
+	aloc.HostProjectName = newLoc.Location.HostProjectName;
+	aloc.HostRepoName    = newLoc.Location.HostRepoName;
+	aloc.HostColumnId    = newLoc.Location.HostColumnId;
+	aloc.HostColumnName  = newLoc.Location.HostColumnName;
+	aloc.Active          = newLoc.Location.Active;
 	oldSummary.Locations.push( aloc );
     }
     
     return await writeLinkHelp( oldSummary );
 }
 
-async function checkSetGHPop( repo, setVal ) {
+async function checkSetHostPop( ceProjId, setVal ) {
 
-    let params = { TableName: 'CERepoStatus' };
+    let params = { TableName: 'CEProjects' };
     let promise = null;
 
     if( setVal == "true" ) {
-	params.Key                       = { "GHRepo": repo };
+	params.Key                       = { "CEProjectId": ceProjId };
 	params.UpdateExpression          = 'set Populated = :lockVal';
 	params.ExpressionAttributeValues = { ':lockVal': setVal };
 
@@ -572,13 +574,13 @@ async function checkSetGHPop( repo, setVal ) {
 	return promise.then(() => success( true ));
     }
     else {
-	params.FilterExpression          = 'GHRepo = :repo';
-	params.ExpressionAttributeValues = { ':repo': repo };
+	params.FilterExpression          = 'CEProjectId = :pid';
+	params.ExpressionAttributeValues = { ':pid': ceProjId };
 
 	promise = paginatedScan( params );
 	return promise.then((res) => {
 	    if( res && res.length > 0 ) { return success( res[0].Populated ); }
-	    else      { return success( false ); }
+	    else                        { return success( false ); }
 	});
     }
 }
@@ -601,7 +603,7 @@ async function putPeq( newPEQ ) {
 	if( spinCount >= MAX_SPIN ) { return LOCKED; }
     }
 
-    if( !newPEQ.hasOwnProperty( 'GHRepo' ) || !newPEQ.hasOwnProperty( 'GHProjectId' ) || !newPEQ.hasOwnProperty( 'Amount' ) ) {
+    if( !newPEQ.hasOwnProperty( 'CEProjectId' ) || !newPEQ.hasOwnProperty( 'HostProjectId' ) || !newPEQ.hasOwnProperty( 'Amount' ) ) {
 	console.log( "Peq malformed", newPEQ.toString() );
 	return BAD_SEMANTICS;
     }
@@ -611,18 +613,18 @@ async function putPeq( newPEQ ) {
 	Item: {
 	    "PEQId":        newPEQ.PEQId,
 	    "CEHolderId":   newPEQ.CEHolderId,
-	    "GHHolderId":   newPEQ.GHHolderId,
+	    "HostHolderId": newPEQ.HostHolderId,
 	    "CEGrantorId":  newPEQ.CEGrantorId,
 	    "PeqType":      newPEQ.PeqType,
 	    "Amount":       newPEQ.Amount,
 	    "AccrualDate":  newPEQ.AccrualDate,
 	    "VestedPerc":   newPEQ.VestedPerc,
-	    "GHRepo":       newPEQ.GHRepo,
-	    "GHProjectSub": newPEQ.GHProjectSub,
-	    "GHProjectId":  newPEQ.GHProjectId,
-	    "GHIssueId":    newPEQ.GHIssueId,
-	    "GHIssueTitle": newPEQ.GHIssueTitle,
-	    "Active":       newPEQ.Active
+	    "CEProjectId":  newPEQ.CEProjectId,
+	    "HostProjectSub": newPEQ.HostProjectSub,
+	    "HostProjectId":  newPEQ.HostProjectId,
+	    "HostIssueId":    newPEQ.HostIssueId,
+	    "HostIssueTitle": newPEQ.HostIssueTitle,
+	    "Active":         newPEQ.Active
 	}
     };
 
@@ -647,8 +649,8 @@ async function putPAct( newPAction ) {
 	Item: {
 	    "PEQActionId":  newId,
 	    "CEUID":        newPAction.CEUID,
-	    "GHUserName":   newPAction.GHUserName,
-	    "GHRepo":       newPAction.GHRepo,
+	    "HostUserName": newPAction.HostUserName,
+	    "CEProjectId":  newPAction.CEProjectId,
 	    "Verb":         newPAction.Verb,
 	    "Action":       newPAction.Action,
 	    "Subject":      newPAction.Subject,
@@ -664,9 +666,9 @@ async function putPAct( newPAction ) {
     const paramsR = {
         TableName: 'CEPEQRaw',
 	Item: {
-	    "PEQRawId":  newId,
-	    "GHRepo":    newPAction.GHRepo,
-	    "RawBody":   newPAction.RawBody,
+	    "PEQRawId":    newId,
+	    "CEProjectId": newPAction.CEProjectId,
+	    "RawBody":     newPAction.RawBody,
 	}
     };
     
@@ -681,9 +683,9 @@ async function putPAct( newPAction ) {
 
 
 // XXX Slow
-// Get all for uid, app can figure out whether or not to sort by associated ghUser
+// Get all for uid, app can figure out whether or not to sort by associated hostUser
 // NOTE: ignore locks on read
-async function getPeq( uid, ghUser, ghRepo, isAlloc ) {
+async function getPeq( uid, hostUser, ceProjId, isAlloc ) {
     if( isAlloc == "true" ) { isAlloc = true; }
     else                    { isAlloc = false; }
 
@@ -691,17 +693,17 @@ async function getPeq( uid, ghUser, ghRepo, isAlloc ) {
     const params = { TableName: 'CEPEQs', Limit: 99, };
     
     if( uid != "" ) {
-        params.FilterExpression = 'contains( CEHolderId, :ceid) AND GHRepo = :ghrepo AND Active = :true';
-        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo, ":true": "true" };
+        params.FilterExpression = 'contains( CEHolderId, :ceid) AND CEProjectId = :pid AND Active = :true';
+        params.ExpressionAttributeValues = { ":ceid": uid, ":pid": ceProjId, ":true": "true" };
     }
-    else if( ghUser == "" ) {  // allocation, or unassigned
-	if( isAlloc ) { params.FilterExpression = 'size( GHHolderId ) < :empty AND PeqType = :alloc AND GHRepo = :ghrepo AND Active = :true'; }
-	else {          params.FilterExpression = 'size( GHHolderId ) < :empty AND PeqType <> :alloc AND GHRepo = :ghrepo AND Active = :true'; }
-        params.ExpressionAttributeValues = { ":empty": 5, ":alloc": "allocation", ":ghrepo": ghRepo, ":true": "true" };
+    else if( hostUser == "" ) {  // allocation, or unassigned
+	if( isAlloc ) { params.FilterExpression = 'size( HostHolderId ) < :empty AND PeqType = :alloc  AND CEProjectId = :pid AND Active = :true'; }
+	else {          params.FilterExpression = 'size( HostHolderId ) < :empty AND PeqType <> :alloc AND CEProjectId = :pid AND Active = :true'; }
+        params.ExpressionAttributeValues = { ":empty": 5, ":alloc": "allocation", ":pid": ceProjId, ":true": "true" };
     }
     else {
-        params.FilterExpression = 'contains( GHHolderId, :id) AND GHRepo = :ghrepo AND Active = :true';
-        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo, ":true": "true" };
+        params.FilterExpression = 'contains( HostHolderId, :id) AND CEProjectId = :pid AND Active = :true';
+        params.ExpressionAttributeValues = { ":id": hostUser, ":pid": ceProjId, ":true": "true" };
     }
 
     console.log( "Looking for peqs", params);
@@ -712,16 +714,16 @@ async function getPeq( uid, ghUser, ghRepo, isAlloc ) {
     });
 }
 
-async function getPeqActions( uid, ghUser, ghRepo ) {
+async function getPeqActions( uid, hostUser, ceProjId ) {
     let params = { TableName: 'CEPEQActions', Limit: 99, };
 
     if( uid != "" ) {
-	params.FilterExpression = 'CEUID = :ceid AND GHRepo = :ghrepo';
-        params.ExpressionAttributeValues = { ":ceid": uid, ":ghrepo": ghRepo };
+	params.FilterExpression = 'CEUID = :ceid AND CEProjectId = :pid';
+        params.ExpressionAttributeValues = { ":ceid": uid, ":pid": ceProjId };
     }
     else {
-	params.FilterExpression = 'GHUserName = :id AND GHRepo = :ghrepo';
-        params.ExpressionAttributeValues = { ":id": ghUser, ":ghrepo": ghRepo };
+	params.FilterExpression = 'HostUserName = :id AND CEProjectId = :pid';
+        params.ExpressionAttributeValues = { ":id": hostUser, ":pid": ceProjId };
     }
     
     console.log( "Looking for peqActions");
@@ -733,11 +735,11 @@ async function getPeqActions( uid, ghUser, ghRepo ) {
 }
 
 // Lock.  Then get uningested PEQActions
-async function getUnPActions( ghRepo ) {
+async function getUnPActions( ceProjId ) {
     const paramsP = {
         TableName: 'CEPEQActions',
-        FilterExpression: 'GHRepo = :ghrepo AND Ingested = :false',
-        ExpressionAttributeValues: { ":ghrepo": ghRepo, ":false": "false" },
+        FilterExpression: 'CEProjectId = :pid AND Ingested = :false',
+        ExpressionAttributeValues: { ":pid": ceProjId, ":false": "false" },
 	Limit: 99,
     };
 
@@ -804,13 +806,13 @@ async function updatePActions( pactIds ) {
 // XXX no update where.  this will be too slow
 async function unIngest( tableName, query ) {
 
-    console.log( "Updating pactions to not ingested for", query.GHRepo );
+    console.log( "Updating pactions to not ingested for", query.CEProjectId );
 
     // Find uningested
     const params = {
         TableName: tableName,
-        FilterExpression: 'GHRepo = :ghrepo AND Ingested = :true',
-        ExpressionAttributeValues: { ':ghrepo': query.GHRepo , ':true': "true" },
+        FilterExpression: 'CEProjectId = :pid AND Ingested = :true',
+        ExpressionAttributeValues: { ':pid': query.CEProjectId , ':true': "true" },
 	Limit: 99,
     };
     let unprocPromise = paginatedScan( params );
@@ -832,8 +834,8 @@ async function unIngest( tableName, query ) {
     // All locked should be unlocked.
     const lParams = {
         TableName: tableName,
-        FilterExpression: 'GHRepo = :ghrepo AND Locked = :true',
-        ExpressionAttributeValues: { ':ghrepo': query.GHRepo , ':true': "true" },
+        FilterExpression: 'CEProjectId = :pid AND Locked = :true',
+        ExpressionAttributeValues: { ':pid': query.CEProjectId , ':true': "true" },
 	Limit: 99,
     };
     unprocPromise = paginatedScan( lParams );
@@ -872,8 +874,6 @@ async function unIngest( tableName, query ) {
 // NOTE: ignore locks on read
 async function getPeqsById( peqIds ) {
 
-    console.log( "Get peqs by id, mamasita", peqIds );
-
     let promises = [];
     peqIds.forEach(function (peqId) {
 	const params = {
@@ -909,7 +909,7 @@ async function getPeqsById( peqIds ) {
 // you must construct the expression and the expressionAttrVals piece by piece, explicitly.  Then ordering is in question.
 // For now, use promises.all to ensure ordering and skip explicit construction.  more aws calls, buuuuttt....
 // NOTE: ignore locks on read
-async function getPActsById( ghRepo, peqIds ) {
+async function getPActsById( ceProjId, peqIds ) {
 
     console.log( "Get pacts by peq id", peqIds );
 
@@ -917,8 +917,8 @@ async function getPActsById( ghRepo, peqIds ) {
     peqIds.forEach(function (peqId) {
 	const params = {
 	    TableName: 'CEPEQActions',
-	    FilterExpression: 'contains( Subject, :peqId) AND GHRepo = :ghrepo',
-	    ExpressionAttributeValues: { ":peqId": peqId, ":ghrepo": ghRepo }};
+	    FilterExpression: 'contains( Subject, :peqId) AND CEProjectId = :pid',
+	    ExpressionAttributeValues: { ":peqId": peqId, ":pid": ceProjId }};
 	
 	promises.push( paginatedScan( params ) );
     });
@@ -938,14 +938,14 @@ async function getPActsById( ghRepo, peqIds ) {
 }
 
 async function getRepoStatus( repos ) {
-    console.log( "Which GHAs are CEPs?", repos );
+    console.log( "Which HostAs are CEPs?", repos );
 
     let promises = [];
     repos.forEach(function (fullName) {
 	const params = {
 	    TableName: 'CERepoStatus',
-	    FilterExpression: 'GHRepo = :ghRepo',
-	    ExpressionAttributeValues: { ":ghRepo": fullName }};
+	    FilterExpression: 'CEProjectId = :pid',
+	    ExpressionAttributeValues: { ":pid": fullName }};
 	
 	promises.push( paginatedScan( params ) );
     });
@@ -983,7 +983,7 @@ async function updatePEQ( pLink ) {
     if( spinCount >= MAX_SPIN ) { return LOCKED; }
     
     // Only props that get updated
-    let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "GHHolderId", "GHIssueTitle", "GHProjectSub", "PeqType", "VestedPerc" ];
+    let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "HostHolderId", "HostIssueTitle", "HostProjectSub", "PeqType", "VestedPerc" ];
     let updateVals = buildUpdateParams( pLink, props );
     assert( updateVals.length == 2 );
 
@@ -1034,12 +1034,12 @@ async function updatePActCE( ceUID, pactId ) {
 // So, require oldName or newName to match dynamo.
 async function updateColProj( update ) {
 
-    // query: GHRepo, GHProjectId, OldName, NewName, Column
+    // query: CEProjectId, HostProjectId, OldName, NewName, Column
     // if proj name mode, every peq in project gets updated.  big change.
-    // XXX if col name change, could be much smaller, but would need to generate list of peqIds in ingest from myGHLinks.  Possible.. 
+    // XXX if col name change, could be much smaller, but would need to generate list of peqIds in ingest from myHostLinks.  Possible.. 
 
-    // Get all active peqs in GHProjId, ghRepo
-    const query = { GHRepo: update.GHRepo, GHProjectId: update.GHProjectId, Active: "true" };
+    // Get all active peqs in HostProjId, ceProjId
+    const query = { CEProjectId: update.CEProjectId, HostProjectId: update.HostProjectId, Active: "true" };
     var peqsWrap = await getEntries( "CEPEQs", query );
     // console.log( "Found peqs, raw:", peqsWrap );
 
@@ -1050,21 +1050,21 @@ async function updateColProj( update ) {
     
     //   if Proj, if psub.len > 1,  update psub.last-1 where matches query.OldName with query.NewName
     for( var peq of peqs ) {
-	assert( peq.GHProjectSub.length >= 1 );
+	assert( peq.HostProjectSub.length >= 1 );
 	console.log( "working on", peq );
 	// not all peqs in project belong to this column.  
 	if( update.Column == "true" ) {
-	    let lastElt = peq.GHProjectSub[ peq.GHProjectSub.length - 1];
+	    let lastElt = peq.HostProjectSub[ peq.HostProjectSub.length - 1];
 	    if( lastElt == update.OldName ) {
-		peq.GHProjectSub[ peq.GHProjectSub.length - 1] = update.NewName;
-		console.log( "Updated column portion of psub", peq.GHIssueTitle, peq.GHProjectSub );
+		peq.HostProjectSub[ peq.HostProjectSub.length - 1] = update.NewName;
+		console.log( "Updated column portion of psub", peq.HostIssueTitle, peq.HostProjectSub );
 	    }
 	}
-	else if( peq.GHProjectSub.length >= 2 ) {
-	    let pElt = peq.GHProjectSub[ peq.GHProjectSub.length - 2];
+	else if( peq.HostProjectSub.length >= 2 ) {
+	    let pElt = peq.HostProjectSub[ peq.HostProjectSub.length - 2];
 	    assert( pElt == update.OldName || pElt == update.NewName );
-	    peq.GHProjectSub[ peq.GHProjectSub.length - 2] = update.NewName;
-	    console.log( "Updated project portion of psub", peq.GHIssueTitle, peq.GHProjectSub );
+	    peq.HostProjectSub[ peq.HostProjectSub.length - 2] = update.NewName;
+	    console.log( "Updated project portion of psub", peq.HostIssueTitle, peq.HostProjectSub );
 	}
     }
 
@@ -1073,8 +1073,8 @@ async function updateColProj( update ) {
 	const params = {
 	    TableName: 'CEPEQs',
 	    Key: {"PEQId": peq.PEQId},
-	    UpdateExpression: 'set GHProjectSub = :psub',
-	    ExpressionAttributeValues: { ':psub': peq.GHProjectSub }};
+	    UpdateExpression: 'set HostProjectSub = :psub',
+	    ExpressionAttributeValues: { ':psub': peq.HostProjectSub }};
 
 	promises.push( bsdb.update( params ).promise() );
     }
@@ -1095,8 +1095,8 @@ async function putPSum( psum ) {
     // XXX START workaround: Remove this once issue 67090 is resolved
     const params = {
         TableName: 'CEPEQSummary',
-        FilterExpression: 'GHRepo = :ghr',
-        ExpressionAttributeValues: { ":ghr": psum.ghRepo },
+        FilterExpression: 'CEProjectId = :ghr',
+        ExpressionAttributeValues: { ":ghr": psum.ceProjectId },
 	Limit: 99,
     };
     let gPromise = paginatedScan( params );
@@ -1104,9 +1104,9 @@ async function putPSum( psum ) {
     await gPromise.then((ps) => {
 	for( const eps of ps ) {
 	    if( eps.PEQSummaryId != psum.id ) {
-		// Oops.  We have an existing summary for repo with a different ID.  Don't write this new, second copy.
+		// Oops.  We have an existing summary for ceProj with a different ID.  Don't write this new, second copy.
 		assert( eps.Allocations.length == psum.allocations.length );
-		console.log( "Found duplicate repo, will not write current.", eps.PEQSummaryId.toString(), psum.id, psum.ghRepo, eps.Allocations.length.toString() );
+		console.log( "Found duplicate ceProj, will not write current.", eps.PEQSummaryId.toString(), psum.id, psum.ceProjectId, eps.Allocations.length.toString() );
 		skip = true;
 	    }
 	    
@@ -1119,7 +1119,7 @@ async function putPSum( psum ) {
         TableName: 'CEPEQSummary',
 	Item: {
 	    "PEQSummaryId": psum.id, 
-	    "GHRepo":       psum.ghRepo,
+	    "CEProjectId":  psum.ceProjectId,
 	    "TargetType":   psum.targetType,
 	    "TargetId":     psum.targetId,
 	    "LastMod":      psum.lastMod,
@@ -1133,22 +1133,22 @@ async function putPSum( psum ) {
     return promise.then(() => success( true ));
 }
 
-async function getGHA( uid ) {
+async function getHostA( uid ) {
     const paramsP = {
-        TableName: 'CEGithub',
-        FilterExpression: 'CEOwnerId = :ceid',
+        TableName: 'CEHostUser',
+        FilterExpression: 'CEUserId = :ceid',
         ExpressionAttributeValues: { ":ceid": uid },
 	Limit: 99,
     };
 
-    console.log( "GH Account repos");
+    console.log( "Host Account repos");
     let ghaPromise = paginatedScan( paramsP );
 
     let ghas = await ghaPromise;
     if( ! Array.isArray(ghas) || !ghas.length ) { return NO_CONTENT; }
 
     for( const gha of ghas ) {
-	console.log( "Found GH account ", gha );
+	console.log( "Found Host account ", gha );
 
 	let ceps = await getRepoStatus( gha.Repos );
 	console.log( "...working with ", ceps );
@@ -1161,10 +1161,10 @@ async function getGHA( uid ) {
 // XXX this gets all, not just needing update
 // XXX as it is, replace with getPeqActions
 // XXX NOTE: this also gets all from all repos belonging to ghUserName.  Not wrong, but too sloppy.
-async function getPEQActionsFromGH( ghUserName ) {
+async function getPEQActionsFromHost( ghUserName ) {
     const params = {
         TableName: 'CEPEQActions',
-        FilterExpression: 'GHUserName = :ghun',
+        FilterExpression: 'HostUserName = :ghun',
         ExpressionAttributeValues: { ":ghun": ghUserName },
 	Limit: 99,
     };
@@ -1186,40 +1186,40 @@ async function updatePEQActions( peqa, ceUID ) {
             ':ceuid':  ceUID,
         }
     };
-    console.log( "update peqa where gh is", peqa.GHUserName, peqa.PEQActionId, peqa.CEUID, ceUID);
+    console.log( "update peqa where host data is", peqa.HostUserName, peqa.PEQActionId, peqa.CEUID, ceUID);
     assert( peqa.CEUID == "---" || peqa.CEUID == ceUID );
 
     let uPromise = bsdb.update( paramsU ).promise();
     return uPromise.then(() => true );
 }
 
-// Note: newGHAcct.id is NOT the same as the GH ownerId
-async function putGHA( newGHAcct, update, pat ) {
+// Note: newHostAcct.id is NOT the same as the Host ownerId
+async function putHostA( newHostAcct, update, pat ) {
     if( update == "true" ) {
 	const params = {
-            TableName: 'CEGithub',
-	    Key: { "GHAccountId": newGHAcct.id },
-	    UpdateExpression: 'set CEOwnerId = :ceoid, GHUserName = :ghun, Repos = :repos',
-	    ExpressionAttributeValues: { ':ceoid': newGHAcct.ceOwnerId, ':ghun': newGHAcct.ghUserName, ':repos': newGHAcct.repos }
+            TableName: 'CEHostUser',
+	    Key: { "HostAccountId": newHostAcct.id },
+	    UpdateExpression: 'set CEUserId = :ceoid, HostUserName = :ghun, Repos = :repos',
+	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceOwnerId, ':ghun': newHostAcct.ghUserName, ':repos': newHostAcct.repos }
 	};
 	
-	console.log( "GHAcct update repos");
+	console.log( "HostAcct update repos");
 	let ghaPromise = bsdb.update( params ).promise();
 	await ghaPromise;
     }
     else {
 	const params = {
-            TableName: 'CEGithub',
+            TableName: 'CEHostUser',
 	    Item: {
-		"GHAccountId": newGHAcct.id, 
-		"CEOwnerId":   newGHAcct.ceOwnerId,
-		"GHUserName":  newGHAcct.ghUserName,
-		"Repos":       newGHAcct.repos,
+		"HostAccountId": newHostAcct.id, 
+		"CEUserId":   newHostAcct.ceOwnerId,
+		"HostUserName":  newHostAcct.ghUserName,
+		"Repos":       newHostAcct.repos,
 		"PAT":         pat
 	    }
 	};
 	
-	console.log( "GHAcct put repos");
+	console.log( "HostAcct put repos");
 	let ghaPromise = bsdb.put( params ).promise();
 	await ghaPromise;
     }
@@ -1231,9 +1231,9 @@ async function putGHA( newGHAcct, update, pat ) {
 	// Suure would be nice to have a real 'update where'.   bah
 	// Majority of cases will be 0 or just a few PEQActions without a CE UID, 
 	// especially since a PEQAction requires a PEQ label.
-	const ghPEQA = await getPEQActionsFromGH( newGHAcct.ghUserName );
-	await ghPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newGHAcct.ceOwnerId ));
-	console.log( "putGHA returning", updated );
+	const ghPEQA = await getPEQActionsFromHost( newHostAcct.ghUserName );
+	await ghPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceOwnerId ));
+	console.log( "putHostA returning", updated );
     }
 
     return success( updated );

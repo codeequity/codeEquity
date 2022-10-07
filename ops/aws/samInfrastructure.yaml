@@ -35,23 +35,23 @@ Resources:
     Properties:
       TableName: CEPeople
       PrimaryKey:
-        Name: PersonId
+        Name: CEUserId
         Type: String
 
-  GithubTable:
+  HostUserTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
-      TableName: CEGithub
+      TableName: CEHostUser
       PrimaryKey:
-        Name: GHAccountId
+        Name: HostUserId
         Type: String
 
-  RepoStatusTable:
+  ProjectsTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
-      TableName: CERepoStatus
+      TableName: CEProjects
       PrimaryKey:
-        Name: GHRepo
+        Name: CEProjectId
         Type: String
 
   AgreementTable:
@@ -178,9 +178,9 @@ Resources:
        - DynamoDBCrudPolicy:
           TableName: !Ref PersonTable
        - DynamoDBCrudPolicy:
-          TableName: !Ref RepoStatusTable
+          TableName: !Ref ProjectsTable
        - DynamoDBCrudPolicy:
-          TableName: !Ref GithubTable
+          TableName: !Ref HostUserTable
        - DynamoDBCrudPolicy:
           TableName: !Ref AgreementTable 
        - DynamoDBCrudPolicy:

@@ -112,8 +112,15 @@ def createTestDDBEntries( sam ) :
     # cmd = "aws dynamodb batch-write-item --request-items file://testData/testDataOwnerships.json"
     # splitAndLoad(sam, "testData/testDataPeople.json", "People" )
     # absolute path, or relative from ops.  above relative path is incorrect.
-    splitAndLoad(sam, "../webServer/tests/testData/baselineData/dynamoCEPEQRaw.json", "CEPEQRaw" )
-    
+    # splitAndLoad(sam, "../webServer/tests/testData/baselineData/dynamoCEPEQRaw.json", "CEPEQRaw" )
+    # splitAndLoad(sam, "../../webServer/tests/testData/tmp/dynamoCEGithub_latest.json", "CEHostUser" )
+    # splitAndLoad(sam, "../../webServer/tests/testData/tmp/dynamoCELinkage_latest.json", "CELinkage" )
+    splitAndLoad(sam, "../../webServer/tests/testData/tmp/dynamoCEPeople_latest.json", "CEPeople" )
+    # splitAndLoad(sam, "../../webServer/tests/testData/tmp/dynamoCEPEQActions_latest.json", "CEPEQActions" )
+    # splitAndLoad(sam, "../../webServer/tests/testData/tmp/dynamoCEPEQRaw_latest.json", "CEPEQRaw" )
+    # splitAndLoad(sam, "../../webServer/tests/testData/tmp/dynamoCEPEQs_latest.json", "CEPEQs" )
+    # splitAndLoad(sam, "../../webServer/tests/testData/tmp/dynamoCEPEQSummary_latest.json", "CEPEQSummary" )
+    # splitAndLoad(sam, "../../webServer/tests/testData/tmp/dynamoCEProjects_latest.json", "CEProjects" )
 
     
 def createConfigFiles( sam, Xs = False ):
@@ -222,13 +229,26 @@ def createTestAccounts( sam ) :
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
-    # Finally, add ceServer account.
+    # Finally, add ceServer, tester accounts.
     ceConfigData = ""
     with open(awsCECommon.ceServerConfig, "r") as read_file:
         ceConfigData = json.load(read_file)
         
-    tbase  = cmdBase + ceConfigData['Username'] + " --user-attributes Name=email,Value=" + ceConfigData['Email'] + " Name=email_verified,Value=true"
-    tpBase = pwdBase + ceConfigData['Username'] + " --password " + ceConfigData['Password'] + " --permanent"
+    server1 = ceConfigData['ceServer']
+    tbase  = cmdBase + server1['Username'] + " --user-attributes Name=email,Value=" + server1['Email'] + " Name=email_verified,Value=true"
+    tpBase = pwdBase + server1['Username'] + " --password " + server1['Password'] + " --permanent"
+    if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
+    if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
+
+    tester1 = ceConfigData['tester1']
+    tbase  = cmdBase + tester1['Username'] + " --user-attributes Name=email,Value=" + tester1['Email'] + " Name=email_verified,Value=true"
+    tpBase = pwdBase + tester1['Username'] + " --password " + tester1['Password'] + " --permanent"
+    if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
+    if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
+
+    tester2 = ceConfigData['tester2']
+    tbase  = cmdBase + tester2['Username'] + " --user-attributes Name=email,Value=" + tester2['Email'] + " Name=email_verified,Value=true"
+    tpBase = pwdBase + tester2['Username'] + " --password " + tester2['Password'] + " --permanent"
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
@@ -251,7 +271,15 @@ def help() :
     logging.info( "" )
     logging.info( "Pre-experimental commands:" )
     logging.info( "  - InstallAWSPermissions: Attempts to create a valid dev environment.  Best used as a set of hints for now." )
+    logging.info( "" )
+    logging.info( "Rebuilding?" )
+    logging.info( "Remember to save any data you want to keep.  Then.." )
+    logging.info( "python createCE.py getStackOutputs >& oldStack.txt" )
+    logging.info( "python createCE.py deleteCEResources" )
+    logging.info( "python createCE.py makeCEResources" )
 
+
+    
 
 # XXX remove deployment bucket? option to keep buckets around, so names not lost?
 def deleteCEResources( sam ) :

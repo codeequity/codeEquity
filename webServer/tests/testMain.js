@@ -21,8 +21,8 @@ const testBasicFlow  = require( './testBasicFlow' );
 const testComponents = require( './testComponents' );
 const testCross      = require( './testCross' );
 
-const testData = require( './testData' );
-
+const testData  = require( './testData' );
+const authDataC = require( '../authData' );
 
 async function runTests() {
 
@@ -39,44 +39,47 @@ async function runTests() {
     td.GHRepo       = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
-    let authData = {};
-    authData.who = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
-    authData.ic  = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    authData.api = utils.getAPIPath() + "/find";
-    authData.cog = await awsAuth.getCogIDToken();
-    authData.pat = await auth.getPAT( td.GHOwner );
-    td.GHOwnerId = await ghSafe.getOwnerIdGQL( authData.pat, td.GHOwner );
-    td.GHRepoId  = await ghSafe.getRepoIdGQL( authData.pat, td.GHOwner, td.GHRepo );
+    let authData     = new authDataC.AuthData(); 
+    authData.who     = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
+    authData.ic      = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
+    authData.api     = utils.getAPIPath() + "/find";
+    authData.cog     = await awsAuth.getCogIDToken();
+    authData.cogLast = Date.now();    
+    authData.pat     = await auth.getPAT( td.GHOwner );
+    td.GHOwnerId     = await ghSafe.getOwnerIdGQL( authData.pat, td.GHOwner );
+    td.GHRepoId      = await ghSafe.getRepoIdGQL( authData.pat, td.GHOwner, td.GHRepo );
 
     // CROSS_TEST_REPO auth
-    let tdX = new testData.TestData();
+    let tdX        = new testData.TestData();
     tdX.GHOwner    = config.CROSS_TEST_OWNER;
     tdX.GHRepo     = config.CROSS_TEST_REPO;
     tdX.GHFullName = tdX.GHOwner + "/" + tdX.GHRepo;
 
-    let authDataX = {};
-    authDataX.ic  = await auth.getInstallationClient( tdX.GHOwner, tdX.GHRepo, tdX.GHOwner );
-    authDataX.who = authData.who;
-    authDataX.api = authData.api;
-    authDataX.cog = authData.cog;
-    authDataX.pat = await auth.getPAT( tdX.GHOwner );
-    tdX.GHOwnerId = await ghSafe.getOwnerIdGQL( authDataX.pat, tdX.GHOwner );
-    tdX.GHRepoId  = await ghSafe.getRepoIdGQL( authDataX.pat, tdX.GHOwner, tdX.GHRepo );
+    let authDataX     = new authDataC.AuthData();
+    authDataX.ic      = await auth.getInstallationClient( tdX.GHOwner, tdX.GHRepo, tdX.GHOwner );
+    authDataX.who     = authData.who;
+    authDataX.api     = authData.api;
+    authDataX.cog     = authData.cog;
+    authDataX.cogLast = Date.now();        
+    authDataX.pat     = await auth.getPAT( tdX.GHOwner );
+    tdX.GHOwnerId     = await ghSafe.getOwnerIdGQL( authDataX.pat, tdX.GHOwner );
+    tdX.GHRepoId      = await ghSafe.getRepoIdGQL( authDataX.pat, tdX.GHOwner, tdX.GHRepo );
     
     // MULTI_TEST_REPO auth
-    let tdM = new testData.TestData();
+    let tdM        = new testData.TestData();
     tdM.GHOwner    = config.MULTI_TEST_OWNER;
     tdM.GHRepo     = config.MULTI_TEST_REPO;
     tdM.GHFullName = tdM.GHOwner + "/" + tdM.GHRepo;
     
-    let authDataM = {};
-    authDataM.ic  = await auth.getInstallationClient( tdM.GHOwner, tdM.GHRepo, tdM.GHOwner );
-    authDataM.who = authData.who;
-    authDataM.api = authData.api;
-    authDataM.cog = authData.cog;
-    authDataM.pat = await auth.getPAT( tdM.GHOwner );
-    tdM.GHOwnerId = await ghSafe.getOwnerIdGQL( authDataM.pat, tdM.GHOwner );
-    tdM.GHRepoId  = await ghSafe.getRepoIdGQL( authDataM.pat, tdM.GHOwner, tdM.GHRepo );
+    let authDataM     = new authDataC.AuthData();
+    authDataM.ic      = await auth.getInstallationClient( tdM.GHOwner, tdM.GHRepo, tdM.GHOwner );
+    authDataM.who     = authData.who;
+    authDataM.api     = authData.api;
+    authDataM.cog     = authData.cog;
+    authDataM.cogLast = Date.now();            
+    authDataM.pat     = await auth.getPAT( tdM.GHOwner );
+    tdM.GHOwnerId     = await ghSafe.getOwnerIdGQL( authDataM.pat, tdM.GHOwner );
+    tdM.GHRepoId      = await ghSafe.getRepoIdGQL( authDataM.pat, tdM.GHOwner, tdM.GHRepo );
 
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up

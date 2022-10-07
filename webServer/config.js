@@ -1,8 +1,8 @@
 // ceServerConfig
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
-const CE_USER = 'codeEquity';
-const CE_BOT  = 'codeequity[bot]';
+const CE_USER    = 'builderCE';
+const CE_BOT     = 'codeequity[bot]';
 const TESTER_BOT = 'cetester[bot]';
 
 // CE Server locs
@@ -20,14 +20,14 @@ const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
 
 
 // Host notifier platforms
-const HOST_GH = "Host:GitHub";
+const HOST_GH = "GitHub";
 
+// XXX no. not here.
 // Project Management Source
 const PMS_GHC = "GH Classic";   // Github's 'classic' projects that are now largely deprecated
 const PMS_GH2 = "GH Version 2"; // Github's 'Projects Version 2' projects
-
-const PROJ_OPTIONS = [ PMS_GHC, PMS_GH2 ];
-const PROJ_SOURCE  = PROJ_OPTIONS[1];  // Which project management system is the notification source for this effort
+// const PROJ_OPTIONS = [ PMS_GHC, PMS_GH2 ];
+// const PROJ_SOURCE  = PROJ_OPTIONS[1];  // Which project management system is the notification source for this effort
 
 
 // For testing .. needs work
@@ -154,8 +154,8 @@ exports.UNCLAIMED = UNCLAIMED;
 exports.HOST_GH      = HOST_GH;
 exports.PMS_GHC      = PMS_GHC;
 exports.PMS_GH2      = PMS_GH2;
-exports.PROJ_OPTIONS = PROJ_OPTIONS;
-exports.PROJ_SOURCE  = PROJ_SOURCE;
+// exports.PROJ_OPTIONS = PROJ_OPTIONS;
+// exports.PROJ_SOURCE  = PROJ_SOURCE;
 
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
 exports.COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;

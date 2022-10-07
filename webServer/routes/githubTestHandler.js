@@ -1,6 +1,6 @@
-var assert = require('assert');
-var utils = require('../utils');
-
+const assert   = require( 'assert' );
+const utils    = require( '../utils' );
+const ceRouter = require( './ceRouter' );
 
 async function handler( ghLinks, ceJobs, ceNotification, reqBody, res ) {
 
@@ -23,7 +23,7 @@ async function handler( ghLinks, ceJobs, ceNotification, reqBody, res ) {
     }
     else if( reqBody.Request == "purgeJobs" ) {
 	// NOTE, this removes ALL pending jobs for FullName, including user, server and tester jobs.
-	utils.purgeQueue( ceJobs );
+	ceRouter.purgeQueue( ceJobs );
     }
 	
     return res

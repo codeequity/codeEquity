@@ -3,7 +3,7 @@
     {
       "PutRequest": {
         "Item": {
-          "PersonId": {
+          "CEUserId": {
             "S": "CkUvxNtFWb"
           },
           "First": {
@@ -12,14 +12,74 @@
           "Last": {
             "S": "Server"
           },
-          "UserName": {
+          "CEUserName": {
             "S": "ceServer"
+          },
+          "ImagePng": {
+            "NULL": true
+          },
+          "Locked": {
+            "BOOL": false
           },
           "Email": {
             "S": "rmusick+ceServer@codeequity.net"
           }
         }
       }
-    }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "CEUserName": {
+            "S": "connieCE"
+          },
+          "ImagePng": {
+            "NULL": true
+          },
+          "CEUserId": {
+            "S": "cOHYQwDcwK"
+          },
+          "Last": {
+            "S": "Star"
+          },
+          "Locked": {
+            "BOOL": false
+          },
+          "Email": {
+            "S": "rmusick+connieCE@gmail.com"
+          },
+          "First": {
+            "S": "Marion"
+          }
+        }
+      }
+    },
+      {
+      "PutRequest": {
+        "Item": {
+          "CEUserName": {
+            "S": "ariCETester"
+          },
+          "ImagePng": {
+            "NULL": true
+          },
+          "CEUserId": {
+            "S": "eaeIqcqqdp"
+          },
+          "Last": {
+            "S": "Star"
+          },
+          "Locked": {
+            "BOOL": false
+          },
+          "Email": {
+            "S": "rmusick+ariCETester@gmail.com"
+          },
+          "First": {
+            "S": "Marion"
+          }
+        }
+      }
+    }      
   ]
 }

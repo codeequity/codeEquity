@@ -1,12 +1,13 @@
 var assert = require('assert');
 
-const auth = require( "../auth");
-var utils = require('../utils');
-var config  = require('../config');
+const auth     = require( "../auth");
+const utils    = require('../utils');
+const config   = require('../config');
+const ceRouter = require( '../routes/ceRouter' );
 
-var ghUtils = require('../ghUtils');
-var gh      = ghUtils.githubUtils;
-var ghSafe  = ghUtils.githubSafe;
+const ghUtils = require('../ghUtils');
+const gh      = ghUtils.githubUtils;
+const ghSafe  = ghUtils.githubSafe;
 
 
 // Linkage table contains all identifying info related to situated issues or better.
@@ -28,14 +29,24 @@ class Linkage {
     }
 
 
-    async initOneRepo( authData, fn ) {
-	
-	console.log( ".. working on", fn );
+    async initOneRepo( authData, entry ) {
 
+	// XXX fix naming
+	let host = entry.hasOwnProperty( "HostPlatform" )   ? entry.HostPlatform   : "";
+	let org  = entry.hasOwnProperty( "Organization" )   ? entry.Organization   : "";
+	let pms  = entry.hasOwnProperty( "ProjectMgmtSys" ) ? entry.ProjectMgmtSys : "";
+	assert( host != "" && pms != "" && org != "" );
+	    
+	console.log( ".. working on", host+"'s", org+",", "which is a", pms, "project." );
+
+	// XXX from here down, mostly broken
 	// Wait later
-	let peqs = utils.getPeqs( authData, { "GHRepo": fn } );
+	let peqs = utils.getPeqs( authData, { "GHRepo": org } );
 
-	let fnParts = fn.split('/');
+	// Init repo with CE_USER, which is typically a builder account that needs full access.
+	await ceRouter.getAuths( authData, host, pms, org, config.CE_USER );
+	
+	let fnParts = org.split('/');
 	
 	let baseLinks = [];
 	let blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
@@ -47,12 +58,12 @@ class Linkage {
 
 	ldPromise = await ldPromise;  // no val here, just ensures locData is set
 	for( const loc of locData ) {
-	    this.addLoc( authData, fn, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId, "true", false );
+	    this.addLoc( authData, org, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId, "true", false );
 	}
-	utils.refreshLinkageSummary( authData, fn, locData );
+	utils.refreshLinkageSummary( authData, org, locData );
 
 	blPromise = await blPromise;  // no val here, just ensures locData is set
-	this.populateLinkage( authData, fn, baseLinks );
+	this.populateLinkage( authData, org, baseLinks );
 
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
 	// peq add: cardTitle, colId, colName, projName
@@ -103,13 +114,13 @@ class Linkage {
     async init( authData ) {
 	let tstart = Date.now();
 	console.log( "Init linkages" );
-
-	let fullNames = await utils.getRepoStatus( authData, -1 );   // get all repos
-	if( fullNames == -1 ) { return; }
+	
+	// XXX aws fix name here.  Get ceProj status.
+	let ceProjects = await utils.getRepoStatus( authData, -1 );   // get all repos
+	if( ceProjects == -1 ) { return; }
 	let promises = [];
-	for( const entry of fullNames ) {
-	    let fn = entry.GHRepo;
-	    promises.push( this.initOneRepo( authData, fn )
+	for( const entry of ceProjects ) {
+	    promises.push( this.initOneRepo( authData, entry )
 			   .catch( e => console.log( "Error.  Init Linkage failed.", e )) );
 	}
 	await Promise.all( promises );
