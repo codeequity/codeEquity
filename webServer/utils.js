@@ -835,12 +835,12 @@ async function getSummaries( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-async function getRepoStatus( authData, repo ) {
+async function getProjectStatus( authData, repo ) {
     console.log( authData.who, "Get Status for a given repo:", repo );
 
     let shortName = repo == -1 ? "GetEntries" : "GetEntry";
     let query     = repo == -1 ? { "empty": config.EMPTY } : { "GHRepo": repo};
-    let postData  = { "Endpoint": shortName, "tableName": "CERepoStatus", "query": query };
+    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
 
     return await wrappedPostAWS( authData, shortName, postData );
 }
@@ -958,7 +958,7 @@ exports.getPActs = getPActs;
 exports.getPRaws = getPRaws;
 exports.getPeqs  = getPeqs;
 exports.getSummaries = getSummaries;
-exports.getRepoStatus = getRepoStatus;
+exports.getProjectStatus = getProjectStatus;
 exports.cleanDynamo = cleanDynamo;
 exports.clearIngested = clearIngested;
 

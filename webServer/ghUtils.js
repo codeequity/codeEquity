@@ -1203,7 +1203,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     let origPop = utils.checkPopulated( authData, pd.GHFullName );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    let linkage = await ghLinks.initOneRepo( authData, { GHRepo: pd.GHFullName, HostPlatform: config.HOST_GH, ProjectMgmtSys: config.PMS_GHC } );
+    let linkage = await ghLinks.initOneProject( authData, { GHRepo: pd.GHFullName, HostPlatform: config.HOST_GH, ProjectMgmtSys: config.PMS_GHC } );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about

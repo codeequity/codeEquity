@@ -144,7 +144,7 @@ async function clearRepo( authData, ghLinks, pd ) {
     pactRP = await pactRP;
     
     // RepoStatus
-    let status = await utils.getRepoStatus( authData, pd.GHFullName );
+    let status = await utils.getProjectStatus( authData, pd.GHFullName );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
     await utils.cleanDynamo( authData, "CERepoStatus", statusIds );

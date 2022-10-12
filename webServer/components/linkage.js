@@ -29,7 +29,7 @@ class Linkage {
     }
 
 
-    async initOneRepo( authData, entry ) {
+    async initOneProject( authData, entry ) {
 
 	// XXX fix naming
 	let host = entry.hasOwnProperty( "HostPlatform" )   ? entry.HostPlatform   : "";
@@ -39,22 +39,30 @@ class Linkage {
 	    
 	console.log( ".. working on", host+"'s", org+",", "which is a", pms, "project." );
 
-	// XXX from here down, mostly broken
 	// Wait later
-	let peqs = utils.getPeqs( authData, { "GHRepo": org } );
+	let peqs = utils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
 
 	// Init repo with CE_USER, which is typically a builder account that needs full access.
 	await ceRouter.getAuths( authData, host, pms, org, config.CE_USER );
-	
-	let fnParts = org.split('/');
-	
-	let baseLinks = [];
-	let blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
-	    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
 
-	let locData = [];
-	let ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
-	    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
+
+	let baseLinks = [];
+	let locData   = [];
+	let blPromise = [];
+	let ldPromise = [];
+
+	// XXXXXXXXXX
+	if( entry.HostPlatform == config.HOST_GH ) {
+	    if( entry.ProjectMgmtSys == config.PMS_GHC ) {
+		let fnParts = org.split('/');
+		
+		blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
+		    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
+		
+		ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
+		    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
+	    }
+	}
 
 	ldPromise = await ldPromise;  // no val here, just ensures locData is set
 	for( const loc of locData ) {
@@ -116,11 +124,11 @@ class Linkage {
 	console.log( "Init linkages" );
 	
 	// XXX aws fix name here.  Get ceProj status.
-	let ceProjects = await utils.getRepoStatus( authData, -1 );   // get all repos
+	let ceProjects = await utils.getProjectStatus( authData, -1 );   // get all ce projects
 	if( ceProjects == -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
-	    promises.push( this.initOneRepo( authData, entry )
+	    promises.push( this.initOneProject( authData, entry )
 			   .catch( e => console.log( "Error.  Init Linkage failed.", e )) );
 	}
 	await Promise.all( promises );
