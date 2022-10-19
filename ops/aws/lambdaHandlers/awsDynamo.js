@@ -534,7 +534,7 @@ async function updateLinkage( newLoc ) {
 	for( var loc of oldSummary.Locations ) {
 	    if( loc.HostProjectId == newLoc.Location.HostProjectId && loc.HostColumnId == newLoc.Location.HostColumnId ) {
 		console.log( "updating with", newLoc.Location.HostProjectName, newLoc.Location.HostColumnName );
-		loc.HostRepoName    = newLoc.Location.HostRepoName;
+		loc.HostRepository  = newLoc.Location.HostRepository;
 		loc.HostProjectName = newLoc.Location.HostProjectName;
 		loc.HostColumnName  = newLoc.Location.HostColumnName;
 		loc.Active          = newLoc.Location.Active;
@@ -550,7 +550,7 @@ async function updateLinkage( newLoc ) {
 	console.log( "Create new for", newLoc.Location.HostProjectName, newLoc.Location.HostColumnName );
 	aloc.HostProjectId   = newLoc.Location.HostProjectId;
 	aloc.HostProjectName = newLoc.Location.HostProjectName;
-	aloc.HostRepoName    = newLoc.Location.HostRepoName;
+	aloc.HostRepository  = newLoc.Location.HostRepository;
 	aloc.HostColumnId    = newLoc.Location.HostColumnId;
 	aloc.HostColumnName  = newLoc.Location.HostColumnName;
 	aloc.Active          = newLoc.Location.Active;

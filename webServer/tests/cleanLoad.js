@@ -204,7 +204,17 @@ async function loadLinkage( authData, td ) {
 	    let ghLinks = new links.Linkage();
 	    for( let i = 0; i < locs.length; i++  ) {
 		let loc = locs[i].M;
-		ghLinks.addLoc( authData, repo, loc.GHProjectName.S, loc.GHProjectId.S, loc.GHColumnName.S, loc.GHColumnId.S, loc.Active.S, false);
+
+		let nLoc = {};
+		nLoc.CEProjectId     = loc.CEProjectId.S;
+		nLoc.HostRepository  = repo;
+		nLoc.HostProjectId   = loc.HostProjectId.S;
+		nLoc.HostProjectName = loc.HostProjectName.S;
+		nLoc.HostColumnId    = loc.HostColumnId.S;
+		nLoc.HostColumnName  = loc.HostColumnName.S;
+		nLoc.Active          = loc.Active.S;
+		
+		ghLinks.addLoc( authData, nLoc, false);
 	    }
 
 	    var locsL = ghLinks.getLocs( authData, { "repo": repo } );

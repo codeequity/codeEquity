@@ -31,8 +31,17 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    const locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": pd.GHProjectId } );
 	    const loc = locs == -1 ? locs : locs[0];
 	    assert( loc != -1 );
+
+	    let nLoc = {};
+	    nLoc.CEProjectId     = pd.CEProjectId;
+	    nLoc.HostRepository  = pd.GHFullName;
+	    nLoc.HostProjectId   = pd.GHProjectId;
+	    nLoc.HostProjectName = loc.HostProjectName;
+	    nLoc.HostColumnId    = pd.GHColumnId;
+	    nLoc.HostColumnName  = pd.GHColumnName;
+	    nLoc.Active          = "true";
 	    
-	    await ghLinks.addLoc( authData, pd.GHFullName, loc.GHProjectName, pd.GHProjectId, pd.GHColumnName, pd.GHColumnId, "true", true );
+	    await ghLinks.addLoc( authData, nLoc, true );
 	}
 	break;
     case 'edited':
@@ -63,7 +72,16 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 					   config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.GHColumnId, oldName, newName], "Column rename",
 					   utils.getToday(), pd.reqBody );
 
-		    await ghLinks.addLoc( authData, pd.GHFullName, loc.GHProjectName, pd.GHProjectId, newName, pd.GHColumnId, "true", true );
+		    let nLoc = {};
+		    nLoc.CEProjectId     = pd.CEProjectId;
+		    nLoc.HostRepository  = pd.GHFullName;
+		    nLoc.HostProjectId   = pd.GHProjectId;
+		    nLoc.HostProjectName = loc.HostProjectName;
+		    nLoc.HostColumnId    = pd.GHColumnId;
+		    nLoc.HostColumnName  = newName;
+		    nLoc.Active          = "true";
+		    
+		    await ghLinks.addLoc( authData, nLoc, true );
 		}
 	    }
 	}
