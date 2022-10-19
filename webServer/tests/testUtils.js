@@ -404,7 +404,7 @@ function findCardForIssue( cards, issueNum ) {
 }
 
 async function setUnpopulated( authData, td ) {
-    let status = await utils.getRepoStatus( authData, td.GHFullName );
+    let status = await utils.getProjectStatus( authData, td.GHFullName );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
     await utils.cleanDynamo( authData, "CERepoStatus", statusIds );

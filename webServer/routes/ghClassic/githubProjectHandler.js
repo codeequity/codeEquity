@@ -12,6 +12,16 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     pd.GHProjectId   = pd.reqBody.project.id;
     pd.GHProjectName = pd.reqBody.project.name;
 
+    let nLoc = {};
+    nLoc.CEProjectId     = pd.CEProjectId;
+    nLoc.HostRepository  = pd.GHFullName;
+    nLoc.HostProjectId   = pd.GHProjectId;
+    nLoc.HostProjectName = pd.GHProjectName;
+    nLoc.HostColumnId    = -1;
+    nLoc.HostColumnName  = config.EMPTY;
+    nLoc.Active          = "true";
+
+    
     switch( action ) {
     case 'deleted':
 	// Deleting a project causes project_card delete, project_column delete, project delete (random order).  Leaves issues in place.
@@ -21,7 +31,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	break;
     case 'created':  
 	{
-	    await ghLinks.addLoc( authData, pd.GHFullName, pd.GHProjectName, pd.GHProjectId, config.EMPTY, -1, "true", true );
+	    await ghLinks.addLoc( authData, nLoc, true );
 	}
 	break;
     case 'edited':
@@ -44,7 +54,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		// Can't do promises.all - must be sequential.
 		const locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": pd.GHProjectId } );
 		for( const loc of locs ) {
-		    await ghLinks.addLoc( authData, pd.GHFullName, newName, pd.GHProjectId, loc.GHColumnName, loc.GHColumnId, "true", true );
+		    nLoc.HostProjectName = newName;
+		    nLoc.HostColumnName = loc.GHColumnName;
+		    nLoc.HostColumnId = loc.GHColumnId;
+		    await ghLinks.addLoc( authData, nLoc, true );
 		}
 	    }
 	}

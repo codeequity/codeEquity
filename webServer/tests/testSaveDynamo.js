@@ -46,7 +46,6 @@ async function runTests( flutterTest ) {
     let testStatus = [ 0, 0, []];
     let success = false;
 
-    /*
     success = execAWS_CLI( "CEPEQs", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save PEQ Table" );
 
@@ -59,8 +58,8 @@ async function runTests( flutterTest ) {
     success = execAWS_CLI( "CEPEQRaw", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save raw PAct Table" );
 
-    success = execAWS_CLI( "CERepoStatus", flutterTest );
-    testStatus = tu.checkEq( success, true, testStatus, "save Repo Status Table" );
+    success = execAWS_CLI( "CEProjects", flutterTest );
+    testStatus = tu.checkEq( success, true, testStatus, "save Projects Table" );
 
     success = execAWS_CLI( "CEPeople", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save People Table" );
@@ -70,15 +69,14 @@ async function runTests( flutterTest ) {
 
     success = execAWS_CLI( "CELinkage", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save Linkage Table" );
-    */
 
     // XXX Has PATS.  Don't save this here, typically.
-    success = execAWS_CLI( "CEGithub", flutterTest );
-    testStatus = tu.checkEq( success, true, testStatus, "save Github Table" );
+    success = execAWS_CLI( "CEHostUser", flutterTest );
+    testStatus = tu.checkEq( success, true, testStatus, "save HostUser Table" );
 
     return testStatus
 }
 
-// Switch if npm run testSave
-// runTests();
-exports.runTests = runTests;
+// Switch to runTests rather than exports if npm run testSave
+runTests();
+//exports.runTests = runTests;

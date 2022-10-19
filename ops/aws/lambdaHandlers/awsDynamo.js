@@ -81,8 +81,8 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
-    else if( endPoint == "GetGHA")         { resultPromise = getGHA( rb.CEUserUd ); }
-    else if( endPoint == "PutGHA")         { resultPromise = putGHA( rb.NewGHA, rb.update, rb.pat ); }
+    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserUd ); }
+    else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
@@ -289,7 +289,7 @@ async function getEntry( tableName, query ) {
     case "CEPEQRaw":
 	props = [ "PEQRawId" ];
 	break;
-    case "CERepoStatus":
+    case "CEProjects":
 	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary":
@@ -335,7 +335,7 @@ async function getEntries( tableName, query ) {
     case "CEPEQRaw":
 	props = [ "PEQRawId", "CEProjectId" ];
 	break;
-    case "CERepoStatus": 
+    case "CEProjects": 
 	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary": 
@@ -534,7 +534,7 @@ async function updateLinkage( newLoc ) {
 	for( var loc of oldSummary.Locations ) {
 	    if( loc.HostProjectId == newLoc.Location.HostProjectId && loc.HostColumnId == newLoc.Location.HostColumnId ) {
 		console.log( "updating with", newLoc.Location.HostProjectName, newLoc.Location.HostColumnName );
-		loc.HostRepoName    = newLoc.Location.HostRepoName;
+		loc.HostRepository  = newLoc.Location.HostRepository;
 		loc.HostProjectName = newLoc.Location.HostProjectName;
 		loc.HostColumnName  = newLoc.Location.HostColumnName;
 		loc.Active          = newLoc.Location.Active;
@@ -550,7 +550,7 @@ async function updateLinkage( newLoc ) {
 	console.log( "Create new for", newLoc.Location.HostProjectName, newLoc.Location.HostColumnName );
 	aloc.HostProjectId   = newLoc.Location.HostProjectId;
 	aloc.HostProjectName = newLoc.Location.HostProjectName;
-	aloc.HostRepoName    = newLoc.Location.HostRepoName;
+	aloc.HostRepository  = newLoc.Location.HostRepository;
 	aloc.HostColumnId    = newLoc.Location.HostColumnId;
 	aloc.HostColumnName  = newLoc.Location.HostColumnName;
 	aloc.Active          = newLoc.Location.Active;
@@ -937,38 +937,6 @@ async function getPActsById( ceProjId, peqIds ) {
 	});
 }
 
-async function getRepoStatus( repos ) {
-    console.log( "Which HostAs are CEPs?", repos );
-
-    let promises = [];
-    repos.forEach(function (fullName) {
-	const params = {
-	    TableName: 'CERepoStatus',
-	    FilterExpression: 'CEProjectId = :pid',
-	    ExpressionAttributeValues: { ":pid": fullName }};
-	
-	promises.push( paginatedScan( params ) );
-    });
-
-    // Promises execute in parallel, collect in order
-    return await Promise.all( promises )
-	.then((results) => {
-	    console.log( '...promises done' );
-	    let res = [];
-	    results.forEach( function ( repo ) {
-		assert( repo.length <= 1 );
-		if( repo.length == 1 ) {
-		    res.push( repo[0] );
-		}
-		else {
-		    res.push( -1 );
-		}
-	    });
-	    
-	    if( res.length > 0 ) { return res; }        // internal, no additional json layer
-	    else                 { return []; }
-	});
-}
 
 async function updatePEQ( pLink ) {
 
@@ -1095,8 +1063,8 @@ async function putPSum( psum ) {
     // XXX START workaround: Remove this once issue 67090 is resolved
     const params = {
         TableName: 'CEPEQSummary',
-        FilterExpression: 'CEProjectId = :ghr',
-        ExpressionAttributeValues: { ":ghr": psum.ceProjectId },
+        FilterExpression: 'CEProjectId = :hostr',
+        ExpressionAttributeValues: { ":hostr": psum.ceProjectId },
 	Limit: 99,
     };
     let gPromise = paginatedScan( params );
@@ -1133,39 +1101,15 @@ async function putPSum( psum ) {
     return promise.then(() => success( true ));
 }
 
-async function getHostA( uid ) {
-    const paramsP = {
-        TableName: 'CEHostUser',
-        FilterExpression: 'CEUserId = :ceid',
-        ExpressionAttributeValues: { ":ceid": uid },
-	Limit: 99,
-    };
-
-    console.log( "Host Account repos");
-    let ghaPromise = paginatedScan( paramsP );
-
-    let ghas = await ghaPromise;
-    if( ! Array.isArray(ghas) || !ghas.length ) { return NO_CONTENT; }
-
-    for( const gha of ghas ) {
-	console.log( "Found Host account ", gha );
-
-	let ceps = await getRepoStatus( gha.Repos );
-	console.log( "...working with ", ceps );
-	
-	gha.ceProjs = ceps.map( cep => (cep == -1 || cep.Populated == "false") ? "false" : "true" );
-    }
-    return success( ghas );
-}
 
 // XXX this gets all, not just needing update
 // XXX as it is, replace with getPeqActions
-// XXX NOTE: this also gets all from all repos belonging to ghUserName.  Not wrong, but too sloppy.
-async function getPEQActionsFromHost( ghUserName ) {
+// XXX NOTE: this also gets all from all repos belonging to hostUserName.  Not wrong, but too sloppy.
+async function getPEQActionsFromHost( hostUserName ) {
     const params = {
         TableName: 'CEPEQActions',
-        FilterExpression: 'HostUserName = :ghun',
-        ExpressionAttributeValues: { ":ghun": ghUserName },
+        FilterExpression: 'HostUserName = :hostun',
+        ExpressionAttributeValues: { ":hostun": hostUserName },
 	Limit: 99,
     };
 
@@ -1193,51 +1137,116 @@ async function updatePEQActions( peqa, ceUID ) {
     return uPromise.then(() => true );
 }
 
+
+
 // Note: newHostAcct.id is NOT the same as the Host ownerId
 async function putHostA( newHostAcct, update, pat ) {
     if( update == "true" ) {
 	const params = {
             TableName: 'CEHostUser',
-	    Key: { "HostAccountId": newHostAcct.id },
-	    UpdateExpression: 'set CEUserId = :ceoid, HostUserName = :ghun, Repos = :repos',
-	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceOwnerId, ':ghun': newHostAcct.ghUserName, ':repos': newHostAcct.repos }
+	    Key: { "HostUserId": newHostAcct.id },
+	    UpdateExpression: 'set CEUserId = :ceoid, HostUserName = :hostun, CEProjectIds = :pid, FutureCEProjects = :fid',
+	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceOwnerId, ':hostun': newHostAcct.hostUserName, ':pid': newHostAcct.ceProjectIds, ':fid': newHostAcct.futureCEProjects }
 	};
 	
 	console.log( "HostAcct update repos");
-	let ghaPromise = bsdb.update( params ).promise();
-	await ghaPromise;
+	let hostaPromise = bsdb.update( params ).promise();
+	await hostaPromise;
     }
     else {
 	const params = {
             TableName: 'CEHostUser',
 	    Item: {
-		"HostAccountId": newHostAcct.id, 
-		"CEUserId":   newHostAcct.ceOwnerId,
-		"HostUserName":  newHostAcct.ghUserName,
-		"Repos":       newHostAcct.repos,
-		"PAT":         pat
+		"HostUserId":       newHostAcct.id, 
+		"CEUserId":         newHostAcct.ceOwnerId,
+		"HostUserName":     newHostAcct.hostUserName,
+		"HostPlatform":     newHostAcct.hostPlatform,
+		"CEProjectIds":     newHostAcct.ceProjectIds,
+		"FutureCEProjects": newHostAcct.futureCEProjects,
+		"HostPAT":          pat
 	    }
 	};
 	
 	console.log( "HostAcct put repos");
-	let ghaPromise = bsdb.put( params ).promise();
-	await ghaPromise;
+	let hostaPromise = bsdb.put( params ).promise();
+	await hostaPromise;
     }
 
 
     let updated = true;
     if( update == "false" ) {
-	// Must update any PEQActions created before ghUser had ceUID
+	// Must update any PEQActions created before hostUser had ceUID
 	// Suure would be nice to have a real 'update where'.   bah
 	// Majority of cases will be 0 or just a few PEQActions without a CE UID, 
 	// especially since a PEQAction requires a PEQ label.
-	const ghPEQA = await getPEQActionsFromHost( newHostAcct.ghUserName );
-	await ghPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceOwnerId ));
+	const hostPEQA = await getPEQActionsFromHost( newHostAcct.hostUserName );
+	await hostPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceOwnerId ));
 	console.log( "putHostA returning", updated );
     }
 
     return success( updated );
 }
+
+async function getProjectStatus( repos ) {
+    console.log( "Which HostAs are CEPs?", repos );
+
+    let promises = [];
+    repos.forEach(function (projName) {
+	const params = {
+	    TableName: 'CEProjects',
+	    FilterExpression: 'CEProjectId = :pid',
+	    ExpressionAttributeValues: { ":pid": projName }};
+	
+	promises.push( paginatedScan( params ) );
+    });
+
+    // Promises execute in parallel, collect in order
+    return await Promise.all( promises )
+	.then((results) => {
+	    console.log( '...promises done' );
+	    let res = [];
+	    results.forEach( function ( project ) {
+		assert( project.length <= 1 );
+		if( project.length == 1 ) {
+		    res.push( project[0] );
+		}
+		else {
+		    res.push( -1 );
+		}
+	    });
+	    
+	    if( res.length > 0 ) { return res; }        // internal, no additional json layer
+	    else                 { return []; }
+	});
+}
+
+async function getHostA( uid ) {
+    const paramsP = {
+        TableName: 'CEHostUser',
+        FilterExpression: 'CEUserId = :ceid',
+        ExpressionAttributeValues: { ":ceid": uid },
+	Limit: 99,
+    };
+
+    console.log( "Host Account repos");
+    let hostAccPromise = paginatedScan( paramsP );
+
+    let hostAccs = await hostAccPromise;
+    if( ! Array.isArray(hostAccs) || !hostAccs.length ) { return NO_CONTENT; }
+
+    for( const hostAcc of hostAccs ) {
+	console.log( "Found Host account ", hostAcc );
+
+	let ceps = await getProjectStatus( hostAcc.CEProjectIds.concat( hostAcc.FutureCEProjects ) );  
+	console.log( "...working with ", ceps );
+	
+	hostAcc.ceProjs = ceps.map( cep => (cep == -1 || cep.Populated == "false") ? "false" : "true" );
+    }
+    return success( hostAccs );
+}
+
+
+
 
 function errorResponse(status, errorMessage, awsRequestId) {
     return {
@@ -1249,3 +1258,9 @@ function errorResponse(status, errorMessage, awsRequestId) {
 	headers: { 'Access-Control-Allow-Origin': '*' }
     };
 }
+
+
+
+
+
+

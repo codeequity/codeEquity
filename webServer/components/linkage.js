@@ -18,7 +18,8 @@ const ghSafe  = ghUtils.githubSafe;
 
 // Loc table contains all proj/col in repo.  linkage table will only have that info where there are PEQs.
 // All adds to loc update aws, except batch related adds present herein.
-// loc is { projId: { colId: {} }}
+// loc was { projId: { colId: {} }}
+// loc is  { ceProjId: { projId: { colId: {} }}} where projId is the unique project id within ceProjId.hostPlatform
 // loc IS stored in dynamo, for speed and privacy benefits during ingest (ceFlutter).
 
 class Linkage {
@@ -29,42 +30,57 @@ class Linkage {
     }
 
 
-    async initOneRepo( authData, entry ) {
+    async initOneProject( authData, entry ) {
 
-	// XXX fix naming
-	let host = entry.hasOwnProperty( "HostPlatform" )   ? entry.HostPlatform   : "";
-	let org  = entry.hasOwnProperty( "Organization" )   ? entry.Organization   : "";
-	let pms  = entry.hasOwnProperty( "ProjectMgmtSys" ) ? entry.ProjectMgmtSys : "";
+	let host  = entry.hasOwnProperty( "HostPlatform" )   ? entry.HostPlatform   : "";
+	let org   = entry.hasOwnProperty( "Organization" )   ? entry.Organization   : "";
+	let pms   = entry.hasOwnProperty( "ProjectMgmtSys" ) ? entry.ProjectMgmtSys : "";
+	let repos = entry.hasOwnProperty( "HostRepository" ) ? entry.HostRepository : [];
 	assert( host != "" && pms != "" && org != "" );
+	assert( entry.hasOwnProperty( "CEProjectId" ) );
 	    
 	console.log( ".. working on", host+"'s", org+",", "which is a", pms, "project." );
 
-	// XXX from here down, mostly broken
 	// Wait later
-	let peqs = utils.getPeqs( authData, { "GHRepo": org } );
+	let peqs = utils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
 
 	// Init repo with CE_USER, which is typically a builder account that needs full access.
 	await ceRouter.getAuths( authData, host, pms, org, config.CE_USER );
-	
-	let fnParts = org.split('/');
-	
+
+
 	let baseLinks = [];
-	let blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
-	    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
+	let blPromise = [];
+	let ldPromise = [];
+	let locData   = [];
 
-	let locData = [];
-	let ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
-	    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
+	if( entry.HostPlatform == config.HOST_GH ) {
+	    if( entry.ProjectMgmtSys == config.PMS_GHC ) {
+		for( const repo of repos ) {
+		    let fnParts = repo.split('/');
+		    
+		    blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
+			.catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
+		    
+		    ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
+			.catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
 
-	ldPromise = await ldPromise;  // no val here, just ensures locData is set
-	for( const loc of locData ) {
-	    this.addLoc( authData, org, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId, "true", false );
+		    ldPromise = await ldPromise;  // no val here, just ensures locData is set
+		    for( var loc of locData ) {
+			loc.CEProjectId = entry.CEProjectId;
+			loc.Active = "true";
+			this.addLoc( authData, loc, false ); 
+		    }
+		}
+	    }
 	}
-	utils.refreshLinkageSummary( authData, org, locData );
 
+	utils.refreshLinkageSummary( authData, entry.CEProjectId, locData );  
+	
 	blPromise = await blPromise;  // no val here, just ensures locData is set
-	this.populateLinkage( authData, org, baseLinks );
+	this.populateLinkage( authData, repo, baseLinks );
 
+
+	
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
 	// peq add: cardTitle, colId, colName, projName
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
@@ -116,11 +132,11 @@ class Linkage {
 	console.log( "Init linkages" );
 	
 	// XXX aws fix name here.  Get ceProj status.
-	let ceProjects = await utils.getRepoStatus( authData, -1 );   // get all repos
+	let ceProjects = await utils.getProjectStatus( authData, -1 );   // get all ce projects
 	if( ceProjects == -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
-	    promises.push( this.initOneRepo( authData, entry )
+	    promises.push( this.initOneProject( authData, entry )
 			   .catch( e => console.log( "Error.  Init Linkage failed.", e )) );
 	}
 	await Promise.all( promises );
@@ -181,30 +197,33 @@ class Linkage {
 	console.log( "Creating ghLinks.locs from json data" );
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, loc] of Object.entries( clocs ) ) {
-		this.addLoc( {}, loc.GHRepo, loc.GHProjectName, loc.GHProjectId, loc.GHColumnName, loc.GHColumnId, loc.Active );
+		this.addLoc( {}, loc );
 	    }
 	}
     }
 
     // ProjectID is the kanban project.  repo:pid  is 1:many
-    async addLoc( authData, repo, projName, projId, colName, colId, active, pushAWS = false ) {
-	colId  = colId.toString();
-	projId = projId.toString();
-	if( !this.locs.hasOwnProperty( projId ))        { this.locs[projId] = {}; }
-	if( !this.locs[projId].hasOwnProperty( colId )) { this.locs[projId][colId] = {}; }
-	
-	let loc = this.locs[projId][colId];
+    async addLoc( authData, locD, pushAWS = false ) {
+	locD.HostColumnId  = locD.HostColumnId.toString();
+	locD.HostProjectId = locD.HostProjectId.toString();
+	if( !this.locs.hasOwnProperty( locD.ceProjId ))                                   { this.locs[ceProjId] = {}; }
+	if( !this.locs[ceProjId].hasOwnProperty( locD.HostProjectId ))                    { this.locs[ceProjId][locD.HostProjectId] = {}; }
+	if( !this.locs[ceProjId][locD.HostProjectId].hasOwnProperty( locD.HostColumnId )) { this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId] = {}; }
+											    
+	let loc = this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId];
 
-	loc.GHRepo        = repo;
-	loc.GHProjectId   = projId;
-	loc.GHProjectName = projName;
-	loc.GHColumnId    = colId;
-	loc.GHColumnName  = colName;
-	loc.Active        = active;
+	loc.CEProjectId     = locD.CEProjectId;
+	loc.HostRepository  = locD.HostRepository;
+	loc.HostProjectId   = locD.HostProjectId;
+	loc.HostProjectName = locD.HostProjectName;
+	loc.HostColumnId    = locD.HostColumnId;
+	loc.HostColumnName  = locD.HostColumnName;
+	loc.Active          = locD.Active;
 
 	// Must wait.. aws dynamo ops handled by multiple threads.. order of processing is not dependable in rapid-fire situations.
 	// No good alternative - refresh could be such that earlier is processed later in dynamo
-	if( pushAWS ) { await utils.updateLinkageSummary( authData, loc ); }
+	// XXX 
+	if( pushAWS ) { await utils.updateLinkageSummary( authData, ceProjId, loc ); }
 	
 	return loc;
     }

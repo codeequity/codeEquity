@@ -574,7 +574,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	}
 
 	let issueData   = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, issue, "", splitTag );  
-	let newCardId   = await gh.rebuildCard( authData, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
+	let newCardId   = await gh.rebuildCard( authData, pd.CEProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
 	pd.GHIssueId    = issueData[0];
 	pd.GHIssueNum   = issueData[1];
@@ -714,7 +714,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 		isReserved = true;
 	    }
 	    let locData = { "reserved": isReserved, "projId": pd.GHProjectId, "projName": pd.GHProjectName, "fullName": pd.GHFullName };
-	    let newCardId = await gh.rebuildCard( authData, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHColumnId, origCardId, issueData, locData );
+	    let newCardId = await gh.rebuildCard( authData, pd.CEProjectId, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHColumnId, origCardId, issueData, locData );
 
 	    // Add card issue linkage
 	    ghLinks.addLinkage( authData, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName,
@@ -740,7 +740,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 
 
 // locData can be from GQL, or linkage
-async function refreshLinkageSummary( authData, ghRepo, locData, gql = true ) {
+async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) {
     console.log( "Refreshing linkage summary" );
 
 
@@ -751,9 +751,9 @@ async function refreshLinkageSummary( authData, ghRepo, locData, gql = true ) {
     }
 
     let summary = {};
-    summary.GHRepo    = ghRepo;
-    summary.LastMod   = getToday();
-    summary.Locations = locData;
+    summary.CEProjectId = ceProjId;
+    summary.LastMod     = getToday();
+    summary.Locations   = locData;
 
     let shortName = "RecordLinkage"; 
     let pd = { "Endpoint": shortName, "summary": summary }; 
@@ -761,11 +761,11 @@ async function refreshLinkageSummary( authData, ghRepo, locData, gql = true ) {
 }
 
 // Called via linkage:addLoc from project/col handlers, and from ghUtils when creating unclaimed, ACCR, etc.
-async function updateLinkageSummary( authData, loc ) {
+async function updateLinkageSummary( authData, ceProjId, loc ) {
     console.log( "Updating linkage summary" );
 
     let newLoc = {};
-    newLoc.GHRepo    = loc.GHRepo;
+    newLoc.CEProjId  = ceProjId;
     newLoc.LastMod   = getToday();
     newLoc.Location  = loc;
 
@@ -835,12 +835,12 @@ async function getSummaries( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-async function getRepoStatus( authData, repo ) {
+async function getProjectStatus( authData, repo ) {
     console.log( authData.who, "Get Status for a given repo:", repo );
 
     let shortName = repo == -1 ? "GetEntries" : "GetEntry";
     let query     = repo == -1 ? { "empty": config.EMPTY } : { "GHRepo": repo};
-    let postData  = { "Endpoint": shortName, "tableName": "CERepoStatus", "query": query };
+    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
 
     return await wrappedPostAWS( authData, shortName, postData );
 }
@@ -958,7 +958,7 @@ exports.getPActs = getPActs;
 exports.getPRaws = getPRaws;
 exports.getPeqs  = getPeqs;
 exports.getSummaries = getSummaries;
-exports.getRepoStatus = getRepoStatus;
+exports.getProjectStatus = getProjectStatus;
 exports.cleanDynamo = cleanDynamo;
 exports.clearIngested = clearIngested;
 

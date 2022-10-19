@@ -1076,20 +1076,22 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	    for( const col of cols.edges ) {
 		// console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
 		let datum = {};
-		datum.GHProjectName = project.name;
-		datum.GHProjectId   = project.databaseId.toString();
-		datum.GHColumnName  = col.node.name;
-		datum.GHColumnId    = col.node.databaseId.toString();
+		datum.HostRepository  = repo;
+		datum.HostProjectName = project.name;
+		datum.HostProjectId   = project.databaseId.toString();
+		datum.HostColumnName  = col.node.name;
+		datum.HostColumnId    = col.node.databaseId.toString();
 		data.push( datum );
 	    }
 	    
 	    // Add project even if it has no cols
 	    if( cols.edges.length == 0 ) {
 		let datum = {};
-		datum.GHProjectName = project.name;
-		datum.GHProjectId   = project.databaseId.toString();
-		datum.GHColumnName  = config.EMPTY;
-		datum.GHColumnId    = "-1";
+		datum.HostRepository  = repo;
+		datum.HostProjectName = project.name;
+		datum.HostProjectId   = project.databaseId.toString();
+		datum.HostColumnName  = config.EMPTY;
+		datum.HostColumnId    = "-1";
 		data.push( datum );
 	    }
 	}
@@ -1203,7 +1205,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     let origPop = utils.checkPopulated( authData, pd.GHFullName );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    let linkage = await ghLinks.initOneRepo( authData, { GHRepo: pd.GHFullName, HostPlatform: config.HOST_GH, ProjectMgmtSys: config.PMS_GHC } );
+    let linkage = await ghLinks.initOneProject( authData, { GHRepo: pd.GHFullName, HostPlatform: config.HOST_GH, ProjectMgmtSys: config.PMS_GHC } );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
@@ -1250,7 +1252,7 @@ async function removeCard( authData, cardId ) {
 }
 
 // Note.  alignment risk - card info could have moved on
-async function rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
+async function rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
 
     let isReserved = typeof locData !== 'undefined' && locData.hasOwnProperty( "reserved" ) ? locData.reserved : false;    
     let projId     = typeof locData !== 'undefined' && locData.hasOwnProperty( "projId" )   ? locData.projId   : -1;
@@ -1293,8 +1295,16 @@ async function rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, i
 	if( colId == -1 ) {
 	    let progCol = await createColumn( authData, projId, progName, "first" );
 	    console.log( "Creating new column:", progName );
-	    colId = progCol.data.id; 
-	    await ghLinks.addLoc( authData, fullName, projName, projId, progName, colId, "true", true );
+	    colId = progCol.data.id;
+	    let nLoc = {};
+	    nLoc.CEProjectId     = ceProjId; 
+	    nLoc.HostRepository  = fullName;
+	    nLoc.HostProjectId   = projId;
+	    nLoc.HostProjectName = projName;
+	    nLoc.HostColumnId    = progName;
+	    nLoc.HostColumnName  = colId;
+	    nLoc.Active          = "true";
+	    await ghLinks.addLoc( authData, nLoc, true );
 	}
     }
     
@@ -1389,7 +1399,7 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
     const unClaimed = config.UNCLAIMED;
 
     let unClaimedProjId = -1;
-    let locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projName": unClaimed } );
+    let locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projName": unClaimed } ); // XXX
     unClaimedProjId = locs == -1 ? locs : locs[0].GHProjectId;
     if( unClaimedProjId == -1 ) {
 	console.log( "Creating UnClaimed project" );
@@ -1397,7 +1407,17 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
 	await authData.ic.projects.createForRepo({ owner: pd.GHOwner, repo: pd.GHRepo, name: unClaimed, body: body })
 	    .then(async (project) => {
 		unClaimedProjId = project.data.id;
-		await ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, config.EMPTY, -1, "true", true );
+
+		let nLoc = {};
+		nLoc.CEProjectId     = pd.CEProjectId;
+		nLoc.HostRepository  = pd.GHFullName;
+		nLoc.HostProjectId   = unClaimedProjId
+		nLoc.HostProjectName = unClaimed;
+		nLoc.HostColumnId    = config.EMPTY;
+		nLoc.HostColumnName  = -1;
+		nLoc.Active          = "true";
+		
+		await ghLinks.addLoc( authData, nLoc, true );
 	    })
 	    .catch( e => unClaimedProjId = errorHandler( "createUnClaimedProject", e, createUnClaimedProject, authData, ghLinks, pd ));
     }
@@ -1421,7 +1441,17 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
 	    .then(async (column) => {
 		unClaimedColId = column.data.id;
-		await ghLinks.addLoc( authData, pd.GHFullName, unClaimed, unClaimedProjId, colName, unClaimedColId, "true", true );
+
+		let nLoc = {};
+		nLoc.CEProjectId     = pd.CEProjectId;
+		nLoc.HostRepository  = pd.GHFullName;
+		nLoc.HostProjectId   = unClaimedProjId;
+		nLoc.HostProjectName = unClaimed;
+		nLoc.HostColumnId    = colName;
+		nLoc.HostColumnName  = unClaimedColId;
+		nLoc.Active          = "true";
+		
+		await ghLinks.addLoc( authData, nLoc, true );
 	    })
 	    .catch( e => unClaimedColId = errorHandler( "createUnClaimedColumn", e, createUnClaimedColumn, authData, ghLinks, pd, unClaimedProjId, issueId, accr ));
     }
@@ -1587,21 +1617,37 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	    accrCol = createColumn( authData, projId, accrName, "last" );
 	}
 
+
+	let nLoc = {};
+	nLoc.CEProjectId     = pd.CEProjectId;
+	nLoc.HostRepository  = pd.GHFullName;
+	nLoc.HostProjectId   = projId; 
+	nLoc.HostProjectName = link.GHProjectName;
+	nLoc.Active          = "true";
+	
 	if( progCol ) {
 	    progCol = await progCol;
-	    await ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, progName, progCol.data.id, "true", true );
+	    nLoc.HostColumnName = progName;
+	    nLoc.HostColumnId   = progCol.data.id;
+	    await ghLinks.addLoc( authData, nLoc, true );
 	}
 
 	if( pendCol ) {
 	    pendCol = await pendCol;
+	    nLoc.HostColumnName = pendName;
+	    nLoc.HostColumnId   = pendCol.data.id;
+
 	    foundReqCol[config.PROJ_PEND + 1] = pendCol.data.id;
-	    await ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, pendName, pendCol.data.id, "true", true );
+	    await ghLinks.addLoc( authData, nLoc, true );
 	}
 
 	if( accrCol ) {
 	    accrCol = await accrCol;
+	    nLoc.HostColumnName = accrName;
+	    nLoc.HostColumnId   = accrCol.data.id;
+	    
 	    foundReqCol[config.PROJ_ACCR + 1] = accrCol.data.id;
-	    await ghLinks.addLoc( authData, pd.GHFullName, link.GHProjectName, projId, accrName, accrCol.data.id, "true", true );			
+	    await ghLinks.addLoc( authData, nLoc, true );
 	}
     }
     console.log( "Layout:", foundReqCol );
