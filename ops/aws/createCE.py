@@ -18,7 +18,6 @@ from packaging import version
 from samInstance import samInstance
 import awsCECommon
 
-# XXX create, delete awsConfig for codeEquity, when create/delete CE resources
 # XXX later, something like https://aws.amazon.com/blogs/architecture/new-application-integration-with-aws-cloud-map-for-service-discovery/
 # XXX Add jq to setup script.  (sudo apt install jq)
 
@@ -277,7 +276,9 @@ def help() :
     logging.info( "python createCE.py getStackOutputs >& oldStack.txt" )
     logging.info( "python createCE.py deleteCEResources" )
     logging.info( "python createCE.py makeCEResources" )
-
+    logging.info( "Then to update asset files.." )
+    logging.info( "Build flutter web,        e.g. cd ../../ceFlutter; flutter build web" )
+    logging.info( "Copy web app to ceServer, e.g. cd ../webServer/public_flutter; cp -r ../../ceFlutter/build/web/* ." )
 
     
 

@@ -58,8 +58,14 @@ function getCEServer() {
 	let jdata = JSON.parse( data );
 	// console.log(jdata);
 
-	let rdata = { 'Username': jdata['Username'],
-		      'Password': jdata['Password'] };
+	if( !jdata.hasOwnProperty( "ceServer" ) || !jdata.ceServer.hasOwnProperty( "Username" ) ) {
+	    console.log( "Error.  Data in ops/aws/auth/ceServerConfig.json is not well-constructed." )
+	    console.log( "expecting something of the form: {\"ceServer\": {\"Username\": <username here>, \"Password\" : <passwd here>, \"Email\" : <email here> }}" );
+	    assert( false );
+	}
+	
+	let rdata = { 'Username': jdata.ceServer.Username,
+		      'Password': jdata.ceServer.Password };
 
 	return rdata;
     } catch(e) {

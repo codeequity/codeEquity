@@ -1,5 +1,6 @@
 var assert = require('assert');
 
+const locData  = require( "./locData" );
 const auth     = require( "../auth");
 const utils    = require('../utils');
 const config   = require('../config');
@@ -26,20 +27,21 @@ class Linkage {
 
     constructor( ) {
 	this.links = {};   // { issueId: { cardId: {link}}}
-	this.locs  = {};   // { projId: { colId: {loc}}}
+	this.locs  = {};   // { ceProjId: hostProjId: { hostColId: {loc}}}
     }
 
 
     async initOneProject( authData, entry ) {
 
-	let host  = entry.hasOwnProperty( "HostPlatform" )   ? entry.HostPlatform   : "";
-	let org   = entry.hasOwnProperty( "Organization" )   ? entry.Organization   : "";
-	let pms   = entry.hasOwnProperty( "ProjectMgmtSys" ) ? entry.ProjectMgmtSys : "";
-	let repos = entry.hasOwnProperty( "HostRepository" ) ? entry.HostRepository : [];
+	let host  = entry.hasOwnProperty( "HostPlatform" )       ? entry.HostPlatform       : "";
+	let org   = entry.hasOwnProperty( "Organization" )       ? entry.Organization       : "";
+	let pms   = entry.hasOwnProperty( "ProjectMgmtSys" )     ? entry.ProjectMgmtSys     : "";
+	let repos = entry.hasOwnProperty( "HostRepository" )     ? entry.HostRepository     : [];
+	let comp  = entry.hasOwnProperty( "CEProjectComponent" ) ? entry.CEProjectComponent : "";
 	assert( host != "" && pms != "" && org != "" );
 	assert( entry.hasOwnProperty( "CEProjectId" ) );
 	    
-	console.log( ".. working on", host+"'s", org+",", "which is a", pms, "project." );
+	console.log( ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
 	// Wait later
 	let peqs = utils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
@@ -70,14 +72,16 @@ class Linkage {
 			loc.Active = "true";
 			this.addLoc( authData, loc, false ); 
 		    }
+
+		    // XXX this may belong outside the loop?
+		    blPromise = await blPromise;  // no val here, just ensures linkData is set
+		    this.populateLinkage( authData, repo, baseLinks );
+		    baseLinks.clear();  // XXX outside loop, kill this
 		}
 	    }
 	}
 
 	utils.refreshLinkageSummary( authData, entry.CEProjectId, locData );  
-	
-	blPromise = await blPromise;  // no val here, just ensures locData is set
-	this.populateLinkage( authData, repo, baseLinks );
 
 
 	
@@ -93,10 +97,10 @@ class Linkage {
 		// console.log( authData.who, "Skipping inactive peq", peq.GHIssueTitle );
 		continue;
 	    }
-	    const iid = peq.GHIssueId;
+	    const iid = peq.HostIssueId;
 	    let link = this.getUniqueLink( authData, iid );
 	    if( link == -1 ) {
-		console.log( "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.GHIssueTitle );
+		console.log( "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.HostIssueTitle );
 		badPeq = true;
 		continue;
 	    }
@@ -109,12 +113,12 @@ class Linkage {
 	    link.GHColumnName  = card.columnName;
 
 	    // need a name here
-	    link.flatSource    = peq.GHProjectSub[ peq.GHProjectSub.length - 1 ];
+	    link.flatSource    = peq.HostProjectSub[ peq.HostProjectSub.length - 1 ];
 	    if( config.PROJ_COLS.includes( link.flatSource )) { link.flatSource = -1; }
 	    // XXX could make this faster if cols use gets broader.
 	    if( link.flatSource != -1 ) {
-		const loc = locData.find( loc => loc.GHProjectId == link.GHProjectId && loc.GHColumnName == link.flatSource );
-		if( typeof loc !== 'undefined' ) { link.flatSource = loc.GHColumnId; }
+		const loc = locData.find( loc => loc.HostProjectId == link.GHProjectId && loc.HostColumnName == link.flatSource );
+		if( typeof loc !== 'undefined' ) { link.flatSource = loc.HostColumnId; }
 		else { link.flatSource = -1; }   // e.g. projSub is (master)[softCont, dataSec]
 	    }
 	}
@@ -187,6 +191,7 @@ class Linkage {
     }
 
 
+    // XXX update new structure
     // For testing, locData grabbed from server and queried, do NOT modify AWS.
     fromJsonLocs( locData ) {
 	this.links = {};
@@ -208,21 +213,13 @@ class Linkage {
 	locD.HostProjectId = locD.HostProjectId.toString();
 	if( !this.locs.hasOwnProperty( locD.ceProjId ))                                   { this.locs[ceProjId] = {}; }
 	if( !this.locs[ceProjId].hasOwnProperty( locD.HostProjectId ))                    { this.locs[ceProjId][locD.HostProjectId] = {}; }
-	if( !this.locs[ceProjId][locD.HostProjectId].hasOwnProperty( locD.HostColumnId )) { this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId] = {}; }
+	if( !this.locs[ceProjId][locD.HostProjectId].hasOwnProperty( locD.HostColumnId )) { this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId] = new LocData(); }
 											    
 	let loc = this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId];
-
-	loc.CEProjectId     = locD.CEProjectId;
-	loc.HostRepository  = locD.HostRepository;
-	loc.HostProjectId   = locD.HostProjectId;
-	loc.HostProjectName = locD.HostProjectName;
-	loc.HostColumnId    = locD.HostColumnId;
-	loc.HostColumnName  = locD.HostColumnName;
-	loc.Active          = locD.Active;
+	loc.fromLoc( locD ); 
 
 	// Must wait.. aws dynamo ops handled by multiple threads.. order of processing is not dependable in rapid-fire situations.
 	// No good alternative - refresh could be such that earlier is processed later in dynamo
-	// XXX 
 	if( pushAWS ) { await utils.updateLinkageSummary( authData, ceProjId, loc ); }
 	
 	return loc;
@@ -290,6 +287,7 @@ class Linkage {
 	return links;
     }
 
+    // XXX update
     getLocs( authData, query ) {
 	console.log( authData.who, "get Locs", query );
 	this.showLocs();
@@ -408,6 +406,7 @@ class Linkage {
 	return retVal;
     }
 
+    // XXX update
     removeLocs({ authData, projId, colId }) {
 	if( !authData ) { console.log( "missing authData" ); return false; }
 

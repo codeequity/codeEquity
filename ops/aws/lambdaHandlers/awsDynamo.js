@@ -335,16 +335,17 @@ async function getEntries( tableName, query ) {
     case "CEPEQRaw":
 	props = [ "PEQRawId", "CEProjectId" ];
 	break;
-    case "CEProjects": 
+    case "CEProjects":
 	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary": 
 	props = [ "CEProjectId" ];
 	break;
     default:
+	console.log( "*"+tableName+"*", "not found" );
 	assert( false );
     }
-    
+
     let scanVals = buildConjScanParams( query, props );
     assert( scanVals.length == 2 );
 
