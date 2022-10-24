@@ -73,6 +73,7 @@ function getCEServer() {
     }
 }
 
+// XXX ??? unused?
 async function getRemotePackageJSONObject(owner, repo, installationAccessToken) {
     const installationClient = await auth.getInstallationClient(owner, repo);
     const fileData = await installationClient.repos.getContents({

@@ -40,14 +40,11 @@ class Linkage {
 	let comp  = entry.hasOwnProperty( "CEProjectComponent" ) ? entry.CEProjectComponent : "";
 	assert( host != "" && pms != "" && org != "" );
 	assert( entry.hasOwnProperty( "CEProjectId" ) );
-	    
+
 	console.log( ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
 	// Wait later
 	let peqs = utils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
-
-	// Init repo with CE_USER, which is typically a builder account that needs full access.
-	await ceRouter.getAuths( authData, host, pms, org, config.CE_USER );
 
 
 	let baseLinks = [];
@@ -55,12 +52,23 @@ class Linkage {
 	let ldPromise = [];
 	let locData   = [];
 
-	console.log( host, pms, repos );
+	console.log( "  ...   ", host, pms, repos );
 	if( host == config.HOST_GH ) {
 	    if( pms == config.PMS_GHC ) {
 		for( const repo of repos ) {
 		    let fnParts = repo.split('/');
 
+		    // XXX classic is per repo.
+		    // XXX test only
+		    // Init repo with CE_USER, which is typically a builder account that needs full access.
+		    if( fnParts[0] == "ariCETester" ) {
+			console.log( "Getting organization-level auths", org, repo );
+			await ceRouter.getAuths( authData, host, pms, org, config.CE_USER );
+		    }
+		    else {
+			console.log( "Getting individual-level auths", org, repo );
+			await ceRouter.getAuths( authData, host, pms, repo, config.CE_USER );
+		    }
 		    
 		    blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
 			.catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
@@ -78,7 +86,7 @@ class Linkage {
 		    // XXX this may belong outside the loop?
 		    blPromise = await blPromise;  // no val here, just ensures linkData is set
 		    this.populateLinkage( authData, entry.CEProjectId, repo, baseLinks );
-		    baseLinks.clear();  // XXX outside loop, kill this
+		    baseLinks = [];  // XXX outside loop, kill this
 		}
 	    }
 	}
@@ -166,7 +174,7 @@ class Linkage {
     // Linkage table only contains situated issues or better.  Card titles point to issue titles for situated issues.
     addLinkage( authData, ceProjId, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle, source ) {
 
-	// console.log( authData.who, "add link", issueId, cardId, colName, colId, issueTitle );
+	console.log( authData.who, "add link", ceProjId, issueId, cardId, colName, colId, issueTitle );
 
 	if( !this.links.hasOwnProperty( ceProjId ) )                { this.links.ceProjId = {}; }
 	if( !this.links.ceProjId.hasOwnProperty( issueId ) )        { this.links.ceProjId.issueId = {}; }
@@ -175,7 +183,7 @@ class Linkage {
 	let haveSource = false;
 	if( typeof source !== 'undefined' ) { haveSource = true; }
 
-	let link = this.links[issueId][cardId];
+	let link = this.links.ceProjId.issueId.cardId;
 	// issuedId, cardId doubly-stored for convenience
 	link.CEProjectId     = ceProjId;
 	link.HostRepo        = repo;
@@ -215,9 +223,13 @@ class Linkage {
     async addLoc( authData, locD, pushAWS = false ) {
 	locD.HostColumnId  = locD.HostColumnId.toString();
 	locD.HostProjectId = locD.HostProjectId.toString();
-	if( !this.locs.hasOwnProperty( locD.ceProjId ))                                   { this.locs[ceProjId] = {}; }
+	let ceProjId       = locD.CEProjectId;
+
+	if( typeof ceProjId === 'undefined' ) { console.log( "Warning.  Linkage addLoc was called without a CE Project Id." ); }
+	    
+	if( !this.locs.hasOwnProperty( ceProjId ))                                        { this.locs[ceProjId] = {}; }
 	if( !this.locs[ceProjId].hasOwnProperty( locD.HostProjectId ))                    { this.locs[ceProjId][locD.HostProjectId] = {}; }
-	if( !this.locs[ceProjId][locD.HostProjectId].hasOwnProperty( locD.HostColumnId )) { this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId] = new LocData(); }
+	if( !this.locs[ceProjId][locD.HostProjectId].hasOwnProperty( locD.HostColumnId )) { this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId] = new locData.LocData(); }
 											    
 	let loc = this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId];
 	loc.fromLoc( locD ); 
@@ -230,7 +242,7 @@ class Linkage {
     }
     
     populateLinkage( authData, ceProjId, fn, baseLinkData ) {
-	console.log( authData.who, "Populate linkage" );
+	console.log( authData.who, "Populate linkage", fn );
 	for( const elt of baseLinkData ) {
 	    this.addLinkage( authData, ceProjId, fn, elt.issueId, elt.issueNum, elt.projectId, config.EMPTY, -1, config.EMPTY, elt.cardId, config.EMPTY );
 	}
@@ -240,7 +252,8 @@ class Linkage {
     getUniqueLink( authData, ceProjId, issueId ) {
 
 	console.log( authData.who, "Get unique link", ceProjId, issueId );
-	this.show(10);
+	// XXX
+	// this.show(10);
 	let retVal = -1;
 	if( this.links.hasOwnProperty( ceProjId ) && this.links.ceProjId.hasOwnProperty( issueId )) {
 	    let issueLinks = Object.entries( this.links.ceProjId.issueId );  // [ [cardId, link], [cardId, link] ...]
