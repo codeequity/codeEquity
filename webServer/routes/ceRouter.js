@@ -210,6 +210,8 @@ async function getNextJob( authData, res ) {
 	// Send authData so cogLast, is correct.
 	// But reset authData.pat to keep parent pat correct.
 	let tmp = authData.pat;
+	// XXX
+	console.log( "XXX Get next job" );
 	getAuths( authData, jobData.Host, jobData.ProjMgmtSys, jobData.Org, jobData.Actor );
 	ic.pat = authData.pat;
 	authData.pat = tmp;

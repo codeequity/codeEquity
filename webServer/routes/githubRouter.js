@@ -48,8 +48,8 @@ async function getAuths( authData, pms, org, actor ) {
 	if( !octokitClients[host][org].hasOwnProperty( actor )) {
 	    console.log( authData.who, "get octo", host, org, actor );  
 	    // Wait later
-	    let repoParts = org.split('/');
-	    octokitClients[host][org][actor] = {}
+	    let repoParts = org.split('/');        // XXX rp[1] is undefined for orgs
+	    octokitClients[host][org][actor] = {};
 	    octokitClients[host][org][actor].auth = auth.getInstallationClient( repoParts[0], repoParts[1], actor ); 
 	    octokitClients[host][org][actor].last = Date.now();
 	}
@@ -214,6 +214,7 @@ async function switcherGHC( authData, ghLinks, jd, res, origStamp ) {
     pd.GHFullName   = jd.ReqBody['repository']['full_name'];
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
+    console.log( "XXX Switcher GHC" );
     await ceRouter.getAuths( authData, config.HOST_GH, jd.ProjMgmtSys, pd.GHFullName, config.CE_USER );
     
     switch( jd.Event ) {
@@ -272,6 +273,7 @@ async function switcherGH2( authData, ghLinks, jd, res, origStamp ) {
     pd.GHOrganization = org;
     
     assert( jd.QueueId == authData.job ) ;
+    console.log( "XXX Swither GH2" );
     await ceRouter.getAuths( authData, config.HOST_GH, jd.ProjMgmtSys, org, jd.Actor );
     
     switch( jd.Event ) {

@@ -10,17 +10,24 @@ const OctokitRetry = Octokit.plugin(retry);
 const fetch = require("node-fetch");
 const dotenv = require("dotenv");
 var fs = require('fs'), json;
+var assert = require('assert');
 
 var config    = require('./config');
 
 
 // Generate an installationAccessToken, for use in creating installation client for GitHub API.
-// onwer: name of github account, repository with installation of this github app
+// base: name of github account, repository with installation of this github app
 // repo:  name of a repository with GitHub App installed
-async function getInstallationAccessToken(owner, repo, app, jwt) {
+// OR
+// if this is for an organization,
+// base is org, repo is undefined
+async function getInstallationAccessToken(base, repo, app, jwt) {
 
-    // console.log( "Fetching", `https://api.github.com/repos/${owner}/${repo}/installation` );
-    const result = await fetch(`https://api.github.com/repos/${owner}/${repo}/installation`,
+    let loc = "";
+    if( typeof repo === 'undefined' ) { loc = "https://api.github.com/orgs/"  + base              + "/installation"; }
+    else                              { loc = "https://api.github.com/repos/" + base + "/" + repo + "/installation";}
+    
+    const result = await fetch( loc, 
 			       {
 				   headers: {
 				       authorization: `Bearer ${jwt}`,
@@ -31,7 +38,7 @@ async function getInstallationAccessToken(owner, repo, app, jwt) {
     const installationId = (await result.json()).id;
     // console.log( "GIAT", installationId, owner, repo );
     if( typeof installationId === 'undefined' ) {
-	console.log( "Warning.  Octokit can't find the app installation for", owner, repo, ".  Is the app installed for your personal account?" );
+	console.log( "Warning.  Octokit can't find the app installation for", owner, repo, ".  Is the app instead installed for your organization's account?" );
 	return -1;
     }
 	
@@ -39,6 +46,7 @@ async function getInstallationAccessToken(owner, repo, app, jwt) {
     
     return installationAccessToken;
 };
+
 
 
 function getInstallationClientFromToken(installationAccessToken) {
@@ -76,14 +84,14 @@ async function getInstallationClient(owner, repo, actor) {
 
     // console.log( "GIC app", app );
     // console.log( "GIC jwt", jwt );
-    
+
     installationAccessToken = await getInstallationAccessToken( owner, repo, app, jwt )
         .catch( e => {
 	    console.log( "Get Install Client failed.", e );
 	    return "";
 	});
 
-    // console.log( "Get AUTH for", owner, repo, credPath, jwt.substring(0,15), installationAccessToken.substring( 0,50) );
+    console.log( "Get AUTH for", owner, repo, credPath, jwt.substring(0,15), installationAccessToken.substring( 0,50) );
 
     if( installationAccessToken == -1 ) { return -1; }
     return getInstallationClientFromToken(installationAccessToken);
