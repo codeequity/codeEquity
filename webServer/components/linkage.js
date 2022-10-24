@@ -52,7 +52,7 @@ class Linkage {
 	let ldPromise = [];
 	let locData   = [];
 
-	console.log( "  ...   ", host, pms, repos );
+	// console.log( "  ...   ", host, pms, repos );
 	if( host == config.HOST_GH ) {
 	    if( pms == config.PMS_GHC ) {
 		for( const repo of repos ) {
@@ -62,11 +62,11 @@ class Linkage {
 		    // XXX test only
 		    // Init repo with CE_USER, which is typically a builder account that needs full access.
 		    if( fnParts[0] == "ariCETester" ) {
-			console.log( "Getting organization-level auths", org, repo );
+			// console.log( "Getting organization-level auths", org, repo );
 			await ceRouter.getAuths( authData, host, pms, org, config.CE_USER );
 		    }
 		    else {
-			console.log( "Getting individual-level auths", org, repo );
+			// console.log( "Getting individual-level auths", org, repo );
 			await ceRouter.getAuths( authData, host, pms, repo, config.CE_USER );
 		    }
 		    
@@ -85,6 +85,9 @@ class Linkage {
 
 		    // XXX this may belong outside the loop?
 		    blPromise = await blPromise;  // no val here, just ensures linkData is set
+
+		    console.log( "links for", org, repo, baseLinks );
+		    
 		    this.populateLinkage( authData, entry.CEProjectId, repo, baseLinks );
 		    baseLinks = [];  // XXX outside loop, kill this
 		}
@@ -92,7 +95,6 @@ class Linkage {
 	}
 
 	utils.refreshLinkageSummary( authData, entry.CEProjectId, locData );  
-
 
 	
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
@@ -176,14 +178,14 @@ class Linkage {
 
 	console.log( authData.who, "add link", ceProjId, issueId, cardId, colName, colId, issueTitle );
 
-	if( !this.links.hasOwnProperty( ceProjId ) )                { this.links.ceProjId = {}; }
-	if( !this.links.ceProjId.hasOwnProperty( issueId ) )        { this.links.ceProjId.issueId = {}; }
-	if( !this.links.ceProjId.issueId.hasOwnProperty( cardId ) ) { this.links.ceProjId.issueId.cardId = {}; }
+	if( !this.links.hasOwnProperty( ceProjId ) )                  { this.links[ceProjId] = {}; }
+	if( !this.links[ceProjId].hasOwnProperty( issueId ) )         { this.links[ceProjId][issueId] = {}; }
+	if( !this.links[ceProjId][issueId].hasOwnProperty( cardId ) ) { this.links[ceProjId][issueId][cardId] = {}; }
 
 	let haveSource = false;
 	if( typeof source !== 'undefined' ) { haveSource = true; }
 
-	let link = this.links.ceProjId.issueId.cardId;
+	let link = this.links[ceProjId][issueId][cardId];
 	// issuedId, cardId doubly-stored for convenience
 	link.CEProjectId     = ceProjId;
 	link.HostRepo        = repo;
@@ -199,6 +201,11 @@ class Linkage {
 
 	// Do not track source col if is in full layout
 	if( !haveSource && config.PROJ_COLS.includes( link.HostColumnName ) ) { link.flatSource = -1; }
+
+	// XXX
+	// console.log( "XXX link", link )
+	// console.log( "XXX this.links", this.links )
+	
 	return link;
     }
 
@@ -252,11 +259,11 @@ class Linkage {
     getUniqueLink( authData, ceProjId, issueId ) {
 
 	console.log( authData.who, "Get unique link", ceProjId, issueId );
-	// XXX
-	// this.show(10);
+	this.show(5);
 	let retVal = -1;
-	if( this.links.hasOwnProperty( ceProjId ) && this.links.ceProjId.hasOwnProperty( issueId )) {
-	    let issueLinks = Object.entries( this.links.ceProjId.issueId );  // [ [cardId, link], [cardId, link] ...]
+	if( this.links.hasOwnProperty( ceProjId ) && this.links[ceProjId].hasOwnProperty( issueId )) {
+	    let issueLinks = Object.entries( this.links[ceProjId][issueId] );  // [ [cardId, link], [cardId, link] ...]
+	    // console.log( "XXX", issueLinks );
 	    
 	    if      ( issueLinks.length < 1 ) { console.log(authData.who, "Link not found.", issueId ); }  // 204
 	    else if ( issueLinks.length > 1 ) { console.log(authData.who, "Semantic error.  More items found than expected.", issueId ); } // 422
@@ -362,7 +369,7 @@ class Linkage {
     // Write repo, projId, cardId, issueNum.    issueId is much more expensive to find, not justified speculatively.
     rebaseLinkage( authData, ceProjId, issueId ) {
 	console.log( authData.who, "Rebasing link for", ceProjId, issueId );
-	let cLinks = this.links.ceProjId.issueId;
+	let cLinks = this.links[ceProjId][issueId];
 	assert( Object.keys( cLinks ).length == 1 );
 	let [_, link] = Object.entries( cLinks )[0];
 
@@ -375,7 +382,7 @@ class Linkage {
 
     updateLinkage( authData, ceProjId, issueId, cardId, newColId, newColName ) {
 	console.log( authData.who, "Update linkage for", ceProjId, issueId, cardId, newColId );
-	let link = this.links.ceProjId.issueId.cardId;
+	let link = this.links[ceProjId][issueId][cardId];
 	assert( link !== 'undefined' );
 
 	link.HostColumnId   = newColId.toString();
@@ -424,11 +431,11 @@ class Linkage {
 
 	console.log( authData.who, "Remove link for issueId:", ceProjId, issueId );
 
-	if( !this.links.hasOwnProperty( ceProjId ))                       { return retVal; }  // may see multiple deletes
-	if( !this.links.ceProjId.hasOwnProperty( issueId ))               { return retVal; }  // may see multiple deletes
-	if( Object.keys( this.links.ceProjId.issueId ).length == 0 )      { return retVal; }
-	else if( Object.keys( this.links.ceProjId.issueId ).length == 1 ) { delete this.links.ceProjId.issueId; }
-	else                                                              { delete this.links.ceProjId.issueId.cardId; }
+	if( !this.links.hasOwnProperty( ceProjId ))                         { return retVal; }  // may see multiple deletes
+	if( !this.links[ceProjId].hasOwnProperty( issueId ))                { return retVal; }  // may see multiple deletes
+	if( Object.keys( this.links[ceProjId][issueId] ).length == 0 )      { return retVal; }
+	else if( Object.keys( this.links[ceProjId][issueId] ).length == 1 ) { delete this.links[ceProjId][issueId]; }
+	else                                                                { delete this.links[ceProjId][issueId][cardId]; }
 	retVal = true;
 	return retVal;
     }
@@ -447,20 +454,20 @@ class Linkage {
 	
 	// Easy cases, already do not exist
 	// No need to check for empty ceProjectIds, since there is nothing to set inactive.
-	if( (!havePID && !haveCID) ||                                                       // nothing specified
+	if( (!havePID && !haveCID) ||                                                        // nothing specified
 	    (!this.locs.hasOwnProperty( ceProjId )) ||                                       // nothing yet for ceProject
-	    (havePID && !this.locs.ceProjId.hasOwnProperty( projId )) ||                    // have pid, but already not in locs
-	    (havePID && haveCID && !this.locs.ceProjId.projId.hasOwnProperty( colId ))) {   // have pid & cid, but already not in locs
+	    (havePID && !this.locs[ceProjId].hasOwnProperty( projId )) ||                     // have pid, but already not in locs
+	    (havePID && haveCID && !this.locs[ceProjId][projId].hasOwnProperty( colId ))) {   // have pid & cid, but already not in locs
 	}
-	else if( havePID && this.locs.ceProjId.hasOwnProperty( projId )) {
-	    if( haveCID && this.locs.ceProjId.projId.hasOwnProperty( colId ))
+	else if( havePID && this.locs[ceProjId].hasOwnProperty( projId )) {
+	    if( haveCID && this.locs[ceProjId][projId].hasOwnProperty( colId ))
 	    {
-		assert( cpid == "" || cpid == this.locs.ceProjId.projId.colId.CEProjectId );
-		cpid = this.locs.ceProjId.projId.colId.CEProjectId;
-		this.locs.ceProjId.projId.colId.Active = "false"; 
+		assert( cpid == "" || cpid == this.locs[ceProjId][projId][colId].CEProjectId );
+		cpid = this.locs[ceProjId][projId][colId].CEProjectId;
+		this.locs[ceProjId][projId][colId].Active = "false"; 
 	    }
 	    else if( !haveCID ) {
-		for( var [_, loc] of Object.entries( this.locs.ceProjId.projId )) {
+		for( var [_, loc] of Object.entries( this.locs[ceProjId][projId] )) {
 		    assert( cpid == "" || cpid == loc.CEProjectId );
 		    cpid = loc.CEProjectId;
 		    loc.Active = "false"; 
@@ -469,12 +476,12 @@ class Linkage {
 	}
 	// I don't have PID, but I do have CID
 	else {  
-	    for( const [ceproj,_] of Object.entries( this.locs )) {
-		for( const [proj,cloc] of Object.entries( ceproj )) {
+	    for( const [ceproj,cplinks] of Object.entries( this.locs )) {
+		for( const [proj,cloc] of Object.entries( cplinks )) {
 		    if( cloc.hasOwnProperty( colId )) {
-			assert( cpid == "" || cpid == this.locs.ceproj.proj.colId.CEProjectId );
-			cpid = this.locs.ceproj.proj.colId.CEProjectId;
-			this.locs.ceproj.proj.colId.Active = "false";
+			assert( cpid == "" || cpid == this.locs[ceproj][proj][colId].CEProjectId );
+			cpid = this.locs[ceproj][proj][colId].CEProjectId;
+			this.locs[ceproj][proj][colId].Active = "false";
 			break;
 		    }
 		}
@@ -509,8 +516,8 @@ class Linkage {
     // NOTE: testing will purge every repo
     purgeLocs( repo ) {
 	let killList = [];	
-	for( const [ceproj,_] of Object.entries( this.locs )) {
-	    for( const [proj,cloc] of Object.entries( ceproj )) {
+	for( const [_,cplinks] of Object.entries( this.locs )) {
+	    for( const [_,cloc] of Object.entries( cplinks )) {
 		for( const [col,loc] of Object.entries( cloc )) {
 		    if( repo == "TESTING-FROMJSONLOCS" || loc.HostRepo == repo ) { killList.push({ "cpid": loc.CEProjectId, "pid": loc.HostProjectId }); }  
 		}
@@ -523,8 +530,8 @@ class Linkage {
     purge( repo ) {
 	console.log( "Removing links, locs for", repo );
 	let killList = [];
-	for( const [cproj,_] of Object.entries( this.links )) {
-	    for( const [iss,clink] of Object.entries( cproj )) {
+	for( const [_,cplinks] of Object.entries( this.links )) {
+	    for( const [_,clink] of Object.entries( cplinks )) {
 		for( const [cid,link] of Object.entries( clink )) {
 		    if( link.HostRepo == repo ) { killList.push( {"cpid": link.CEProjectId, "iid": link.HostIssueId} ); }
 		}
@@ -563,9 +570,11 @@ class Linkage {
 		     this.fill( "sourceCol", 10 )
 		   );
 
+	// console.log( this.links );
+	
 	let printables = [];
-	for( const [ceproj, _] of Object.entries( this.links )) {
-	    for( const [issueId, clinks] of Object.entries( ceproj )) {
+	for( const [ceproj, cplink] of Object.entries( this.links )) {
+	    for( const [issueId, clinks] of Object.entries( cplink )) {
 		for( const [_, link] of Object.entries( clinks )) {
 		    printables.push( link );
 		}}
@@ -594,8 +603,8 @@ class Linkage {
 
     showLocs( count ) {
 	let printables = [];
-	for( const [ceproj, _] of Object.entries( this.locs )) {
-	    for( const [_, clocs] of Object.entries( ceproj )) {
+	for( const [_, cplinks] of Object.entries( this.locs )) {
+	    for( const [_, clocs] of Object.entries( cplinks )) {
 		for( const [_, loc] of Object.entries( clocs )) {
 		    // if( loc.Active == "true" ) { printables.push( loc ); }
 		    printables.push( loc );

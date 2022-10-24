@@ -68,7 +68,7 @@ async function getInstallationClient(owner, repo, actor) {
 	credPath = config.CREDS_TPATH;
     }
 
-    console.log( "GIC", owner, repo );
+    // console.log( "GIC", owner, repo );
     // console.log( "GIC", credPath );
     
     dotenv.config({ path: credPath });
