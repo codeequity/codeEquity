@@ -217,7 +217,7 @@ async function loadLinkage( authData, td ) {
 		ghLinks.addLoc( authData, nLoc, false);
 	    }
 
-	    var locsL = ghLinks.getLocs( authData, { "repo": repo } );
+	    var locsL = ghLinks.getLocs( authData, { "ceProjId": nLoc.CEProjectId, "repo": repo } );
 	    await utils.refreshLinkageSummary( authData, repo, locsL, false );
 	    break;
 	}

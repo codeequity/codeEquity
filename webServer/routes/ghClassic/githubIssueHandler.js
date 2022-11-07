@@ -25,7 +25,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
     let tstart = Date.now();
 
     // Either not carded, or delete card already fired successfully.  No-op.
-    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
+    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId });
     if( links == -1 ) return;
     let link = links[0];
 
@@ -127,7 +127,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     }
     
     // Was this a carded issue?  Get linkage
-    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
     assert( links == -1 || links.length == 1 );
     let link = links == -1 ? links : links[0];
     
@@ -204,7 +204,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( "PEQ labeled closed issue." )
 
 		// Must be situated by now.  Move, if in flatworld.
-		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 		assert( links.length == 1 );
 		let link = links[0];
 
@@ -221,7 +221,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.GHFullName,
 								 link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
 
-			    cardHandler.recordMove( authData, ghLinks, pd.reqBody, pd.GHFullName, -1, config.PROJ_PEND, link, peq );
+			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
 			}
 		    }
 		}
@@ -246,7 +246,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 		
-	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
 
@@ -259,7 +259,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    
 	    let peq = await utils.getPeq( authData, pd.GHIssueId );	
 	    console.log( "WARNING.  PEQ Issue unlabeled, issue no longer tracked." );
-	    ghLinks.rebaseLinkage( authData, pd.GHIssueId );   // setting various to -1, as it is now untracked
+	    ghLinks.rebaseLinkage( authData, pd.CEProjectId, pd.GHIssueId );   // setting various to -1, as it is now untracked
 	    utils.removePEQ( authData, peq.PEQId );
 	    utils.recordPEQAction(
 		authData,
@@ -373,7 +373,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let note = ( action == "assigned" ? "add" : "remove" ) + " assignee";
 
 	    // Not if ACCR
-	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId });
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId });
 	    if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( "WARNING.", links[0].GHColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
 		paction = config.PACTACT_NOTE;
@@ -395,7 +395,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		pd.reqBody.changes.title.hasOwnProperty( 'from' )) {
 
 		const newTitle = pd.reqBody.issue.title;
-		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
 		let link = links == -1 ? links : links[0]; 
 
 		if( link != -1 && link.GHIssueTitle != config.EMPTY) {

@@ -12,12 +12,12 @@ async function createFlatProject( authData, ghLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
     td.masterPID  = await tu.makeProject( authData, td, FLAT_PROJ, "" );
-    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, "Eggs" );
-    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, "Bacon" );
+    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Eggs" );
+    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Bacon" );
 
-    await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, mastCol1, "Parsley" );
-    await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, mastCol2, "Rosemary" );
-    await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, mastCol1, "Sage" );
+    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Parsley" );
+    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol2, "Rosemary" );
+    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Sage" );
 }
 
 async function testFlatProject( authData, ghLinks, td ) {

@@ -167,8 +167,8 @@ var githubUtils = {
 	return removeCard( authData, cardId );
     },
 	
-    rebuildCard: function( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
-	return rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData );
+    rebuildCard: function( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
+	return rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData );
     },
 
     createUnClaimedCard: function( authData, ghLinks, pd, issueId, accr ) {
@@ -231,12 +231,12 @@ var githubUtils = {
 	return moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
     },
 
-    getProjectName: function( authData, ghLinks, fullName, projId ) {
-	return getProjectName( authData, ghLinks, fullName, projId ); 
+    getProjectName: function( authData, ghLinks, ceProjId, fullName, projId ) {
+	return getProjectName( authData, ghLinks, ceProjId, fullName, projId ); 
     },
 
-    getColumnName: function( authData, ghLinks, fullName, colId ) {
-	return getColumnName( authData, ghLinks, fullName, colId ); 
+    getColumnName: function( authData, ghLinks, ceProjId, fullName, colId ) {
+	return getColumnName( authData, ghLinks, ceProjId, fullName, colId ); 
     },
 
 };
@@ -1280,7 +1280,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, ori
 	const planName = config.PROJ_COLS[ config.PROJ_PLAN ];
 	const progName = config.PROJ_COLS[ config.PROJ_PROG ];
 
-	const locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );   
+	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId,"repo": fullName, "projId": projId } );   
 	assert( locs != -1 );
 	projName = projName == "" ? locs[0].GHProjectName : projName;
 
@@ -1400,7 +1400,7 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
     const unClaimed = config.UNCLAIMED;
 
     let unClaimedProjId = -1;
-    let locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projName": unClaimed } ); // XXX
+    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projName": unClaimed } ); // XXX
     unClaimedProjId = locs == -1 ? locs : locs[0].GHProjectId;
     if( unClaimedProjId == -1 ) {
 	console.log( "Creating UnClaimed project" );
@@ -1432,7 +1432,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
     // Get locs again, to update after uncl. project creation 
-    locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projName": unClaimed } );
+    locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projName": unClaimed } );
     assert( unClaimedProjId == locs[0].GHProjectId );
 
     const loc = locs.find( loc => loc.GHColumnName == colName );
@@ -1505,7 +1505,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     }
 
     // Remove turds, report.  
-    if( success ) { ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId }); }
+    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjID": pd.CEProjectId, "issueId": pd.GHIssueId, "cardId": link.GHCardId }); }
     else { console.log( "WARNING.  cleanUnclaimed failed to remove linkage." ); }
 
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
@@ -1555,7 +1555,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     console.log( authData.who, "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
-    const locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": projId } );
+    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projId": projId } );
     assert( locs != -1 );
     assert( link.GHProjectName == locs[0].GHProjectName );
 
@@ -1763,7 +1763,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
-	    newColName = getColumnName( authData, ghLinks, pd.GHFullName, newColId );
+	    newColName = getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, newColId );
 	    success = await moveCard( authData, cardId, newColId );
 	}
 	else {
@@ -1777,17 +1777,17 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 
     // Note. updateLinkage should not occur unless successful.  Everywhere.  
     //     Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
-    if( success ) { success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName ); }
+    if( success ) { success = ghLinks.updateLinkage( authData, pd.CEProjectId, pd.GHIssueId, cardId, newColId, newColName ); }
     
     return success ? newColId : false;
 }
 
 // Note. alignment risk
-function getProjectName( authData, ghLinks, fullName, projId ) {
+function getProjectName( authData, ghLinks, ceProjId, fullName, projId ) {
 
     if( projId == -1 ) { return -1; }
 
-    const locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "repo": fullName, "projId": projId } );
 
     const projName = locs == -1 ? locs : locs[0].GHProjectName;
     return projName
@@ -1795,11 +1795,11 @@ function getProjectName( authData, ghLinks, fullName, projId ) {
 }
 
 // Note.  alignment risk
-function getColumnName( authData, ghLinks, fullName, colId ) {
+function getColumnName( authData, ghLinks, ceProjId, fullName, colId ) {
 
     if( colId == -1 ) { return -1; }
 
-    const locs = ghLinks.getLocs( authData, { "repo": fullName, "colId": colId } );
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "repo": fullName, "colId": colId } );
     assert( locs == -1 || locs.length == 1 );
 
     const colName = locs == -1 ? locs : locs[0].GHColumnName;

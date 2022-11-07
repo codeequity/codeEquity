@@ -152,7 +152,7 @@ function makeTitleReducer( aStr ) {
 
 // Can't just rely on GH for confirmation.  Notification arrival to CE can be much slower, and in this case we need
 // CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
-async function confirmProject( authData, ghLinks, fullName, projId ) {
+async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
     /*
     let retVal = false;
     await( authData.ic.projects.get( { project_id: projId }))
@@ -161,11 +161,11 @@ async function confirmProject( authData, ghLinks, fullName, projId ) {
     return retVal;
     */
     
-    let locs = await getLocs( authData, ghLinks, { repo: fullName, projId: projId } );
+    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
     return locs != -1; 
 }
 
-async function confirmColumn( authData, ghLinks, fullName, colId ) {
+async function confirmColumn( authData, ghLinks, ceProjId, fullName, colId ) {
     /*
     let retVal = false;
     await( authData.ic.projects.getColumn( { column_id: colId }))
@@ -173,7 +173,7 @@ async function confirmColumn( authData, ghLinks, fullName, colId ) {
 	.catch( e => { console.log( authData.who, "get column failed.", e ); });
     return retVal;
     */
-    let locs = await getLocs( authData, ghLinks, { repo: fullName, colId: colId } );
+    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, colId: colId } );
     return locs != -1; 
 }
 
@@ -452,13 +452,13 @@ async function updateProject( authData, projId, name ) {
     await utils.sleep( MIN_DELAY);
 }
 
-async function makeColumn( authData, ghLinks, fullName, projId, name ) {
+async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name ) {
     // First, wait for projId, can lag
 
     // There should be NO need for this, but most GH failures start here.  Notification never sent along.
     await utils.sleep( 2000 );
 
-    await settleWithVal( "confirmProj", confirmProject, authData, ghLinks, fullName, projId );
+    await settleWithVal( "confirmProj", confirmProject, authData, ghLinks, ceProjId, fullName, projId );
     
     let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
 	.then((column) => { return column.data.id; })
@@ -471,12 +471,12 @@ async function makeColumn( authData, ghLinks, fullName, projId, name ) {
     return cid;
 }
 
-async function make4xCols( authData, ghLinks, fullName, projId ) {
+async function make4xCols( authData, ghLinks, ceProjId, fullName, projId ) {
 
-    let plan = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PLAN ] );
-    let prog = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PROG ] );
-    let pend = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
-    let accr = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
+    let plan = await makeColumn( authData, ghLinks, ceProjId, fullName, projId, config.PROJ_COLS[ config.PROJ_PLAN ] );
+    let prog = await makeColumn( authData, ghLinks, ceProjId, fullName, projId, config.PROJ_COLS[ config.PROJ_PROG ] );
+    let pend = await makeColumn( authData, ghLinks, ceProjId, fullName, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
+    let accr = await makeColumn( authData, ghLinks, ceProjId, fullName, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
 	
     await utils.sleep( MIN_DELAY );
     return [prog, plan, pend, accr];
@@ -484,9 +484,9 @@ async function make4xCols( authData, ghLinks, fullName, projId ) {
 
 
 // do NOT return card or id here.  card is rebuilt to be driven from issue.
-async function makeAllocCard( authData, ghLinks, fullName, colId, title, amount ) {
+async function makeAllocCard( authData, ghLinks, ceProjId, fullName, colId, title, amount ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make alloc card", confirmColumn, authData, ghLinks, fullName, colId );
+    await settleWithVal( "make alloc card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let note = title + "\n<allocation, PEQ: " + amount + ">";
     
@@ -498,9 +498,9 @@ async function makeAllocCard( authData, ghLinks, fullName, colId, title, amount 
     await utils.sleep( MIN_DELAY );
 }
 
-async function makeNewbornCard( authData, ghLinks, fullName, colId, title ) {
+async function makeNewbornCard( authData, ghLinks, ceProjId, fullName, colId, title ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make newbie card", confirmColumn, authData, ghLinks, fullName, colId );
+    await settleWithVal( "make newbie card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let note = title;
     
@@ -512,9 +512,9 @@ async function makeNewbornCard( authData, ghLinks, fullName, colId, title ) {
     return cid;
 }
 
-async function makeProjectCard( authData, ghLinks, fullName, colId, issueId ) {
+async function makeProjectCard( authData, ghLinks, ceProjId, fullName, colId, issueId ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make Proj card", confirmColumn, authData, ghLinks, fullName, colId );
+    await settleWithVal( "make Proj card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let card = await ghSafe.createProjectCard( authData, colId, issueId );
 

@@ -575,9 +575,9 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	// Note: This information could be passed down.. but save speedups for graphql
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
-	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, pd.GHFullName, links[i].GHProjectId );
+	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, links[i].GHProjectId );
 	    links[i].GHColumnId    = ( await gh.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, pd.GHFullName, links[i].GHColumnId );
+	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, links[i].GHColumnId );
 	}
 
 	let issueData   = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, issue, "", splitTag );  
@@ -628,7 +628,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
     pd.GHColumnId  = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
     pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
-    let colName    = gh.getColumnName( authData, ghLinks, pd.GHFullName, pd.GHColumnId );
+    let colName    = gh.getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, pd.GHColumnId );
     let projName   = "";
 
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
@@ -667,7 +667,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	let peqHumanLabelName = pd.peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
 	// Wait later, maybe
 	let peqLabel = gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
-	projName = gh.getProjectName( authData, ghLinks, pd.GHFullName, pd.GHProjectId );
+	projName = gh.getProjectName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, pd.GHProjectId );
 
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
 	assert( colName != -1 ); 
