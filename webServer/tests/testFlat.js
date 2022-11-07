@@ -28,7 +28,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     await tu.refresh( authData, td, FLAT_PROJ );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
-    let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let foundFlat = false;
     if( links == -1 ) { links = []; }
 

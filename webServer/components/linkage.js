@@ -26,8 +26,8 @@ const ghSafe  = ghUtils.githubSafe;
 class Linkage {
 
     constructor( ) {
-	this.links = {};   // { issueId: { cardId: {link}}}
-	this.locs  = {};   // { ceProjId: hostProjId: { hostColId: {loc}}}
+	this.links = {};   // { ceProjId: { issueId:    { cardId:    {link}}}}
+	this.locs  = {};   // { ceProjId: { hostProjId: { hostColId: {loc }}}}
     }
 
 
@@ -151,6 +151,7 @@ class Linkage {
 	this.showLocs();
     }
 
+    // linkData is ceProject-specific, i.e. a single "cplinks"
     fromJson( linkData ) {
 	this.links = {};
 	console.log( "Creating ghLinks from json data" );
@@ -200,7 +201,7 @@ class Linkage {
     }
 
 
-    // XXX update new structure
+    // LocData will be for specific CEProjectId, i.e. a "cplocs"
     // For testing, locData grabbed from server and queried, do NOT modify AWS.
     fromJsonLocs( locData ) {
 	this.links = {};
@@ -283,25 +284,23 @@ class Linkage {
 	// console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, issueTitle );
 	
 	let links = [];
-	for( const [_, plinks] of Object.entries( this.links ) ) {
-	    for( const [_, clinks] of Object.entries( plinks ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
-		// Note, during initial resolve, this may NOT be 1:1 issue:card
-		for( const [_, link] of Object.entries( clinks ) ) {
-		    let match = true;
-		    match = issueId == -1              ? match : match && (link.HostIssueId     == issueId);
-		    match = cardId == -1               ? match : match && (link.HostCardId      == cardId);
-		    match = projId == -1               ? match : match && (link.HostProjectId   == projId);
-		    match = repo == config.EMPTY       ? match : match && (link.HostRepo        == repo);
-		    match = projName == config.EMPTY   ? match : match && (link.HostProjectName == projName );
-		    match = colName == config.EMPTY    ? match : match && (link.HostColumnName  == colName );
-		    match = issueTitle == config.EMPTY ? match : match && (link.HostIssueTitle  == issueTitle );
-		    match = ceProjId == config.EMPTY   ? match : match && (link.CEProjectId     == ceProjId );
-		    
-		    if( match ) { links.push( link ); }
-		}
+	for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
+	    // Note, during initial resolve, this may NOT be 1:1 issue:card
+	    for( const [_, link] of Object.entries( clinks ) ) {
+		let match = true;
+		match = issueId == -1              ? match : match && (link.HostIssueId     == issueId);
+		match = cardId == -1               ? match : match && (link.HostCardId      == cardId);
+		match = projId == -1               ? match : match && (link.HostProjectId   == projId);
+		match = repo == config.EMPTY       ? match : match && (link.HostRepo        == repo);
+		match = projName == config.EMPTY   ? match : match && (link.HostProjectName == projName );
+		match = colName == config.EMPTY    ? match : match && (link.HostColumnName  == colName );
+		match = issueTitle == config.EMPTY ? match : match && (link.HostIssueTitle  == issueTitle );
+		match = ceProjId == config.EMPTY   ? match : match && (link.CEProjectId     == ceProjId );
+		
+		if( match ) { links.push( link ); }
 	    }
 	}
-
+	
 	if( links.length == 0 ) { links = -1; }
 	return links;
     }
@@ -323,21 +322,19 @@ class Linkage {
 	const colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
 	
 	let locs = [];
-	for( const [_, plocs] of Object.entries( this.locs )) {
-	    for( const [_, clocs] of Object.entries( plocs ) ) { 
-		for( const [_, loc] of Object.entries( clocs ) ) {
-		    let match = true;
-		    
-		    match = projId == -1             ? match : match && (loc.HostProjectId   == projId);
-		    match = colId == -1              ? match : match && (loc.HostColumnId    == colId);
-		    match = ceProjId == config.EMPTY ? match : match && (loc.CEProjectId     == ceProjId);
-		    match = repo == config.EMPTY     ? match : match && (loc.HostRepo        == repo);
-		    match = projName == config.EMPTY ? match : match && (loc.HostProjectName == projName);
-		    match = colName == config.EMPTY  ? match : match && (loc.HostColumnName  == colName);
-		    match =                                    match && (loc.Active          == "true");
-		    
-		    if( match ) { locs.push( loc ); }
-		}
+	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) { 
+	    for( const [_, loc] of Object.entries( clocs ) ) {
+		let match = true;
+		
+		match = projId == -1             ? match : match && (loc.HostProjectId   == projId);
+		match = colId == -1              ? match : match && (loc.HostColumnId    == colId);
+		match = ceProjId == config.EMPTY ? match : match && (loc.CEProjectId     == ceProjId);
+		match = repo == config.EMPTY     ? match : match && (loc.HostRepo        == repo);
+		match = projName == config.EMPTY ? match : match && (loc.HostProjectName == projName);
+		match = colName == config.EMPTY  ? match : match && (loc.HostColumnName  == colName);
+		match =                                    match && (loc.Active          == "true");
+		
+		if( match ) { locs.push( loc ); }
 	    }
 	}
 

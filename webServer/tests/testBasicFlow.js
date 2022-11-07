@@ -35,7 +35,7 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus )
     
     
     // CHECK dynamo linkage
-    let links    = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links    = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let meltLink = links.filter((link) => link.GHIssueId == issueData[0] );
     subTest = tu.checkEq( meltLink.length, 0, subTest, "invalid linkage" );
     
@@ -80,7 +80,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, issueData, testStatus
     subTest = tu.checkEq( meltCard.column_url.split('/').pop(), td.unclaimCID,     subTest, "Card location" );
     
     // CHECK dynamo linkage
-    let links    = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName });
+    let links    = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName });
     let meltLink = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     subTest = tu.checkEq( typeof meltLink !== 'undefined', true,        subTest, "Link not present" );
 
@@ -209,7 +209,7 @@ async function checkMove( authData, ghLinks, td, issueData, colId, meltCard, tes
     let prog = config.PROJ_COLS[ config.PROJ_PROG ]; 
     let pend = config.PROJ_COLS[ config.PROJ_PEND ]; 
     let accr = config.PROJ_COLS[ config.PROJ_ACCR ]; 
-    let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName });
+    let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName });
     assert( links != -1 );
     let meltLink = ( links.filter((link) => link.GHIssueId == meltIssue.id ))[0];
     subTest = tu.checkEq( meltLink.GHIssueNum, meltIssue.number,        subTest, "Linkage Issue num" );
@@ -342,8 +342,8 @@ async function testEndpoint( authData, ghLinks, td ) {
     return testStatus;
 }
 
-async function blastLink( authData, ghLinks, title, fullName ) {
-    let links  = await tu.getLinks( authData, ghLinks, { "repo": fullName } );
+async function blastLink( authData, ghLinks, title, ceProjId, fullName ) {
+    let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": ceProjId, "repo": fullName } );
     let link   = links.find( link => link.GHIssueTitle == title );
     return link;
 }
@@ -378,7 +378,7 @@ async function testBlast( authData, ghLinks, td ) {
     const uncLoc = await tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
 
     let title  = "Blast 1";
-    let link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );
+    let link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.CEProjectId, td.GHFullName );
     let card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [ASSIGNEE1]});
 
@@ -387,7 +387,7 @@ async function testBlast( authData, ghLinks, td ) {
     // 2. blast  
     issDat = await tu.blastIssue( authData, td, "Blast 2", [LABNP1, LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );
     title  = "Blast 2";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );    
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.CEProjectId, td.GHFullName );    
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [ASSIGNEE1, ASSIGNEE2]});
 
@@ -396,7 +396,7 @@ async function testBlast( authData, ghLinks, td ) {
     // 3. blast  
     issDat = await tu.blastIssue( authData, td, "Blast 3", [LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );               
     title  = "Blast 3";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.CEProjectId, td.GHFullName );
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [ASSIGNEE1, ASSIGNEE2]});
 
@@ -405,7 +405,7 @@ async function testBlast( authData, ghLinks, td ) {
     // 4. blast  
     issDat = await tu.blastIssue( authData, td, "Blast 4", [LABNP1, LAB1], [ASSIGNEE1, ASSIGNEE2] );
     title  = "Blast 4";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.CEProjectId, td.GHFullName );
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [ASSIGNEE1, ASSIGNEE2]});
 
@@ -414,7 +414,7 @@ async function testBlast( authData, ghLinks, td ) {
     // 5. blast  
     issDat = await tu.blastIssue( authData, td, "Blast 5", [LABNP1, LABNP2, LAB1], [ASSIGNEE2, ASSIGNEE1] );               
     title  = "Blast 5";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.CEProjectId, td.GHFullName );
     card   = await tu.getCard( authData, link.GHCardId );
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [ASSIGNEE2, ASSIGNEE1]});
 
@@ -429,7 +429,7 @@ async function testBlast( authData, ghLinks, td ) {
     await tu.remLabel( authData, td, issDat, labNP2 );    
     
     title  = "Blast 6";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.GHFullName );
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, ghLinks, title, td.CEProjectId, td.GHFullName );
     card   = await tu.getCard( authData, link.GHCardId );
     // Assigns show up still - peq assignees not updated once created until ceFlutter
     testStatus = await tu.checkUnclaimedIssue( authData, ghLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [ASSIGNEE1, ASSIGNEE2]});

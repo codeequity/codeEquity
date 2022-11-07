@@ -231,7 +231,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 
 	
 	// Check DYNAMO Linkage
-	let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+	let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
 	subTest = tu.checkGE( links.length, 4, subTest, "Linkage count" );
 	let unallocSoft = false;   let lSoft = -1;
 	let unallocBus  = false;   let lBus  = -1;

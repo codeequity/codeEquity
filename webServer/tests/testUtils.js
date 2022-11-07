@@ -806,7 +806,7 @@ async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card,
     subTest = checkEq( issue.labels.length, labelCnt,         subTest, "Issue label" );
 
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
     subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
@@ -922,7 +922,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
 	subTest = checkEq( mCard[0].id, card.id,                      subTest, "Card claimed" );
 	
 	// CHECK linkage
-	let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+	let links    = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
 	let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
 	subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
 	subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
@@ -988,7 +988,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     // Start promises
     let cardsP = getCards( authData, loc.colId );
     let cardsU = getCards( authData, td.unclaimCID );
-    let linksP = getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let linksP = getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     
@@ -1132,7 +1132,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     
     // Start promises
     let cardsU = getCards( authData, td.unclaimCID );
-    let linksP = getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let linksP = getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     
@@ -1474,7 +1474,7 @@ async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, test
     subTest = checkEq( cardTitle, title,                            subTest, "Newbie title" );
 
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId );
     subTest = checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
@@ -1506,7 +1506,7 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
     // no need, get content link below
     
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.GHIssueId == issueData[0].toString() );
     subTest = checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
@@ -1557,7 +1557,7 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
     if( splitDat[0] != -1 ) {
     
 	// Get cards
-	let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
+	let allLinks  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, repo: td.GHFullName });
 	let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
 	let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
 	
@@ -1619,7 +1619,7 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
     if( splitDat[0] != -1 ) {
 	
 	// Get cards
-	let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
+	let allLinks  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, repo: td.GHFullName });
 	let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
 	let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
 	
@@ -1715,7 +1715,7 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     }
     
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId.toString() );
     subTest = checkEq( typeof link === "undefined", true, subTest, "Link should not exist" );
 
@@ -1807,7 +1807,7 @@ async function checkNoIssue( authData, ghLinks, td, issueData, testStatus ) {
     subTest = checkEq( issue, -1,                               subTest, "Issue should not exist" );
 
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.GHIssueId == issueData[0] );
     subTest = checkEq( typeof link, "undefined",                subTest, "Link should not exist" );
 

@@ -1138,7 +1138,7 @@ async function testAlloc( authData, ghLinks, td ) {
 	// Create from card .. NOTE!  card is rebuilt to point to issue.  Re-find it.
 	await tu.makeAllocCard( authData, ghLinks, td.GHFullName, starLoc.colId, "Alloc star 1", "1,000,000" );     
 	await utils.sleep( 2000 );
-	const links       = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+	const links       = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
 	const link        = links.find( link => link.GHIssueTitle == "Alloc star 1" );
 	const starCard1   = await tu.getCard( authData, link.GHCardId );
 	const issStarDat1 = [link.GHIssueId, link.GHIssueNum, link.GHIssueTitle];
@@ -1170,7 +1170,7 @@ async function testAlloc( authData, ghLinks, td ) {
 	await tu.makeAllocCard( authData, ghLinks, td.GHFullName, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
 	await tu.makeAllocCard( authData, ghLinks, td.GHFullName, accrLoc.colId, "Alloc accr", "1,000,000" );
 	await utils.sleep( 2000 );
-	const links      = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+	const links      = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
 	const linkProg   = links.find( link => link.GHIssueTitle == "Alloc prog" );
 	const linkAccr   = links.find( link => link.GHIssueTitle == "Alloc accr" );
 

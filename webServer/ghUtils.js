@@ -1205,7 +1205,8 @@ async function populateCELinkage( authData, ghLinks, pd )
     let origPop = utils.checkPopulated( authData, pd.GHFullName );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    let linkage = await ghLinks.initOneProject( authData, { GHRepo: pd.GHFullName, HostPlatform: config.HOST_GH, ProjectMgmtSys: config.PMS_GHC } );
+    const proj = await utils.getProjectStatus( authData, pd.CEProjectId );
+    let linkage = await ghLinks.initOneProject( authData, proj );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
@@ -1479,7 +1480,7 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
 // Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
 async function cleanUnclaimed( authData, ghLinks, pd ) {
     console.log( authData.who, "cleanUnclaimed", pd.GHIssueId );
-    let link = ghLinks.getUniqueLink( authData, pd.GHIssueId );
+    let link = ghLinks.getUniqueLink( authData, pd.CEProjectId, pd.GHIssueId );
     if( link == -1 ) { return; }
 
     // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
@@ -1539,7 +1540,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
     // Note.  On rebuild, watch for potential hole in create card from isssue
     let issueId = pd.GHIssueId;
-    let link = ghLinks.getUniqueLink( authData, issueId );
+    let link = ghLinks.getUniqueLink( authData, pd.CEProjectId, issueId );
 
     // moves are only tracked for peq issues
     let projId = link == -1 ? link : parseInt( link['GHProjectId'] );
@@ -1672,10 +1673,10 @@ async function validatePEQ( authData, repo, issueId, title, projId ) {
     return peq;
 }
 
-async function findCardInColumn( authData, ghLinks, owner, repo, issueId, colId ) {
+async function findCardInColumn( authData, ghLinks, ceProj, owner, repo, issueId, colId ) {
 
     let cardId = -1;
-    let link = ghLinks.getUniqueLink( authData, issueId );
+    let link = ghLinks.getUniqueLink( authData, ceProj, issueId );
 	
     if( link != -1 && parseInt( link['GHColumnId'] ) == colId ) { cardId = parseInt( link['GHCardId'] ); }
 
@@ -1725,7 +1726,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
     
     if( action == "closed" ) {
 
-	const link = ghLinks.getUniqueLink( authData, pd.GHIssueId );
+	const link = ghLinks.getUniqueLink( authData, pd.CEProjectId, pd.GHIssueId );
 	cardId = link.GHCardId;
 
 	// Out of order notification is possible.  If already accrued, stop.
@@ -1756,7 +1757,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
     else if( action == "reopened" ) {
 	
 	// This is a PEQ issue.  Verify card is currently in the right place, i.e. PEND ONLY (can't move out of ACCR)
-	cardId = await findCardInColumn( authData, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHIssueId, ceProjectLayout[ config.PROJ_PEND+1 ] );
+	cardId = await findCardInColumn( authData, ghLinks, pd.CEProjectId, pd.GHOwner, pd.GHRepo, pd.GHIssueId, ceProjectLayout[ config.PROJ_PEND+1 ] );
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {

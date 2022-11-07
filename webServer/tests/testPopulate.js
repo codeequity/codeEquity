@@ -364,7 +364,7 @@ async function testResolve( authData, ghLinks, td ) {
 
     // Check DYNAMO linkage
     // note.. newbie will not be here.. expect 10/11.
-    let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     testStatus = tu.checkGE( links.length, 10, testStatus, "Linkage count" );
     let tripPeqIds = tripIssues.map((iss) => iss.id.toString() );
     let othPeqIds  = othIssues.map((iss) => iss.id.toString() );
