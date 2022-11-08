@@ -1,14 +1,14 @@
 var assert = require('assert');
-
-var utils   = require('../../utils');
-var ghUtils = require('../../ghUtils');
 var config  = require('../../config');
 
 const ghcData = require( './ghcData' );
 var issHan    = require('./githubIssueHandler');
 
-var gh     = ghUtils.githubUtils;
-var ghSafe = ghUtils.githubSafe;
+const utils = require( '../../utils/ceUtils' );
+
+const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
+const gh        = ghClassic.githubUtils;
+const ghSafe    = ghClassic.githubSafe;
 
 
 async function nameDrivesLabel( authData, pd, name, description ) {

@@ -1,14 +1,14 @@
 var assert = require('assert');
 
-const awsAuth        = require( '../awsAuth' );
-const auth           = require( "../auth");
+const awsAuth        = require( '../auth/aws/awsAuth' );
+const auth           = require( "../auth/gh/ghAuth");
 const config         = require('../config');
-const utils          = require( "../utils");
-//const testSaveDynamo = require( './testSaveDynamo' );
 const links          = require('../components/linkage.js');
 
+const utils = require( '../utils/ceUtils' );
+
 const testData  = require( './testData' );
-const authDataC = require( '../authData' );
+const authDataC = require( '../auth/authData' );
 
 var   fs       = require('fs'), json;
 const execSync = require('child_process').execSync;

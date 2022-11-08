@@ -1,5 +1,5 @@
-var utils = require('../utils');
-var config  = require('../config');
+const config = require( '../config' );
+const utils  = require( '../utils/ceUtils' );
 
 const testData = require( './testData' );
 const tu = require('./testUtils');

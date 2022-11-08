@@ -1,16 +1,16 @@
 var assert = require('assert');
 
-const awsAuth   = require( '../awsAuth' );
-const auth      = require( "../auth");
-const config    = require('../config');
-const utils     = require( '../utils');
+const awsAuth = require( '../auth/aws/awsAuth' );
+const auth    = require( '../auth/gh/ghAuth' );
+const config  = require( '../config' );
+const utils   = require( '../utils/ceUtils' );
 
-const ghUtils = require( '../ghUtils');
-var gh      = ghUtils.githubUtils;
-var ghSafe  = ghUtils.githubSafe;
+const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
+const gh        = ghClassic.githubUtils;
+const ghSafe    = ghClassic.githubSafe;
 
 const testData = require( './testData' );
-const authDataC = require( '../authData' );
+const authDataC = require( '../auth/authData' );
 
 // NOTE:
 // Sanity checker's main job is to inform when things have gone wrong.

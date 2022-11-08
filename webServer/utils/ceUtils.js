@@ -1,5 +1,17 @@
 var fetch  = require('node-fetch');
 var assert = require('assert');
+var fs     = require('fs'), json;    // read apiBasePath
+
+const auth = require( '../auth/gh/ghAuth' );
+var config = require( '../config');
+
+const ghClassic = require( './gh/ghc/ghClassicUtils' );
+const gh        = ghClassic.githubUtils;
+const ghSafe    = ghClassic.githubSafe;
+
+var fifoQ  = require( '../components/queue.js');
+
+
 
 // Ugly ugly hack to test error handler.  Turn this off for normal runs.
 const TEST_EH   = true;
@@ -12,16 +24,6 @@ const FAKE_ISE = {
 };
 
 
-const auth = require( './auth' );
-var config = require('./config');
-var fifoQ  = require('./components/queue.js');
-
-var ghUtils = require('./ghUtils');
-var gh      = ghUtils.githubUtils;
-var ghSafe  = ghUtils.githubSafe;
-
-// read apiBasePath
-var fs = require('fs'), json;
 
 function getAPIPath() {
     let fname = config.APIPATH_CONFIG_LOC;

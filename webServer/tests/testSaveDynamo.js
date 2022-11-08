@@ -1,7 +1,7 @@
-var fs = require('fs'), json;
+var fs = require( 'fs' ), json;
 
-var utils = require('../utils');
-const tu  = require('./testUtils');
+const utils = require( '../utils/ceUtils' );
+const tu    = require( './testUtils' );
 
 const execSync = require('child_process').execSync;
 

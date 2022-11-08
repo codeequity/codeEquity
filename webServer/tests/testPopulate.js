@@ -1,10 +1,10 @@
-var assert = require('assert');
-var utils = require('../utils');
-var config  = require('../config');
+var assert  = require( 'assert' );
+var config  = require( '../config' );
+const utils = require( '../utils/ceUtils' );
 
-var ghUtils = require('../ghUtils');
-var gh      = ghUtils.githubUtils;
-var ghSafe  = ghUtils.githubSafe;
+const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
+const gh        = ghClassic.githubUtils;
+const ghSafe    = ghClassic.githubSafe;
 
 const testData = require( './testData' );
 const tu = require('./testUtils');

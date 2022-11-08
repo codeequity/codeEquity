@@ -1,12 +1,13 @@
 var assert = require('assert');
 
-const awsAuth = require( '../awsAuth' );
-const auth = require( "../auth");
+const awsAuth = require( '../auth/aws/awsAuth' );
+const auth = require( "../auth/gh/ghAuth");
 const config  = require('../config');
-const utils = require( "../utils");
+
+const utils = require( '../utils/ceUtils' );
 
 const testData  = require( './testData' );
-const authDataC = require( '../authData' );
+const authDataC = require( '../auth/authData' );
 
 
 async function clearIngested( authData, td ) {

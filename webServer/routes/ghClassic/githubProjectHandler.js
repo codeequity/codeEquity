@@ -1,5 +1,6 @@
-var config  = require('../../config');
-var utils   = require('../../utils');
+var config  = require( '../../config' );
+
+const utils = require( '../../utils/ceUtils' );
 
 // Actions: created, edited, closed, reopened, or deleted
 async function handler( authData, ghLinks, pd, action, tag ) {

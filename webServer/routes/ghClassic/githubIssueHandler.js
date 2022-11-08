@@ -1,11 +1,12 @@
-var utils       = require('../../utils');
-var ghUtils     = require('../../ghUtils');
-var config      = require('../../config');
 var assert      = require('assert');
+var config      = require('../../config');
 var cardHandler = require('./githubCardHandler');
 
-var gh      = ghUtils.githubUtils;
-var ghSafe  = ghUtils.githubSafe;
+const utils = require( '../../utils/ceUtils' );
+
+const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
+const gh        = ghClassic.githubUtils;
+const ghSafe    = ghClassic.githubSafe;
 
 // Terminology:
 // situated issue: an issue with a card in a CE-valid project structure

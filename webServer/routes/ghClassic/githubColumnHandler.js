@@ -1,11 +1,11 @@
 var assert = require('assert');
+var config = require('../../config');
 
-var utils   = require('../../utils');
-var ghUtils = require('../../ghUtils');
-var config  = require('../../config');
+const utils = require( '../../utils/ceUtils' );
 
-var gh     = ghUtils.githubUtils;
-var ghSafe = ghUtils.githubSafe;
+const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
+const gh        = ghClassic.githubUtils;
+const ghSafe    = ghClassic.githubSafe;
 
 
 // Actions: created, edited, moved or deleted

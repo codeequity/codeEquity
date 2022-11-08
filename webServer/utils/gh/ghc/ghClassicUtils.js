@@ -1,3 +1,9 @@
+var assert = require('assert');
+
+const config = require( '../../../config' );
+const utils  = require( '../../ceUtils' );
+
+
 /*
 https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects#repository
 https://octokit.github.io/rest.js
@@ -5,11 +11,6 @@ https://developer.github.com/webhooks/event-payloads/#issues
 https://developer.github.com/v3/issues/#create-an-issue
 */
 
-var assert = require('assert');
-
-const auth = require( "./auth");
-var config  = require('./config');
-var utils = require('./utils');
 
 var handlerRetries;
 
