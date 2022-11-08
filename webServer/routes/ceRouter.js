@@ -1,7 +1,7 @@
 const express = require( 'express' );
 const assert  = require( 'assert' );
 
-const awsAuth = require( '../awsAuth' );
+const awsAuth = require( '../auth/aws/awsAuth' );
 const auth    = require( '../auth' );
 const utils   = require( '../utils' );
 const config  = require( '../config' );
