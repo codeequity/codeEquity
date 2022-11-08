@@ -1,7 +1,7 @@
 var express = require('express');
 var router  = express.Router();
-var utils   = require('../utils');
-const auth = require( "../auth/gh/ghAuth");
+const utils = require( '../utils/ceUtils' );
+const auth  = require( "../auth/gh/ghAuth");
 
 // XXX  proof of concept
 const OWNER = "codeEquity";

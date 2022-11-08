@@ -1,7 +1,5 @@
 // var assert = require('assert');
 
-var utils = require('../utils');
-var config  = require('../config');
 
 // Fifo
 class Queue {

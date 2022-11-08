@@ -1,6 +1,6 @@
 var assert = require('assert');
 
-const utils   = require( '../utils');
+const utils    = require( '../utils/ceUtils' );
 
 // A simple fast lookup map to get ceProjectIds from job data
 class CEProjects {

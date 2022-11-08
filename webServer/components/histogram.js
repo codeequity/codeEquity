@@ -1,4 +1,4 @@
-var utils = require('../utils');
+const utils    = require( "../utils/ceUtils" );
 
 // minimalistic histogram.
 class Histogram {

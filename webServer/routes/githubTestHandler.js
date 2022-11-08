@@ -1,5 +1,4 @@
 const assert   = require( 'assert' );
-const utils    = require( '../utils' );
 const ceRouter = require( './ceRouter' );
 
 async function handler( ghLinks, ceJobs, ceNotification, reqBody, res ) {

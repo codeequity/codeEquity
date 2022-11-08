@@ -2,7 +2,7 @@ const express = require( 'express' );
 const assert  = require( 'assert' );
 
 const awsAuth = require( '../auth/aws/awsAuth' );
-const utils   = require( '../utils' );
+const utils   = require( '../utils/ceUtils' );
 const config  = require( '../config' );
 
 const fifoQ    = require( '../components/queue' );
@@ -13,7 +13,7 @@ const circBuff = require( '../components/circBuff' );
 const testing  = require( './githubTestHandler' );
 const ghr      = require( './githubRouter' );
 
-const authDataC  = require( '../authData' );
+const authDataC  = require( '../auth/authData' );
 const jobData    = require( './jobData' );
 const ceProjData = require( './ceProjects' );
 

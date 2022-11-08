@@ -1,13 +1,14 @@
 var assert = require('assert');
 
 const locData  = require( "./locData" );
-const utils    = require('../utils');
 const config   = require('../config');
 const ceRouter = require( '../routes/ceRouter' );
 
-const ghUtils = require('../ghUtils');
-const gh      = ghUtils.githubUtils;
-const ghSafe  = ghUtils.githubSafe;
+const utils    = require( '../utils/ceUtils' );
+
+// XXX this should not be here
+const ghClassic = require( "../utils/gh/ghc/ghClassicUtils" );
+const gh        = ghClassic.githubUtils;
 
 
 // Linkage table contains all identifying info related to situated issues or better.
@@ -61,7 +62,8 @@ class Linkage {
 
 		    if( isOrg ) { await ceRouter.getAuths( authData, host, pms, org,  config.CE_USER ); }
 		    else        { await ceRouter.getAuths( authData, host, pms, repo, config.CE_USER ); }
-		    
+
+		    // XXX this should not be here
 		    blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
 			.catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
 		    

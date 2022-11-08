@@ -1,12 +1,13 @@
-var utils = require('../utils');
-var ghUtils = require('../ghUtils');
-var config  = require('../config');
-var assert = require('assert');
+var assert = require( 'assert' );
+var config = require( '../config' );
 
-const tu = require('./testUtils');
+const utils   = require( '../utils/ceUtils' );
 
-var gh     = ghUtils.githubUtils;
-var ghSafe = ghUtils.githubSafe;
+const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
+const gh        = ghClassic.githubUtils;
+const ghSafe    = ghClassic.githubSafe;
+
+const tu = require( './testUtils' );
 
 
 // Adding a small sleep in each tu.make* - GH seems to get confused if requests come in too fast

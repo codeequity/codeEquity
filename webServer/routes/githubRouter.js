@@ -1,7 +1,7 @@
 const assert  = require('assert');
 
-const auth    = require( "../auth/gh/ghAugh");
-const utils   = require( '../utils');
+const auth    = require( '../auth/gh/ghAuth' );
+const utils   = require( '../utils/ceUtils' );
 const config  = require( '../config');
 
 const links   = require( '../components/linkage' );

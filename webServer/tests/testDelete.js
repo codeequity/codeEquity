@@ -1,13 +1,15 @@
 var assert = require('assert');
+var config = require('../config');
 
-var config  = require('../config');
+const utils   = require( '../utils/ceUtils' );
 
-var utils = require('../utils');
-var ghUtils = require('../ghUtils');
+const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
+const gh        = ghClassic.githubUtils;
+const ghSafe    = ghClassic.githubSafe;
+
 const tu = require('./testUtils');
 
-var gh     = ghUtils.githubUtils;
-var ghSafe = ghUtils.githubSafe;
+
 /*
 https://developer.github.com/webhooks/event-payloads/#issues
 https://octokit.github.io/rest.js/v18#projects-delete-card
