@@ -167,8 +167,8 @@ var githubUtils = {
 	return removeCard( authData, cardId );
     },
 	
-    rebuildCard: function( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
-	return rebuildCard( authData, ghLinks, owner, repo, colId, origCardId, issueData, locData );
+    rebuildCard: function( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
+	return rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData );
     },
 
     createUnClaimedCard: function( authData, ghLinks, pd, issueId, accr ) {
@@ -231,12 +231,12 @@ var githubUtils = {
 	return moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
     },
 
-    getProjectName: function( authData, ghLinks, fullName, projId ) {
-	return getProjectName( authData, ghLinks, fullName, projId ); 
+    getProjectName: function( authData, ghLinks, ceProjId, fullName, projId ) {
+	return getProjectName( authData, ghLinks, ceProjId, fullName, projId ); 
     },
 
-    getColumnName: function( authData, ghLinks, fullName, colId ) {
-	return getColumnName( authData, ghLinks, fullName, colId ); 
+    getColumnName: function( authData, ghLinks, ceProjId, fullName, colId ) {
+	return getColumnName( authData, ghLinks, ceProjId, fullName, colId ); 
     },
 
 };
@@ -1202,10 +1202,11 @@ async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
     // Wait later
-    let origPop = utils.checkPopulated( authData, pd.GHFullName );
+    let origPop = utils.checkPopulated( authData, pd.CEProjectId );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    let linkage = await ghLinks.initOneProject( authData, { GHRepo: pd.GHFullName, HostPlatform: config.HOST_GH, ProjectMgmtSys: config.PMS_GHC } );
+    const proj = await utils.getProjectStatus( authData, pd.CEProjectId );
+    let linkage = await ghLinks.initOneProject( authData, proj );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
@@ -1214,6 +1215,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     pd.peqType    = "end";
     
     // Only resolve once per issue.
+    // XXX once this is running again, confirm link[3] is issueId, not cardId.  getBasicLinkData.
     let showOnce  = [];
     let showTwice = [];
     let one2Many = [];
@@ -1226,7 +1228,8 @@ async function populateCELinkage( authData, ghLinks, pd )
     }
     
     console.log( "Remaining links to resolve", one2Many );
-    
+
+    // XXX
     // [ [projId, cardId, issueNum, issueId], ... ]
     // Note - this can't be a promise.all - parallel execution with shared pd == big mess
     //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql. 
@@ -1240,7 +1243,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
     // Don't wait.
-    utils.setPopulated( authData, pd.GHFullName );
+    utils.setPopulated( authData, pd.CEProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );
     return true;
 }
@@ -1279,7 +1282,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, ori
 	const planName = config.PROJ_COLS[ config.PROJ_PLAN ];
 	const progName = config.PROJ_COLS[ config.PROJ_PROG ];
 
-	const locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );   
+	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId,"repo": fullName, "projId": projId } );   
 	assert( locs != -1 );
 	projName = projName == "" ? locs[0].GHProjectName : projName;
 
@@ -1399,7 +1402,7 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
     const unClaimed = config.UNCLAIMED;
 
     let unClaimedProjId = -1;
-    let locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projName": unClaimed } ); // XXX
+    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projName": unClaimed } ); // XXX
     unClaimedProjId = locs == -1 ? locs : locs[0].GHProjectId;
     if( unClaimedProjId == -1 ) {
 	console.log( "Creating UnClaimed project" );
@@ -1431,7 +1434,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
     // Get locs again, to update after uncl. project creation 
-    locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projName": unClaimed } );
+    locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projName": unClaimed } );
     assert( unClaimedProjId == locs[0].GHProjectId );
 
     const loc = locs.find( loc => loc.GHColumnName == colName );
@@ -1479,7 +1482,7 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
 // Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
 async function cleanUnclaimed( authData, ghLinks, pd ) {
     console.log( authData.who, "cleanUnclaimed", pd.GHIssueId );
-    let link = ghLinks.getUniqueLink( authData, pd.GHIssueId );
+    let link = ghLinks.getUniqueLink( authData, pd.CEProjectId, pd.GHIssueId );
     if( link == -1 ) { return; }
 
     // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
@@ -1504,7 +1507,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     }
 
     // Remove turds, report.  
-    if( success ) { ghLinks.removeLinkage({ "authData": authData, "issueId": pd.GHIssueId, "cardId": link.GHCardId }); }
+    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjID": pd.CEProjectId, "issueId": pd.GHIssueId, "cardId": link.GHCardId }); }
     else { console.log( "WARNING.  cleanUnclaimed failed to remove linkage." ); }
 
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
@@ -1539,7 +1542,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
     // Note.  On rebuild, watch for potential hole in create card from isssue
     let issueId = pd.GHIssueId;
-    let link = ghLinks.getUniqueLink( authData, issueId );
+    let link = ghLinks.getUniqueLink( authData, pd.CEProjectId, issueId );
 
     // moves are only tracked for peq issues
     let projId = link == -1 ? link : parseInt( link['GHProjectId'] );
@@ -1554,7 +1557,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     console.log( authData.who, "Found project id: ", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
-    const locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": projId } );
+    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projId": projId } );
     assert( locs != -1 );
     assert( link.GHProjectName == locs[0].GHProjectName );
 
@@ -1672,10 +1675,10 @@ async function validatePEQ( authData, repo, issueId, title, projId ) {
     return peq;
 }
 
-async function findCardInColumn( authData, ghLinks, owner, repo, issueId, colId ) {
+async function findCardInColumn( authData, ghLinks, ceProj, owner, repo, issueId, colId ) {
 
     let cardId = -1;
-    let link = ghLinks.getUniqueLink( authData, issueId );
+    let link = ghLinks.getUniqueLink( authData, ceProj, issueId );
 	
     if( link != -1 && parseInt( link['GHColumnId'] ) == colId ) { cardId = parseInt( link['GHCardId'] ); }
 
@@ -1725,7 +1728,7 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
     
     if( action == "closed" ) {
 
-	const link = ghLinks.getUniqueLink( authData, pd.GHIssueId );
+	const link = ghLinks.getUniqueLink( authData, pd.CEProjectId, pd.GHIssueId );
 	cardId = link.GHCardId;
 
 	// Out of order notification is possible.  If already accrued, stop.
@@ -1756,13 +1759,13 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
     else if( action == "reopened" ) {
 	
 	// This is a PEQ issue.  Verify card is currently in the right place, i.e. PEND ONLY (can't move out of ACCR)
-	cardId = await findCardInColumn( authData, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHIssueId, ceProjectLayout[ config.PROJ_PEND+1 ] );
+	cardId = await findCardInColumn( authData, ghLinks, pd.CEProjectId, pd.GHOwner, pd.GHRepo, pd.GHIssueId, ceProjectLayout[ config.PROJ_PEND+1 ] );
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {
 	    console.log( "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
-	    newColName = getColumnName( authData, ghLinks, pd.GHFullName, newColId );
+	    newColName = getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, newColId );
 	    success = await moveCard( authData, cardId, newColId );
 	}
 	else {
@@ -1776,17 +1779,17 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
 
     // Note. updateLinkage should not occur unless successful.  Everywhere.  
     //     Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
-    if( success ) { success = ghLinks.updateLinkage( authData, pd.GHIssueId, cardId, newColId, newColName ); }
+    if( success ) { success = ghLinks.updateLinkage( authData, pd.CEProjectId, pd.GHIssueId, cardId, newColId, newColName ); }
     
     return success ? newColId : false;
 }
 
 // Note. alignment risk
-function getProjectName( authData, ghLinks, fullName, projId ) {
+function getProjectName( authData, ghLinks, ceProjId, fullName, projId ) {
 
     if( projId == -1 ) { return -1; }
 
-    const locs = ghLinks.getLocs( authData, { "repo": fullName, "projId": projId } );
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "repo": fullName, "projId": projId } );
 
     const projName = locs == -1 ? locs : locs[0].GHProjectName;
     return projName
@@ -1794,11 +1797,11 @@ function getProjectName( authData, ghLinks, fullName, projId ) {
 }
 
 // Note.  alignment risk
-function getColumnName( authData, ghLinks, fullName, colId ) {
+function getColumnName( authData, ghLinks, ceProjId, fullName, colId ) {
 
     if( colId == -1 ) { return -1; }
 
-    const locs = ghLinks.getLocs( authData, { "repo": fullName, "colId": colId } );
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "repo": fullName, "colId": colId } );
     assert( locs == -1 || locs.length == 1 );
 
     const colName = locs == -1 ? locs : locs[0].GHColumnName;

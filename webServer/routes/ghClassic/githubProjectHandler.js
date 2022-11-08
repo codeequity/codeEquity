@@ -26,7 +26,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'deleted':
 	// Deleting a project causes project_card delete, project_column delete, project delete (random order).  Leaves issues in place.
 	{
-	    ghLinks.removeLocs( { authData: authData, projId: pd.GHProjectId } );
+	    ghLinks.removeLocs( { authData: authData, ceProjId: pd.CEProjectId, projId: pd.GHProjectId } );
 	}
 	break;
     case 'created':  
@@ -42,7 +42,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( typeof pd.reqBody.changes.name !== 'undefined' ) { oldName = pd.reqBody.changes.name.from; }
 
 	    if( oldName != -1 ) {
-		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "projName": oldName } );
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projName": oldName } );
 		links.forEach( link => link.GHProjectName = newName );
 
 		// don't wait
@@ -52,7 +52,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		// Must wait to prevent out-of-order overwrites.  Could build an addLocs func, but value is low.
 		// Can't do promises.all - must be sequential.
-		const locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": pd.GHProjectId } );
+		const locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projId": pd.GHProjectId } );
 		for( const loc of locs ) {
 		    nLoc.HostProjectName = newName;
 		    nLoc.HostColumnName = loc.GHColumnName;
@@ -66,7 +66,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'closed':
 	{
 	    // Prefer closing a project over deleting it.  Notify if there are PEQs.
-	    const links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "projId": pd.GHProjectId });
+	    const links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projId": pd.GHProjectId });
 	    if( links == -1 ) { return; }
 
 	    const projLink = links.find( link => link.GHColumnName != config.EMPTY );

@@ -1188,6 +1188,7 @@ async function putHostA( newHostAcct, update, pat ) {
     return success( updated );
 }
 
+// NOTE.  Repos is an array of current ceProjIds, together with full name repos that are not yet CEProjects
 async function getProjectStatus( repos ) {
     console.log( "Which HostAs are CEPs?", repos );
 

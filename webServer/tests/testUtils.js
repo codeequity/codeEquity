@@ -152,7 +152,7 @@ function makeTitleReducer( aStr ) {
 
 // Can't just rely on GH for confirmation.  Notification arrival to CE can be much slower, and in this case we need
 // CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
-async function confirmProject( authData, ghLinks, fullName, projId ) {
+async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
     /*
     let retVal = false;
     await( authData.ic.projects.get( { project_id: projId }))
@@ -161,11 +161,11 @@ async function confirmProject( authData, ghLinks, fullName, projId ) {
     return retVal;
     */
     
-    let locs = await getLocs( authData, ghLinks, { repo: fullName, projId: projId } );
+    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
     return locs != -1; 
 }
 
-async function confirmColumn( authData, ghLinks, fullName, colId ) {
+async function confirmColumn( authData, ghLinks, ceProjId, fullName, colId ) {
     /*
     let retVal = false;
     await( authData.ic.projects.getColumn( { column_id: colId }))
@@ -173,7 +173,7 @@ async function confirmColumn( authData, ghLinks, fullName, colId ) {
 	.catch( e => { console.log( authData.who, "get column failed.", e ); });
     return retVal;
     */
-    let locs = await getLocs( authData, ghLinks, { repo: fullName, colId: colId } );
+    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, colId: colId } );
     return locs != -1; 
 }
 
@@ -404,7 +404,7 @@ function findCardForIssue( cards, issueNum ) {
 }
 
 async function setUnpopulated( authData, td ) {
-    let status = await utils.getProjectStatus( authData, td.GHFullName );
+    let status = await utils.getProjectStatus( authData, td.CEProjectId );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
     await utils.cleanDynamo( authData, "CERepoStatus", statusIds );
@@ -452,13 +452,13 @@ async function updateProject( authData, projId, name ) {
     await utils.sleep( MIN_DELAY);
 }
 
-async function makeColumn( authData, ghLinks, fullName, projId, name ) {
+async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name ) {
     // First, wait for projId, can lag
 
     // There should be NO need for this, but most GH failures start here.  Notification never sent along.
     await utils.sleep( 2000 );
 
-    await settleWithVal( "confirmProj", confirmProject, authData, ghLinks, fullName, projId );
+    await settleWithVal( "confirmProj", confirmProject, authData, ghLinks, ceProjId, fullName, projId );
     
     let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
 	.then((column) => { return column.data.id; })
@@ -471,12 +471,12 @@ async function makeColumn( authData, ghLinks, fullName, projId, name ) {
     return cid;
 }
 
-async function make4xCols( authData, ghLinks, fullName, projId ) {
+async function make4xCols( authData, ghLinks, ceProjId, fullName, projId ) {
 
-    let plan = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PLAN ] );
-    let prog = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PROG ] );
-    let pend = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
-    let accr = await makeColumn( authData, ghLinks, fullName, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
+    let plan = await makeColumn( authData, ghLinks, ceProjId, fullName, projId, config.PROJ_COLS[ config.PROJ_PLAN ] );
+    let prog = await makeColumn( authData, ghLinks, ceProjId, fullName, projId, config.PROJ_COLS[ config.PROJ_PROG ] );
+    let pend = await makeColumn( authData, ghLinks, ceProjId, fullName, projId, config.PROJ_COLS[ config.PROJ_PEND ] );
+    let accr = await makeColumn( authData, ghLinks, ceProjId, fullName, projId, config.PROJ_COLS[ config.PROJ_ACCR ] );
 	
     await utils.sleep( MIN_DELAY );
     return [prog, plan, pend, accr];
@@ -484,9 +484,9 @@ async function make4xCols( authData, ghLinks, fullName, projId ) {
 
 
 // do NOT return card or id here.  card is rebuilt to be driven from issue.
-async function makeAllocCard( authData, ghLinks, fullName, colId, title, amount ) {
+async function makeAllocCard( authData, ghLinks, ceProjId, fullName, colId, title, amount ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make alloc card", confirmColumn, authData, ghLinks, fullName, colId );
+    await settleWithVal( "make alloc card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let note = title + "\n<allocation, PEQ: " + amount + ">";
     
@@ -498,9 +498,9 @@ async function makeAllocCard( authData, ghLinks, fullName, colId, title, amount 
     await utils.sleep( MIN_DELAY );
 }
 
-async function makeNewbornCard( authData, ghLinks, fullName, colId, title ) {
+async function makeNewbornCard( authData, ghLinks, ceProjId, fullName, colId, title ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make newbie card", confirmColumn, authData, ghLinks, fullName, colId );
+    await settleWithVal( "make newbie card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let note = title;
     
@@ -512,9 +512,9 @@ async function makeNewbornCard( authData, ghLinks, fullName, colId, title ) {
     return cid;
 }
 
-async function makeProjectCard( authData, ghLinks, fullName, colId, issueId ) {
+async function makeProjectCard( authData, ghLinks, ceProjId, fullName, colId, issueId ) {
     // First, wait for colId, can lag
-    await settleWithVal( "make Proj card", confirmColumn, authData, ghLinks, fullName, colId );
+    await settleWithVal( "make Proj card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let card = await ghSafe.createProjectCard( authData, colId, issueId );
 
@@ -806,7 +806,7 @@ async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card,
     subTest = checkEq( issue.labels.length, labelCnt,         subTest, "Issue label" );
 
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
     subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
     subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
@@ -922,7 +922,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
 	subTest = checkEq( mCard[0].id, card.id,                      subTest, "Card claimed" );
 	
 	// CHECK linkage
-	let links    = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+	let links    = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
 	let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
 	subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
 	subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
@@ -988,7 +988,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     // Start promises
     let cardsP = getCards( authData, loc.colId );
     let cardsU = getCards( authData, td.unclaimCID );
-    let linksP = getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let linksP = getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     
@@ -1132,7 +1132,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     
     // Start promises
     let cardsU = getCards( authData, td.unclaimCID );
-    let linksP = getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let linksP = getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
     let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
     
@@ -1474,7 +1474,7 @@ async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, test
     subTest = checkEq( cardTitle, title,                            subTest, "Newbie title" );
 
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId );
     subTest = checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
@@ -1506,7 +1506,7 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
     // no need, get content link below
     
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.GHIssueId == issueData[0].toString() );
     subTest = checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
@@ -1557,7 +1557,7 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
     if( splitDat[0] != -1 ) {
     
 	// Get cards
-	let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
+	let allLinks  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, repo: td.GHFullName });
 	let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
 	let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
 	
@@ -1619,7 +1619,7 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
     if( splitDat[0] != -1 ) {
 	
 	// Get cards
-	let allLinks  = await getLinks( authData, ghLinks, { repo: td.GHFullName });
+	let allLinks  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, repo: td.GHFullName });
 	let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
 	let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
 	
@@ -1715,7 +1715,7 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     }
     
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.GHCardId == cardId.toString() );
     subTest = checkEq( typeof link === "undefined", true, subTest, "Link should not exist" );
 
@@ -1807,7 +1807,7 @@ async function checkNoIssue( authData, ghLinks, td, issueData, testStatus ) {
     subTest = checkEq( issue, -1,                               subTest, "Issue should not exist" );
 
     // CHECK linkage
-    let links  = await getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links  = await getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.GHIssueId == issueData[0] );
     subTest = checkEq( typeof link, "undefined",                subTest, "Link should not exist" );
 

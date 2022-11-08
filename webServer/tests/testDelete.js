@@ -26,7 +26,7 @@ async function remIssues( authData, ghLinks, pd ) {
     let issues = await authData.ic.paginate( authData.ic.issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
 	.catch( e => console.log( authData.who, "Problem in listIssues", e ));
     
-    let allLinks = await tu.getLinks( authData, ghLinks, { "repo": pd.GHFullName } );
+    let allLinks = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName } );
     
     // Could probably do this in one fel swoop, but for now
     // Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
@@ -135,7 +135,7 @@ async function clearRepo( authData, ghLinks, pd ) {
     // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
     console.log( "Remove links", pd.GHFullName );
     await tu.remLinks( authData, ghLinks, pd.GHFullName );
-    let links  = await tu.getLinks( authData, ghLinks, { "repo": pd.GHFullName } );
+    let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName } );
     if( links != -1 ) { console.log( links ); }
     assert( links == -1 );
 
@@ -144,7 +144,7 @@ async function clearRepo( authData, ghLinks, pd ) {
     pactRP = await pactRP;
     
     // RepoStatus
-    let status = await utils.getProjectStatus( authData, pd.GHFullName );
+    let status = await utils.getProjectStatus( authData, pd.CEProjectId );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
     await utils.cleanDynamo( authData, "CERepoStatus", statusIds );

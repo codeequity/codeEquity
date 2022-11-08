@@ -26,18 +26,19 @@ const ghSafe  = ghUtils.githubSafe;
 class Linkage {
 
     constructor( ) {
-	this.links = {};   // { issueId: { cardId: {link}}}
-	this.locs  = {};   // { ceProjId: hostProjId: { hostColId: {loc}}}
+	this.links = {};   // { ceProjId: { issueId:    { cardId:    {link}}}}
+	this.locs  = {};   // { ceProjId: { hostProjId: { hostColId: {loc }}}}
     }
 
 
     async initOneProject( authData, entry ) {
 
-	let host  = entry.hasOwnProperty( "HostPlatform" )       ? entry.HostPlatform       : "";
-	let org   = entry.hasOwnProperty( "Organization" )       ? entry.Organization       : "";
-	let pms   = entry.hasOwnProperty( "ProjectMgmtSys" )     ? entry.ProjectMgmtSys     : "";
-	let repos = entry.hasOwnProperty( "HostRepository" )     ? entry.HostRepository     : [];
-	let comp  = entry.hasOwnProperty( "CEProjectComponent" ) ? entry.CEProjectComponent : "";
+	let host  = entry.hasOwnProperty( "HostPlatform" )       ? entry.HostPlatform                    : "";
+	let org   = entry.hasOwnProperty( "Organization" )       ? entry.Organization                    : "";
+	let pms   = entry.hasOwnProperty( "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
+	let repos = entry.hasOwnProperty( "HostRepository" )     ? entry.HostRepository                  : [];
+	let comp  = entry.hasOwnProperty( "CEProjectComponent" ) ? entry.CEProjectComponent              : "";
+	let isOrg = entry.hasOwnProperty( "OwnerCategory" )      ? entry.OwnerCategory == "Organization" : false;
 	assert( host != "" && pms != "" && org != "" );
 	assert( entry.hasOwnProperty( "CEProjectId" ) );
 
@@ -46,31 +47,23 @@ class Linkage {
 	// Wait later
 	let peqs = utils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
 
-
 	let baseLinks = [];
 	let blPromise = [];
 	let ldPromise = [];
 	let locData   = [];
 
-	// console.log( "  ...   ", host, pms, repos );
+	// classic is per repo.
+	// Init repo with CE_USER, which is typically a builder account that needs full access.
 	if( host == config.HOST_GH ) {
 	    if( pms == config.PMS_GHC ) {
 		for( const repo of repos ) {
 		    let fnParts = repo.split('/');
+		    let rlinks = [];
 
-		    // XXX classic is per repo.
-		    // XXX test only
-		    // Init repo with CE_USER, which is typically a builder account that needs full access.
-		    if( fnParts[0] == "ariCETester" ) {
-			// console.log( "Getting organization-level auths", org, repo );
-			await ceRouter.getAuths( authData, host, pms, org, config.CE_USER );
-		    }
-		    else {
-			// console.log( "Getting individual-level auths", org, repo );
-			await ceRouter.getAuths( authData, host, pms, repo, config.CE_USER );
-		    }
+		    if( isOrg ) { await ceRouter.getAuths( authData, host, pms, org,  config.CE_USER ); }
+		    else        { await ceRouter.getAuths( authData, host, pms, repo, config.CE_USER ); }
 		    
-		    blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], baseLinks, -1 )
+		    blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
 			.catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
 		    
 		    ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
@@ -83,13 +76,9 @@ class Linkage {
 			this.addLoc( authData, loc, false ); 
 		    }
 
-		    // XXX this may belong outside the loop?
 		    blPromise = await blPromise;  // no val here, just ensures linkData is set
-
-		    console.log( "links for", org, repo, baseLinks );
-		    
-		    this.populateLinkage( authData, entry.CEProjectId, repo, baseLinks );
-		    baseLinks = [];  // XXX outside loop, kill this
+		    this.populateLinkage( authData, entry.CEProjectId, repo, rlinks );
+		    baseLinks = baseLinks.concat( rlinks ); 
 		}
 	    }
 	}
@@ -113,6 +102,7 @@ class Linkage {
 	    let link = this.getUniqueLink( authData, entry.CEProjectId, iid );
 	    if( link == -1 ) {
 		console.log( "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.HostIssueTitle );
+		this.show(20);
 		badPeq = true;
 		continue;
 	    }
@@ -157,10 +147,11 @@ class Linkage {
 	}
 	await Promise.all( promises );
 	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
-	this.show(10);
-	//this.showLocs();
+	this.show(50);
+	this.showLocs();
     }
 
+    // linkData is ceProject-specific, i.e. a single "cplinks"
     fromJson( linkData ) {
 	this.links = {};
 	console.log( "Creating ghLinks from json data" );
@@ -176,7 +167,7 @@ class Linkage {
     // Linkage table only contains situated issues or better.  Card titles point to issue titles for situated issues.
     addLinkage( authData, ceProjId, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle, source ) {
 
-	console.log( authData.who, "add link", ceProjId, issueId, cardId, colName, colId, issueTitle );
+	// console.log( authData.who, "add link", ceProjId, issueId, cardId, colName, colId, issueTitle );
 
 	if( !this.links.hasOwnProperty( ceProjId ) )                  { this.links[ceProjId] = {}; }
 	if( !this.links[ceProjId].hasOwnProperty( issueId ) )         { this.links[ceProjId][issueId] = {}; }
@@ -210,7 +201,7 @@ class Linkage {
     }
 
 
-    // XXX update new structure
+    // LocData will be for specific CEProjectId, i.e. a "cplocs"
     // For testing, locData grabbed from server and queried, do NOT modify AWS.
     fromJsonLocs( locData ) {
 	this.links = {};
@@ -258,8 +249,8 @@ class Linkage {
 
     getUniqueLink( authData, ceProjId, issueId ) {
 
-	console.log( authData.who, "Get unique link", ceProjId, issueId );
-	this.show(5);
+	// console.log( authData.who, "Get unique link", ceProjId, issueId );
+	// this.show(5);
 	let retVal = -1;
 	if( this.links.hasOwnProperty( ceProjId ) && this.links[ceProjId].hasOwnProperty( issueId )) {
 	    let issueLinks = Object.entries( this.links[ceProjId][issueId] );  // [ [cardId, link], [cardId, link] ...]
@@ -293,25 +284,23 @@ class Linkage {
 	// console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, issueTitle );
 	
 	let links = [];
-	for( const [_, plinks] of Object.entries( this.links ) ) {
-	    for( const [_, clinks] of Object.entries( plinks ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
-		// Note, during initial resolve, this may NOT be 1:1 issue:card
-		for( const [_, link] of Object.entries( clinks ) ) {
-		    let match = true;
-		    match = issueId == -1              ? match : match && (link.HostIssueId     == issueId);
-		    match = cardId == -1               ? match : match && (link.HostCardId      == cardId);
-		    match = projId == -1               ? match : match && (link.HostProjectId   == projId);
-		    match = repo == config.EMPTY       ? match : match && (link.HostRepo        == repo);
-		    match = projName == config.EMPTY   ? match : match && (link.HostProjectName == projName );
-		    match = colName == config.EMPTY    ? match : match && (link.HostColumnName  == colName );
-		    match = issueTitle == config.EMPTY ? match : match && (link.HostIssueTitle  == issueTitle );
-		    match = ceProjId == config.EMPTY   ? match : match && (link.CEProjectId     == ceProjId );
-		    
-		    if( match ) { links.push( link ); }
-		}
+	for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
+	    // Note, during initial resolve, this may NOT be 1:1 issue:card
+	    for( const [_, link] of Object.entries( clinks ) ) {
+		let match = true;
+		match = issueId == -1              ? match : match && (link.HostIssueId     == issueId);
+		match = cardId == -1               ? match : match && (link.HostCardId      == cardId);
+		match = projId == -1               ? match : match && (link.HostProjectId   == projId);
+		match = repo == config.EMPTY       ? match : match && (link.HostRepo        == repo);
+		match = projName == config.EMPTY   ? match : match && (link.HostProjectName == projName );
+		match = colName == config.EMPTY    ? match : match && (link.HostColumnName  == colName );
+		match = issueTitle == config.EMPTY ? match : match && (link.HostIssueTitle  == issueTitle );
+		match = ceProjId == config.EMPTY   ? match : match && (link.CEProjectId     == ceProjId );
+		
+		if( match ) { links.push( link ); }
 	    }
 	}
-
+	
 	if( links.length == 0 ) { links = -1; }
 	return links;
     }
@@ -333,21 +322,19 @@ class Linkage {
 	const colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
 	
 	let locs = [];
-	for( const [_, plocs] of Object.entries( this.locs )) {
-	    for( const [_, clocs] of Object.entries( plocs ) ) { 
-		for( const [_, loc] of Object.entries( clocs ) ) {
-		    let match = true;
-		    
-		    match = projId == -1             ? match : match && (loc.HostProjectId   == projId);
-		    match = colId == -1              ? match : match && (loc.HostColumnId    == colId);
-		    match = ceProjId == config.EMPTY ? match : match && (loc.CEProjectId     == ceProjId);
-		    match = repo == config.EMPTY     ? match : match && (loc.HostRepo        == repo);
-		    match = projName == config.EMPTY ? match : match && (loc.HostProjectName == projName);
-		    match = colName == config.EMPTY  ? match : match && (loc.HostColumnName  == colName);
-		    match =                                    match && (loc.Active          == "true");
-		    
-		    if( match ) { locs.push( loc ); }
-		}
+	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) { 
+	    for( const [_, loc] of Object.entries( clocs ) ) {
+		let match = true;
+		
+		match = projId == -1             ? match : match && (loc.HostProjectId   == projId);
+		match = colId == -1              ? match : match && (loc.HostColumnId    == colId);
+		match = ceProjId == config.EMPTY ? match : match && (loc.CEProjectId     == ceProjId);
+		match = repo == config.EMPTY     ? match : match && (loc.HostRepo        == repo);
+		match = projName == config.EMPTY ? match : match && (loc.HostProjectName == projName);
+		match = colName == config.EMPTY  ? match : match && (loc.HostColumnName  == colName);
+		match =                                    match && (loc.Active          == "true");
+		
+		if( match ) { locs.push( loc ); }
 	    }
 	}
 
@@ -558,7 +545,7 @@ class Linkage {
     show( count ) {
 	if( Object.keys( this.links ).length <= 0 ) { return ""; }
 	
-	console.log( "ceProjId",
+	console.log( this.fill( "ceProjId", 20 ),
 	             "IssueId",
 		     "IssueNum",
 		     this.fill( "CardId", 7),
@@ -613,7 +600,7 @@ class Linkage {
 	}
 
 	if( printables.length > 0 ) {
-	    console.log( this.fill( "ceProj", 15 ),
+	    console.log( this.fill( "ceProj", 16 ),
 			 this.fill( "Repo", 20 ),
 			 this.fill( "ProjId", 10 ), 
 			 this.fill( "ProjName", 15 ),
@@ -629,8 +616,8 @@ class Linkage {
 
 	for( let i = start; i < printables.length; i++ ) {
 	    const loc = printables[i];
-	    console.log( this.fill( loc.CEProjectId, 15 ),
-			 this.fill( loc.HostRepo, 20 ),
+	    console.log( this.fill( loc.CEProjectId, 16 ),
+			 this.fill( loc.HostRepository, 20 ),
 			 loc.HostProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.HostProjectId, 10 ),
 			 this.fill( loc.HostProjectName, 15 ),
 			 loc.HostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.HostColumnId, 10 ),

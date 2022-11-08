@@ -96,7 +96,7 @@ async function runTests() {
     }
 
     // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, wakeyPID, td.softContTitle );
+    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, wakeyPID, td.softContTitle );
     tu.remProject( authData, wakeyPID );
     assert( false );
 

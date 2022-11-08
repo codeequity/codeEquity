@@ -14,8 +14,9 @@ const circBuff = require( '../components/circBuff' );
 const testing  = require( './githubTestHandler' );
 const ghr      = require( './githubRouter' );
 
-const authDataC = require( '../authData' );
-const jobData   = require( './jobData' );
+const authDataC  = require( '../authData' );
+const jobData    = require( './jobData' );
+const ceProjData = require( './ceProjects' );
 
 // INIT  This happens during server startup.
 //       Any major interface will get initialized here, once.
@@ -41,10 +42,13 @@ var ceNotification = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
 var authData = new authDataC.AuthData();
 var router   = express.Router();
 
-console.log( "*** CEROUTER init, GH init ***" );
+console.log( "*** CEROUTER init, HOST init ***" );
 
-// GH Linkage table
-var ghLinks  = new links.Linkage();
+// CEProjects data
+var ceProjects = new ceProjData.CEProjects();
+
+// Host Linkage table
+var hostLinks  = new links.Linkage();
 
 init();
 
@@ -53,7 +57,9 @@ async function init() {
 
     await initAuth( authData );
 
-    ghLinks.init( authData );  
+    await ceProjects.init( authData );
+
+    await hostLinks.init( authData );  
 }
 
 async function initAuth( authData ) {
@@ -193,7 +199,7 @@ async function getNextJob( authData, res ) {
     if( jobData != -1 ) {
 
 	let hostHandler = null; 
-	if( jobData.Host == config.HOST_GH ) { hostHandler = ghr.ghRouter; }
+	if( jobData.Host == config.HOST_GH ) { hostHandler = ghr.ghSwitcher; }
 	else {
 	    console.log( "Warning.  Incoming notification is not from a known platform", jobData.ReqBody );
 	    return res.end();
@@ -217,13 +223,13 @@ async function getNextJob( authData, res ) {
 	authData.pat = tmp;
 	
 	console.log( "\n\n", authData.who, "Got next job:", ic.who );
-	await hostHandler( ic, ghLinks, jobData, res, jobData.Stamp );   
+	await hostHandler( ic, ceProjects, hostLinks, jobData, res, jobData.Stamp );   
     }
     else {
 	console.log( authData.who, "jobs done" );
-	ghLinks.show( 5 );
+	hostLinks.show( 5 );
 	ceArrivals.show();
-	//ghLinks.showLocs( 10 );
+	//hostLinks.showLocs( 10 );
 	console.log( "\n" );
     }
     return res.end();
@@ -240,7 +246,7 @@ router.post('/:location?', async function (req, res) {
     console.log( req.body, req.headers );
 
     // invisible, mostly
-    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( ghLinks, ceJobs, ceNotification, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( hostLinks, ceJobs, ceNotification, req.body, res ); }
 
     let jd     = new jobData.JobData();
     jd.ReqBody = req.body;
@@ -252,7 +258,7 @@ router.post('/:location?', async function (req, res) {
     if( req.headers.hasOwnProperty( 'x-github-event' ) ) {
 	jd.Host   = config.HOST_GH;
 	jd.Actor  = req.body.sender.login;
-	hostHandler    = ghr.ghRouter;
+	hostHandler    = ghr.ghSwitcher;
 	hostGetJobData = ghr.ghGetJobSummaryData;
 
 	if( req.body.hasOwnProperty( "projects_v2_item" ) ) { jd.ProjMgmtSys = config.PMS_GH2; }
@@ -271,7 +277,7 @@ router.post('/:location?', async function (req, res) {
 
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
     notificationCount++;
-    if( notificationCount % 50 == 0 ) { ghLinks.show(15); }
+    if( notificationCount % 50 == 0 ) { hostLinks.show(15); }
     
     let orgPath  = "";                       // Unique locator for CodeEquity project.   Example - "GitHub/ariCETester/codeEquityTests"
     let source   = "<";                      // Printable data for debugging notices.    Example - <item:create AnIssue>
@@ -299,7 +305,7 @@ router.post('/:location?', async function (req, res) {
     authData.job = jd.QueueId;
     
     console.log( authData.who, "job Q [" + orgPath + "] clean, start-er-up" );
-    await hostHandler( authData, ghLinks, jd, res, newStamp ); 
+    await hostHandler( authData, ceProjects, hostLinks, jd, res, newStamp ); 
     
     // avoid socket hangup error, response undefined
     return res.end();

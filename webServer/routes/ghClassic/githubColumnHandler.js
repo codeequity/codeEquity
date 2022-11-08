@@ -23,12 +23,12 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     switch( action ) {
     case 'deleted':
 	{
-	    ghLinks.removeLocs( { authData: authData, colId: pd.GHColumnId } );
+	    ghLinks.removeLocs( { authData: authData, ceProjId: pd.CEProjectId, colId: pd.GHColumnId } );
 	}
 	break;
     case 'created':
 	{
-	    const locs = ghLinks.getLocs( authData, { "repo": pd.GHFullName, "projId": pd.GHProjectId } );
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projId": pd.GHProjectId } );
 	    const loc = locs == -1 ? locs : locs[0];
 	    assert( loc != -1 );
 
@@ -64,7 +64,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 					   utils.getToday(), pd.reqBody );
 		}
 		else {
-		    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "colName": oldName } );
+		    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "colName": oldName } );
 		    links.forEach( link => link.GHColumnName = newName );
 
 		    // send 1 PAct to update any peq projSub.  don't wait.

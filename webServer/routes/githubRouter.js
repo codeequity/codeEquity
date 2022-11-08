@@ -203,7 +203,7 @@ function getJobSummary( newStamp, jobData, orgPath, source ) {
 }
 
 
-async function switcherGHC( authData, ghLinks, jd, res, origStamp ) {
+async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) {
     let retVal = "";
     assert( jd.QueueId == authData.job ) ;
     
@@ -212,6 +212,10 @@ async function switcherGHC( authData, ghLinks, jd, res, origStamp ) {
     pd.GHRepo       = jd.ReqBody['repository']['name'];
     pd.reqBody      = jd.ReqBody;
     pd.GHFullName   = jd.ReqBody['repository']['full_name'];
+
+    // XXX can set ghLinks... and locs..?  more args?  hmmm
+    pd.CEProjectId  = ceProjects.find( jd.Host, jd.Org, jd.ReqBody.repository );
+    assert( pd.CEProjectId != -1 );
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
     console.log( "XXX Switcher GHC" );
@@ -265,7 +269,7 @@ async function switcherGHC( authData, ghLinks, jd, res, origStamp ) {
 }
 
 
-async function switcherGH2( authData, ghLinks, jd, res, origStamp ) {
+async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) {
     let retVal = "";
     let org = jd.ReqBody.organization.login;
 
@@ -306,7 +310,7 @@ async function switcherGH2( authData, ghLinks, jd, res, origStamp ) {
 
 
 
-async function switcher( authData, ghLinks, jd, res, origStamp ) {
+async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
     console.log( "" );
 
@@ -315,8 +319,8 @@ async function switcher( authData, ghLinks, jd, res, origStamp ) {
 	return res.end();
     }
 
-    if(      jd.ProjMgmtSys == config.PMS_GH2 ) { await switcherGH2( authData, ghLinks, jd, res, origStamp ); }
-    else if( jd.ProjMgmtSys == config.PMS_GHC ) { await switcherGHC( authData, ghLinks, jd, res, origStamp ); }
+    if(      jd.ProjMgmtSys == config.PMS_GH2 ) { await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp ); }
+    else if( jd.ProjMgmtSys == config.PMS_GHC ) { await switcherGHC( authData, ceProjects, hostLinks, jd, res, origStamp ); }
     else                                        { console.log( "Warning.  Can't identify proj mgmt sys for notification." );      }
     
 }

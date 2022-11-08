@@ -19,8 +19,10 @@ https://developer.github.com/v3/issues/#create-an-issue
 // PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
-async function recordMove( authData, ghLinks, reqBody, fullName, oldCol, newCol, link, peq ) { 
-
+async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) { 
+    let reqBody = pd.reqBody;
+    let fullName = pd.GHFullName;
+    
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
@@ -64,7 +66,7 @@ async function recordMove( authData, ghLinks, reqBody, fullName, oldCol, newCol,
 
     let subject = [peq.PEQId];
     if( verb == config.PACTVERB_REJ && newCol >= 0 ) {
-	let locs = ghLinks.getLocs( authData, { "repo": fullName, "colName": config.PROJ_COLS[newCol] } );
+	let locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": fullName, "colName": config.PROJ_COLS[newCol] } );
 	assert( locs != -1 );
 	subject = [ peq.PEQId, locs[0].GHColumnName ];
     }
@@ -72,7 +74,7 @@ async function recordMove( authData, ghLinks, reqBody, fullName, oldCol, newCol,
 	let cardId = reqBody['project_card']['id'];
 	assert( cardId > 0 );
 
-	let links  = ghLinks.getLinks( authData, { "repo": fullName, "cardId": cardId } );  // linkage already updated
+	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
 	assert( links  != -1 && links[0].GHColumnId != -1 );
 
 	subject = [ peq.PEQId, links[0].GHProjectId, links[0].GHColumnId ];
@@ -89,7 +91,7 @@ async function recordMove( authData, ghLinks, reqBody, fullName, oldCol, newCol,
 // UPDATE: End of 6/2022, delete notification is back to normal. 
 async function deleteCard( authData, ghLinks, pd, cardId ) {
     // Not carded?  no-op.  or maybe delete issue arrived first.
-    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": cardId });
+    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "cardId": cardId });
     if( links == -1 ) { return; }
     
     let link    = links[0];
@@ -99,7 +101,7 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
     
     // Carded, untracked (i.e. not peq)?   Just remove linkage, since GH removed card.
     if( link.GHColumnId == -1 ) {
-	ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
+	ghLinks.removeLinkage({"authData": authData, "ceProjId": link.CEProjectId, "issueId": link.GHIssueId });
 	return;
     }
     
@@ -119,7 +121,7 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 	    // Don't wait
 	    if( success ) { ghSafe.addComment( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum, comment ); }
 	}
-	ghLinks.removeLinkage({"authData": authData, "issueId": link.GHIssueId });
+	ghLinks.removeLinkage({"authData": authData, "ceProjId": link.CEProjectId, "issueId": link.GHIssueId });
 	
 	// no need to wait.
 	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
@@ -230,7 +232,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    console.log( authData.who, "attempting to move card to", newColName );
 
 	    // Ignore newborn, untracked cards
-	    let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "cardId": cardId } );
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "cardId": cardId } );
 	    if( links == -1 || links[0].GHColumnId == -1 ) {
 		if( newNameIndex > config.PROJ_PROG ) {
 		    // Don't wait
@@ -274,7 +276,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		gh.moveCard( authData, cardId, oldColId );
 		return;
 	    }
-	    ghLinks.updateLinkage( authData, issueId, cardId, newColId, newColName );
+	    ghLinks.updateLinkage( authData, pd.CEProjectId, issueId, cardId, newColId, newColName );
 	    // ghLinks.show();
 	    
 	    // handle issue.  Don't update issue state if not clear reopen/closed
@@ -287,7 +289,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, link['GHIssueNum'], newIssueState );
 	    }
 	    // Don't wait
-	    recordMove( authData, ghLinks, pd.reqBody, pd.GHFullName, oldNameIndex, newNameIndex, link );
+	    recordMove( authData, ghLinks, pd, oldNameIndex, newNameIndex, link );
 	}
 	break;
     case 'deleted' :

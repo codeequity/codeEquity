@@ -12,12 +12,12 @@ async function createFlatProject( authData, ghLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
     td.masterPID  = await tu.makeProject( authData, td, FLAT_PROJ, "" );
-    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, "Eggs" );
-    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.GHFullName, td.masterPID, "Bacon" );
+    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Eggs" );
+    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Bacon" );
 
-    await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, mastCol1, "Parsley" );
-    await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, mastCol2, "Rosemary" );
-    await tu.makeNewbornCard( authData, ghLinks, td.GHFullName, mastCol1, "Sage" );
+    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Parsley" );
+    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol2, "Rosemary" );
+    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Sage" );
 }
 
 async function testFlatProject( authData, ghLinks, td ) {
@@ -28,7 +28,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     await tu.refresh( authData, td, FLAT_PROJ );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
-    let links = await tu.getLinks( authData, ghLinks, { "repo": td.GHFullName } );
+    let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
     let foundFlat = false;
     if( links == -1 ) { links = []; }
 
