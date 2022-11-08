@@ -1202,7 +1202,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
     // Wait later
-    let origPop = utils.checkPopulated( authData, pd.GHFullName );
+    let origPop = utils.checkPopulated( authData, pd.CEProjectId );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
     const proj = await utils.getProjectStatus( authData, pd.CEProjectId );
@@ -1215,6 +1215,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     pd.peqType    = "end";
     
     // Only resolve once per issue.
+    // XXX once this is running again, confirm link[3] is issueId, not cardId.  getBasicLinkData.
     let showOnce  = [];
     let showTwice = [];
     let one2Many = [];
@@ -1227,7 +1228,8 @@ async function populateCELinkage( authData, ghLinks, pd )
     }
     
     console.log( "Remaining links to resolve", one2Many );
-    
+
+    // XXX
     // [ [projId, cardId, issueNum, issueId], ... ]
     // Note - this can't be a promise.all - parallel execution with shared pd == big mess
     //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql. 
@@ -1241,7 +1243,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
     // Don't wait.
-    utils.setPopulated( authData, pd.GHFullName );
+    utils.setPopulated( authData, pd.CEProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );
     return true;
 }

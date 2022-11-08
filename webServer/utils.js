@@ -232,20 +232,20 @@ async function removePEQ( authData, peqId ) {
 }
 
 
-async function checkPopulated( authData, repo ) {
+async function checkPopulated( authData, ceProjId ) {
     console.log( authData.who, "check populated: ", repo );
 
-    let shortName = "CheckSetGHPop";
-    let postData = { "Endpoint": shortName, "GHRepo": repo, "Set": "false" };
+    let shortName = "CheckSetHostPop";
+    let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "false" };
     
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-async function setPopulated( authData, repo ) {
+async function setPopulated( authData, ceProjId ) {
     console.log( authData.who, "Set populated: ", repo );
 
     let shortName = "CheckSetGHPop";
-    let postData = { "Endpoint": shortName, "GHRepo": repo, "Set": "true" };
+    let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "true" };
     
     return await wrappedPostAWS( authData, shortName, postData );
 }
@@ -620,7 +620,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     else                      { pd.peqValue = ghSafe.parseLabelDescr( issueCardContent ); }
 
     // Don't wait
-    checkPopulated( authData, pd.GHFullName ).then( res => assert( res != -1 ));
+    checkPopulated( authData, pd.CEProjectId ).then( res => assert( res != -1 ));
     
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );

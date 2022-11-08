@@ -117,7 +117,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	subTest = tu.checkEq( foundPActs, 3 ,           subTest, "Matched PActs with PEQs" );
 	
 	// Check DYNAMO RepoStatus
-	let pop = await utils.checkPopulated( authData, td.GHFullName );
+	let pop = await utils.checkPopulated( authData, td.CEProjectId );
 	subTest = tu.checkEq( pop, "true", subTest, "Repo status wrt populated" );
 	
 	

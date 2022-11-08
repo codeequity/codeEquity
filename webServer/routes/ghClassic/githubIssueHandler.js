@@ -446,7 +446,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		/* XXX REVISIT
 		// Check for xfer to another ceProject (i.e. ceServer-enabled repo).
-		const status = await utils.getProjectStatus( authData, fullRepoName );
+		const status = await utils.getProjectStatus( authData, pd.CEProjectId );
 		const ceProj = status != -1 && status.Populated == "true" ? true : false;
 
 		if( ceProj ) {

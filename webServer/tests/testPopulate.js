@@ -358,7 +358,7 @@ async function testResolve( authData, ghLinks, td ) {
 
 
     // Check DYNAMO RepoStatus
-    let pop = await utils.checkPopulated( authData, td.GHFullName );
+    let pop = await utils.checkPopulated( authData, td.CEProjectId );
     testStatus = tu.checkEq( pop, "true", testStatus, "Repo status wrt populated" );
 
 
