@@ -1,5 +1,4 @@
 var assert = require('assert');
-const auth = require( '../auth' );
 
 var utils   = require('../utils');
 var config  = require('../config');

@@ -1,7 +1,6 @@
 var assert = require('assert');
 
 const locData  = require( "./locData" );
-const auth     = require( "../auth");
 const utils    = require('../utils');
 const config   = require('../config');
 const ceRouter = require( '../routes/ceRouter' );

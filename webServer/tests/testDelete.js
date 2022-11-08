@@ -1,8 +1,6 @@
 var assert = require('assert');
 
 var config  = require('../config');
-const awsAuth = require( '../auth/aws/awsAuth' );
-const auth = require( "../auth");
 
 var utils = require('../utils');
 var ghUtils = require('../ghUtils');

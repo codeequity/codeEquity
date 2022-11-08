@@ -1,6 +1,6 @@
 const assert  = require('assert');
 
-const auth    = require( "../auth");
+const auth    = require( "../auth/gh/ghAugh");
 const utils   = require( '../utils');
 const config  = require( '../config');
 

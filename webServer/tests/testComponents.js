@@ -3,7 +3,6 @@ var utils = require('../utils');
 var config  = require('../config');
 var ghUtils = require('../ghUtils');
 var gh = ghUtils.githubUtils;
-const auth = require( '../auth' );
 
 const testData = require( './testData' );
 const tu = require('./testUtils');

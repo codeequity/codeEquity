@@ -1,8 +1,8 @@
-var assert = require('assert');
-const awsAuth = require( '../auth/aws/awsAuth' );
-const auth = require( "../auth");
-const utils = require( "../utils");
-var config  = require('../config');
+var assert    = require( "assert" );
+const awsAuth = require( "../auth/aws/awsAuth" );
+const ghAuth  = require( "../auth/gh/ghAuth" );
+const utils   = require( "../utils" );
+var config    = require( "../config" );
 
 var ghUtils = require('../ghUtils');
 var gh      = ghUtils.githubUtils;
@@ -41,11 +41,11 @@ async function runTests() {
 
     let authData     = new authDataC.AuthData(); 
     authData.who     = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
-    authData.ic      = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
+    authData.ic      = await ghAuth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
     authData.api     = utils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();    
-    authData.pat     = await auth.getPAT( td.GHOwner );
+    authData.pat     = await ghAuth.getPAT( td.GHOwner );
     td.GHOwnerId     = await ghSafe.getOwnerIdGQL( authData.pat, td.GHOwner );
     td.GHRepoId      = await ghSafe.getRepoIdGQL( authData.pat, td.GHOwner, td.GHRepo );
 
@@ -56,12 +56,12 @@ async function runTests() {
     tdX.GHFullName = tdX.GHOwner + "/" + tdX.GHRepo;
 
     let authDataX     = new authDataC.AuthData();
-    authDataX.ic      = await auth.getInstallationClient( tdX.GHOwner, tdX.GHRepo, tdX.GHOwner );
+    authDataX.ic      = await ghAuth.getInstallationClient( tdX.GHOwner, tdX.GHRepo, tdX.GHOwner );
     authDataX.who     = authData.who;
     authDataX.api     = authData.api;
     authDataX.cog     = authData.cog;
     authDataX.cogLast = Date.now();        
-    authDataX.pat     = await auth.getPAT( tdX.GHOwner );
+    authDataX.pat     = await ghAuth.getPAT( tdX.GHOwner );
     tdX.GHOwnerId     = await ghSafe.getOwnerIdGQL( authDataX.pat, tdX.GHOwner );
     tdX.GHRepoId      = await ghSafe.getRepoIdGQL( authDataX.pat, tdX.GHOwner, tdX.GHRepo );
     
@@ -72,12 +72,12 @@ async function runTests() {
     tdM.GHFullName = tdM.GHOwner + "/" + tdM.GHRepo;
     
     let authDataM     = new authDataC.AuthData();
-    authDataM.ic      = await auth.getInstallationClient( tdM.GHOwner, tdM.GHRepo, tdM.GHOwner );
+    authDataM.ic      = await ghAuth.getInstallationClient( tdM.GHOwner, tdM.GHRepo, tdM.GHOwner );
     authDataM.who     = authData.who;
     authDataM.api     = authData.api;
     authDataM.cog     = authData.cog;
     authDataM.cogLast = Date.now();            
-    authDataM.pat     = await auth.getPAT( tdM.GHOwner );
+    authDataM.pat     = await ghAuth.getPAT( tdM.GHOwner );
     tdM.GHOwnerId     = await ghSafe.getOwnerIdGQL( authDataM.pat, tdM.GHOwner );
     tdM.GHRepoId      = await ghSafe.getRepoIdGQL( authDataM.pat, tdM.GHOwner, tdM.GHRepo );
 

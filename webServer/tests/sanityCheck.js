@@ -1,7 +1,7 @@
 var assert = require('assert');
 
 const awsAuth   = require( '../auth/aws/awsAuth' );
-const auth      = require( "../auth");
+const auth      = require( "../auth/gh/ghAuth");
 const config    = require('../config');
 const utils     = require( '../utils');
 
