@@ -2,7 +2,9 @@ var assert    = require( 'assert' );
 const awsAuth = require( '../auth/aws/awsAuth' );
 const ghAuth  = require( '../auth/gh/ghAuth' );
 var config    = require( '../config' );
-const utils   = require( '../utils/ceUtils' );
+
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -42,7 +44,7 @@ async function runTests() {
     let authData     = new authDataC.AuthData(); 
     authData.who     = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
     authData.ic      = await ghAuth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    authData.api     = utils.getAPIPath() + "/find";
+    authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();    
     authData.pat     = await ghAuth.getPAT( td.GHOwner );

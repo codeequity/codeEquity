@@ -1,7 +1,8 @@
-var assert = require('assert');
-var config = require('../../config');
+var assert = require( 'assert' );
+var config = require( '../../config' );
 
-const utils = require( '../../utils/ceUtils' );
+const utils    = require( '../../utils/ceUtils' );
+const awsUtils = require( '../../utils/awsUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -59,7 +60,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    ghSafe.updateColumn( authData, pd.reqBody.project_column.id, oldName );
 
 		    // send 1 PAct to update any peq projSub.  don't wait.
-		    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_NOTE, [oldName], "Column rename attempted",
 					   utils.getToday(), pd.reqBody );
 		}
@@ -68,7 +69,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    links.forEach( link => link.GHColumnName = newName );
 
 		    // send 1 PAct to update any peq projSub.  don't wait.
-		    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.GHColumnId, oldName, newName], "Column rename",
 					   utils.getToday(), pd.reqBody );
 

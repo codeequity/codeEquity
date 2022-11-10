@@ -1,9 +1,10 @@
 const express = require( 'express' );
 const assert  = require( 'assert' );
 
-const awsAuth = require( '../auth/aws/awsAuth' );
-const utils   = require( '../utils/ceUtils' );
-const config  = require( '../config' );
+const awsAuth  = require( '../auth/aws/awsAuth' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
+const config   = require( '../config' );
 
 const fifoQ    = require( '../components/queue' );
 const links    = require( '../components/linkage' );
@@ -63,7 +64,7 @@ async function init() {
 
 async function initAuth( authData ) {
     // Wait later
-    authData.api     = utils.getAPIPath() + "/find";
+    authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = awsAuth.getCogIDToken();
     authData.cogLast = Date.now();
 

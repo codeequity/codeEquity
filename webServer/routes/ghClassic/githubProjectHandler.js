@@ -1,6 +1,7 @@
 var config  = require( '../../config' );
 
-const utils = require( '../../utils/ceUtils' );
+const utils    = require( '../../utils/ceUtils' );
+const awsUtils = require( '../../utils/awsUtils' );
 
 // Actions: created, edited, closed, reopened, or deleted
 async function handler( authData, ghLinks, pd, action, tag ) {
@@ -47,7 +48,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		links.forEach( link => link.GHProjectName = newName );
 
 		// don't wait
-		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
 				       config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.GHProjectId.toString(), oldName, newName], "Project rename",
 				       utils.getToday(), pd.reqBody );
 
@@ -75,7 +76,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( typeof projLink !== 'undefined' ) {
 		const note = "Project " + action;
 		console.log( "Notice.", action,  "project with active PEQs.  Notifying server."  );
-		utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
 				       config.PACTVERB_CONF, config.PACTACT_NOTE, [pd.GHProjectId], note,
 				       utils.getToday(), pd.reqBody );
 	    }

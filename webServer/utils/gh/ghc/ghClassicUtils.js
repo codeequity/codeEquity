@@ -1,8 +1,9 @@
-var assert = require('assert');
+var assert = require( 'assert' );
 
 const config = require( '../../../config' );
-const utils  = require( '../../ceUtils' );
 
+const utils   = require( '../../ceUtils' );
+const ghUtils = require( '../utils/gh/ghUtils' );
 
 /*
 https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects#repository
@@ -363,7 +364,7 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
     query = JSON.stringify({ query, variables });
 
     let retVal = false;
-    let res = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.catch( e => retVal = errorHandler( "checkExistsGQL", e, checkExistsGQL, authData, nodeId, nodeType ));
 
     // postGH masks errors, catch here.
@@ -660,7 +661,7 @@ async function getRepoLabelsGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
-    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "getRepoLabelsGQL", e, getRepoLabelsGQL, PAT, owner, repo, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
@@ -707,7 +708,7 @@ async function getReposGQL( PAT, owner, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
-    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "getReposGQL", e, getReposGQL, PAT, owner, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
@@ -776,7 +777,7 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
-    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "getRepoIssuesGQL", e, getRepoIssuesGQL, PAT, owner, repo, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
@@ -854,7 +855,7 @@ async function getRepoIssueGQL( PAT, owner, repo, issueDatabaseId, data, cursor 
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
-    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "getRepoIssueGQL", e, getRepoIssueGQL, PAT, owner, repo, issueDatabaseId, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
@@ -923,7 +924,7 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
-    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "getBasicLinkDataGQL", e, getBasicLinkDataGQL, PAT, owner, repo, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
@@ -995,7 +996,7 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
-    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "getLabelIssuesGQL", e, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor ));  // probably only seen during testing
 
     // postGH masks errors, catch here.
@@ -1058,7 +1059,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let projects = -1;
-    let res = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "getRepoColsGQL", e, getRepoColsGQL, PAT, owner, repo, data, cursor ));  // this will probably never catch anything
 
     // postGH masks errors, catch here.
@@ -1111,7 +1112,7 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
     let variables = {"issueId": issueId, "repoId": toRepoId };
     query = JSON.stringify({ query, variables });
 
-    let ret = await utils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.catch( e => errorHandler( "transferIssueGQL", e, transferIssueGQL, authData, issueId, toRepoId ));
 
     console.log( "TI_GQL:", ret );
@@ -1134,7 +1135,7 @@ async function createProjectGQL( ownerId, PAT, repo, repoId, name, body, beta ) 
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	  .catch( e => errorHandler( "createProjectGQL", e, createProjectGQL, ownerId, PAT, repo, repoId, name, body, beta ));
 
     let retId = -1;
@@ -1161,7 +1162,7 @@ async function getOwnerIdGQL( PAT, owner ) {
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	  .catch( e => errorHandler( "getOwnerIdGQL", e, getOwnerIdGQL, PAT, owner ));
 
     // console.log( "owner_GQL:", ret );
@@ -1176,7 +1177,7 @@ async function getRepoIdGQL( PAT, owner, repo ) {
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await utils.postGH( PAT, config.GQL_ENDPOINT, query )
+    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
 	  .catch( e => errorHandler( "getRepoIdGQL", e, getRepoIdGQL, PAT, owner, repo ));
 
     console.log( "repo_GQL:", ret );
@@ -1203,7 +1204,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
     // Wait later
-    let origPop = utils.checkPopulated( authData, pd.CEProjectId );
+    let origPop = awsUtils.checkPopulated( authData, pd.CEProjectId );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
     const proj = await utils.getProjectStatus( authData, pd.CEProjectId );
@@ -1244,7 +1245,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
     // Don't wait.
-    utils.setPopulated( authData, pd.CEProjectId );
+    awsUtils.setPopulated( authData, pd.CEProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );
     return true;
 }

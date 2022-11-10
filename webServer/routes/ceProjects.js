@@ -25,7 +25,7 @@ class CEProjects {
     
     async init( authData ) {
 	this.cep = await utils.getProjectStatus( authData, -1 );   // get all ce projects
-	for( const entry of ceProjects ) {
+	for( const entry of this.cep ) {
 	    this.add(entry );
 	}
     }

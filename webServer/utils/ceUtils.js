@@ -1,20 +1,17 @@
-var fetch  = require('node-fetch');
-var assert = require('assert');
-var fs     = require('fs'), json;    // read apiBasePath
+const fetch  = require( 'node-fetch' );
+const assert = require('assert');
 
-const auth = require( '../auth/gh/ghAuth' );
-var config = require( '../config');
+const config = require( '../config');
+const auth   = require( '../auth/gh/ghAuth' );
 
 const ghClassic = require( './gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
-var fifoQ  = require( '../components/queue.js');
-
 
 
 // Ugly ugly hack to test error handler.  Turn this off for normal runs.
-const TEST_EH   = true;
+const TEST_EH     = true;
 const TEST_EH_PCT = .05;
 
 // internal server error testing
@@ -22,96 +19,6 @@ const FAKE_ISE = {
     status: 500,
     body: JSON.stringify( "---" ),
 };
-
-
-
-function getAPIPath() {
-    let fname = config.APIPATH_CONFIG_LOC;
-    try {
-	var data = fs.readFileSync(fname, 'utf8');
-	// console.log(data);
-	return data;
-    } catch(e) {
-	console.log('Error:', e.stack);
-    }
-}
-
-function getCognito() {
-    let fname = config.COGNITO_CONFIG_LOC;
-    try {
-	let data = fs.readFileSync(fname, 'utf8');
-	let jdata = JSON.parse( data );
-	// console.log(jdata);
-
-	let rdata = { 'UserPoolId': jdata['CognitoUserPool']['Default']['PoolId'], 
-		      'ClientId': jdata['CognitoUserPool']['Default']['AppClientId'],
-		      'Region': jdata['CognitoUserPool']['Default']['Region'] };
-	
-	return rdata;
-    } catch(e) {
-	console.log('Error:', e.stack);
-    }
-}
-
-function getCEServer() {
-    let fname = config.CESERVER_CONFIG_LOC;
-    try {
-	let data = fs.readFileSync(fname, 'utf8');
-	let jdata = JSON.parse( data );
-	// console.log(jdata);
-
-	if( !jdata.hasOwnProperty( "ceServer" ) || !jdata.ceServer.hasOwnProperty( "Username" ) ) {
-	    console.log( "Error.  Data in ops/aws/auth/ceServerConfig.json is not well-constructed." )
-	    console.log( "expecting something of the form: {\"ceServer\": {\"Username\": <username here>, \"Password\" : <passwd here>, \"Email\" : <email here> }}" );
-	    assert( false );
-	}
-	
-	let rdata = { 'Username': jdata.ceServer.Username,
-		      'Password': jdata.ceServer.Password };
-
-	return rdata;
-    } catch(e) {
-	console.log('Error:', e.stack);
-    }
-}
-
-// XXX ??? unused?
-async function getRemotePackageJSONObject(owner, repo, installationAccessToken) {
-    const installationClient = await auth.getInstallationClient(owner, repo);
-    const fileData = await installationClient.repos.getContents({
-	owner,
-	repo,
-	path: 'package.json',
-    });
-    const fileObject = JSON.parse(Buffer.from(fileData.data.content, 'base64').toString());
-    return fileObject;
-};
-
-
-async function postGH( PAT, url, postData ) {
-    const params = {
-	method: "POST",
-        headers: {'Authorization': 'bearer ' + PAT },
-	body: postData 
-    };
-
-    if( TEST_EH ) {
-	// Don't bother with testing only queries
-	if( !postData.includes( "mutation" ) && Math.random() < TEST_EH_PCT ) {
-	    console.log( "Error.  Fake internal server error for GQL.", postData );
-	    return FAKE_ISE;
-	}
-    }
-
-    let gotchya = false;
-    let ret = await fetch( url, params )
-	.catch( e => { gotchya = true; console.log(e); return e; });
-
-    // XXX Still waiting to see this.. 
-    if( gotchya ) { let x = await ret.json(); console.log( "Error.  XXXXXXXXXXXXXX got one!", x, ret ); }
-    
-    return await ret.json();
-}
 
 
 async function postCE( shortName, postData ) {
@@ -133,125 +40,6 @@ async function postCE( shortName, postData ) {
     }
     else { return -1; }
 }
-    
-
-async function postAWS( authData, shortName, postData ) {
-
-    // console.log( authData.who, "postAWS:", shortName );
-    
-    const params = {
-        url: authData.api,
-	method: "POST",
-        headers: { 'Authorization': authData.cog },
-        body: postData
-    };
-
-    return fetch( authData.api, params )
-	.catch(err => console.log(err));
-};
-
-async function wrappedPostAWS( authData, shortName, postData ) {
-    let response = await postAWS( authData, shortName, JSON.stringify( postData ))
-    if( typeof response === 'undefined' ) return null;
-
-    if( response['status'] == 504 && shortName == "GetEntries" ) {
-	let retries = 0;
-	while( retries < config.MAX_AWS_RETRIES && response['status'] == 504 ) {
-	    console.log( authData.who, "Error. Timeout.  Retrying.", retries );
-	    response = await postAWS( authData, shortName, JSON.stringify( postData ))
-	    if( typeof response === 'undefined' ) return null;
-	}
-    }
-    
-    let tableName = "";
-    if( shortName == "GetEntry" || shortName == "GetEntries" ) { tableName = postData.tableName; }
-    
-    if( response['status'] == 201 ) {
-	let body = await response.json();
-	// console.log("Good status.  Body:", body);
-	return body;
-    }
-    else if( response['status'] == 204 ) {
-	if( tableName != "CEPEQs" ) { console.log(authData.who, tableName, "Not found.", response['status'] ); }
-	return -1;
-    }
-    else if( response['status'] == 422 ) {
-	console.log(authData.who, "Semantic error.  Normally means more items found than expected.", response['status'] );
-	return -1;
-    }
-    else {
-	console.log("Unhandled status code:", response['status'] );
-	let body = await response.json();
-	console.log(authData.who, shortName, postData, "Body:", body);
-	return -1;
-    }
-}
-
-
-// Check for stored PAT.  Not available means public repo that uses ceServer PAT
-async function getStoredPAT( authData, owner ) {
-    console.log( authData.who, "Get stored PAT for:", owner );
-
-    let shortName = "GetEntry";
-    let query     = { "GHUserName": owner };
-    let postData  = { "Endpoint": shortName, "tableName": "CEGithub", "query": query };
-
-    let repoStatus = await wrappedPostAWS( authData, shortName, postData );
-    if( repoStatus == -1 ) { return -1; }
-    else                   { return repoStatus.PAT; }
-}
-
-async function getPeq( authData, issueId, checkActive ) {
-    console.log( authData.who, "Get PEQ from issueId:", issueId );
-    let active = true;
-    if( typeof checkActive !== 'undefined' ) { active = checkActive; }
-
-    let shortName = "GetEntry";
-    let query     = active ? { "GHIssueId": issueId.toString(), "Active": "true" } : { "GHIssueId": issueId.toString() }; 
-    let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
-
-    return await wrappedPostAWS( authData, shortName, postData );
-}
-
-async function getPeqFromTitle( authData, repo, projId, title ) {
-    console.log( authData.who, "Get PEQ from title:", title, projId );
-
-    let shortName = "GetEntry";
-    let query     = { "GHRepo": repo, "GHProjectId": projId.toString(), "GHCardTitle": title };
-    let postData  = { "Endpoint": shortName, "tableName": "CEPEQs", "query": query };
-
-    return await wrappedPostAWS( authData, shortName, postData );
-}
-
-
-async function removePEQ( authData, peqId ) {
-
-    let shortName = "UpdatePEQ";
-    let query = { "PEQId": peqId, "Active": "false" };
-
-    let pd = { "Endpoint": shortName, "pLink": query };
-    return await wrappedPostAWS( authData, shortName, pd );
-}
-
-
-async function checkPopulated( authData, ceProjId ) {
-    console.log( authData.who, "check populated: ", repo );
-
-    let shortName = "CheckSetHostPop";
-    let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "false" };
-    
-    return await wrappedPostAWS( authData, shortName, postData );
-}
-
-async function setPopulated( authData, ceProjId ) {
-    console.log( authData.who, "Set populated: ", repo );
-
-    let shortName = "CheckSetGHPop";
-    let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "true" };
-    
-    return await wrappedPostAWS( authData, shortName, postData );
-}
-
     
 
 // This needs to occur after linkage is overwritten.
@@ -279,60 +67,9 @@ async function getProjectSubs( authData, ghLinks, ceProjId, repoName, projName, 
 }
 
 
-async function updatePEQPSub( authData, peqId, projSub ) {
-    console.log( authData.who, "Updating PEQ project sub", projSub.toString() );
 
-    let shortName = "UpdatePEQ";
 
-    let postData = {};
-    postData.PEQId        = peqId.toString();
-    postData.GHProjectSub = projSub;
-    
-    let pd = { "Endpoint": shortName, "pLink": postData }; 
-    return await wrappedPostAWS( authData, shortName, pd );
-}
 
-// XXX Note.   This must be guarded, at a minimum, not ACCR
-async function updatePEQVal( authData, peqId, peqVal ) {
-    console.log( authData.who, "Updating PEQ value after label split", peqVal );
-
-    let shortName = "UpdatePEQ";
-
-    let postData = {};
-    postData.PEQId        = peqId.toString();
-    postData.Amount       = peqVal;
-    
-    let pd = { "Endpoint": shortName, "pLink": postData }; 
-    return await wrappedPostAWS( authData, shortName, pd );
-}
-
-async function rewritePAct( authData, postData ) {
-    let shortName = "RecordPEQAction";
-
-    let pd = { "Endpoint": shortName, "newPAction": postData };
-    return await wrappedPostAWS( authData, shortName, pd );
-}
-
-// also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
-async function recordPEQAction( authData, ceUID, ghUserName, ghRepo, verb, action, subject, note, entryDate, rawBody ) {
-    console.log( authData.who, "Recording PEQAction: ", verb, action, ceUID );
-
-    let shortName = "RecordPEQAction";
-
-    let postData      = { "CEUID": ceUID, "GHUserName": ghUserName, "GHRepo": ghRepo };
-    postData.Verb     = verb;
-    postData.Action   = action;
-    postData.Subject  = subject; 
-    postData.Note     = note;
-    postData.Date     = entryDate;
-    postData.RawBody  = JSON.stringify( rawBody );
-    postData.Ingested  = "false";
-    postData.Locked    = "false";
-    postData.TimeStamp = JSON.stringify( Date.now() );
-
-    let pd = { "Endpoint": shortName, "newPAction": postData };
-    return await wrappedPostAWS( authData, shortName, pd );
-}
 
 async function recordPEQ( authData, postData ) {
     if( !postData.hasOwnProperty( "silent" )) { console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.GHIssueTitle ); }
@@ -444,14 +181,14 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     let newPEQ = -1
     if( checkDup ) { 
 	// Only 1 peq per issueId. Might be moving a card here
-	newPEQ = await getPeq( authData, pd.GHIssueId, false );
+	newPEQ = await getPeq( authData, pd.CEProjectId, pd.HostIssueId, false );
 	if( newPEQ != -1 ) { newPEQId = newPEQ.PEQId; }
     }
 
     // If relocate, must have existing peq
     // Make sure aws has dependent PEQ before proceeding.
     if( specials == "relocate" && newPEQ == -1 ) {
-	newPEQ = await settleWithVal( "recordPeqData", getPeq, authData, pd.GHIssueId, false );
+	newPEQ = await settleWithVal( "recordPeqData", getPeq, authData, pd.CEProjectId, pd.GHIssueId, false );
 	newPEQId = newPEQ.PEQId; 
     }
     
@@ -482,7 +219,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     }
 	
     // no need to wait
-    recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
+    recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.CEProjectId,
 		     config.PACTVERB_CONF, action, subject, "",
 		     getToday(), pd.reqBody );
 
@@ -497,14 +234,14 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
     // Confirm call chain is as expected.  Do NOT want to be modifying ACCR peq vals
     assert( link.GHColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
 
-    let newPEQ = await getPeq( authData, pd.GHIssueId );
+    let newPEQ = await getPeq( authData, pd.CEProjectId, pd.HostIssueId );
 
     // do NOT update aws.. rely on ceFlutter to update values during ingest, using pact.  otherwise, when a split happens after
     // the initial peq has been ingested, if ingest is ignoring this pact, new value will not be picked up correctly.
     // console.log( "Updating peq", newPEQ.PEQId, peqVal );
     // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
-    recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
+    recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.CEProjectId,
 		     config.PACTVERB_CONF, "change", [newPEQ.PEQId, peqVal.toString()], "peq val update",   // XXX formalize
 		     getToday(), pd.reqBody );
 }
@@ -622,7 +359,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     else                      { pd.peqValue = ghSafe.parseLabelDescr( issueCardContent ); }
 
     // Don't wait
-    checkPopulated( authData, pd.CEProjectId ).then( res => assert( res != -1 ));
+    awsUtils.checkPopulated( authData, pd.CEProjectId ).then( res => assert( res != -1 ));
     
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
@@ -685,8 +422,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 		ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
 		// chances are, an unclaimed PEQ exists.  deactivate it.
 		if( pd.GHIssueId != -1 ) {
-		    const daPEQ = await getPeq( authData, pd.GHIssueId );
-		    removePEQ( authData, daPEQ.PEQId );
+		    const daPEQ = await awsUtils.getPeq( authData, pd.CEProjectId, pd.HostIssueId );
+		    awsUtils.removePEQ( authData, daPEQ.PEQId );
 		}
 	    }
 	    return "removeLabel";
@@ -847,8 +584,8 @@ async function getSummaries( authData, query ) {
 async function getProjectStatus( authData, ceProjId ) {
     console.log( authData.who, "Get Status for a given CE Project", ceProjId );
 
-    let shortName = repo == -1 ? "GetEntries" : "GetEntry";
-    let query     = repo == -1 ? { "empty": config.EMPTY } : { "CEProjectId": ceProjId};
+    let shortName = ceProjId == -1 ? "GetEntries" : "GetEntry";
+    let query     = ceProjId == -1 ? { "empty": config.EMPTY } : { "CEProjectId": ceProjId};
     let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
 
     return await wrappedPostAWS( authData, shortName, postData );
@@ -900,6 +637,7 @@ function makeStamp( newStamp ) {
 
 
 
+/* Not in use
 // UNIT TESTING ONLY!!
 // Ingesting is a ceFlutter operation. 
 async function ingestPActs( authData, pactIds ) {
@@ -909,6 +647,7 @@ async function ingestPActs( authData, pactIds ) {
     let pd = { "Endpoint": shortName, "PactIds": pactIds }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }
+*/
 
 // UNIT TESTING ONLY!!
 // Get linkage table on aws, without requiring server 
@@ -932,25 +671,10 @@ async function failHere( source ) {
 exports.randAlpha = randAlpha;
 // exports.getTimeDiff = getTimeDiff;
 
-exports.getAPIPath = getAPIPath;
-exports.getCognito = getCognito;
-exports.postGH = postGH;
 exports.postCE = postCE;
-exports.getCognito = getCognito;
-exports.getCEServer = getCEServer;
-exports.getRemotePackageJSONObject = getRemotePackageJSONObject;
-exports.rewritePAct = rewritePAct;
-exports.recordPEQAction = recordPEQAction;
 exports.recordPEQ = recordPEQ;
 exports.rebuildPeq = rebuildPeq;
 exports.recordPeqData = recordPeqData;
-exports.removePEQ = removePEQ;
-exports.getStoredPAT = getStoredPAT;
-exports.getPeq = getPeq;
-exports.getPeqFromTitle = getPeqFromTitle;
-exports.checkPopulated = checkPopulated;
-exports.setPopulated = setPopulated;
-exports.updatePEQPSub = updatePEQPSub;
 exports.sleep = sleep;
 exports.getMillis = getMillis;
 exports.millisDiff = millisDiff;
@@ -974,7 +698,7 @@ exports.clearIngested = clearIngested;
 exports.settleWithVal = settleWithVal;
 
 // TESTING ONLY
-exports.ingestPActs   = ingestPActs;      // TESTING ONLY
+// exports.ingestPActs   = ingestPActs;      // TESTING ONLY
 exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
 exports.TEST_EH       = TEST_EH;          // TESTING ONLY
 exports.TEST_EH_PCT   = TEST_EH_PCT;      // TESTING ONLY
