@@ -847,8 +847,8 @@ async function getSummaries( authData, query ) {
 async function getProjectStatus( authData, ceProjId ) {
     console.log( authData.who, "Get Status for a given CE Project", ceProjId );
 
-    let shortName = repo == -1 ? "GetEntries" : "GetEntry";
-    let query     = repo == -1 ? { "empty": config.EMPTY } : { "CEProjectId": ceProjId};
+    let shortName = ceProjId == -1 ? "GetEntries" : "GetEntry";
+    let query     = ceProjId == -1 ? { "empty": config.EMPTY } : { "CEProjectId": ceProjId};
     let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
 
     return await wrappedPostAWS( authData, shortName, postData );

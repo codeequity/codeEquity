@@ -12,7 +12,7 @@ const dotenv = require("dotenv");
 var fs = require('fs'), json;
 var assert = require('assert');
 
-var config    = require('./config');
+var config    = require('../../config');
 
 
 // Generate an installationAccessToken, for use in creating installation client for GitHub API.

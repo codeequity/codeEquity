@@ -1,4 +1,4 @@
-var utils = require( '../../utils/utils' );
+var utils = require( '../../utils/ceUtils' );
 var assert = require('assert');
 
 // https://medium.com/@prasadjay/amazon-cognito-user-pools-in-nodejs-as-fast-as-possible-22d586c5c8ec

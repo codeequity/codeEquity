@@ -5,6 +5,8 @@ __pycache__
 *Pack.yaml
 node_modules
 ceFlutter/build
+ceFlutter/ingestFlawedRun
+ceFlutter/ingestRawFixAssignee
 webServer/dump*
 webServer/ghJsonPayloads/
 webServer/tests/testData/*
