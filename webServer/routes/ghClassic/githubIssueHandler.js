@@ -1,8 +1,10 @@
-var assert      = require('assert');
-var config      = require('../../config');
-var cardHandler = require('./githubCardHandler');
+var assert      = require( 'assert' );
 
-const utils = require( '../../utils/ceUtils' );
+var config      = require( '../../config' );
+var cardHandler = require( './githubCardHandler' );
+
+const utils    = require( '../../utils/ceUtils' );
+const awsUtils = require( '../../utils/awsUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -60,7 +62,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
 	// the entire issue has no longer(!) been given to us here.  Recreate it.
 	// Can only be alloc:false peq label here.
-	let peq  = await utils.getPeq( authData, link.GHIssueId );
+	let peq  = await awsUtils.getPeq( authData, pd.CEProjectId, link.GHIssueId );
 	const lName = peq.Amount.toString() + " " + config.PEQ_LABEL;
 	const theLabel = await gh.findOrCreateLabel( authData,  pd.GHOwner, pd.GHRepo, false, lName, peq.Amount );
 	pd.reqBody.issue.labels = [ theLabel ];
@@ -87,11 +89,11 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	// peq = await peq;
 	const newPeqId = await utils.rebuildPeq( authData, link, peq );
 	
-	utils.removePEQ( authData, peq.PEQId );	
-	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
+	awsUtils.removePEQ( authData, peq.PEQId );	
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.CEProjectId,
 			       config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], "recreate",
 			       utils.getToday(), pd.reqBody );
-	utils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.GHFullName,
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.CEProjectId,
 			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }
@@ -258,15 +260,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    
-	    let peq = await utils.getPeq( authData, pd.GHIssueId );	
+	    let peq = await awsUtils.getPeq( authData, pd.CEProjectId, pd.GHIssueId );	
 	    console.log( "WARNING.  PEQ Issue unlabeled, issue no longer tracked." );
 	    ghLinks.rebaseLinkage( authData, pd.CEProjectId, pd.GHIssueId );   // setting various to -1, as it is now untracked
-	    utils.removePEQ( authData, peq.PEQId );
-	    utils.recordPEQAction(
+	    awsUtils.removePEQ( authData, peq.PEQId );
+	    awsUtils.recordPEQAction(
 		authData,
 		config.EMPTY,     // CE UID
 		pd.GHCreator,     // gh user name
-		pd.GHFullName,    // of the repo
+		pd.CEProjectId,
 		config.PACTVERB_CONF,       // verb
 		config.PACTACT_DEL,         // action
 		[ peq.PEQId ],    // subject
@@ -329,7 +331,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			    subject = [ peqId.toString(), newColId.toString() ];
 			}
 			
-			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+			awsUtils.recordPEQAction( authData, config.EMPTY, sender, pd.CEProjectId,
 					       verb, paction, subject, "",
 					       utils.getToday(), pd.reqBody );
 		    }
@@ -360,7 +362,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // Peq issues only.  PEQ tracks assignees from ceFlutter.  Just send PAct upstream.
-	    let peq = await utils.getPeq( authData, pd.GHIssueId );
+	    let peq = await awsUtils.getPeq( authData, pd.CEProjectId, pd.GHIssueId );
 
 	    // This should only happen during blast-issue creation.
 	    if( peq == -1 ) {
@@ -384,7 +386,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    let subject = [peq.PEQId.toString(), assignee];
-	    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, sender, pd.CEProjectId,
 				   verb, paction, subject, note,
 				   utils.getToday(), pd.reqBody );
 	}
@@ -412,10 +414,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			
 			// if link has title, we have situated card.
 			ghLinks.updateTitle( authData, link, newTitle );
-			let peq = await utils.getPeq( authData, pd.GHIssueId );
+			let peq = await awsUtils.getPeq( authData, pd.CEProjectId, pd.GHIssueId );
 			assert( peq != -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
-			utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+			awsUtils.recordPEQAction( authData, config.EMPTY, sender, pd.CEProjectId,
 					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
 					       utils.getToday(), pd.reqBody );
 		    }
@@ -470,10 +472,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		*/
 		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
-		let peq = await utils.getPeq( authData, pd.GHIssueId, false );
+		let peq = await awsUtils.getPeq( authData, pd.CEProjectId, pd.GHIssueId, false );
 		if( peq != -1 ) {
 		    const subject = [ peq.PEQId, fullRepoName ];
-		    utils.recordPEQAction( authData, config.EMPTY, sender, pd.GHFullName,
+		    awsUtils.recordPEQAction( authData, config.EMPTY, sender, pd.CEProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
 					   utils.getToday(), pd.reqBody );
 		}

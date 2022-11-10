@@ -1,7 +1,9 @@
-var assert  = require('assert');
-var config  = require('../../config');
+var assert  = require( 'assert' );
 
-const utils = require( '../../utils/ceUtils' );
+var config  = require( '../../config' );
+
+const utils    = require( '../../utils/ceUtils' );
+const awsUtils = require( '../../utils/awsUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -83,7 +85,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
     }
     
     // Don't wait
-    utils.recordPEQAction( authData, config.EMPTY, reqBody['sender']['login'], fullName, 
+    awsUtils.recordPEQAction( authData, config.EMPTY, reqBody['sender']['login'], pd.CEProjectId,
 			   verb, action, subject, "", 
 			   utils.getToday(), reqBody );
 }
@@ -109,7 +111,7 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
     
     // PEQ.  Card is gone in GH, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
     // Wait later
-    let peq = utils.getPeq( authData, link.GHIssueId );
+    let peq = awsUtils.getPeq( authData, pd.CEProjectId, link.GHIssueId );
     
     // Is the source a delete issue or transfer? 
     let issueExists = await gh.checkIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );
@@ -128,10 +130,10 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 	// no need to wait.
 	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
 	peq = await peq;
-	utils.removePEQ( authData, peq.PEQId );
+	awsUtils.removePEQ( authData, peq.PEQId );
 	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
 	let note   = accr ? "Disconnected issue" : "";
-	utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
 			       config.PACTVERB_CONF, action, [peq.PEQId], note,
 			       utils.getToday(), pd.reqBody );
     }
@@ -151,8 +153,8 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 	
 	// No need to wait
 	peq = await peq;
-	utils.updatePEQPSub( authData, peq.PEQId, psub );
-	utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+	awsUtils.updatePEQPSub( authData, peq.PEQId, psub );
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
 			       config.PACTVERB_CONF, config.PACTACT_RELO, [peq.PEQId, link.GHProjectId, link.GHColumnId], "",
 			       utils.getToday(), pd.reqBody );
 	

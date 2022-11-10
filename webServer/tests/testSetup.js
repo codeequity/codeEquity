@@ -1,7 +1,9 @@
 var assert = require( 'assert' );
+
 var config = require( '../config' );
 
-const utils   = require( '../utils/ceUtils' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -118,7 +120,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	subTest = tu.checkEq( foundPActs, 3 ,           subTest, "Matched PActs with PEQs" );
 	
 	// Check DYNAMO RepoStatus
-	let pop = await utils.checkPopulated( authData, td.CEProjectId );
+	let pop = await awsUtils.checkPopulated( authData, td.CEProjectId );
 	subTest = tu.checkEq( pop, "true", subTest, "Repo status wrt populated" );
 	
 	

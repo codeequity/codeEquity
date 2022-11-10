@@ -278,7 +278,7 @@ async function getEntry( tableName, query ) {
 	props = ["CEUserId", "CEUserName", "Email", "First", "Last"];
 	break;
     case "CEHostUser":
-	props = ["HostUserName"];
+	props = ["HostUserName", "HostPlatform"];
 	break;
     case "CEPEQs":
 	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "CEProjectId", "HostProjectId", "HostIssueId", "HostIssueTitle" ];
@@ -683,6 +683,7 @@ async function putPAct( newPAction ) {
 }
 
 
+// XXX used only by ceFlutter.  replace with getEntry?
 // XXX Slow
 // Get all for uid, app can figure out whether or not to sort by associated hostUser
 // NOTE: ignore locks on read

@@ -1,7 +1,9 @@
-var assert = require('assert');
-var config = require('../config');
+var assert = require( 'assert' );
+
+var config = require( '../config' );
 
 const utils   = require( '../utils/ceUtils' );
+const ghUtils = require( '../utils/gh/ghUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -37,7 +39,7 @@ async function remIssues( authData, ghLinks, pd ) {
 	let variables = {"id": nodeId };
 	query = JSON.stringify({ query, variables });
 
-	res = await utils.postGH( authData.pat, endpoint, query );
+	res = await ghUtils.postGH( authData.pat, endpoint, query );
 	let link = allLinks == -1 ? allLinks : allLinks.find(link => link.GHIssueId == issue.id.toString());
 	if( link != -1 && typeof link != 'undefined' && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) { await utils.sleep( 800 ); }
 	else                                                                                                      { await utils.sleep( 400 ); }

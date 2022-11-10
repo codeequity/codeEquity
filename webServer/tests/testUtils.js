@@ -1,7 +1,9 @@
 var assert = require( 'assert' );
+
 var config = require( '../config' );
 
 const utils   = require( '../utils/ceUtils' );
+const ghUtils = require( '../utils/gh/ghUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -412,13 +414,14 @@ async function setUnpopulated( authData, td ) {
 }
 
 
+/* not in use
 async function ingestPActs( authData, issueData ) {
     const peq   = await utils.getPeq( authData, issueData[0] );    
     const pacts = await utils.getPActs( authData, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
     const pactIds = pacts.map( pact => pact.PEQActionId );
     await utils.ingestPActs( authData, pactIds );
 }
-
+*/
 
 async function makeProject(authData, td, name, body ) {
 
@@ -664,7 +667,7 @@ async function remIssue( authData, td, issueId ) {
     let variables = {"id": issue.node_id };
     query         = JSON.stringify({ query, variables });
     
-    let res = await utils.postGH( authData.pat, endpoint, query );
+    let res = await ghUtils.postGH( authData.pat, endpoint, query );
 
     console.log( "remIssue query", query );
     console.log( "remIssue res", res.data );
@@ -2068,7 +2071,7 @@ exports.getFullLoc      = getFullLoc;
 
 exports.findCardForIssue = findCardForIssue;
 exports.setUnpopulated   = setUnpopulated;
-exports.ingestPActs      = ingestPActs;
+// exports.ingestPActs      = ingestPActs;      
 
 exports.checkEq         = checkEq;
 exports.checkGE         = checkGE;

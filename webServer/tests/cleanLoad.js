@@ -1,11 +1,12 @@
-var assert = require('assert');
+var assert = require( 'assert' );
 
 const awsAuth        = require( '../auth/aws/awsAuth' );
-const auth           = require( "../auth/gh/ghAuth");
-const config         = require('../config');
-const links          = require('../components/linkage.js');
+const auth           = require( '../auth/gh/ghAuth' );
+const config         = require( '../config' );
+const links          = require( '../components/linkage.js' );
 
-const utils = require( '../utils/ceUtils' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 const testData  = require( './testData' );
 const authDataC = require( '../auth/authData' );
@@ -177,7 +178,7 @@ async function loadPAct( authData, td ) {
 	    
 	    postData.Subject   = aput.PutRequest.Item.Subject.L.map( elt => elt.S )
 	    
-	    promises.push( utils.rewritePAct( authData, postData ) );
+	    promises.push( awsUtils.rewritePAct( authData, postData ) );
 	}
     }
     console.log( "Inserting ", pactCount.toString(), "pacts." );
@@ -239,7 +240,7 @@ async function loadLinkage( authData, td ) {
     let authData     = new authDataC.AuthData();
     authData.who     = "<TEST: Main> ";
     authData.ic      = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    authData.api     = utils.getAPIPath() + "/find";
+    authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();        
     authData.pat     = await auth.getPAT( td.GHOwner );

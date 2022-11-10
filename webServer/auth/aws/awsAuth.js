@@ -1,5 +1,6 @@
-var utils = require( '../../utils/ceUtils' );
-var assert = require('assert');
+var assert = require( 'assert' );
+
+var awsUtils = require( '../../utils/awsUtils' );
 
 // https://medium.com/@prasadjay/amazon-cognito-user-pools-in-nodejs-as-fast-as-possible-22d586c5c8ec
 
@@ -21,8 +22,8 @@ function asyncAuthenticateUser(cognitoUser, authenticationDetails) {
 }
 
 async function getCogIDToken( ) {
-    let poolData = utils.getCognito();   // XXX probably does not belong in utils
-    let authData = utils.getCEServer();  // XXX probably does not belong in utils
+    let poolData = awsUtils.getCognito();
+    let authData = awsUtils.getCEServer();
     
     let userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
     let userData = { Username: authData.Username, Pool: userPool };

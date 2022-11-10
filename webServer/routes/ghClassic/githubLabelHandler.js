@@ -1,14 +1,16 @@
-var assert = require('assert');
-var config  = require('../../config');
+const assert = require( 'assert' );
 
-const ghcData = require( './ghcData' );
-var issHan    = require('./githubIssueHandler');
+const config = require( '../../config' );
 
-const utils = require( '../../utils/ceUtils' );
+const utils    = require( '../../utils/ceUtils' );
+const awsUtils = require( '../../utils/awsUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
+
+const ghcData = require( './ghcData' );
+const issHan  = require('./githubIssueHandler');
 
 
 async function nameDrivesLabel( authData, pd, name, description ) {
@@ -138,7 +140,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		const descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
 		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, newName, pd.reqBody.label.color, descr );
 	    }
-	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId, 
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label edit attempt",
 				   utils.getToday(), pd.reqBody );
 	}
@@ -188,7 +190,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		}
 
 	    }
-	    utils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.GHFullName,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label delete attempt",
 				   utils.getToday(), pd.reqBody );
 	}

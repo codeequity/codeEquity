@@ -1,8 +1,10 @@
 const assert  = require('assert');
 
-const auth    = require( '../auth/gh/ghAuth' );
-const utils   = require( '../utils/ceUtils' );
 const config  = require( '../config');
+const auth    = require( '../auth/gh/ghAuth' );
+
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 const links   = require( '../components/linkage' );
 
@@ -62,7 +64,7 @@ async function getAuths( authData, pms, org, actor ) {
 	// Wait later
 	let reservedUsers = [config.CE_USER, config.TEST_OWNER, config.CROSS_TEST_OWNER, config.MULTI_TEST_OWNER];
 	// console.log( "Get PAT for", actor, "in", host, org );
-	githubPATs[host][org][actor] = reservedUsers.includes( actor ) ?  auth.getPAT( actor ) :  utils.getStoredPAT( authData, actor );
+	githubPATs[host][org][actor] = reservedUsers.includes( actor ) ?  auth.getPAT( actor ) :  awsUtils.getStoredPAT( authData, host, actor );
     }
     githubPATs[host][org][actor] = await githubPATs[host][org][actor];
     // console.log( "PATTY", githubPATs[host][org][actor] );

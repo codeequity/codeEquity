@@ -1,10 +1,11 @@
-var assert = require('assert');
+var assert = require( 'assert' );
 
 const awsAuth = require( '../auth/aws/awsAuth' );
-const auth = require( "../auth/gh/ghAuth");
-const config  = require('../config');
+const auth    = require( '../auth/gh/ghAuth' );
+const config  = require( '../config' );
 
-const utils = require( '../utils/ceUtils' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 const testData  = require( './testData' );
 const authDataC = require( '../auth/authData' );
@@ -36,7 +37,7 @@ async function runTests() {
     let authData     = new authDataC.AuthData();
     authData.who     = "<TEST: Main> ";
     authData.ic      = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    authData.api     = utils.getAPIPath() + "/find";
+    authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();        
     authData.pat     = await auth.getPAT( td.GHOwner );

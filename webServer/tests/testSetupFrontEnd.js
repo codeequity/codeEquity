@@ -1,12 +1,14 @@
-var assert    = require( "assert" );
-const awsAuth = require( "../auth/aws/awsAuth" );
-const ghAuth  = require( "../auth/gh/ghAuth" );
-var config    = require( "../config" );
-const utils   = require( '../utils/ceUtils' );
+var assert    = require( 'assert' );
+const awsAuth = require( '../auth/aws/awsAuth' );
+const ghAuth  = require( '../auth/gh/ghAuth' );
+var config    = require( '../config' );
 
-var links     = require('../components/linkage.js');
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
-const tu             = require('./testUtils');
+var links     = require( '../components/linkage.js' );
+
+const tu             = require( './testUtils' );
 const testSaveDynamo = require( './testSaveDynamo' );
 const testDelete     = require( './testDelete' );
 
@@ -32,7 +34,7 @@ async function runTests() {
     let authData     = new authDataC.AuthData();
     authData.who     = "<TEST: Main> ";
     authData.ic      = await ghAuth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
-    authData.api     = utils.getAPIPath() + "/find";
+    authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();                
     authData.pat     = await ghAuth.getPAT( td.GHOwner );
