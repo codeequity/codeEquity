@@ -1,7 +1,8 @@
-var assert = require('assert');
-var config  = require('../config');
+const assert = require( 'assert' );
+const config = require( '../config' );
 
-const utils   = require( '../utils/ceUtils' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -43,7 +44,7 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus )
     subTest = tu.checkEq( meltLink.length, 0, subTest, "invalid linkage" );
     
     // CHECK dynamo Peq
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     subTest = tu.checkEq( meltPeqs.length, 0, subTest, "invalid peq" );
     
@@ -97,7 +98,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, issueData, testStatus
 	subTest = tu.checkEq( meltLink.GHProjectId, td.unclaimPID,          subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
-	let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+	let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
 	let meltPeq = ( peqs.filter((peq) => peq.GHIssueId == issueData[0] ))[0];
 	subTest = tu.checkEq( typeof meltPeq !== 'undefined', true,        subTest, "no peq yet" );
 	if( typeof meltPeq !== 'undefined' ) {
@@ -114,7 +115,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, issueData, testStatus
 	    subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 	    
 	    // CHECK dynamo Pact
-	    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	    let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
 	    subTest = tu.checkEq( typeof pacts !== 'undefined', true,             subTest, "no pact yet" );
 	    if( typeof pacts !== 'undefined' ) {
 		let meltPact = (pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId ))[0];
@@ -161,7 +162,7 @@ async function checkMove( authData, ghLinks, td, issueData, colId, meltCard, tes
     
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs =  await awsUtils.getPeqs( authData,  { "CEProjectId": td.CEProjectId });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == meltIssue.id );
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -180,7 +181,7 @@ async function checkMove( authData, ghLinks, td, issueData, colId, meltCard, tes
 	
 	// CHECK Dynamo PAct
 	// Should show relevant change 
-	let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
 	let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
 	subTest = tu.checkGE( meltPacts.length, 4,                     subTest, "PAct count" );
 	

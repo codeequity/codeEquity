@@ -164,7 +164,7 @@ async function testPopulate( authData, td ) {
 
     
     // Check DYNAMO PEQ
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     for( const name of allNames ) {
 	let fpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( name ));
 	testStatus = tu.checkEq( fpeqs.length, 0,   testStatus, "Bad peq created" );
@@ -286,7 +286,7 @@ async function testResolve( authData, ghLinks, td ) {
 
 
     // Check DYNAMO PEQ
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
 
     for( const name of [ ISS_NEWBIE, ISS_SINREC, ISS_DUBREC, ISS_SINFLAT, ISS_DUBMIX ] ) {
 	let fpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( name ));
@@ -328,7 +328,7 @@ async function testResolve( authData, ghLinks, td ) {
 
 
     // Check DYNAMO PAct
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     let masPeq = tpeqs.filter((peq) => peq.GHProjectId == td.masterPID.toString() );
     let dsPeq  = tpeqs.filter((peq) => peq.GHProjectId == td.dataSecPID.toString() );
     testStatus = tu.checkGE( pacts.length, 3,         testStatus, "Number of PActs" );

@@ -4,7 +4,6 @@ const awsAuth = require( '../auth/aws/awsAuth' );
 const auth    = require( '../auth/gh/ghAuth' );
 const config  = require( '../config' );
 
-const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
 
 const testData  = require( './testData' );
@@ -12,15 +11,15 @@ const authDataC = require( '../auth/authData' );
 
 
 async function clearIngested( authData, td ) {
-    let success = await utils.clearIngested( authData, { "GHRepo": td.GHFullName });
+    let success = await awsUtils.clearIngested( authData, { "CEProjectId": td.CEProjectId });
 }
 
 async function clearSummary( authData, td ) {
-    const sums = await utils.getSummaries( authData, { "GHRepo": td.GHFullName });
+    const sums = await awsUtils.getSummaries( authData, { "CEProjectId": td.CEProjectId });
     if( sums != -1 ) {
 	const sumIds = sums.map( summary => [summary.PEQSummaryId] );    
 	console.log( "Clearing summaries for", sumIds );
-	await utils.cleanDynamo( authData, "CEPEQSummary", sumIds );
+	await awsUtils.cleanDynamo( authData, "CEPEQSummary", sumIds );
     }
 }
 

@@ -1,6 +1,6 @@
-var assert = require('assert');
+const assert = require( 'assert' );
 
-const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 // A simple fast lookup map to get ceProjectIds from job data
 class CEProjects {
@@ -24,7 +24,7 @@ class CEProjects {
     }
     
     async init( authData ) {
-	this.cep = await utils.getProjectStatus( authData, -1 );   // get all ce projects
+	this.cep = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
 	for( const entry of this.cep ) {
 	    this.add(entry );
 	}

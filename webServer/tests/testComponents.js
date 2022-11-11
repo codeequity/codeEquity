@@ -1,7 +1,8 @@
-var assert = require('assert');
-var config  = require('../config');
+const assert = require( 'assert' );
+const config = require( '../config' );
 
-const utils   = require( '../utils/ceUtils' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -35,12 +36,12 @@ async function checkDubLabel( authData, ghLinks, td, loc, issueData, card, testS
 	subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
 	
 	// CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
-	let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+	let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
 	peqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
 	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
 	
-	let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
 	pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
 	subTest = tu.checkEq( pacts.length, 2,                         subTest, "PAct count" );     
     }

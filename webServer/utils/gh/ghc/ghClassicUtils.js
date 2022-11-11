@@ -1207,7 +1207,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     let origPop = awsUtils.checkPopulated( authData, pd.CEProjectId );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    const proj = await utils.getProjectStatus( authData, pd.CEProjectId );
+    const proj = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
     let linkage = await ghLinks.initOneProject( authData, proj );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)

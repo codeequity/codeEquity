@@ -87,7 +87,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
 	// peq = await peq;
-	const newPeqId = await utils.rebuildPeq( authData, link, peq );
+	const newPeqId = await awsUtils.rebuildPEQ( authData, link, peq );
 	
 	awsUtils.removePEQ( authData, peq.PEQId );	
 	awsUtils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.CEProjectId,
@@ -449,7 +449,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		/* XXX REVISIT
 		// Check for xfer to another ceProject (i.e. ceServer-enabled repo).
-		const status = await utils.getProjectStatus( authData, pd.CEProjectId );
+		const status = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
 		const ceProj = status != -1 && status.Populated == "true" ? true : false;
 
 		if( ceProj ) {

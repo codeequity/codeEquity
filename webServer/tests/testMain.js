@@ -89,7 +89,7 @@ async function runTests() {
     // StayPut project to keep classics tab in play in GH, for now.
     // const aPID = await tu.makeProject( authData, td, "ceServer stayPut XYZZYXXK837598", "" );
 
-    const pacts    = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.CEProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
     const mrp = pacts != -1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
     if( utils.getToday() != mrp.EntryDate ) {

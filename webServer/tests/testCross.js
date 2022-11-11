@@ -1,7 +1,8 @@
-var assert = require('assert');
-var config  = require('../config');
+const assert = require( 'assert' );
+const config = require( '../config' );
 
-const utils   = require( '../utils/ceUtils' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -73,7 +74,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, ghLinks, td, tdX
     
     testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1, assign: 2});
     
-    let allPeqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let allPeqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let peq     = allPeqs.find(p => p.GHIssueId == issDat[0].toString() );
     let sub     = [peq.PEQId, td.githubOpsPID.toString(), stripeLoc.colId.toString() ];
     testStatus  = await tu.checkPact( authData, ghLinks, td, issDat[2], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
@@ -90,7 +91,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, ghLinks, td, tdX
     
     testStatus = await tu.checkSituatedIssue( authDataX, ghLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1, assign: 2});
     
-    allPeqs  = await utils.getPeqs( authDataX, { "GHRepo": tdX.GHFullName });
+    allPeqs  = await awsUtils.getPeqs( authDataX, { "CEProjectId": tdX.CEProjectId });
     let peqX = allPeqs.find(p => p.GHIssueId == issDatX[0].toString() );
     sub      = [peqX.PEQId, crossPid.toString(), crossCid.toString() ];
     testStatus  = await tu.checkPact( authDataX, ghLinks, tdX, issDatX[2], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );

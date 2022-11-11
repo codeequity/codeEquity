@@ -63,8 +63,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    // Allow, if no active peqs for current label
-	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: lVal, PeqType: tVal };
-	    const peqs  = await utils.getPeqs( authData, query );
+	    const query = { CEProjectId: pd.CEProjectId, Active: "true", Amount: lVal, PeqType: tVal };
+	    const peqs  = await awsUtils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs to handle with this edited label" );
 		// Just make sure description is consistent with name, if it is a peq label.  Must wait for bool, else always true.  Could break this up, buuuutttt
@@ -158,8 +158,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let   tVal = ghSafe.getAllocated( [ desc ] );
 	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
-	    const query = { GHRepo: pd.GHFullName, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
-	    const peqs  = await utils.getPeqs( authData, query );
+	    const query = { CEProjectId: pd.CEProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
+	    const peqs  = await awsUtils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs with this deleted label" );
 		return;
