@@ -58,7 +58,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     await tu.refresh( authData, td, config.MAIN_PROJ );
 
     // Check DYNAMO PEQ table
-    let ghPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.githubOpsTitle });
+    let ghPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
     subTest = tu.checkEq( ghPeqs.length, 1,                           subTest, "Number of githubOps peq objects" );
     subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
@@ -66,7 +66,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     subTest = tu.checkAr( ghPeqs[0].GHProjectSub, [td.softContTitle], subTest, "Project sub" );
     subTest = tu.checkEq( ghPeqs[0].GHProjectId, td.masterPID,        subTest, "Project ID" );  
     
-    let dsPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.dataSecTitle });
+    let dsPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": td.dataSecTitle });
     subTest = tu.checkEq( dsPeqs.length, 1,                           subTest, "Number of datasec peq objects" );
     subTest = tu.checkEq( dsPeqs[0] !== 'undefined', true,            subTest, "Peq not in place yet" );
     if( dsPeqs[0] !== 'undefined' ) {
@@ -74,7 +74,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	subTest = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], subTest, "Project sub" );
     }
 	
-    let unPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": td.unallocTitle });
+    let unPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": td.unallocTitle });
     subTest = tu.checkEq( unPeqs.length, 2,                           subTest, "Number of unalloc peq objects" );
     subTest = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
     subTest = tu.checkEq( typeof unPeqs[0] !== 'undefined', true,             subTest, "have unpeq 0" );
@@ -87,7 +87,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	
 	// Check DYNAMO PAct 
-	let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
 	subTest = tu.checkGE( pacts.length, 4,         subTest, "Number of PActs" );
 	let foundPActs = 0;
 	for( pact of pacts ) {

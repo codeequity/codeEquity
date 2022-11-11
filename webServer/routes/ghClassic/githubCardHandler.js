@@ -2,8 +2,9 @@ var assert  = require( 'assert' );
 
 var config  = require( '../../config' );
 
-const utils    = require( '../../utils/ceUtils' );
-const awsUtils = require( '../../utils/awsUtils' );
+const utils     = require( '../../utils/ceUtils' );
+const awsUtils  = require( '../../utils/awsUtils' );
+const ghcDUtils = require( '../../utils/gh/ghc/ghcDataUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -195,7 +196,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // Wait here, else unclaimed link can force a resolve-split
 	    await ghSafe.cleanUnclaimed( authData, ghLinks, pd );
 	    // Don't wait.
-	    utils.processNewPEQ( authData, ghLinks, pd, issue[1], -1, "relocate" ); 
+	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, issue[1], -1, "relocate" ); 
 	}
 	else {
 	    // In projects, creating a card that MAY have a human PEQ label in content...  PNP will create issue and label it, rebuild card, etc.
@@ -203,7 +204,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let cardContent = pd.reqBody['project_card']['note'].split('\n');
 	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
 	    
-	    utils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
+	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
 	}
 	break;
     case 'converted' :
@@ -309,7 +310,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
 
 	    // Don't wait
-	    utils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
+	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
 	}
 	break;
     default:

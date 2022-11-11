@@ -5,6 +5,7 @@ var cardHandler = require( './githubCardHandler' );
 
 const utils    = require( '../../utils/ceUtils' );
 const awsUtils = require( '../../utils/awsUtils' );
+const ghcDUtils = require( '../../utils/gh/ghc/ghcDataUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -87,7 +88,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
 	// peq = await peq;
-	const newPeqId = await utils.rebuildPeq( authData, link, peq );
+	const newPeqId = await awsUtils.rebuildPEQ( authData, link, peq );
 	
 	awsUtils.removePEQ( authData, peq.PEQId );	
 	awsUtils.recordPEQAction( authData, config.EMPTY, pd.GHCreator, pd.CEProjectId,
@@ -160,7 +161,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     content.push( pd.GHIssueTitle );
     content.push( label.description );
     // Don't wait, no dependence
-    let retVal = utils.processNewPEQ( authData, ghLinks, pd, content, link );
+    let retVal = ghcDUtils.processNewPEQ( authData, ghLinks, pd, content, link );
     return (retVal != 'early' && retVal != 'removeLabel')
 }
 
@@ -194,7 +195,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	{
 	    // XXXX XXXXX This will go away with ceFlutter
 	    if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
-		await gh.populateCELinkage( authData, ghLinks, pd );
+		await ghcDUtils.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
 
@@ -449,7 +450,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		/* XXX REVISIT
 		// Check for xfer to another ceProject (i.e. ceServer-enabled repo).
-		const status = await utils.getProjectStatus( authData, pd.CEProjectId );
+		const status = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
 		const ceProj = status != -1 && status.Populated == "true" ? true : false;
 
 		if( ceProj ) {

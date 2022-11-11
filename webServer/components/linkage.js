@@ -1,14 +1,16 @@
-var assert = require('assert');
+const assert = require( 'assert' );
 
-const locData  = require( "./locData" );
-const config   = require('../config');
+const config   = require( '../config' );
 const ceRouter = require( '../routes/ceRouter' );
 
 const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
 
 // XXX this should not be here
-const ghClassic = require( "../utils/gh/ghc/ghClassicUtils" );
+const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
+
+const locData  = require( './locData' );
 
 
 // Linkage table contains all identifying info related to situated issues or better.
@@ -45,7 +47,7 @@ class Linkage {
 	console.log( ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
 	// Wait later
-	let peqs = utils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
+	let peqs = awsUtils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
 
 	let baseLinks = [];
 	let blPromise = [];
@@ -84,7 +86,7 @@ class Linkage {
 	    }
 	}
 
-	utils.refreshLinkageSummary( authData, entry.CEProjectId, locData );  
+	awsUtils.refreshLinkageSummary( authData, entry.CEProjectId, locData );  
 
 	
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
@@ -139,7 +141,7 @@ class Linkage {
 	console.log( "Init linkages" );
 	
 	// XXX aws fix name here.  Get ceProj status.
-	let ceProjects = await utils.getProjectStatus( authData, -1 );   // get all ce projects
+	let ceProjects = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
 	if( ceProjects == -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
@@ -235,7 +237,7 @@ class Linkage {
 
 	// Must wait.. aws dynamo ops handled by multiple threads.. order of processing is not dependable in rapid-fire situations.
 	// No good alternative - refresh could be such that earlier is processed later in dynamo
-	if( pushAWS ) { await utils.updateLinkageSummary( authData, ceProjId, loc ); }
+	if( pushAWS ) { await awsUtils.updateLinkageSummary( authData, ceProjId, loc ); }
 	
 	return loc;
     }
@@ -494,7 +496,7 @@ class Linkage {
 		    }
 		}
 	    }
-	    utils.refreshLinkageSummary( authData, cpid, locs, false );
+	    awsUtils.refreshLinkageSummary( authData, cpid, locs, false );
 	}
 	
     	// this.showLocs();

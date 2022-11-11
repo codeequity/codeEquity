@@ -2,8 +2,9 @@ var assert = require( 'assert' );
 
 var config = require( '../config' );
 
-const utils   = require( '../utils/ceUtils' );
-const ghUtils = require( '../utils/gh/ghUtils' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
+const ghUtils  = require( '../utils/gh/ghUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -206,7 +207,7 @@ async function checkLoc( authData, td, issueData, loc ) {
 
 async function hasRaw( authData, pactId ) {
     let retVal = false;
-    let praw = await utils.getRaw( authData, pactId );
+    let praw = await awsUtils.getRaw( authData, pactId );
     if( praw != -1 ) { retVal = true; }
     return retVal;
 }
@@ -407,17 +408,17 @@ function findCardForIssue( cards, issueNum ) {
 }
 
 async function setUnpopulated( authData, td ) {
-    let status = await utils.getProjectStatus( authData, td.CEProjectId );
+    let status = await awsUtils.getProjectStatus( authData, td.CEProjectId );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
-    await utils.cleanDynamo( authData, "CERepoStatus", statusIds );
+    await awsUtils.cleanDynamo( authData, "CERepoStatus", statusIds );
 }
 
 
 /* not in use
 async function ingestPActs( authData, issueData ) {
-    const peq   = await utils.getPeq( authData, issueData[0] );    
-    const pacts = await utils.getPActs( authData, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
+    const peq   = await awsUtils.getPeq( authData, issueData[0] );    
+    const pacts = await awsUtils.getPActs( authData, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
     const pactIds = pacts.map( pact => pact.PEQActionId );
     await utils.ingestPActs( authData, pactIds );
 }
@@ -821,7 +822,7 @@ async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card,
     subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
 
     // CHECK dynamo Peq.  inactive, if it exists
-    let peqs      = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs      = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     subTest = checkLE( issuePeqs.length, 1,                      subTest, "Peq count" );
     if( issuePeqs.length > 0 ) {
@@ -862,7 +863,7 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
 	// CHECK dynamo Peq.  inactive
 	// Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
 	// Unclaimed may not have happened if peq'd a carded issue
-	let peqs      = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+	let peqs      = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
 	let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
 	subTest = checkEq( issuePeqs.length, 1,                      subTest, "Peq count" );
 	for( const peq of issuePeqs ) {
@@ -874,7 +875,7 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
 	
 	
 	// CHECK dynamo Pact
-	let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
 	let issuePacts = pacts.filter((pact) => pact.Subject[0] == peqId );
 	
 	// Must have been a PEQ before. Depeq'd with unlabel, or delete.
@@ -937,7 +938,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
 	subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
-	let allPeqs  =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+	let allPeqs  =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
 	let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
 	subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
@@ -958,7 +959,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
 	}
 	
 	// CHECK dynamo Pact
-	let allPacts  = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+	let allPacts  = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
 	let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
 	subTest = checkGE( pacts.length, 1,                         subTest, "PAct count" );  
 	
@@ -993,8 +994,8 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let cardsP = getCards( authData, loc.colId );
     let cardsU = getCards( authData, td.unclaimCID );
     let linksP = getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
-    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
+    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     
     // CHECK github issues
     let issue  = await findIssue( authData, td, issueData[0] );
@@ -1137,8 +1138,8 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     // Start promises
     let cardsU = getCards( authData, td.unclaimCID );
     let linksP = getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
-    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
+    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     
     // CHECK github issues
     let issue  = await findIssue( authData, td, issueData[0] );
@@ -1233,8 +1234,8 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, car
     console.log( "Check Closed issue", loc.projName, loc.colName );
 
     // Start promises
-    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName });
+    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
+    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     
     const allPeqs =  await peqsP;
     const peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
@@ -1270,8 +1271,8 @@ async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, car
     console.log( "Check Opened issue", loc.projName, loc.colName );
 
     // Start promises
-    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName });
+    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
+    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     
     const allPeqs = await peqsP;
     const peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
@@ -1301,8 +1302,8 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     let subTest = [ 0, 0, []];
     
     // Start promises
-    let peqsP  = utils.getPeqs( authData, { "GHRepo": td.GHFullName });
-    let pactsP = utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
+    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     
     // CHECK dynamo Peq
     let allPeqs =  await peqsP;
@@ -1368,13 +1369,13 @@ async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, ca
     let subTest = [ 0, 0, []];
 
     // CHECK dynamo Peq
-    let allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
 
     // CHECK dynamo Pact  smallest number is add, move.  check move (confirm accr)
-    let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let allPacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     subTest = checkGE( pacts.length, 2,                         subTest, "PAct count" );
 
@@ -1422,13 +1423,13 @@ async function checkUnclaimedAccr( authData, ghLinks, td, loc, issueDataOld, iss
     let subTest = [ 0, 0, []];
     
     // CHECK dynamo Peq
-    let allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueDataNew[0].toString() );
     subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
 
     // CHECK dynamo Pact 
-    let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let allPacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     subTest = checkGE( pacts.length, 1,                         subTest, "PAct count" );
 
@@ -1484,7 +1485,7 @@ async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, test
 
     // CHECK dynamo Peq.  inactive, if it exists
     // Risky test - will fail if unrelated peqs with same title exist
-    let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+    let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": title });
     subTest = checkEq( peqs, -1,                                    subTest, "Newbie peq exists" );
 
     // CHECK dynamo Pact.. nothing to do here for newborn
@@ -1515,7 +1516,7 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
     subTest = checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
-    let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueId": issueData[0] });
+    let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueId": issueData[0] });
     if( peqs != -1 ) {
 	let peq = peqs.find(peq => peq.GHIssueId == issueData[0].toString() );
 	subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
@@ -1682,7 +1683,7 @@ async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, test
     subTest = checkEq( noCard, true,                  subTest, "Split card should not exist" );
 
     // Check peq
-    let allPeqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let peq = allPeqs.find( peq => peq.GHIssueTitle.includes( splitName ));
     subTest = checkEq( typeof peq === 'undefined', true,   subTest, "Peq should not exist" );
 
@@ -1727,7 +1728,7 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     if( !skipAllPeq ) {
 	// Risky test - will fail if unrelated peqs with same title exist
 	// No card may have inactive peq
-	let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+	let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": title });
 	if( checkPeq ) {
 	    let peq = peqs[0];
 	    subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
@@ -1752,13 +1753,13 @@ async function checkPact( authData, ghLinks, td, title, verb, action, note, test
 
     let pact = {};
     let pacts = {};
-    let allPacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let allPacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
 
     // Either check last related to PEQ, or just find latest.
 
     if( title != -1 ) {
 	// modestly risky test - will fail if unrelated peqs with same title exist.  Do not use with remIssue/rebuildIssue.  No card may have inactive peq
-	let peqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName, "GHIssueTitle": title });
+	let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": title });
 	pacts    = allPacts.filter((pact) => pact.Subject[0] == peqs[0].PEQId );
     }
     else { pacts = allPacts; }
@@ -1838,7 +1839,7 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
     subTest = checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -1857,7 +1858,7 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     
     // CHECK Dynamo PAct
     // Should show relevant change action.. last three are related to current entry - may be more for unclaimed
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     subTest = checkGE( meltPacts.length, 3,                            subTest, "PAct count" );
     
@@ -1886,7 +1887,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     subTest = checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -1905,7 +1906,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     
     // CHECK Dynamo PAct
     // Should show relevant change action
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     subTest = checkGE( meltPacts.length, 5,                            subTest, "PAct count" );
     
@@ -1963,14 +1964,14 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
     subTest = checkEq( meltIssue.assignees.length, 2,             subTest, "Issue assignee count" );
 
     // CHECK Dynamo PEQ  .. no change already verified
-    let peqs =  await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
     subTest = checkEq( meltPeqs.length, 1, subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     
     // CHECK Dynamo PAct
     // Check new relevant actions
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     let meltPacts = pacts.filter((pact) => pact.Subject[0] == meltPeq.PEQId );
     subTest = checkGE( meltPacts.length, 8, subTest, "PAct count" );
     

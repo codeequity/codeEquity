@@ -26,15 +26,15 @@ function getData( fname ) {
 }
 
 async function clearIngested( authData, td ) {
-    let success = await utils.clearIngested( authData, { "GHRepo": td.GHFullName });
+    let success = await awsUtils.clearIngested( authData, { "CEProjectId": td.CEProjectId });
 }
 
 async function clearSummary( authData, td ) {
-    const sums = await utils.getSummaries( authData, { "GHRepo": td.GHFullName });
+    const sums = await awsUtils.getSummaries( authData, { "CEProjectId": td.CEProjectId });
     if( sums != -1 ) {
 	const sumIds = sums.map( summary => [summary.PEQSummaryId] );    
 	console.log( "Clearing summaries for", sumIds );
-	await utils.cleanDynamo( authData, "CEPEQSummary", sumIds );
+	await awsUtils.cleanDynamo( authData, "CEPEQSummary", sumIds );
     }
 }
 
@@ -43,10 +43,10 @@ async function clearSummary( authData, td ) {
 async function loadPEQ( authData, td ) {
 
     // First, remove.
-    const oldPeqs = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    const oldPeqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId } );
     if( oldPeqs != -1 ) {
 	const opids = oldPeqs.map( peq => [peq.PEQId] );
-	await utils.cleanDynamo( authData, "CEPEQs", opids );				   
+	await awsUtils.cleanDynamo( authData, "CEPEQs", opids );				   
     }
     
     let fname = baselineLoc + "dynamoCEPEQs_latest.json";
@@ -69,20 +69,20 @@ async function loadPEQ( authData, td ) {
 	    postData.PEQId        = id;
 	    postData.GHRepo       = repo;
 	    
-	    postData.PeqType      = aput.PutRequest.Item.PeqType.S;
-	    postData.GHProjectId  = aput.PutRequest.Item.GHProjectId.S;
-	    postData.GHIssueId    = aput.PutRequest.Item.GHIssueId.S;
-	    postData.GHIssueTitle = aput.PutRequest.Item.GHIssueTitle.S;
-	    postData.Active       = aput.PutRequest.Item.Active.S;
-	    postData.AccrualDate  = aput.PutRequest.Item.AccrualDate.S;
-	    postData.CEGrantorId  = aput.PutRequest.Item.CEGrantorId.S;
+	    postData.PeqType        = aput.PutRequest.Item.PeqType.S;
+	    postData.HostProjectId  = aput.PutRequest.Item.GHProjectId.S;
+	    postData.HostIssueId    = aput.PutRequest.Item.GHIssueId.S;
+	    postData.HostIssueTitle = aput.PutRequest.Item.GHIssueTitle.S;
+	    postData.Active         = aput.PutRequest.Item.Active.S;
+	    postData.AccrualDate    = aput.PutRequest.Item.AccrualDate.S;
+	    postData.CEGrantorId    = aput.PutRequest.Item.CEGrantorId.S;
 	    
 	    postData.Amount       = parseInt( aput.PutRequest.Item.Amount.N );
 	    postData.VestedPerc   = parseInt( aput.PutRequest.Item.VestedPerc.N );            // XXX ??? parseFloat?
 
-	    postData.GHHolderId   = aput.PutRequest.Item.GHHolderId.L.map( elt => elt.S )
-	    postData.CEHolderId   = aput.PutRequest.Item.CEHolderId.L.map( elt => elt.S )
-	    postData.GHProjectSub = aput.PutRequest.Item.GHProjectSub.L.map( elt => elt.S )
+	    postData.HostHolderId   = aput.PutRequest.Item.GHHolderId.L.map( elt => elt.S )
+	    postData.CEHolderId     = aput.PutRequest.Item.CEHolderId.L.map( elt => elt.S )
+	    postData.HostProjectSub = aput.PutRequest.Item.GHProjectSub.L.map( elt => elt.S )
 
 	    postData.silent       = "true";
 	    postData.skipLock     = "true";
@@ -90,7 +90,7 @@ async function loadPEQ( authData, td ) {
 	    // managed by lambda handler, alone.
 	    // postData.LockId       = aput.PutRequest.Item.LockId.S;   
 	    
-	    promises.push( utils.recordPEQ( authData, postData ) );
+	    promises.push( awsUtils.recordPEQ( authData, postData ) );
 	}
     }
     console.log( "Inserting ", peqCount.toString(), "peqs." );
@@ -101,15 +101,15 @@ async function loadPEQ( authData, td ) {
 async function loadPAct( authData, td ) {
 
     // First, remove.
-    const oldPacts = await utils.getPActs( authData, { "GHRepo": td.GHFullName });
-    const oldPraws = await utils.getPRaws( authData, { "GHRepo": td.GHFullName });
+    const oldPacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
+    const oldPraws = await awsUtils.getPRaws( authData, { "CEProjectId": td.CEProjectId });
     if( oldPacts != -1 ) {
 	const opids = oldPacts.map( pact => [pact.PEQActionId] );
-	await utils.cleanDynamo( authData, "CEPEQActions", opids );				   
+	await awsUtils.cleanDynamo( authData, "CEPEQActions", opids );				   
     }
     if( oldPraws != -1 ) {
 	const opids = oldPraws.map( praw => [praw.PEQRawId] );
-	await utils.cleanDynamo( authData, "CEPEQRaw", opids );				   
+	await awsUtils.cleanDynamo( authData, "CEPEQRaw", opids );				   
     }
     
     // NOTE!  PActRaw ids need to match PAct ids
@@ -219,7 +219,7 @@ async function loadLinkage( authData, td ) {
 	    }
 
 	    var locsL = ghLinks.getLocs( authData, { "ceProjId": nLoc.CEProjectId, "repo": repo } );
-	    await utils.refreshLinkageSummary( authData, repo, locsL, false );
+	    await awsUtils.refreshLinkageSummary( authData, repo, locsL, false );
 	    break;
 	}
     }

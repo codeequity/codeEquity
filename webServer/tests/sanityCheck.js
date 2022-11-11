@@ -4,7 +4,6 @@ const awsAuth = require( '../auth/aws/awsAuth' );
 const auth    = require( '../auth/gh/ghAuth' );
 const config  = require( '../config' );
 
-const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
@@ -42,12 +41,12 @@ async function getGHTestLocs( authData, td ) {
 }
 
 async function getAWSTestPeqs( authData, td ) {
-    let res = await utils.getPeqs( authData, { "GHRepo": td.GHFullName });
+    let res = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     return res;
 }
 
 async function getAWSTestLocs( authData, td ) {
-    let res = await utils.getStoredLocs( authData, td.GHFullName );
+    let res = await awsUtils.getStoredLocs( authData, td.CEProjectId );
     res = typeof res === 'undefined' ? {Locations:[]} : res;
     return res.Locations;
 }
@@ -365,7 +364,7 @@ async function preIngestCheck( authData, td, ghLabels, ghIssues, awsPeqs, awsLoc
 
     // POSSIBLE REPAIRS
     // All share the possibility of aws missing an update.
-    let pacts = await utils.getPActs( authData, {"GHRepo": td.GHFullName} );
+    let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     
     await repairPeqNoIss( authData, td, pacts, peqNoIss );
     repairPeqNoLab( peqNoLab );

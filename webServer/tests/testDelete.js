@@ -2,8 +2,9 @@ var assert = require( 'assert' );
 
 var config = require( '../config' );
 
-const utils   = require( '../utils/ceUtils' );
-const ghUtils = require( '../utils/gh/ghUtils' );
+const utils    = require( '../utils/ceUtils' );
+const awsUtils = require( '../utils/awsUtils' );
+const ghUtils  = require( '../utils/gh/ghUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -66,8 +67,8 @@ async function clearRepo( authData, ghLinks, pd ) {
     await utils.sleep( 1000 );
 
     // Start here, else lots left undeleted after issue munging. 
-    let peqsP  = utils.getPeqs( authData, { "GHRepo": pd.GHFullName });
-    let pactsP = utils.getPActs( authData, {"GHRepo": pd.GHFullName} );
+    let peqsP  = awsUtils.getPeqs( authData,  { "CEProjectId": td.CEProjectId });
+    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
 
     // Get all existing projects in repo for deletion
     console.log( "Removing all Projects. " );
@@ -96,15 +97,15 @@ async function clearRepo( authData, ghLinks, pd ) {
     let peqs =  await peqsP;
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
     console.log( "Dynamo PEQ ids", pd.GHFullName, peqIds );
-    let peqP = utils.cleanDynamo( authData, "CEPEQs", peqIds );
+    let peqP = awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
 
     // PActions raw and otherwise
     // Note: bot, ceServer and GHOwner may have pacts.  Just clean out all.
     let pacts = await pactsP;
     let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
     console.log( "Dynamo bot PActIds", pd.GHFullName, pactIds );
-    let pactP  = utils.cleanDynamo( authData, "CEPEQActions", pactIds );
-    let pactRP = utils.cleanDynamo( authData, "CEPEQRaw", pactIds );
+    let pactP  = awsUtils.cleanDynamo( authData, "CEPEQActions", pactIds );
+    let pactRP = awsUtils.cleanDynamo( authData, "CEPEQRaw", pactIds );
     
     // Get all peq labels in repo for deletion... dependent on peq removal first.
     console.log( "Removing all PEQ Labels.", pd.GHFullName );
@@ -146,10 +147,10 @@ async function clearRepo( authData, ghLinks, pd ) {
     pactRP = await pactRP;
     
     // RepoStatus
-    let status = await utils.getProjectStatus( authData, pd.CEProjectId );
+    let status = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
-    await utils.cleanDynamo( authData, "CERepoStatus", statusIds );
+    await awsUtils.cleanDynamo( authData, "CERepoStatus", statusIds );
 }
 
 
