@@ -248,7 +248,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     // If relocate, must have existing peq
     // Make sure aws has dependent PEQ before proceeding.
     if( specials == "relocate" && newPEQ == -1 ) {
-	newPEQ = await settleWithVal( "recordPeqData", getPeq, authData, pd.CEProjectId, pd.HostIssueId, false );
+	newPEQ = await utils.settleWithVal( "recordPeqData", getPeq, authData, pd.CEProjectId, pd.HostIssueId, false );
 	newPEQId = newPEQ.PEQId; 
     }
     

@@ -2,8 +2,9 @@ var assert = require( 'assert' );
 
 const config = require( '../../../config' );
 
-const utils   = require( '../../ceUtils' );
-const ghUtils = require( '../utils/gh/ghUtils' );
+const utils     = require( '../../ceUtils' );
+const ghUtils   = require( '../ghUtils' );
+const ghcDUtils = require( './ghcDataUtils' );
 
 /*
 https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects#repository
@@ -207,10 +208,6 @@ var githubUtils = {
 
     transferIssueGQL: function( authData, issueId, toRepoId ) {
 	return transferIssueGQL( authData, issueId, toRepoId );
-    },
-
-    populateCELinkage: function( authData, ghLinks, pd ) {
-	return populateCELinkage( authData, ghLinks, pd );
     },
 
     populateRequest: function( labels ) {
@@ -1187,68 +1184,6 @@ async function getRepoIdGQL( PAT, owner, repo ) {
 }
 
 
-// Add linkage data for all carded issues in a project.
-// 
-// As soon as 1 situated (or carded) issue is labeled, all this work must be done to find it if not already in dynamo.
-// May as well just do this once.
-//
-// This occurs once only per repo, preferably when CE usage starts.
-// Afterwards, if a newborn issue adds a card, githubCardHandler will pick it up.
-// Afterwards, if a newborn issue adds peqlabel, create card, githubCardHandler will pick it up.
-// Afterwards, if a newborn card converts to issue, pick it up in githubIssueHandler
-//
-// Would be soooo much better if Octokit/Github had reverse link from issue to card.
-// newborn issues not populated.  newborn cards not populated.  Just linkages.
-// Note. something like this really needs graphQL
-async function populateCELinkage( authData, ghLinks, pd )
-{
-    console.log( authData.who, "Populate CE Linkage start" );
-    // Wait later
-    let origPop = awsUtils.checkPopulated( authData, pd.CEProjectId );
-
-    // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    const proj = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
-    let linkage = await ghLinks.initOneProject( authData, proj );
-
-    // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
-    // Resolve here to split those up.  Normally, would then worry about first time users being confused about
-    // why the new peq label applied to their 1:m issue, only 'worked' for one card.
-    // But, populate will be run from ceFlutter, separately from actual label notification.
-    pd.peqType    = "end";
-    
-    // Only resolve once per issue.
-    // XXX once this is running again, confirm link[3] is issueId, not cardId.  getBasicLinkData.
-    let showOnce  = [];
-    let showTwice = [];
-    let one2Many = [];
-    for( const link of linkage ) {
-	if( !showOnce.includes( link[3] ))       { showOnce.push( link[3] ); }
-	else if( !showTwice.includes( link[3] )) {
-	    showTwice.push( link[3] );
-	    one2Many.push( link );
-	}
-    }
-    
-    console.log( "Remaining links to resolve", one2Many );
-
-    // XXX
-    // [ [projId, cardId, issueNum, issueId], ... ]
-    // Note - this can't be a promise.all - parallel execution with shared pd == big mess
-    //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql. 
-    // Note - this mods values of pd, but exits immediately afterwards.
-    for( const link of one2Many ) {
-	pd.GHIssueId  = link[3];
-	pd.GHIssueNum = link[2];
-	await utils.resolve( authData, ghLinks, pd, "???" );
-    }
-
-    origPop = await origPop;  // any reason to back out of this sooner?
-    assert( !origPop );
-    // Don't wait.
-    awsUtils.setPopulated( authData, pd.CEProjectId );
-    console.log( authData.who, "Populate CE Linkage Done" );
-    return true;
-}
 
 
 async function removeCard( authData, cardId ) {

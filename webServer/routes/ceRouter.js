@@ -138,7 +138,7 @@ async function demoteJob( ceJobs, jd ) {
     if( jobs.length <= 1 ) {
 	console.log( "... empty queue, sleep" );
 	let delay = oldDelayCount > 4 ? stepCost + config.NOQ_DELAY : stepCost;
-	await sleep( delay );
+	await utils.sleep( delay );
     }
     else {
 	// Have to push back at least once.  
