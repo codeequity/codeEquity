@@ -1,6 +1,6 @@
 const fetch  = require( 'node-fetch' );
 const assert = require( 'assert' );
-const fs     = require( 'fs' ), json;    // read apiBasePath
+var fs     = require( 'fs' ), json;    // read apiBasePath
 
 const config = require( '../config' );
 

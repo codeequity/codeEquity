@@ -1,43 +1,73 @@
-var config    = require('../../config');
+const config  = require( '../../config' );
+
+const jobData = require( '../jobData' );
 
 class GH2Data {
+/*    
     constructor( ) {
-	this.GHRepo       = config.EMPTY;
-	this.GHOwner      = config.EMPTY;
-	this.GHCreator    = config.EMPTY;
-	this.GHFullName   = config.EMPTY;
-	this.reqBody      = config.EMPTY;
+	this.ceProjectId = -1;
+	    
+	this.org        = config.EMPTY;
+	this.repo       = config.EMPTY;
+	this.actor      = config.EMPTY;
+	this.fullName   = config.EMPTY;
+	this.reqBody    = config.EMPTY;
 
-	this.GHProjectId  = -1;
-	this.GHIssueId    = -1;
-	this.GHIssueNum   = -1;
-	this.GHIssueTitle = config.EMPTY;
+	this.projectId  = -1;
+	this.issueId    = -1;
+	this.issueNum   = -1;
+	this.issueTitle = config.EMPTY;
 
-	this.peqValue     = -1;
-	this.peqType      = config.PEQTYPE_END;
-	this.GHAssignees  = [];
-	this.projSub      = [];
+	this.peqValue   = -1;
+	this.peqType    = config.PEQTYPE_END;
+	this.assignees  = [];
+	this.projSub    = [];
     }
+*/
+    
+    constructor( jd ) {
+	this.ceProjectId = 123490;  // XXXXXXXXXXXXX
+	
+	this.org        = jd.org;
+	this.actor      = jd.actor;
+	this.reqBody    = jd.reqBody;
+
+	this.repo       = config.EMPTY;
+	this.fullName   = config.EMPTY;
+
+	this.projectId  = -1;
+	this.issueId    = -1;
+	this.issueNum   = -1;
+	this.issueTitle = config.EMPTY;
+
+	this.peqValue   = -1;
+	this.peqType    = config.PEQTYPE_END;
+	this.assignees  = [];
+	this.projSub    = [];
+    }
+    
     show() {
 	console.log( "GH2Data object contents" );
-	if( this.GHRepo     != config.EMPTY ) { console.log( "this.GHRepo", this.GHRepo ); }
-	if( this.GHOwner    != config.EMPTY ) { console.log( "this.GHOwner", this.GHOwner ); }
-	if( this.GHCreator  != config.EMPTY ) { console.log( "this.GHCreator", this.GHCreator ); }
-	if( this.GHFullName != config.EMPTY ) { console.log( "this.GHFullName", this.GHFullName ); }
+	if( this.ceProjectId != -1           ) { console.log( "this.ceProjectId", this.ceProjectId ); }
+	if( this.org         != config.EMPTY ) { console.log( "this.org", this.org ); }
+	if( this.repo        != config.EMPTY ) { console.log( "this.repo", this.repo ); }
+	if( this.actor       != config.EMPTY ) { console.log( "this.actor", this.actor ); }
+	if( this.fullName    != config.EMPTY ) { console.log( "this.fullName", this.fullName ); }
 
-	if( this.GHProjectId  != -1 ) { console.log( "this.GHProjectId", this.GHProjectId ); }
-	if( this.GHIssueId    != -1 ) { console.log( "this.GHIssueId", this.GHIssueId ); }
-	if( this.GHIssueNum   != -1 ) { console.log( "this.GHIssueNum", this.GHIssueNum ); }
-	if( this.GHIssueTitle != config.EMPTY ) { console.log( "this.GHIssueTitle", this.GHIssueTitle ); }
+	if( this.projectId  != -1 ) { console.log( "this.projectId", this.projectId ); }
+	if( this.issueId    != -1 ) { console.log( "this.issueId", this.issueId ); }
+	if( this.issueNum   != -1 ) { console.log( "this.issueNum", this.issueNum ); }
+	if( this.issueTitle != config.EMPTY ) { console.log( "this.issueTitle", this.issueTitle ); }
 
 	if( this.peqValue    != -1 ) { console.log( "this.peqValue", this.peqValue ); }
 	console.log( "this.peqType", this.peqType );
-	if( this.GHAssignees != [] ) { console.log( "this.GHAssignees", this.GHAssignees ); }
-	if( this.projSub     != [] ) { console.log( "this.projSub", this.projSub ); }
+	if( this.assignees.length > 0 ) { console.log( "this.assignees", this.assignees ); }
+	if( this.projSub.length > 0   ) { console.log( "this.projSub", this.projSub ); }
     }
+    
     updateFromLink( link ) {
-	this.GHProjectId = link.GHProjectId;
-	this.GHIssueNum  = link.GHIssueNum;
+	this.projectId = link.projectId;
+	this.issueNum  = link.issueNum;
     }
 }
 

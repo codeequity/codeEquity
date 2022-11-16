@@ -3,26 +3,26 @@ var config    = require('../config');
 
 class JobData {
     constructor( ) {
-	this.Host        = config.EMPTY;    // The host platform sending notifications to ceServer
-	this.Org         = config.EMPTY;    // Within the host, which organization does the notification belong to?  Example, GH version 2's 'organization:login'
-	this.ProjMgmtSys = config.EMPTY;    // Within the host, which project system is being used?  Example: GH classic vs version 2
-	this.Actor       = config.EMPTY;    // The entity that caused this specific notification to be sent
+	this.host        = config.EMPTY;    // The host platform sending notifications to ceServer
+	this.org         = config.EMPTY;    // Within the host, which organization does the notification belong to?  Example, GH version 2's 'organization:login'
+	this.projMgmtSys = config.EMPTY;    // Within the host, which project system is being used?  Example: GH classic vs version 2
+	this.actor       = config.EMPTY;    // The entity that caused this specific notification to be sent
 
-	this.Event       = config.EMPTY;    // Primary data type for host notice.       Example - GH's 'project_v2_item'
-	this.Action      = config.EMPTY;    // Activity being reported on data type.    Example - 'create'
+	this.event       = config.EMPTY;    // Primary data type for host notice.       Example - GH's 'project_v2_item'
+	this.action      = config.EMPTY;    // Activity being reported on data type.    Example - 'create'
 
-	this.Tag         = config.EMPTY;    // host-specific name for object, debugging. Example - iss4810
-	this.ReqBody     = config.EMPTY;    // The incoming request body, json
+	this.tag         = config.EMPTY;    // host-specific name for object, debugging. Example - iss4810
+	this.reqBody     = config.EMPTY;    // The incoming request body, json
 
-	this.DelayCount  = 0;                 
-	this.QueueId     = utils.randAlpha(10);
+	this.delayCount  = 0;                 
+	this.queueId     = utils.randAlpha(10);
 
     }
     show() {
 	console.log( "JobData contents" );
-	console.log( "   ", this.Actor, "in", this.Host +"'s", this.Org, "issuing a", this.ProjMgmtSys+"-style ceProject notification" );
-	console.log( "      ", "Notification for", this.Event, this.Action, "with tag:", this.Tag );
-	console.log( "      ", "Job ID:", this.QueueId, "Current demotion count:", this.DelayCount );
+	console.log( "   ", this.actor, "in", this.host +"'s", this.org, "issuing a", this.projMgmtSys+"-style ceProject notification" );
+	console.log( "      ", "Notification for", this.event, this.action, "with tag:", this.tag );
+	console.log( "      ", "Job ID:", this.queueId, "Current demotion count:", this.delayCount );
     }
 }
 

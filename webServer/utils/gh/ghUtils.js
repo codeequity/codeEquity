@@ -28,3 +28,5 @@ async function postGH( PAT, url, postData ) {
     
     return await ret.json();
 }
+
+exports.postGH = postGH;

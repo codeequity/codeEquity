@@ -30,8 +30,8 @@ const ghSafe    = ghClassic.githubSafe;
 //       project_card:created notification after submit, then projects:triage to pick column.
 async function handler( authData, ghLinks, pd, action, tag ) {
 
-    // Sender is the event generator.
-    let sender   = pd.reqBody['sender']['login'];
+    // Actor is the event generator.
+    let actor   = pd.actor;
     console.log( authData.who, "start", authData.job );
     
     // await gh.checkRateLimit(authData);
@@ -109,7 +109,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'demilestoned':     	// Do nothing.
 	break;
     default:
-	console.log( "Unrecognized action (issues)" );
+	console.log( "PV2ItemHandler Unrecognized action:", action );
 	break;
     }
     
