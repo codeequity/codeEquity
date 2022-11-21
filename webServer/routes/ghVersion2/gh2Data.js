@@ -3,30 +3,16 @@ const config  = require( '../../config' );
 const jobData = require( '../jobData' );
 
 class GH2Data {
-/*    
-    constructor( ) {
-	this.ceProjectId = -1;
-	    
-	this.org        = config.EMPTY;
-	this.repo       = config.EMPTY;
-	this.actor      = config.EMPTY;
-	this.fullName   = config.EMPTY;
-	this.reqBody    = config.EMPTY;
 
-	this.projectId  = -1;
-	this.issueId    = -1;
-	this.issueNum   = -1;
-	this.issueTitle = config.EMPTY;
+    constructor( jd, ceProjects ) {
+	// If project_node_id is not in ceProjects, then a new project has been created 'secretly' (thanks GH).
+	// this can be done with or without a repo, or by linking to several repos.
+	// after the fact, CE will need to check if two repos from different CEProjectIds were linked, then reject.
+	// XXX the above may be unnecessarily restrictive..
+	// in either case, may need ceFlutter to assign hostProj to ceProj.
+	// when linking hostProj to repo, could do assignment to ceProj internally.
 
-	this.peqValue   = -1;
-	this.peqType    = config.PEQTYPE_END;
-	this.assignees  = [];
-	this.projSub    = [];
-    }
-*/
-    
-    constructor( jd ) {
-	this.ceProjectId = 123490;  // XXXXXXXXXXXXX
+	this.ceProjectId = this.getCEProjectId( jd, ceProjects );
 	
 	this.org        = jd.org;
 	this.actor      = jd.actor;
@@ -44,6 +30,29 @@ class GH2Data {
 	this.peqType    = config.PEQTYPE_END;
 	this.assignees  = [];
 	this.projSub    = [];
+    }
+
+    getCEProjectId( jd, ceProjects ) {
+
+	let hostProjId = config.EMPTY;
+	switch( jd.event ) {
+	case 'projects_v2_item' : { hostProjId = jd.reqBody.projects_v2_item.project_node_id;     break;  }
+	default :                 { console.log( "Event unhandled." );                            break;  }
+	}
+	
+	let retVal = ceProjects.find( config.HOST_GH, jd.org, hostProjId );
+
+	// XXX XXX No point to speculatively add.
+	//         push this step down until we have a peq action.
+	/*
+	// If did not find an entry, then we have discovered a new project.  add it to unclaimed.
+	if( retVal == config.EMPTY ) {
+	    console.log( "Found new Host Project: ", hostProjId );
+	    console.log( "Associating this with the UnClaimed ceProject until claimed in ceFlutter." );
+	    retVal = ceProjects.add(  config.HOST_GH, jd.org, hostProjId );
+	}
+	*/
+	return retVal;
     }
     
     show() {

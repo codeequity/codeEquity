@@ -242,8 +242,8 @@ async function getNextJob( authData, res ) {
 // Keep this very light-weight.  All processing is done by host platform routers.
 router.post('/:location?', async function (req, res) {
 
-    console.log( "XXX XXX XXX XXX" );
-    console.log( "BODY", req.body, "\nHEADERS", req.headers );
+    // console.log( "XXX XXX XXX XXX" );
+    // console.log( "BODY", req.body, "\nHEADERS", req.headers );
 
     // invisible, mostly
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( hostLinks, ceJobs, ceNotification, req.body, res ); }
@@ -279,7 +279,6 @@ router.post('/:location?', async function (req, res) {
 	return res.end();
     }
     
-
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
     notificationCount++;
     if( notificationCount % 50 == 0 ) { hostLinks.show(15); }

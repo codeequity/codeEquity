@@ -99,6 +99,7 @@ const MIN_DIFF   = 1000;        // min timestamp diff in millis for new insert l
 
 // GitHub related
 const MAX_GH_RETRIES = 5;       // GH internals can be quite slow to update at times. Allow retries in some cases.
+const GH_GHOST       = "ghost"; // GH bot actions are executed by this actor
 
 // AWS related
 const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
@@ -203,5 +204,7 @@ exports.MAX_DELAYS = MAX_DELAYS;
 exports.STEP_COST  = STEP_COST;
 exports.NOQ_DELAY  = NOQ_DELAY;
 exports.MIN_DIFF   = MIN_DIFF;
+
+exports.GH_GHOST   = GH_GHOST;
 
 exports.NOTICE_BUFFER_SIZE = NOTICE_BUFFER_SIZE;

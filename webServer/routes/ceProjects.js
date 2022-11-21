@@ -1,22 +1,24 @@
 const assert = require( 'assert' );
 
+const config  = require( '../config' );
+
 const awsUtils = require( '../utils/awsUtils' );
 
 // A simple fast lookup map to get ceProjectIds from job data
 class CEProjects {
 
     constructor( ) {
-	// { host: { org: { repo: ceProjId }}}
+	// { host: { org: { hostProjId: ceProjId }}}
 	this.cep = {};
     }  
 
 
-    find( host, org, repo ) {
-	let retVal = -1;
+    find( host, org, hostProjId ) {
+	let retVal = config.EMPTY;
 	if( this.cep.hasOwnProperty( host )) {
 	    if( this.cep[host].hasOwnProperty( org )) {
-		if( this.cep[host][org].hasOwnProperty( repo )) {
-		    retVal = this.cep[host][org][repo];
+		if( this.cep[host][org].hasOwnProperty( hostProjId )) {
+		    retVal = this.cep[host][org][hostProjId];
 		}
 	    }
 	}
@@ -26,21 +28,28 @@ class CEProjects {
     async init( authData ) {
 	this.cep = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
 	for( const entry of this.cep ) {
-	    this.add(entry );
+	    // XXX
+	    // this.add(entry );
 	}
     }
 
-    add( newCEP ) {
-	let host   = newCEP.HostPlatform;
-	let org    = newCEP.Organization;
-	let repo   = newCEP.HostRepository;
-	let ceproj = newCEP.CEProjectId;
+    // XXX called from wrong spot currently.  revisit.
+    // Called during host handler data initialization, once a new hostProject has been identified.
+    add( host, org, hostProjId ) {
+	let cpid   = newCEP.ceProjId;
 
-	if( !this.cep.hasOwnProperty( host ))            { this.cep[host]            = {}; }
-	if( !this.cep[host].hasOwnProperty( org ))       { this.cep[host][org]       = {}; }
-	if( !this.cep[host][org].hasOwnProperty( repo )) { this.cep[host][org][repo] = {}; }
+	if( !this.cep.hasOwnProperty( host ))                  { this.cep[host]                  = {}; }
+	if( !this.cep[host].hasOwnProperty( org ))             { this.cep[host][org]             = {}; }
+	if( !this.cep[host][org].hasOwnProperty( hostProjId )) { this.cep[host][org][hostProjId] = {}; }
 	
-	this.cep[host][org][repo] = ceproj;
+	this.cep[host][org][repo] = config.UNCLAIMED;
+	// XXX push to aws
+    }
+
+    // called by ceFlutter to attach a hostProject to a ceProject.
+    associate( host, org, hostProjId, ceProjId ) {
+	// XXX NYI
+	assert( false );
     }
 
     delete( oldCEP ) {
@@ -60,6 +69,7 @@ class CEProjects {
 	return retVal
     }
 
+    // XXX wrong
     show( count ) {
 	console.log( "CEProjects contents" );
 	if( Object.keys( this.cep ).length <= 0 ) { return ""; }

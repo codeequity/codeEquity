@@ -68,12 +68,15 @@ async function getAuths( authData, pms, org, actor ) {
     }
     githubPATs[host][org][actor] = await githubPATs[host][org][actor];
     // console.log( "PATTY", githubPATs[host][org][actor] );
-    
-    if( githubPATs[host][org][actor] == -1 ) {
-	console.log( "Warning.  Did not find PAT for", actor );
+
+    if( actor == config.GH_GHOST ) {
+	console.log( "Skipping PAT acquisition for GitHub ghost action" );
+    }
+    else if( githubPATs[host][org][actor] == -1 ) {
+	console.log( "Warning.  Did not find PAT for", host, org, actor );
 	assert( false );
     }
-    authData.pat = githubPATs[host][org][actor];
+    else { authData.pat = githubPATs[host][org][actor]; }
 
     authData.ic  = -1;
     if( pms == config.PMS_GHC ) {    
@@ -168,19 +171,17 @@ function getJobSummaryGH2( newStamp, jobData, orgPath, source ) {
     // XXX fullName not known for pv2item.  replace with content_node_id (often issue?)  Repo is (?) no longer relevant
     let fullName = jobData.reqBody.organization.login + "/" + jobData.reqBody.projects_v2_item.content_node_id;
     jobData.org  = jobData.reqBody.organization.login;
+    jobData.tag  = fullName; 
 
-    if( jobData.event == "projects_v2_item"  && jobData.reqBody.projects_v2_item.content_type == "Issue" ) {
-	jobData.tag = fullName; 
+    if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "Issue" ) {
 	source += "issue:";
     }
-    else if( jobData.event == "projects_v2_item"  && jobData.reqBody.projects_v2_item.content_type == "DraftIssue" ) {
-	jobData.tag = fullName; 
-	source += "issue:";
+    else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "DraftIssue" ) {
+	source += "draftIssue:";
     }
     else {
 	source += jobData.event + ":";
 	console.log( "Not yet handled", jobData.reqBody ); 
-	jobData.tag = fullName;
     }
 
     source += jobData.action+" "+jobData.tag+"> ";
@@ -204,7 +205,10 @@ function getJobSummary( newStamp, jobData, headers, orgPath, source ) {
     
     if(      jobData.event == "projects_v2_item" )            { retVal = getJobSummaryGH2( newStamp, jobData, orgPath, source ); }
     else if( !jobData.reqBody.hasOwnProperty("organization")) { retVal = getJobSummaryGHC( newStamp, jobData, orgPath, source ); }
-    else                                                      { console.log( "Warning.  Can't identify type of project mgmt sys for notification." );      }
+    else                                                      {
+	console.log( "Warning.  Can't identify type of project mgmt sys for notification." );
+	console.log( jobData.reqBody, headers );
+    }
 
     return retVal;
 }
@@ -279,16 +283,13 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) {
 
     let retVal = "";
-    let pd     = new gh2Data.GH2Data( jd );
+
+    let pd = new gh2Data.GH2Data( jd, ceProjects );
     
     assert( jd.queueId == authData.job ) ;
     console.log( "XXX Switcher GH2" );
     await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
 
-    jd.show();
-    pd.show();
-    console.log( "\n\n" );
-    
     switch( jd.event ) {
     case 'projects_v2_item' :
 	{
