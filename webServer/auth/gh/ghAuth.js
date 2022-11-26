@@ -36,9 +36,9 @@ async function getInstallationAccessToken(base, repo, app, jwt) {
 			       });
 
     const installationId = (await result.json()).id;
-    // console.log( "GIAT", installationId, owner, repo );
+    // console.log( "GIAT", installationId, base, repo );
     if( typeof installationId === 'undefined' ) {
-	console.log( "Warning.  Octokit can't find the app installation for", owner, repo, ".  Is the app instead installed for your organization's account?" );
+	console.log( "Warning.  Octokit can't find the app installation for", base, repo, ".  Is the app instead installed for your organization's account?" );
 	return -1;
     }
 	

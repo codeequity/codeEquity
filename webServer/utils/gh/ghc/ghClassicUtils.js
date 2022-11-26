@@ -1075,7 +1075,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	    for( const col of cols.edges ) {
 		// console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
 		let datum = {};
-		datum.HostRepository  = repo;
+		datum.HostRepository  = owner + "/" + repo;
 		datum.HostProjectName = project.name;
 		datum.HostProjectId   = project.databaseId.toString();
 		datum.HostColumnName  = col.node.name;
@@ -1086,7 +1086,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	    // Add project even if it has no cols
 	    if( cols.edges.length == 0 ) {
 		let datum = {};
-		datum.HostRepository  = repo;
+		datum.HostRepository  = owner + "/" + repo;
 		datum.HostProjectName = project.name;
 		datum.HostProjectId   = project.databaseId.toString();
 		datum.HostColumnName  = config.EMPTY;

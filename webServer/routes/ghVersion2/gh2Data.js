@@ -7,10 +7,10 @@ class GH2Data {
     constructor( jd, ceProjects ) {
 	// If project_node_id is not in ceProjects, then a new project has been created 'secretly' (thanks GH).
 	// this can be done with or without a repo, or by linking to several repos.
-	// after the fact, CE will need to check if two repos from different CEProjectIds were linked, then reject.
+	// XXX after the fact, CE will need to check if two repos from different CEProjectIds were linked, then reject.
 	// XXX the above may be unnecessarily restrictive..
-	// in either case, may need ceFlutter to assign hostProj to ceProj.
-	// when linking hostProj to repo, could do assignment to ceProj internally.
+	// XXX in either case, may need ceFlutter to assign hostProj to ceProj.
+	//     when linking hostProj to repo, could do assignment to ceProj internally.
 
 	this.ceProjectId = this.getCEProjectId( jd, ceProjects );
 	

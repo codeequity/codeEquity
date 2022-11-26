@@ -38,12 +38,11 @@ class Linkage {
 	let host  = entry.hasOwnProperty( "HostPlatform" )       ? entry.HostPlatform                    : "";
 	let org   = entry.hasOwnProperty( "Organization" )       ? entry.Organization                    : "";
 	let pms   = entry.hasOwnProperty( "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
-	let repos = entry.hasOwnProperty( "HostRepository" )     ? entry.HostRepository                  : [];
 	let comp  = entry.hasOwnProperty( "CEProjectComponent" ) ? entry.CEProjectComponent              : "";
 	let isOrg = entry.hasOwnProperty( "OwnerCategory" )      ? entry.OwnerCategory == "Organization" : false;
 	assert( host != "" && pms != "" && org != "" );
 	assert( entry.hasOwnProperty( "CEProjectId" ) );
-
+	
 	console.log( ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
 	// Wait later
@@ -58,30 +57,47 @@ class Linkage {
 	// Init repo with CE_USER, which is typically a builder account that needs full access.
 	if( host == config.HOST_GH ) {
 	    if( pms == config.PMS_GHC ) {
-		for( const repo of repos ) {
-		    let fnParts = repo.split('/');
-		    let rlinks = [];
+		
+		// HostRepos are stored with linkages, and in ceProj.
+		// If there is not an existing link in aws, no need to iterate through the repo looking for baselinks.
+		// If there is an existing link, use it (them) to populate repos.  It will not be a large list - just proj/col.
+		// As long as hproj and cproj are linked, there will be at least one link irregardless of ceServer status.
+		// ceFlutter is the main consumer of this information, excluding this call.
 
-		    if( isOrg ) { await ceRouter.getAuths( authData, host, pms, org,  config.CE_USER ); }
-		    else        { await ceRouter.getAuths( authData, host, pms, repo, config.CE_USER ); }
+		let awsLinks = await awsUtils.getLinkage( authData, { "CEProjectId": entry.CEProjectId } );		
+		assert( awsLinks.length == 1 );
+		let repos = [];
+		
+		for( const awsLoc of awsLinks[0].Locations ) {
+		    let repo = awsLoc.HostRepository;
+		    if( !repos.includes( repo )) {
+			repos.push( repo );
 
-		    // XXX this should not be here
-		    blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
-			.catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
-		    
-		    ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
-			.catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
-
-		    ldPromise = await ldPromise;  // no val here, just ensures locData is set
-		    for( var loc of locData ) {
-			loc.CEProjectId = entry.CEProjectId;
-			loc.Active = "true";
-			this.addLoc( authData, loc, false ); 
+			console.log( "Refreshing", entry.CEProjectId, repo );
+			let fnParts = repo.split('/');
+			let rlinks = [];
+			
+			if( isOrg ) { await ceRouter.getAuths( authData, host, pms, org,  config.CE_USER ); }
+			else        { await ceRouter.getAuths( authData, host, pms, repo, config.CE_USER ); }
+			
+			// XXX this should not be here
+			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
+			    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
+			
+			ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
+			    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
+			
+			ldPromise = await ldPromise;  // no val here, just ensures locData is set
+			for( var loc of locData ) {
+			    loc.CEProjectId = entry.CEProjectId;
+			    loc.Active = "true";
+			    this.addLoc( authData, loc, false ); 
+			}
+			
+			blPromise = await blPromise;  // no val here, just ensures linkData is set
+			this.populateLinkage( authData, entry.CEProjectId, repo, rlinks );
+			baseLinks = baseLinks.concat( rlinks );
 		    }
-
-		    blPromise = await blPromise;  // no val here, just ensures linkData is set
-		    this.populateLinkage( authData, entry.CEProjectId, repo, rlinks );
-		    baseLinks = baseLinks.concat( rlinks ); 
 		}
 	    }
 	}

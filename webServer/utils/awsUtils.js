@@ -416,6 +416,14 @@ async function getSummaries( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function getLinkage( authData, query ) {
+
+    let shortName = "GetEntries";
+    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
 async function cleanDynamo( authData, tableName, ids ) {
     // console.log( tableName, "deleting ids:", ids );
 
@@ -507,6 +515,7 @@ exports.getPRaws     = getPRaws;
 exports.getPActs     = getPActs;
 exports.getPeqs      = getPeqs;
 exports.getSummaries = getSummaries;
+exports.getLinkage   = getLinkage;
 
 exports.cleanDynamo   = cleanDynamo;
 exports.clearIngested = clearIngested;
