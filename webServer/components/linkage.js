@@ -9,6 +9,7 @@ const awsUtils = require( '../utils/awsUtils' );
 // XXX this should not be here
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
+const ghV2      = require( '../utils/gh/gh2/ghV2Utils' );
 
 const locData  = require( './locData' );
 
@@ -99,6 +100,22 @@ class Linkage {
 			baseLinks = baseLinks.concat( rlinks );
 		    }
 		}
+	    }
+	    else if( pms == config.PMS_GH2 ) {
+		console.log( "linkage: GH2" );
+
+		let awsLinks = await awsUtils.getLinkage( authData, { "CEProjectId": entry.CEProjectId } );		
+		assert( awsLinks.length == 1 );
+		
+		for( const awsLoc of awsLinks[0].Locations ) {
+
+		    ldPromise = ghV2.getProjectDetails( authData.pat, awsLoc.HostProjectId, locData, -1 )
+			.catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
+		    
+		    ldPromise = await ldPromise;  // no val here, just ensures locData is set
+		    
+		}
+		
 	    }
 	}
 

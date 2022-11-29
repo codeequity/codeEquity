@@ -6,6 +6,7 @@ const utils = require( '../../utils/ceUtils' );
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
+const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
 
 // XXX 
 // Terminology:
@@ -40,6 +41,12 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let reqBody = pd.reqBody;
     let item    = reqBody.projects_v2_item;
 
+    console.log( "In pv2 handler, pd?");
+    pd.show();
+
+    await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
+    // await ghV2.getFromIssueNode( authData.pat, item.content_node_id );
+    
     assert( typeof item !== 'undefined' );
 
     if( item.content_type != "Issue" ) {
