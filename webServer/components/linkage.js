@@ -104,12 +104,21 @@ class Linkage {
 	    else if( pms == config.PMS_GH2 ) {
 		console.log( "linkage: GH2" );
 
+		// mainly to get pat
+		await ceRouter.getAuths( authData, host, pms, org, config.CE_USER ); 
+	    
 		let awsLinks = await awsUtils.getLinkage( authData, { "CEProjectId": entry.CEProjectId } );		
 		assert( awsLinks.length == 1 );
-		
+
+		// HostProjectId for GH2 is a project_node_id
+
+		// XXX ITERATE over composed list of HostProjectId
+		// XXX check loc/rlink clearing, baselinks
+		let rlinks = [];
+
 		for( const awsLoc of awsLinks[0].Locations ) {
 
-		    ldPromise = ghV2.getProjectDetails( authData.pat, awsLoc.HostProjectId, locData, -1 )
+		    ldPromise = ghV2.getHostLinkLoc( authData.pat, awsLoc.HostProjectId, locData, rlinks, -1 )
 			.catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
 		    
 		    ldPromise = await ldPromise;  // no val here, just ensures locData is set

@@ -41,11 +41,14 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let reqBody = pd.reqBody;
     let item    = reqBody.projects_v2_item;
 
+    let projectDetail = await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
+    console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
+
+    // XXX can't set repo here for pd.. can be several.  Should not need to..?
+    pd.projectId = projectDetail.databaseId;
     console.log( "In pv2 handler, pd?");
     pd.show();
 
-    await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
-    // await ghV2.getFromIssueNode( authData.pat, item.content_node_id );
     
     assert( typeof item !== 'undefined' );
 

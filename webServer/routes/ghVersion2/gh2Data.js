@@ -18,8 +18,7 @@ class GH2Data {
 	this.actor      = jd.actor;
 	this.reqBody    = jd.reqBody;
 
-	this.repo       = config.EMPTY;
-	this.fullName   = config.EMPTY;
+	this.fullName   = config.EMPTY;  // of the current repository.. maybe remove?
 
 	this.projectId  = -1;
 	this.issueId    = -1;
@@ -59,7 +58,6 @@ class GH2Data {
 	console.log( "GH2Data object contents" );
 	if( this.ceProjectId != -1           ) { console.log( "ceProjectId", this.ceProjectId ); }
 	if( this.org         != config.EMPTY ) { console.log( "org", this.org ); }
-	if( this.repo        != config.EMPTY ) { console.log( "repo", this.repo ); }
 	if( this.actor       != config.EMPTY ) { console.log( "actor", this.actor ); }
 	if( this.fullName    != config.EMPTY ) { console.log( "fullName", this.fullName ); }
 
