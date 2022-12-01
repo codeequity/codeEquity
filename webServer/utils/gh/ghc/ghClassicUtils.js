@@ -241,58 +241,6 @@ var githubUtils = {
 };
 
 
-// NOTE.  This is very simplistic.  Consider at least random backoff delay, elay entire chain.
-// Ignore:
-//   422:  validation failed.  e.g. create failed name exists.. chances are, will continue to fail.
-async function errorHandler( source, e, func, ...params ) {
-    if( ( e.status == 404 && source == "checkIssue" ) ||    
-	( e.status == 410 && source == "checkIssue" ))
-    {
-	console.log( source, "Issue", arguments[6], "already gone" );  
-	return -1;
-    }
-    else if( e.status == 423 )
-    {
-	console.log( "Error.  XXX", source, "There was a conflict accessing a PEQ in the PEQ table in AWS.", params );
-    }
-    else if( e.status == 404 && source == "updateLabel" )
-    {
-	console.log( source, "Label", arguments[6], "already gone" );  
-	return false;
-    }
-    else if( (e.status == 403 || e.status == 404) && ( source == "removeLabel" || source == "getLabels" || source == "addComment" ))
-    {
-	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels or add comments." );
-	return false;
-    }
-    else if( e.status == 401 ||                             // XXX authorization will probably keep failing
-	     e.status == 500 ||                             // internal server error, wait and retry
-	     e.status == 502 )                              // server error, please retry       
-    {
-	// manage retries
-	if( typeof handlerRetries === 'undefined' )            { handlerRetries = {}; }
-	if( !handlerRetries.hasOwnProperty( source ) )         { handlerRetries[source] = {}; }
-	
-	if( !handlerRetries[source].hasOwnProperty( 'stamp' )) { handlerRetries[source].stamp = Date.now(); }
-	if( !handlerRetries[source].hasOwnProperty( 'count' )) { handlerRetries[source].count = 0; }
-
-	if( Date.now() - handlerRetries[source].stamp > 5000 ) { handlerRetries[source].count = 0; }
-	
-	if( handlerRetries[source].count <= 4 ) {
-	    console.log( "Github server troubles with", source, e );
-	    console.log( "Retrying", source, handlerRetries[source].count );
-	    handlerRetries[source].count++;
-	    handlerRetries[source].stamp = Date.now();
-	    console.log( "Error Handler Status:", handlerRetries );
-	    return await func( ...params );
-	}
-	else { console.log( "Error.  Retries exhausted, command failed.  Please try again later." ); }
-    }
-    else {
-	console.log( "Error in errorHandler, unknown status code.", source, e );
-	console.log( arguments[0], arguments[1] );
-    }
-}
 
 
 
@@ -307,7 +255,7 @@ async function checkRateLimit( authData ) {
 	    console.log( "Graphql:", rl['data']['resources']['graphql']['limit'], rl['data']['resources']['graphql']['remaining'] );
 	    console.log( "Integration:", rl['data']['resources']['integration_manifest']['limit'], rl['data']['resources']['integration_manifest']['remaining'] );
 	})
-	.catch( e => errorHandler( "checkRateLimit", e, checkRateLimit, authData ) );
+	.catch( e => ghUtils.errorHandler( "checkRateLimit", e, checkRateLimit, authData ) );
 }
 
 
@@ -324,7 +272,7 @@ async function getAssignees( authData, owner, repo, issueNum )
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "getAssignees" )
-	    .catch( e => retVal = errorHandler( "getAssignees", utils.FAKE_ISE, getAssignees, authData, owner, repo, issueNum));
+	    .catch( e => retVal = ghUtils.errorHandler( "getAssignees", utils.FAKE_ISE, getAssignees, authData, owner, repo, issueNum));
     }
     else {
 	await authData.ic.issues.get({ owner: owner, repo: repo, issue_number: issueNum }) 
@@ -336,7 +284,7 @@ async function getAssignees( authData, owner, repo, issueNum )
 		    }
 		}
 	    })
-	    .catch( e => retVal = errorHandler( "getAssignees", e, getAssignees, authData, owner, repo, issueNum));
+	    .catch( e => retVal = ghUtils.errorHandler( "getAssignees", e, getAssignees, authData, owner, repo, issueNum));
     }
     
     return retVal;
@@ -362,11 +310,11 @@ async function checkExistsGQL( authData, nodeId, nodeType ) {
 
     let retVal = false;
     let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.catch( e => retVal = errorHandler( "checkExistsGQL", e, checkExistsGQL, authData, nodeId, nodeType ));
+	.catch( e => retVal = ghUtils.errorHandler( "checkExistsGQL", e, checkExistsGQL, authData, nodeId, nodeType ));
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	retVal = await errorHandler( "checkExistsGQL", res, checkExistsGQL, authData, nodeId, nodeType );
+	retVal = await ghUtils.errorHandler( "checkExistsGQL", res, checkExistsGQL, authData, nodeId, nodeType );
     }
     else {
 	// Hmm node was occasionally null here, then failing on title
@@ -386,7 +334,7 @@ async function checkIssue( authData, owner, repo, issueNum ) {
     // Wait.  Without additional wait, timing with multiple deletes is too tight.  Can still fail on transfers..
     await authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum })
 	.then( iss => issue = iss.data )
-	.catch( e => retVal = errorHandler( "checkIssue", e, checkIssue, authData, owner, repo, issueNum ));
+	.catch( e => retVal = ghUtils.errorHandler( "checkIssue", e, checkIssue, authData, owner, repo, issueNum ));
 
     if( issue != -1 ) { retVal = await checkExistsGQL( authData, issue.node_id, {issue: true} ); }
     if( retVal == false ) { retVal = -1; }  // for settleWithVal
@@ -420,7 +368,7 @@ async function getFullIssue( authData, owner, repo, issueNum )
 
     await( authData.ic.issues.get( { owner: owner, repo: repo, issue_number: issueNum }))
 	.then( issue =>  retIssue = issue['data'] )
-	.catch( e => retIssue = errorHandler( "getFullIssue", e, getFullIssue, authData, owner, repo, issueNum ));
+	.catch( e => retIssue = ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, owner, repo, issueNum ));
     
     return retIssue;
 }
@@ -432,7 +380,7 @@ async function getCard( authData, cardId ) {
     
     await( authData.ic.projects.getCard( { card_id: cardId } ))
 	.then(card => retCard = card.data )
-	.catch( e => retCard = errorHandler( "getCard", e, getCard, authData, cardId ));
+	.catch( e => retCard = ghUtils.errorHandler( "getCard", e, getCard, authData, cardId ));
 
     return retCard;
 }
@@ -449,7 +397,7 @@ async function rebuildIssue( authData, owner, repo, issue, msg, splitTag ) {
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "rebuildIssue" )
-	    .catch( e => issueData = errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
+	    .catch( e => issueData = ghUtils.errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
     }
     else {
 	await authData.ic.issues.create( {
@@ -465,7 +413,7 @@ async function rebuildIssue( authData, owner, repo, issue, msg, splitTag ) {
 		issueData[1] = issue['data']['number'];
 		success = true;
 	    })
-	    .catch( e => issueData = errorHandler( "rebuildIssue", e, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
+	    .catch( e => issueData = ghUtils.errorHandler( "rebuildIssue", e, rebuildIssue, authData, owner, repo, issue, msg, splitTag ));
     }
 
     if( success ) {
@@ -488,7 +436,7 @@ async function updateIssue( authData, owner, repo, issueNum, newState ) {
 
     await authData.ic.issues.update( { owner: owner, repo: repo, issue_number: issueNum, state: newState })
 	.then( update => retVal = true )
-	.catch( e => retVal = errorHandler( "updateIssue", e, updateIssue, authData, owner, repo, issueNum, newState ));
+	.catch( e => retVal = ghUtils.errorHandler( "updateIssue", e, updateIssue, authData, owner, repo, issueNum, newState ));
 
     if( retVal ) { console.log( authData.who, "updateIssue done" ); }
     return retVal;
@@ -496,40 +444,40 @@ async function updateIssue( authData, owner, repo, issueNum, newState ) {
 
 async function updateColumn( authData, colId, newName ) {
     await authData.ic.projects.updateColumn({ column_id: colId, name: newName })
-	.catch( e => errorHandler( "updateColumn", e, updateColumn, authData, colId, newName ));
+	.catch( e => ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, colId, newName ));
 }
 
 async function updateProject( authData, projId, newName ) {
     await authData.ic.projects.update({ project_id: projId, name: newName })
-	.catch( e => errorHandler( "updateProject", e, updateProject, authData, projId, newName ));
+	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, projId, newName ));
 }
 
 async function addAssignee( authData, owner, repo, issueNumber, assignee ) {
 
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "addAssignee" )
-	    .catch( e => errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, owner, repo, issueNumber, assignee )); 
+	    .catch( e => ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, owner, repo, issueNumber, assignee )); 
     }
     else {
 	await authData.ic.issues.addAssignees({ owner: owner, repo: repo, issue_number: issueNumber, assignees: [assignee] })
-	    .catch( e => errorHandler( "addAssignee", e, addAssignee, authData, owner, repo, issueNumber, assignee ));
+	    .catch( e => ghUtils.errorHandler( "addAssignee", e, addAssignee, authData, owner, repo, issueNumber, assignee ));
     }
 }
 
 async function remAssignee( authData, owner, repo, issueNumber, assignee ) {
     await authData.ic.issues.removeAssignees({ owner: owner, repo: repo, issue_number: issueNumber, assignees: [assignee] })
-	.catch( e => errorHandler( "remAssignee", e, remAssignee, authData, owner, repo, issueNumber, assignee ));
+	.catch( e => ghUtils.errorHandler( "remAssignee", e, remAssignee, authData, owner, repo, issueNumber, assignee ));
 }
 
 async function updateLabel( authData, owner, repo, name, newName, desc, color ) {
     let lColor = typeof color !== 'undefined' ? color : false;
     if( lColor ) {
 	await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc, color: lColor }))
-	    .catch( e => errorHandler( "updateLabel", e, updateLabel, authData, owner, repo, name, newName, desc, color ));
+	    .catch( e => ghUtils.errorHandler( "updateLabel", e, updateLabel, authData, owner, repo, name, newName, desc, color ));
     }
     else {
 	await( authData.ic.issues.updateLabel( { owner: owner, repo: repo, name: name, new_name: newName, description: desc }))
-	    .catch( e => errorHandler( "updateLabel", e, updateLabel, authData, owner, repo, name, newName, desc, color ));
+	    .catch( e => ghUtils.errorHandler( "updateLabel", e, updateLabel, authData, owner, repo, name, newName, desc, color ));
     }
 }
 
@@ -537,7 +485,7 @@ async function createLabel( authData, owner, repo, name, color, desc ) {
     let label = {};
     await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: name, color: color, description: desc }))
 	.then( l => label = l['data'] )
-	.catch( e => label = errorHandler( "createLabel", e, createLabel, authData, owner, repo, name, color, desc ));
+	.catch( e => label = ghUtils.errorHandler( "createLabel", e, createLabel, authData, owner, repo, name, color, desc ));
     return label;
 }
 
@@ -558,7 +506,7 @@ async function getLabel( authData, owner, repo, name ) {
 	.then( l => labelRes.label = l['data'] )
 	.catch( e => {
 	    if( e.status == 404 ) { labelRes.status = e.status; } 
-	    else { labelRes = errorHandler( "getLabel", e, getLabel, authData, owner, repo, name ); }
+	    else { labelRes = ghUtils.errorHandler( "getLabel", e, getLabel, authData, owner, repo, name ); }
 	});
     return labelRes;
 }
@@ -578,12 +526,12 @@ async function findOrCreateLabel( authData, owner, repo, allocation, peqHumanLab
 	if( peqHumanLabelName == config.POPULATE ) {
 	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '111111', description: "populate" }))
 		.then( label => theLabel = label['data'] )
-		.catch( e => theLabel = errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, owner, repo, allocation, peqHumanLabelName, peqValue ));
+		.catch( e => theLabel = ghUtils.errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, owner, repo, allocation, peqHumanLabelName, peqValue ));
 	}
 	else if( peqValue < 0 ) {
 	    await( authData.ic.issues.createLabel( { owner: owner, repo: repo, name: peqHumanLabelName, color: '654321', description: "Oi!" }))
 		.then( label => theLabel = label['data'] )
-		.catch( e => theLabel = errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, owner, repo, allocation, peqHumanLabelName, peqValue ));
+		.catch( e => theLabel = ghUtils.errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, owner, repo, allocation, peqHumanLabelName, peqValue ));
 	}
 	else {
 	    theLabel = await createPeqLabel( authData, owner, repo, allocation, peqValue );
@@ -614,7 +562,7 @@ async function createIssue( authData, owner, repo, title, labels, allocation ) {
 	    issueData[0] = issue['data']['id'];
 	    issueData[1] = issue['data']['number'];
 	})
-	.catch( e => issueData = errorHandler( "createIssue", e, createIssue, authData, owner, repo, title, labels, allocation ));
+	.catch( e => issueData = ghUtils.errorHandler( "createIssue", e, createIssue, authData, owner, repo, title, labels, allocation ));
     
     return issueData;
 }
@@ -659,11 +607,11 @@ async function getRepoLabelsGQL( PAT, owner, repo, data, cursor ) {
 
     let issues = -1;
     let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "getRepoLabelsGQL", e, getRepoLabelsGQL, PAT, owner, repo, data, cursor ));  // probably never seen
+	.catch( e => ghUtils.errorHandler( "getRepoLabelsGQL", e, getRepoLabelsGQL, PAT, owner, repo, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	await errorHandler( "getRepoLabelsGQL", res, getRepoLabelsGQL, PAT, owner, repo, data, cursor ); 
+	await ghUtils.errorHandler( "getRepoLabelsGQL", res, getRepoLabelsGQL, PAT, owner, repo, data, cursor ); 
     }
     else {
 	labels = res.data.repository.labels;
@@ -706,11 +654,11 @@ async function getReposGQL( PAT, owner, data, cursor ) {
 
     let issues = -1;
     let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "getReposGQL", e, getReposGQL, PAT, owner, data, cursor ));  // probably never seen
+	.catch( e => ghUtils.errorHandler( "getReposGQL", e, getReposGQL, PAT, owner, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	await errorHandler( "getReposGQL", res, getReposGQL, PAT, owner, data, cursor ); 
+	await ghUtils.errorHandler( "getReposGQL", res, getReposGQL, PAT, owner, data, cursor ); 
     }
     else {
 	let repos = res.data.repositoryOwner.repositories;
@@ -775,11 +723,11 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 
     let issues = -1;
     let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "getRepoIssuesGQL", e, getRepoIssuesGQL, PAT, owner, repo, data, cursor ));  // probably never seen
+	.catch( e => ghUtils.errorHandler( "getRepoIssuesGQL", e, getRepoIssuesGQL, PAT, owner, repo, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	await errorHandler( "getRepoIssuesGQL", res, getRepoIssuesGQL, PAT, owner, repo, data, cursor ); 
+	await ghUtils.errorHandler( "getRepoIssuesGQL", res, getRepoIssuesGQL, PAT, owner, repo, data, cursor ); 
     }
     else {
 	issues = res.data.repository.issues;
@@ -853,11 +801,11 @@ async function getRepoIssueGQL( PAT, owner, repo, issueDatabaseId, data, cursor 
 
     let issues = -1;
     let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "getRepoIssueGQL", e, getRepoIssueGQL, PAT, owner, repo, issueDatabaseId, data, cursor ));  // probably never seen
+	.catch( e => ghUtils.errorHandler( "getRepoIssueGQL", e, getRepoIssueGQL, PAT, owner, repo, issueDatabaseId, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	await errorHandler( "getRepoIssueGQL", res, getRepoIssueGQL, PAT, owner, repo, issueDatabaseId, data, cursor ); 
+	await ghUtils.errorHandler( "getRepoIssueGQL", res, getRepoIssueGQL, PAT, owner, repo, issueDatabaseId, data, cursor ); 
     }
     else {
 	issues = res.data.repository.issues;
@@ -922,11 +870,11 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 
     let issues = -1;
     let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "getBasicLinkDataGQL", e, getBasicLinkDataGQL, PAT, owner, repo, data, cursor ));  // probably never seen
+	.catch( e => ghUtils.errorHandler( "getBasicLinkDataGQL", e, getBasicLinkDataGQL, PAT, owner, repo, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	await errorHandler( "getBasicLinkDataGQL", res, getBasicLinkDataGQL, PAT, owner, repo, data, cursor );
+	await ghUtils.errorHandler( "getBasicLinkDataGQL", res, getBasicLinkDataGQL, PAT, owner, repo, data, cursor );
     }
     else {
 	issues = res.data.repository.issues;
@@ -994,11 +942,11 @@ async function getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor ) {
 
     let issues = -1;
     let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "getLabelIssuesGQL", e, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor ));  // probably only seen during testing
+	.catch( e => ghUtils.errorHandler( "getLabelIssuesGQL", e, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor ));  // probably only seen during testing
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	await errorHandler( "getLabelIssuesGQL", res, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor );
+	await ghUtils.errorHandler( "getLabelIssuesGQL", res, getLabelIssuesGQL, PAT, owner, repo, labelName, data, cursor );
     }
     else {
 	let label = res.data.repository.label;
@@ -1057,11 +1005,11 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 
     let projects = -1;
     let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "getRepoColsGQL", e, getRepoColsGQL, PAT, owner, repo, data, cursor ));  // this will probably never catch anything
+	.catch( e => ghUtils.errorHandler( "getRepoColsGQL", e, getRepoColsGQL, PAT, owner, repo, data, cursor ));  // this will probably never catch anything
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {
-	await errorHandler( "getRepoColsGQL", res, getRepoColsGQL, PAT, owner, repo, data, cursor );
+	await ghUtils.errorHandler( "getRepoColsGQL", res, getRepoColsGQL, PAT, owner, repo, data, cursor );
     }
     else {
 	projects = res.data.repository.projects;
@@ -1075,7 +1023,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	    for( const col of cols.edges ) {
 		// console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
 		let datum = {};
-		datum.HostRepository  = repo;
+		datum.HostRepository  = owner + "/" + repo;
 		datum.HostProjectName = project.name;
 		datum.HostProjectId   = project.databaseId.toString();
 		datum.HostColumnName  = col.node.name;
@@ -1086,7 +1034,7 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	    // Add project even if it has no cols
 	    if( cols.edges.length == 0 ) {
 		let datum = {};
-		datum.HostRepository  = repo;
+		datum.HostRepository  = owner + "/" + repo;
 		datum.HostProjectName = project.name;
 		datum.HostProjectId   = project.databaseId.toString();
 		datum.HostColumnName  = config.EMPTY;
@@ -1110,7 +1058,7 @@ async function transferIssueGQL( authData, issueId, toRepoId) {
     query = JSON.stringify({ query, variables });
 
     let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.catch( e => errorHandler( "transferIssueGQL", e, transferIssueGQL, authData, issueId, toRepoId ));
+	.catch( e => ghUtils.errorHandler( "transferIssueGQL", e, transferIssueGQL, authData, issueId, toRepoId ));
 
     console.log( "TI_GQL:", ret );
 }
@@ -1133,7 +1081,7 @@ async function createProjectGQL( ownerId, PAT, repo, repoId, name, body, beta ) 
     query = JSON.stringify({ query, variables });
 
     const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => errorHandler( "createProjectGQL", e, createProjectGQL, ownerId, PAT, repo, repoId, name, body, beta ));
+	  .catch( e => ghUtils.errorHandler( "createProjectGQL", e, createProjectGQL, ownerId, PAT, repo, repoId, name, body, beta ));
 
     let retId = -1;
     if( beta ) {
@@ -1160,7 +1108,7 @@ async function getOwnerIdGQL( PAT, owner ) {
     query = JSON.stringify({ query, variables });
 
     const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => errorHandler( "getOwnerIdGQL", e, getOwnerIdGQL, PAT, owner ));
+	  .catch( e => ghUtils.errorHandler( "getOwnerIdGQL", e, getOwnerIdGQL, PAT, owner ));
 
     // console.log( "owner_GQL:", ret );
     let retId = -1;
@@ -1175,7 +1123,7 @@ async function getRepoIdGQL( PAT, owner, repo ) {
     query = JSON.stringify({ query, variables });
 
     const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => errorHandler( "getRepoIdGQL", e, getRepoIdGQL, PAT, owner, repo ));
+	  .catch( e => ghUtils.errorHandler( "getRepoIdGQL", e, getRepoIdGQL, PAT, owner, repo ));
 
     console.log( "repo_GQL:", ret );
     let retId = -1;
@@ -1188,7 +1136,7 @@ async function getRepoIdGQL( PAT, owner, repo ) {
 
 async function removeCard( authData, cardId ) {
     await authData.ic.projects.deleteCard( { card_id: cardId } )
-	.catch( e => errorHandler( "removeCard", e, removeCard, authData, cardId ));
+	.catch( e => ghUtils.errorHandler( "removeCard", e, removeCard, authData, cardId ));
 }
 
 // Note.  alignment risk - card info could have moved on
@@ -1261,12 +1209,12 @@ async function rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, ori
 
 async function updateTitle( authData, owner, repo, issueNum, title ) {
     await authData.ic.issues.update({ owner: owner, repo: repo, issue_number: issueNum, title: title  } )
-	.catch( e => errorHandler( "updateTitle", e, updateTitle, authData, owner, repo, issueNum, title ));
+	.catch( e => ghUtils.errorHandler( "updateTitle", e, updateTitle, authData, owner, repo, issueNum, title ));
 }
 
 async function removeLabel( authData, owner, repo, issueNum, label ) {
     await authData.ic.issues.removeLabel({ owner: owner, repo: repo, issue_number: issueNum, name: label.name  } )
-	.catch( e => errorHandler( "removeLabel", e, removeLabel, authData, owner, repo, issueNum, label ));
+	.catch( e => ghUtils.errorHandler( "removeLabel", e, removeLabel, authData, owner, repo, issueNum, label ));
 }
 
 
@@ -1275,7 +1223,7 @@ async function getLabels( authData, owner, repo, issueNum ) {
     var labels = -1;
     await authData.ic.issues.listLabelsOnIssue({ owner: owner, repo: repo, issue_number: issueNum, per_page: 100  } )
 	.then( res => labels = res )
-	.catch( e => labels  = errorHandler( "getLabels", e, getLabels, authData, owner, repo, issueNum ));
+	.catch( e => labels  = ghUtils.errorHandler( "getLabels", e, getLabels, authData, owner, repo, issueNum ));
     return labels;
 }
 
@@ -1302,12 +1250,12 @@ async function removePeqLabel( authData, owner, repo, issueNum ) {
 
 async function addLabel( authData, owner, repo, issueNum, label ) {
     await authData.ic.issues.addLabels({ owner: owner, repo: repo, issue_number: issueNum, labels: [label.name] })
-	.catch( e => errorHandler( "addLabel", e, addLabel, authData, owner, repo, issueNum, label ));
+	.catch( e => ghUtils.errorHandler( "addLabel", e, addLabel, authData, owner, repo, issueNum, label ));
 }
 
 async function addComment( authData, owner, repo, issueNum, msg ) {
     await( authData.ic.issues.createComment( { owner: owner, repo: repo, issue_number: issueNum, body: msg } ))
-	.catch( e => errorHandler( "addComment", e, addComment, authData, owner, repo, issueNum, msg ));
+	.catch( e => ghUtils.errorHandler( "addComment", e, addComment, authData, owner, repo, issueNum, msg ));
 }
 
 async function rebuildLabel( authData, owner, repo, issueNum, oldLabel, newLabel ) {
@@ -1327,7 +1275,7 @@ async function createProjectCard( authData, columnId, issueId, justId ) {
     
     await( authData.ic.projects.createCard({ column_id: columnId, content_id: issueId, content_type: 'Issue' }))
 	.then( card => newCard = card.data )
-	.catch( e => retVal = errorHandler( "createProjectCard", e, createProjectCard, authData, columnId, issueId, justId ));
+	.catch( e => retVal = ghUtils.errorHandler( "createProjectCard", e, createProjectCard, authData, columnId, issueId, justId ));
 
     if( newCard != -1 ) { retVal = justId ? newCard['id'] : newCard; }
     return retVal;
@@ -1359,7 +1307,7 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
 		
 		await ghLinks.addLoc( authData, nLoc, true );
 	    })
-	    .catch( e => unClaimedProjId = errorHandler( "createUnClaimedProject", e, createUnClaimedProject, authData, ghLinks, pd ));
+	    .catch( e => unClaimedProjId = ghUtils.errorHandler( "createUnClaimedProject", e, createUnClaimedProject, authData, ghLinks, pd ));
     }
     return unClaimedProjId;
 }
@@ -1393,7 +1341,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 		
 		await ghLinks.addLoc( authData, nLoc, true );
 	    })
-	    .catch( e => unClaimedColId = errorHandler( "createUnClaimedColumn", e, createUnClaimedColumn, authData, ghLinks, pd, unClaimedProjId, issueId, accr ));
+	    .catch( e => unClaimedColId = ghUtils.errorHandler( "createUnClaimedColumn", e, createUnClaimedColumn, authData, ghLinks, pd, unClaimedProjId, issueId, accr ));
     }
     return unClaimedColId;
 }
@@ -1435,12 +1383,12 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "cleanUnclaimed" )
-	    .catch( e => errorHandler( "cleanUnclaimed", utils.FAKE_ISE, cleanUnclaimed, authData, ghLinks, pd ));
+	    .catch( e => ghUtils.errorHandler( "cleanUnclaimed", utils.FAKE_ISE, cleanUnclaimed, authData, ghLinks, pd ));
     }
     else {
 	await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
 	    .then( r => success = true )
-	    .catch( e => errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
+	    .catch( e => ghUtils.errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
     }
 
     // Remove turds, report.  
@@ -1457,11 +1405,11 @@ async function createColumn( authData, projId, colName, pos ) {
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "createColumn" )
-    	    .catch( e => rv = errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, projId, colName ));
+    	    .catch( e => rv = ghUtils.errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, projId, colName ));
     }
     else {
 	rv = await authData.ic.projects.createColumn({ project_id: projId, name: colName })
-	    .catch( e => rv = errorHandler( "createColumn", e, createColumn, authData, projId, colName ));
+	    .catch( e => rv = ghUtils.errorHandler( "createColumn", e, createColumn, authData, projId, colName ));
 
 	// don't wait
 	authData.ic.projects.moveColumn({ column_id: rv.data.id.toString(), position: pos })
@@ -1626,7 +1574,7 @@ async function findCardInColumn( authData, ghLinks, ceProj, owner, repo, issueId
 async function moveCard( authData, cardId, colId ) {
     colId = parseInt( colId );
     return await authData.ic.projects.moveCard({ card_id: cardId, position: "top", column_id: colId })
-	.catch( e => errorHandler( "moveCard", e, moveCard, authData, cardId, colId ));
+	.catch( e => ghUtils.errorHandler( "moveCard", e, moveCard, authData, cardId, colId ));
 }
 
 // GitHub add assignee can take a second or two to complete, internally.

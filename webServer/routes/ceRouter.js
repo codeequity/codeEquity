@@ -92,14 +92,14 @@ async function getAuths( authData, host, pms, org, actor ) {
 // Build, add jobs, get next job, send to platform handler
 // ****************************************************************
 function stampJob( jd, delayCount ) {
-    if( jd.Host == "" || jd.ProjMgmtSys == "" || jd.Actor == "" ) {
+    if( jd.host == "" || jd.projMgmtSys == "" || jd.actor == "" ) {
 	console.log( "Warning.  Job does not indicate host, pms or actor.  Skipping." );
-	jd.Stamp = -1;
+	jd.stamp = -1;
 	return;
     }
 
-    jd.DelayCount  = delayCount;
-    jd.Stamp = Date.now();
+    jd.delayCount  = delayCount;
+    jd.stamp = Date.now();
 }
 
 function summarizeQueue( ceJobs, msg, limit ) {
@@ -107,19 +107,19 @@ function summarizeQueue( ceJobs, msg, limit ) {
     const jobs = ceJobs.jobs.getAll();
     limit = ceJobs.jobs.length < limit ? ceJobs.jobs.length : limit;
     for( let i = 0; i < limit; i++ ) {
-	console.log( "   ", jobs[i].QueueId, jobs[i].Host, jobs[i].Tag, jobs[i].Stamp, jobs[i].DelayCount );
+	console.log( "   ", jobs[i].queueId, jobs[i].host, jobs[i].tag, jobs[i].stamp, jobs[i].delayCount );
     }
 }
 
 // Do not remove top, that is getNextJob's sole perogative
 // add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
 async function demoteJob( ceJobs, jd ) {
-    console.log( "Demoting", jd.QueueId, jd.DelayCount );
-    let oldDelayCount = jd.DelayCount; 
+    console.log( "Demoting", jd.queueId, jd.delayCount );
+    let oldDelayCount = jd.delayCount; 
     stampJob( jd, oldDelayCount+1 );
 
     // This can't be, since the job was already processed.
-    assert( jd.Stamp != -1 );
+    assert( jd.stamp != -1 );
     
     // This has failed once, during cross repo blast test, when 2 label notifications were sent out
     // but stack separation was ~20, and so stamp time diff was > 2s. This would be (very) rare.
@@ -144,7 +144,7 @@ async function demoteJob( ceJobs, jd ) {
 	// Have to push back at least once.  
 	for( let i = 1; i < jobs.length; i++ ) {
 	    spliceIndex = i+1;
-	    if( jobs[i].Stamp - jd.Stamp > config.MIN_DIFF ) { break;  }
+	    if( jobs[i].stamp - jd.stamp > config.MIN_DIFF ) { break;  }
 	}
     }
     if( spliceIndex == 1 && jobs.length >= 2 ) { spliceIndex = 2; }  // force progress where possible
@@ -170,9 +170,9 @@ function purgeQueue( ceJobs ) {
 
 // Put the job.  Then return first on queue.  Do NOT delete first.
 function checkQueue( ceJobs, jd ) {
-    stampJob( jd, jd.DelayCount );
+    stampJob( jd, jd.delayCount );
 
-    if( jd.Stamp != -1 ) {
+    if( jd.stamp != -1 ) {
 	ceJobs.jobs.push( jd );
 	if( ceJobs.jobs.length > ceJobs.maxDepth ) { ceJobs.maxDepth = ceJobs.jobs.length; }
 	ceJobs.count++;
@@ -199,31 +199,31 @@ async function getNextJob( authData, res ) {
     if( jobData != -1 ) {
 
 	let hostHandler = null; 
-	if( jobData.Host == config.HOST_GH ) { hostHandler = ghr.ghSwitcher; }
+	if( jobData.host == config.HOST_GH ) { hostHandler = ghr.ghSwitcher; }
 	else {
-	    console.log( "Warning.  Incoming notification is not from a known platform", jobData.ReqBody );
+	    console.log( "Warning.  Incoming notification is not from a known platform", jobData.reqBody );
 	    return res.end();
 	}
 	
 	// Need a new authData, else source for non-awaited actions is overwritten
 	let ic = {};
-	ic.who     = "<"+jobData.Event+": "+jobData.Action+" "+jobData.Tag+"> ";   
+	ic.who     = "<"+jobData.event+": "+jobData.action+" "+jobData.tag+"> ";   
 	ic.api     = authData.api;
 	ic.cog     = authData.cog;
 	ic.cogLast = authData.cogLast;
-	ic.job     = jobData.QueueId;
+	ic.job     = jobData.queueId;
 
 	// Send authData so cogLast, is correct.
 	// But reset authData.pat to keep parent pat correct.
 	let tmp = authData.pat;
 	// XXX
 	console.log( "XXX Get next job" );
-	getAuths( authData, jobData.Host, jobData.ProjMgmtSys, jobData.Org, jobData.Actor );
+	getAuths( authData, jobData.host, jobData.projMgmtSys, jobData.org, jobData.actor );
 	ic.pat = authData.pat;
 	authData.pat = tmp;
 	
 	console.log( "\n\n", authData.who, "Got next job:", ic.who );
-	await hostHandler( ic, ceProjects, hostLinks, jobData, res, jobData.Stamp );   
+	await hostHandler( ic, ceProjects, hostLinks, jobData, res, jobData.stamp );   
     }
     else {
 	console.log( authData.who, "jobs done" );
@@ -242,67 +242,64 @@ async function getNextJob( authData, res ) {
 // Keep this very light-weight.  All processing is done by host platform routers.
 router.post('/:location?', async function (req, res) {
 
-    console.log( "XXX XXX XXX XXX" );
-    console.log( req.body, req.headers );
+    // console.log( "XXX XXX XXX XXX" );
+    // console.log( "BODY", req.body, "\nHEADERS", req.headers );
 
     // invisible, mostly
     if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( hostLinks, ceJobs, ceNotification, req.body, res ); }
 
     let jd     = new jobData.JobData();
-    jd.ReqBody = req.body;
+    jd.reqBody = req.body;
 
     let hostHandler         = null;
     let hostBuildJobSummary = null;
 
     // Detect additional platform hosts here
     if( req.headers.hasOwnProperty( 'x-github-event' ) ) {
-	jd.Host   = config.HOST_GH;
-	jd.Actor  = req.body.sender.login;
+	jd.host   = config.HOST_GH;
+	
 	hostHandler    = ghr.ghSwitcher;
 	hostGetJobData = ghr.ghGetJobSummaryData;
-
-	if( req.body.hasOwnProperty( "projects_v2_item" ) ) { jd.ProjMgmtSys = config.PMS_GH2; }
-	else                                                { jd.ProjMgmtSys = config.PMS_GHC; }
-	
     }
     else {
 	console.log( "Warning.  Incoming notification is not from a known platform", req.headers );
 	return res.end();
     }
 
-    if( jd.Actor == config.CE_BOT) {
-	console.log( "Notification for", jd.Event, jd.Action, "Bot-sent, skipping." );
-	return res.end();
-    }
-
-    // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
-    notificationCount++;
-    if( notificationCount % 50 == 0 ) { hostLinks.show(15); }
-    
     let orgPath  = "";                       // Unique locator for CodeEquity project.   Example - "GitHub/ariCETester/codeEquityTests"
     let source   = "<";                      // Printable data for debugging notices.    Example - <item:create AnIssue>
     let newStamp = utils.getMillis();
 
     // Host platform get job data summary info
-    let ret = hostGetJobData( newStamp, jd, orgPath, source );
+    let ret = hostGetJobData( newStamp, jd, req.headers, orgPath, source );
     if( ret == -1 ) { return res.end(); }
+
+    if( jd.actor == config.CE_BOT) {
+	console.log( "Notification for", jd.event, jd.action, "Bot-sent, skipping." );
+	return res.end();
+    }
     
+    // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
+    notificationCount++;
+    if( notificationCount % 50 == 0 ) { hostLinks.show(15); }
+    
+
     ceArrivals.add( newStamp );                                    // how responsive is the server, debugging
-    ceNotification.push( jd.Event+" "+jd.Action+" "+jd.Tag+" "+orgPath );   // testing data
+    ceNotification.push( jd.event+" "+jd.action+" "+jd.tag+" "+orgPath );   // testing data
 
     // Only 1 externally driven job (i.e. triggered from non-CE host platform notification) active at any time
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activation from getNext
     let qTopJobData = checkQueue( ceJobs, jd ); 
     assert( qTopJobData != -1 );
-    if( jd.QueueId != qTopJobData.QueueId ) {
-	console.log( source, "Busy with job#", qTopJobData.QueueId );
+    if( jd.queueId != qTopJobData.queueId ) {
+	console.log( source, "Busy with job#", qTopJobData.queueId );
 	return res.end();
     }
 
     // Don't set this earlier - authData should only overwrite if it is being processed next.
     // this first jobId is set by getNext to reflect the proposed next job.
     authData.who = source;
-    authData.job = jd.QueueId;
+    authData.job = jd.queueId;
     
     console.log( authData.who, "job Q [" + orgPath + "] clean, start-er-up" );
     await hostHandler( authData, ceProjects, hostLinks, jd, res, newStamp ); 

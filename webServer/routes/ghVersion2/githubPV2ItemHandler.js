@@ -6,6 +6,7 @@ const utils = require( '../../utils/ceUtils' );
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
+const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
 
 // XXX 
 // Terminology:
@@ -22,94 +23,128 @@ const ghSafe    = ghClassic.githubSafe;
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
-// XXX
-// Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
-//          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
-// Note: issue:opened         notification after 'submit' is pressed.
-//       issue:labeled        notification after click out of label section
-//       project_card:created notification after submit, then projects:triage to pick column.
 async function handler( authData, ghLinks, pd, action, tag ) {
 
-    // Sender is the event generator.
-    let sender   = pd.reqBody['sender']['login'];
     console.log( authData.who, "start", authData.job );
     
     // await gh.checkRateLimit(authData);
 
+    // event:        projects_v2_item
+    // action:       archived, converted, created, deleted, edited, reordered, restored
+    // content_type: DraftIssue, Issue, PullRequest
+    // from project_node_id, content_node_id can get project, labels, columns, maybe changes.
+    // https://docs.github.com/en/graphql/overview/changelog
+    // https://docs.github.com/en/graphql/reference
+    // https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#projects_v2_item
+
+    let actor   = pd.actor;        // Actor is the event generator.
+    let reqBody = pd.reqBody;
+    let item    = reqBody.projects_v2_item;
+
+    let projectDetail = await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
+    console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
+
+    // XXX can't set repo here for pd.. can be several.  Should not need to..?
+    pd.projectId = projectDetail.databaseId;
+    console.log( "In pv2 handler, pd?");
+    pd.show();
+
+    
+    assert( typeof item !== 'undefined' );
+
+    if( item.content_type != "Issue" ) {
+	console.log( "Skipping", item.content_type, action );
+	console.log( reqBody );
+	return;
+    }
+
+    // XXX need to pass in and return res from ceRouter
+
+    //                       -> event           :action      content_type
+
+    // Create issue notifications: (can ignore)
+    // * create draft issue  -> projects_v2_item:created     draft issue
+    // * convert draft issue -> projects_v2_item:reorder     draft issue     (sometimes)
+    // * (pick a repo)       -> projects_v2_item:converted   issue
+    //                       -> issues          :opened      XXX confirm event
+
+    // Create label : have to open issue in new tab (!!)
+    // * create new label    -> label          :created
+    
+    // Label issue (peq or not):
+    //                       -> issues          :labeled     
+    //                       -> projects_v2_item:edited     issue
+
+    
+    // Assign issue: 
+    //                       -> issues          :assigned
+    //                       -> projects_v2_item:edited     issue
+
+    // Change issue status:
+    //                       -> projects_v2_item:edited     issue
+
+    // Close issue:
+    // Shucks.  github auto process, actor:ghost moves card to 'done'.  But does not change status back to open.
+    //                       -> issues          :closed
+    // (ghost moves to done) -> projects_v2_item:edited     issue
+
+    // Reopen issue: 
+    //                       -> issues          :reopen
+
+    
+    // Create new status, new project:   nothing.  why.
+    // Peq label draft issue: can't perform this action
+
+    
     switch( action ) {
-    case 'labeled':
-	// Can get here at any point in issue interface by adding a label, peq or otherwise
-	// Can peq-label newborn and carded issues that are not >= PROJ_PEND
-	// PROJ_PEND label can be added during pend negotiation, but it if is situated already, adding a second peq label is ignored.
-	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only
-	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
+    case 'converted':
+	// When select "convert" a draft issue, first notification is 'reorder' for draft issue
+	// second notification is 'converted' for issue.
+	// third notification is 'opened' for event type issue, i.e. different handler
 	{
+	    console.log( "PV2ItemHandler", action );
+	    console.log( reqBody );
 	}
 	break;
-    case 'unlabeled':
-	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  
-	// Do not move card, would be confusing for user.
+    case 'created':
 	{
+	    // ?? is this only for draft issue?  if so, use it to find hproj, cproj
+	    console.log( "PV2ItemHandler", action );
+	    console.log( reqBody );
 	}
 	break;
     case 'deleted':
-	// Delete card of carded issue sends 1 notification.  Delete issue of carded issue sends two: card, issue, in random order.
-	// This must be robust given different notification order of { delIssue, delCard}
-
-	// NOTE!!  As of 6/8/2022 the above is no longer true.  delIssue notification is generated, delCard is.. well.. see deleteIssue comments.
-	
-	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
-	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
-	// Wait here, since delete issue can createUnclaimed
 	{
-	}
-	break;
-    case 'closed':
-    case 'reopened':
-	{
-	}
-	break;
-    case 'assigned': 
-    case 'unassigned':
-	{
+	    console.log( "PV2ItemHandler", action );
+	    console.log( reqBody );
 	}
 	break;
     case 'edited':
-	// Only need to catch title edits, and only for situated.  
 	{
+	    console.log( "PV2ItemHandler", action );
+	    console.log( reqBody );
 	}
 	break;
-    case 'transferred':
-	// (open issue in new repo, delete project card, transfer issue)
-	// NOTE.  As of 2/13/2022 GH is keeping labels with transferred issue, although tooltip still contradicts this.
-	//        Currently, this is in flux.  the payload has new_issue, but the labels&assignees element is empty.
-	//        Also, as is, this is violating 1:1 issue:card
-	// Transfer IN:  Not getting these any longer.
-	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.  GH will send delete card.
-	//
-	// Transfer from non-CE to ceProj: issue arrives as newborn.
-	// Transfer out of ceProj: as above xfer out.
-
-	// Transfer from ceProj to ceProj: issue arrives with peq labels, assignees.  Receiving transferOut notification with .changes
-	// https://docs.github.com/en/issues/tracking-your-work-with-issues/transferring-an-issue-to-another-repository
-	// only xfer between repos 1) owned by same person/org; 2) where you have write access to both
-	
+    case 'archived':
 	{
+	    console.log( "PV2ItemHandler", action );
+	    console.log( reqBody );
 	}
 	break;
-
-    case 'opened':	        // Do nothing.
-	// Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle in cards.
-	// Get here with: or more commonly, New issue with submit.
-    case 'pinned':             	// Do nothing.
-    case 'unpinned':      	// Do nothing.
-    case 'locked':      	// Do nothing.
-    case 'unlocked':      	// Do nothing.
-    case 'milestoned':      	// Do nothing.
-    case 'demilestoned':     	// Do nothing.
+    case 'restored':
+	{
+	    console.log( "PV2ItemHandler", action );
+	    console.log( reqBody );
+	}
+	break;
+    case 'reordered':
+	// Change placement of card in column.  Ignore.
+	{
+	    console.log( "PV2ItemHandler", action, "no work required" );
+	}
 	break;
     default:
-	console.log( "Unrecognized action (issues)" );
+	console.log( "PV2ItemHandler Unrecognized action:", action );
 	break;
     }
     

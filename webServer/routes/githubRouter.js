@@ -68,12 +68,15 @@ async function getAuths( authData, pms, org, actor ) {
     }
     githubPATs[host][org][actor] = await githubPATs[host][org][actor];
     // console.log( "PATTY", githubPATs[host][org][actor] );
-    
-    if( githubPATs[host][org][actor] == -1 ) {
-	console.log( "Warning.  Did not find PAT for", actor );
+
+    if( actor == config.GH_GHOST ) {
+	console.log( "Skipping PAT acquisition for GitHub ghost action" );
+    }
+    else if( githubPATs[host][org][actor] == -1 ) {
+	console.log( "Warning.  Did not find PAT for", host, org, actor );
 	assert( false );
     }
-    authData.pat = githubPATs[host][org][actor];
+    else { authData.pat = githubPATs[host][org][actor]; }
 
     authData.ic  = -1;
     if( pms == config.PMS_GHC ) {    
@@ -107,99 +110,105 @@ async function refreshAuths( authData, pms, host, org, actor) {
 
 function getJobSummaryGHC( newStamp, jobData, orgPath, source ) {
 
-    if( !jobData.ReqBody.hasOwnProperty('repository') ) {
+    if( !jobData.reqBody.hasOwnProperty('repository') ) {
 	console.log( "Notification for Delete repository.  CodeEquity does not require these.  Skipping." );
 	return -1;
     }
     
-    jobData.Org  = jobData.ReqBody.repository.full_name;
+    jobData.org  = jobData.reqBody.repository.full_name;
 
-    if( jobData.Event == "issue" )    {
-	jobData.Tag = (jobData.ReqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
+    if( jobData.event == "issue" )    {
+	jobData.tag = (jobData.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
 	source += "issue:";
     }
-    else if( jobData.Event == "project_card" ) {
+    else if( jobData.event == "project_card" ) {
 	source += "card:";
-	if( jobData.ReqBody.project_card.content_url != null ) {
-	    let issueURL = jobData.ReqBody.project_card.content_url.split('/');
+	if( jobData.reqBody.project_card.content_url != null ) {
+	    let issueURL = jobData.reqBody.project_card.content_url.split('/');
 	    let issueNum = parseInt( issueURL[issueURL.length - 1] );
-	    jobData.Tag = "iss"+parseInt(issueNum);
+	    jobData.tag = "iss"+parseInt(issueNum);
 	}
 	else {
 	    //  random timing.  thanks GQL.  XXX can not assert.
-	    if( jobData.ReqBody.project_card.note == null )
+	    if( jobData.reqBody.project_card.note == null )
 	    {
-		assert( jobData.Action == 'deleted' );
-		jobData.Tag = "<title deleted>";
+		assert( jobData.action == 'deleted' );
+		jobData.tag = "<title deleted>";
 	    }
 	    else {
-		let cardContent = jobData.ReqBody.project_card.note.split('\n');
-		jobData.Tag = "*"+cardContent[0].substring(0,8)+"*";
+		let cardContent = jobData.reqBody.project_card.note.split('\n');
+		jobData.tag = "*"+cardContent[0].substring(0,8)+"*";
 	    }
 	}
-	jobData.Tag = jobData.Tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+	jobData.tag = jobData.tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
     }
     else {
-	source += jobData.Event + ":";
+	source += jobData.event + ":";
 
-	if     ( !jobData.ReqBody.hasOwnProperty( jobData.Event ) ) { console.log( jobData.ReqBody ); }
-	else if( !jobData.ReqBody[jobData.Event].hasOwnProperty( 'name' ) ) { console.log( jobData.ReqBody ); }
+	if     ( !jobData.reqBody.hasOwnProperty( jobData.event ) ) { console.log( jobData.reqBody ); }
+	else if( !jobData.reqBody[jobData.event].hasOwnProperty( 'name' ) ) { console.log( jobData.reqBody ); }
 
-	jobData.ReqBody[jobData.Event].name.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-	jobData.Tag = jobData.ReqBody[jobData.Event].name;
+	jobData.reqBody[jobData.event].name.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+	jobData.tag = jobData.reqBody[jobData.event].name;
     }
 
-    source += jobData.Action+" "+jobData.Tag+"> ";
-    console.log( "Notification:", jobData.Event, jobData.Action, jobData.Tag, jobId, "for", jobData.Org, newStamp );
+    source += jobData.action+" "+jobData.tag+"> ";
+    console.log( "Notification:", jobData.event, jobData.action, jobData.tag, jobId, "for", jobData.org, newStamp );
 
-    orgPath = config.HOST_GH + "/" + jobData.ReqBody.repository.full_name;
+    orgPath = config.HOST_GH + "/" + jobData.reqBody.repository.full_name;
     return true;
 }
 
 function getJobSummaryGH2( newStamp, jobData, orgPath, source ) {
 
-    if( !jobData.ReqBody.hasOwnProperty('organization') ) {
+    if( !jobData.reqBody.hasOwnProperty('organization') ) {
 	console.log( "Organization not present.  CodeEquity requires organizations for Github's Project Version 2.  Skipping." );
 	return -1;
     }
 
-    // XXX umm... no?  check getauths
     // XXX Very little descriptive information known at this point, very hard to debug/track.  To get, say, an issue name,
     //     we'd have to wait for a roundtrip query back to GH right now.  ouch!
     // XXX fullName not known for pv2item.  replace with content_node_id (often issue?)  Repo is (?) no longer relevant
-    let fullName = jobData.ReqBody.organization.login + "/" + jobData.ReqBody.projects_v2_item.content_node_id;
-    jobData.Org  = jobData.ReqBody.organization.login;
+    let fullName = jobData.reqBody.organization.login + "/" + jobData.reqBody.projects_v2_item.content_node_id;
+    jobData.org  = jobData.reqBody.organization.login;
+    jobData.tag  = fullName; 
 
-    if( jobData.Event == "projects_v2_item"  && jobData.ReqBody.projects_v2_item.content_type == "Issue" ) {
-	jobData.Tag = fullName; 
+    if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "Issue" ) {
 	source += "issue:";
     }
+    else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "DraftIssue" ) {
+	source += "draftIssue:";
+    }
     else {
-	source += jobData.Event + ":";
-	console.log( "Not yet handled", jobData.ReqBody ); 
-	jobData.Tag = jobData.ReqBody[jobData.Event];
+	source += jobData.event + ":";
+	console.log( "Not yet handled", jobData.reqBody ); 
     }
 
-    source += jobData.Action+" "+jobData.Tag+"> ";
-    console.log( "Notification:", jobData.Event, jobData.Action, jobData.Tag, jobData.QueueId, "for", jobData.Org, newStamp );
+    source += jobData.action+" "+jobData.tag+"> ";
+    console.log( "Notification:", jobData.event, jobData.action, jobData.tag, jobData.queueId, "for", jobData.org, newStamp );
 
     orgPath = config.HOST_GH + "/" + fullName;
     return true;
 }
 
-function getJobSummary( newStamp, jobData, orgPath, source ) {
-
-    jobData.Action = jobData.ReqBody.action;
-    jobData.Event  = jobData.ReqBody.headers['x-github-event'];
-
+function getJobSummary( newStamp, jobData, headers, orgPath, source ) {
     let retVal = -1;
     
-    if( jobData.Event == "issues" )  { jobData.Event = "issue"; }
+    jobData.actor  = jobData.reqBody.sender.login;
+    jobData.action = jobData.reqBody.action;
 
-    // XXXXX classic look for headers.
-    if(      jobData.Event == "projects_vs_item" ) { retVal = getJobSummaryGH2( newStamp, jobData, orgPath, source ); }
-    else if( !jobData.ReqData.hasOwnProperty("organization")) { retVal = getJobSummaryGHC( newStamp, jobData, orgPath, source ); }
-    else                                           { console.log( "Warning.  Can't identify type of project mgmt sys for notification." );      }
+    jobData.event  = headers['x-github-event'];
+    if( jobData.event == "issues" ) { jobData.event = "issue"; }
+	
+    if( jobData.reqBody.hasOwnProperty( "projects_v2_item" ) ) { jobData.projMgmtSys = config.PMS_GH2; }
+    else                                                       { jobData.projMgmtSys = config.PMS_GHC; }
+    
+    if(      jobData.event == "projects_v2_item" )            { retVal = getJobSummaryGH2( newStamp, jobData, orgPath, source ); }
+    else if( !jobData.reqBody.hasOwnProperty("organization")) { retVal = getJobSummaryGHC( newStamp, jobData, orgPath, source ); }
+    else                                                      {
+	console.log( "Warning.  Can't identify type of project mgmt sys for notification." );
+	console.log( jobData.reqBody, headers );
+    }
 
     return retVal;
 }
@@ -207,56 +216,56 @@ function getJobSummary( newStamp, jobData, orgPath, source ) {
 
 async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) {
     let retVal = "";
-    assert( jd.QueueId == authData.job ) ;
+    assert( jd.queueId == authData.job ) ;
     
     let pd          = new ghcData.GHCData();
-    pd.GHOwner      = jd.ReqBody['repository']['owner']['login'];
-    pd.GHRepo       = jd.ReqBody['repository']['name'];
-    pd.reqBody      = jd.ReqBody;
-    pd.GHFullName   = jd.ReqBody['repository']['full_name'];
+    pd.GHOwner      = jd.reqBody['repository']['owner']['login'];
+    pd.GHRepo       = jd.reqBody['repository']['name'];
+    pd.reqBody      = jd.reqBody;
+    pd.GHFullName   = jd.reqBody['repository']['full_name'];
 
     // XXX can set ghLinks... and locs..?  more args?  hmmm
-    pd.CEProjectId  = ceProjects.find( jd.Host, jd.Org, jd.ReqBody.repository );
+    pd.CEProjectId  = ceProjects.find( jd.host, jd.org, jd.reqBody.repository );
     assert( pd.CEProjectId != -1 );
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
     console.log( "XXX Switcher GHC" );
-    await ceRouter.getAuths( authData, config.HOST_GH, jd.ProjMgmtSys, pd.GHFullName, config.CE_USER );
+    await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.GHFullName, config.CE_USER );
     
-    switch( jd.Event ) {
+    switch( jd.event ) {
     case 'issue' :
 	{
-	    retVal = await issues.handler( authData, ghLinks, pd, jd.Action, jd.Tag )
+	    retVal = await issues.handler( authData, ghLinks, pd, jd.action, jd.tag )
 		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
 	}
 	break;
     case 'project_card' :
 	{
-	    retVal = await cards.handler( authData, ghLinks, pd, jd.Action, jd.Tag )
+	    retVal = await cards.handler( authData, ghLinks, pd, jd.action, jd.tag )
 		.catch( e => console.log( "Error.  Card Handler failed.", e ));
 	}
 	break;
     case 'project' :
 	{
-	    retVal = await projects.handler( authData, ghLinks, pd, jd.Action, jd.Tag )
+	    retVal = await projects.handler( authData, ghLinks, pd, jd.action, jd.tag )
 		.catch( e => console.log( "Error.  Project Handler failed.", e ));
 	}
 	break;
     case 'project_column' :
 	{
-	    retVal = await columns.handler( authData, ghLinks, pd, jd.Action, jd.Tag )
+	    retVal = await columns.handler( authData, ghLinks, pd, jd.action, jd.tag )
 		.catch( e => console.log( "Error.  Column Handler failed.", e ));
 	}
 	break;
     case 'label' :
 	{
-	    retVal = await labels.handler( authData, ghLinks, pd, jd.Action, jd.Tag )
+	    retVal = await labels.handler( authData, ghLinks, pd, jd.action, jd.tag )
 		.catch( e => console.log( "Error.  Label Handler failed.", e ));
 	}
 	break;
     default:
 	{
-	    console.log( "Event unhandled", jd.Event );
+	    console.log( "Event unhandled", jd.event );
 	    retVal = res.json({ status: 400 });
 	    break;
 	}
@@ -266,26 +275,25 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	console.log( authData.who, "Delaying this job." );
 	await ceRouter.demoteJob( ceJobs, jd ); 
     }
-    console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.DelayCount );
+    console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.delayCount );
     ceRouter.getNextJob( authData, res );	
 }
 
 
 async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) {
-    let retVal = "";
-    let org = jd.ReqBody.organization.login;
 
-    let pd            = new gh2Data.GH2Data();
-    pd.GHOrganization = org;
+    let retVal = "";
+
+    let pd = new gh2Data.GH2Data( jd, ceProjects );
     
-    assert( jd.QueueId == authData.job ) ;
-    console.log( "XXX Swither GH2" );
-    await ceRouter.getAuths( authData, config.HOST_GH, jd.ProjMgmtSys, org, jd.Actor );
-    
-    switch( jd.Event ) {
+    assert( jd.queueId == authData.job ) ;
+    console.log( "XXX Switcher GH2" );
+    await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
+
+    switch( jd.event ) {
     case 'projects_v2_item' :
 	{
-	    retVal = await items.handler( authData, ghLinks, pd, jd.Action, jd.Tag )
+	    retVal = await items.handler( authData, ghLinks, pd, jd.action, jd.tag )
 		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
 	}
 	break;
@@ -306,7 +314,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	console.log( authData.who, "Delaying this job." );
 	await ceRouter.demoteJob( ceJobs, jd );
     }
-    console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.DelayCount );
+    console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.delayCount );
     ceRouter.getNextJob( authData, res );	
 }
 
@@ -316,13 +324,13 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
     console.log( "" );
 
-    if( jd.Action == "synchronize" || jd.ReqBody.hasOwnProperty( "pull_request" )) {
+    if( jd.action == "synchronize" || jd.reqBody.hasOwnProperty( "pull_request" )) {
 	console.log( "Notification for Pull Request.  CodeEquity does not require these.  Skipping." );
 	return res.end();
     }
 
-    if(      jd.ProjMgmtSys == config.PMS_GH2 ) { await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp ); }
-    else if( jd.ProjMgmtSys == config.PMS_GHC ) { await switcherGHC( authData, ceProjects, hostLinks, jd, res, origStamp ); }
+    if(      jd.projMgmtSys == config.PMS_GH2 ) { await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp ); }
+    else if( jd.projMgmtSys == config.PMS_GHC ) { await switcherGHC( authData, ceProjects, hostLinks, jd, res, origStamp ); }
     else                                        { console.log( "Warning.  Can't identify proj mgmt sys for notification." );      }
     
 }

@@ -338,6 +338,9 @@ async function getEntries( tableName, query ) {
     case "CEProjects":
 	props = [ "CEProjectId" ];
 	break;
+    case "CELinkage":
+	props = [ "CEProjectId" ];
+	break;
     case "CEPEQSummary": 
 	props = [ "CEProjectId" ];
 	break;
