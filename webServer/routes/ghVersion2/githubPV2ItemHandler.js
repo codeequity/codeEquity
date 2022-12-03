@@ -45,7 +45,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
 
     // XXX can't set repo here for pd.. can be several.  Should not need to..?
-    pd.projectId = projectDetail.databaseId;
+    pd.projectId = projectDetail.id;
     console.log( "In pv2 handler, pd?");
     pd.show();
 
