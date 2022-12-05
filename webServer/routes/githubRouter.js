@@ -5,6 +5,7 @@ const auth    = require( '../auth/gh/ghAuth' );
 
 const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
+const ghUtils  = require( '../utils/gh/ghUtils.' );
 
 const links   = require( '../components/linkage' );
 
@@ -22,8 +23,13 @@ const ghcData  = require( './ghClassic/ghcData' );
 const items   = require( './ghVersion2/githubPV2ItemHandler' );
 const gh2Data = require( './ghVersion2/gh2Data' );
 
+// When switching between GHC and GH2, look for pv2Notices that match contentNotices.
+var pendingNotices = [];
+
+// Auths
 var octokitClients = {};
 var githubPATs     = {};
+
 
 
 // CE_USER used for app-wide jwt
@@ -191,6 +197,8 @@ function getJobSummaryGH2( newStamp, jobData, orgPath, source ) {
     return true;
 }
 
+
+// At this point, a pv2 notice is fast and clear cut, but a content notice will take time to determine. 
 function getJobSummary( newStamp, jobData, headers, orgPath, source ) {
     let retVal = -1;
     
@@ -199,16 +207,14 @@ function getJobSummary( newStamp, jobData, headers, orgPath, source ) {
 
     jobData.event  = headers['x-github-event'];
     if( jobData.event == "issues" ) { jobData.event = "issue"; }
-	
+
+    // pv2Notice.  If not this, we have a content notice, which could be GH2 or GHC.
     if( jobData.reqBody.hasOwnProperty( "projects_v2_item" ) ) { jobData.projMgmtSys = config.PMS_GH2; }
-    else                                                       { jobData.projMgmtSys = config.PMS_GHC; }
-    
+
+    // If contentNotice, PMS is not yet known, however repo info is present, so use GHC.
+    // ContentNotice does carry repo information, so stay closer to GHC
     if(      jobData.event == "projects_v2_item" )            { retVal = getJobSummaryGH2( newStamp, jobData, orgPath, source ); }
-    else if( !jobData.reqBody.hasOwnProperty("organization")) { retVal = getJobSummaryGHC( newStamp, jobData, orgPath, source ); }
-    else                                                      {
-	console.log( "Warning.  Can't identify type of project mgmt sys for notification." );
-	console.log( jobData.reqBody, headers );
-    }
+    else                                                      { retVal = getJobSummaryGHC( newStamp, jobData, orgPath, source ); }
 
     return retVal;
 }
@@ -287,7 +293,6 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     let pd = new gh2Data.GH2Data( jd, ceProjects );
     
     assert( jd.queueId == authData.job ) ;
-    console.log( "XXX Switcher GH2" );
     await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
 
     switch( jd.event ) {
@@ -309,6 +314,8 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	    break;
 	}
     }
+
+    // Common occurance for out-of-order notices when first linking appId to projectId
     if( retVal == "postpone" ) {
 	// add current job back into queue.
 	console.log( authData.who, "Delaying this job." );
@@ -318,7 +325,50 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     ceRouter.getNextJob( authData, res );	
 }
 
+// This is a contentNotice. Is it part of a GH2 project?
+async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) {
+    console.log( "Content notice switching" );
 
+    assert( typeof jd.reqBody[ jd.event ] !== 'undefined' );
+
+    let nodeId = jd.reqBody[ jd.event ].node_id;
+    let found = false;
+    for( let i = 0; i < pendingNotices.length; i++ ) {
+	if( nodeId == pendingNotices[i].id && jd.event == pendingNotices[i].mod ) {
+	    console.log( "Found pv2Notice matching contentNotice" );
+	    pendingNotices.splice( i, 1 );
+	    found = true;
+	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
+	    break;
+	}
+    }
+
+    let demote = false;
+    if( !found ) {
+	console.log( "Did not find matching pv2Notice." );
+	if( jd.delayCount > 1 ) {
+	    console.log( "This job has already been delayed several times.. Checking for PV2" );
+	    let foundPV2 = await ghUtils.checkForPV2( authData, node_id );
+	    // XXX disturbing?  where's the pv2Notice?
+	    if( foundPV2 ) {
+		console.log( "Found PV2.  Switching GH2" );
+		console.log( "XXX Increase delay count?  Otherwise Pending will grow?" );
+		await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
+	    }
+	    else {
+		console.log( "Did not find PV2.  Switching GHC" );
+		await switcherGHC( authData, ceProjects, hostLinks, jd, res, origStamp );
+	    }
+	}
+	else { demote = true; }
+    }
+
+    if( demote ) {
+	console.log( "Delaying this job." );
+	await ceRouter.demoteJob( ceJobs, jd );
+	ceRouter.getNextJob( authData, res );
+    }
+}
 
 async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
@@ -329,9 +379,23 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 	return res.end();
     }
 
-    if(      jd.projMgmtSys == config.PMS_GH2 ) { await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp ); }
-    else if( jd.projMgmtSys == config.PMS_GHC ) { await switcherGHC( authData, ceProjects, hostLinks, jd, res, origStamp ); }
-    else                                        { console.log( "Warning.  Can't identify proj mgmt sys for notification." );      }
+    if( jd.projMgmtSys == config.PMS_GH2 ) {
+	if( jd.action == "edited" ) {
+	    let item = jd.reqBody.projects_v2_item;
+	    assert( typeof item.content_node_id !== 'undefined' );
+	    assert( typeof item.changes !== 'undefined' && typeof item.changes.field_value !== 'undefined' && typeof item.changes.field_value.field_type !== 'undefined' );
+
+	    pendingNotices.push( {id: item.content_node_id, mod: item.changes.field_value.field_type} ); 
+	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
+	}
+	else {
+	    console.log( "githubRouter switcher routing NYI", jd.action );
+	    assert( false );
+	}
+    }
+    else {
+        await switcherUNK( authData, ceProjects, hostLinks, jd, res, origStamp );
+    }
     
 }
 

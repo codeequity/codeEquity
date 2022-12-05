@@ -145,7 +145,7 @@ async function getHostLinkLoc( PAT, pNodeId, locData, linkData, cursor ) {
 	let items = ret.data.node.items;
 	for( let i = 0; i < items.edges.length; i++ ) {
 	    const issue = items.edges[i].node;
-	    console.log( issue );
+	    // console.log( issue );
 
 	    let status = issue.fieldValueByName == null ? "No Status" : issue.fieldValueByName.name;
 	    
@@ -164,8 +164,8 @@ async function getHostLinkLoc( PAT, pNodeId, locData, linkData, cursor ) {
 	    }
 	}
 	
-	console.log( "UTILS: Locs", locData );
-	console.log( "UTILS: Links", linkData );
+	// console.log( "UTILS: Locs", locData );
+	// console.log( "UTILS: Links", linkData );
 	
 	// Wait.  Data is modified
 	if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( PAT, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
