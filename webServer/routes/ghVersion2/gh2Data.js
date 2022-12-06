@@ -20,10 +20,10 @@ class GH2Data {
 
 	this.fullName   = config.EMPTY;  // of the current repository.. maybe remove?
 
-	this.projectId  = -1;
-	this.issueId    = -1;
-	this.issueNum   = -1;
-	this.issueTitle = config.EMPTY;
+	this.projectId      = config.EMPTY;    // host project data, gql node_id's not databaseIds
+	this.issueId        = config.EMPTY;
+	this.issueNum       = -1;
+	this.issueTitle     = config.EMPTY;
 
 	this.peqValue   = -1;
 	this.peqType    = config.PEQTYPE_END;
@@ -33,16 +33,20 @@ class GH2Data {
 
     getCEProjectId( jd, ceProjects ) {
 
-	let hostProjId = config.EMPTY;
-	switch( jd.event ) {
-	case 'projects_v2_item' : { hostProjId = jd.reqBody.projects_v2_item.project_node_id;     break;  }
-	default :                 { console.log( "Event unhandled." );                            break;  }
-	}
+	// ceProjects.show();
 	
+	// Have to get this from pv2Notice.  If this is contentNotice, skip.
+	if( typeof jd.reqBody.projects_v2_item === 'undefined' ||
+	    typeof jd.reqBody.projects_v2_item.project_node_id === 'undefined' ) {
+	    return config.EMPTY;
+	}
+
+	let hostProjId = jd.reqBody.projects_v2_item.project_node_id;
+
 	let retVal = ceProjects.find( config.HOST_GH, jd.org, hostProjId );
 
-	// XXX XXX No point to speculatively add.
-	//         push this step down until we have a peq action.
+	// XXX No point to speculatively add.
+	//     push this step down until we have a peq action.
 	/*
 	// If did not find an entry, then we have discovered a new project.  add it to unclaimed.
 	if( retVal == config.EMPTY ) {
@@ -61,10 +65,10 @@ class GH2Data {
 	if( this.actor       != config.EMPTY ) { console.log( "actor", this.actor ); }
 	if( this.fullName    != config.EMPTY ) { console.log( "fullName", this.fullName ); }
 
-	if( this.projectId  != -1 ) { console.log( "projectId", this.projectId ); }
-	if( this.issueId    != -1 ) { console.log( "issueId", this.issueId ); }
-	if( this.issueNum   != -1 ) { console.log( "issueNum", this.issueNum ); }
-	if( this.issueTitle != config.EMPTY ) { console.log( "issueTitle", this.issueTitle ); }
+	if( this.projectId      != config.EMPTY ) { console.log( "projectId", this.projectId ); }
+	if( this.issueId        != config.EMPTY ) { console.log( "issueId", this.issueId ); }
+	if( this.issueNum       != -1 )           { console.log( "issueNum", this.issueNum ); }
+	if( this.issueTitle     != config.EMPTY ) { console.log( "issueTitle", this.issueTitle ); }
 
 	if( this.peqValue    != -1 ) { console.log( "peqValue", this.peqValue ); }
 	console.log( "peqType", this.peqType );

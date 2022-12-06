@@ -41,15 +41,14 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let reqBody = pd.reqBody;
     let item    = reqBody.projects_v2_item;
 
-    let projectDetail = await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
-    console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
+    // let projectDetail = await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
+    // console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
 
-    // XXX can't set repo here for pd.. can be several.  Should not need to..?
-    pd.projectId = projectDetail.databaseId;
+    // Note: can't set repo here for pd.. can be several.  Should not need to..?
+    pd.projectId      = item.project_node_id;
     console.log( "In pv2 handler, pd?");
     pd.show();
 
-    
     assert( typeof item !== 'undefined' );
 
     if( item.content_type != "Issue" ) {
@@ -59,6 +58,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     }
 
     // XXX need to pass in and return res from ceRouter
+
 
     //                       -> event           :action      content_type
 
@@ -71,9 +71,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // Create label : have to open issue in new tab (!!)
     // * create new label    -> label          :created
     
-    // Label issue (peq or not):
-    //                       -> issues          :labeled     
-    //                       -> projects_v2_item:edited     issue
 
     
     // Assign issue: 
@@ -97,29 +94,44 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     
     switch( action ) {
+    case 'edited':
+	{
+	    //  -> issues          :labeled     
+	    //  -> projects_v2_item:edited     issue
+	    // This is the generic notification sent alongside the content-specific notice (i.e. issue:label).
+	    // changes:field_value will have a projectV2Field that tells what field changed, but not what the change was.
+	    // Need to then process the content-specific notice for details.
+	    // Example:  { field_value: { field_node_id: 'PVTF_<*>', field_type: 'labels' }}
+	    // No need to rebuild the map on server startup, since notice comes every time.  Demote content_node job this notice hasn't arrived yet.
+	    console.log( "PV2ItemHandler", action );
+
+	    // no need, checked in switcher
+	    // assert( typeof item.changes !== 'undefined' && typeof item.changes.field_value !== 'undefined' && typeof item.changes.field_value.field_type !== 'undefined' );
+	    // assert( item.changes.field_value.field_type == "labels" );
+
+	    console.log( "PV2: Issue labels changed for projectv2 nodeId", item.id );
+	    // console.log( reqBody );
+	}
+	break;
     case 'converted':
-	// When select "convert" a draft issue, first notification is 'reorder' for draft issue
-	// second notification is 'converted' for issue.
+	// Oddly, can add assignees to draft issue, but not labels.
+	// This means converted can not be PEQ.  
+	// When select "convert" a draft issue, one notification is 'reorder' for draft issue
+	// another notification is 'converted' for issue.
 	// third notification is 'opened' for event type issue, i.e. different handler
 	{
-	    console.log( "PV2ItemHandler", action );
+	    console.log( "PV2ItemHandler", action, "No action required."  );
 	    console.log( reqBody );
 	}
 	break;
     case 'created':
 	{
-	    // ?? is this only for draft issue?  if so, use it to find hproj, cproj
+	    // Draft issue only.  Could use this to offline look for new proj/col.
 	    console.log( "PV2ItemHandler", action );
 	    console.log( reqBody );
 	}
 	break;
     case 'deleted':
-	{
-	    console.log( "PV2ItemHandler", action );
-	    console.log( reqBody );
-	}
-	break;
-    case 'edited':
 	{
 	    console.log( "PV2ItemHandler", action );
 	    console.log( reqBody );

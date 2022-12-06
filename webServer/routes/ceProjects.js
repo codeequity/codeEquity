@@ -21,6 +21,7 @@ class CEProjects {
 		}
 	    }
 	}
+	// console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
 	return retVal;
     }
     
@@ -86,7 +87,7 @@ class CEProjects {
 	console.log( this.fill( "ceProjectId", 20 ),
 		     this.fill( "Host", 15 ),
 		     this.fill( "Organization", 15 ),
-		     this.fill( "HostProjectId", 15 ),
+		     this.fill( "HostProjectId", 22 ),
 		   );
 	
 	let printables = [];
@@ -106,7 +107,7 @@ class CEProjects {
 	    console.log( this.fill( p.cp,  20 ),
 			 this.fill( p.h,   15 ),
 			 this.fill( p.o,   15 ),
-			 this.fill( p.hp,  15 ),
+			 this.fill( p.hp,  22 ),
 		       );
 	}
     }

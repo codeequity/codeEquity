@@ -7,19 +7,32 @@ const ghUtils   = require( '../ghUtils' );
 
 // https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects
 
-// Get stuff from project_node_id
-// https://github.com/community/community/discussions/5616
 
+
+function printEdges( base, item, values ) {
+    for( let i = 0; i < base[item].edges.length; i++ ) {
+	const datum = base[item].edges[i].node;
+
+	if( typeof values === 'undefined' ) {
+	    console.log( item, datum );
+	}
+	else {
+	    for( let k = 0; k < values.length; k++ ) {
+		console.log( item, values[k], datum[k] );
+	    }
+	}
+    }
+}
 
 
 
 // Get locData, linkData for server linkage to host.
 // Note: column names are now unique within GH project.  i.e. name == columnId
 // Note: most pv2 objects implement 'node', which has field 'id', which is the node_id. 
-// Note: a single project:col can have issues from multiple repos.  rather than present a list here, set to EMPTY.
+// Note: a single project:col can have issues from multiple repos.  rather than present a list in locData, set to EMPTY.
 // Note: an issue will belong to 1 repo only
-// Note: it seems that ... on Issue is applying a host-side filter, so no need to more explicitely filter out draft issues and pulls.
-// XXX views does not (yet?) have a fieldByName, which would make it much easier to find status.
+// Note: it seems that "... on Issue" is applying a host-side filter, so no need to more explicitely filter out draft issues and pulls.
+// XXX views does not (yet?) have a fieldByName, which would make it much quicker to find status.
 async function getHostLinkLoc( PAT, pNodeId, locData, linkData, cursor ) {
 
     const query1 = `query linkLoc($nodeId: ID!) {
@@ -129,12 +142,10 @@ async function getHostLinkLoc( PAT, pNodeId, locData, linkData, cursor ) {
 	}
 	assert( locData.length > 0 );
 
-	// XXX check limits (first n)
-	
 	let items = ret.data.node.items;
 	for( let i = 0; i < items.edges.length; i++ ) {
 	    const issue = items.edges[i].node;
-	    console.log( issue );
+	    // console.log( issue );
 
 	    let status = issue.fieldValueByName == null ? "No Status" : issue.fieldValueByName.name;
 	    
@@ -153,19 +164,74 @@ async function getHostLinkLoc( PAT, pNodeId, locData, linkData, cursor ) {
 	    }
 	}
 	
-	console.log( "UTILS: Locs", locData );
-	console.log( "UTILS: Links", linkData );
+	// console.log( "UTILS: Locs", locData );
+	// console.log( "UTILS: Links", linkData );
 	
 	// Wait.  Data is modified
 	if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( PAT, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
     }
-
     // await getFromIssueNode( PAT, "PVTI_lADOA8JELs4AIeW_zgDhVnY" );
     // await getFromIssueNode( PAT, "PVTI_lADOA8JELs4AIeW_zgDd0Rs" );
     // await getFromIssueNode( PAT, "PVTI_lADOA8JELs4AIeW_zgDqxC0" );
 }
 
 
+// Get stuff from issue content_node_id pvti_*
+async function getFromIssueNode( PAT, nodeId ) {
+
+
+    // contexts{ state context description createdAt targetUrl }}
+
+    const query = `query detail($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on ProjectV2Item { databaseId type 
+           fieldValueByName(name: "Status") {
+            ... on ProjectV2ItemFieldSingleSelectValue { name }}
+           content {
+            ... on ProjectV2ItemContent {
+             ... on Issue { title databaseId number state repository {nameWithOwner}
+                assignees(first: 100)    { edges { node { login id }}}
+                labels(first: 100)       { edges { node { name description color id }}}
+                projectItems(first: 100) { edges { node { id type }}}
+                projectCards(first: 100) { edges { node { id }}}
+         }}}
+    }}}`;
+
+    let variables = {"nodeId": nodeId };
+    let queryJ = JSON.stringify({ query, variables });
+
+    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, PAT, nodeId ));  // this will probably never catch anything
+
+    // postGH masks errors, catch here.
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
+	await ghUtils.errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, nodeId ); 
+    }
+    else {
+	
+	console.log( "Looking for info on", nodeId );
+	
+	console.log( ret );
+	console.log( ret.data.node.content );
+	
+	let data = ret.data.node.fieldValueByName;
+	console.log( "Status", data );
+
+	printEdges( ret.data.node.content, "assignees" );
+	printEdges( ret.data.node.content, "labels" );
+	// printEdges( ret.data.node.content, "projectItems", ["id"] );  
+	// printEdges( ret.data.node.content, "projectCards", ["id"] );
+
+	if( ret.data.node.content.assignees.length > 99 ) { console.log( "WARNING.  Detected a very large number of assignees, ignoring some." ); }
+	if( ret.data.node.content.labels.length > 99 ) { console.log( "WARNING.  Detected a very large number of labels, ignoring some." ); }
+
+    }
+
+    return ret;
+}
+
+
+// XXX Eliminate this, or check limits (first n).
 async function getProjectFromNode( PAT, pNodeId ) {
 
     // owner?  have this already in reqBody
@@ -178,7 +244,7 @@ async function getProjectFromNode( PAT, pNodeId ) {
     const query = `query projDetail($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
-            number title databaseId public resourcePath 
+            number title databaseId public resourcePath id
             repositories(first: 5) {
               edges {
                 node {
@@ -270,83 +336,6 @@ async function getProjectFromNode( PAT, pNodeId ) {
 
 
 
-
-
-
-
-// Get stuff from issue content_node_id pvti_*
-// get assignees, labels, status
-async function getFromIssueNode( PAT, nodeId ) {
-
-
-    // contexts{ state context description createdAt targetUrl }}
-
-    const query = `query detail($nodeId: ID!) {
-	node( id: $nodeId ) {
-        ... on ProjectV2Item { databaseId type 
-           fieldValueByName(name: "Status") {
-            ... on ProjectV2ItemFieldSingleSelectValue { name }}
-           content {
-            ... on ProjectV2ItemContent {
-             ... on Issue { title databaseId number state repository {nameWithOwner}
-                assignees(first: 5)    { edges { node { login id }}}
-                labels(first: 5)       { edges { node { name description color id }}}
-                projectItems(first: 5) { edges { node { id type }}}
-                projectCards(first: 5) { edges { node { id }}}
-         }}}
-    }}}`;
-
-    
-    let variables = {"nodeId": nodeId };
-    let queryJ = JSON.stringify({ query, variables });
-
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, PAT, nodeId ));  // this will probably never catch anything
-
-    // postGH masks errors, catch here.
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
-	await ghUtils.errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, nodeId ); 
-    }
-    else {
-	
-	console.log( "\n\n" );
-	console.log( "Looking for info on", nodeId );
-	
-	console.log( ret );
-	console.log( ret.data.node.content );
-	
-	let data = ret.data.node.fieldValueByName;
-	console.log( "Status", data );
-	
-	data = ret.data.node.content.projectItems;
-	for( let i = 0; i < data.edges.length; i++ ) {
-	    const datum = data.edges[i].node;
-	    console.log( "projectItem:", datum.id );
-	}
-	
-	data = ret.data.node.content.projectCards;
-	for( let i = 0; i < data.edges.length; i++ ) {
-	    const datum = data.edges[i].node;
-	    console.log( "projectCard:", datum.id );
-	}
-	
-	data = ret.data.node.content.assignees;
-	for( let i = 0; i < data.edges.length; i++ ) {
-	    const datum = data.edges[i].node;
-	    console.log( "assignee:", datum );
-	}
-	
-	data = ret.data.node.content.labels;
-	for( let i = 0; i < data.edges.length; i++ ) {
-	    const datum = data.edges[i].node;
-	    console.log( "label:", datum );
-	}
-	
-	console.log( "\n\n" );
-    }
-
-    return ret;
-}
 
 exports.getHostLinkLoc     = getHostLinkLoc;
 exports.getProjectFromNode = getProjectFromNode;

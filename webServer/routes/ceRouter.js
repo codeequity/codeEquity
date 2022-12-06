@@ -113,7 +113,7 @@ function summarizeQueue( ceJobs, msg, limit ) {
 
 // Do not remove top, that is getNextJob's sole perogative
 // add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
-async function demoteJob( ceJobs, jd ) {
+async function demoteJob( jd ) {
     console.log( "Demoting", jd.queueId, jd.delayCount );
     let oldDelayCount = jd.delayCount; 
     stampJob( jd, oldDelayCount+1 );
@@ -149,7 +149,7 @@ async function demoteJob( ceJobs, jd ) {
     }
     if( spliceIndex == 1 && jobs.length >= 2 ) { spliceIndex = 2; }  // force progress where possible
 
-    console.log( "Got splice index of", spliceIndex );
+    // console.log( "Got splice index of", spliceIndex );
     jobs.splice( spliceIndex, 0, jd );
 
     summarizeQueue( ceJobs, "\nceJobs, after demotion", 7 );
@@ -251,8 +251,8 @@ router.post('/:location?', async function (req, res) {
     let jd     = new jobData.JobData();
     jd.reqBody = req.body;
 
-    let hostHandler         = null;
-    let hostBuildJobSummary = null;
+    let hostHandler    = null;
+    let hostGetJobData = null;
 
     // Detect additional platform hosts here
     if( req.headers.hasOwnProperty( 'x-github-event' ) ) {
@@ -266,12 +266,14 @@ router.post('/:location?', async function (req, res) {
 	return res.end();
     }
 
-    let orgPath  = "";                       // Unique locator for CodeEquity project.   Example - "GitHub/ariCETester/codeEquityTests"
-    let source   = "<";                      // Printable data for debugging notices.    Example - <item:create AnIssue>
-    let newStamp = utils.getMillis();
+    // {projPath, source} where
+    // projPath    Unique locator for hostProject. Example - "GitHub/ariCETester/codeEquityTests"
+    // source      Printable data for debugging notices.    Example - <item:create AnIssue>
+    let locator   = { projPath: "", source: "<" };   
+    let newStamp  = utils.getMillis();
 
     // Host platform get job data summary info
-    let ret = hostGetJobData( newStamp, jd, req.headers, orgPath, source );
+    let ret = hostGetJobData( newStamp, jd, req.headers, locator );
     if( ret == -1 ) { return res.end(); }
 
     if( jd.actor == config.CE_BOT) {
@@ -285,23 +287,23 @@ router.post('/:location?', async function (req, res) {
     
 
     ceArrivals.add( newStamp );                                    // how responsive is the server, debugging
-    ceNotification.push( jd.event+" "+jd.action+" "+jd.tag+" "+orgPath );   // testing data
+    ceNotification.push( jd.event+" "+jd.action+" "+jd.tag+" "+locator.projPath );   // testing data
 
     // Only 1 externally driven job (i.e. triggered from non-CE host platform notification) active at any time
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activation from getNext
     let qTopJobData = checkQueue( ceJobs, jd ); 
     assert( qTopJobData != -1 );
     if( jd.queueId != qTopJobData.queueId ) {
-	console.log( source, "Busy with job#", qTopJobData.queueId );
+	console.log( locator.source, "Busy with job#", qTopJobData.queueId );
 	return res.end();
     }
 
     // Don't set this earlier - authData should only overwrite if it is being processed next.
     // this first jobId is set by getNext to reflect the proposed next job.
-    authData.who = source;
+    authData.who = locator.source;
     authData.job = jd.queueId;
     
-    console.log( authData.who, "job Q [" + orgPath + "] clean, start-er-up" );
+    console.log( authData.who, "job Q [" + locator.projPath + "] clean, start-er-up" );
     await hostHandler( authData, ceProjects, hostLinks, jd, res, newStamp ); 
     
     // avoid socket hangup error, response undefined

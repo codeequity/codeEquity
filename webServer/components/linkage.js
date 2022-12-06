@@ -34,6 +34,7 @@ class Linkage {
     }
 
 
+    // For each ceProject
     async initOneProject( authData, entry ) {
 
 	let host  = entry.hasOwnProperty( "HostPlatform" )       ? entry.HostPlatform                    : "";
@@ -54,6 +55,7 @@ class Linkage {
 	let ldPromise = [];
 	let locData   = [];
 
+	// XXX local implementations should not be here.
 	// classic is per repo.
 	// Init repo with CE_USER, which is typically a builder account that needs full access.
 	if( host == config.HOST_GH ) {
@@ -101,6 +103,8 @@ class Linkage {
 		    }
 		}
 	    }
+	    // XXX local implementations should not be here.
+	    // All ids for GH2 are GQL node_ids.
 	    else if( pms == config.PMS_GH2 ) {
 		console.log( "linkage: GH2" );
 
@@ -110,24 +114,21 @@ class Linkage {
 		let awsLinks = await awsUtils.getLinkage( authData, { "CEProjectId": entry.CEProjectId } );		
 		assert( awsLinks.length == 1 );
 
-		// HostProjectId for GH2 is a project_node_id
-
-		// XXX ITERATE over composed list of HostProjectId
-		// XXX check loc/rlink clearing, baselinks
-		let rlinks = [];
+		let hostProjs = [];
 
 		for( const awsLoc of awsLinks[0].Locations ) {
-
-		    ldPromise = ghV2.getHostLinkLoc( authData.pat, awsLoc.HostProjectId, locData, rlinks, -1 )
-			.catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
-
-		    ldPromise = await ldPromise;  // no val here, just ensures locData is set
-		    
-		    console.log( "LINKAGE: Locs", locData );
-		    console.log( "LINKAGE: Links", rlinks );
-		    
+		    if( !hostProjs.includes( awsLoc.HostProjectId ) ) {
+			hostProjs.push(  awsLoc.HostProjectId );
+			
+			ldPromise = ghV2.getHostLinkLoc( authData.pat, awsLoc.HostProjectId, locData, baseLinks, -1 )
+			    .catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
+			
+			ldPromise = await ldPromise;  // no val here, just ensures locData is set
+			
+			// console.log( "LINKAGE: Locs", locData );
+			// console.log( "LINKAGE: Links", baseLinks );
+		    }
 		}
-		
 	    }
 	}
 
