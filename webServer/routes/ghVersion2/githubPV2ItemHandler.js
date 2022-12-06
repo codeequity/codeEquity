@@ -45,7 +45,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
 
     // Note: can't set repo here for pd.. can be several.  Should not need to..?
-    pd.installationId = item.installation.id;
     pd.projectId      = item.project_node_id;
     console.log( "In pv2 handler, pd?");
     pd.show();
@@ -103,7 +102,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // changes:field_value will have a projectV2Field that tells what field changed, but not what the change was.
 	    // Need to then process the content-specific notice for details.
 	    // Example:  { field_value: { field_node_id: 'PVTF_<*>', field_type: 'labels' }}
-	    // So far, only processing use is to tie installation:id to hostProjectId
 	    // No need to rebuild the map on server startup, since notice comes every time.  Demote content_node job this notice hasn't arrived yet.
 	    console.log( "PV2ItemHandler", action );
 
@@ -111,8 +109,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // assert( typeof item.changes !== 'undefined' && typeof item.changes.field_value !== 'undefined' && typeof item.changes.field_value.field_type !== 'undefined' );
 	    // assert( item.changes.field_value.field_type == "labels" );
 
-	    console.log( "PV2: Issue labels changed for app id", item.installation.id, "and projectv2 nodeId", item.id );
-	    console.log( reqBody );
+	    console.log( "PV2: Issue labels changed for projectv2 nodeId", item.id );
+	    // console.log( reqBody );
 	}
 	break;
     case 'converted':

@@ -20,7 +20,6 @@ class GH2Data {
 
 	this.fullName   = config.EMPTY;  // of the current repository.. maybe remove?
 
-	this.installationId = config.EMPTY;    // app installation id
 	this.projectId      = config.EMPTY;    // host project data, gql node_id's not databaseIds
 	this.issueId        = config.EMPTY;
 	this.issueNum       = -1;
@@ -34,12 +33,16 @@ class GH2Data {
 
     getCEProjectId( jd, ceProjects ) {
 
-	let hostProjId = config.EMPTY;
-	switch( jd.event ) {
-	case 'projects_v2_item' : { hostProjId = jd.reqBody.projects_v2_item.project_node_id;     break;  }
-	default :                 { console.log( "Event unhandled." );                            break;  }
-	}
+	// ceProjects.show();
 	
+	// Have to get this from pv2Notice.  If this is contentNotice, skip.
+	if( typeof jd.reqBody.projects_v2_item === 'undefined' ||
+	    typeof jd.reqBody.projects_v2_item.project_node_id === 'undefined' ) {
+	    return config.EMPTY;
+	}
+
+	let hostProjId = jd.reqBody.projects_v2_item.project_node_id;
+
 	let retVal = ceProjects.find( config.HOST_GH, jd.org, hostProjId );
 
 	// XXX No point to speculatively add.
@@ -62,7 +65,6 @@ class GH2Data {
 	if( this.actor       != config.EMPTY ) { console.log( "actor", this.actor ); }
 	if( this.fullName    != config.EMPTY ) { console.log( "fullName", this.fullName ); }
 
-	if( this.installationId != config.EMPTY ) { console.log( "installationId", this.installationId ); }
 	if( this.projectId      != config.EMPTY ) { console.log( "projectId", this.projectId ); }
 	if( this.issueId        != config.EMPTY ) { console.log( "issueId", this.issueId ); }
 	if( this.issueNum       != -1 )           { console.log( "issueNum", this.issueNum ); }

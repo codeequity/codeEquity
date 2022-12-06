@@ -1,5 +1,7 @@
 const fetch = require( 'node-fetch' );
 
+const config = require( '../../config' );
+
 const utils = require( '../ceUtils' );
 
 
@@ -84,5 +86,50 @@ async function errorHandler( source, e, func, ...params ) {
 }
 
 
+// githubRouter needs to know how to switch a content notice.
+// This helper function looks to see if the nodeId (of an issue) is part of a PV2 project.
+async function checkForPV2( PAT, nodeId ) {
+    const query = `query detail($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on ProjectV2ItemContent { 
+          ... on Issue {
+            projectItems(first: 100) {
+              edges{ node{ 
+                ... on ProjectV2Item {
+                  project { id }
+            }}}}
+    }}}}`;
+
+    let variables = {"nodeId": nodeId };
+    let queryJ = JSON.stringify({ query, variables });
+
+    let found = false;
+    const ret = await postGH( PAT, config.GQL_ENDPOINT, queryJ )
+	.catch( e => errorHandler( "getProjectFromNode", e, getProjectFromNode, PAT, nodeId ));  // this will probably never catch anything
+
+    // XXX postGH masks errors, catch here.  eliminate need for this step
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
+	await errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, nodeId ); 
+    }
+    else {
+	let data = ret.data.node.projectItems;
+	if( data.edges.length > 99 ) { console.log( "WARNING.  Detected a very large number of projectItems.  Ignoring some." ); }
+	for( let i = 0; i < data.edges.length; i++ ) {
+	    let project = data.edges[i];
+	    if( typeof project.id !== 'undefined' ) {
+		found = true;
+		break;
+	    }
+	}
+    }
+
+    return found;
+
+}
+
+
+
 exports.errorHandler = errorHandler;
 exports.postGH       = postGH;
+
+exports.checkForPV2  = checkForPV2;

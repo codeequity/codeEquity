@@ -5,7 +5,7 @@ const auth    = require( '../auth/gh/ghAuth' );
 
 const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
-const ghUtils  = require( '../utils/gh/ghUtils.' );
+const ghUtils  = require( '../utils/gh/ghUtils' );
 
 const links   = require( '../components/linkage' );
 
@@ -114,7 +114,7 @@ async function refreshAuths( authData, pms, host, org, actor) {
 
 
 
-function getJobSummaryGHC( newStamp, jobData, orgPath, source ) {
+function getJobSummaryGHC( newStamp, jobData, locator ) {
 
     if( !jobData.reqBody.hasOwnProperty('repository') ) {
 	console.log( "Notification for Delete repository.  CodeEquity does not require these.  Skipping." );
@@ -125,10 +125,10 @@ function getJobSummaryGHC( newStamp, jobData, orgPath, source ) {
 
     if( jobData.event == "issue" )    {
 	jobData.tag = (jobData.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  	
-	source += "issue:";
+	locator.source += "issue:";
     }
     else if( jobData.event == "project_card" ) {
-	source += "card:";
+	locator.source += "card:";
 	if( jobData.reqBody.project_card.content_url != null ) {
 	    let issueURL = jobData.reqBody.project_card.content_url.split('/');
 	    let issueNum = parseInt( issueURL[issueURL.length - 1] );
@@ -149,7 +149,7 @@ function getJobSummaryGHC( newStamp, jobData, orgPath, source ) {
 	jobData.tag = jobData.tag.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
     }
     else {
-	source += jobData.event + ":";
+	locator.source += jobData.event + ":";
 
 	if     ( !jobData.reqBody.hasOwnProperty( jobData.event ) ) { console.log( jobData.reqBody ); }
 	else if( !jobData.reqBody[jobData.event].hasOwnProperty( 'name' ) ) { console.log( jobData.reqBody ); }
@@ -158,14 +158,14 @@ function getJobSummaryGHC( newStamp, jobData, orgPath, source ) {
 	jobData.tag = jobData.reqBody[jobData.event].name;
     }
 
-    source += jobData.action+" "+jobData.tag+"> ";
-    console.log( "Notification:", jobData.event, jobData.action, jobData.tag, jobId, "for", jobData.org, newStamp );
+    locator.source += jobData.action+" "+jobData.tag+"> ";
+    console.log( "Notification:", jobData.event, jobData.action, jobData.tag, jobData.queueId, "for", jobData.org, newStamp );
 
-    orgPath = config.HOST_GH + "/" + jobData.reqBody.repository.full_name;
+    locator.projPath = config.HOST_GH + "/" + jobData.reqBody.repository.full_name;
     return true;
 }
 
-function getJobSummaryGH2( newStamp, jobData, orgPath, source ) {
+function getJobSummaryGH2( newStamp, jobData, locator ) {
 
     if( !jobData.reqBody.hasOwnProperty('organization') ) {
 	console.log( "Organization not present.  CodeEquity requires organizations for Github's Project Version 2.  Skipping." );
@@ -180,26 +180,26 @@ function getJobSummaryGH2( newStamp, jobData, orgPath, source ) {
     jobData.tag  = fullName; 
 
     if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "Issue" ) {
-	source += "issue:";
+	locator.source += "issue:";
     }
     else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "DraftIssue" ) {
-	source += "draftIssue:";
+	locator.source += "draftIssue:";
     }
     else {
-	source += jobData.event + ":";
+	locator.source += jobData.event + ":";
 	console.log( "Not yet handled", jobData.reqBody ); 
     }
 
-    source += jobData.action+" "+jobData.tag+"> ";
+    locator.source += jobData.action+" "+jobData.tag+"> ";
     console.log( "Notification:", jobData.event, jobData.action, jobData.tag, jobData.queueId, "for", jobData.org, newStamp );
 
-    orgPath = config.HOST_GH + "/" + fullName;
+    locator.projPath = config.HOST_GH + "/" + fullName;
     return true;
 }
 
 
 // At this point, a pv2 notice is fast and clear cut, but a content notice will take time to determine. 
-function getJobSummary( newStamp, jobData, headers, orgPath, source ) {
+function getJobSummary( newStamp, jobData, headers, locator ) {
     let retVal = -1;
     
     jobData.actor  = jobData.reqBody.sender.login;
@@ -213,8 +213,8 @@ function getJobSummary( newStamp, jobData, headers, orgPath, source ) {
 
     // If contentNotice, PMS is not yet known, however repo info is present, so use GHC.
     // ContentNotice does carry repo information, so stay closer to GHC
-    if(      jobData.event == "projects_v2_item" )            { retVal = getJobSummaryGH2( newStamp, jobData, orgPath, source ); }
-    else                                                      { retVal = getJobSummaryGHC( newStamp, jobData, orgPath, source ); }
+    if(      jobData.event == "projects_v2_item" )            { retVal = getJobSummaryGH2( newStamp, jobData, locator ); }
+    else                                                      { retVal = getJobSummaryGHC( newStamp, jobData, locator ); }
 
     return retVal;
 }
@@ -279,7 +279,7 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     if( retVal == "postpone" ) {
 	// add current job back into queue.
 	console.log( authData.who, "Delaying this job." );
-	await ceRouter.demoteJob( ceJobs, jd ); 
+	await ceRouter.demoteJob( jd ); 
     }
     console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.delayCount );
     ceRouter.getNextJob( authData, res );	
@@ -319,7 +319,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     if( retVal == "postpone" ) {
 	// add current job back into queue.
 	console.log( authData.who, "Delaying this job." );
-	await ceRouter.demoteJob( ceJobs, jd );
+	await ceRouter.demoteJob( jd );
     }
     console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.delayCount );
     ceRouter.getNextJob( authData, res );	
@@ -327,18 +327,19 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 
 // This is a contentNotice. Is it part of a GH2 project?
 async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) {
-    console.log( "Content notice switching" );
-
     assert( typeof jd.reqBody[ jd.event ] !== 'undefined' );
 
     let nodeId = jd.reqBody[ jd.event ].node_id;
     let found = false;
     for( let i = 0; i < pendingNotices.length; i++ ) {
-	if( nodeId == pendingNotices[i].id && jd.event == pendingNotices[i].mod ) {
+	// If the id's match, then we know the contentNotice is pv2.  No need to match further
+	// console.log( "... looking at", pendingNotices[i], nodeId, jd.event );
+	if( nodeId == pendingNotices[i].id ) {
 	    console.log( "Found pv2Notice matching contentNotice" );
 	    pendingNotices.splice( i, 1 );
+	    // console.log( "pendingNotices, after removal" );
 	    found = true;
-	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
+	    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
 	    break;
 	}
     }
@@ -346,18 +347,18 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     let demote = false;
     if( !found ) {
 	console.log( "Did not find matching pv2Notice." );
-	if( jd.delayCount > 1 ) {
+	if( jd.delayCount > 3 ) {
 	    console.log( "This job has already been delayed several times.. Checking for PV2" );
-	    let foundPV2 = await ghUtils.checkForPV2( authData, node_id );
+	    let foundPV2 = await ghUtils.checkForPV2( authData.pat, nodeId );
 	    // XXX disturbing?  where's the pv2Notice?
 	    if( foundPV2 ) {
 		console.log( "Found PV2.  Switching GH2" );
 		console.log( "XXX Increase delay count?  Otherwise Pending will grow?" );
-		await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
+		await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
 	    }
 	    else {
 		console.log( "Did not find PV2.  Switching GHC" );
-		await switcherGHC( authData, ceProjects, hostLinks, jd, res, origStamp );
+		await switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp );
 	    }
 	}
 	else { demote = true; }
@@ -365,7 +366,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 
     if( demote ) {
 	console.log( "Delaying this job." );
-	await ceRouter.demoteJob( ceJobs, jd );
+	await ceRouter.demoteJob( jd );
 	ceRouter.getNextJob( authData, res );
     }
 }
@@ -381,11 +382,12 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
     if( jd.projMgmtSys == config.PMS_GH2 ) {
 	if( jd.action == "edited" ) {
-	    let item = jd.reqBody.projects_v2_item;
-	    assert( typeof item.content_node_id !== 'undefined' );
-	    assert( typeof item.changes !== 'undefined' && typeof item.changes.field_value !== 'undefined' && typeof item.changes.field_value.field_type !== 'undefined' );
+	    let rb = jd.reqBody;
+	    assert( typeof rb.projects_v2_item.content_node_id !== 'undefined' );
+	    assert( typeof rb.changes !== 'undefined' && typeof rb.changes.field_value !== 'undefined' && typeof rb.changes.field_value.field_type !== 'undefined' );
 
-	    pendingNotices.push( {id: item.content_node_id, mod: item.changes.field_value.field_type} ); 
+	    pendingNotices.push( {id: rb.projects_v2_item.content_node_id, mod: rb.changes.field_value.field_type} );
+	    console.log( "pending after push", pendingNotices );
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
 	}
 	else {
