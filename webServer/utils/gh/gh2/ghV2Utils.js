@@ -333,6 +333,79 @@ async function getProjectFromNode( PAT, pNodeId ) {
     return retVal;
 }
 
+// Note: mutation:createIssue with inputObject that includes projIds only works for classic projects, not PV2.
+// Note: mutation:addProjectV2DraftIssue works, but can't seem to find how to convert draft to full issue in gql?!!??
+async function createIssue( PAT, repoNode, projNode, title, labels, allocation ) {
+    let issueData = [-1,-1]; // contentId, num
+    
+    console.log( "\n\nCreate issue, from alloc?", repoNode, projNode, title, allocation );
+
+    let body = "";
+    if( allocation ) {
+	body  = "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
+	body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"
+	body += "It is safe to filter this out of your issues list.\n\n";
+	body += "It is NOT safe to close, reopen, or edit this issue.";
+    }
+
+    let query = "mutation( $repo:ID!, $title:String!, $body:String!, $labels:[ID!] ) " 
+    query +=    "{ createIssue( input:{ repositoryId: $repo, title: $title, body: $body, labelIds: $labels }) {clientMutationId, issue{id, number}}}";
+    
+    let variables = {"repo": repoNode, "title": title, "body": body, "labels": labels };
+	
+    let queryJ = JSON.stringify({ query, variables });
+
+    let ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, PAT, repoNode, projNode, title );
+	if( !ret ) { return ret; }
+    }
+    issueData[0] = ret.data.createIssue.issue.id;
+    issueData[1] = ret.data.createIssue.issue.number;
+    console.log( " .. issue created, issueData:", issueData );
+    
+    query = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
+    variables = {"proj": projNode, "contentId": ret.data.createIssue.issue.id };
+
+    queryJ = JSON.stringify({ query, variables });
+    
+    ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, PAT, repoNode, projNode, title );
+	if( !ret ) { return ret; }
+    }
+
+    ret = ret.data.addProjectV2ItemById.item.id;
+    console.log( " .. issue added to project, pv2ItemId:", ret );
+    return issueData;
+}
+
+// update label
+// delete label
+// find label
+// create label
+async function createLabel( PAT, repoNode, name, color, desc ) {
+
+    console.log( "Create label", repoNode, name, desc, color );
+    let query = "mutation( $id:ID! ) { createLabel( input:{ repositoryId: $id, color: color, description: desc, name: name }) {clientMutationId}}";
+
+
+    let variables = {"id": repoNode };
+    let queryJ = JSON.stringify({ query, variables });
+
+    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, PAT, nodeId ));  // this will probably never catch anything
+
+    // postGH masks errors, catch here.
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
+	await ghUtils.errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, repoNode ); 
+    }
+    else {
+	console.log( ret );
+    }
+
+    return ret;
+}
 
 
 
@@ -340,3 +413,6 @@ async function getProjectFromNode( PAT, pNodeId ) {
 exports.getHostLinkLoc     = getHostLinkLoc;
 exports.getProjectFromNode = getProjectFromNode;
 exports.getFromIssueNode   = getFromIssueNode;
+
+exports.createIssue        = createIssue;
+exports.createLabel        = createLabel;

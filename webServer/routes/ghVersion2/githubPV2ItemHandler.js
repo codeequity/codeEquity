@@ -41,6 +41,13 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let reqBody = pd.reqBody;
     let item    = reqBody.projects_v2_item;
 
+    // bubba: "R_kgDOH8VRDg"  boogy: "PVT_kwDOA8JELs4AIeW_"  enhancement: "LA_kwDOH8VRDs8AAAABDEPzrw" duplicate: "LA_kwDOH8VRDs8AAAABDEPzrg"
+
+    await ghV2.createIssue( authData.pat, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", "Eggs rock", ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], true );
+
+    // await ghV2.createLabel( authData.pat, "R_kgDOH8VRDg", "tea", config.PEQ_COLOR, "party" );
+    assert( false );
+    
     // let projectDetail = await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
     // console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
 
