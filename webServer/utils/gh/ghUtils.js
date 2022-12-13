@@ -49,12 +49,10 @@ async function errorHandler( source, e, func, ...params ) {
     else if( e.status == 404 && source == "updateLabel" )
     {
 	console.log( source, "Label", arguments[6], "already gone" );  
-	return false;
     }
     else if( (e.status == 403 || e.status == 404) && ( source == "removeLabel" || source == "getLabels" || source == "addComment" ))
     {
 	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels or add comments." );
-	return false;
     }
     else if( e.status == 401 ||                             // XXX authorization will probably keep failing
 	     e.status == 500 ||                             // internal server error, wait and retry
@@ -83,6 +81,7 @@ async function errorHandler( source, e, func, ...params ) {
 	console.log( "Error in errorHandler, unknown status code.", source, e );
 	console.log( arguments[0], arguments[1] );
     }
+    return false;
 }
 
 
