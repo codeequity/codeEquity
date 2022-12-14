@@ -43,12 +43,20 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // bubba: "R_kgDOH8VRDg"  boogy: "PVT_kwDOA8JELs4AIeW_"  enhancement: "LA_kwDOH8VRDs8AAAABDEPzrw" duplicate: "LA_kwDOH8VRDs8AAAABDEPzrg"
 
-    await ghV2.createIssue( authData.pat, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", "Eggs rock", ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], true );
+    console.log( "----------------XX--------------------" );
 
-    // await ghV2.createLabel( authData.pat, "R_kgDOH8VRDg", "tea", config.PEQ_COLOR, "party" );
-    assert( false );
+    // await ghV2.createIssue( authData, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", "Eggs rock", ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], true );
+    // await ghV2.createLabel( authData, "R_kgDOH8VRDg", "tea", config.PEQ_COLOR, "party" );
+    // let labelRes = await ghV2.getLabel( authData, "R_kgDOH8VRDg", "tea" );
+    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", false, "tea", -1 );
+    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", false, "teaP", 100 );
+    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "teaA", 200 );
+    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "200 AllocPEQ", 200 );
+    // console.log( labelRes );
+
+    console.log( "----------------XX--------------------" );
     
-    // let projectDetail = await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
+    // let projectDetail = await ghV2.getProjectFromNode( authData, item.project_node_id );
     // console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
 
     // Note: can't set repo here for pd.. can be several.  Should not need to..?

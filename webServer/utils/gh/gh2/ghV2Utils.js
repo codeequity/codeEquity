@@ -33,7 +33,7 @@ function printEdges( base, item, values ) {
 // Note: an issue will belong to 1 repo only
 // Note: it seems that "... on Issue" is applying a host-side filter, so no need to more explicitely filter out draft issues and pulls.
 // XXX views does not (yet?) have a fieldByName, which would make it much quicker to find status.
-async function getHostLinkLoc( PAT, pNodeId, locData, linkData, cursor ) {
+async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 
     const query1 = `query linkLoc($nodeId: ID!) {
 	node( id: $nodeId ) {
@@ -94,12 +94,12 @@ async function getHostLinkLoc( PAT, pNodeId, locData, linkData, cursor ) {
     let variables = cursor == -1 ? {"nodeId": pNodeId } : {"nodeId": pNodeId, "cursor": cursor };
     query = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => ghUtils.errorHandler( "getHostLinkLoc", e, getHostLinkLoc, PAT, pNodeId, locData, linkData, cursor )); 
+    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	  .catch( e => ghUtils.errorHandler( "getHostLinkLoc", e, getHostLinkLoc, authData, pNodeId, locData, linkData, cursor )); 
 
     // postGH masks errors, catch here.
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
-	await ghUtils.errorHandler( "getHostLinkLoc", ret, getHostLinkLoc, PAT, pNodeId, locData, linkData, cursor ); 
+	await ghUtils.errorHandler( "getHostLinkLoc", ret, getHostLinkLoc, authData, pNodeId, locData, linkData, cursor ); 
     }
     else {
 	
@@ -168,16 +168,16 @@ async function getHostLinkLoc( PAT, pNodeId, locData, linkData, cursor ) {
 	// console.log( "UTILS: Links", linkData );
 	
 	// Wait.  Data is modified
-	if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( PAT, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
+	if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
     }
-    // await getFromIssueNode( PAT, "PVTI_lADOA8JELs4AIeW_zgDhVnY" );
-    // await getFromIssueNode( PAT, "PVTI_lADOA8JELs4AIeW_zgDd0Rs" );
-    // await getFromIssueNode( PAT, "PVTI_lADOA8JELs4AIeW_zgDqxC0" );
+    // await getFromIssueNode( authData, "PVTI_lADOA8JELs4AIeW_zgDhVnY" );
+    // await getFromIssueNode( authData, "PVTI_lADOA8JELs4AIeW_zgDd0Rs" );
+    // await getFromIssueNode( authData, "PVTI_lADOA8JELs4AIeW_zgDqxC0" );
 }
 
 
 // Get stuff from issue content_node_id pvti_*
-async function getFromIssueNode( PAT, nodeId ) {
+async function getFromIssueNode( authData, nodeId ) {
 
 
     // contexts{ state context description createdAt targetUrl }}
@@ -200,12 +200,12 @@ async function getFromIssueNode( PAT, nodeId ) {
     let variables = {"nodeId": nodeId };
     let queryJ = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, PAT, nodeId ));  // this will probably never catch anything
+    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, authData, nodeId ));  // this will probably never catch anything
 
     // postGH masks errors, catch here.
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
-	await ghUtils.errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, nodeId ); 
+	await ghUtils.errorHandler( "getProjectFromNode", ret, getProjectFromNode, authData, nodeId ); 
     }
     else {
 	
@@ -232,7 +232,7 @@ async function getFromIssueNode( PAT, nodeId ) {
 
 
 // XXX Eliminate this, or check limits (first n).
-async function getProjectFromNode( PAT, pNodeId ) {
+async function getProjectFromNode( authData, pNodeId ) {
 
     // owner?  have this already in reqBody
     // items gives us issues, draft issues, pull requests
@@ -276,8 +276,8 @@ async function getProjectFromNode( PAT, pNodeId ) {
     let variables = {"nodeId": pNodeId };
     let queryJ = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, PAT, pNodeId ));  // this will probably never catch anything
+    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, authData, pNodeId ));  // this will probably never catch anything
 
     let retVal = {};
     retVal.number       = ret.data.node.number;
@@ -335,10 +335,10 @@ async function getProjectFromNode( PAT, pNodeId ) {
 
 // Note: mutation:createIssue with inputObject that includes projIds only works for classic projects, not PV2.
 // Note: mutation:addProjectV2DraftIssue works, but can't seem to find how to convert draft to full issue in gql?!!??
-async function createIssue( PAT, repoNode, projNode, title, labels, allocation ) {
+async function createIssue( authData, repoNode, projNode, title, labels, allocation ) {
     let issueData = [-1,-1]; // contentId, num
     
-    console.log( "\n\nCreate issue, from alloc?", repoNode, projNode, title, allocation );
+    console.log( "Create issue, from alloc?", repoNode, projNode, title, allocation );
 
     let body = "";
     if( allocation ) {
@@ -348,16 +348,16 @@ async function createIssue( PAT, repoNode, projNode, title, labels, allocation )
 	body += "It is NOT safe to close, reopen, or edit this issue.";
     }
 
-    let query = "mutation( $repo:ID!, $title:String!, $body:String!, $labels:[ID!] ) " 
-    query +=    "{ createIssue( input:{ repositoryId: $repo, title: $title, body: $body, labelIds: $labels }) {clientMutationId, issue{id, number}}}";
-    
+    let query = `mutation( $repo:ID!, $title:String!, $body:String!, $labels:[ID!] )
+                    { createIssue( input:{ repositoryId: $repo, title: $title, body: $body, labelIds: $labels }) {clientMutationId, issue{id, number}}}`;
+
     let variables = {"repo": repoNode, "title": title, "body": body, "labels": labels };
 	
     let queryJ = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, PAT, repoNode, projNode, title );
+	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, title );
 	if( !ret ) { return ret; }
     }
     issueData[0] = ret.data.createIssue.issue.id;
@@ -369,9 +369,9 @@ async function createIssue( PAT, repoNode, projNode, title, labels, allocation )
 
     queryJ = JSON.stringify({ query, variables });
     
-    ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
+    ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, PAT, repoNode, projNode, title );
+	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, title );
 	if( !ret ) { return ret; }
     }
 
@@ -380,39 +380,109 @@ async function createIssue( PAT, repoNode, projNode, title, labels, allocation )
     return issueData;
 }
 
-// update label
-// delete label
-// find label
-// create label
-async function createLabel( PAT, repoNode, name, color, desc ) {
+async function createLabel( authData, repoNode, name, color, desc ) {
 
     console.log( "Create label", repoNode, name, desc, color );
-    let query = "mutation( $id:ID! ) { createLabel( input:{ repositoryId: $id, color: color, description: desc, name: name }) {clientMutationId}}";
 
+    let query     = `mutation( $id:ID!, $color:String!, $name:String!, $desc:String! )
+                       { createLabel( input:{ repositoryId: $id, color: $color, description: $desc, name: $name }) {clientMutationId, label {id, name, color, description}}}`;
 
-    let variables = {"id": repoNode };
-    let queryJ = JSON.stringify({ query, variables });
+    let variables = {"id": repoNode, "name": name, "color": color, "desc": desc };
+    let queryJ    = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, PAT, nodeId ));  // this will probably never catch anything
-
-    // postGH masks errors, catch here.
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
-	await ghUtils.errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, repoNode ); 
-    }
-    else {
-	console.log( ret );
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "createLabel", ret, createLabel, authData, repoNode, name, color, desc );
+	if( !ret ) { return ret; }
     }
 
-    return ret;
+    if( ret.errors !== 'undefined' ) { console.log( "WARNING. Label not created", ret.errors ); }
+    else                             { console.log( " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); }
+
+    return ret.data.createLabel.label;
 }
 
+async function getLabel( authData, repoNode, peqHumanLabelName ) {
+    let labelRes = {}
+    labelRes.status = 404;
 
+    console.log( "Get label", repoNode, peqHumanLabelName );
 
+    // query below checks both name and description
+    let query = `query( $repoNode:ID!, $name:String! ) {
+                   node( id: $repoNode ) {
+                   ... on Repository {
+                       labels(first: 99, query: $name) {
+                          edges { node { id, name, color, description }}}
+                  }}}`;
 
-exports.getHostLinkLoc     = getHostLinkLoc;
+    let variables = {"repoNode": repoNode, "name": peqHumanLabelName };
+    let queryJ    = JSON.stringify({ query, variables });
+
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "getLabel", ret, getLabel, authData, repoNode, peqHumanLabelName );
+	if( !ret ) { return labelRes; }
+    }
+
+    let labels = ret.data.node.labels; 
+    if( typeof labels === 'undefined' ) { return labelRes; }
+
+    if( labels.edges.length > 99 ) { console.log( "WARNING. Found too many labels.  Ignoring some." ); }
+    
+    for( let i = 0; i < labels.edges.length; i++ ) {
+	const lab = labels.edges[i].node;
+	if( lab.name == peqHumanLabelName ) {
+	    labelRes.status = 200;
+	    labelRes.label = lab;
+	}
+    }
+    
+    return labelRes;
+}
+
+async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
+    console.log( "Creating PEQ label", allocation, peqValue );
+    let peqHumanLabelName = peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
+    let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
+    let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
+    let label = await createLabel( authData, repoNode, peqHumanLabelName, pcolor, desc );
+    return label;
+}
+
+// find label
+async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelName, peqValue ) {
+
+    console.log( "\n\nFind or create label", repoNode, allocation, peqHumanLabelName, peqValue );
+
+    // Find?
+    const labelRes = await getLabel( authData, repoNode, peqHumanLabelName );
+    let   theLabel = labelRes.label;
+
+    // Create?
+    if( labelRes.status != 200 ) {
+	console.log( authData.who, "Label not found, creating.." );
+	
+	if( peqHumanLabelName == config.POPULATE ) { theLabel = await createLabel( authData, repoNode, peqHumanLabelName, '111111', "populate" ); }
+	else if( peqValue < 0 )                    { theLabel = await createLabel( authData, repoNode, peqHumanLabelName, '654321', "Oi!" ); }
+	else                                       { theLabel = await createPeqLabel( authData, repoNode, allocation, peqValue );            }
+    }
+    assert( theLabel != null && typeof theLabel !== 'undefined', "Did not manage to find or create the PEQ label" );
+    return theLabel;
+}
+
+// update label
+// delete label
+
 exports.getProjectFromNode = getProjectFromNode;
 exports.getFromIssueNode   = getFromIssueNode;
 
+    
+exports.getHostLinkLoc     = getHostLinkLoc;
+
 exports.createIssue        = createIssue;
 exports.createLabel        = createLabel;
+exports.createPeqLabel     = createPeqLabel;
+exports.getLabel           = getLabel;
+exports.findOrCreateLabel  = findOrCreateLabel;
+

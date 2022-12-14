@@ -120,7 +120,7 @@ class Linkage {
 		    if( !hostProjs.includes( awsLoc.HostProjectId ) ) {
 			hostProjs.push(  awsLoc.HostProjectId );
 			
-			ldPromise = ghV2.getHostLinkLoc( authData.pat, awsLoc.HostProjectId, locData, baseLinks, -1 )
+			ldPromise = ghV2.getHostLinkLoc( authData, awsLoc.HostProjectId, locData, baseLinks, -1 )
 			    .catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
 			
 			ldPromise = await ldPromise;  // no val here, just ensures locData is set

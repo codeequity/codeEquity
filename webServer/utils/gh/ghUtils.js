@@ -6,10 +6,11 @@ const utils = require( '../ceUtils' );
 
 
 
+// XXX Accept header is for label preview.  Check back to delete.
 async function postGH( PAT, url, postData ) {
     const params = {
 	method: "POST",
-        headers: {'Authorization': 'bearer ' + PAT },
+        headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json" },
 	body: postData 
     };
 
