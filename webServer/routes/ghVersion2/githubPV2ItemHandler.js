@@ -42,6 +42,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let item    = reqBody.projects_v2_item;
 
     // bubba: "R_kgDOH8VRDg"  boogy: "PVT_kwDOA8JELs4AIeW_"  enhancement: "LA_kwDOH8VRDs8AAAABDEPzrw" duplicate: "LA_kwDOH8VRDs8AAAABDEPzrg"
+    // flutata: "I_kwDOH8VRDs5XivJQ"  PVTI_lADOA8JELs4AIeW_zgDd0Rs"
 
     console.log( "----------------XX--------------------" );
 
@@ -53,6 +54,11 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "teaA", 200 );
     // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "200 AllocPEQ", 200 );
     // console.log( labelRes );
+    // await ghV2.updateLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "2001 AllocPEQ", "Allocation PEQ value: 2001" );
+    // labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "2001 AllocPEQ", 2001 );
+    // console.log( labelRes );
+    // await ghV2.removeLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "I_kwDOH8VRDs5XivJQ" );
+    // await ghV2.rebuildLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "LA_kwDOH8VRDs8AAAABDEPzrg", "I_kwDOH8VRDs5XivJQ" );
 
     console.log( "----------------XX--------------------" );
     

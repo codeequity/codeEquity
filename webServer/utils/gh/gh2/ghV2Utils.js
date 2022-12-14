@@ -358,7 +358,7 @@ async function createIssue( authData, repoNode, projNode, title, labels, allocat
     let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
 	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, title );
-	if( !ret ) { return ret; }
+	return ret;
     }
     issueData[0] = ret.data.createIssue.issue.id;
     issueData[1] = ret.data.createIssue.issue.number;
@@ -372,7 +372,7 @@ async function createIssue( authData, repoNode, projNode, title, labels, allocat
     ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
 	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, title );
-	if( !ret ) { return ret; }
+	return ret;
     }
 
     ret = ret.data.addProjectV2ItemById.item.id;
@@ -393,7 +393,7 @@ async function createLabel( authData, repoNode, name, color, desc ) {
     let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
 	ret = await ghUtils.errorHandler( "createLabel", ret, createLabel, authData, repoNode, name, color, desc );
-	if( !ret ) { return ret; }
+	return ret;
     }
 
     if( ret.errors !== 'undefined' ) { console.log( "WARNING. Label not created", ret.errors ); }
@@ -422,7 +422,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
 	ret = await ghUtils.errorHandler( "getLabel", ret, getLabel, authData, repoNode, peqHumanLabelName );
-	if( !ret ) { return labelRes; }
+	return ret;
     }
 
     let labels = ret.data.node.labels; 
@@ -441,6 +441,74 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     return labelRes;
 }
 
+async function getLabels( authData, issueNodeId ) {
+    console.log( "Get labels on issue", issueNodeId );
+
+    let query = `query( $id:ID! ) {
+                   node( id: $id ) {
+                   ... on Issue {
+                       labels(first: 99, query: $name) {
+                          edges { node { id, name, color, description }}}
+                  }}}`;
+    let variables = {"id": issueNodeId };
+    let queryJ    = JSON.stringify({ query, variables });
+
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "getLabels", ret, getLabels, authData, issueNodeId );
+	return ret;
+    }
+
+    // XXX
+    /* parse this, check 99 limit
+{
+  "data": {
+    "node": {
+      "id": "R_kgDOH8VRDg",
+      "name": "bubba",
+      "labels": {
+        "edges": [
+          {
+            "node": {
+              "id": "LA_kwDOH8VRDs8AAAABDEPzrA",
+              "name": "bug"
+            }
+          },
+          {
+            "node": {
+              "id": "LA_kwDOH8VRDs8AAAABDEPzrQ",
+              "name": "documentation"
+            }
+          },
+          {
+            "node": {
+              "id": "LA_kwDOH8VRDs8AAAABDEPzrg",
+              "name": "duplicate"
+            }
+          },
+          {
+            "node": {
+              "id": "LA_kwDOH8VRDs8AAAABDEPzrw",
+              "name": "enhancement"
+            }
+          },
+          {
+            "node": {
+              "id": "LA_kwDOH8VRDs8AAAABDEPzsA",
+              "name": "good first issue"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+*/
+    
+    return labels;
+}
+
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
     console.log( "Creating PEQ label", allocation, peqValue );
     let peqHumanLabelName = peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
@@ -450,7 +518,6 @@ async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
     return label;
 }
 
-// find label
 async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelName, peqValue ) {
 
     console.log( "\n\nFind or create label", repoNode, allocation, peqHumanLabelName, peqValue );
@@ -471,12 +538,97 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
     return theLabel;
 }
 
-// update label
-// delete label
+async function updateLabel( authData, labelNodeId, name, desc, color ) {
+
+    console.log( "Update label to", name, desc, color );
+
+    let query     = "";
+
+    let variables = {"id": labelNodeId, "name": name, "desc": desc};
+
+    if( typeof color === 'undefined' ) {
+	query = `mutation( $id:ID!, $name:String!, $desc:String! )
+                   { updateLabel( input:{id: $id, name: $name, description: $desc }) {clientMutationId}}`;
+    }
+    else {
+	query = `mutation( $id:ID!, $color:String!, $name:String!, $desc:String! )
+                   { updateLabel( input:{id: $id, color: $color, name: $name, description: $desc }) {clientMutationId}}`;
+	variables.color = color;
+    }
+    let queryJ    = JSON.stringify({ query, variables });
+
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "updateLabel", ret, updateLabel, authData, labelNodeId, name, desc, color );
+	return ret;
+    }
+    return true;
+}
+
+// Primarily used when double-peq label an issue
+async function removeLabel( authData, labelNodeId, issueNodeId ) {
+    console.log( "Remove label", labelNodeId, "from", issueNodeId );
+
+    let query     = `mutation( $labelIds:[ID!]!, $labelableId:ID! ) 
+                        { removeLabelsFromLabelable( input:{ labelIds: $labelIds, labelableId: $labelableId })  {clientMutationId}}`;
+    let variables = {"labelIds": [labelNodeId], "labelableId": issueNodeId };
+    let queryJ    = JSON.stringify({ query, variables });
+    
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "removeLabel", ret, removeLabel, authData, labelNodeId, issueNodeId );
+	return ret;
+    }
+    return true;
+}
+
+async function addLabel( authData, labelNodeId, issueNodeId ) {
+    console.log( "Add label", labelNodeId, "to", issueNodeId );
+
+    let query     = `mutation( $labelIds:[ID!]!, $labelableId:ID! ) 
+                        { addLabelsToLabelable( input:{ labelIds: $labelIds, labelableId: $labelableId })  {clientMutationId}}`;
+    let variables = {"labelIds": [labelNodeId], "labelableId": issueNodeId };
+    let queryJ    = JSON.stringify({ query, variables });
+    
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "addLabel", ret, addLabel, authData, labelNodeId, issueNodeId );
+	return ret;
+    }
+    return true;
+}
+
+async function rebuildLabel( authData, oldLabelId, newLabelId, issueNodeId ) {
+    // Don't wait.  
+    removeLabel( authData, oldLabelId, issueNodeId );
+    addLabel( authData, newLabelId, issueNodeId );
+}
+
+    
+/*
+async function removePeqLabel( authData, repoNodeId, issueNodeId ) {
+    let retVal = false;
+    // var labels = await getLabels( authData, owner, repo, issueNum );
+
+    if( typeof labels === 'undefined' || labels == false ) { return retVal; }
+    if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum );} 
+
+    if( labels != -1 ) {
+	let peqLabel = {};
+	for( const label of labels.data ) {
+	    // const tval = parseLabelDescr( [label.description] );
+	    if( tval > 0 ) { peqLabel = label; break; }
+	}
+	// await removeLabel( authData, owner, repo, issueNum, peqLabel );
+	retVal = true;
+    }
+    return retVal;
+}
+*/
+
 
 exports.getProjectFromNode = getProjectFromNode;
 exports.getFromIssueNode   = getFromIssueNode;
-
     
 exports.getHostLinkLoc     = getHostLinkLoc;
 
@@ -485,4 +637,7 @@ exports.createLabel        = createLabel;
 exports.createPeqLabel     = createPeqLabel;
 exports.getLabel           = getLabel;
 exports.findOrCreateLabel  = findOrCreateLabel;
-
+exports.updateLabel        = updateLabel;
+exports.removeLabel        = removeLabel;
+exports.addLabel           = addLabel;
+exports.rebuildLabel       = rebuildLabel;
