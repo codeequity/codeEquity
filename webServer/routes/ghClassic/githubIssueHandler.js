@@ -5,6 +5,7 @@ var cardHandler = require( './githubCardHandler' );
 
 const utils    = require( '../../utils/ceUtils' );
 const awsUtils = require( '../../utils/awsUtils' );
+const ghUtils  = require( '../../utils/gh/ghUtils' );
 const ghcDUtils = require( '../../utils/gh/ghc/ghcDataUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
@@ -116,7 +117,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     [pd.peqValue,_] = ghSafe.theOnePEQ( issueLabels );  
     
     // more than 1 peq?  remove it.
-    let curVal  = ghSafe.parseLabelDescr( [ label.description ] );
+    let curVal  = ghUtils.parseLabelDescr( [ label.description ] );
     if( pd.peqValue <= 0 && curVal > 0 ) {
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
@@ -239,7 +240,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	{
 	    // Unlabel'd label data is not located under issue.. parseLabel looks in arrays
 	    if( typeof pd.reqBody.label !== 'undefined' ) {
-		pd.peqValue = ghSafe.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
+		pd.peqValue = ghUtils.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
 		if( pd.peqValue <= 0 ) {
 		    console.log( "Not a PEQ label, no action taken." );
 		    return;

@@ -59,6 +59,11 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( labelRes );
     // await ghV2.removeLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "I_kwDOH8VRDs5XivJQ" );
     // await ghV2.rebuildLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "LA_kwDOH8VRDs8AAAABDEPzrg", "I_kwDOH8VRDs5XivJQ" );
+    // let labels = await ghV2.getLabels( authData, "I_kwDOH8VRDs5XivJQ" );
+    // console.log( labels );
+    // await ghV2.removePeqLabel( authData, "I_kwDOH8VRDs5XivJQ" );
+    // let issue = await ghV2.getIssue( authData, "I_kwDOH8VRDs5XivJQ" );
+    // console.log( issue );
 
     console.log( "----------------XX--------------------" );
     

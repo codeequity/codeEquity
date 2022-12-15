@@ -127,9 +127,50 @@ async function checkForPV2( PAT, nodeId ) {
 
 }
 
+// no commas, no shorthand, just like this:  'PEQ value: 500'  or 'Allocation PEQ value: 30000'
+function parseLabelDescr( labelDescr ) {
+    let peqValue = 0;
+    let pDescLen = config.PDESC.length;
+    let aDescLen = config.ADESC.length;
+
+    for( const line of labelDescr ) {
+	// malformed labels can have a null entry here
+	if( !line ) { return peqValue; }
+	
+	if( line.indexOf( config.PDESC ) == 0 ) {
+	    //console.log( "Found peq val in", line.substring( pDescLen ) );
+	    peqValue = parseInt( line.substring( pDescLen ) );
+	    break;
+	}
+	else if( line.indexOf( config.ADESC ) == 0 ) {
+	    // console.log( "Found peq val in", line.substring( aDescLen ) );
+	    peqValue = parseInt( line.substring( aDescLen ) );
+	    break;
+	}
+    }
+
+    return peqValue;
+}
+
+// '500 PEQ'  or '500 AllocPEQ'
+function parseLabelName( name ) {
+    let peqValue = 0;
+    let alloc = false;
+    let splits = name.split(" ");
+    if( splits.length == 2 && ( splits[1] == config.ALLOC_LABEL || splits[1] == config.PEQ_LABEL )) {
+	peqValue = parseInt( splits[0] );
+	alloc = splits[1] == config.ALLOC_LABEL;
+    }
+    return [peqValue, alloc];
+}
+
+
 
 
 exports.errorHandler = errorHandler;
 exports.postGH       = postGH;
 
 exports.checkForPV2  = checkForPV2;
+
+exports.parseLabelDescr = parseLabelDescr;
+exports.parseLabelName  = parseLabelName;

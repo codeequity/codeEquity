@@ -25,14 +25,6 @@ var githubSafe = {
 	return parsePEQ( cardContent, allocation );
     },
 
-    parseLabelDescr: function( labelDescr ) {
-	return parseLabelDescr( labelDescr );
-    },
-	
-    parseLabelName: function( name ) {
-	return parseLabelName( name );
-    },
-	
     theOnePEQ: function( labels ) {
 	return theOnePEQ( labels );
     },
@@ -1239,7 +1231,7 @@ async function removePeqLabel( authData, owner, repo, issueNum ) {
     if( labels != -1 ) {
 	let peqLabel = {};
 	for( const label of labels.data ) {
-	    const tval = parseLabelDescr( [label.description] );
+	    const tval = ghUtils.parseLabelDescr( [label.description] );
 	    if( tval > 0 ) { peqLabel = label; break; }
 	}
 	await removeLabel( authData, owner, repo, issueNum, peqLabel );
@@ -1754,50 +1746,13 @@ function parsePEQ( content, allocation ) {
     return peqValue;
 }
 
-// no commas, no shorthand, just like this:  'PEQ value: 500'  or 'Allocation PEQ value: 30000'
-function parseLabelDescr( labelDescr ) {
-    let peqValue = 0;
-    let pDescLen = config.PDESC.length;
-    let aDescLen = config.ADESC.length;
-
-    for( const line of labelDescr ) {
-	// malformed labels can have a null entry here
-	if( !line ) { return peqValue; }
-	
-	if( line.indexOf( config.PDESC ) == 0 ) {
-	    //console.log( "Found peq val in", line.substring( pDescLen ) );
-	    peqValue = parseInt( line.substring( pDescLen ) );
-	    break;
-	}
-	else if( line.indexOf( config.ADESC ) == 0 ) {
-	    // console.log( "Found peq val in", line.substring( aDescLen ) );
-	    peqValue = parseInt( line.substring( aDescLen ) );
-	    break;
-	}
-    }
-
-    return peqValue;
-}
-
-// '500 PEQ'  or '500 AllocPEQ'
-function parseLabelName( name ) {
-    let peqValue = 0;
-    let alloc = false;
-    let splits = name.split(" ");
-    if( splits.length == 2 && ( splits[1] == config.ALLOC_LABEL || splits[1] == config.PEQ_LABEL )) {
-	peqValue = parseInt( splits[0] );
-	alloc = splits[1] == config.ALLOC_LABEL;
-    }
-    return [peqValue, alloc];
-}
-
 function theOnePEQ( labels ) {
     let peqValue = 0;
     let alloc = false;
 
     for( const label of labels ) {
 	let content = label['description'];
-	let tval = parseLabelDescr( [content] );
+	let tval = ghUtils.parseLabelDescr( [content] );
 	let talloc = getAllocated( [content] );
 
 	if( tval > 0 ) {

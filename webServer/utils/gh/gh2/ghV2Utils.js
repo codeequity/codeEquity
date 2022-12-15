@@ -380,6 +380,57 @@ async function createIssue( authData, repoNode, projNode, title, labels, allocat
     return issueData;
 }
 
+
+// Label descriptions help determine if issue is an allocation
+async function getIssue( authData, issueNodeId ) {
+    let retVal   = [];
+    if( issueNodeId == -1 ) { return retVal; }
+    
+    let issue = await getFullIssue( authData, issueNodeId );
+    let retIssue = [];
+    
+    retIssue.push( issue.id );
+    retVal.push( issue.title );
+    if( issue.labels.edges.length > 0 ) {
+	for( label of issue.labels.edges ) { retVal.push( label.node.description ); }
+    }
+    retIssue.push( retVal );
+    return retIssue;
+    
+}
+
+// More is available.. needed?
+async function getFullIssue( authData, issueNodeId ) {
+    console.log( "Get Full Issue", issueNodeId );
+
+    let query = `query( $id:ID! ) {
+                   node( id: $id ) {
+                   ... on Issue {
+                     id
+                     body
+                     assignees(first:99) { edges { node { id login }}}
+                     labels(first: 99)   { edges { node { id name description }}}
+                     milestone { id }
+                     repository { id }
+                     state
+                     title
+                  }}}`;
+
+    let variables = {"id": issueNodeId};
+    let queryJ    = JSON.stringify({ query, variables });
+
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "getFullIssue", ret, getFullIssue, authData, issueNodeId );
+	return ret;
+    }
+    
+    let issue = ret.data.node;
+    if( issue.assignees.edges.length > 99 ) { console.log( "WARNING.  Large number of assignees.  Ignoring some." ); }
+    if( issue.labels.edges.length > 99 )    { console.log( "WARNING.  Large number of labels.  Ignoring some." ); }
+    return issue;
+}
+
 async function createLabel( authData, repoNode, name, color, desc ) {
 
     console.log( "Create label", repoNode, name, desc, color );
@@ -447,7 +498,7 @@ async function getLabels( authData, issueNodeId ) {
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
                    ... on Issue {
-                       labels(first: 99, query: $name) {
+                       labels(first: 99) {
                           edges { node { id, name, color, description }}}
                   }}}`;
     let variables = {"id": issueNodeId };
@@ -459,55 +510,17 @@ async function getLabels( authData, issueNodeId ) {
 	return ret;
     }
 
-    // XXX
-    /* parse this, check 99 limit
-{
-  "data": {
-    "node": {
-      "id": "R_kgDOH8VRDg",
-      "name": "bubba",
-      "labels": {
-        "edges": [
-          {
-            "node": {
-              "id": "LA_kwDOH8VRDs8AAAABDEPzrA",
-              "name": "bug"
-            }
-          },
-          {
-            "node": {
-              "id": "LA_kwDOH8VRDs8AAAABDEPzrQ",
-              "name": "documentation"
-            }
-          },
-          {
-            "node": {
-              "id": "LA_kwDOH8VRDs8AAAABDEPzrg",
-              "name": "duplicate"
-            }
-          },
-          {
-            "node": {
-              "id": "LA_kwDOH8VRDs8AAAABDEPzrw",
-              "name": "enhancement"
-            }
-          },
-          {
-            "node": {
-              "id": "LA_kwDOH8VRDs8AAAABDEPzsA",
-              "name": "good first issue"
-            }
-          }
-        ]
-      }
-    }
-  }
-}
+    let raw    = ret.data.node.labels;
+    let labels = [];
+    if( typeof raw === 'undefined' ) { return labels; }
 
-*/
-    
+    for( let i = 0; i < raw.edges.length; i++ ) {
+	let label = raw.edges[i].node;
+	labels.push( label );
+    }
+
     return labels;
-}
+}    
 
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
     console.log( "Creating PEQ label", allocation, peqValue );
@@ -581,6 +594,23 @@ async function removeLabel( authData, labelNodeId, issueNodeId ) {
     }
     return true;
 }
+    
+async function removePeqLabel( authData, issueNodeId ) {
+    var labels = await getLabels( authData, issueNodeId );
+
+    if( typeof labels === 'undefined' || labels == false || labels.length <= 0 ) { return false; }
+    if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum );} 
+
+    let peqLabel = {};
+    // There can only be one, by definition.
+    for( const label of labels ) {
+	const tval = ghUtils.parseLabelDescr( [label.description] );
+	if( tval > 0 ) { peqLabel = label; break; }
+    }
+    await removeLabel( authData, peqLabel.id, issueNodeId );
+
+    return true;
+}
 
 async function addLabel( authData, labelNodeId, issueNodeId ) {
     console.log( "Add label", labelNodeId, "to", issueNodeId );
@@ -604,28 +634,174 @@ async function rebuildLabel( authData, oldLabelId, newLabelId, issueNodeId ) {
     addLabel( authData, newLabelId, issueNodeId );
 }
 
-    
+
 /*
-async function removePeqLabel( authData, repoNodeId, issueNodeId ) {
-    let retVal = false;
-    // var labels = await getLabels( authData, owner, repo, issueNum );
+// Targets
+    getAllocated: function( cardContent ) {
+	return getAllocated( cardContent );
+    },
 
-    if( typeof labels === 'undefined' || labels == false ) { return retVal; }
-    if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum );} 
+    parsePEQ: function( cardContent, allocation ) {
+	return parsePEQ( cardContent, allocation );
+    },
 
-    if( labels != -1 ) {
-	let peqLabel = {};
-	for( const label of labels.data ) {
-	    // const tval = parseLabelDescr( [label.description] );
-	    if( tval > 0 ) { peqLabel = label; break; }
-	}
-	// await removeLabel( authData, owner, repo, issueNum, peqLabel );
-	retVal = true;
-    }
-    return retVal;
+    theOnePEQ: function( labels ) {
+	return theOnePEQ( labels );
+    },
+
+    validatePEQ: function( authData, repo, issueId, title, projId ) {
+	return validatePEQ( authData, repo, issueId, title, projId );
+    },
+
+    createProjectGQL: function( ownerId, PAT, repo, repoId, name, body, beta ) {
+	return createProjectGQL( ownerId, PAT, repo, repoId, name, body, beta );
+    },
+
+    getOwnerIdGQL: function( PAT, owner ) {
+	return getOwnerIdGQL( PAT, owner );
+    },
+
+    getRepoIdGQL: function( PAT, owner, repo ) {
+	return getRepoIdGQL( PAT, owner, repo );
+    },
+    
+    createProjectCard: function( authData, columnId, issueId, justId ) {
+	return createProjectCard( authData, columnId, issueId, justId );
+    },
+
+    updateTitle: function( authData, owner, repo, issueNum, title ) {
+	return updateTitle( authData, owner, repo, issueNum, title );
+    },
+
+    addComment: function( authData, owner, repo, issueNum, msg ) {
+	return addComment( authData, owner, repo, issueNum, msg );
+    },
+
+    rebuildIssue: function( authData, owner, repo, issue, msg, splitTag ) {
+	return rebuildIssue( authData, owner, repo, issue, msg, splitTag );
+    },
+
+    cleanUnclaimed: function( authData, ghLinks, pd ) {
+	return cleanUnclaimed( authData, ghLinks, pd );
+    },
+    
+    updateIssue: function( authData, owner, repo, issueNum, newState ) {
+	return updateIssue( authData, owner, repo, issueNum, newState );
+    },
+
+    updateColumn: function( authData, colId, newName ) {
+	return updateColumn( authData, colId, newName );
+    },
+
+    updateProject: function( authData, projId, newName ) {
+	return updateProject( authData, projId, newName );
+    },
+
+    addAssignee: function( authData, owner, repo, issueNumber, assignee ) {
+	return addAssignee( authData, owner, repo, issueNumber, assignee );
+    },
+    
+    remAssignee: function( authData, owner, repo, issueNumber, assignee ) {
+	return remAssignee( authData, owner, repo, issueNumber, assignee );
+    },
+    
 }
-*/
 
+
+var githubUtils = {
+
+    getAssignees: function( authData, owner, repo, issueNum ) {
+	return getAssignees( authData, owner, repo, issueNum );
+    },
+
+    checkIssue: function( authData, owner, repo, issueNum ) {
+	return checkIssue( authData, owner, repo, issueNum );  
+    },
+
+    getIssue: function( authData, owner, repo, issueNum ) {
+	return getIssue( authData, owner, repo, issueNum );
+    },
+
+    getCard: function( authData, cardId ) {
+	return getCard( authData, cardId );
+    },
+
+    getFullIssue: function( authData, owner, repo, issueNum ) {
+	return getFullIssue( authData, owner, repo, issueNum );
+    },
+
+    removeCard: function( authData, cardId ) {
+	return removeCard( authData, cardId );
+    },
+	
+    rebuildCard: function( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
+	return rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData );
+    },
+
+    createUnClaimedCard: function( authData, ghLinks, pd, issueId, accr ) {
+	return createUnClaimedCard( authData, ghLinks, pd, issueId, accr );
+    },
+
+    getRepoLabelsGQL: function( PAT, owner, repo, data, cursor ) {
+	return getRepoLabelsGQL( PAT, owner, repo, data, cursor );
+    },
+
+    getReposGQL: function( PAT, owner, data, cursor ) {
+	return getReposGQL( PAT, owner, data, cursor );
+    },
+
+    getRepoIssuesGQL: function( PAT, owner, repo, data, cursor ) {
+	return getRepoIssuesGQL( PAT, owner, repo, data, cursor );
+    },
+
+    getRepoIssueGQL: function( PAT, owner, repo, issueDatabaseId, data, cursor ) {
+	return getRepoIssueGQL( PAT, owner, repo, issueDatabaseId, data, cursor );
+    },
+
+    getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
+	return getBasicLinkDataGQL( PAT, owner, repo, data, cursor );
+    },
+
+    getLabelIssuesGQL: function( PAT, owner, repo, labelName, data, cursor ) {
+	return getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor );
+    },
+
+    getRepoColsGQL: function( PAT, owner, repo, data, cursor ) {
+	return getRepoColsGQL( PAT, owner, repo, data, cursor );
+    },
+
+    transferIssueGQL: function( authData, issueId, toRepoId ) {
+	return transferIssueGQL( authData, issueId, toRepoId );
+    },
+
+    populateRequest: function( labels ) {
+	return populateRequest( labels );
+    },
+
+    getCEProjectLayout: function( authData, ghLinks, pd ) {
+	return getCEProjectLayout( authData, ghLinks, pd );
+    },
+    
+    moveCard: function( authData, cardId, colId ) {
+	return moveCard( authData, cardId, colId ); 
+    },
+
+    checkReserveSafe: function( authData, owner, repo, issueNum, colNameIndex ) {
+	return checkReserveSafe( authData, owner, repo, issueNum, colNameIndex );
+    },
+    
+    moveIssueCard: function( authData, ghLinks, pd, action, ceProjectLayout ) {
+	return moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
+    },
+
+    getProjectName: function( authData, ghLinks, ceProjId, fullName, projId ) {
+	return getProjectName( authData, ghLinks, ceProjId, fullName, projId ); 
+    },
+
+    getColumnName: function( authData, ghLinks, ceProjId, fullName, colId ) {
+	return getColumnName( authData, ghLinks, ceProjId, fullName, colId ); 
+    },
+*/
 
 exports.getProjectFromNode = getProjectFromNode;
 exports.getFromIssueNode   = getFromIssueNode;
@@ -633,11 +809,30 @@ exports.getFromIssueNode   = getFromIssueNode;
 exports.getHostLinkLoc     = getHostLinkLoc;
 
 exports.createIssue        = createIssue;
+exports.getIssue           = getIssue;
+exports.getFullIssue       = getFullIssue;
+
+// checkIssue
+// updateIssue
+// rebuildIssue
+// transferIssue
+// addComment
+// updateTitle
+// addAssignee
+// remAssignee
+// getAssignees
+
+// updateProject
+// updateColumn
+
+
 exports.createLabel        = createLabel;
 exports.createPeqLabel     = createPeqLabel;
 exports.getLabel           = getLabel;
+exports.getLabels          = getLabels;
 exports.findOrCreateLabel  = findOrCreateLabel;
 exports.updateLabel        = updateLabel;
 exports.removeLabel        = removeLabel;
+exports.removePeqLabel     = removePeqLabel;
 exports.addLabel           = addLabel;
 exports.rebuildLabel       = rebuildLabel;

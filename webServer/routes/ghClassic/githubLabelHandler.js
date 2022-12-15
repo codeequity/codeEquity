@@ -4,6 +4,7 @@ const config = require( '../../config' );
 
 const utils    = require( '../../utils/ceUtils' );
 const awsUtils = require( '../../utils/awsUtils' );
+const ghUtils  = require( '../../utils/gh/ghUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -14,10 +15,10 @@ const issHan  = require('./githubIssueHandler');
 
 
 async function nameDrivesLabel( authData, pd, name, description ) {
-    const [nameVal,alloc] = ghSafe.parseLabelName( name );
+    const [nameVal,alloc] = ghUtils.parseLabelName( name );
     if( nameVal <= 0 ) { return false; }
     
-    const descrVal  = ghSafe.parseLabelDescr( [description] );
+    const descrVal  = ghUtils.parseLabelDescr( [description] );
     const consistentDescr     = ( alloc ? config.ADESC : config.PDESC ) + nameVal.toString();
     
     // Name drives description.  This will allow different color, if naming/descr is correct.
@@ -58,7 +59,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( typeof pd.reqBody.changes.description !== 'undefined' ) { origDesc = pd.reqBody.changes.description.from; }
 	    if( typeof pd.reqBody.changes.name !== 'undefined' )        { origName = pd.reqBody.changes.name.from; }
 	    
-	    const lVal     = ghSafe.parseLabelDescr( [ origDesc ] );
+	    const lVal     = ghUtils.parseLabelDescr( [ origDesc ] );
 	    let allocation = ghSafe.getAllocated( [ origDesc ] );
 	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
@@ -136,7 +137,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // make new label, iff the name changed.  If only descr, we are done already.  This need not be peq.
 	    if( origName != newName ) {
 		console.log( "Making new label to contain the edit" );
-		const [peqValue,_] = ghSafe.parseLabelName( newName );
+		const [peqValue,_] = ghUtils.parseLabelName( newName );
 		const descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
 		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, newName, pd.reqBody.label.color, descr );
 	    }
@@ -154,7 +155,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // Issue handler gets notifications for open issues.  It will do nothing if the label still exists.
 	    const desc = pd.reqBody.label.description;
 	    if( !desc ) { return; } // bad label
-	    const lVal = ghSafe.parseLabelDescr( [ desc ] );
+	    const lVal = ghUtils.parseLabelDescr( [ desc ] );
 	    let   tVal = ghSafe.getAllocated( [ desc ] );
 	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
