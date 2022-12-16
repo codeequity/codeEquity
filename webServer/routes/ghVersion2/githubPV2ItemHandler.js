@@ -42,11 +42,14 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let item    = reqBody.projects_v2_item;
 
     // bubba: "R_kgDOH8VRDg"  boogy: "PVT_kwDOA8JELs4AIeW_"  enhancement: "LA_kwDOH8VRDs8AAAABDEPzrw" duplicate: "LA_kwDOH8VRDs8AAAABDEPzrg"
-    // flutata: "I_kwDOH8VRDs5XivJQ"  PVTI_lADOA8JELs4AIeW_zgDd0Rs"
+    // flutata: "I_kwDOH8VRDs5XivJQ" "PVTI_lADOA8JELs4AIeW_zgDd0Rs"
+    // ari "MDQ6VXNlcjgzNzI5OTM5"   connie "MDQ6VXNlcjc5MjExNTk4"
+    // todo status: 
 
     console.log( "----------------XX--------------------" );
 
-    // await ghV2.createIssue( authData, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", "Eggs rock", ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], true );
+    // let issueDetails = {"title": "Eggs rock", "labels": ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], "allocation": true );
+    // await ghV2.createIssue( authData, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", issueDetails );
     // await ghV2.createLabel( authData, "R_kgDOH8VRDg", "tea", config.PEQ_COLOR, "party" );
     // let labelRes = await ghV2.getLabel( authData, "R_kgDOH8VRDg", "tea" );
     // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", false, "tea", -1 );
@@ -64,7 +67,18 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // await ghV2.removePeqLabel( authData, "I_kwDOH8VRDs5XivJQ" );
     // let issue = await ghV2.getIssue( authData, "I_kwDOH8VRDs5XivJQ" );
     // console.log( issue );
-
+    // await ghV2.updateIssue( authData, "I_kwDOH8VRDs5XivJQ", "state", "OPEN" );
+    // let issueDetails = {"title": "flutata", "labels": ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], "id": "I_kwDOH8VRDs5XivJQ" };
+    // let issueData = await ghV2.rebuildIssue( authData, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", issueDetails, "", "XYZ123" );
+    // await ghV2.addComment( authData, "I_kwDOH8VRDs5XivJQ", "blat" );
+    // await ghV2.updateIssue( authData, "I_kwDOH8VRDs5XivJQ", "title", "flutata" );
+    // await ghV2.addAssignee( authData, "I_kwDOH8VRDs5XivJQ", "MDQ6VXNlcjgzNzI5OTM5" );
+    // await ghV2.remAssignee( authData, "I_kwDOH8VRDs5XivJQ", "MDQ6VXNlcjgzNzI5OTM5" );
+    // let a = await ghV2.getAssignees( authData, "I_kwDOH8VRDs5XivJQ" );
+    // console.log( a );
+    // await ghV2.updateProject( authData, "PVT_kwDOA8JELs4AIeW_", "boogy" );    
+    await ghV2.updateColumn( authData, "PVT_kwDOA8JELs4AIeW_", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "f75ad846", "Todo Too" );    
+    
     console.log( "----------------XX--------------------" );
     
     // let projectDetail = await ghV2.getProjectFromNode( authData, item.project_node_id );

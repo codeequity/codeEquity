@@ -333,31 +333,41 @@ async function getProjectFromNode( authData, pNodeId ) {
     return retVal;
 }
 
+
 // Note: mutation:createIssue with inputObject that includes projIds only works for classic projects, not PV2.
 // Note: mutation:addProjectV2DraftIssue works, but can't seem to find how to convert draft to full issue in gql?!!??
-async function createIssue( authData, repoNode, projNode, title, labels, allocation ) {
+// Note: issue below is a collection of issue details, not a true issue.
+async function createIssue( authData, repoNode, projNode, issue ) {
     let issueData = [-1,-1]; // contentId, num
+
+    assert( typeof issue.title !== 'undefined', "Error.  createIssue requires a title." );
+    if( typeof issue.allocation === 'undefined' ) { issue.allocation = false; }
+    if( typeof issue.body === 'undefined' )       { issue.body = ""; }
+    if( typeof issue.labels === 'undefined' )     { issue.labels = []; }
+    if( typeof issue.assignees === 'undefined' )  { issue.assignees = []; }
+    if( typeof issue.milestone === 'undefined' )  { issue.milestone = null; }
     
-    console.log( "Create issue, from alloc?", repoNode, projNode, title, allocation );
+    console.log( "Create issue, from alloc?", repoNode, projNode, issue.title, issue.allocation );
 
-    let body = "";
-    if( allocation ) {
-	body  = "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
-	body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"
-	body += "It is safe to filter this out of your issues list.\n\n";
-	body += "It is NOT safe to close, reopen, or edit this issue.";
+    assert( !issue.allocation || typeof issue.body === 'undefined', "Error.  createIssue body is about to be overwritten." );
+    if( issue.allocation ) {
+	issue.body  = "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
+	issue.body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"
+	issue.body += "It is safe to filter this out of your issues list.\n\n";
+	issue.body += "It is NOT safe to close, reopen, or edit this issue.";
     }
+    
+    let query = `mutation( $repo:ID!, $title:String!, $body:String!, $labels:[ID!], $assg:[ID!], $mile:ID )
+                    { createIssue( input:{ repositoryId: $repo, title: $title, body: $body, labelIds: $labels, assigneeIds: $assg, milestoneId: $mile }) 
+                    {clientMutationId, issue{id, number}}}`;
 
-    let query = `mutation( $repo:ID!, $title:String!, $body:String!, $labels:[ID!] )
-                    { createIssue( input:{ repositoryId: $repo, title: $title, body: $body, labelIds: $labels }) {clientMutationId, issue{id, number}}}`;
-
-    let variables = {"repo": repoNode, "title": title, "body": body, "labels": labels };
+    let variables = {"repo": repoNode, "title": issue.title, "body": issue.body, "labels": issue.labels, "mile": issue.milestone, "assg": issue.assignees };
 	
     let queryJ = JSON.stringify({ query, variables });
 
     let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, title );
+	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, issue );
 	return ret;
     }
     issueData[0] = ret.data.createIssue.issue.id;
@@ -368,10 +378,11 @@ async function createIssue( authData, repoNode, projNode, title, labels, allocat
     variables = {"proj": projNode, "contentId": ret.data.createIssue.issue.id };
 
     queryJ = JSON.stringify({ query, variables });
-    
+
+    // XXX If the create above succeeds and this triggers, the it will attempt to create again.  Copy made?  Split this out.
     ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, title );
+	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, issue );
 	return ret;
     }
 
@@ -430,6 +441,167 @@ async function getFullIssue( authData, issueNodeId ) {
     if( issue.labels.edges.length > 99 )    { console.log( "WARNING.  Large number of labels.  Ignoring some." ); }
     return issue;
 }
+
+async function updateIssue( authData, issueNodeId, field, newValue ) {
+
+    let query     = "";
+    if(      field == "state" ) { query = `mutation( $id:ID!, $value:IssueState ) { updateIssue( input:{ id: $id, state: $value }) {clientMutationId}}`; }
+    else if( field == "title" ) { query = `mutation( $id:ID!, $value:String )     { updateIssue( input:{ id: $id, title: $value }) {clientMutationId}}`; }
+    
+    let variables = {"id": issueNodeId, "value": newValue };
+    let queryJ    = JSON.stringify({ query, variables });
+
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "updateIssue", ret, updateIssue, authData, issueNodeId, field, newValue );
+	return ret;
+    }
+    
+    if( ret ) { console.log( authData.who, "updateIssue done" ); }
+    return true;
+}
+
+async function updateTitle( authData, issueNodeId, title ) {
+    return await updateIssue( authData, issueNodeId, "title", title );
+}
+
+async function addComment( authData, issueNodeId, msg ) {
+    let query     = `mutation( $id:ID!, $msg:String! ) { addComment( input:{ subjectId: $id, body: $msg }) {clientMutationId}}`;
+    let variables = {"id": issueNodeId, "msg": msg };
+    let queryJ    = JSON.stringify({ query, variables });
+
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "addComment", ret, addComment, authData, issueNodeId, msg );
+	return ret;
+    }
+    return true;
+}
+
+async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, splitTag ) { 
+    console.log( authData.who, "Rebuild issue from", issue.id );
+    let issueData = [-1,-1];  // issue id, num
+    assert( typeof issue.id !== 'undefined', "Error.  rebuildIssue needs an issue to point back to" );
+
+    let title = issue.title;
+    if( typeof splitTag !== 'undefined' ) { issue.title = issue.title + " split: " + splitTag; }
+
+    let success = false;
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "rebuildIssue" )
+	    .catch( e => issueData = ghUtils.errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, repoNodeId, projectNodeId, issue, msg, splitTag ));
+    }
+    else {
+	console.log( "Calling create", issue );
+	issueData = await createIssue( authData, repoNodeId, projectNodeId, issue );
+	if( issueData[0] != -1 && issueData[1] != -1 ) { success = true; }
+    }
+
+    if( success ) {
+	let comment = "";
+	if( typeof splitTag !== 'undefined' ) {
+	    comment = "CodeEquity duplicated this new issue from issue id:" + issue.id.toString() + " on " + utils.getToday().toString();
+	    comment += " in order to ensure that issues have exactly one location."
+	}
+	else { comment = utils.getToday().toString() + ": " + msg; }
+	    
+	// Don't wait.
+	addComment( authData, issueData[0], comment );
+    }
+    return issueData;
+}
+
+
+async function addAssignee( authData, issueNodeId, aNodeId ) {
+
+    let ret = false;
+    console.log( "Add assignee", issueNodeId, aNodeId );
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "addAssignee" )
+	    .catch( e => ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, issueNodeId, aNodeId )); 
+    }
+    else {
+	let query = `mutation( $id:ID!, $adds:[ID!]! )
+                    { addAssigneesToAssignable( input:{ assignableId: $id, assigneeIds: $adds }) {clientMutationId}}`;
+	
+	let variables = {"id": issueNodeId, "adds": [aNodeId] };
+	let queryJ    = JSON.stringify({ query, variables });
+	
+	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	    ret = await ghUtils.errorHandler( "addAssignee", ret, addAssignee, authData, issueNodeId, aNodeId );
+	    return ret;
+	}
+    }
+    return ret;
+}
+
+async function remAssignee( authData, issueNodeId, aNodeId ) {
+    let query = `mutation( $id:ID!, $adds:[ID!]! )
+                 { removeAssigneesFromAssignable( input:{ assignableId: $id, assigneeIds: $adds }) {clientMutationId}}`;
+    
+    let variables = {"id": issueNodeId, "adds": [aNodeId] };
+    let queryJ    = JSON.stringify({ query, variables });
+    
+    ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
+	ret = await ghUtils.errorHandler( "remAssignee", ret, remAssignee, authData, issueNodeId, aNodeId );
+	return ret;
+    }
+}
+
+// Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
+// Note. alignment risk - card info could have moved on
+async function getAssignees( authData, issueNodeId ) {
+
+    let retVal = [];
+    if( issueNodeId == -1 ) { console.log( "getAssignees: bad issue", issueNodeId ); return retVal; }
+
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "getAssignees" )
+	    .catch( e => retVal = ghUtils.errorHandler( "getAssignees", utils.FAKE_ISE, getAssignees, authData, issueNodeId));
+    }
+    else {
+
+	let query = `query( $id:ID! ) {
+                       node( id: $id ) {
+                        ... on Issue {
+                           assignees(first: 100)    { edges { node { login id }}}
+                  }}}`;
+	let variables = {"id": issueNodeId };
+	let queryJ    = JSON.stringify({ query, variables });
+	
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	    .then( raw => {
+		let assigns = raw.data.node.assignees;
+		for( let i = 0; i < assigns.edges.length; i++ ) {
+		    let a = assigns.edges[i].node;
+		    retVal.push( a.id );
+		}
+		
+	    })
+	    .catch( e => retVal = ghUtils.errorHandler( "getAssignees", e, getAssignees, authData, issueNodeId ));
+    }
+    return retVal;
+}
+
+// XXX untested
+async function transferIssue( authData, issueNodeId, newRepoNodeId) {
+
+    let query = `mutation ($issueId: ID!, $repoId: ID!) 
+                    { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId, createLabelsIfMissing: true }) {clientMutationId}}`;
+    let variables = {"issueId": issueNodeId, "repoId": newRepoNodeId };
+    query = JSON.stringify({ query, variables });
+
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.catch( e => ghUtils.errorHandler( "transferIssue", e, transferIssue, authData, issueNodeId, newRepoNodeId ));
+}
+
+
+
 
 async function createLabel( authData, repoNode, name, color, desc ) {
 
@@ -634,6 +806,68 @@ async function rebuildLabel( authData, oldLabelId, newLabelId, issueNodeId ) {
     addLabel( authData, newLabelId, issueNodeId );
 }
 
+async function updateProject( authData, projNodeId, title ) {
+    let query     = `mutation( $projId:ID!, $title:String ) { updateProjectV2( input:{ projectId: $projId, title: $title })  {clientMutationId}}`;
+    let variables = {"projId": projNodeId, "title": title };
+    let queryJ    = JSON.stringify({ query, variables });
+	
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, projNodeId, title ));
+}
+
+
+
+
+// XXX This looks as tho it should work.  But no changes occur.  Revisit.
+//     Updating column: project item field value PVT_kwDOA8JELs4AIeW_ PVTSSF_lADOA8JELs4AIeW_zgFSLk8 f75ad846 Todo Too
+/* XXX relevant graphQL explorer values
+{	node( id: "PVT_kwDOA8JELs4AIeW_" ) {
+        ... on ProjectV2 {
+            views(first: 1) {
+              edges {
+                node {
+                  ... on ProjectV2View {
+                    name layout 
+                    fields(first: 99) {
+                     edges {
+                       node {
+                         ... on ProjectV2FieldConfiguration {
+                          ... on ProjectV2SingleSelectField { name options {name}
+                              }}}}}}}}}
+        }}}
+
+gives me status ssf.
+
+{
+                    "node": {
+                      "id": "PVTSSF_lADOA8JELs4AIeW_zgFSLk8",
+                      "name": "Status",
+                      "options": [
+                        {
+                          "id": "f75ad846",
+                          "name": "Todo"
+                        },
+                        {
+                          "id": "8dc16716",
+                          "name": "In Progress"
+                        }
+                      ]
+
+*/
+// https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects
+async function updateColumn( authData, projNodeId, statusId, colValId, title ) {
+    console.log( "Updating column: project item field value", projNodeId, statusId, colValId, title );
+
+    let query     = `mutation( $projId:ID!, $statusId:ID!, $colId:String!, $title:String! ) 
+                        { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $statusId, fieldId: $colId, value: $title })  {clientMutationId}}`;
+
+    let variables = {"projId": projNodeId, "statusId": statusId, "colId": colValId, "title": title };
+
+    let queryJ    = JSON.stringify({ query, variables });
+	
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, projNodeId, colNodeId, title ));
+}
 
 /*
 // Targets
@@ -669,65 +903,18 @@ async function rebuildLabel( authData, oldLabelId, newLabelId, issueNodeId ) {
 	return createProjectCard( authData, columnId, issueId, justId );
     },
 
-    updateTitle: function( authData, owner, repo, issueNum, title ) {
-	return updateTitle( authData, owner, repo, issueNum, title );
-    },
-
-    addComment: function( authData, owner, repo, issueNum, msg ) {
-	return addComment( authData, owner, repo, issueNum, msg );
-    },
-
-    rebuildIssue: function( authData, owner, repo, issue, msg, splitTag ) {
-	return rebuildIssue( authData, owner, repo, issue, msg, splitTag );
-    },
-
     cleanUnclaimed: function( authData, ghLinks, pd ) {
 	return cleanUnclaimed( authData, ghLinks, pd );
     },
-    
-    updateIssue: function( authData, owner, repo, issueNum, newState ) {
-	return updateIssue( authData, owner, repo, issueNum, newState );
-    },
 
-    updateColumn: function( authData, colId, newName ) {
-	return updateColumn( authData, colId, newName );
-    },
-
-    updateProject: function( authData, projId, newName ) {
-	return updateProject( authData, projId, newName );
-    },
-
-    addAssignee: function( authData, owner, repo, issueNumber, assignee ) {
-	return addAssignee( authData, owner, repo, issueNumber, assignee );
-    },
-    
-    remAssignee: function( authData, owner, repo, issueNumber, assignee ) {
-	return remAssignee( authData, owner, repo, issueNumber, assignee );
-    },
-    
 }
 
 
 var githubUtils = {
 
-    getAssignees: function( authData, owner, repo, issueNum ) {
-	return getAssignees( authData, owner, repo, issueNum );
-    },
-
-    checkIssue: function( authData, owner, repo, issueNum ) {
-	return checkIssue( authData, owner, repo, issueNum );  
-    },
-
-    getIssue: function( authData, owner, repo, issueNum ) {
-	return getIssue( authData, owner, repo, issueNum );
-    },
 
     getCard: function( authData, cardId ) {
 	return getCard( authData, cardId );
-    },
-
-    getFullIssue: function( authData, owner, repo, issueNum ) {
-	return getFullIssue( authData, owner, repo, issueNum );
     },
 
     removeCard: function( authData, cardId ) {
@@ -770,10 +957,6 @@ var githubUtils = {
 	return getRepoColsGQL( PAT, owner, repo, data, cursor );
     },
 
-    transferIssueGQL: function( authData, issueId, toRepoId ) {
-	return transferIssueGQL( authData, issueId, toRepoId );
-    },
-
     populateRequest: function( labels ) {
 	return populateRequest( labels );
     },
@@ -811,20 +994,14 @@ exports.getHostLinkLoc     = getHostLinkLoc;
 exports.createIssue        = createIssue;
 exports.getIssue           = getIssue;
 exports.getFullIssue       = getFullIssue;
-
-// checkIssue
-// updateIssue
-// rebuildIssue
-// transferIssue
-// addComment
-// updateTitle
-// addAssignee
-// remAssignee
-// getAssignees
-
-// updateProject
-// updateColumn
-
+exports.updateIssue        = updateIssue;
+exports.updateTitle        = updateTitle;
+exports.addComment         = addComment;
+exports.rebuildIssue       = rebuildIssue;
+exports.addAssignee        = addAssignee;
+exports.remAssignee        = remAssignee;
+exports.getAssignees       = getAssignees;
+exports.transferIssue      = transferIssue;
 
 exports.createLabel        = createLabel;
 exports.createPeqLabel     = createPeqLabel;
@@ -836,3 +1013,8 @@ exports.removeLabel        = removeLabel;
 exports.removePeqLabel     = removePeqLabel;
 exports.addLabel           = addLabel;
 exports.rebuildLabel       = rebuildLabel;
+
+exports.updateProject      = updateProject;
+exports.updateColumn       = updateColumn;
+
+// cards....?
