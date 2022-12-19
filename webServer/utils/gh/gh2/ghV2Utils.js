@@ -832,7 +832,7 @@ async function updateProject( authData, projNodeId, title ) {
                      edges {
                        node {
                          ... on ProjectV2FieldConfiguration {
-                          ... on ProjectV2SingleSelectField { name options {name}
+                          ... on ProjectV2SingleSelectField { id name options {id name}
                               }}}}}}}}}
         }}}
 
@@ -853,20 +853,44 @@ gives me status ssf.
                         }
                       ]
 
+// This gives me scope error.  Which is promising, since explorer scopes are messed.
+mutation {
+  updateProjectV2ItemFieldValue(
+    input: {projectId: "PVT_kwDOA8JELs4AIeW_", itemId: "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", fieldId: "f75ad846", value: {text: "booger"}}
+  ) {
+    clientMutationId
+  }
+}
+
+// This failed with: "Argument 'value' on InputObject 'UpdateProjectV2ItemFieldValueInput' has an invalid value (\"booger\"). Expected type 'ProjectV2FieldValue!'."
+mutation {
+  updateProjectV2ItemFieldValue(
+    input: {projectId: "PVT_kwDOA8JELs4AIeW_", itemId: "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", fieldId: "f75ad846", value: "booger"}
+  ) {
+    clientMutationId
+  }
+}
+
+
 */
 // https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects
-async function updateColumn( authData, projNodeId, statusId, colValId, title ) {
-    console.log( "Updating column: project item field value", projNodeId, statusId, colValId, title );
+async function updateColumn( authData, projId, itemId, fieldId, value ) {
+    console.log( "Updating column: project item field value", projId, itemId, fieldId, value );
 
-    let query     = `mutation( $projId:ID!, $statusId:ID!, $colId:String!, $title:String! ) 
-                        { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $statusId, fieldId: $colId, value: $title })  {clientMutationId}}`;
+//                      { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $itemId, fieldId: $fieldId, value: {options: [ {id: $optionId, name: {text: $value }}]}})  {clientMutationId}}`;
 
-    let variables = {"projId": projNodeId, "statusId": statusId, "colId": colValId, "title": title };
+    let query     = `mutation( $projId:ID!, $itemId:ID!, $fieldId:ID! $value:String! ) 
+                      { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value }})  {clientMutationId}}`;
+
+    let variables = {"projId": projId, "itemId": itemId, "fieldId": fieldId, "value": value };
 
     let queryJ    = JSON.stringify({ query, variables });
 	
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, projNodeId, colNodeId, title ));
+    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, projId, itemId, fieldId, value ));
+
+    console.log( "OI?  ", ret );
+    
 }
 
 /*

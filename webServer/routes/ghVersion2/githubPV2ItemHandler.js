@@ -77,7 +77,11 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // let a = await ghV2.getAssignees( authData, "I_kwDOH8VRDs5XivJQ" );
     // console.log( a );
     // await ghV2.updateProject( authData, "PVT_kwDOA8JELs4AIeW_", "boogy" );    
-    await ghV2.updateColumn( authData, "PVT_kwDOA8JELs4AIeW_", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "f75ad846", "Todo Too" );    
+
+    // Ahhhh.
+    // in progress: "8dc16716",  todo: "f75ad846"
+    // await ghV2.updateColumn( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "f75ad846" ); 
+    await ghV2.updateColumn( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "8dc16716" ); 
     
     console.log( "----------------XX--------------------" );
     
