@@ -806,6 +806,15 @@ async function rebuildLabel( authData, oldLabelId, newLabelId, issueNodeId ) {
     addLabel( authData, newLabelId, issueNodeId );
 }
 
+function getProjectName( authData, ghLinks, ceProjId, projId ) {
+    if( projId == -1 ) { return -1; }
+
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": projId } );
+
+    const projName = locs == -1 ? locs : locs[0].HostProjectName;
+    return projName
+}
+
 async function updateProject( authData, projNodeId, title ) {
     let query     = `mutation( $projId:ID!, $title:String ) { updateProjectV2( input:{ projectId: $projId, title: $title })  {clientMutationId}}`;
     let variables = {"projId": projNodeId, "title": title };
@@ -815,72 +824,19 @@ async function updateProject( authData, projNodeId, title ) {
 	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, projNodeId, title ));
 }
 
-
-
-
-// XXX This looks as tho it should work.  But no changes occur.  Revisit.
-//     Updating column: project item field value PVT_kwDOA8JELs4AIeW_ PVTSSF_lADOA8JELs4AIeW_zgFSLk8 f75ad846 Todo Too
-/* XXX relevant graphQL explorer values
-{	node( id: "PVT_kwDOA8JELs4AIeW_" ) {
-        ... on ProjectV2 {
-            views(first: 1) {
-              edges {
-                node {
-                  ... on ProjectV2View {
-                    name layout 
-                    fields(first: 99) {
-                     edges {
-                       node {
-                         ... on ProjectV2FieldConfiguration {
-                          ... on ProjectV2SingleSelectField { id name options {id name}
-                              }}}}}}}}}
-        }}}
-
-gives me status ssf.
-
-{
-                    "node": {
-                      "id": "PVTSSF_lADOA8JELs4AIeW_zgFSLk8",
-                      "name": "Status",
-                      "options": [
-                        {
-                          "id": "f75ad846",
-                          "name": "Todo"
-                        },
-                        {
-                          "id": "8dc16716",
-                          "name": "In Progress"
-                        }
-                      ]
-
-// This gives me scope error.  Which is promising, since explorer scopes are messed.
-mutation {
-  updateProjectV2ItemFieldValue(
-    input: {projectId: "PVT_kwDOA8JELs4AIeW_", itemId: "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", fieldId: "f75ad846", value: {text: "booger"}}
-  ) {
-    clientMutationId
-  }
+// 12/22
+async function updateColumn( authData, projNodeId, colId, title ) {
+    console.log( "NYI.  Github does not yet support managing status with the API" );
+    console.log( "https://github.com/orgs/community/discussions/38225" );
 }
 
-// This failed with: "Argument 'value' on InputObject 'UpdateProjectV2ItemFieldValueInput' has an invalid value (\"booger\"). Expected type 'ProjectV2FieldValue!'."
-mutation {
-  updateProjectV2ItemFieldValue(
-    input: {projectId: "PVT_kwDOA8JELs4AIeW_", itemId: "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", fieldId: "f75ad846", value: "booger"}
-  ) {
-    clientMutationId
-  }
-}
-
-
-*/
-// https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects
-async function updateColumn( authData, projId, itemId, fieldId, value ) {
+// Currently, just relocates issue to another column (i.e. status).
+async function moveCard( authData, projId, itemId, fieldId, value ) {
     console.log( "Updating column: project item field value", projId, itemId, fieldId, value );
 
-//                      { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $itemId, fieldId: $fieldId, value: {options: [ {id: $optionId, name: {text: $value }}]}})  {clientMutationId}}`;
-
     let query     = `mutation( $projId:ID!, $itemId:ID!, $fieldId:ID! $value:String! ) 
-                      { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value }})  {clientMutationId}}`;
+                      { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value }})  
+                      { clientMutationId }}`;
 
     let variables = {"projId": projId, "itemId": itemId, "fieldId": fieldId, "value": value };
 
@@ -923,34 +879,8 @@ async function updateColumn( authData, projId, itemId, fieldId, value ) {
 	return getRepoIdGQL( PAT, owner, repo );
     },
     
-    createProjectCard: function( authData, columnId, issueId, justId ) {
-	return createProjectCard( authData, columnId, issueId, justId );
-    },
-
     cleanUnclaimed: function( authData, ghLinks, pd ) {
 	return cleanUnclaimed( authData, ghLinks, pd );
-    },
-
-}
-
-
-var githubUtils = {
-
-
-    getCard: function( authData, cardId ) {
-	return getCard( authData, cardId );
-    },
-
-    removeCard: function( authData, cardId ) {
-	return removeCard( authData, cardId );
-    },
-	
-    rebuildCard: function( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData ) {
-	return rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, origCardId, issueData, locData );
-    },
-
-    createUnClaimedCard: function( authData, ghLinks, pd, issueId, accr ) {
-	return createUnClaimedCard( authData, ghLinks, pd, issueId, accr );
     },
 
     getRepoLabelsGQL: function( PAT, owner, repo, data, cursor ) {
@@ -989,25 +919,10 @@ var githubUtils = {
 	return getCEProjectLayout( authData, ghLinks, pd );
     },
     
-    moveCard: function( authData, cardId, colId ) {
-	return moveCard( authData, cardId, colId ); 
-    },
-
     checkReserveSafe: function( authData, owner, repo, issueNum, colNameIndex ) {
 	return checkReserveSafe( authData, owner, repo, issueNum, colNameIndex );
     },
     
-    moveIssueCard: function( authData, ghLinks, pd, action, ceProjectLayout ) {
-	return moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
-    },
-
-    getProjectName: function( authData, ghLinks, ceProjId, fullName, projId ) {
-	return getProjectName( authData, ghLinks, ceProjId, fullName, projId ); 
-    },
-
-    getColumnName: function( authData, ghLinks, ceProjId, fullName, colId ) {
-	return getColumnName( authData, ghLinks, ceProjId, fullName, colId ); 
-    },
 */
 
 exports.getProjectFromNode = getProjectFromNode;
@@ -1038,7 +953,18 @@ exports.removePeqLabel     = removePeqLabel;
 exports.addLabel           = addLabel;
 exports.rebuildLabel       = rebuildLabel;
 
+exports.getProjectName     = getProjectName;
 exports.updateProject      = updateProject;
-exports.updateColumn       = updateColumn;
 
-// cards....?
+exports.updateColumn       = updateColumn;   // XXX NYI
+
+// getColumnName
+
+exports.moveCard           = moveCard;
+
+// moveIssueCard
+// getCard
+// removeCard
+// rebuildCard
+// createProjectCard
+// createUnclaimedCard

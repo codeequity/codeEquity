@@ -119,14 +119,25 @@ class Linkage {
 		for( const awsLoc of awsLinks[0].Locations ) {
 		    if( !hostProjs.includes( awsLoc.HostProjectId ) ) {
 			hostProjs.push(  awsLoc.HostProjectId );
+			let rLinks = [];			
 			
-			ldPromise = ghV2.getHostLinkLoc( authData, awsLoc.HostProjectId, locData, baseLinks, -1 )
+			ldPromise = ghV2.getHostLinkLoc( authData, awsLoc.HostProjectId, locData, rLinks, -1 )
 			    .catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
 			
 			ldPromise = await ldPromise;  // no val here, just ensures locData is set
 			
 			// console.log( "LINKAGE: Locs", locData );
-			// console.log( "LINKAGE: Links", baseLinks );
+			// console.log( "LINKAGE: Links", rLinks );
+			for( var loc of locData ) {
+			    loc.CEProjectId = entry.CEProjectId;
+			    loc.Active = "true";
+			    this.addLoc( authData, loc, false ); 
+			}
+
+			// XXX revisit this repo designation.  It is not shared, but per loc, no need to pass along.
+			//     will need to facelift GHC above.
+			this.populateLinkage( authData, entry.CEProjectId, config.EMPTY, rLinks );
+			baseLinks = baseLinks.concat( rLinks );
 		    }
 		}
 	    }
