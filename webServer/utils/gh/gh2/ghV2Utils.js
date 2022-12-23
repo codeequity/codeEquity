@@ -824,11 +824,56 @@ async function updateProject( authData, projNodeId, title ) {
 	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, projNodeId, title ));
 }
 
+
+// XXX revisit once column id is fixed.
+function getColumnName( authData, ghLinks, ceProjId, colId ) {
+    if( colId == -1 ) { return -1; }
+
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "colId": colId } );
+
+    const colName = locs == -1 ? locs : locs[0].HostColumnName;
+    return colName
+}
+
 // 12/22
 async function updateColumn( authData, projNodeId, colId, title ) {
     console.log( "NYI.  Github does not yet support managing status with the API" );
     console.log( "https://github.com/orgs/community/discussions/38225" );
 }
+
+// XXX reify this?
+// a card holds the location of the issue in a project.  Status column for ghV2.
+// Get from GH, not linkage data, to ensure linkage consistency.
+// PEQ issue will be 1:1, but non-peq issue may exist in several locations. However.  issueNodeId belongs to 1 GHproject, only.
+//    i.e. add an issue to a GHproject, then add it to another project in GH.  The issueNodeId changes for the second issue.
+//    Each issueNodeId (i.e. PVTI_*) has a content pointer, which points to a single, shared issue id (i.e. I_*).
+async function getCard( authData, issueNodeId ) {
+    let retVal = {};
+    if( issueNodeId == -1 ) { console.log( "getUniqueCard bad issue", issueNodeId ); return retVal; }
+
+    let query = `query( $id:ID! ) {
+                   node( id: $id ) {
+                     ... on ProjectV2Item {
+                        project { id }
+                        fieldValueByName(name: "Status") {
+                          ... on ProjectV2ItemFieldSingleSelectValue {optionId field { ... on ProjectV2SingleSelectField { id }}}}
+                  }}}`;
+    let variables = {"id": issueNodeId };
+    let queryJ    = JSON.stringify({ query, variables });
+    
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( raw => {
+	    let card = raw.data.node;
+	    retVal.projId      = card.project.id;                    
+	    retVal.issueId     = issueNodeId;                        
+	    retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
+	    retVal.statusValId = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
+	})
+	.catch( e => retVal = ghUtils.errorHandler( "getAssignees", e, getAssignees, authData, issueNodeId ));
+
+    return retVal;
+}
+
 
 // Currently, just relocates issue to another column (i.e. status).
 async function moveCard( authData, projId, itemId, fieldId, value ) {
@@ -956,15 +1001,15 @@ exports.rebuildLabel       = rebuildLabel;
 exports.getProjectName     = getProjectName;
 exports.updateProject      = updateProject;
 
+exports.getColumnName      = getColumnName;
 exports.updateColumn       = updateColumn;   // XXX NYI
 
-// getColumnName
-
+exports.getCard            = getCard;
 exports.moveCard           = moveCard;
 
-// moveIssueCard
-// getCard
+// 1. createProjectCard
+// 2. moveIssueCard
+
 // removeCard
 // rebuildCard
-// createProjectCard
 // createUnclaimedCard

@@ -43,6 +43,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     // ceProj: "CE_ServTest_usda23k425"
     // bubba: "R_kgDOH8VRDg"  boogy: "PVT_kwDOA8JELs4AIeW_"  enhancement: "LA_kwDOH8VRDs8AAAABDEPzrw" duplicate: "LA_kwDOH8VRDs8AAAABDEPzrg"
+    // doggy: "PVT_kwDOA8JELs4AFrvg",
     // flutata: "I_kwDOH8VRDs5XivJQ" "PVTI_lADOA8JELs4AIeW_zgDd0Rs"
     // ari "MDQ6VXNlcjgzNzI5OTM5"   connie "MDQ6VXNlcjc5MjExNTk4"
     // todo status: 
@@ -83,8 +84,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // in progress: "8dc16716",  todo: "f75ad846"
     // await ghV2.updateColumn( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "f75ad846" ); 
     // await ghV2.moveCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "8dc16716" );
+    // console.log( ghV2.getProjectName( authData, ghLinks, "CE_ServTest_usda23k425", "PVT_kwDOA8JELs4AIeW_" ));
 
-    console.log( ghV2.getProjectName( authData, ghLinks, "CE_ServTest_usda23k425", "PVT_kwDOA8JELs4AIeW_" ));
+    let card = await ghV2.getUniqueCard( authData, "PVTI_lADOA8JELs4AIeW_zgDd0Rs" );
+    console.log( "CARD", card );
     
     console.log( "----------------XX--------------------" );
     
