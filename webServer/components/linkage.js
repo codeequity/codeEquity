@@ -241,7 +241,7 @@ class Linkage {
 	link.CEProjectId     = ceProjId;
 	link.HostRepo        = repo;
 	link.HostIssueId     = issueId.toString();
-	link.HostIssueNum    = issueNum.toString();
+	link.HostIssueNum    = issueNum.toString();   // XXX GHC only?  remove?
 	link.HostProjectId   = projId.toString();
 	link.HostProjectName = projName;
 	link.HostColumnId    = colId.toString();

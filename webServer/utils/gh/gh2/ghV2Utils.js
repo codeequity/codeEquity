@@ -29,7 +29,7 @@ function printEdges( base, item, values ) {
 // Get locData, linkData for server linkage to host.
 // Note: column names are now unique within GH project.  i.e. name == columnId
 // Note: most pv2 objects implement 'node', which has field 'id', which is the node_id. 
-// Note: a single project:col can have issues from multiple repos.  rather than present a list in locData, set to EMPTY.
+// Note: a single project:col can have issues from multiple repos.  rather than present a list in locData, set repo to EMPTY.
 // Note: an issue will belong to 1 repo only
 // Note: it seems that "... on Issue" is applying a host-side filter, so no need to more explicitely filter out draft issues and pulls.
 // XXX views does not (yet?) have a fieldByName, which would make it much quicker to find status.
@@ -841,15 +841,15 @@ async function updateColumn( authData, projNodeId, colId, title ) {
     console.log( "https://github.com/orgs/community/discussions/38225" );
 }
 
-// XXX reify this?
-// a card holds the location of the issue in a project.  Status column for ghV2.
-// Get from GH, not linkage data, to ensure linkage consistency.
+
+// Get location of an issue in a project from GH, not linkage data, to ensure linkage consistency.
+// Status column for ghV2.
 // PEQ issue will be 1:1, but non-peq issue may exist in several locations. However.  issueNodeId belongs to 1 GHproject, only.
 //    i.e. add an issue to a GHproject, then add it to another project in GH.  The issueNodeId changes for the second issue.
 //    Each issueNodeId (i.e. PVTI_*) has a content pointer, which points to a single, shared issue id (i.e. I_*).
 async function getCard( authData, issueNodeId ) {
     let retVal = {};
-    if( issueNodeId == -1 ) { console.log( "getUniqueCard bad issue", issueNodeId ); return retVal; }
+    if( issueNodeId == -1 ) { console.log( "getCard bad issue", issueNodeId ); return retVal; }
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -891,8 +891,46 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
 	.catch( e => ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, projId, itemId, fieldId, value ));
 
     console.log( "OI?  ", ret );
-    
+    return ret;
 }
+
+// Moving from status: "No Status" to a different value
+async function createProjectCard( authData, projNodeId, issueNodeId, fieldId, valueId, justId ) {
+    let retVal = await moveCard( authData, projNodeId, issueNodeId, fieldId, valueId );
+
+    if( retVal != -1 ) {
+	retVal = justId ?
+	    issueNodeId : 
+	    {"projId": projNodeId, "issueId": issueNodeId, "statusId": fieldId, "statusValId": valueId };
+    }
+
+    return retVal;
+}
+
+// XXX NOTE CE-centric arg.. convert all above to same
+// XXX HERE.  need cardId to provide field, val ids
+//            cardId is fine, is issueNodeId.
+//            colId is compositional, which is a loc not a link.
+// Any issue linked to a project lands in "No Status".  So remove is a move to the same.
+async function removeCard( authData, ghLinks, ceProjId, cardId ) {
+    if( cardId == -1 ) { return -1; }
+/*
+    // get No Status id from ... locs not links.
+    const links = ghLinks.getLinks( authData,  { "ceProjId": ceProjId, "cardId": cardId } );
+    assert( links.length == 1 );
+    
+    let retVal = await moveCard( authData, links[0].projId, issueId, fieldId, valueId );
+
+    if( retVal != -1 ) {
+	retVal = justId ?
+	    issueNodeId : 
+	    {"projId": projNodeId, "issueId": issueNodeId, "statusId": fieldId, "statusValId": valueId };
+    }
+    return retVal;
+*/
+}
+
+
 
 /*
 // Targets
@@ -1006,10 +1044,9 @@ exports.updateColumn       = updateColumn;   // XXX NYI
 
 exports.getCard            = getCard;
 exports.moveCard           = moveCard;
+exports.createProjectCard  = createProjectCard;
+exports.removeCard         = removeCard; 
 
-// 1. createProjectCard
-// 2. moveIssueCard
-
-// removeCard
 // rebuildCard
 // createUnclaimedCard
+
