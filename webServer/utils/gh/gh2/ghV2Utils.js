@@ -32,7 +32,10 @@ function printEdges( base, item, values ) {
 // Note: a single project:col can have issues from multiple repos.  rather than present a list in locData, set repo to EMPTY.
 // Note: an issue will belong to 1 repo only
 // Note: it seems that "... on Issue" is applying a host-side filter, so no need to more explicitely filter out draft issues and pulls.
+// Note: optionId is sufficient for columnId, given the projectId.
+// XXX if optionId changes per view... ? 
 // XXX views does not (yet?) have a fieldByName, which would make it much quicker to find status.
+// XXX Getting several values per issue here that are unused.  remove.
 async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 
     const query1 = `query linkLoc($nodeId: ID!) {
@@ -44,7 +47,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
               edges { node {
                   ... on ProjectV2Item { type databaseId id
                     fieldValueByName(name: "Status") {
-                     ... on ProjectV2ItemFieldSingleSelectValue { name }}
+                     ... on ProjectV2ItemFieldSingleSelectValue { name optionId field { ... on ProjectV2SingleSelectField { id }}}}
                     content {
                      ... on ProjectV2ItemContent {
                        ... on Issue { databaseId number repository {nameWithOwner} title }}}
@@ -58,7 +61,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
                      edges {
                        node {
                          ... on ProjectV2FieldConfiguration {
-                          ... on ProjectV2SingleSelectField { name options {name}
+                          ... on ProjectV2SingleSelectField {id name options {id name}
                               }}}}}}}}}
     }}}`;
 
@@ -71,7 +74,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
               edges { node {
                   ... on ProjectV2Item { type databaseId id
                     fieldValueByName(name: "Status") {
-                     ... on ProjectV2ItemFieldSingleSelectValue { name }}
+                     ... on ProjectV2ItemFieldSingleSelectValue { name optionId field { ... on ProjectV2SingleSelectField { id }}}}
                     content {
                      ... on ProjectV2ItemContent {
                        ... on Issue { databaseId number repository {nameWithOwner} title }}}
@@ -85,7 +88,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
                      edges {
                        node {
                          ... on ProjectV2FieldConfiguration {
-                          ... on ProjectV2SingleSelectField { name options {name}
+                          ... on ProjectV2SingleSelectField {id name options {id name}
                               }}}}}}}}}
     }}}`;
 
@@ -104,20 +107,12 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
     else {
 	
 	let project = ret.data.node;
+	let statusId = -1;
 
 	// Loc data only needs to be built once.  Will be the same for every issue.
 	// Note: can not build this from issues below, since we may have empty columns in board view.
 	if( locData.length <= 0 ) {
 
-	    // Build "No Status" by hand, since it corresponds to a null entry
-	    let datum   = {};
-	    datum.HostRepository  = config.EMPTY;
-	    datum.HostProjectName = project.title;
-	    datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
-	    datum.HostColumnName  = "No Status";            // XXX config
-	    datum.HostColumnId    = datum.HostColumnName;
-	    locData.push( datum );
-	    
 	    // Plunder the first view to get status (i.e. column) info
 	    let views = project.views;
 	    for( let i = 0; i < views.edges.length; i++ ) {
@@ -126,13 +121,14 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		    if( j >= 99 ) { console.log( "WARNING.  Detected a very large number of columns, ignoring some." ); }
 		    const pfc = aview.fields.edges[j].node;
 		    if( pfc.name == "Status" ) {
+			statusId = pfc.id;
 			for( let k = 0; k < pfc.options.length; k++ ) {
 			    let datum   = {};
 			    datum.HostRepository  = config.EMPTY;
 			    datum.HostProjectName = project.title;
 			    datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
 			    datum.HostColumnName  = pfc.options[k].name;
-			    datum.HostColumnId    = datum.HostColumnName;
+			    datum.HostColumnId    = pfc.options[k].id;
 			    locData.push( datum );
 			}
 		    }
@@ -140,39 +136,46 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 	    }
 	    
 	}
+	
+	// Build "No Status" by hand, since it corresponds to a null entry
+	let datum   = {};
+	datum.HostRepository  = config.EMPTY;
+	datum.HostProjectName = project.title;
+	datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
+	datum.HostColumnName  = config.GH_NO_STATUS; 
+	datum.HostColumnId    = config.EMPTY;           // no status column does not exist in view options above.  special case.
+	locData.push( datum );
+	
 	assert( locData.length > 0 );
+	assert( statusId != -1 );
 
 	let items = ret.data.node.items;
 	for( let i = 0; i < items.edges.length; i++ ) {
-	    const issue = items.edges[i].node;
-	    // console.log( issue );
-
-	    let status = issue.fieldValueByName == null ? "No Status" : issue.fieldValueByName.name;
+	    const issue    = items.edges[i].node;
+	    const status   = issue.fieldValueByName == null  ? config.GH_NO_STATUS : issue.fieldValueByName.name;
+	    const optionId = issue.fieldValueByName == null  ? config.EMPTY        : issue.fieldValueByName.field.id; 
 	    
 	    if( issue.type == "ISSUE" ) {
 		let datum = {};
 		datum.issueId     = issue.id;   // projectV2Item id pvti
 		datum.issueNum    = issue.content.number;
 		datum.title       = issue.content.title;
-		datum.cardId      = config.EMPTY;
+		datum.cardId      = issue.id;
 		datum.projectName = locData[0].HostProjectName;    
 		datum.projectId   = locData[0].HostProjectId;    
 		datum.columnName  = status;
-		datum.columnId    = status;
+		datum.columnId    = optionId;
 		
 		linkData.push( datum );
 	    }
 	}
 	
-	// console.log( "UTILS: Locs", locData );
-	// console.log( "UTILS: Links", linkData );
+	console.log( "UTILS: Locs", locData );
+	console.log( "UTILS: Links", linkData );
 	
 	// Wait.  Data is modified
 	if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
     }
-    // await getFromIssueNode( authData, "PVTI_lADOA8JELs4AIeW_zgDhVnY" );
-    // await getFromIssueNode( authData, "PVTI_lADOA8JELs4AIeW_zgDd0Rs" );
-    // await getFromIssueNode( authData, "PVTI_lADOA8JELs4AIeW_zgDqxC0" );
 }
 
 
@@ -908,18 +911,22 @@ async function createProjectCard( authData, projNodeId, issueNodeId, fieldId, va
 }
 
 // XXX NOTE CE-centric arg.. convert all above to same
-// XXX HERE.  need cardId to provide field, val ids
-//            cardId is fine, is issueNodeId.
-//            colId is compositional, which is a loc not a link.
-// Any issue linked to a project lands in "No Status".  So remove is a move to the same.
+// Remove from project.  If want this to land in No Status, add it back to the project.  ATM, no ability to clear status directly..?
+// Also can't move to "No Status" since there is no optionId for it.
 async function removeCard( authData, ghLinks, ceProjId, cardId ) {
     if( cardId == -1 ) { return -1; }
-/*
-    // get No Status id from ... locs not links.
+
     const links = ghLinks.getLinks( authData,  { "ceProjId": ceProjId, "cardId": cardId } );
     assert( links.length == 1 );
+
+
+
+
+
     
-    let retVal = await moveCard( authData, links[0].projId, issueId, fieldId, valueId );
+    // XXX we can keep fieldId somewhere... but there is no "no status" optionId, right?  so....set option to null?
+    // XXX one option is to remove from project, then add to project, without setting status.  Oi.
+    let retVal = await moveCard( authData, links[0].HostProjectId, links[0].HostIssueId, XXXfieldIdXXX, XXXNoStatusXXX );
 
     if( retVal != -1 ) {
 	retVal = justId ?
@@ -927,7 +934,7 @@ async function removeCard( authData, ghLinks, ceProjId, cardId ) {
 	    {"projId": projNodeId, "issueId": issueNodeId, "statusId": fieldId, "statusValId": valueId };
     }
     return retVal;
-*/
+
 }
 
 
