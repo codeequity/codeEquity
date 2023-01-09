@@ -60,7 +60,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( typeof pd.reqBody.changes.name !== 'undefined' )        { origName = pd.reqBody.changes.name.from; }
 	    
 	    const lVal     = ghUtils.parseLabelDescr( [ origDesc ] );
-	    let allocation = ghSafe.getAllocated( [ origDesc ] );
+	    let allocation = ghUtils.getAllocated( [ origDesc ] );
 	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    // Allow, if no active peqs for current label
@@ -156,7 +156,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    const desc = pd.reqBody.label.description;
 	    if( !desc ) { return; } // bad label
 	    const lVal = ghUtils.parseLabelDescr( [ desc ] );
-	    let   tVal = ghSafe.getAllocated( [ desc ] );
+	    let   tVal = ghUtils.getAllocated( [ desc ] );
 	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    const query = { CEProjectId: pd.CEProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
@@ -180,7 +180,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let pv = 0;
 		let issueLabels = await gh.getLabels( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum );
 		if( issueLabels != -1 ) {
-		    [pv,_] = ghSafe.theOnePEQ( issueLabels.data );
+		    [pv,_] = ghUtils.theOnePEQ( issueLabels.data );
 		}
 		if( issueLabels == -1 ||  pv <= 0 ) {
 		    console.log( "No peq label conflicts, adding label back" );

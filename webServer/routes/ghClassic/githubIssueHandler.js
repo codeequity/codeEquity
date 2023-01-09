@@ -36,7 +36,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
     // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
-    // [pd.peqValue, _] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+    // [pd.peqValue, _] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
     // if( pd.peqValue <= 0 ) return;
 
     // After June, 2022, Github behavior when deleting a situated issue has taken a wrong turn.
@@ -114,7 +114,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
 async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label ) {
     // Zero's peqval if 2 found
-    [pd.peqValue,_] = ghSafe.theOnePEQ( issueLabels );  
+    [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
     
     // more than 1 peq?  remove it.
     let curVal  = ghUtils.parseLabelDescr( [ label.description ] );
@@ -297,7 +297,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    console.log( authData.who, "closed or reopened" );
 
 	    let allocation = false;
-	    [pd.peqValue,allocation] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    [pd.peqValue,allocation] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
 		return;
@@ -351,7 +351,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    console.log( authData.who, action, pd.reqBody.assignee.login, "to issue", pd.GHIssueId );
 
 	    let allocation = false;
-	    [pd.peqValue, allocation] = ghSafe.theOnePEQ( pd.reqBody['issue']['labels'] );
+	    [pd.peqValue, allocation] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
 		console.log( "Not a PEQ issue, no action taken." );
 		return;

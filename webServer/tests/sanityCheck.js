@@ -5,6 +5,7 @@ const auth    = require( '../auth/gh/ghAuth' );
 const config  = require( '../config' );
 
 const awsUtils = require( '../utils/awsUtils' );
+const ghUtils  = require( '../../utils/gh/ghUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -283,7 +284,7 @@ async function preIngestCheck( authData, td, ghLabels, ghIssues, awsPeqs, awsLoc
     
     if( ghIssues.length > 0 ) {
 	for( var issue of ghIssues ) {
-	    [issue.peqValue,_] = ghSafe.theOnePEQ( issue.labels );
+	    [issue.peqValue,_] = ghUtils.theOnePEQ( issue.labels );
 	}
     }
     

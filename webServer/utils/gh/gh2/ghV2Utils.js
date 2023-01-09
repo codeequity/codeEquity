@@ -912,7 +912,6 @@ async function createProjectCard( authData, projNodeId, issueNodeId, fieldId, va
 
 // Deleting the pv2 node has no impact on the underlying issue content, as is expected
 async function removeCard( authData, projNodeId, issueNodeId ) {
-
     let query     = `mutation( $projId:ID!, $itemId:ID! ) { deleteProjectV2Item( input:{ projectId: $projId, itemId: $itemId })  {clientMutationId}}`;
     let variables = {"projId": projNodeId, "itemId": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
@@ -924,81 +923,42 @@ async function removeCard( authData, projNodeId, issueNodeId ) {
     return true;
 }
 
+// Only repository owner can use this to create a project.  
+async function createProject( authData, ownerNodeId, repoNodeId, title ) {
+    let query     = `mutation( $ownerId:ID!, $repoId:ID!, $title:String! ) 
+                             { createProjectV2( input:{ repositoryId: $repoId, ownerId: $ownerId, title: $title }) {clientMutationId projectV2 {id}}}`;
+    let variables = {"repoId": repoNodeId, "ownerId": ownerNodeId, "title": title };
+    let queryJ    = JSON.stringify({ query, variables });
+	
+    let rv = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
 
+    console.log( "New project id: ", rv.data.createProjectV2.projectV2.id );
+    return rv.data.createProjectV2.projectV2.id;
+}
 
 /*
-// Targets
-    getAllocated: function( cardContent ) {
-	return getAllocated( cardContent );
-    },
+    // no 
+    parsePEQ          classic cards only.
+    getRepoIssueGQL   only somewhat useful if keeping databaseId for issue.  not planning to.
 
-    parsePEQ: function( cardContent, allocation ) {
-	return parsePEQ( cardContent, allocation );
-    },
+    // wait
+    validatePEQ: function( authData, repo, issueId, title, projId )
+    cleanUnclaimed: function( authData, ghLinks, pd )
+    populateRequest: function( labels )
+    getCEProjectLayout: function( authData, ghLinks, pd )
+    rebuildCard
+    createUnclaimedCard
 
-    theOnePEQ: function( labels ) {
-	return theOnePEQ( labels );
-    },
-
-    validatePEQ: function( authData, repo, issueId, title, projId ) {
-	return validatePEQ( authData, repo, issueId, title, projId );
-    },
-
-    createProjectGQL: function( ownerId, PAT, repo, repoId, name, body, beta ) {
-	return createProjectGQL( ownerId, PAT, repo, repoId, name, body, beta );
-    },
-
-    getOwnerIdGQL: function( PAT, owner ) {
-	return getOwnerIdGQL( PAT, owner );
-    },
-
-    getRepoIdGQL: function( PAT, owner, repo ) {
-	return getRepoIdGQL( PAT, owner, repo );
-    },
-    
-    cleanUnclaimed: function( authData, ghLinks, pd ) {
-	return cleanUnclaimed( authData, ghLinks, pd );
-    },
-
-    getRepoLabelsGQL: function( PAT, owner, repo, data, cursor ) {
-	return getRepoLabelsGQL( PAT, owner, repo, data, cursor );
-    },
-
-    getReposGQL: function( PAT, owner, data, cursor ) {
-	return getReposGQL( PAT, owner, data, cursor );
-    },
-
-    getRepoIssuesGQL: function( PAT, owner, repo, data, cursor ) {
-	return getRepoIssuesGQL( PAT, owner, repo, data, cursor );
-    },
-
-    getRepoIssueGQL: function( PAT, owner, repo, issueDatabaseId, data, cursor ) {
-	return getRepoIssueGQL( PAT, owner, repo, issueDatabaseId, data, cursor );
-    },
-
-    getBasicLinkDataGQL: function( PAT, owner, repo, data, cursor ) {
-	return getBasicLinkDataGQL( PAT, owner, repo, data, cursor );
-    },
-
-    getLabelIssuesGQL: function( PAT, owner, repo, labelName, data, cursor ) {
-	return getLabelIssuesGQL( PAT, owner, repo, labelName, data, cursor );
-    },
-
-    getRepoColsGQL: function( PAT, owner, repo, data, cursor ) {
-	return getRepoColsGQL( PAT, owner, repo, data, cursor );
-    },
-
-    populateRequest: function( labels ) {
-	return populateRequest( labels );
-    },
-
-    getCEProjectLayout: function( authData, ghLinks, pd ) {
-	return getCEProjectLayout( authData, ghLinks, pd );
-    },
-    
-    checkReserveSafe: function( authData, owner, repo, issueNum, colNameIndex ) {
-	return checkReserveSafe( authData, owner, repo, issueNum, colNameIndex );
-    },
+    // Targets
+    getOwnerIdGQL: function( PAT, owner ) 
+    getRepoIdGQL: function( PAT, owner, repo )
+    getRepoLabelsGQL: function( PAT, owner, repo, data, cursor )
+    getReposGQL: function( PAT, owner, data, cursor )
+    getRepoIssuesGQL: function( PAT, owner, repo, data, cursor )
+    getLabelIssuesGQL: function( PAT, owner, repo, labelName, data, cursor )
+    getRepoColsGQL: function( PAT, owner, repo, data, cursor )
+    checkReserveSafe: function( authData, owner, repo, issueNum, colNameIndex )
     
 */
 
@@ -1040,7 +1000,6 @@ exports.getCard            = getCard;
 exports.moveCard           = moveCard;
 exports.createProjectCard  = createProjectCard;
 exports.removeCard         = removeCard; 
+exports.createProject      = createProject;
 
-// rebuildCard
-// createUnclaimedCard
 

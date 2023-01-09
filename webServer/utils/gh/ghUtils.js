@@ -164,7 +164,49 @@ function parseLabelName( name ) {
     return [peqValue, alloc];
 }
 
+// Allow:
+// <allocation, PEQ: 1000>      typical by hand description
+// <allocation, PEQ: 1,000>
+// <allocation, PEQ: 1,000>
+// Allocation PEQ value         typical by resolve description & existing label description
+function getAllocated( content ) {
+    let res = false;
+    for( const line of content ) {
+	let s = line.indexOf( config.ADESC );  // existing label desc
+	if( s > -1 ){ res = true; break; }
 
+	s = line.indexOf( config.PALLOC );      // by hand entry
+	if( s > -1 ){ res = true; break; }
+    }
+    return res;
+}
+
+
+function theOnePEQ( labels ) {
+    let peqValue = 0;
+    let alloc = false;
+
+    for( const label of labels ) {
+	let content = label['description'];
+	let tval = parseLabelDescr( [content] );
+	let talloc = getAllocated( [content] );
+
+	if( tval > 0 ) {
+	    if( peqValue > 0 ) {
+		console.log( "Two PEQ labels detected for this issue!!" );
+		peqValue = 0;
+		alloc = false;
+		break;
+	    }
+	    else {
+		peqValue = tval;
+		alloc = talloc;
+	    }
+	}
+    }
+
+    return [peqValue, alloc];
+}
 
 
 exports.errorHandler = errorHandler;
@@ -174,3 +216,5 @@ exports.checkForPV2  = checkForPV2;
 
 exports.parseLabelDescr = parseLabelDescr;
 exports.parseLabelName  = parseLabelName;
+exports.getAllocated    = getAllocated;
+exports.theOnePEQ       = theOnePEQ;

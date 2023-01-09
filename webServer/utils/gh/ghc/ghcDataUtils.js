@@ -117,7 +117,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     pd.GHIssueTitle = issueCardContent[0];
 
     // normal for card -> issue.  odd but legal for issue -> card
-    let allocation = ghSafe.getAllocated( issueCardContent );
+    let allocation = ghUtils.getAllocated( issueCardContent );
 
     // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
     if( pd.GHIssueNum == -1 ) { pd.peqValue = ghSafe.parsePEQ( issueCardContent, allocation ); }

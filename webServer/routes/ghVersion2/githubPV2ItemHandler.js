@@ -46,6 +46,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // doggy: "PVT_kwDOA8JELs4AFrvg",
     // flutata: "I_kwDOH8VRDs5XivJQ" "PVTI_lADOA8JELs4AIeW_zgDd0Rs"
     // ari "MDQ6VXNlcjgzNzI5OTM5"   connie "MDQ6VXNlcjc5MjExNTk4"
+    // codeEquity "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2"
     // todo status: 
 
     console.log( "----------------XX--------------------" );
@@ -91,6 +92,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( "CARD", card );
     // let rv = await ghV2.removeCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgEN4MU" );
     // console.log( "remove", rv );
+    await ghV2.createProject( authData, "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2", "R_kgDOH8VRDg", "A newerester project" );
     
     console.log( "----------------XX--------------------" );
     

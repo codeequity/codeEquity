@@ -17,16 +17,8 @@ https://developer.github.com/v3/issues/#create-an-issue
 var handlerRetries;
 
 var githubSafe = {
-    getAllocated: function( cardContent ) {
-	return getAllocated( cardContent );
-    },
-
     parsePEQ: function( cardContent, allocation ) {
 	return parsePEQ( cardContent, allocation );
-    },
-
-    theOnePEQ: function( labels ) {
-	return theOnePEQ( labels );
     },
 
     validatePEQ: function( authData, repo, issueId, title, projId ) {
@@ -1686,25 +1678,6 @@ function getColumnName( authData, ghLinks, ceProjId, fullName, colId ) {
 
 }
 
-
-// Allow:
-// <allocation, PEQ: 1000>      typical by hand description
-// <allocation, PEQ: 1,000>
-// <allocation, PEQ: 1,000>
-// Allocation PEQ value         typical by resolve description & existing label description
-function getAllocated( content ) {
-    let res = false;
-    for( const line of content ) {
-	let s = line.indexOf( config.ADESC );  // existing label desc
-	if( s > -1 ){ res = true; break; }
-
-	s = line.indexOf( config.PALLOC );      // by hand entry
-	if( s > -1 ){ res = true; break; }
-    }
-    return res;
-}
-
-
 // Allow:
 //  <allocation, PEQ: 1000>
 //  <allocation, PEQ: 1,000>
@@ -1744,32 +1717,6 @@ function parsePEQ( content, allocation ) {
 	}
     }
     return peqValue;
-}
-
-function theOnePEQ( labels ) {
-    let peqValue = 0;
-    let alloc = false;
-
-    for( const label of labels ) {
-	let content = label['description'];
-	let tval = ghUtils.parseLabelDescr( [content] );
-	let talloc = getAllocated( [content] );
-
-	if( tval > 0 ) {
-	    if( peqValue > 0 ) {
-		console.log( "Two PEQ labels detected for this issue!!" );
-		peqValue = 0;
-		alloc = false;
-		break;
-	    }
-	    else {
-		peqValue = tval;
-		alloc = talloc;
-	    }
-	}
-    }
-
-    return [peqValue, alloc];
 }
 
 exports.githubUtils = githubUtils;

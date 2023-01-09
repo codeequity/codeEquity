@@ -4,6 +4,8 @@ var config  = require( '../../config' );
 
 const utils     = require( '../../utils/ceUtils' );
 const awsUtils  = require( '../../utils/awsUtils' );
+
+const ghUtils  = require( '../../utils/gh/ghUtils' );
 const ghcDUtils = require( '../../utils/gh/ghc/ghcDataUtils' );
 
 const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
@@ -261,7 +263,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    assert( issueId != -1 );
 
 	    const fullIssue = await gh.getFullIssue( authData, pd.GHOwner, pd.GHRepo, link.GHIssueNum );   
-	    let [_, allocation] = ghSafe.theOnePEQ( fullIssue.labels );
+	    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
 	    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newColName )) {
 		console.log( authData.who, "WARNING.", "Allocations are only useful in config:PROJ_PLAN, or flat columns.  Moving card back." );
 		gh.moveCard( authData, cardId, oldColId );
