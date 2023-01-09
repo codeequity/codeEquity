@@ -87,8 +87,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( ghV2.getProjectName( authData, ghLinks, "CE_ServTest_usda23k425", "PVT_kwDOA8JELs4AIeW_" ));
     // let card = await ghV2.getCard( authData, "PVTI_lADOA8JELs4AIeW_zgDd0Rs" );
     // console.log( "CARD", card );
-    let card = await ghV2.createProjectCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "8dc16716" );
-    console.log( "CARD", card );
+    // let card = await ghV2.createProjectCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "8dc16716" );
+    // console.log( "CARD", card );
+    // let rv = await ghV2.removeCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgEN4MU" );
+    // console.log( "remove", rv );
     
     console.log( "----------------XX--------------------" );
     

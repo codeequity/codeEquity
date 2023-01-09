@@ -153,7 +153,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 	for( let i = 0; i < items.edges.length; i++ ) {
 	    const issue    = items.edges[i].node;
 	    const status   = issue.fieldValueByName == null  ? config.GH_NO_STATUS : issue.fieldValueByName.name;
-	    const optionId = issue.fieldValueByName == null  ? config.EMPTY        : issue.fieldValueByName.field.id; 
+	    const optionId = issue.fieldValueByName == null  ? config.EMPTY        : issue.fieldValueByName.optionId; 
 	    
 	    if( issue.type == "ISSUE" ) {
 		let datum = {};
@@ -170,8 +170,8 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 	    }
 	}
 	
-	console.log( "UTILS: Locs", locData );
-	console.log( "UTILS: Links", linkData );
+	// console.log( "UTILS: Locs", locData );
+	// console.log( "UTILS: Links", linkData );
 	
 	// Wait.  Data is modified
 	if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
@@ -910,31 +910,18 @@ async function createProjectCard( authData, projNodeId, issueNodeId, fieldId, va
     return retVal;
 }
 
-// XXX NOTE CE-centric arg.. convert all above to same
-// Remove from project.  If want this to land in No Status, add it back to the project.  ATM, no ability to clear status directly..?
-// Also can't move to "No Status" since there is no optionId for it.
-async function removeCard( authData, ghLinks, ceProjId, cardId ) {
-    if( cardId == -1 ) { return -1; }
+// Deleting the pv2 node has no impact on the underlying issue content, as is expected
+async function removeCard( authData, projNodeId, issueNodeId ) {
 
-    const links = ghLinks.getLinks( authData,  { "ceProjId": ceProjId, "cardId": cardId } );
-    assert( links.length == 1 );
+    let query     = `mutation( $projId:ID!, $itemId:ID! ) { deleteProjectV2Item( input:{ projectId: $projId, itemId: $itemId })  {clientMutationId}}`;
+    let variables = {"projId": projNodeId, "itemId": issueNodeId };
+    let queryJ    = JSON.stringify({ query, variables });
+	
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "removeCard", e, removeCard, authData, projNodeId, issueNodeId ));
 
-
-
-
-
-    
-    // XXX we can keep fieldId somewhere... but there is no "no status" optionId, right?  so....set option to null?
-    // XXX one option is to remove from project, then add to project, without setting status.  Oi.
-    let retVal = await moveCard( authData, links[0].HostProjectId, links[0].HostIssueId, XXXfieldIdXXX, XXXNoStatusXXX );
-
-    if( retVal != -1 ) {
-	retVal = justId ?
-	    issueNodeId : 
-	    {"projId": projNodeId, "issueId": issueNodeId, "statusId": fieldId, "statusValId": valueId };
-    }
-    return retVal;
-
+    // Successful post looks like the following. Could provide mutationId for traking: { data: { deleteProjectV2Item: { clientMutationId: null } } }
+    return true;
 }
 
 
