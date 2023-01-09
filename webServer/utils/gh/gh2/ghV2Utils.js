@@ -827,6 +827,24 @@ async function updateProject( authData, projNodeId, title ) {
 	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, projNodeId, title ));
 }
 
+// Only repository owner can use this to create a project.  
+async function createProject( authData, ownerNodeId, repoNodeId, title ) {
+    let query     = `mutation( $ownerId:ID!, $repoId:ID!, $title:String! ) 
+                             { createProjectV2( input:{ repositoryId: $repoId, ownerId: $ownerId, title: $title }) {clientMutationId projectV2 {id}}}`;
+    let variables = {"repoId": repoNodeId, "ownerId": ownerNodeId, "title": title };
+    let queryJ    = JSON.stringify({ query, variables });
+	
+    let rv = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
+
+    let pid = -1;
+    if( rv.hasOwnProperty( 'data' ) && rv.data.hasOwnProperty( 'createProjectV2' ) && rv.data.createProjectV2.hasOwnProperty( 'projectV2' ) )
+    {
+	pid = rv.data.createProjectV2.projectV2.id;
+    }
+    console.log( "New project id: ", pid );
+    return pid;
+}
 
 // XXX revisit once column id is fixed.
 function getColumnName( authData, ghLinks, ceProjId, colId ) {
@@ -923,19 +941,42 @@ async function removeCard( authData, projNodeId, issueNodeId ) {
     return true;
 }
 
-// Only repository owner can use this to create a project.  
-async function createProject( authData, ownerNodeId, repoNodeId, title ) {
-    let query     = `mutation( $ownerId:ID!, $repoId:ID!, $title:String! ) 
-                             { createProjectV2( input:{ repositoryId: $repoId, ownerId: $ownerId, title: $title }) {clientMutationId projectV2 {id}}}`;
-    let variables = {"repoId": repoNodeId, "ownerId": ownerNodeId, "title": title };
-    let queryJ    = JSON.stringify({ query, variables });
-	
-    let rv = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
 
-    console.log( "New project id: ", rv.data.createProjectV2.projectV2.id );
-    return rv.data.createProjectV2.projectV2.id;
+// Owner can be user, or organization.  This works for either.
+// XXX Is there a nicer way to run this as a single query?  i.e. without having 1 or the two be correct, 1 be an error?
+async function getOwnerId( authData, ownerLogin ) {
+    let query       = `query($owner: String!) { organization(login: $owner) {id} 
+                                                user        (login: $owner) {id} }`;
+    const variables = {"owner": ownerLogin };
+    let queryJ      = JSON.stringify({ query, variables });
+
+    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	  .catch( e => ghUtils.errorHandler( "getOwnerId", e, getOwnerId, authData, ownerLogin ));
+
+    let retId = -1;
+    if( ret.hasOwnProperty( 'data' )) {
+	if( ret.data.hasOwnProperty( 'user' ))              { retId = ret.data.user.id; }
+	else if( ret.data.hasOwnProperty( 'organization' )) { retId = ret.data.user.id; }
+    }
+    console.log( ownerLogin, retId );
+	
+    return retId;
 }
+
+async function getRepoId( authData, ownerLogin, repoName ) {
+    let query       = `query($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo ) { id } }`;
+    const variables = {"owner": ownerLogin, "repo": repoName };
+    let queryJ      = JSON.stringify({ query, variables });
+
+    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	  .catch( e => ghUtils.errorHandler( "getRepoId", e, getRepoId, authData, ownerLogin, repoName ));
+
+    let retId = -1;
+    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
+    console.log( ownerLogin, repoName, retId );
+    return retId;
+}
+
 
 /*
     // no 
@@ -951,8 +992,6 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
     createUnclaimedCard
 
     // Targets
-    getOwnerIdGQL: function( PAT, owner ) 
-    getRepoIdGQL: function( PAT, owner, repo )
     getRepoLabelsGQL: function( PAT, owner, repo, data, cursor )
     getReposGQL: function( PAT, owner, data, cursor )
     getRepoIssuesGQL: function( PAT, owner, repo, data, cursor )
@@ -992,6 +1031,7 @@ exports.rebuildLabel       = rebuildLabel;
 
 exports.getProjectName     = getProjectName;
 exports.updateProject      = updateProject;
+exports.createProject      = createProject;
 
 exports.getColumnName      = getColumnName;
 exports.updateColumn       = updateColumn;   // XXX NYI
@@ -1000,6 +1040,6 @@ exports.getCard            = getCard;
 exports.moveCard           = moveCard;
 exports.createProjectCard  = createProjectCard;
 exports.removeCard         = removeCard; 
-exports.createProject      = createProject;
 
-
+exports.getOwnerId         = getOwnerId;
+exports.getRepoId          = getRepoId;

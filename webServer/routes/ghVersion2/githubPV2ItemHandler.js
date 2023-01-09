@@ -92,7 +92,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( "CARD", card );
     // let rv = await ghV2.removeCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgEN4MU" );
     // console.log( "remove", rv );
-    await ghV2.createProject( authData, "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2", "R_kgDOH8VRDg", "A newerester project" );
+    // await ghV2.createProject( authData, "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2", "R_kgDOH8VRDg", "A newerester project" );
+    // await ghV2.getOwnerId( authData, "ariCETester" );
+    // await ghV2.getRepoId( authData, "codeEquity", "bubba" );
+    await ghV2.getRepoId( authData, "ariCETester", "ceFlutterTester" );
     
     console.log( "----------------XX--------------------" );
     
