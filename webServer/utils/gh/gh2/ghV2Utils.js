@@ -977,6 +977,53 @@ async function getRepoId( authData, ownerLogin, repoName ) {
     return retId;
 }
 
+// Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
+// Returning issueId, not issueNodeId
+async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) {
+    const query1 = `query($owner: String!, $repo: String!, $labelName: String! ) {
+	repository(owner: $owner, name: $repo) {
+	    label(name: $labelName) {
+	       issues(first: 100) {
+	          pageInfo { hasNextPage, endCursor },
+		  edges { node { id title number }}
+		}}}}`;
+    
+    const queryN = `query($owner: String!, $repo: String!, $labelName: String!, $cursor: String!) {
+	repository(owner: $owner, name: $repo) {
+	    label(name: $labelName) {
+               issues(first: 100 after: $cursor ) {
+	          pageInfo { hasNextPage, endCursor },
+		     edges { node { id title number }}
+		}}}}`;
+
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": owner, "repo": repo, "labelName": labelName } : {"owner": owner, "repo": repo, "labelName": labelName, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+
+    let issues = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    let label = raw.data.repository.label;
+	    if( typeof label !== 'undefined' && label != null ) {
+		issues = label.issues;
+		for( const issue of issues.edges ) {
+		    let datum = {};
+		    datum.issueId = issue.node.id;
+		    datum.num     = issue.node.number;
+		    datum.title   = issue.node.title;
+		    data.push( datum );
+		}
+		// Wait.  Data is modified
+		if( issues != -1 && issues.pageInfo.hasNextPage ) { await getLabelIssues( authData, owner, repo, labelName, data, issues.pageInfo.endCursor ); }
+	    }
+	    else {
+		// XXX may not be an error.. 
+		console.log( "XXX Error, no issues for label", labelName, res );
+	    }
+	})
+	.catch( e => ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, owner, repo, labelName, data, cursor ));
+}
+
 
 /*
     // no 
@@ -984,20 +1031,16 @@ async function getRepoId( authData, ownerLogin, repoName ) {
     getRepoIssueGQL   only somewhat useful if keeping databaseId for issue.  not planning to.
 
     // wait
-    validatePEQ: function( authData, repo, issueId, title, projId )
-    cleanUnclaimed: function( authData, ghLinks, pd )
-    populateRequest: function( labels )
-    getCEProjectLayout: function( authData, ghLinks, pd )
+    getReposGQL:       // only sanity check
+    getRepoLabelsGQL:  // only sanity check
+    getRepoColsGQL:    // only sanity check
+    validatePEQ: 
+    cleanUnclaimed:
+    populateRequest:
+    getCEProjectLayout:
     rebuildCard
     createUnclaimedCard
-
-    // Targets
-    getRepoLabelsGQL: function( PAT, owner, repo, data, cursor )
-    getReposGQL: function( PAT, owner, data, cursor )
-    getRepoIssuesGQL: function( PAT, owner, repo, data, cursor )
-    getLabelIssuesGQL: function( PAT, owner, repo, labelName, data, cursor )
-    getRepoColsGQL: function( PAT, owner, repo, data, cursor )
-    checkReserveSafe: function( authData, owner, repo, issueNum, colNameIndex )
+    checkReserveSafe:  // waiting method for slow github
     
 */
 
@@ -1043,3 +1086,4 @@ exports.removeCard         = removeCard;
 
 exports.getOwnerId         = getOwnerId;
 exports.getRepoId          = getRepoId;
+exports.getLabelIssues     = getLabelIssues;

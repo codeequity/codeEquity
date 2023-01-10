@@ -95,7 +95,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // await ghV2.createProject( authData, "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2", "R_kgDOH8VRDg", "A newerester project" );
     // await ghV2.getOwnerId( authData, "ariCETester" );
     // await ghV2.getRepoId( authData, "codeEquity", "bubba" );
-    await ghV2.getRepoId( authData, "ariCETester", "ceFlutterTester" );
+    // await ghV2.getRepoId( authData, "ariCETester", "ceFlutterTester" );
+    let labelIssues = [];
+    await ghV2.getLabelIssues(  authData, "codeEquity", "bubba", "bug", labelIssues, -1 );
+    console.log( labelIssues );
     
     console.log( "----------------XX--------------------" );
     
