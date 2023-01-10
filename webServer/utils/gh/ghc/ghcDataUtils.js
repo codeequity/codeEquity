@@ -4,6 +4,7 @@ const config = require( '../../../config');
 
 const utils    = require( '../../ceUtils' );
 const awsUtils = require( '../../awsUtils' );
+const ghUtils  = require( '../ghUtils' );
 
 const ghClassic = require( './ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -49,7 +50,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     let newLabel = "";
     for( label of issue.labels ) {
 	let content = label['description'];
-	let peqVal  = ghSafe.parseLabelDescr( [content] );
+	let peqVal  = ghUtils.parseLabelDescr( [content] );
 
 	if( peqVal > 0 ) {
 	    console.log( "Resolve, original peqValue:", peqVal );
@@ -116,11 +117,11 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     pd.GHIssueTitle = issueCardContent[0];
 
     // normal for card -> issue.  odd but legal for issue -> card
-    let allocation = ghSafe.getAllocated( issueCardContent );
+    let allocation = ghUtils.getAllocated( issueCardContent );
 
     // If this new item is an issue becoming a card, any label will be human readable - different parse requirement
     if( pd.GHIssueNum == -1 ) { pd.peqValue = ghSafe.parsePEQ( issueCardContent, allocation ); }
-    else                      { pd.peqValue = ghSafe.parseLabelDescr( issueCardContent ); }
+    else                      { pd.peqValue = ghUtils.parseLabelDescr( issueCardContent ); }
 
     // Don't wait
     awsUtils.checkPopulated( authData, pd.CEProjectId ).then( res => assert( res != -1 ));

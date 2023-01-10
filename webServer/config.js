@@ -98,8 +98,9 @@ const NOQ_DELAY  = 20000;       // backoff millis if queue is empty
 const MIN_DIFF   = 1000;        // min timestamp diff in millis for new insert location 
 
 // GitHub related
-const MAX_GH_RETRIES = 5;       // GH internals can be quite slow to update at times. Allow retries in some cases.
-const GH_GHOST       = "ghost"; // GH bot actions are executed by this actor
+const MAX_GH_RETRIES = 5;           // GH internals can be quite slow to update at times. Allow retries in some cases.
+const GH_GHOST       = "ghost";     // GH bot actions are executed by this actor
+const GH_NO_STATUS   = "No Status"; // GH name of column holding issues whose status has not yet been set
 
 // AWS related
 const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
@@ -107,7 +108,7 @@ const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
 // server notification buffer size for testing
 const NOTICE_BUFFER_SIZE = 20;
 
-// XXX TEMP will go way
+// XXX TEMP will go away
 const POPULATE = "populate";
 
 
@@ -205,6 +206,7 @@ exports.STEP_COST  = STEP_COST;
 exports.NOQ_DELAY  = NOQ_DELAY;
 exports.MIN_DIFF   = MIN_DIFF;
 
-exports.GH_GHOST   = GH_GHOST;
+exports.GH_GHOST     = GH_GHOST;
+exports.GH_NO_STATUS = GH_NO_STATUS;
 
 exports.NOTICE_BUFFER_SIZE = NOTICE_BUFFER_SIZE;

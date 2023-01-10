@@ -113,8 +113,8 @@ async function clearRepo( authData, ghLinks, pd ) {
     await authData.ic.paginate( authData.ic.issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
 	.then((labels) => {
 	    for( const label of labels ) {
-		if( ghSafe.parseLabelName( label.name )[0] > 0 ) { labelNames.push( label.name ); }
-		else if( label.name == config.POPULATE )         { labelNames.push( label.name ); }
+		if( ghUtils.parseLabelName( label.name )[0] > 0 ) { labelNames.push( label.name ); }
+		else if( label.name == config.POPULATE )          { labelNames.push( label.name ); }
 	    }
 	})
 	.catch( e => { console.log( authData.who, "Problem in listLabels", e ); });

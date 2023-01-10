@@ -4,6 +4,7 @@ var config = require( '../config' );
 
 const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
+const ghUtils  = require( '../utils/gh/ghUtils' );
 
 const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
@@ -129,12 +130,12 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	subTest = tu.checkGE( peqLabels.length, 3,   subTest, "Peq Label count" );
 	let foundLabs = 0;
 	for( label of peqLabels ) {
-	    if( ghSafe.parseLabelDescr( [label.description] ) == 1000000 ) {
+	    if( ghUtils.parseLabelDescr( [label.description] ) == 1000000 ) {
 		subTest = tu.checkEq( label.description.includes( "Allocation" ), true, subTest, "Peq label descr" );
 		foundLabs++;
 	    }
-	    else if( ghSafe.parseLabelDescr( [label.description] ) == 1500000 ) { foundLabs++; }
-	    else if( ghSafe.parseLabelDescr( [label.description] ) == 3000000 ) { foundLabs++; }
+	    else if( ghUtils.parseLabelDescr( [label.description] ) == 1500000 ) { foundLabs++; }
+	    else if( ghUtils.parseLabelDescr( [label.description] ) == 3000000 ) { foundLabs++; }
 	}
 	subTest = tu.checkEq( foundLabs, 3,   subTest, "Peq Label matching peq amounts" );
 	

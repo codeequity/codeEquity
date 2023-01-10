@@ -41,14 +41,68 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let reqBody = pd.reqBody;
     let item    = reqBody.projects_v2_item;
 
+    // ceProj: "CE_ServTest_usda23k425"
     // bubba: "R_kgDOH8VRDg"  boogy: "PVT_kwDOA8JELs4AIeW_"  enhancement: "LA_kwDOH8VRDs8AAAABDEPzrw" duplicate: "LA_kwDOH8VRDs8AAAABDEPzrg"
+    // doggy: "PVT_kwDOA8JELs4AFrvg",
+    // flutata: "I_kwDOH8VRDs5XivJQ" "PVTI_lADOA8JELs4AIeW_zgDd0Rs"
+    // ari "MDQ6VXNlcjgzNzI5OTM5"   connie "MDQ6VXNlcjc5MjExNTk4"
+    // codeEquity "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2"
+    // todo status: 
 
-    await ghV2.createIssue( authData.pat, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", "Eggs rock", ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], true );
+    console.log( "----------------XX--------------------" );
 
-    // await ghV2.createLabel( authData.pat, "R_kgDOH8VRDg", "tea", config.PEQ_COLOR, "party" );
-    assert( false );
+    // let issueDetails = {"title": "Eggs rock", "labels": ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], "allocation": true );
+    // await ghV2.createIssue( authData, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", issueDetails );
+    // await ghV2.createLabel( authData, "R_kgDOH8VRDg", "tea", config.PEQ_COLOR, "party" );
+    // let labelRes = await ghV2.getLabel( authData, "R_kgDOH8VRDg", "tea" );
+    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", false, "tea", -1 );
+    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", false, "teaP", 100 );
+    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "teaA", 200 );
+    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "200 AllocPEQ", 200 );
+    // console.log( labelRes );
+    // await ghV2.updateLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "2001 AllocPEQ", "Allocation PEQ value: 2001" );
+    // labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "2001 AllocPEQ", 2001 );
+    // console.log( labelRes );
+    // await ghV2.removeLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "I_kwDOH8VRDs5XivJQ" );
+    // await ghV2.rebuildLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "LA_kwDOH8VRDs8AAAABDEPzrg", "I_kwDOH8VRDs5XivJQ" );
+    // let labels = await ghV2.getLabels( authData, "I_kwDOH8VRDs5XivJQ" );
+    // console.log( labels );
+    // await ghV2.removePeqLabel( authData, "I_kwDOH8VRDs5XivJQ" );
+    // let issue = await ghV2.getIssue( authData, "I_kwDOH8VRDs5XivJQ" );
+    // console.log( issue );
+    // await ghV2.updateIssue( authData, "I_kwDOH8VRDs5XivJQ", "state", "OPEN" );
+    // let issueDetails = {"title": "flutata", "labels": ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], "id": "I_kwDOH8VRDs5XivJQ" };
+    // let issueData = await ghV2.rebuildIssue( authData, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", issueDetails, "", "XYZ123" );
+    // await ghV2.addComment( authData, "I_kwDOH8VRDs5XivJQ", "blat" );
+    // await ghV2.updateIssue( authData, "I_kwDOH8VRDs5XivJQ", "title", "flutata" );
+    // await ghV2.addAssignee( authData, "I_kwDOH8VRDs5XivJQ", "MDQ6VXNlcjgzNzI5OTM5" );
+    // await ghV2.remAssignee( authData, "I_kwDOH8VRDs5XivJQ", "MDQ6VXNlcjgzNzI5OTM5" );
+    // let a = await ghV2.getAssignees( authData, "I_kwDOH8VRDs5XivJQ" );
+    // console.log( a );
+    // await ghV2.updateProject( authData, "PVT_kwDOA8JELs4AIeW_", "boogy" );    
+
+    // Ahhhh.
+    // in progress: "8dc16716",  todo: "f75ad846"
+    // await ghV2.updateColumn( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "f75ad846" ); 
+    // await ghV2.moveCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "8dc16716" );
+    // console.log( ghV2.getProjectName( authData, ghLinks, "CE_ServTest_usda23k425", "PVT_kwDOA8JELs4AIeW_" ));
+    // let card = await ghV2.getCard( authData, "PVTI_lADOA8JELs4AIeW_zgDd0Rs" );
+    // console.log( "CARD", card );
+    // let card = await ghV2.createProjectCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "8dc16716" );
+    // console.log( "CARD", card );
+    // let rv = await ghV2.removeCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgEN4MU" );
+    // console.log( "remove", rv );
+    // await ghV2.createProject( authData, "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2", "R_kgDOH8VRDg", "A newerester project" );
+    // await ghV2.getOwnerId( authData, "ariCETester" );
+    // await ghV2.getRepoId( authData, "codeEquity", "bubba" );
+    // await ghV2.getRepoId( authData, "ariCETester", "ceFlutterTester" );
+    let labelIssues = [];
+    await ghV2.getLabelIssues(  authData, "codeEquity", "bubba", "bug", labelIssues, -1 );
+    console.log( labelIssues );
     
-    // let projectDetail = await ghV2.getProjectFromNode( authData.pat, item.project_node_id );
+    console.log( "----------------XX--------------------" );
+    
+    // let projectDetail = await ghV2.getProjectFromNode( authData, item.project_node_id );
     // console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
 
     // Note: can't set repo here for pd.. can be several.  Should not need to..?

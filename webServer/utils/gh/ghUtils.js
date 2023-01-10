@@ -6,10 +6,11 @@ const utils = require( '../ceUtils' );
 
 
 
+// XXX Accept header is for label preview.  Check back to delete.
 async function postGH( PAT, url, postData ) {
     const params = {
 	method: "POST",
-        headers: {'Authorization': 'bearer ' + PAT },
+        headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json" },
 	body: postData 
     };
 
@@ -126,9 +127,94 @@ async function checkForPV2( PAT, nodeId ) {
 
 }
 
+// no commas, no shorthand, just like this:  'PEQ value: 500'  or 'Allocation PEQ value: 30000'
+function parseLabelDescr( labelDescr ) {
+    let peqValue = 0;
+    let pDescLen = config.PDESC.length;
+    let aDescLen = config.ADESC.length;
+
+    for( const line of labelDescr ) {
+	// malformed labels can have a null entry here
+	if( !line ) { return peqValue; }
+	
+	if( line.indexOf( config.PDESC ) == 0 ) {
+	    //console.log( "Found peq val in", line.substring( pDescLen ) );
+	    peqValue = parseInt( line.substring( pDescLen ) );
+	    break;
+	}
+	else if( line.indexOf( config.ADESC ) == 0 ) {
+	    // console.log( "Found peq val in", line.substring( aDescLen ) );
+	    peqValue = parseInt( line.substring( aDescLen ) );
+	    break;
+	}
+    }
+
+    return peqValue;
+}
+
+// '500 PEQ'  or '500 AllocPEQ'
+function parseLabelName( name ) {
+    let peqValue = 0;
+    let alloc = false;
+    let splits = name.split(" ");
+    if( splits.length == 2 && ( splits[1] == config.ALLOC_LABEL || splits[1] == config.PEQ_LABEL )) {
+	peqValue = parseInt( splits[0] );
+	alloc = splits[1] == config.ALLOC_LABEL;
+    }
+    return [peqValue, alloc];
+}
+
+// Allow:
+// <allocation, PEQ: 1000>      typical by hand description
+// <allocation, PEQ: 1,000>
+// <allocation, PEQ: 1,000>
+// Allocation PEQ value         typical by resolve description & existing label description
+function getAllocated( content ) {
+    let res = false;
+    for( const line of content ) {
+	let s = line.indexOf( config.ADESC );  // existing label desc
+	if( s > -1 ){ res = true; break; }
+
+	s = line.indexOf( config.PALLOC );      // by hand entry
+	if( s > -1 ){ res = true; break; }
+    }
+    return res;
+}
+
+
+function theOnePEQ( labels ) {
+    let peqValue = 0;
+    let alloc = false;
+
+    for( const label of labels ) {
+	let content = label['description'];
+	let tval = parseLabelDescr( [content] );
+	let talloc = getAllocated( [content] );
+
+	if( tval > 0 ) {
+	    if( peqValue > 0 ) {
+		console.log( "Two PEQ labels detected for this issue!!" );
+		peqValue = 0;
+		alloc = false;
+		break;
+	    }
+	    else {
+		peqValue = tval;
+		alloc = talloc;
+	    }
+	}
+    }
+
+    return [peqValue, alloc];
+}
 
 
 exports.errorHandler = errorHandler;
 exports.postGH       = postGH;
 
 exports.checkForPV2  = checkForPV2;
+
+exports.parseLabelDescr = parseLabelDescr;
+exports.parseLabelName  = parseLabelName;
+exports.getAllocated    = getAllocated;
+exports.theOnePEQ       = theOnePEQ;
