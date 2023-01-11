@@ -97,88 +97,82 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
     let variables = cursor == -1 ? {"nodeId": pNodeId } : {"nodeId": pNodeId, "cursor": cursor };
     query = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	  .catch( e => ghUtils.errorHandler( "getHostLinkLoc", e, getHostLinkLoc, authData, pNodeId, locData, linkData, cursor )); 
-
-    // postGH masks errors, catch here.
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
-	await ghUtils.errorHandler( "getHostLinkLoc", ret, getHostLinkLoc, authData, pNodeId, locData, linkData, cursor ); 
-    }
-    else {
-	
-	let project = ret.data.node;
-	let statusId = -1;
-
-	// Loc data only needs to be built once.  Will be the same for every issue.
-	// Note: can not build this from issues below, since we may have empty columns in board view.
-	if( locData.length <= 0 ) {
-
-	    // Plunder the first view to get status (i.e. column) info
-	    let views = project.views;
-	    for( let i = 0; i < views.edges.length; i++ ) {
-		const aview = views.edges[i].node;
-		for( let j = 0; j < aview.fields.edges.length; j++ ) {
-		    if( j >= 99 ) { console.log( "WARNING.  Detected a very large number of columns, ignoring some." ); }
-		    const pfc = aview.fields.edges[j].node;
-		    if( pfc.name == "Status" ) {
-			statusId = pfc.id;
-			for( let k = 0; k < pfc.options.length; k++ ) {
-			    let datum   = {};
-			    datum.HostRepository  = config.EMPTY;
-			    datum.HostProjectName = project.title;
-			    datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
-			    datum.HostColumnName  = pfc.options[k].name;
-			    datum.HostColumnId    = pfc.options[k].id;
-			    locData.push( datum );
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    let project = raw.data.node;
+	    let statusId = -1;
+	    
+	    // Loc data only needs to be built once.  Will be the same for every issue.
+	    // Note: can not build this from issues below, since we may have empty columns in board view.
+	    if( locData.length <= 0 ) {
+		
+		// Plunder the first view to get status (i.e. column) info
+		let views = project.views;
+		for( let i = 0; i < views.edges.length; i++ ) {
+		    const aview = views.edges[i].node;
+		    for( let j = 0; j < aview.fields.edges.length; j++ ) {
+			if( j >= 99 ) { console.log( "WARNING.  Detected a very large number of columns, ignoring some." ); }
+			const pfc = aview.fields.edges[j].node;
+			if( pfc.name == "Status" ) {
+			    statusId = pfc.id;
+			    for( let k = 0; k < pfc.options.length; k++ ) {
+				let datum   = {};
+				datum.HostRepository  = config.EMPTY;
+				datum.HostProjectName = project.title;
+				datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
+				datum.HostColumnName  = pfc.options[k].name;
+				datum.HostColumnId    = pfc.options[k].id;
+				locData.push( datum );
+			    }
 			}
 		    }
 		}
 	    }
 	    
-	}
-	
-	// Build "No Status" by hand, since it corresponds to a null entry
-	let datum   = {};
-	datum.HostRepository  = config.EMPTY;
-	datum.HostProjectName = project.title;
-	datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
-	datum.HostColumnName  = config.GH_NO_STATUS; 
-	datum.HostColumnId    = config.EMPTY;           // no status column does not exist in view options above.  special case.
-	locData.push( datum );
-	
-	assert( locData.length > 0 );
-	assert( statusId != -1 );
-
-	let items = ret.data.node.items;
-	for( let i = 0; i < items.edges.length; i++ ) {
-	    const issue    = items.edges[i].node;
-	    const status   = issue.fieldValueByName == null  ? config.GH_NO_STATUS : issue.fieldValueByName.name;
-	    const optionId = issue.fieldValueByName == null  ? config.EMPTY        : issue.fieldValueByName.optionId; 
+	    // Build "No Status" by hand, since it corresponds to a null entry
+	    let datum   = {};
+	    datum.HostRepository  = config.EMPTY;
+	    datum.HostProjectName = project.title;
+	    datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
+	    datum.HostColumnName  = config.GH_NO_STATUS; 
+	    datum.HostColumnId    = config.EMPTY;           // no status column does not exist in view options above.  special case.
+	    locData.push( datum );
 	    
-	    if( issue.type == "ISSUE" ) {
-		let datum = {};
-		datum.issueId     = issue.id;   // projectV2Item id pvti
-		datum.issueNum    = issue.content.number;
-		datum.title       = issue.content.title;
-		datum.cardId      = issue.id;
-		datum.projectName = locData[0].HostProjectName;    
-		datum.projectId   = locData[0].HostProjectId;    
-		datum.columnName  = status;
-		datum.columnId    = optionId;
+	    assert( locData.length > 0 );
+	    assert( statusId != -1 );
+	    
+	    let items = raw.data.node.items;
+	    for( let i = 0; i < items.edges.length; i++ ) {
+		const issue    = items.edges[i].node;
+		const status   = issue.fieldValueByName == null  ? config.GH_NO_STATUS : issue.fieldValueByName.name;
+		const optionId = issue.fieldValueByName == null  ? config.EMPTY        : issue.fieldValueByName.optionId; 
 		
-		linkData.push( datum );
+		if( issue.type == "ISSUE" ) {
+		    let datum = {};
+		    datum.issueId     = issue.id;   // projectV2Item id pvti
+		    datum.issueNum    = issue.content.number;
+		    datum.title       = issue.content.title;
+		    datum.cardId      = issue.id;
+		    datum.projectName = locData[0].HostProjectName;    
+		    datum.projectId   = locData[0].HostProjectId;    
+		    datum.columnName  = status;
+		    datum.columnId    = optionId;
+		    
+		    linkData.push( datum );
+		}
 	    }
-	}
-	
-	// console.log( "UTILS: Locs", locData );
-	// console.log( "UTILS: Links", linkData );
-	
-	// Wait.  Data is modified
-	if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
-    }
+	    
+	    // console.log( "UTILS: Locs", locData );
+	    // console.log( "UTILS: Links", linkData );
+	    
+	    // Wait.  Data is modified
+	    if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
+	})
+	.catch( e => ghUtils.errorHandler( "getHostLinkLoc", e, getHostLinkLoc, authData, pNodeId, locData, linkData, cursor )); 
 }
 
 
+// XXX can remove
 // Get stuff from issue content_node_id pvti_*
 async function getFromIssueNode( authData, nodeId ) {
 
@@ -203,34 +197,27 @@ async function getFromIssueNode( authData, nodeId ) {
     let variables = {"nodeId": nodeId };
     let queryJ = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    let retVal = {};
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    console.log( "Looking for info on", nodeId );
+	    console.log( ret.data.node.content );
+	    
+	    let data = ret.data.node.fieldValueByName;
+	    console.log( "Status", data );
+	    
+	    printEdges( ret.data.node.content, "assignees" );
+	    printEdges( ret.data.node.content, "labels" );
+	    // printEdges( ret.data.node.content, "projectItems", ["id"] );  
+	    // printEdges( ret.data.node.content, "projectCards", ["id"] );
+	    retVal = ret;
+	    
+	    if( ret.data.node.content.assignees.length > 99 ) { console.log( "WARNING.  Detected a very large number of assignees, ignoring some." ); }
+	    if( ret.data.node.content.labels.length > 99 ) { console.log( "WARNING.  Detected a very large number of labels, ignoring some." ); }
+	    
+	})
 	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, authData, nodeId ));  // this will probably never catch anything
-
-    // postGH masks errors, catch here.
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
-	await ghUtils.errorHandler( "getProjectFromNode", ret, getProjectFromNode, authData, nodeId ); 
-    }
-    else {
-	
-	console.log( "Looking for info on", nodeId );
-	
-	console.log( ret );
-	console.log( ret.data.node.content );
-	
-	let data = ret.data.node.fieldValueByName;
-	console.log( "Status", data );
-
-	printEdges( ret.data.node.content, "assignees" );
-	printEdges( ret.data.node.content, "labels" );
-	// printEdges( ret.data.node.content, "projectItems", ["id"] );  
-	// printEdges( ret.data.node.content, "projectCards", ["id"] );
-
-	if( ret.data.node.content.assignees.length > 99 ) { console.log( "WARNING.  Detected a very large number of assignees, ignoring some." ); }
-	if( ret.data.node.content.labels.length > 99 ) { console.log( "WARNING.  Detected a very large number of labels, ignoring some." ); }
-
-    }
-
-    return ret;
+    return retVal;
 }
 
 
@@ -365,32 +352,29 @@ async function createIssue( authData, repoNode, projNode, issue ) {
                     {clientMutationId, issue{id, number}}}`;
 
     let variables = {"repo": repoNode, "title": issue.title, "body": issue.body, "labels": issue.labels, "mile": issue.milestone, "assg": issue.assignees };
-	
-    let queryJ = JSON.stringify({ query, variables });
+    let queryJ    = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, issue );
-	return ret;
-    }
-    issueData[0] = ret.data.createIssue.issue.id;
-    issueData[1] = ret.data.createIssue.issue.number;
-    console.log( " .. issue created, issueData:", issueData );
-    
-    query = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    issueData[0] = ret.data.createIssue.issue.id;
+	    issueData[1] = ret.data.createIssue.issue.number;
+	    console.log( " .. issue created, issueData:", issueData );
+	})
+	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
+	       
+    query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
     variables = {"proj": projNode, "contentId": ret.data.createIssue.issue.id };
-
-    queryJ = JSON.stringify({ query, variables });
+    queryJ    = JSON.stringify({ query, variables });
 
     // XXX If the create above succeeds and this triggers, the it will attempt to create again.  Copy made?  Split this out.
-    ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "createIssue", ret, createIssue, authData, repoNode, projNode, issue );
-	return ret;
-    }
-
-    ret = ret.data.addProjectV2ItemById.item.id;
-    console.log( " .. issue added to project, pv2ItemId:", ret );
+    let pvId = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    pvId = ret.data.addProjectV2ItemById.item.id;
+	    console.log( " .. issue added to project, pv2ItemId:", pvId );
+	})
+	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
+    
     return issueData;
 }
 
@@ -433,15 +417,15 @@ async function getFullIssue( authData, issueNodeId ) {
     let variables = {"id": issueNodeId};
     let queryJ    = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "getFullIssue", ret, getFullIssue, authData, issueNodeId );
-	return ret;
-    }
+    let issue = {};
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    issue = ret.data.node;
+	    if( issue.assignees.edges.length > 99 ) { console.log( "WARNING.  Large number of assignees.  Ignoring some." ); }
+	    if( issue.labels.edges.length > 99 )    { console.log( "WARNING.  Large number of labels.  Ignoring some." ); }
+	})
+	.catch( e => ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, issueNodeId ));
     
-    let issue = ret.data.node;
-    if( issue.assignees.edges.length > 99 ) { console.log( "WARNING.  Large number of assignees.  Ignoring some." ); }
-    if( issue.labels.edges.length > 99 )    { console.log( "WARNING.  Large number of labels.  Ignoring some." ); }
     return issue;
 }
 
@@ -454,13 +438,11 @@ async function updateIssue( authData, issueNodeId, field, newValue ) {
     let variables = {"id": issueNodeId, "value": newValue };
     let queryJ    = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "updateIssue", ret, updateIssue, authData, issueNodeId, field, newValue );
-	return ret;
-    }
-    
-    if( ret ) { console.log( authData.who, "updateIssue done" ); }
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    console.log( authData.who, "updateIssue done" );
+	})
+	.catch( e => ghUtils.errorHandler( "updateIssue", e, updateIssue, authData, issueNodeId, field, newValue ));
     return true;
 }
 
@@ -473,11 +455,8 @@ async function addComment( authData, issueNodeId, msg ) {
     let variables = {"id": issueNodeId, "msg": msg };
     let queryJ    = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "addComment", ret, addComment, authData, issueNodeId, msg );
-	return ret;
-    }
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "addComment", e, addComment, authData, issueNodeId, msg ));
     return true;
 }
 
@@ -548,11 +527,8 @@ async function remAssignee( authData, issueNodeId, aNodeId ) {
     let variables = {"id": issueNodeId, "adds": [aNodeId] };
     let queryJ    = JSON.stringify({ query, variables });
     
-    ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "remAssignee", ret, remAssignee, authData, issueNodeId, aNodeId );
-	return ret;
-    }
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "remAssignee", e, remAssignee, authData, issueNodeId, aNodeId ));
 }
 
 // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
@@ -616,16 +592,18 @@ async function createLabel( authData, repoNode, name, color, desc ) {
     let variables = {"id": repoNode, "name": name, "color": color, "desc": desc };
     let queryJ    = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "createLabel", ret, createLabel, authData, repoNode, name, color, desc );
-	return ret;
-    }
-
-    if( ret.errors !== 'undefined' ) { console.log( "WARNING. Label not created", ret.errors ); }
-    else                             { console.log( " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); }
-
-    return ret.data.createLabel.label;
+    let label = {};
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.errors !== 'undefined' ) { console.log( "WARNING. Label not created", ret.errors ); }
+	    else {
+		console.log( " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
+		label = ret.data.createLabel.label;
+	    }
+	})
+	.catch( e => ghUtils.errorHandler( "createLabel", e, createLabel, authData, repoNode, name, color, desc ));
+    
+    return label;
 }
 
 async function getLabel( authData, repoNode, peqHumanLabelName ) {
@@ -645,25 +623,23 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     let variables = {"repoNode": repoNode, "name": peqHumanLabelName };
     let queryJ    = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "getLabel", ret, getLabel, authData, repoNode, peqHumanLabelName );
-	return ret;
-    }
-
-    let labels = ret.data.node.labels; 
-    if( typeof labels === 'undefined' ) { return labelRes; }
-
-    if( labels.edges.length > 99 ) { console.log( "WARNING. Found too many labels.  Ignoring some." ); }
-    
-    for( let i = 0; i < labels.edges.length; i++ ) {
-	const lab = labels.edges[i].node;
-	if( lab.name == peqHumanLabelName ) {
-	    labelRes.status = 200;
-	    labelRes.label = lab;
-	}
-    }
-    
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    let labels = ret.data.node.labels; 
+	    if( typeof labels === 'undefined' ) { return labelRes; }
+	    
+	    if( labels.edges.length > 99 ) { console.log( "WARNING. Found too many labels.  Ignoring some." ); }
+	    
+	    for( let i = 0; i < labels.edges.length; i++ ) {
+		const lab = labels.edges[i].node;
+		if( lab.name == peqHumanLabelName ) {
+		    labelRes.status = 200;
+		    labelRes.label = lab;
+		}
+	    }
+	})
+	.catch( e => ghUtils.errorHandler( "getLabel", e, getLabel, authData, repoNode, peqHumanLabelName ));
+		
     return labelRes;
 }
 
@@ -679,21 +655,19 @@ async function getLabels( authData, issueNodeId ) {
     let variables = {"id": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "getLabels", ret, getLabels, authData, issueNodeId );
-	return ret;
-    }
-
-    let raw    = ret.data.node.labels;
     let labels = [];
-    if( typeof raw === 'undefined' ) { return labels; }
-
-    for( let i = 0; i < raw.edges.length; i++ ) {
-	let label = raw.edges[i].node;
-	labels.push( label );
-    }
-
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    let raw    = ret.data.node.labels;
+	    if( typeof raw === 'undefined' ) { return labels; }
+	    
+	    for( let i = 0; i < raw.edges.length; i++ ) {
+		let label = raw.edges[i].node;
+		labels.push( label );
+	    }
+	})
+	.catch( e => ghUtils.errorHandler( "getLabels", e, getLabels, authData, issueNodeId ));
+    
     return labels;
 }    
 
@@ -745,11 +719,9 @@ async function updateLabel( authData, labelNodeId, name, desc, color ) {
     }
     let queryJ    = JSON.stringify({ query, variables });
 
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "updateLabel", ret, updateLabel, authData, labelNodeId, name, desc, color );
-	return ret;
-    }
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "updateLabel", e, updateLabel, authData, labelNodeId, name, desc, color ));
+
     return true;
 }
 
@@ -762,11 +734,8 @@ async function removeLabel( authData, labelNodeId, issueNodeId ) {
     let variables = {"labelIds": [labelNodeId], "labelableId": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
     
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "removeLabel", ret, removeLabel, authData, labelNodeId, issueNodeId );
-	return ret;
-    }
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "removeLabel", e, removeLabel, authData, labelNodeId, issueNodeId ));
     return true;
 }
     
@@ -795,11 +764,8 @@ async function addLabel( authData, labelNodeId, issueNodeId ) {
     let variables = {"labelIds": [labelNodeId], "labelableId": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
     
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	ret = await ghUtils.errorHandler( "addLabel", ret, addLabel, authData, labelNodeId, issueNodeId );
-	return ret;
-    }
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => ghUtils.errorHandler( "addLabel", e, addLabel, authData, labelNodeId, issueNodeId ));
     return true;
 }
 
@@ -834,15 +800,17 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
     let variables = {"repoId": repoNodeId, "ownerId": ownerNodeId, "title": title };
     let queryJ    = JSON.stringify({ query, variables });
 	
-    let rv = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    let pid = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'createProjectV2' ) && ret.data.createProjectV2.hasOwnProperty( 'projectV2' ) )
+	    {
+		pid = ret.data.createProjectV2.projectV2.id;
+	    }
+	    console.log( "New project id: ", pid );
+	})
 	.catch( e => ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
 
-    let pid = -1;
-    if( rv.hasOwnProperty( 'data' ) && rv.data.hasOwnProperty( 'createProjectV2' ) && rv.data.createProjectV2.hasOwnProperty( 'projectV2' ) )
-    {
-	pid = rv.data.createProjectV2.projectV2.id;
-    }
-    console.log( "New project id: ", pid );
     return pid;
 }
 
@@ -878,6 +846,8 @@ async function getCard( authData, issueNodeId ) {
                         project { id }
                         fieldValueByName(name: "Status") {
                           ... on ProjectV2ItemFieldSingleSelectValue {optionId field { ... on ProjectV2SingleSelectField { id }}}}
+                        content { 
+                          ... on ProjectV2ItemContent { ... on Issue { number }}}
                   }}}`;
     let variables = {"id": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
@@ -885,12 +855,13 @@ async function getCard( authData, issueNodeId ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( raw => {
 	    let card = raw.data.node;
+	    retVal.cardId      = issueNodeId;                        
 	    retVal.projId      = card.project.id;                    
-	    retVal.issueId     = issueNodeId;                        
 	    retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
-	    retVal.statusValId = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
+	    retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
+	    retVal.issueNum    = card.content.number; 
 	})
-	.catch( e => retVal = ghUtils.errorHandler( "getAssignees", e, getAssignees, authData, issueNodeId ));
+	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, issueNodeId ));
 
     return retVal;
 }
@@ -950,16 +921,17 @@ async function getOwnerId( authData, ownerLogin ) {
     const variables = {"owner": ownerLogin };
     let queryJ      = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    let retId = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.hasOwnProperty( 'data' )) {
+		if( ret.data.hasOwnProperty( 'user' ))              { retId = ret.data.user.id; }
+		else if( ret.data.hasOwnProperty( 'organization' )) { retId = ret.data.user.id; }
+	    }
+	    console.log( ownerLogin, retId );
+	  })
 	  .catch( e => ghUtils.errorHandler( "getOwnerId", e, getOwnerId, authData, ownerLogin ));
 
-    let retId = -1;
-    if( ret.hasOwnProperty( 'data' )) {
-	if( ret.data.hasOwnProperty( 'user' ))              { retId = ret.data.user.id; }
-	else if( ret.data.hasOwnProperty( 'organization' )) { retId = ret.data.user.id; }
-    }
-    console.log( ownerLogin, retId );
-	
     return retId;
 }
 
@@ -968,12 +940,15 @@ async function getRepoId( authData, ownerLogin, repoName ) {
     const variables = {"owner": ownerLogin, "repo": repoName };
     let queryJ      = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	  .catch( e => ghUtils.errorHandler( "getRepoId", e, getRepoId, authData, ownerLogin, repoName ));
-
     let retId = -1;
-    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
-    console.log( ownerLogin, repoName, retId );
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
+	    console.log( ownerLogin, repoName, retId );
+	    
+	})
+	.catch( e => ghUtils.errorHandler( "getRepoId", e, getRepoId, authData, ownerLogin, repoName ));
+
     return retId;
 }
 
@@ -1025,24 +1000,6 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 }
 
 
-/*
-    // no 
-    parsePEQ          classic cards only.
-    getRepoIssueGQL   only somewhat useful if keeping databaseId for issue.  not planning to.
-
-    // wait
-    getReposGQL:       // only sanity check
-    getRepoLabelsGQL:  // only sanity check
-    getRepoColsGQL:    // only sanity check
-    validatePEQ: 
-    cleanUnclaimed:
-    populateRequest:
-    getCEProjectLayout:
-    rebuildCard
-    createUnclaimedCard
-    checkReserveSafe:  // waiting method for slow github
-    
-*/
 
 exports.getProjectFromNode = getProjectFromNode;
 exports.getFromIssueNode   = getFromIssueNode;
