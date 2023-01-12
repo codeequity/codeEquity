@@ -324,6 +324,7 @@ async function getProjectFromNode( authData, pNodeId ) {
 }
 
 
+// createIssue, then addProjectV2ItemById
 // Note: mutation:createIssue with inputObject that includes projIds only works for classic projects, not PV2.
 // Note: mutation:addProjectV2DraftIssue works, but can't seem to find how to convert draft to full issue in gql?!!??
 // Note: issue below is a collection of issue details, not a true issue.

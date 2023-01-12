@@ -25,7 +25,7 @@ const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
 
 async function handler( authData, ghLinks, pd, action, tag ) {
 
-    console.log( authData.who, "start", authData.job );
+    console.log( authData.who, "itemHandler start", authData.job );
     
     // await gh.checkRateLimit(authData);
 
@@ -37,86 +37,20 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // https://docs.github.com/en/graphql/reference
     // https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#projects_v2_item
 
-    let actor   = pd.actor;        // Actor is the event generator.
-    let reqBody = pd.reqBody;
-    let item    = reqBody.projects_v2_item;
-
-    // ceProj: "CE_ServTest_usda23k425"
-    // bubba: "R_kgDOH8VRDg"  boogy: "PVT_kwDOA8JELs4AIeW_"  enhancement: "LA_kwDOH8VRDs8AAAABDEPzrw" duplicate: "LA_kwDOH8VRDs8AAAABDEPzrg"
-    // doggy: "PVT_kwDOA8JELs4AFrvg",
-    // flutata: "I_kwDOH8VRDs5XivJQ" "PVTI_lADOA8JELs4AIeW_zgDd0Rs"
-    // ari "MDQ6VXNlcjgzNzI5OTM5"   connie "MDQ6VXNlcjc5MjExNTk4"
-    // codeEquity "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2"
-    // todo status: 
-
-    console.log( "----------------XX--------------------" );
-
-    // let issueDetails = {"title": "Eggs rock", "labels": ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], "allocation": true );
-    // await ghV2.createIssue( authData, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", issueDetails );
-    // await ghV2.createLabel( authData, "R_kgDOH8VRDg", "tea", config.PEQ_COLOR, "party" );
-    // let labelRes = await ghV2.getLabel( authData, "R_kgDOH8VRDg", "tea" );
-    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", false, "tea", -1 );
-    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", false, "teaP", 100 );
-    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "teaA", 200 );
-    // let labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "200 AllocPEQ", 200 );
-    // console.log( labelRes );
-    // await ghV2.updateLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "2001 AllocPEQ", "Allocation PEQ value: 2001" );
-    // labelRes = await ghV2.findOrCreateLabel( authData, "R_kgDOH8VRDg", true, "2001 AllocPEQ", 2001 );
-    // console.log( labelRes );
-    // await ghV2.removeLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "I_kwDOH8VRDs5XivJQ" );
-    // await ghV2.rebuildLabel( authData, "LA_kwDOH8VRDs8AAAABJK0ktw", "LA_kwDOH8VRDs8AAAABDEPzrg", "I_kwDOH8VRDs5XivJQ" );
-    // let labels = await ghV2.getLabels( authData, "I_kwDOH8VRDs5XivJQ" );
-    // console.log( labels );
-    // await ghV2.removePeqLabel( authData, "I_kwDOH8VRDs5XivJQ" );
-    // let issue = await ghV2.getIssue( authData, "I_kwDOH8VRDs5XivJQ" );
-    // console.log( issue );
-    // await ghV2.updateIssue( authData, "I_kwDOH8VRDs5XivJQ", "state", "OPEN" );
-    // let issueDetails = {"title": "flutata", "labels": ["LA_kwDOH8VRDs8AAAABDEPzrw", "LA_kwDOH8VRDs8AAAABDEPzrg"], "id": "I_kwDOH8VRDs5XivJQ" };
-    // let issueData = await ghV2.rebuildIssue( authData, "R_kgDOH8VRDg", "PVT_kwDOA8JELs4AIeW_", issueDetails, "", "XYZ123" );
-    // await ghV2.addComment( authData, "I_kwDOH8VRDs5XivJQ", "blat" );
-    // await ghV2.updateIssue( authData, "I_kwDOH8VRDs5XivJQ", "title", "flutata" );
-    // await ghV2.addAssignee( authData, "I_kwDOH8VRDs5XivJQ", "MDQ6VXNlcjgzNzI5OTM5" );
-    // await ghV2.remAssignee( authData, "I_kwDOH8VRDs5XivJQ", "MDQ6VXNlcjgzNzI5OTM5" );
-    // let a = await ghV2.getAssignees( authData, "I_kwDOH8VRDs5XivJQ" );
-    // console.log( a );
-    // await ghV2.updateProject( authData, "PVT_kwDOA8JELs4AIeW_", "boogy" );    
-
-    // Ahhhh.
-    // in progress: "8dc16716",  todo: "f75ad846"
-    // await ghV2.updateColumn( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "f75ad846" ); 
-    // await ghV2.moveCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "8dc16716" );
-    // console.log( ghV2.getProjectName( authData, ghLinks, "CE_ServTest_usda23k425", "PVT_kwDOA8JELs4AIeW_" ));
-    // let card = await ghV2.getCard( authData, "PVTI_lADOA8JELs4AIeW_zgDd0Rs" );
-    // console.log( "CARD", card );
-    // let card = await ghV2.createProjectCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgDd0Rs", "PVTSSF_lADOA8JELs4AIeW_zgFSLk8", "8dc16716" );
-    // console.log( "CARD", card );
-    // let rv = await ghV2.removeCard( authData, "PVT_kwDOA8JELs4AIeW_", "PVTI_lADOA8JELs4AIeW_zgEN4MU" );
-    // console.log( "remove", rv );
-    // await ghV2.createProject( authData, "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2", "R_kgDOH8VRDg", "A newerester project" );
-    // await ghV2.getOwnerId( authData, "ariCETester" );
-    // await ghV2.getRepoId( authData, "codeEquity", "bubba" );
-    // await ghV2.getRepoId( authData, "ariCETester", "ceFlutterTester" );
-    let labelIssues = [];
-    await ghV2.getLabelIssues(  authData, "codeEquity", "bubba", "bug", labelIssues, -1 );
-    console.log( labelIssues );
-    
-    console.log( "----------------XX--------------------" );
-    
-    // let projectDetail = await ghV2.getProjectFromNode( authData, item.project_node_id );
-    // console.log( "\n\n", "Got projectDetail:", projectDetail, "\n\n" );
-
-    // Note: can't set repo here for pd.. can be several.  Should not need to..?
-    pd.projectId      = item.project_node_id;
-    console.log( "In pv2 handler, pd?");
-    pd.show();
-
+    let item = pd.reqBody.projects_v2_item;
     assert( typeof item !== 'undefined' );
 
     if( item.content_type != "Issue" ) {
 	console.log( "Skipping", item.content_type, action );
-	console.log( reqBody );
 	return;
     }
+
+    // Note: can't set repo here for pd.. can be several.  
+    let actor    = pd.actor;        // Actor is the event generator.
+    let reqBody  = pd.reqBody;
+    pd.projectId = item.project_node_id;
+    console.log( "In pv2 handler, pd:");
+    pd.show();
 
     // XXX need to pass in and return res from ceRouter
 
@@ -128,6 +62,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // * convert draft issue -> projects_v2_item:reorder     draft issue     (sometimes)
     // * (pick a repo)       -> projects_v2_item:converted   issue
     //                       -> issues          :opened      XXX confirm event
+
+    // Create issue, by hand from within repo
+    //                       -> issues          :opened      
 
     // Create label : have to open issue in new tab (!!)
     // * create new label    -> label          :created

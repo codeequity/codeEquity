@@ -114,7 +114,7 @@ function summarizeQueue( ceJobs, msg, limit ) {
 // Do not remove top, that is getNextJob's sole perogative
 // add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
 async function demoteJob( jd ) {
-    console.log( "Demoting", jd.queueId, jd.delayCount );
+    console.log( "    Demoting", jd.queueId, jd.delayCount );
     let oldDelayCount = jd.delayCount; 
     stampJob( jd, oldDelayCount+1 );
 
@@ -216,8 +216,6 @@ async function getNextJob( authData, res ) {
 	// Send authData so cogLast, is correct.
 	// But reset authData.pat to keep parent pat correct.
 	let tmp = authData.pat;
-	// XXX
-	console.log( "XXX Get next job" );
 	getAuths( authData, jobData.host, jobData.projMgmtSys, jobData.org, jobData.actor );
 	ic.pat = authData.pat;
 	authData.pat = tmp;
