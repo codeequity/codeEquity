@@ -18,7 +18,7 @@ class GH2Data {
 	this.actor      = jd.actor;
 	this.reqBody    = jd.reqBody;
 
-	this.fullName   = config.EMPTY;  // of the current repository.. maybe remove?
+	this.repoName   = config.EMPTY;  // of the current repository.. maybe remove?
 
 	this.projectId      = config.EMPTY;    // host project data, gql node_id's not databaseIds
 	this.issueId        = config.EMPTY;
@@ -63,7 +63,7 @@ class GH2Data {
 	if( this.ceProjectId != -1           ) { console.log( "ceProjectId", this.ceProjectId ); }
 	if( this.org         != config.EMPTY ) { console.log( "org", this.org ); }
 	if( this.actor       != config.EMPTY ) { console.log( "actor", this.actor ); }
-	if( this.fullName    != config.EMPTY ) { console.log( "fullName", this.fullName ); }
+	if( this.repoName    != config.EMPTY ) { console.log( "repoName", this.repoName ); }
 
 	if( this.projectId      != config.EMPTY ) { console.log( "projectId", this.projectId ); }
 	if( this.issueId        != config.EMPTY ) { console.log( "issueId", this.issueId ); }

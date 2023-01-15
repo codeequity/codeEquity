@@ -122,6 +122,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 				datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
 				datum.HostColumnName  = pfc.options[k].name;
 				datum.HostColumnId    = pfc.options[k].id;
+				datum.HostUtility     = statusId;
 				locData.push( datum );
 			    }
 			}
@@ -1002,6 +1003,72 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 
 
 
+// NOTE: As of 1/2023 GH API does not support management of the status column for projects
+//       For now, verify that a human has created this by hand.... https://github.com/orgs/community/discussions/44265 
+async function createUnClaimedProject( authData, ghLinks, pd  )
+{
+    const unClaimed = config.UNCLAIMED;
+
+    let unClaimedProjId = -1;
+    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.repoName, "projName": unClaimed } );
+    unClaimedProjId = locs == -1 ? locs : locs[0].HostProjectId;
+    if( unClaimedProjId == -1 ) {
+	// XXX revisit once (if) GH API supports column creation
+	//     note, we CAN create projects, but there is little point if required columns must also be created.
+	//     note, could make do with 'no status' for unclaimed:unclaimed, but would fail for unclaimed:accrued and other required columns.
+	console.log( "Error.  Please create the", unClaimed, "project by hand, for now." );
+    }
+
+    return unClaimedProjId;
+}
+
+// NOTE: As of 1/2023 GH API does not support management of the status column for projects
+//       For now, verify that a human has created this by hand.... https://github.com/orgs/community/discussions/44265 
+async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, issueId, accr )
+{
+    let   loc = -1;
+    const unClaimed = config.UNCLAIMED;
+    const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
+
+    // Get locs again, to update after uncl. project creation 
+    locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.repoName, "projName": unClaimed } );
+    if( locs == -1 ) {
+	// XXX revisit once (if) GH API supports column creation
+	console.log( "Error.  Please create the", unClaimed, "project by hand, for now." );
+    }
+    else {
+	assert( unClaimedProjId == locs[0].HostProjectId );
+	
+	loc = locs.find( loc => loc.HostColumnName == colName );
+	
+	if( typeof loc === 'undefined' ) {
+	    // XXX revisit once (if) GH API supports column creation
+	    console.log( "Error.  Please create the", unClaimed, "and", config.PROJ_COLS[config.PROJ_ACCR], "columns, by hand, for now." );
+	    loc = -1;
+	}
+    }
+    return loc;
+}
+
+
+// Note. alignment risk
+// Don't care about state:open/closed.  unclaimed need not be visible.
+async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
+{
+    let unClaimedProjId = await createUnClaimedProject( authData, ghLinks, pd );
+    let loc             = await createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, issueId, accr );
+
+    assert( unClaimedProjId != -1 );
+    assert( loc.HostColumnId != -1  );
+    assert( loc != -1  );
+
+    // create card in unclaimed:unclaimed
+    let card = await createProjectCard( authData, unClaimedProjId, issueId, loc.HostUtility, loc.HostColumnId, false );
+    return card;
+}
+
+
+
 exports.getProjectFromNode = getProjectFromNode;
 exports.getFromIssueNode   = getFromIssueNode;
     
@@ -1045,3 +1112,7 @@ exports.removeCard         = removeCard;
 exports.getOwnerId         = getOwnerId;
 exports.getRepoId          = getRepoId;
 exports.getLabelIssues     = getLabelIssues;
+
+exports.createUnClaimedProject = createUnClaimedProject;
+exports.createUnClaimedColumn  = createUnClaimedColumn;
+exports.createUnClaimedCard    = createUnClaimedCard;

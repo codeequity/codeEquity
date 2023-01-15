@@ -7,7 +7,8 @@ class LocationData {
 	this.HostProjectId   = "";      // a string-ified id that is unique within hostPlatform
 	this.HostProjectName = "";      // 
 	this.HostColumnId    = "";      // a string-ified id that is unique within hostProject
-	this.HostColumnName  = "";      // 
+	this.HostColumnName  = "";      //
+	this.HostUtility     = "";      // a utility slot for hosts.  for example, PV2 uses this to retain status field id.  Classic does not use this.
 	this.Active          = "false"; // is this location currently valid
     }
 
@@ -18,13 +19,14 @@ class LocationData {
 	this.HostProjectName = oldLoc.hasOwnProperty( "HostProjectName" ) ? oldLoc.HostProjectName : "";
 	this.HostColumnId    = oldLoc.hasOwnProperty( "HostColumnId" )    ? oldLoc.HostColumnId : "";
 	this.HostColumnName  = oldLoc.hasOwnProperty( "HostColumnName" )  ? oldLoc.HostColumnName : "";
+	this.HostUtility     = oldLoc.hasOwnProperty( "HostUtility" )     ? oldLoc.HostUtility : "";
 	this.Active          = oldLoc.hasOwnProperty( "Active" )          ? oldLoc.Active : "";
     }
     
     show() {
 	console.log( "CEProject", this.CEProjectId );
 	console.log( "repo,project,col:", this.HostRepository, this.HostProjectName, this.HostColumnName);
-	console.log( "pid,cid,active:", this.HostProjectId, this.ColumnId, this.Active);
+	console.log( "pid,cid,utility,active:", this.HostProjectId, this.HostColumnId, this.HostUtility, this.Active);
     }
     
 }

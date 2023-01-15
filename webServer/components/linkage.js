@@ -365,6 +365,7 @@ class Linkage {
 	return links;
     }
 
+    // No match on utility slot.  yet?
     getLocs( authData, query ) {
 	console.log( authData.who, "get Locs", query );
 	this.showLocs();
@@ -547,6 +548,7 @@ class Linkage {
 			aloc.HostProjectName = loc.HostProjectName;
 			aloc.HostColumnId    = loc.HostColumnId;
 			aloc.HostColumnName  = loc.HostColumnName;
+			aloc.HostUtility     = loc.HostUtility;
 			aloc.Active          = loc.Active;
 
 			locs.push( aloc );

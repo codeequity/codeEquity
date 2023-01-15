@@ -541,6 +541,7 @@ async function updateLinkage( newLoc ) {
 		loc.HostRepository  = newLoc.Location.HostRepository;
 		loc.HostProjectName = newLoc.Location.HostProjectName;
 		loc.HostColumnName  = newLoc.Location.HostColumnName;
+		loc.HostUtility     = newLoc.Location.HostUtility;
 		loc.Active          = newLoc.Location.Active;
 		foundLoc = true;
 	    }
@@ -557,6 +558,7 @@ async function updateLinkage( newLoc ) {
 	aloc.HostRepository  = newLoc.Location.HostRepository;
 	aloc.HostColumnId    = newLoc.Location.HostColumnId;
 	aloc.HostColumnName  = newLoc.Location.HostColumnName;
+	aloc.HostUtility     = newLoc.Location.HostUtility;
 	aloc.Active          = newLoc.Location.Active;
 	oldSummary.Locations.push( aloc );
     }
