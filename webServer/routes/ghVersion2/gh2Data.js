@@ -4,7 +4,7 @@ const jobData = require( '../jobData' );
 
 class GH2Data {
 
-    constructor( jd, ceProjects, ceProjectId ) {
+    constructor( jd, ceProjects, CEProjectId ) {
 	// If project_node_id is not in ceProjects, then a new project has been created 'secretly' (thanks GH).
 	// this can be done with or without a repo, or by linking to several repos.
 	// XXX after the fact, CE will need to check if two repos from different CEProjectIds were linked, then reject.
@@ -12,15 +12,14 @@ class GH2Data {
 	// XXX in either case, may need ceFlutter to assign hostProj to ceProj.
 	//     when linking hostProj to repo, could do assignment to ceProj internally.
 
-	if( typeof ceProjectId !== 'undefined' ) { this.ceProjectId = ceProjectId; }
-	else                                     { this.ceProjectId = this.getCEProjectId( jd, ceProjects ); }
+	if( typeof CEProjectId !== 'undefined' ) { this.CEProjectId = CEProjectId; }
+	else                                     { this.CEProjectId = this.getCEProjectId( jd, ceProjects ); }
 	
 	this.org        = jd.org;
 	this.actor      = jd.actor;
 	this.reqBody    = jd.reqBody;
 
-	this.repoName   = config.EMPTY;  // of the current repository.. maybe remove?
-
+	this.repoId         = config.EMPTY;    // pv2 nodeId
 	this.projectId      = config.EMPTY;    // host project data, gql node_id's not databaseIds
 	this.issueId        = config.EMPTY;
 	this.issueNum       = -1;
@@ -38,7 +37,7 @@ class GH2Data {
 	jd.actor   = orig.actor;
 	jd.reqBody = orig.reqBody;
 	
-	let newPD        = new GH2Data( jd, {}, orig.ceProjectId );
+	let newPD        = new GH2Data( jd, {}, orig.CEProjectId );
 	newPD.projectId  = orig.projectId;
 	newPD.issueId    = orig.issueId;
 	newPD.issueNum   = orig.issueNum;
@@ -79,10 +78,10 @@ class GH2Data {
     
     show() {
 	console.log( "GH2Data object contents" );
-	if( this.ceProjectId != -1           ) { console.log( "ceProjectId", this.ceProjectId ); }
+	if( this.CEProjectId != -1           ) { console.log( "CEProjectId", this.CEProjectId ); }
 	if( this.org         != config.EMPTY ) { console.log( "org", this.org ); }
 	if( this.actor       != config.EMPTY ) { console.log( "actor", this.actor ); }
-	if( this.repoName    != config.EMPTY ) { console.log( "repoName", this.repoName ); }
+	if( this.repoId      != config.EMPTY ) { console.log( "repoId", this.repoId ); }
 
 	if( this.projectId      != config.EMPTY ) { console.log( "projectId", this.projectId ); }
 	if( this.issueId        != config.EMPTY ) { console.log( "issueId", this.issueId ); }

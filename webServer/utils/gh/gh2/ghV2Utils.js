@@ -149,6 +149,10 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		const optionId = issue.fieldValueByName == null  ? config.EMPTY        : issue.fieldValueByName.optionId; 
 		
 		if( issue.type == "ISSUE" ) {
+
+		    let links = issue.content.projectItems.edges;    // reverse links.. yay!  used only for populateCELinkage, then tossed
+		    if( links.length >= 100 ) { console.log( "WARNING.  Detected a very large number of cards, ignoring some." ); }
+		    
 		    let datum = {};
 		    datum.issueId     = issue.content.id;              // contentId I_*
 		    datum.issueNum    = issue.content.number;
@@ -158,7 +162,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		    datum.projectId   = locData[0].HostProjectId;    
 		    datum.columnName  = status;
 		    datum.columnId    = optionId;
-		    datum.allCards    = issue.content.projectItems.edges;    // reverse links.. yay!  used only for populateCELinkage, then tossed
+		    datum.allCards    = links;
 		    
 		    linkData.push( datum );
 		}
@@ -383,11 +387,11 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 
 
 // Label descriptions help determine if issue is an allocation
-async function getIssue( authData, issueNodeId ) {
+async function getIssue( authData, issueId ) {
     let retVal   = [];
-    if( issueNodeId == -1 ) { return retVal; }
+    if( issueId == -1 ) { return retVal; }
     
-    let issue = await getFullIssue( authData, issueNodeId );
+    let issue = await getFullIssue( authData, issueId );
     let retIssue = [];
     
     retIssue.push( issue.id );
@@ -400,9 +404,9 @@ async function getIssue( authData, issueNodeId ) {
     
 }
 
-// More is available.. needed?
-async function getFullIssue( authData, issueNodeId ) {
-    console.log( "Get Full Issue", issueNodeId );
+// More is available.. needed?.  Content id here, not project item id
+async function getFullIssue( authData, issueId ) {
+    console.log( "Get Full Issue", issueId );
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -417,7 +421,7 @@ async function getFullIssue( authData, issueNodeId ) {
                      title
                   }}}`;
 
-    let variables = {"id": issueNodeId};
+    let variables = {"id": issueId};
     let queryJ    = JSON.stringify({ query, variables });
 
     let issue = {};
@@ -427,39 +431,39 @@ async function getFullIssue( authData, issueNodeId ) {
 	    if( issue.assignees.edges.length > 99 ) { console.log( "WARNING.  Large number of assignees.  Ignoring some." ); }
 	    if( issue.labels.edges.length > 99 )    { console.log( "WARNING.  Large number of labels.  Ignoring some." ); }
 	})
-	.catch( e => ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, issueNodeId ));
+	.catch( e => ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, issueId ));
     
     return issue;
 }
 
-async function updateIssue( authData, issueNodeId, field, newValue ) {
+async function updateIssue( authData, issueId, field, newValue ) {
 
     let query     = "";
     if(      field == "state" ) { query = `mutation( $id:ID!, $value:IssueState ) { updateIssue( input:{ id: $id, state: $value }) {clientMutationId}}`; }
     else if( field == "title" ) { query = `mutation( $id:ID!, $value:String )     { updateIssue( input:{ id: $id, title: $value }) {clientMutationId}}`; }
     
-    let variables = {"id": issueNodeId, "value": newValue };
+    let variables = {"id": issueId, "value": newValue };
     let queryJ    = JSON.stringify({ query, variables });
 
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    console.log( authData.who, "updateIssue done" );
 	})
-	.catch( e => ghUtils.errorHandler( "updateIssue", e, updateIssue, authData, issueNodeId, field, newValue ));
+	.catch( e => ghUtils.errorHandler( "updateIssue", e, updateIssue, authData, issueId, field, newValue ));
     return true;
 }
 
-async function updateTitle( authData, issueNodeId, title ) {
-    return await updateIssue( authData, issueNodeId, "title", title );
+async function updateTitle( authData, issueId, title ) {
+    return await updateIssue( authData, issueId, "title", title );
 }
 
-async function addComment( authData, issueNodeId, msg ) {
+async function addComment( authData, issueId, msg ) {
     let query     = `mutation( $id:ID!, $msg:String! ) { addComment( input:{ subjectId: $id, body: $msg }) {clientMutationId}}`;
-    let variables = {"id": issueNodeId, "msg": msg };
+    let variables = {"id": issueId, "msg": msg };
     let queryJ    = JSON.stringify({ query, variables });
 
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "addComment", e, addComment, authData, issueNodeId, msg ));
+	.catch( e => ghUtils.errorHandler( "addComment", e, addComment, authData, issueId, msg ));
     return true;
 }
 
@@ -499,52 +503,52 @@ async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, sp
 }
 
 
-async function addAssignee( authData, issueNodeId, aNodeId ) {
+async function addAssignee( authData, issueId, aNodeId ) {
 
     let ret = false;
-    console.log( "Add assignee", issueNodeId, aNodeId );
+    console.log( "Add assignee", issueId, aNodeId );
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "addAssignee" )
-	    .catch( e => ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, issueNodeId, aNodeId )); 
+	    .catch( e => ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, issueId, aNodeId )); 
     }
     else {
 	let query = `mutation( $id:ID!, $adds:[ID!]! )
                     { addAssigneesToAssignable( input:{ assignableId: $id, assigneeIds: $adds }) {clientMutationId}}`;
 	
-	let variables = {"id": issueNodeId, "adds": [aNodeId] };
+	let variables = {"id": issueId, "adds": [aNodeId] };
 	let queryJ    = JSON.stringify({ query, variables });
 	
 	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	    ret = await ghUtils.errorHandler( "addAssignee", ret, addAssignee, authData, issueNodeId, aNodeId );
+	    ret = await ghUtils.errorHandler( "addAssignee", ret, addAssignee, authData, issueId, aNodeId );
 	    return ret;
 	}
     }
     return ret;
 }
 
-async function remAssignee( authData, issueNodeId, aNodeId ) {
+async function remAssignee( authData, issueId, aNodeId ) {
     let query = `mutation( $id:ID!, $adds:[ID!]! )
                  { removeAssigneesFromAssignable( input:{ assignableId: $id, assigneeIds: $adds }) {clientMutationId}}`;
     
-    let variables = {"id": issueNodeId, "adds": [aNodeId] };
+    let variables = {"id": issueId, "adds": [aNodeId] };
     let queryJ    = JSON.stringify({ query, variables });
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "remAssignee", e, remAssignee, authData, issueNodeId, aNodeId ));
+	.catch( e => ghUtils.errorHandler( "remAssignee", e, remAssignee, authData, issueId, aNodeId ));
 }
 
 // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
 // Note. alignment risk - card info could have moved on
-async function getAssignees( authData, issueNodeId ) {
+async function getAssignees( authData, issueId ) {
 
     let retVal = [];
-    if( issueNodeId == -1 ) { console.log( "getAssignees: bad issue", issueNodeId ); return retVal; }
+    if( issueId == -1 ) { console.log( "getAssignees: bad issue", issueId ); return retVal; }
 
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "getAssignees" )
-	    .catch( e => retVal = ghUtils.errorHandler( "getAssignees", utils.FAKE_ISE, getAssignees, authData, issueNodeId));
+	    .catch( e => retVal = ghUtils.errorHandler( "getAssignees", utils.FAKE_ISE, getAssignees, authData, issueId));
     }
     else {
 
@@ -553,7 +557,7 @@ async function getAssignees( authData, issueNodeId ) {
                         ... on Issue {
                            assignees(first: 100)    { edges { node { login id }}}
                   }}}`;
-	let variables = {"id": issueNodeId };
+	let variables = {"id": issueId };
 	let queryJ    = JSON.stringify({ query, variables });
 	
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
@@ -565,21 +569,21 @@ async function getAssignees( authData, issueNodeId ) {
 		}
 		
 	    })
-	    .catch( e => retVal = ghUtils.errorHandler( "getAssignees", e, getAssignees, authData, issueNodeId ));
+	    .catch( e => retVal = ghUtils.errorHandler( "getAssignees", e, getAssignees, authData, issueId ));
     }
     return retVal;
 }
 
 // XXX untested
-async function transferIssue( authData, issueNodeId, newRepoNodeId) {
+async function transferIssue( authData, issueId, newRepoNodeId) {
 
     let query = `mutation ($issueId: ID!, $repoId: ID!) 
                     { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId, createLabelsIfMissing: true }) {clientMutationId}}`;
-    let variables = {"issueId": issueNodeId, "repoId": newRepoNodeId };
+    let variables = {"issueId": issueId, "repoId": newRepoNodeId };
     query = JSON.stringify({ query, variables });
 
     let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.catch( e => ghUtils.errorHandler( "transferIssue", e, transferIssue, authData, issueNodeId, newRepoNodeId ));
+	.catch( e => ghUtils.errorHandler( "transferIssue", e, transferIssue, authData, issueId, newRepoNodeId ));
 }
 
 
@@ -646,8 +650,8 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     return labelRes;
 }
 
-async function getLabels( authData, issueNodeId ) {
-    console.log( "Get labels on issue", issueNodeId );
+async function getLabels( authData, issueId ) {
+    console.log( "Get labels on issue", issueId );
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -655,7 +659,7 @@ async function getLabels( authData, issueNodeId ) {
                        labels(first: 99) {
                           edges { node { id, name, color, description }}}
                   }}}`;
-    let variables = {"id": issueNodeId };
+    let variables = {"id": issueId };
     let queryJ    = JSON.stringify({ query, variables });
 
     let labels = [];
@@ -669,7 +673,7 @@ async function getLabels( authData, issueNodeId ) {
 		labels.push( label );
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getLabels", e, getLabels, authData, issueNodeId ));
+	.catch( e => ghUtils.errorHandler( "getLabels", e, getLabels, authData, issueId ));
     
     return labels;
 }    
@@ -729,21 +733,21 @@ async function updateLabel( authData, labelNodeId, name, desc, color ) {
 }
 
 // Primarily used when double-peq label an issue
-async function removeLabel( authData, labelNodeId, issueNodeId ) {
-    console.log( "Remove label", labelNodeId, "from", issueNodeId );
+async function removeLabel( authData, labelNodeId, issueId ) {
+    console.log( "Remove label", labelNodeId, "from", issueId );
 
     let query     = `mutation( $labelIds:[ID!]!, $labelableId:ID! ) 
                         { removeLabelsFromLabelable( input:{ labelIds: $labelIds, labelableId: $labelableId })  {clientMutationId}}`;
-    let variables = {"labelIds": [labelNodeId], "labelableId": issueNodeId };
+    let variables = {"labelIds": [labelNodeId], "labelableId": issueId };
     let queryJ    = JSON.stringify({ query, variables });
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "removeLabel", e, removeLabel, authData, labelNodeId, issueNodeId ));
+	.catch( e => ghUtils.errorHandler( "removeLabel", e, removeLabel, authData, labelNodeId, issueId ));
     return true;
 }
     
-async function removePeqLabel( authData, issueNodeId ) {
-    var labels = await getLabels( authData, issueNodeId );
+async function removePeqLabel( authData, issueId ) {
+    var labels = await getLabels( authData, issueId );
 
     if( typeof labels === 'undefined' || labels == false || labels.length <= 0 ) { return false; }
     if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum );} 
@@ -754,28 +758,28 @@ async function removePeqLabel( authData, issueNodeId ) {
 	const tval = ghUtils.parseLabelDescr( [label.description] );
 	if( tval > 0 ) { peqLabel = label; break; }
     }
-    await removeLabel( authData, peqLabel.id, issueNodeId );
+    await removeLabel( authData, peqLabel.id, issueId );
 
     return true;
 }
 
-async function addLabel( authData, labelNodeId, issueNodeId ) {
-    console.log( "Add label", labelNodeId, "to", issueNodeId );
+async function addLabel( authData, labelNodeId, issueId ) {
+    console.log( "Add label", labelNodeId, "to", issueId );
 
     let query     = `mutation( $labelIds:[ID!]!, $labelableId:ID! ) 
                         { addLabelsToLabelable( input:{ labelIds: $labelIds, labelableId: $labelableId })  {clientMutationId}}`;
-    let variables = {"labelIds": [labelNodeId], "labelableId": issueNodeId };
+    let variables = {"labelIds": [labelNodeId], "labelableId": issueId };
     let queryJ    = JSON.stringify({ query, variables });
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "addLabel", e, addLabel, authData, labelNodeId, issueNodeId ));
+	.catch( e => ghUtils.errorHandler( "addLabel", e, addLabel, authData, labelNodeId, issueId ));
     return true;
 }
 
-async function rebuildLabel( authData, oldLabelId, newLabelId, issueNodeId ) {
+async function rebuildLabel( authData, oldLabelId, newLabelId, issueId ) {
     // Don't wait.  
-    removeLabel( authData, oldLabelId, issueNodeId );
-    addLabel( authData, newLabelId, issueNodeId );
+    removeLabel( authData, oldLabelId, issueId );
+    addLabel( authData, newLabelId, issueId );
 }
 
 function getProjectName( authData, ghLinks, ceProjId, projId ) {

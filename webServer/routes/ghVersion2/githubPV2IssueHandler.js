@@ -7,6 +7,7 @@ const awsUtils = require( '../../utils/awsUtils' );
 const ghUtils  = require( '../../utils/gh/ghUtils' );
 
 const ghV2     = require( '../../utils/gh/gh2/ghV2Utils' );
+const gh2Data  = require( '../../utils/gh/gh2/gh2DataUtils' );
 
 // Terminology:
 // situated issue: an issue with a card in a CE-valid project structure
@@ -105,7 +106,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	{
 	    // XXXX XXXXX This will go away with ceFlutter
 	    if( ghUtils.populateRequest( pd.reqBody['issue']['labels'] )) {
-		await ghUtils.populateCELinkage( authData, ghLinks, pd );
+		await gh2Data.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
 
