@@ -127,6 +127,72 @@ async function checkForPV2( PAT, nodeId ) {
 
 }
 
+function populateRequest( labels ) {
+    let retVal = false;
+
+    for( label of labels ) {
+	if( label.name == config.POPULATE ) {
+	    retVal = true;
+	    break;
+	}
+    }
+
+    return retVal;
+}
+
+// Add linkage data for all carded issues in a new project, then resolve to guarantee 1:1
+// 
+// This occurs once only per repo, preferably when CE usage starts.
+// Afterwards, if a newborn issue adds a card, cardHandler will pick it up.
+// Afterwards, if a newborn issue adds peqlabel, create card, cardHandler will pick it up.
+// Afterwards, if a newborn card converts to issue, pick it up in issueHandler
+async function populateCELinkage( authData, ghLinks, pd )
+{
+    console.log( authData.who, "Populate CE Linkage start" );
+    // Wait later
+    let origPop = awsUtils.checkPopulated( authData, pd.CEProjectId );
+
+    // XXX this does more work than is needed - checks for peqs which only exist during testing.
+    const proj = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
+    let linkage = await ghLinks.initOneProject( authData, proj );
+
+    // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
+    // Resolve here to split those up.  Normally, would then worry about first time users being confused about
+    // why the new peq label applied to their 1:m issue, only 'worked' for one card.
+    // But, populate will be run from ceFlutter, separately from actual label notification.
+    pd.peqType    = "end";
+    
+    // Only resolve once per issue.  Happily, PV2 gql model has reverse links from issueContentId to cards (pvti_* node ids)
+    // Note: allCards are still raw: [ {node: {id:}}, {{}}, ... ]
+    // Note: linkage is also raw.. XXX unify naming?
+    // Note: GH allows an issue to have multiple locations, but only 1 per host project.
+    //       A ceProject may have multiple host projects, linkage is per ceProject, iteration to create linkage is per card, so issueContent may show up twice.
+    let promises = [];
+    for( link in linkage ) {
+	if( typeof link.duplicate === 'undefined' ) {
+	    if( link.allCards.length > 1 ) {
+		console.log( "Found link with multiple cards", link );
+		pd.issueId  = link.issueId;
+		pd.issueNum = link.issueNum;
+		let pdCopy = new gh2Data.copyCons( pd );
+		promises.push( resolve( authData, ghLinks, pdCopy, "???" ) );
+	    }
+	}
+	// mark duplicates
+	linkage.forEach(l => if( l.issueId == link.issueId ) { l.duplicate = true; } );
+    }
+    await Promise.all( promises );
+
+    origPop = await origPop;  // any reason to back out of this sooner?
+    assert( !origPop );
+    // Don't wait.
+    awsUtils.setPopulated( authData, pd.CEProjectId );
+    console.log( authData.who, "Populate CE Linkage Done" );
+    return true;
+}
+
+
+
 // no commas, no shorthand, just like this:  'PEQ value: 500'  or 'Allocation PEQ value: 30000'
 function parseLabelDescr( labelDescr ) {
     let peqValue = 0;
@@ -212,7 +278,8 @@ function theOnePEQ( labels ) {
 exports.errorHandler = errorHandler;
 exports.postGH       = postGH;
 
-exports.checkForPV2  = checkForPV2;
+exports.checkForPV2     = checkForPV2;
+exports.populateRequest = populateRequest;
 
 exports.parseLabelDescr = parseLabelDescr;
 exports.parseLabelName  = parseLabelName;

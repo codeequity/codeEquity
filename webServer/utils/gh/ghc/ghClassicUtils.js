@@ -194,10 +194,6 @@ var githubUtils = {
 	return transferIssueGQL( authData, issueId, toRepoId );
     },
 
-    populateRequest: function( labels ) {
-	return populateRequest( labels );
-    },
-
     getCEProjectLayout: function( authData, ghLinks, pd ) {
 	return getCEProjectLayout( authData, ghLinks, pd );
     },
@@ -549,20 +545,6 @@ async function createIssue( authData, owner, repo, title, labels, allocation ) {
 	.catch( e => issueData = ghUtils.errorHandler( "createIssue", e, createIssue, authData, owner, repo, title, labels, allocation ));
     
     return issueData;
-}
-
-
-function populateRequest( labels ) {
-    let retVal = false;
-
-    for( label of labels ) {
-	if( label.name == config.POPULATE ) {
-	    retVal = true;
-	    break;
-	}
-    }
-
-    return retVal;
 }
 
 async function getRepoLabelsGQL( PAT, owner, repo, data, cursor ) {

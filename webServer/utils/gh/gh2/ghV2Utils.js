@@ -41,16 +41,16 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
     const query1 = `query linkLoc($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
-            number title databaseId id
+            number title id
             items(first: 100) {
               pageInfo { hasNextPage, endCursor }
               edges { node {
-                  ... on ProjectV2Item { type databaseId id
+                  ... on ProjectV2Item { type id
                     fieldValueByName(name: "Status") {
                      ... on ProjectV2ItemFieldSingleSelectValue { name optionId field { ... on ProjectV2SingleSelectField { id }}}}
                     content {
                      ... on ProjectV2ItemContent {
-                       ... on Issue { databaseId number repository {nameWithOwner} title }}}
+                       ... on Issue { id number repository {nameWithOwner} title projectItems(first: 100) { edges {node { id }}} }}}
             }}}}
             views(first: 1) {
               edges {
@@ -68,16 +68,16 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
     const queryN = `query linkLoc($nodeId: ID!, $cursor: String!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
-            number title databaseId id
+            number title id
             items(first: 100 after: $cursor) {
               pageInfo { hasNextPage, endCursor }
               edges { node {
-                  ... on ProjectV2Item { type databaseId id
+                  ... on ProjectV2Item { type id
                     fieldValueByName(name: "Status") {
                      ... on ProjectV2ItemFieldSingleSelectValue { name optionId field { ... on ProjectV2SingleSelectField { id }}}}
                     content {
                      ... on ProjectV2ItemContent {
-                       ... on Issue { databaseId number repository {nameWithOwner} title }}}
+                       ... on Issue { id number repository {nameWithOwner} title projectItems(first: 100) { edges {node { id }}} }}}
             }}}}
             views(first: 1) {
               edges {
@@ -150,14 +150,15 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		
 		if( issue.type == "ISSUE" ) {
 		    let datum = {};
-		    datum.issueId     = issue.id;   // projectV2Item id pvti
+		    datum.issueId     = issue.content.id;              // contentId I_*
 		    datum.issueNum    = issue.content.number;
 		    datum.title       = issue.content.title;
-		    datum.cardId      = issue.id;
+		    datum.cardId      = issue.id;                      // projectV2Item id PVTI_*
 		    datum.projectName = locData[0].HostProjectName;    
 		    datum.projectId   = locData[0].HostProjectId;    
 		    datum.columnName  = status;
 		    datum.columnId    = optionId;
+		    datum.allCards    = issue.content.projectItems.edges;    // reverse links.. yay!  used only for populateCELinkage, then tossed
 		    
 		    linkData.push( datum );
 		}

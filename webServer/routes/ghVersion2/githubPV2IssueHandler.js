@@ -22,6 +22,60 @@ const ghV2     = require( '../../utils/gh/gh2/ghV2Utils' );
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
+async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label ) {
+    // Zero's peqval if 2 found
+    [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
+    
+    // more than 1 peq?  remove it.
+    let curVal  = ghUtils.parseLabelDescr( [ label.description ] );
+    if( pd.peqValue <= 0 && curVal > 0 ) {
+	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
+	// Don't wait, no dependence
+	ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, issueNum, label );
+	return false;
+    }
+    
+    // Current notification not for peq label?
+    if( pd.peqValue <= 0 || curVal <= 0 ) {
+	console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
+	return false;
+    }
+    
+    // Was this a carded issue?  Get linkage
+    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+    assert( links == -1 || links.length == 1 );
+    let link = links == -1 ? links : links[0];
+    
+    // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
+    // since can't create card without column_id.  No project, or column_id without triage.
+    if( link == -1 || link.GHColumnId == -1) {
+	if( link == -1 ) {    
+	    link = {};
+	    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.GHIssueId );
+	    let issueURL = card.content_url.split('/');
+	    assert( issueURL.length > 0 );
+	    link.GHIssueNum  = pd.GHIssueNum;
+	    link.GHCardId    = card.id
+	    link.GHProjectId = card.project_url.split('/').pop();
+	    link.GHColumnId  = card.column_url.split('/').pop();
+	}
+	else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
+	    let card = await gh.getCard( authData, link.GHCardId );
+	    link.GHColumnId  = card.column_url.split('/').pop();
+	}
+    }
+    
+    pd.updateFromLink( link );
+    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
+    
+    let content = [];
+    content.push( pd.GHIssueTitle );
+    content.push( label.description );
+    // Don't wait, no dependence
+    let retVal = ghcDUtils.processNewPEQ( authData, ghLinks, pd, content, link );
+    return (retVal != 'early' && retVal != 'removeLabel')
+}
+
 
 // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
 //          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
@@ -35,13 +89,13 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     console.log( authData.who, "issueHandler start", authData.job );
     
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
-    pd.IssueId    = pd.reqBody['issue']['id'];
+    pd.IssueId    = pd.reqBody['issue']['node_id'];         // issue content id
     pd.IssueNum   = pd.reqBody['issue']['number'];		
     pd.Creator    = pd.reqBody['issue']['user']['login'];
     pd.IssueTitle = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
-    // switch( action ) {
-    switch( issueId ) {
+    // switch( issueId ) {
+    switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
 	// Can peq-label newborn and carded issues that are not >= PROJ_PEND
@@ -50,8 +104,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
 	    // XXXX XXXXX This will go away with ceFlutter
-	    if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
-		await ghcDUtils.populateCELinkage( authData, ghLinks, pd );
+	    if( ghUtils.populateRequest( pd.reqBody['issue']['labels'] )) {
+		await ghUtils.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
 

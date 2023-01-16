@@ -4,7 +4,7 @@ const jobData = require( '../jobData' );
 
 class GH2Data {
 
-    constructor( jd, ceProjects ) {
+    constructor( jd, ceProjects, ceProjectId ) {
 	// If project_node_id is not in ceProjects, then a new project has been created 'secretly' (thanks GH).
 	// this can be done with or without a repo, or by linking to several repos.
 	// XXX after the fact, CE will need to check if two repos from different CEProjectIds were linked, then reject.
@@ -12,7 +12,8 @@ class GH2Data {
 	// XXX in either case, may need ceFlutter to assign hostProj to ceProj.
 	//     when linking hostProj to repo, could do assignment to ceProj internally.
 
-	this.ceProjectId = this.getCEProjectId( jd, ceProjects );
+	if( typeof ceProjectId !== 'undefined' ) { this.ceProjectId = ceProjectId; }
+	else                                     { this.ceProjectId = this.getCEProjectId( jd, ceProjects ); }
 	
 	this.org        = jd.org;
 	this.actor      = jd.actor;
@@ -31,6 +32,24 @@ class GH2Data {
 	this.projSub    = [];
     }
 
+    static copyCons( orig ) {
+	let jd     = {};
+	jd.org     = orig.org;
+	jd.actor   = orig.actor;
+	jd.reqBody = orig.reqBody;
+	
+	let newPD        = new GH2Data( jd, {}, orig.ceProjectId );
+	newPD.projectId  = orig.projectId;
+	newPD.issueId    = orig.issueId;
+	newPD.issueNum   = orig.issueNum;
+	newPD.issueTitle = orig.issueTitle;
+	newPD.peqValue   = orig.peqValue;
+	newPD.peqType    = orig.peqType;
+	newPD.assignees  = orig.assignees;
+	newPD.projSub    = orig.projSub;
+	return newPD;
+    }
+    
     getCEProjectId( jd, ceProjects ) {
 
 	// ceProjects.show();

@@ -195,7 +195,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
 	    // XXXX XXXXX This will go away with ceFlutter
-	    if( gh.populateRequest( pd.reqBody['issue']['labels'] )) {
+	    if( ghUtils.populateRequest( pd.reqBody['issue']['labels'] )) {
 		await ghcDUtils.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
