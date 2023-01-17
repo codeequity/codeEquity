@@ -49,9 +49,9 @@ class CEProjects {
 	for( const awsLoc of awsLinks[0].Locations ) {
 
 	    if( host == config.HOST_GH && pms == config.PMS_GHC ) {
-		org = awsLoc.HostRepository.split('/')[0];          // Take the owner (individual or org) as org
+		org = awsLoc.hostRepository.split('/')[0];          // Take the owner (individual or org) as org
 	    }
-	    let hpid = awsLoc.HostProjectId;
+	    let hpid = awsLoc.hostProjectId;
 
 	    if( !this.hp2cp[host][org].hasOwnProperty( hpid )) { this.hp2cp[host][org][hpid] = cpid; }
 	}

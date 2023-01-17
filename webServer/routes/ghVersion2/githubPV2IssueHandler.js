@@ -43,7 +43,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     }
     
     // Was this a carded issue?  Get linkage
-    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
     assert( links == -1 || links.length == 1 );
     let link = links == -1 ? links : links[0];
     
@@ -52,17 +52,17 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     if( link == -1 || link.GHColumnId == -1) {
 	if( link == -1 ) {    
 	    link = {};
-	    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.GHIssueId );
+	    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.issueId );
 	    let issueURL = card.content_url.split('/');
 	    assert( issueURL.length > 0 );
-	    link.GHIssueNum  = pd.GHIssueNum;
-	    link.GHCardId    = card.id
-	    link.GHProjectId = card.project_url.split('/').pop();
-	    link.GHColumnId  = card.column_url.split('/').pop();
+	    link.hostIssueNum  = pd.issueNum;
+	    link.hostCardId    = card.id
+	    link.hostProjectId = card.project_url.split('/').pop();
+	    link.hostColumnId  = card.column_url.split('/').pop();
 	}
 	else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
 	    let card = await gh.getCard( authData, link.GHCardId );
-	    link.GHColumnId  = card.column_url.split('/').pop();
+	    link.hostColumnId  = card.column_url.split('/').pop();
 	}
     }
     
@@ -70,7 +70,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     console.log( authData.who, "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
     
     let content = [];
-    content.push( pd.GHIssueTitle );
+    content.push( pd.issueName );
     content.push( label.description );
     // Don't wait, no dependence
     let retVal = ghcDUtils.processNewPEQ( authData, ghLinks, pd, content, link );
@@ -90,10 +90,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     console.log( authData.who, "issueHandler start", authData.job );
     
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
-    pd.IssueId    = pd.reqBody['issue']['node_id'];         // issue content id
-    pd.IssueNum   = pd.reqBody['issue']['number'];		
-    pd.Creator    = pd.reqBody['issue']['user']['login'];
-    pd.IssueTitle = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
+    pd.issueId    = pd.reqBody['issue']['node_id'];         // issue content id
+    pd.issueNum   = pd.reqBody['issue']['number'];		
+    pd.Creator    = pd.reqBody['issue']['user']['login']; // XXX
+    pd.issueName = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
     // switch( issueId ) {
     switch( action ) {
@@ -119,7 +119,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( "PEQ labeled closed issue." )
 
 		// Must be situated by now.  Move, if in flatworld.
-		let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.FullName, "issueId": pd.IssueId } );
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
 		assert( links.length == 1 );
 		let link = links[0];
 
@@ -133,8 +133,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
-			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.FullName,
-								 link.GHIssueId, link.GHIssueTitle, link.GHProjectId );
+			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.repoName,
+								 link.GHIssueId, link.hostIssueName, link.GHProjectId );
 
 			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
 			}
@@ -161,26 +161,26 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 		
-	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.FullName, "issueId": pd.IssueId } );
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
 
 	    // GH already removed this.  Put it back.
 	    if( newNameIndex >= config.PROJ_ACCR ) {
 		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
-		ghSafe.addLabel( authData, pd.Owner, pd.Repo, pd.IssueNum, pd.reqBody.label );
+		ghSafe.addLabel( authData, pd.Owner, pd.Repo, pd.issueNum, pd.reqBody.label );  // XXXXXX
 		return;
 	    }
 	    
-	    let peq = await awsUtils.getPeq( authData, pd.CEProjectId, pd.IssueId );	
+	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );	
 	    console.log( "WARNING.  PEQ Issue unlabeled, issue no longer tracked." );
-	    ghLinks.rebaseLinkage( authData, pd.CEProjectId, pd.IssueId );   // setting various to -1, as it is now untracked
+	    ghLinks.rebaseLinkage( authData, pd.ceProjectId, pd.issueId );   // setting various to -1, as it is now untracked
 	    awsUtils.removePEQ( authData, peq.PEQId );
 	    awsUtils.recordPEQAction(
 		authData,
 		config.EMPTY,     // CE UID
 		pd.Creator,     // gh user name
-		pd.CEProjectId,
+		pd.ceProjectId,
 		config.PACTVERB_CONF,       // verb
 		config.PACTACT_DEL,         // action
 		[ peq.PEQId ],    // subject
@@ -227,7 +227,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let newColId = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
-		    let peqId = ( await( ghSafe.validatePEQ( authData, pd.FullName, pd.IssueId, pd.IssueTitle, ceProjectLayout[0] )) )['PEQId'];
+		    let peqId = ( await( ghSafe.validatePEQ( authData, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
 		    if( peqId == -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }
@@ -243,7 +243,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			    subject = [ peqId.toString(), newColId.toString() ];
 			}
 			
-			awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.CEProjectId,
+			awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.ceProjectId,
 					       verb, paction, subject, "",
 					       utils.getToday(), pd.reqBody );
 		    }
@@ -258,7 +258,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // Careful - reqBody.issue carries it's own assignee data, which is not what we want here
 	    // NOTE: blast create issue (fill in all values, then submit), assign notification may arrive before label notification.
 	    //       in this case, peq is not yet created, so peq.PEQId is bad.  
-	    console.log( authData.who, action, pd.reqBody.assignee.login, "to issue", pd.IssueId );
+	    console.log( authData.who, action, pd.reqBody.assignee.login, "to issue", pd.issueId );
 
 	    let allocation = false;
 	    [pd.peqValue, allocation] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
@@ -274,7 +274,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // Peq issues only.  PEQ tracks assignees from ceFlutter.  Just send PAct upstream.
-	    let peq = await awsUtils.getPeq( authData, pd.CEProjectId, pd.IssueId );
+	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 
 	    // This should only happen during blast-issue creation.
 	    if( peq == -1 ) {
@@ -288,17 +288,17 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let note = ( action == "assigned" ? "add" : "remove" ) + " assignee";
 
 	    // Not if ACCR
-	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.FullName, "issueId": pd.IssueId });
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
 	    if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( "WARNING.", links[0].GHColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
 		paction = config.PACTACT_NOTE;
 		note = "Bad assignment attempted";
-		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.Owner, pd.Repo, pd.IssueNum, assignee ); }
-		else                       { ghSafe.addAssignee( authData, pd.Owner, pd.Repo, pd.IssueNum, assignee ); }
+		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.Owner, pd.Repo, pd.issueNum, assignee ); }
+		else                       { ghSafe.addAssignee( authData, pd.Owner, pd.Repo, pd.issueNum, assignee ); }
 	    }
 	    
 	    let subject = [peq.PEQId.toString(), assignee];
-	    awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.CEProjectId,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.ceProjectId,
 				   verb, paction, subject, note,
 				   utils.getToday(), pd.reqBody );
 	}
@@ -310,26 +310,26 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		pd.reqBody.changes.title.hasOwnProperty( 'from' )) {
 
 		const newTitle = pd.reqBody.issue.title;
-		let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.FullName, "issueId": pd.IssueId } );
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
 		let link = links == -1 ? links : links[0]; 
 
-		if( link != -1 && link.GHIssueTitle != config.EMPTY) {
+		if( link != -1 && link.hostIssueName != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
 		    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
-			ghSafe.updateTitle( authData, pd.Owner, pd.Repo, pd.IssueNum, link.GHIssueTitle );
+			ghSafe.updateTitle( authData, pd.Owner, pd.Repo, pd.issueNum, link.hostIssueName );
 		    }
 		    else {
-			assert( pd.reqBody.changes.title.from == link.GHIssueTitle );
-			console.log( "Title changed from", link.GHIssueTitle, "to", newTitle );
+			assert( pd.reqBody.changes.title.from == link.hostIssueName );
+			console.log( "Title changed from", link.hostIssueName, "to", newTitle );
 			
 			// if link has title, we have situated card.
 			ghLinks.updateTitle( authData, link, newTitle );
-			let peq = await awsUtils.getPeq( authData, pd.CEProjectId, pd.IssueId );
+			let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 			assert( peq != -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
-			awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.CEProjectId,
+			awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.ceProjectId,
 					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
 					       utils.getToday(), pd.reqBody );
 		    }
@@ -361,7 +361,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		/* XXX REVISIT
 		// Check for xfer to another ceProject (i.e. ceServer-enabled repo).
-		const status = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
+		const status = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
 		const ceProj = status != -1 && status.Populated == "true" ? true : false;
 
 		if( ceProj ) {
@@ -384,10 +384,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		*/
 		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
-		let peq = await awsUtils.getPeq( authData, pd.CEProjectId, pd.IssueId, false );
+		let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
 		if( peq != -1 ) {
 		    const subject = [ peq.PEQId, fullRepoName ];
-		    awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.CEProjectId,
+		    awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.ceProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
 					   utils.getToday(), pd.reqBody );
 		}

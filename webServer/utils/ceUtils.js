@@ -57,7 +57,7 @@ async function getProjectSubs( authData, ghLinks, ceProjId, projName, colName ) 
     else {
 	// Check if project is a card in Master
 	let links = ghLinks.getLinks( authData, {"ceProjId": ceProjId, "projName": config.MAIN_PROJ, "issueTitle": projName} );
-	if( links != -1 ) { projSub = [ links[0]['HostColumnName'], projName ]; }
+	if( links != -1 ) { projSub = [ links[0]['hostColumnName'], projName ]; }
 	else              { projSub = [ projName ]; }
 
 	// No, induces too many special cases, with no return.

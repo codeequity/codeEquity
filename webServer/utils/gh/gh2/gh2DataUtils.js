@@ -29,7 +29,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
     // For case b, ensure ordering such that pd element (the current card-link) is acted on below - i.e. is not in position 0
     //             since the carded issue has already been acted on earlier.
-    if( pd.peqType != "end" && links[0].HostColumnId == pd.columnId ) {
+    if( pd.peqType != "end" && links[0].hostColumnId == pd.columnId ) {
 	console.log( "Ping" );
 	[links[0], links[1]] = [links[1], links[0]];
     }
@@ -37,7 +37,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     console.log( authData.who, "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.issueId, pd.issueNum );
 
     // Need all issue data, with mod to title and to comment
-    assert( links[0].HostIssueNum == pd.issueNum );
+    assert( links[0].hostIssueNum == pd.issueNum );
     let issue = await ghV2.getFullIssue( authData, pd.issueId );  
     assert( issue != -1 );
 
@@ -72,7 +72,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 
     // Create a new split issue for each copy, move new card loc if need be, set links
     for( let i = 1; i < links.length; i++ ) {
-	let origCardId = links[i].HostCardId;
+	let origCardId = links[i].hostCardId;
 	let splitTag   = utils.randAlpha(8);
 
 	// XXX Why is this needed?  initRepo gets it for all links, so not a populateCE issue.  Add a new card(loc) PNP will create new link....?
@@ -80,15 +80,15 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	/*
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
-	    links[i].HostProjectName = ghV2.getProjectName( authData, ghLinks, pd.CEProjectId, links[i].HostProjectId );  // if have pid, then have name..!
-	    links[i].HostColumnId    = ( await ghV2.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].HostColumnName  = ghV2.getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, links[i].GHColumnId ); 
+	    links[i].hostProjectName = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, links[i].hostProjectId );  // if have pid, then have name..!
+	    links[i].hostColumnId    = ( await ghV2.getCard( authData, origCardId ) ).column_url.split('/').pop();
+	    links[i].hostColumnName  = ghV2.getColumnName( authData, ghLinks, pd.ceProjectId, pd.GHFullName, links[i].GHColumnId ); 
 	}
 	*/
 	
 	let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
 	// XXX nyi .. this has already happened on GH.  rebuild protections matter - but that's about it.
-	let newCardId   = await ghV2.rebuildCard( authData, pd.CEProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
+	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
 	pd.issueId    = issueData[0];
 	pd.issueNum   = issueData[1];
@@ -105,7 +105,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    let projName   = links[i].GHProjectName;
 	    let colName    = links[i].GHColumnName;
 	    assert( projName != "" );
-	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, projName, colName );	    
+	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
 	    
 	    awsUtils.recordPeqData(authData, pd, false );
 	}
@@ -124,10 +124,10 @@ async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
     // Wait later
-    let origPop = awsUtils.checkPopulated( authData, pd.CEProjectId );
+    let origPop = awsUtils.checkPopulated( authData, pd.ceProjectId );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    const proj = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
+    const proj = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
     let linkage = await ghLinks.initOneProject( authData, proj );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
@@ -148,7 +148,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 		console.log( "Found link with multiple cards", link );
 		pd.issueId  = link.issueId;
 		pd.issueNum = link.issueNum;
-		let pdCopy = new gh2Data.copyCons( pd );
+		let pdCopy =  gh2Data.GH2Data.from( pd );
 		promises.push( resolve( authData, ghLinks, pdCopy, "???" ) );
 	    }
 	}
@@ -160,7 +160,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
     // Don't wait.
-    awsUtils.setPopulated( authData, pd.CEProjectId );
+    awsUtils.setPopulated( authData, pd.ceProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );
     return true;
 }

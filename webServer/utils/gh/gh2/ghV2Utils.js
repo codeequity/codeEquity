@@ -117,12 +117,12 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 			    statusId = pfc.id;
 			    for( let k = 0; k < pfc.options.length; k++ ) {
 				let datum   = {};
-				datum.HostRepository  = config.EMPTY;
-				datum.HostProjectName = project.title;
-				datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
-				datum.HostColumnName  = pfc.options[k].name;
-				datum.HostColumnId    = pfc.options[k].id;
-				datum.HostUtility     = statusId;
+				datum.hostRepository  = config.EMPTY;
+				datum.hostProjectName = project.title;
+				datum.hostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
+				datum.hostColumnName  = pfc.options[k].name;
+				datum.hostColumnId    = pfc.options[k].id;
+				datum.hostUtility     = statusId;
 				locData.push( datum );
 			    }
 			}
@@ -132,11 +132,11 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 	    
 	    // Build "No Status" by hand, since it corresponds to a null entry
 	    let datum   = {};
-	    datum.HostRepository  = config.EMPTY;
-	    datum.HostProjectName = project.title;
-	    datum.HostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
-	    datum.HostColumnName  = config.GH_NO_STATUS; 
-	    datum.HostColumnId    = config.EMPTY;           // no status column does not exist in view options above.  special case.
+	    datum.hostRepository  = config.EMPTY;
+	    datum.hostProjectName = project.title;
+	    datum.hostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
+	    datum.hostColumnName  = config.GH_NO_STATUS; 
+	    datum.hostColumnId    = config.EMPTY;           // no status column does not exist in view options above.  special case.
 	    locData.push( datum );
 	    
 	    assert( locData.length > 0 );
@@ -158,8 +158,8 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		    datum.issueNum    = issue.content.number;
 		    datum.title       = issue.content.title;
 		    datum.cardId      = issue.id;                      // projectV2Item id PVTI_*
-		    datum.projectName = locData[0].HostProjectName;    
-		    datum.projectId   = locData[0].HostProjectId;    
+		    datum.projectName = locData[0].hostProjectName;    
+		    datum.projectId   = locData[0].hostProjectId;    
 		    datum.columnName  = status;
 		    datum.columnId    = optionId;
 		    datum.allCards    = links;
@@ -787,7 +787,7 @@ function getProjectName( authData, ghLinks, ceProjId, projId ) {
 
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": projId } );
 
-    const projName = locs == -1 ? locs : locs[0].HostProjectName;
+    const projName = locs == -1 ? locs : locs[0].hostProjectName;
     return projName
 }
 
@@ -827,7 +827,7 @@ function getColumnName( authData, ghLinks, ceProjId, colId ) {
 
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "colId": colId } );
 
-    const colName = locs == -1 ? locs : locs[0].HostColumnName;
+    const colName = locs == -1 ? locs : locs[0].hostColumnName;
     return colName
 }
 
@@ -1015,8 +1015,8 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
     const unClaimed = config.UNCLAIMED;
 
     let unClaimedProjId = -1;
-    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.repoName, "projName": unClaimed } );
-    unClaimedProjId = locs == -1 ? locs : locs[0].HostProjectId;
+    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projName": unClaimed } );
+    unClaimedProjId = locs == -1 ? locs : locs[0].hostProjectId;
     if( unClaimedProjId == -1 ) {
 	// XXX revisit once (if) GH API supports column creation
 	//     note, we CAN create projects, but there is little point if required columns must also be created.
@@ -1036,15 +1036,15 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
     // Get locs again, to update after uncl. project creation 
-    locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.repoName, "projName": unClaimed } );
+    locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projName": unClaimed } );
     if( locs == -1 ) {
 	// XXX revisit once (if) GH API supports column creation
 	console.log( "Error.  Please create the", unClaimed, "project by hand, for now." );
     }
     else {
-	assert( unClaimedProjId == locs[0].HostProjectId );
+	assert( unClaimedProjId == locs[0].hostProjectId );
 	
-	loc = locs.find( loc => loc.HostColumnName == colName );
+	loc = locs.find( loc => loc.hostColumnName == colName );
 	
 	if( typeof loc === 'undefined' ) {
 	    // XXX revisit once (if) GH API supports column creation
@@ -1064,11 +1064,11 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
     let loc             = await createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, issueId, accr );
 
     assert( unClaimedProjId != -1 );
-    assert( loc.HostColumnId != -1  );
+    assert( loc.hostColumnId != -1  );
     assert( loc != -1  );
 
     // create card in unclaimed:unclaimed
-    let card = await createProjectCard( authData, unClaimedProjId, issueId, loc.HostUtility, loc.HostColumnId, false );
+    let card = await createProjectCard( authData, unClaimedProjId, issueId, loc.hostUtility, loc.hostColumnId, false );
     return card;
 }
 

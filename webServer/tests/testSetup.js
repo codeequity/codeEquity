@@ -19,19 +19,19 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     
     // Master: softwareContr, businessOps, unallocated
     td.masterPID  = await tu.makeProject( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
-    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, td.softContTitle );
-    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, td.busOpsTitle );
-    let mastCol3  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, td.unallocTitle );
+    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.softContTitle );
+    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.busOpsTitle );
+    let mastCol3  = await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.unallocTitle );
 
     // dataSec: 4x
     let dataPID  = await tu.makeProject( authData, td, td.dataSecTitle, "Make PII safe" );
-    let dataCols = await tu.make4xCols( authData, ghLinks, td.CEProjectId, td.GHFullName, dataPID );
+    let dataCols = await tu.make4xCols( authData, ghLinks, td.ceProjectId, td.GHFullName, dataPID );
 
     // githubOPs: 4x
     let ghOpPID  = await tu.makeProject( authData, td, td.githubOpsTitle, "Make it giddy" );
-    let ghOpCols = await tu.make4xCols( authData, ghLinks, td.CEProjectId, td.GHFullName, ghOpPID );
-    await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, ghOpPID, "Stars" );	
-    await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, ghOpPID, "Stripes" );
+    let ghOpCols = await tu.make4xCols( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID );
+    await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
+    await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );
 
 
     // TRIGGER
@@ -43,12 +43,12 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     await utils.sleep( 1000 );
 
     // softCont: dataSecurity, githubOps, unallocated
-    await tu.makeAllocCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, td.dataSecTitle, "1,000,000" );
-    await tu.makeAllocCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, td.githubOpsTitle, "1,500,000" );
-    await tu.makeAllocCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, td.unallocTitle, "3,000,000" );
+    await tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.dataSecTitle, "1,000,000" );
+    await tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await tu.makeAllocCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol2, td.unallocTitle, "1,000,000" );
+    await tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
 async function testPreferredCEProjects( authData, ghLinks, td ) {
@@ -59,7 +59,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     await tu.refresh( authData, td, config.MAIN_PROJ );
 
     // Check DYNAMO PEQ table
-    let ghPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": td.githubOpsTitle });
+    let ghPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
     subTest = tu.checkEq( ghPeqs.length, 1,                           subTest, "Number of githubOps peq objects" );
     subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
@@ -67,7 +67,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     subTest = tu.checkAr( ghPeqs[0].GHProjectSub, [td.softContTitle], subTest, "Project sub" );
     subTest = tu.checkEq( ghPeqs[0].GHProjectId, td.masterPID,        subTest, "Project ID" );  
     
-    let dsPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": td.dataSecTitle });
+    let dsPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.dataSecTitle });
     subTest = tu.checkEq( dsPeqs.length, 1,                           subTest, "Number of datasec peq objects" );
     subTest = tu.checkEq( dsPeqs[0] !== 'undefined', true,            subTest, "Peq not in place yet" );
     if( dsPeqs[0] !== 'undefined' ) {
@@ -75,7 +75,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	subTest = tu.checkAr( dsPeqs[0].GHProjectSub, [td.softContTitle], subTest, "Project sub" );
     }
 	
-    let unPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId, "HostIssueTitle": td.unallocTitle });
+    let unPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.unallocTitle });
     subTest = tu.checkEq( unPeqs.length, 2,                           subTest, "Number of unalloc peq objects" );
     subTest = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
     subTest = tu.checkEq( typeof unPeqs[0] !== 'undefined', true,             subTest, "have unpeq 0" );
@@ -88,7 +88,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	
 	// Check DYNAMO PAct 
-	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
+	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
 	subTest = tu.checkGE( pacts.length, 4,         subTest, "Number of PActs" );
 	let foundPActs = 0;
 	for( pact of pacts ) {
@@ -121,7 +121,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	subTest = tu.checkEq( foundPActs, 3 ,           subTest, "Matched PActs with PEQs" );
 	
 	// Check DYNAMO RepoStatus
-	let pop = await awsUtils.checkPopulated( authData, td.CEProjectId );
+	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId );
 	subTest = tu.checkEq( pop, "true", subTest, "Repo status wrt populated" );
 	
 	
@@ -235,7 +235,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 
 	
 	// Check DYNAMO Linkage
-	let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
+	let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
 	subTest = tu.checkGE( links.length, 4, subTest, "Linkage count" );
 	let unallocSoft = false;   let lSoft = -1;
 	let unallocBus  = false;   let lBus  = -1;

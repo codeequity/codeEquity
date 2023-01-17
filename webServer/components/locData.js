@@ -2,31 +2,31 @@
 class LocationData {
 
     constructor() {
-	this.CEProjectId     = "";      // org:ceProjectId 1:m    ceProjectId:hostProject  1:m    ceProjectId:hostRepo 1:m
-	this.HostRepository  = "";      // main host storage locator for a host project, e.g. GitHub's repositories
-	this.HostProjectId   = "";      // a string-ified id that is unique within hostPlatform
-	this.HostProjectName = "";      // 
-	this.HostColumnId    = "";      // a string-ified id that is unique within hostProject
-	this.HostColumnName  = "";      //
-	this.HostUtility     = "";      // a utility slot for hosts.  for example, PV2 uses this to retain status field id.  Classic does not use this.
-	this.Active          = "false"; // is this location currently valid
+	this.ceProjectId     = "";      // org:ceProjectId 1:m    ceProjectId:hostProject  1:m    ceProjectId:hostRepo 1:m
+	this.hostRepository  = "";      // main host storage locator for a host project, e.g. GitHub's repositories
+	this.hostProjectId   = "";      // a string-ified id that is unique within hostPlatform
+	this.hostProjectName = "";      // 
+	this.hostColumnId    = "";      // a string-ified id that is unique within hostProject
+	this.hostColumnName  = "";      //
+	this.hostUtility     = "";      // a utility slot for hosts.  for example, PV2 uses this to retain status field id.  Classic does not use this.
+	this.active          = "false"; // is this location currently valid
     }
 
     fromLoc( oldLoc ) {
-	this.CEProjectId     = oldLoc.hasOwnProperty( "CEProjectId" )     ? oldLoc.CEProjectId : "";
-	this.HostRepository  = oldLoc.hasOwnProperty( "HostRepository" )  ? oldLoc.HostRepository : "";
-	this.HostProjectId   = oldLoc.hasOwnProperty( "HostProjectId" )   ? oldLoc.HostProjectId : "";
-	this.HostProjectName = oldLoc.hasOwnProperty( "HostProjectName" ) ? oldLoc.HostProjectName : "";
-	this.HostColumnId    = oldLoc.hasOwnProperty( "HostColumnId" )    ? oldLoc.HostColumnId : "";
-	this.HostColumnName  = oldLoc.hasOwnProperty( "HostColumnName" )  ? oldLoc.HostColumnName : "";
-	this.HostUtility     = oldLoc.hasOwnProperty( "HostUtility" )     ? oldLoc.HostUtility : "";
-	this.Active          = oldLoc.hasOwnProperty( "Active" )          ? oldLoc.Active : "";
+	this.ceProjectId     = oldLoc.hasOwnProperty( "ceProjectId" )     ? oldLoc.ceProjectId : "";
+	this.hostRepository  = oldLoc.hasOwnProperty( "hostRepository" )  ? oldLoc.hostRepository : "";
+	this.hostProjectId   = oldLoc.hasOwnProperty( "hostProjectId" )   ? oldLoc.hostProjectId : "";
+	this.hostProjectName = oldLoc.hasOwnProperty( "hostProjectName" ) ? oldLoc.hostProjectName : "";
+	this.hostColumnId    = oldLoc.hasOwnProperty( "hostColumnId" )    ? oldLoc.hostColumnId : "";
+	this.hostColumnName  = oldLoc.hasOwnProperty( "hostColumnName" )  ? oldLoc.hostColumnName : "";
+	this.hostUtility     = oldLoc.hasOwnProperty( "hostUtility" )     ? oldLoc.hostUtility : "";
+	this.active          = oldLoc.hasOwnProperty( "active" )          ? oldLoc.active : "";
     }
     
     show() {
-	console.log( "CEProject", this.CEProjectId );
-	console.log( "repo,project,col:", this.HostRepository, this.HostProjectName, this.HostColumnName);
-	console.log( "pid,cid,utility,active:", this.HostProjectId, this.HostColumnId, this.HostUtility, this.Active);
+	console.log( "ceProject", this.ceProjectId );
+	console.log( "repo,project,col:", this.hostRepository, this.hostProjectName, this.hostColumnName);
+	console.log( "pid,cid,utility,active:", this.hostProjectId, this.hostColumnId, this.hostUtility, this.active);
     }
     
 }

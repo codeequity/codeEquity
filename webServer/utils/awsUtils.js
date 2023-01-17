@@ -172,19 +172,19 @@ async function updatePEQPSub( authData, peqId, projSub ) {
 // Note: Only called by resolve.  PNP rejects all attempts to create in ACCR before calling resolve.
 // The only critical component here for interleaving is getting the ID.
 async function changeReportPeqVal( authData, pd, peqVal, link ) {
-    console.log( "rebuild existing peq for issue:", pd.HostIssueId );
+    console.log( "rebuild existing peq for issue:", pd.hostIssueId );
 
     // Confirm call chain is as expected.  Do NOT want to be modifying ACCR peq vals
-    assert( link.HostColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
+    assert( link.hostColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
 
-    let newPEQ = await getPeq( authData, pd.CEProjectId, pd.HostIssueId );
+    let newPEQ = await getPeq( authData, pd.ceProjectId, pd.hostIssueId );
 
     // do NOT update aws.. rely on ceFlutter to update values during ingest, using pact.  otherwise, when a split happens after
     // the initial peq has been ingested, if ingest is ignoring this pact, new value will not be picked up correctly.
     // console.log( "Updating peq", newPEQ.PEQId, peqVal );
     // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
-    recordPEQAction( authData, config.EMPTY, pd.HostCreator, pd.CEProjectId,
+    recordPEQAction( authData, config.EMPTY, pd.hostCreator, pd.ceProjectId,
 		     config.PACTVERB_CONF, "change", [newPEQ.PEQId, peqVal.toString()], "peq val update",   // XXX formalize
 		     utils.getToday(), pd.reqBody );
 }
@@ -212,14 +212,14 @@ async function rebuildPEQ( authData, link, oldPeq ) {
     postData.PeqType        = oldPeq.PeqType;
     postData.Amount         = oldPeq.Amount;
     postData.HostRepo       = oldPeq.HostRepo;
-    postData.HostProjectSub = [ link.HostProjectName, link.HostColumnName ];
-    postData.HostProjectId  = link.HostProjectId; 
-    postData.HostIssueId    = link.HostIssueId;
-    postData.HostIssueTitle = link.HostIssueTitle;
+    postData.HostProjectSub = [ link.hostProjectName, link.hostColumnName ];
+    postData.HostProjectId  = link.hostProjectId; 
+    postData.HostIssueId    = link.hostIssueId;
+    postData.HostIssueTitle = link.hostIssueTitle;
     postData.Active         = "true";
 
     // No.  No special cases, otherwise flat project handling makes things tricky in a useless way.
-    // if( config.PROJ_COLS.includes( link.HostColumnName ) ) { postData.HostProjectSub = [ link.HostProjectName ]; }
+    // if( config.PROJ_COLS.includes( link.hostColumnName ) ) { postData.HostProjectSub = [ link.hostProjectName ]; }
     
     newPEQId = await recordPEQ(	authData, postData );
     assert( newPEQId != -1 );
@@ -241,30 +241,30 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     let newPEQ = -1
     if( checkDup ) { 
 	// Only 1 peq per issueId. Might be moving a card here
-	newPEQ = await getPeq( authData, pd.CEProjectId, pd.HostIssueId, false );
+	newPEQ = await getPeq( authData, pd.CEProjectId, pd.hostIssueId, false );
 	if( newPEQ != -1 ) { newPEQId = newPEQ.PEQId; }
     }
 
     // If relocate, must have existing peq
     // Make sure aws has dependent PEQ before proceeding.
     if( specials == "relocate" && newPEQ == -1 ) {
-	newPEQ = await utils.settleWithVal( "recordPeqData", getPeq, authData, pd.CEProjectId, pd.HostIssueId, false );
+	newPEQ = await utils.settleWithVal( "recordPeqData", getPeq, authData, pd.CEProjectId, pd.hostIssueId, false );
 	newPEQId = newPEQ.PEQId; 
     }
     
     let postData = {};
     postData.PEQId          = newPEQId;
-    postData.HostHolderId   = specials == "relocate" ? newPEQ.HostHolderId : pd.HostAssignees;   // list of hostUserLogins assigned
+    postData.HostHolderId   = specials == "relocate" ? newPEQ.HostHolderId : pd.hostAssignees;   // list of hostUserLogins assigned
     postData.PeqType        = pd.peqType;               
     postData.Amount         = pd.peqValue;              
-    postData.HostRepo       = pd.HostFullName;            
+    postData.HostRepo       = pd.hostFullName;            
     postData.HostProjectSub = pd.projSub;               
-    postData.HostProjectId  = pd.HostProjectId;         
-    postData.HostIssueId    = pd.HostIssueId.toString();
-    postData.HostIssueTitle = pd.HostIssueTitle;        
+    postData.HostProjectId  = pd.hostProjectId;         
+    postData.HostIssueId    = pd.hostIssueId.toString();
+    postData.HostIssueTitle = pd.hostIssueTitle;        
     postData.Active         = "true";
 
-    console.log( authData.who, "Recording peq data for", pd.HostIssueTitle, postData.HostHolderId.toString() );	
+    console.log( authData.who, "Recording peq data for", pd.hostIssueTitle, postData.HostHolderId.toString() );	
 
     // Don't wait if already have Id
     if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
@@ -275,11 +275,11 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     let subject = [ newPEQId ];
     if( typeof specials !== 'undefined' && specials == "relocate" ) {
 	action = config.PACTACT_RELO;
-	subject = [ newPEQId, pd.HostProjectId, pd.HostColumnId.toString() ];
+	subject = [ newPEQId, pd.hostProjectId, pd.hostColumnId.toString() ];
     }
 	
     // no need to wait
-    recordPEQAction( authData, config.EMPTY, pd.HostCreator, pd.CEProjectId,
+    recordPEQAction( authData, config.EMPTY, pd.hostCreator, pd.ceProjectId,
 		     config.PACTVERB_CONF, action, subject, "",
 		     utils.getToday(), pd.reqBody );
 
