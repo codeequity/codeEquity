@@ -48,15 +48,15 @@ async function postCE( shortName, postData ) {
 
 // This needs to occur after linkage is overwritten.
 // Provide good subs no matter if using Master project indirection, or flat projects.
-async function getProjectSubs( authData, ghLinks, ceProjId, repoName, projName, colName ) {
+async function getProjectSubs( authData, ghLinks, ceProjId, projName, colName ) {
     let projSub = [ "Unallocated" ];  // Should not occur.
 
-    console.log( authData.who, "Set up proj subs", repoName, projName, colName );
+    console.log( authData.who, "Set up proj subs", projName, colName );
 	
     if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {
 	// Check if project is a card in Master
-	let links = ghLinks.getLinks( authData, {"ceProjId": ceProjId, "repo": repoName, "projName": config.MAIN_PROJ, "issueTitle": projName} );
+	let links = ghLinks.getLinks( authData, {"ceProjId": ceProjId, "projName": config.MAIN_PROJ, "issueTitle": projName} );
 	if( links != -1 ) { projSub = [ links[0]['HostColumnName'], projName ]; }
 	else              { projSub = [ projName ]; }
 

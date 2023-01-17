@@ -1,11 +1,12 @@
 var assert = require( 'assert' );
 
 const config   = require( '../../../config' );
+const utils    = require( '../../ceUtils' );
 const awsUtils = require( '../../awsUtils' );
 
 const ghUtils  = require( '../ghUtils' );
 
-const ghV2     = require( 'ghV2Utils' );
+const ghV2     = require( './ghV2Utils' );
 
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
@@ -24,6 +25,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     gotSplit = true;
     
     // XXX pd.columnId is undefined..!  revise.  unnecessary?
+    console.log( "XXX resolve.. this part required??" );
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
     // For case b, ensure ordering such that pd element (the current card-link) is acted on below - i.e. is not in position 0
     //             since the carded issue has already been acted on earlier.
@@ -68,30 +70,33 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	idx += 1;
     }
 
-    // XXXX XXXX here
-    
+    // Create a new split issue for each copy, move new card loc if need be, set links
     for( let i = 1; i < links.length; i++ ) {
-	let origCardId = links[i].GHCardId;
+	let origCardId = links[i].HostCardId;
 	let splitTag   = utils.randAlpha(8);
 
-	// Note: This information could be passed down.. but save speedups for graphql
+	// XXX Why is this needed?  initRepo gets it for all links, so not a populateCE issue.  Add a new card(loc) PNP will create new link....?
+	console.log( "XXX resolve.. this part needed??  isn't links already all set?", links[i] );
+	/*
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
-	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, links[i].GHProjectId );
-	    links[i].GHColumnId    = ( await gh.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, links[i].GHColumnId );
+	    links[i].HostProjectName = ghV2.getProjectName( authData, ghLinks, pd.CEProjectId, links[i].HostProjectId );  // if have pid, then have name..!
+	    links[i].HostColumnId    = ( await ghV2.getCard( authData, origCardId ) ).column_url.split('/').pop();
+	    links[i].HostColumnName  = ghV2.getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, links[i].GHColumnId ); 
 	}
+	*/
+	
+	let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
+	// XXX nyi .. this has already happened on GH.  rebuild protections matter - but that's about it.
+	let newCardId   = await ghV2.rebuildCard( authData, pd.CEProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
 
-	let issueData   = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, issue, "", splitTag );  
-	let newCardId   = await gh.rebuildCard( authData, pd.CEProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
-
-	pd.GHIssueId    = issueData[0];
-	pd.GHIssueNum   = issueData[1];
-	pd.GHIssueTitle = issue.title + " split: " + splitTag;
-	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.GHIssueTitle );
+	pd.issueId    = issueData[0];
+	pd.issueNum   = issueData[1];
+	pd.issueTitle = issue.title + " split: " + splitTag;
+	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.issueTitle );
     }
 
-    // On initial populate call, this is called first, followed by processNewPeq.
+    // On initial populate call, resolve is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
     console.log( "Building peq for", links[1].GHIssueTitle );
     for( let i = 1; i < links.length; i++ ) {    
@@ -100,12 +105,12 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    let projName   = links[i].GHProjectName;
 	    let colName    = links[i].GHColumnName;
 	    assert( projName != "" );
-	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, pd.GHFullName, projName, colName );	    
+	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, projName, colName );	    
 	    
 	    awsUtils.recordPeqData(authData, pd, false );
 	}
     }
-    console.log( authData.who, "Resolve DONE" );
+    console.log( authData.who, "Resolved." );
     return gotSplit;
 }
 
@@ -148,7 +153,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 	    }
 	}
 	// mark duplicates
-	linkage.forEach(l => if( l.issueId == link.issueId ) { l.duplicate = true; } );
+	linkage.forEach(l => { if( l.issueId == link.issueId ) { l.duplicate = true; } });
     }
     await Promise.all( promises );
 

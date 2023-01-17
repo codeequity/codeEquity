@@ -102,7 +102,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    let projName   = links[i].GHProjectName;
 	    let colName    = links[i].GHColumnName;
 	    assert( projName != "" );
-	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, pd.GHFullName, projName, colName );	    
+	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, projName, colName );	    
 	    
 	    awsUtils.recordPeqData(authData, pd, false );
 	}
@@ -244,7 +244,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     //                issue is to create card.  Furthermore populate does not call this function.
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( !gotSplit && pd.peqType != "end" ) {
-	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, pd.GHFullName, projName, colName );
+	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, projName, colName );
 	awsUtils.recordPeqData( authData, pd, true, specials );
     }
 }
