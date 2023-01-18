@@ -309,7 +309,7 @@ async function recordPEQAction( authData, ceUID, hostUserName, ceProjId, verb, a
 }
 
 async function checkPopulated( authData, ceProjId ) {
-    console.log( authData.who, "check populated: ", repo );
+    console.log( authData.who, "check populated: ", ceProjId );
 
     let shortName = "CheckSetHostPop";
     let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "false" };

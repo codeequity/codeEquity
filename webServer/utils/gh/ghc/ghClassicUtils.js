@@ -1135,14 +1135,14 @@ async function rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, ori
 
 	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId,"repo": fullName, "projId": projId } );   
 	assert( locs != -1 );
-	projName = projName == "" ? locs[0].GHProjectName : projName;
+	projName = projName == "" ? locs[0].hostProjectName : projName;
 
 	colId = -1;
-	let loc = locs.find( loc => loc.GHColumnName == progName );   // prefer PROG
-	if( typeof loc !== 'undefined' ) { colId = loc.GHColumnId; }
+	let loc = locs.find( loc => loc.hostColumnName == progName );   // prefer PROG
+	if( typeof loc !== 'undefined' ) { colId = loc.hostColumnId; }
 	else {
-	    loc = locs.find( loc => loc.GHColumnName == planName )
-	    if( typeof loc !== 'undefined' ) { colId = loc.GHColumnId; }
+	    loc = locs.find( loc => loc.hostColumnName == planName )
+	    if( typeof loc !== 'undefined' ) { colId = loc.hostColumnId; }
 	}
 
 	// Create in progress, if needed
@@ -1254,7 +1254,7 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
 
     let unClaimedProjId = -1;
     let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projName": unClaimed } ); // XXX
-    unClaimedProjId = locs == -1 ? locs : locs[0].GHProjectId;
+    unClaimedProjId = locs == -1 ? locs : locs[0].hostProjectId;
     if( unClaimedProjId == -1 ) {
 	console.log( "Creating UnClaimed project" );
 	let body = "Temporary storage for issues with cards that have not yet been assigned to a column (triage)";
@@ -1286,10 +1286,10 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 
     // Get locs again, to update after uncl. project creation 
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projName": unClaimed } );
-    assert( unClaimedProjId == locs[0].GHProjectId );
+    assert( unClaimedProjId == locs[0].hostProjectId );
 
-    const loc = locs.find( loc => loc.GHColumnName == colName );
-    if( typeof loc !== 'undefined' ) { unClaimedColId = loc.GHColumnId; }
+    const loc = locs.find( loc => loc.hostColumnName == colName );
+    if( typeof loc !== 'undefined' ) { unClaimedColId = loc.hostColumnId; }
     if( unClaimedColId == -1 ) {
 	console.log( authData.who, "Creating UnClaimed column:", colName );
 	await authData.ic.projects.createColumn({ project_id: unClaimedProjId, name: colName })
@@ -1410,12 +1410,12 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     if( projId == -1 ) { return foundReqCol; }
     const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": projId } );
     assert( locs != -1 );
-    assert( link.hostProjectName == locs[0].GHProjectName );
+    assert( link.hostProjectName == locs[0].hostProjectName );
 
     let missing = true;
     let foundCount = 0;
     for( loc of locs ) {
-	let colName = loc.GHColumnName;
+	let colName = loc.hostColumnName;
 	for( let i = 0; i < 4; i++ ) {
 	    if( colName == config.PROJ_COLS[i] ) {
 		if( foundReqCol[i+1] == -1 ) { foundCount++; }
@@ -1423,7 +1423,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 		    console.log( "Validate CE Project Layout found column repeat: ", config.PROJ_COLS[i] );
 		    assert( false );
 		}
-		foundReqCol[i+1] = loc.GHColumnId;
+		foundReqCol[i+1] = loc.hostColumnId;
 		break;
 	    }
 	}
@@ -1642,7 +1642,7 @@ function getProjectName( authData, ghLinks, ceProjId, fullName, projId ) {
 
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "repo": fullName, "projId": projId } );
 
-    const projName = locs == -1 ? locs : locs[0].GHProjectName;
+    const projName = locs == -1 ? locs : locs[0].hostProjectName;
     return projName
     
 }
@@ -1655,7 +1655,7 @@ function getColumnName( authData, ghLinks, ceProjId, fullName, colId ) {
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "repo": fullName, "colId": colId } );
     assert( locs == -1 || locs.length == 1 );
 
-    const colName = locs == -1 ? locs : locs[0].GHColumnName;
+    const colName = locs == -1 ? locs : locs[0].hostColumnName;
     return colName;
 
 }

@@ -24,8 +24,6 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     if( links == -1 || links.length < 2 ) { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
     gotSplit = true;
     
-    // XXX pd.columnId is undefined..!  revise.  unnecessary?
-    console.log( "XXX resolve.. this part required??" );
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
     // For case b, ensure ordering such that pd element (the current card-link) is acted on below - i.e. is not in position 0
     //             since the carded issue has already been acted on earlier.
@@ -87,8 +85,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	*/
 	
 	let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
-	// XXX nyi .. this has already happened on GH.  rebuild protections matter - but that's about it.
-	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].hostColumnId, origCardId, issueData );
+	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, links[i].hostColumnId, origCardId, issueData );
 
 	pd.issueId    = issueData[0];
 	pd.issueNum   = issueData[1];

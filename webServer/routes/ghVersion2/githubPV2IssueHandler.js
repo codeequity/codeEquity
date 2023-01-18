@@ -85,15 +85,14 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
 //       project_card:created notification after submit, then projects:triage to pick column.
 async function handler( authData, ghLinks, pd, action, tag ) {
 
-    let actor   = pd.actor;
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     console.log( authData.who, "issueHandler start", authData.job );
     
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
-    pd.issueId    = pd.reqBody['issue']['node_id'];         // issue content id
-    pd.issueNum   = pd.reqBody['issue']['number'];		
-    pd.actor    = pd.reqBody['issue']['user']['login']; // XXX
-    pd.issueName = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
+    pd.issueId    = pd.reqBody.issue.node_id;         // issue content id
+    pd.issueNum   = pd.reqBody.issue.number;		
+    pd.actor      = pd.reqBody.sender.login;
+    pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
     // switch( issueId ) {
     switch( action ) {
@@ -243,7 +242,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			    subject = [ peqId.toString(), newColId.toString() ];
 			}
 			
-			awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.ceProjectId,
+			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					       verb, paction, subject, "",
 					       utils.getToday(), pd.reqBody );
 		    }
@@ -289,8 +288,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    // Not if ACCR
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
-	    if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
-		console.log( "WARNING.", links[0].GHColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
+	    if( links != -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+		console.log( "WARNING.", links[0].hostColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
 		paction = config.PACTACT_NOTE;
 		note = "Bad assignment attempted";
 		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.Owner, pd.Repo, pd.issueNum, assignee ); }
@@ -298,7 +297,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    let subject = [peq.PEQId.toString(), assignee];
-	    awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.ceProjectId,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 				   verb, paction, subject, note,
 				   utils.getToday(), pd.reqBody );
 	}
@@ -329,7 +328,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 			assert( peq != -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
-			awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.ceProjectId,
+			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
 					       utils.getToday(), pd.reqBody );
 		    }
@@ -387,7 +386,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
 		if( peq != -1 ) {
 		    const subject = [ peq.PEQId, fullRepoName ];
-		    awsUtils.recordPEQAction( authData, config.EMPTY, actor, pd.ceProjectId,
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
 					   utils.getToday(), pd.reqBody );
 		}

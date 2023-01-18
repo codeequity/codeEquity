@@ -919,6 +919,84 @@ async function removeCard( authData, projNodeId, issueNodeId ) {
     return true;
 }
 
+async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issueData, locData ) {
+
+    let isReserved = typeof locData !== 'undefined' && locData.hasOwnProperty( "reserved" ) ? locData.reserved : false;    
+    let projId     = typeof locData !== 'undefined' && locData.hasOwnProperty( "projId" )   ? locData.projId   : -1;
+    let projName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "projName" ) ? locData.projName : "";
+    let fullName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "fullName" ) ? locData.fullName : "";
+
+    assert( issueData.length == 2 );
+    let issueId  = issueData[0];
+    let issueNum = issueData[1];
+    let statusId  = -1;
+    assert.notEqual( issueId, -1, "Attempting to attach card to non-issue." );
+
+    // If card has not been tracked, colId could be wrong.  relocate.
+    // Note: do not try to avoid this step during populateCE - creates a false expectation (i.e. ce is tracking) for any simple carded issue.
+    if( colId == -1 ) {
+	let projCard = await getCard( authData, origCardId ); 
+	colId = projCard.columnId;
+	statusId = projCard.statusId;
+    }
+    else {
+	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": projId, "colId": colId } );
+	assert( locs != -1 );
+	statusId = locs[0].hostUtility;
+    }
+
+    // Trying to build new card in reserved space .. move out of reserved, prog is preferred.
+    // Finding or creating non-reserved is a small subset of getCEprojectLayout
+    // StatusId is per-project.  No need to find again.
+    if( isReserved ) {
+	assert( projId   != -1 );
+	assert( fullName != "" );
+	const planName = config.PROJ_COLS[ config.PROJ_PLAN ];
+	const progName = config.PROJ_COLS[ config.PROJ_PROG ];
+
+	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": projId } );   
+	assert( locs != -1 );
+	projName = projName == "" ? locs[0].hostProjectName : projName;
+
+	colId = -1;
+	let loc = locs.find( loc => loc.hostColumnName == progName );   // prefer PROG
+	if( typeof loc !== 'undefined' ) { colId = loc.hostColumnId; }
+	else {
+	    loc = locs.find( loc => loc.hostColumnName == planName )
+	    if( typeof loc !== 'undefined' ) { colId = loc.hostColumnId; }
+	}
+
+	// XXX this currently fails since columns can't be created programmatically.
+	// Create in progress, if needed
+	if( colId == -1 ) {
+	    let progCol = await createColumn( authData, ghLinks, ceProjId, projId, progName );
+	    console.log( "Creating new column:", progName );
+	    colId = progCol.data.id;
+	    let nLoc = {};
+	    nLoc.ceProjectId     = ceProjId; 
+	    nLoc.hostRepository  = fullName;
+	    nLoc.hostProjectId   = projId;
+	    nLoc.hostProjectName = projName;
+	    nLoc.hostColumnId    = progName;
+	    nLoc.hostColumnName  = colId;
+	    nLoc.active          = "true";
+	    await ghLinks.addLoc( authData, nLoc, true );
+	}
+    }
+
+    // create issue-linked project_card, requires id not num
+    let newCardId = await createProjectCard( authData, projId, issueId, statusId, colId, true );
+    assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
+    
+    // remove orig card
+    // Note: await waits for GH to finish - not for notification to be received by webserver.
+    removeCard( authData, projId, origCardId );
+
+    return newCardId;
+}
+
+
+
 
 // Owner can be user, or organization.  This works for either.
 // XXX Is there a nicer way to run this as a single query?  i.e. without having 1 or the two be correct, 1 be an error?
@@ -1007,6 +1085,28 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 }
 
 
+// NOTE: As of 1/2023 GH API does not support management of the status column for projects
+//       For now, verify that a human has created this by hand.... https://github.com/orgs/community/discussions/44265 
+async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
+{
+    let loc = -1;
+    // XXX Fugly
+    if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
+	await utils.failHere( "createColumn" )
+	    .catch( e => retVal = ghUtils.errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, issueId));
+    }
+    else {
+	locs = ghLinks.getLocs( authData, { "ceProjId": ceProjectId, "projId": projId, "colName": colName } );    
+	    
+	if( typeof locs === 'undefined' ) {
+	    // XXX revisit once (if) GH API supports column creation
+	    console.log( "Error.  Please create the column", colName, "by hand, for now." );
+	    loc = -1;
+	}
+	else { loc = locs[0]; }
+    }
+    return loc;
+}
 
 // NOTE: As of 1/2023 GH API does not support management of the status column for projects
 //       For now, verify that a human has created this by hand.... https://github.com/orgs/community/discussions/44265 
@@ -1015,7 +1115,7 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
     const unClaimed = config.UNCLAIMED;
 
     let unClaimedProjId = -1;
-    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projName": unClaimed } );
+    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
     unClaimedProjId = locs == -1 ? locs : locs[0].hostProjectId;
     if( unClaimedProjId == -1 ) {
 	// XXX revisit once (if) GH API supports column creation
@@ -1036,7 +1136,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
     // Get locs again, to update after uncl. project creation 
-    locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projName": unClaimed } );
+    locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
     if( locs == -1 ) {
 	// XXX revisit once (if) GH API supports column creation
 	console.log( "Error.  Please create the", unClaimed, "project by hand, for now." );
@@ -1113,11 +1213,13 @@ exports.getCard            = getCard;
 exports.moveCard           = moveCard;
 exports.createProjectCard  = createProjectCard;
 exports.removeCard         = removeCard; 
+exports.rebuildCard        = rebuildCard;
 
 exports.getOwnerId         = getOwnerId;
 exports.getRepoId          = getRepoId;
 exports.getLabelIssues     = getLabelIssues;
 
+exports.createColumn           = createColumn;
 exports.createUnClaimedProject = createUnClaimedProject;
 exports.createUnClaimedColumn  = createUnClaimedColumn;
 exports.createUnClaimedCard    = createUnClaimedCard;

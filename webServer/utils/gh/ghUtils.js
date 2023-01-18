@@ -111,12 +111,14 @@ async function checkForPV2( PAT, nodeId ) {
     }
     else {
 	let data = ret.data.node.projectItems;
-	if( data.edges.length > 99 ) { console.log( "WARNING.  Detected a very large number of projectItems.  Ignoring some." ); }
-	for( let i = 0; i < data.edges.length; i++ ) {
-	    let project = data.edges[i];
-	    if( typeof project.id !== 'undefined' ) {
-		found = true;
-		break;
+	if( typeof data !== 'undefined' && typeof data.edges !== 'undefined' ) {
+	    if( data.edges.length > 99 ) { console.log( "WARNING.  Detected a very large number of projectItems.  Ignoring some." ); }
+	    for( let i = 0; i < data.edges.length; i++ ) {
+		let project = data.edges[i];
+		if( typeof project.id !== 'undefined' ) {
+		    found = true;
+		    break;
+		}
 	    }
 	}
     }
