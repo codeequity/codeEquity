@@ -33,14 +33,14 @@ async function testFlatProject( authData, ghLinks, td ) {
     if( links == -1 ) { links = []; }
 
     for( const link of links ) {
-	if( link.GHProjectName == FLAT_PROJ    ||
-	    link.GHProjectID   == td.masterPID ||
-	    link.GHColumnName  == "Eggs"       ||
-	    link.GHColumnName  == "Bacon"      ||
-	    link.GHColumnName  == "Bacon"      ||
-	    link.GHCardName    == "Parsley"    ||
-	    link.GHCardName    == "Sage"       ||
-	    link.GHCardName    == "Rosemary"  )
+	if( link.hostProjectName == FLAT_PROJ    ||
+	    link.hostProjectID   == td.masterPID ||
+	    link.hostColumnName  == "Eggs"       ||
+	    link.hostColumnName  == "Bacon"      ||
+	    link.hostColumnName  == "Bacon"      ||
+	    link.hostCardName    == "Parsley"    ||
+	    link.hostCardName    == "Sage"       ||
+	    link.hostCardName    == "Rosemary"  )
 	{
 	    foundFlat = true;
 	}

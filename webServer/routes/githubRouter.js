@@ -225,19 +225,19 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     let retVal = "";
     assert( jd.queueId == authData.job ) ;
     
-    let pd          = new ghcData.GHCData();
-    pd.GHOwner      = jd.reqBody['repository']['owner']['login'];
-    pd.GHRepo       = jd.reqBody['repository']['name'];
-    pd.reqBody      = jd.reqBody;
-    pd.GHFullName   = jd.reqBody['repository']['full_name'];
+    let pd        = new ghcData.GHCData();
+    pd.GHOwner    = jd.reqBody['repository']['owner']['login'];
+    pd.GHRepo     = jd.reqBody['repository']['name'];
+    pd.reqBody    = jd.reqBody;
+    pd.repoName   = jd.reqBody['repository']['full_name'];
 
     // XXX can set ghLinks... and locs..?  more args?  hmmm
-    pd.CEProjectId  = ceProjects.find( jd.host, jd.org, jd.reqBody.repository );
-    assert( pd.CEProjectId != -1 );
+    pd.ceProjectId  = ceProjects.find( jd.host, jd.org, jd.reqBody.repository );
+    assert( pd.ceProjectId != -1 );
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
     console.log( "XXX Switcher GHC" );
-    await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.GHFullName, config.CE_USER );
+    await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.repoName, config.CE_USER );
     
     switch( jd.event ) {
     case 'issue' :

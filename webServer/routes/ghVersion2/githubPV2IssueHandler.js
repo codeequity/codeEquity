@@ -49,7 +49,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     
     // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
     // since can't create card without column_id.  No project, or column_id without triage.
-    if( link == -1 || link.GHColumnId == -1) {
+    if( link == -1 || link.hostColumnId == -1) {
 	if( link == -1 ) {    
 	    link = {};
 	    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.issueId );
@@ -61,13 +61,13 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
 	    link.hostColumnId  = card.column_url.split('/').pop();
 	}
 	else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
-	    let card = await gh.getCard( authData, link.GHCardId );
+	    let card = await gh.getCard( authData, link.hostCardId );
 	    link.hostColumnId  = card.column_url.split('/').pop();
 	}
     }
     
     pd.updateFromLink( link );
-    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.GHCardId, link.GHIssueNum );
+    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.hostCardId, link.hostIssueNum );
     
     let content = [];
     content.push( pd.issueName );
@@ -92,7 +92,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
     pd.issueId    = pd.reqBody['issue']['node_id'];         // issue content id
     pd.issueNum   = pd.reqBody['issue']['number'];		
-    pd.Creator    = pd.reqBody['issue']['user']['login']; // XXX
+    pd.actor    = pd.reqBody['issue']['user']['login']; // XXX
     pd.issueName = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
     // switch( issueId ) {
@@ -123,7 +123,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		assert( links.length == 1 );
 		let link = links[0];
 
-		if( !config.PROJ_COLS.includes( link.GHColumnName )) {
+		if( !config.PROJ_COLS.includes( link.hostColumnName )) {
 
 		    let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
 		    if( ceProjectLayout[0] == -1 ) { console.log( "Project does not have recognizable CE column layout.  No action taken." ); }
@@ -134,7 +134,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
 			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.repoName,
-								 link.GHIssueId, link.hostIssueName, link.GHProjectId );
+								 link.hostIssueId, link.hostIssueName, link.hostProjectId );
 
 			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
 			}
@@ -163,7 +163,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
-	    let newNameIndex = config.PROJ_COLS.indexOf( link.GHColumnName );	    
+	    let newNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );	    
 
 	    // GH already removed this.  Put it back.
 	    if( newNameIndex >= config.PROJ_ACCR ) {
@@ -179,7 +179,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    awsUtils.recordPEQAction(
 		authData,
 		config.EMPTY,     // CE UID
-		pd.Creator,     // gh user name
+		pd.actor,     // gh user name
 		pd.ceProjectId,
 		config.PACTVERB_CONF,       // verb
 		config.PACTACT_DEL,         // action
@@ -316,7 +316,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		if( link != -1 && link.hostIssueName != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
-		    if( link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+		    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
 			ghSafe.updateTitle( authData, pd.Owner, pd.Repo, pd.issueNum, link.hostIssueName );
 		    }

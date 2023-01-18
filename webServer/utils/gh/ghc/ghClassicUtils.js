@@ -705,7 +705,7 @@ async function getRepoIssuesGQL( PAT, owner, repo, data, cursor ) {
 	    datum.issueId     = issue.databaseId;
 	    datum.issueURL    = issue.url
 	    datum.issueNumber = issue.number;
-	    datum.issueTitle  = issue.title;
+	    datum.issueName   = issue.title;
 	    // peq issues are 1:1, ignore the rest
 	    if( issue.projectCards.edges.length == 1 ) {
 		const card = issue.projectCards.edges[0].node;
@@ -782,7 +782,7 @@ async function getRepoIssueGQL( PAT, owner, repo, issueDatabaseId, data, cursor 
 		datum.issueId     = issue.databaseId;
 		datum.issueURL    = issue.url
 		datum.issueNumber = issue.number;
-		datum.issueTitle  = issue.title;
+		datum.issueName   = issue.title;
 		data.push( datum );
 	    }
 	}
@@ -1337,9 +1337,9 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     if( link == -1 ) { return; }
 
     // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
-    if( link.GHProjectName != config.UNCLAIMED && link.GHColumnName != config.PROJ_ACCR ) { return; }   
+    if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName != config.PROJ_ACCR ) { return; }   
 	
-    assert( link.GHCardId != -1 );
+    assert( link.hostCardId != -1 );
 
     console.log( "Found unclaimed" );
     
@@ -1352,13 +1352,13 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
 	    .catch( e => ghUtils.errorHandler( "cleanUnclaimed", utils.FAKE_ISE, cleanUnclaimed, authData, ghLinks, pd ));
     }
     else {
-	await authData.ic.projects.deleteCard( { card_id: link.GHCardId } )
+	await authData.ic.projects.deleteCard( { card_id: link.hostCardId } )
 	    .then( r => success = true )
 	    .catch( e => ghUtils.errorHandler( "cleanUnclaimed", e, cleanUnclaimed, authData, ghLinks, pd ));
     }
 
     // Remove turds, report.  
-    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjID": pd.ceProjectId, "issueId": pd.issueId, "cardId": link.GHCardId }); }
+    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjID": pd.ceProjectId, "issueId": pd.issueId, "cardId": link.hostCardId }); }
     else { console.log( "WARNING.  cleanUnclaimed failed to remove linkage." ); }
 
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
@@ -1401,7 +1401,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
     // PLAN and PROG are used as a home in which to reopen issue back to.
     // If this is not a pure full project, try to reopen the issue back to where it started.
-    if( link != -1 && link.GHColumnName == config.PROJ_COLS[ config.PROJ_PEND ] ) {
+    if( link != -1 && link.hostColumnName == config.PROJ_COLS[ config.PROJ_PEND ] ) {
 	curCol = parseInt( link.flatSource );
     }
 
@@ -1410,7 +1410,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
     if( projId == -1 ) { return foundReqCol; }
     const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": projId } );
     assert( locs != -1 );
-    assert( link.GHProjectName == locs[0].GHProjectName );
+    assert( link.hostProjectName == locs[0].GHProjectName );
 
     let missing = true;
     let foundCount = 0;
@@ -1476,7 +1476,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	nLoc.ceProjectId     = pd.ceProjectId;
 	nLoc.hostRepository  = pd.repoName;
 	nLoc.hostProjectId   = projId; 
-	nLoc.hostProjectName = link.GHProjectName;
+	nLoc.hostProjectName = link.hostProjectName;
 	nLoc.active          = "true";
 	
 	if( progCol ) {
@@ -1517,11 +1517,11 @@ async function validatePEQ( authData, repo, issueId, title, projId ) {
     assert( issueId != -1 );
     peq = await utils.getPeq( authData, issueId );
 
-    if( peq != -1 && peq.GHIssueTitle == title && peq.GHRepo == repo && peq.GHProjectId == projId )  {
+    if( peq != -1 && peq.issueName == title && peq.HostRepo == repo && peq.HostProjectId == projId )  {
 	// console.log( authData.who, "validatePeq success" );
     }
     else {
-	console.log( "WARNING.  Peq not valid.", peq.GHIssueTitle, title, peq.GHRepo, repo, peq.GHProjectId, projId );
+	console.log( "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostRepo, repo, peq.HostProjectId, projId );
     }
     return peq;
 }
@@ -1580,11 +1580,11 @@ async function moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout )
     if( action == "closed" ) {
 
 	const link = ghLinks.getUniqueLink( authData, pd.ceProjectId, pd.issueId );
-	cardId = link.GHCardId;
+	cardId = link.hostCardId;
 
 	// Out of order notification is possible.  If already accrued, stop.
 	// There is no symmetric issue - once accr, can't repoen.  if only pend, no subsequent move after reopen.
-	if( link.GHColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
+	if( link.hostColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
 	    let issue = await getFullIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );
 	    if( issue.state == 'closed' ) {
 		return false;

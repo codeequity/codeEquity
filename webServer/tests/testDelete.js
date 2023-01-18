@@ -29,7 +29,7 @@ async function remIssues( authData, ghLinks, pd ) {
     let issues = await authData.ic.paginate( authData.ic.issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
 	.catch( e => console.log( authData.who, "Problem in listIssues", e ));
     
-    let allLinks = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName } );
+    let allLinks = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.repoName } );
     
     // Could probably do this in one fel swoop, but for now
     // Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
@@ -41,8 +41,8 @@ async function remIssues( authData, ghLinks, pd ) {
 	query = JSON.stringify({ query, variables });
 
 	res = await ghUtils.postGH( authData.pat, endpoint, query );
-	let link = allLinks == -1 ? allLinks : allLinks.find(link => link.GHIssueId == issue.id.toString());
-	if( link != -1 && typeof link != 'undefined' && link.GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) { await utils.sleep( 800 ); }
+	let link = allLinks == -1 ? allLinks : allLinks.find(link => link.hostIssueId == issue.id.toString());
+	if( link != -1 && typeof link != 'undefined' && link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) { await utils.sleep( 800 ); }
 	else                                                                                                      { await utils.sleep( 400 ); }
 	console.log( res );
     }
@@ -50,7 +50,7 @@ async function remIssues( authData, ghLinks, pd ) {
 
 
 async function clearRepo( authData, ghLinks, pd ) {
-    console.log( "\nClearing", pd.GHFullName );
+    console.log( "\nClearing", pd.repoName );
 
     // Delete all issues, cards, projects, columns, labels.
     // Eeek.  This works a little too well.  Make sure the repo is expected.
@@ -76,7 +76,7 @@ async function clearRepo( authData, ghLinks, pd ) {
     await authData.ic.paginate( authData.ic.projects.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
 	.then((projects) => { projIds = projects.map((project) => project.id ); })
 	.catch( e => { console.log( authData.who, "Problem in listProjects", e ); });
-    console.log( "ProjIds", pd.GHFullName, projIds );
+    console.log( "ProjIds", pd.repoName, projIds );
     
     for( const projId of projIds ) {
 	await ( authData.ic.projects.delete( {project_id: projId}) )
@@ -96,19 +96,19 @@ async function clearRepo( authData, ghLinks, pd ) {
     // PEQs
     let peqs =  await peqsP;
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
-    console.log( "Dynamo PEQ ids", pd.GHFullName, peqIds );
+    console.log( "Dynamo PEQ ids", pd.repoName, peqIds );
     let peqP = awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
 
     // PActions raw and otherwise
     // Note: bot, ceServer and GHOwner may have pacts.  Just clean out all.
     let pacts = await pactsP;
     let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
-    console.log( "Dynamo bot PActIds", pd.GHFullName, pactIds );
+    console.log( "Dynamo bot PActIds", pd.repoName, pactIds );
     let pactP  = awsUtils.cleanDynamo( authData, "CEPEQActions", pactIds );
     let pactRP = awsUtils.cleanDynamo( authData, "CEPEQRaw", pactIds );
     
     // Get all peq labels in repo for deletion... dependent on peq removal first.
-    console.log( "Removing all PEQ Labels.", pd.GHFullName );
+    console.log( "Removing all PEQ Labels.", pd.repoName );
     let labelNames = [];
     await authData.ic.paginate( authData.ic.issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
 	.then((labels) => {
@@ -136,9 +136,9 @@ async function clearRepo( authData, ghLinks, pd ) {
 
     // Linkages
     // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
-    console.log( "Remove links", pd.GHFullName );
-    await tu.remLinks( authData, ghLinks, pd.GHFullName );
-    let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName } );
+    console.log( "Remove links", pd.repoName );
+    await tu.remLinks( authData, ghLinks, pd.repoName );
+    let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.repoName } );
     if( links != -1 ) { console.log( links ); }
     assert( links == -1 );
 
@@ -147,7 +147,10 @@ async function clearRepo( authData, ghLinks, pd ) {
     pactRP = await pactRP;
     
     // RepoStatus
-    let status = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
+    // XXX no longer here
+    console.log( "Error.  ceprojects does not hold repo" );
+    assert( false );
+    let status = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
     await awsUtils.cleanDynamo( authData, "CERepoStatus", statusIds );

@@ -95,7 +95,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 
     // On initial populate call, this is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
-    console.log( "Building peq for", links[1].hostIssueTitle );
+    console.log( "Building peq for", links[1].hostIssueName );
     for( let i = 1; i < links.length; i++ ) {    
 	// Don't record simple multiply-carded issues
 	if( pd.peqType != "end" ) {
@@ -224,7 +224,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 		console.log( authData.who, "WARNING.", colName, "is reserved, requires assignees.  Moving card out of reserved column." );
 		isReserved = true;
 	    }
-	    let locData = { "reserved": isReserved, "projId": pd.projectId, "projName": pd.GHProjectName, "fullName": pd.repoName };
+	    let locData = { "reserved": isReserved, "projId": pd.projectId, "projName": pd.projectName, "fullName": pd.repoName };
 	    let newCardId = await gh.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, pd.columnId, origCardId, issueData, locData );
 
 	    // Add card issue linkage

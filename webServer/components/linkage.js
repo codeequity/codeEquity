@@ -333,12 +333,12 @@ class Linkage {
 	}
 
 	const ceProjId   = query.ceProjId;
-	const repo       = query.hasOwnProperty( "repo" )      ? query.repo               : config.EMPTY;
-	const issueId    = query.hasOwnProperty( "issueId" )   ? query.issueId.toString() : -1;
-	const cardId     = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
-	const projId     = query.hasOwnProperty( "projId" )    ? query.projId             : -1;
-	const projName   = query.hasOwnProperty( "projName" )  ? query.projName           : config.EMPTY;
-	const colName    = query.hasOwnProperty( "colName" )   ? query.colName            : config.EMPTY;
+	const repo       = query.hasOwnProperty( "repo" )       ? query.repo               : config.EMPTY;
+	const issueId    = query.hasOwnProperty( "issueId" )    ? query.issueId.toString() : -1;
+	const cardId     = query.hasOwnProperty( "cardId" )     ? query.cardId.toString()  : -1;
+	const projId     = query.hasOwnProperty( "projId" )     ? query.projId             : -1;
+	const projName   = query.hasOwnProperty( "projName" )   ? query.projName           : config.EMPTY;
+	const colName    = query.hasOwnProperty( "colName" )    ? query.colName            : config.EMPTY;
 	const issueTitle = query.hasOwnProperty( "issueTitle" ) ? query.issueTitle        : config.EMPTY;
 
 	// console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, issueTitle );

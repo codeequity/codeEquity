@@ -11,14 +11,14 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( authData.job, "project name:", pd.reqBody.project.name, action );
     console.log( authData.who, "start", authData.job );
 
-    pd.GHProjectId   = pd.reqBody.project.id;
-    pd.GHProjectName = pd.reqBody.project.name;
+    pd.projectId   = pd.reqBody.project.id;
+    pd.projectName = pd.reqBody.project.name;
 
     let nLoc = {};
     nLoc.ceProjectId     = pd.ceProjectId;
-    nLoc.hostRepository  = pd.GHFullName;
-    nLoc.hostProjectId   = pd.GHProjectId;
-    nLoc.hostProjectName = pd.GHProjectName;
+    nLoc.hostRepository  = pd.repoName;
+    nLoc.hostProjectId   = pd.projectId;
+    nLoc.hostProjectName = pd.projectName;
     nLoc.hostColumnId    = -1;
     nLoc.hostColumnName  = config.EMPTY;
     nLoc.active          = "true";
@@ -28,7 +28,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'deleted':
 	// Deleting a project causes project_card delete, project_column delete, project delete (random order).  Leaves issues in place.
 	{
-	    ghLinks.removeLocs( { authData: authData, ceProjId: pd.ceProjectId, projId: pd.GHProjectId } );
+	    ghLinks.removeLocs( { authData: authData, ceProjId: pd.ceProjectId, projId: pd.projectId } );
 	}
 	break;
     case 'created':  
@@ -44,17 +44,17 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    if( typeof pd.reqBody.changes.name !== 'undefined' ) { oldName = pd.reqBody.changes.name.from; }
 
 	    if( oldName != -1 ) {
-		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName, "projName": oldName } );
-		links.forEach( link => link.GHProjectName = newName );
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projName": oldName } );
+		links.forEach( link => link.hostProjectName = newName );
 
 		// don't wait
 		awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
-				       config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.GHProjectId.toString(), oldName, newName], "Project rename",
+				       config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.projectId.toString(), oldName, newName], "Project rename",
 				       utils.getToday(), pd.reqBody );
 
 		// Must wait to prevent out-of-order overwrites.  Could build an addLocs func, but value is low.
 		// Can't do promises.all - must be sequential.
-		const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName, "projId": pd.GHProjectId } );
+		const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": pd.projectId } );
 		for( const loc of locs ) {
 		    nLoc.hostProjectName = newName;
 		    nLoc.hostColumnName = loc.hostColumnName;
@@ -68,16 +68,16 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     case 'closed':
 	{
 	    // Prefer closing a project over deleting it.  Notify if there are PEQs.
-	    const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName, "projId": pd.GHProjectId });
+	    const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": pd.projectId });
 	    if( links == -1 ) { return; }
 
-	    const projLink = links.find( link => link.GHColumnName != config.EMPTY );
+	    const projLink = links.find( link => link.hostColumnName != config.EMPTY );
 
 	    if( typeof projLink !== 'undefined' ) {
 		const note = "Project " + action;
 		console.log( "Notice.", action,  "project with active PEQs.  Notifying server."  );
 		awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
-				       config.PACTVERB_CONF, config.PACTACT_NOTE, [pd.GHProjectId], note,
+				       config.PACTVERB_CONF, config.PACTACT_NOTE, [pd.projectId], note,
 				       utils.getToday(), pd.reqBody );
 	    }
 	    

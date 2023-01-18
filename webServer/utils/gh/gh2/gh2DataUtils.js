@@ -82,28 +82,28 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
 	    links[i].hostProjectName = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, links[i].hostProjectId );  // if have pid, then have name..!
 	    links[i].hostColumnId    = ( await ghV2.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].hostColumnName  = ghV2.getColumnName( authData, ghLinks, pd.ceProjectId, pd.GHFullName, links[i].GHColumnId ); 
+	    links[i].hostColumnName  = ghV2.getColumnName( authData, ghLinks, pd.ceProjectId, pd.repoName, links[i].hostColumnId ); 
 	}
 	*/
 	
 	let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
 	// XXX nyi .. this has already happened on GH.  rebuild protections matter - but that's about it.
-	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
+	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].hostColumnId, origCardId, issueData );
 
 	pd.issueId    = issueData[0];
 	pd.issueNum   = issueData[1];
-	pd.issueTitle = issue.title + " split: " + splitTag;
-	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.issueTitle );
+	pd.issueName  = issue.title + " split: " + splitTag;
+	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.issueName );
     }
 
     // On initial populate call, resolve is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
-    console.log( "Building peq for", links[1].GHIssueTitle );
+    console.log( "Building peq for", links[1].hostIssueName );
     for( let i = 1; i < links.length; i++ ) {    
 	// Don't record simple multiply-carded issues
 	if( pd.peqType != "end" ) {
-	    let projName   = links[i].GHProjectName;
-	    let colName    = links[i].GHColumnName;
+	    let projName   = links[i].hostProjectName;
+	    let colName    = links[i].hostColumnName;
 	    assert( projName != "" );
 	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
 	    

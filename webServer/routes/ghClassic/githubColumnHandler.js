@@ -17,29 +17,29 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( authData.job, pd.reqBody.project_column.updated_at, "column name:", pd.reqBody.project_column.name, action );
     console.log( authData.who, "start", authData.job );
 
-    pd.GHColumnId    = pd.reqBody.project_column.id.toString();
-    pd.GHColumnName  = pd.reqBody.project_column.name;
-    pd.GHProjectId   = pd.reqBody.project_column.project_url.split('/').pop();
+    pd.columnId    = pd.reqBody.project_column.id.toString();
+    pd.columnName  = pd.reqBody.project_column.name;
+    pd.projectId   = pd.reqBody.project_column.project_url.split('/').pop();
 
     switch( action ) {
     case 'deleted':
 	{
-	    ghLinks.removeLocs( { authData: authData, ceProjId: pd.ceProjectId, colId: pd.GHColumnId } );
+	    ghLinks.removeLocs( { authData: authData, ceProjId: pd.ceProjectId, colId: pd.columnId } );
 	}
 	break;
     case 'created':
 	{
-	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName, "projId": pd.GHProjectId } );
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": pd.projectId } );
 	    const loc = locs == -1 ? locs : locs[0];
 	    assert( loc != -1 );
 
 	    let nLoc = {};
 	    nLoc.ceProjectId     = pd.ceProjectId;
-	    nLoc.hostRepository  = pd.GHFullName;
-	    nLoc.hostProjectId   = pd.GHProjectId;
+	    nLoc.hostRepository  = pd.repoName;
+	    nLoc.hostProjectId   = pd.projectId;
 	    nLoc.hostProjectName = loc.hostProjectName;
-	    nLoc.hostColumnId    = pd.GHColumnId;
-	    nLoc.hostColumnName  = pd.GHColumnName;
+	    nLoc.hostColumnId    = pd.columnId;
+	    nLoc.hostColumnName  = pd.columnName;
 	    nLoc.active          = "true";
 	    
 	    await ghLinks.addLoc( authData, nLoc, true );
@@ -65,20 +65,20 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 					   utils.getToday(), pd.reqBody );
 		}
 		else {
-		    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName, "colName": oldName } );
-		    links.forEach( link => link.GHColumnName = newName );
+		    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "colName": oldName } );
+		    links.forEach( link => link.hostColumnName = newName );
 
 		    // send 1 PAct to update any peq projSub.  don't wait.
 		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
-					   config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.GHColumnId, oldName, newName], "Column rename",
+					   config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.columnId, oldName, newName], "Column rename",
 					   utils.getToday(), pd.reqBody );
 
 		    let nLoc = {};
 		    nLoc.ceProjectId     = pd.ceProjectId;
-		    nLoc.hostRepository  = pd.GHFullName;
-		    nLoc.hostProjectId   = pd.GHProjectId;
+		    nLoc.hostRepository  = pd.repoName;
+		    nLoc.hostProjectId   = pd.projectId;
 		    nLoc.hostProjectName = loc.hostProjectName;
-		    nLoc.hostColumnId    = pd.GHColumnId;
+		    nLoc.hostColumnId    = pd.columnId;
 		    nLoc.hostColumnName  = newName;
 		    nLoc.active          = "true";
 		    

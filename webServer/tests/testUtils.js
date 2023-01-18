@@ -408,6 +408,9 @@ function findCardForIssue( cards, issueNum ) {
 }
 
 async function setUnpopulated( authData, td ) {
+    // XXX erm.. no more repo here
+    console.log( "Error.  repo no longer stored with ceProjects" );
+    assert( false ); 
     let status = await awsUtils.getProjectStatus( authData, td.ceProjectId );
     let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
     console.log( "Dynamo status id", statusIds );
@@ -812,23 +815,23 @@ async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card,
 
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
-    subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
-    subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
-    subTest = checkEq( link.GHColumnName, config.EMPTY,          subTest, "Linkage Col name" );
-    subTest = checkEq( link.GHIssueTitle, config.EMPTY,           subTest, "Linkage Card Title" );
-    subTest = checkEq( link.GHProjectName, config.EMPTY,         subTest, "Linkage Project Title" );
-    subTest = checkEq( link.GHColumnId, -1,                      subTest, "Linkage Col Id" );
-    subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
+    let link   = ( links.filter((link) => link.hostIssueId == issueData[0] ))[0];
+    subTest = checkEq( link.hostIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
+    subTest = checkEq( link.hostCardId, card.id,                   subTest, "Linkage Card Id" );
+    subTest = checkEq( link.hostColumnName, config.EMPTY,          subTest, "Linkage Col name" );
+    subTest = checkEq( link.hostIssueName, config.EMPTY,           subTest, "Linkage Card Title" );
+    subTest = checkEq( link.hostProjectName, config.EMPTY,         subTest, "Linkage Project Title" );
+    subTest = checkEq( link.hostColumnId, -1,                      subTest, "Linkage Col Id" );
+    subTest = checkEq( link.hostProjectId, loc.projId,             subTest, "Linkage project id" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     let peqs      = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-    let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    let issuePeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
     subTest = checkLE( issuePeqs.length, 1,                      subTest, "Peq count" );
     if( issuePeqs.length > 0 ) {
 	let peq = issuePeqs[0];
 	subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
-	subTest = checkEq( peq.GHIssueTitle, issueData[2],       subTest, "peq title is wrong" );
+	subTest = checkEq( peq.HostIssueTitle, issueData[2],       subTest, "peq title is wrong" );
 	subTest = checkEq( peq.CEGrantorId, config.EMPTY,        subTest, "peq grantor wrong" );
     }
 
@@ -864,14 +867,14 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
 	// Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
 	// Unclaimed may not have happened if peq'd a carded issue
 	let peqs      = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-	let issuePeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+	let issuePeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
 	subTest = checkEq( issuePeqs.length, 1,                      subTest, "Peq count" );
 	for( const peq of issuePeqs ) {
 	    subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
-	    subTest = checkEq( peq.GHIssueTitle, issueData[2],       subTest, "peq title is wrong" );
+	    subTest = checkEq( peq.HostIssueTitle, issueData[2],       subTest, "peq title is wrong" );
 	    subTest = checkEq( peq.CEGrantorId, config.EMPTY,        subTest, "peq grantor wrong" );
 	}
-	let peqId = issuePeqs[0].GHProjectSub[0] == "UnClaimed" ? issuePeqs[1].PEQId : issuePeqs[0].PEQId;
+	let peqId = issuePeqs[0].HostProjectSub[0] == "UnClaimed" ? issuePeqs[1].PEQId : issuePeqs[0].PEQId;
 	
 	
 	// CHECK dynamo Pact
@@ -886,7 +889,7 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
 	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = checkEq( lastPact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	subTest = checkEq( lastPact.Action, config.PACTACT_DEL,     subTest, "PAct Verb"); 
-	subTest = checkEq( lastPact.GHUserName, config.TESTER_BOT,  subTest, "PAct user name" ); 
+	subTest = checkEq( lastPact.HostUserName, config.TESTER_BOT,  subTest, "PAct user name" ); 
 	subTest = checkEq( lastPact.Ingested, "false",              subTest, "PAct ingested" );
 	subTest = checkEq( lastPact.Locked, "false",                subTest, "PAct locked" );
     }
@@ -928,34 +931,34 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
 	
 	// CHECK linkage
 	let links    = await getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-	let link = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
-	subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
-	subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
-	subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
-	subTest = checkEq( link.GHIssueTitle, issueData[2],           subTest, "Linkage Card Title" );
-	subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
-	subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
-	subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
+	let link = ( links.filter((link) => link.hostIssueId == issueData[0] ))[0];
+	subTest = checkEq( link.hostIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
+	subTest = checkEq( link.hostCardId, card.id,                   subTest, "Linkage Card Id" );
+	subTest = checkEq( link.hostColumnName, loc.colName,           subTest, "Linkage Col name" );
+	subTest = checkEq( link.hostIssueName, issueData[2],           subTest, "Linkage Card Title" );
+	subTest = checkEq( link.hostProjectName, loc.projName,         subTest, "Linkage Project Title" );
+	subTest = checkEq( link.hostColumnId, loc.colId,               subTest, "Linkage Col Id" );
+	subTest = checkEq( link.hostProjectId, loc.projId,             subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
 	let allPeqs  =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-	let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+	let peqs = allPeqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
 	subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
 	
 	assignCnt = assignCnt ? assignCnt : 0;
 	
 	subTest = checkEq( peq.PeqType, config.PEQTYPE_ALLOC,       subTest, "peq type invalid" );        
-	subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-	subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-	subTest = checkEq( peq.GHHolderId.length, assignCnt,        subTest, "peq gh holders wrong" );      
+	subTest = checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+	subTest = checkEq( peq.HostIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+	subTest = checkEq( peq.HostHolderId.length, assignCnt,        subTest, "peq gh holders wrong" );      
 	subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
 	subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
 	subTest = checkEq( peq.Amount, labelVal,                    subTest, "peq amount" );
 	subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
-	subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq project id bad" );
+	subTest = checkEq( peq.HostProjectId, loc.projId,             subTest, "peq project id bad" );
 	for( let i = 0; i < loc.projSub.length; i++ ) {
-	    subTest = checkEq( peq.GHProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" );
+	    subTest = checkEq( peq.HostProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" );
 	}
 	
 	// CHECK dynamo Pact
@@ -967,7 +970,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
 	for( const pact of pacts ) {
 	    let hr  = await hasRaw( authData, pact.PEQActionId );
 	    subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	    subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	    subTest = checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
 	    subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 	    subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	}
@@ -1050,21 +1053,21 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 	
 	// CHECK linkage
 	let links  = await linksP;
-	let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
+	let link   = ( links.filter((link) => link.hostIssueId == issueData[0] ))[0];
 	subTest = checkEq( link !== 'undefined', true,               subTest, "Wait for link" );
 	if( link !== 'undefined' ) {
-	    subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
-	    subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
-	    subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
-	    subTest = checkEq( link.GHIssueTitle, issueData[2],          subTest, "Linkage Card Title" );
-	    subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
-	    subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
-	    subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
+	    subTest = checkEq( link.hostIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
+	    subTest = checkEq( link.hostCardId, card.id,                   subTest, "Linkage Card Id" );
+	    subTest = checkEq( link.hostColumnName, loc.colName,           subTest, "Linkage Col name" );
+	    subTest = checkEq( link.hostIssueName, issueData[2],          subTest, "Linkage Card Title" );
+	    subTest = checkEq( link.hostProjectName, loc.projName,         subTest, "Linkage Project Title" );
+	    subTest = checkEq( link.hostColumnId, loc.colId,               subTest, "Linkage Col Id" );
+	    subTest = checkEq( link.hostProjectId, loc.projId,             subTest, "Linkage project id" );
 	}
 	
 	// CHECK dynamo Peq
 	let allPeqs = await peqsP;
-	let peqs    = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+	let peqs    = allPeqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
 	subTest     = checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq     = peqs[0];
 	subTest     = checkEq( typeof peq !== 'undefined', true,        subTest, "peq not ready yet" );
@@ -1073,23 +1076,23 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 
 	    assignCnt = assignCnt ? assignCnt : 0;
 
-	    // When making an issue, peq.GHHolder will be assigned, or not, depending on if GH got the assign
+	    // When making an issue, peq.HostHolder will be assigned, or not, depending on if GH got the assign
 	    // signal before CE fully processed the label notification.  Since either is acceptible, let both pass.
-	    let holderCheck = peq.GHHolderId.length == assignCnt;
-	    if( peqHolder == "maybe" ) { holderCheck = holderCheck || peq.GHHolderId.length > 0; }
-	    if( !holderCheck ) { console.log( peq.GHHolderId.length.toString(), assignCnt.toString(), peqHolder ); }
+	    let holderCheck = peq.HostHolderId.length == assignCnt;
+	    if( peqHolder == "maybe" ) { holderCheck = holderCheck || peq.HostHolderId.length > 0; }
+	    if( !holderCheck ) { console.log( peq.HostHolderId.length.toString(), assignCnt.toString(), peqHolder ); }
 	    subTest = checkEq( holderCheck, true,                       subTest, "peq holders wrong" );      
 	
 	    subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
-	    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-	    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+	    subTest = checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+	    subTest = checkEq( peq.HostIssueTitle, issueData[2],          subTest, "peq title is wrong" );
 	    subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );    
 	    subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
 	    subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-	    subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
+	    subTest = checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
 	    subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
 	    if( !skipPeqPID ) {
-		subTest = checkEq( peq.GHProjectId, loc.projId,         subTest, "peq project id bad" );
+		subTest = checkEq( peq.HostProjectId, loc.projId,         subTest, "peq project id bad" );
 	    }
 	    
 	    // CHECK dynamo Pact
@@ -1105,7 +1108,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 		if( pacts.length <= 3 && loc.projSub.length > 1 ) {
 		    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
 		    if( !pip.includes( loc.projSub[1] )) { 
-			subTest = checkEq( peq.GHProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
+			subTest = checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
 		    }
 		}
 		
@@ -1113,7 +1116,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 		for( const pact of pacts ) {
 		    let hr  = await hasRaw( authData, pact.PEQActionId );
 		    subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-		    subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+		    subTest = checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
 		    subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 		    
 		    if( !muteIngested ) { subTest = checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }
@@ -1160,14 +1163,14 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     
     // CHECK linkage
     let links  = await linksP;
-    let link   = ( links.filter((link) => link.GHIssueId == issueData[0] ))[0];
-    subTest = checkEq( link.GHIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
-    subTest = checkEq( link.GHCardId, card.id,                   subTest, "Linkage Card Id" );
-    subTest = checkEq( link.GHColumnName, loc.colName,           subTest, "Linkage Col name" );
-    subTest = checkEq( link.GHIssueTitle, issueData[2],           subTest, "Linkage Card Title" );
-    subTest = checkEq( link.GHProjectName, loc.projName,         subTest, "Linkage Project Title" );
-    subTest = checkEq( link.GHColumnId, loc.colId,               subTest, "Linkage Col Id" );
-    subTest = checkEq( link.GHProjectId, loc.projId,             subTest, "Linkage project id" );
+    let link   = ( links.filter((link) => link.hostIssueId == issueData[0] ))[0];
+    subTest = checkEq( link.hostIssueNum, issueData[1].toString(), subTest, "Linkage Issue num" );
+    subTest = checkEq( link.hostCardId, card.id,                   subTest, "Linkage Card Id" );
+    subTest = checkEq( link.hostColumnName, loc.colName,           subTest, "Linkage Col name" );
+    subTest = checkEq( link.hostIssueName, issueData[2],           subTest, "Linkage Card Title" );
+    subTest = checkEq( link.hostProjectName, loc.projName,         subTest, "Linkage Project Title" );
+    subTest = checkEq( link.hostColumnId, loc.colId,               subTest, "Linkage Col Id" );
+    subTest = checkEq( link.hostProjectId, loc.projId,             subTest, "Linkage project id" );
 
     // CHECK dynamo Peq
     // If peq holders fail, especially during blast, one possibility is that GH never recorded the second assignment.
@@ -1176,24 +1179,24 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     //     PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
     //     creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
     let allPeqs =  await peqsP;
-    let peqs    = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    let peqs    = allPeqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
     let peq = peqs[0];
     subTest  = checkEq( peqs.length, 1,                          subTest, "Peq count" );
     subTest  = checkEq( typeof peq !== 'undefined', true,        subTest, "Peq count" );
     if( typeof peq === 'undefined' ) { return await settle( subTest, testStatus, checkUnclaimedIssue, authData, ghLinks, td, loc, issueData, card, testStatus, specials ); }
     subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
-    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-    subTest = checkEq( peq.GHHolderId.length, assignees.length, subTest, "peq holders wrong" );      
+    subTest = checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+    subTest = checkEq( peq.HostIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+    subTest = checkEq( peq.HostHolderId.length, assignees.length, subTest, "peq holders wrong" );      
     subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
     subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
     subTest = checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-    subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
+    subTest = checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
     subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
-    subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq project id bad" );
+    subTest = checkEq( peq.HostProjectId, loc.projId,             subTest, "peq project id bad" );
 
     for( const assignee of assignees ) {
-	subTest = checkEq( peq.GHHolderId.includes( assignee ), true, subTest, "peq holder bad" );
+	subTest = checkEq( peq.HostHolderId.includes( assignee ), true, subTest, "peq holder bad" );
     }
     
     // CHECK dynamo Pact
@@ -1205,7 +1208,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     if( pacts.length <= 3 && loc.projSub.length > 1 ) {
 	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
 	if( !pip.includes( loc.projSub[1] )) { 
-	    subTest = checkEq( peq.GHProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
+	    subTest = checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
 	}
     }
     
@@ -1213,7 +1216,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     for( const pact of pacts ) {
 	let hr     = await hasRaw( authData, pact.PEQActionId );
 	subTest = checkEq( hr, true,                            subTest, "PAct Raw match" ); 
-	subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
     }
@@ -1238,7 +1241,7 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issueData, car
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     const allPeqs =  await peqsP;
-    const peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    const peqs = allPeqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
     const peq = peqs[0];
 
     // CHECK dynamo Pact
@@ -1275,7 +1278,7 @@ async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issueData, car
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     const allPeqs = await peqsP;
-    const peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    const peqs = allPeqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
     const peq = peqs[0];
 
     // CHECK dynamo Pact
@@ -1307,20 +1310,20 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
     
     // CHECK dynamo Peq
     let allPeqs =  await peqsP;
-    let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    let peqs = allPeqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
     subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
     subTest = checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );       
-    subTest = checkEq( peq.GHProjectSub.length, loc.projSub.length, subTest, "peq project sub invalid" );
-    subTest = checkEq( peq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-    subTest = checkEq( peq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
+    subTest = checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub invalid" );
+    subTest = checkEq( peq.HostIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+    subTest = checkEq( peq.HostHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = checkEq( peq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
-    subTest = checkEq( peq.GHProjectSub[0], loc.projSub[0],     subTest, "peq project sub invalid" );
+    subTest = checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub invalid" );
     if( loc.projSub.length > 1 ) {
-	subTest = checkEq( peq.GHProjectSub[1], loc.projSub[1], subTest, "peq project sub invalid" );
+	subTest = checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub invalid" );
     }
-    subTest = checkEq( peq.GHProjectId, loc.projId,             subTest, "peq PID bad" );
+    subTest = checkEq( peq.HostProjectId, loc.projId,             subTest, "peq PID bad" );
     subTest = checkEq( peq.Active, "true",                      subTest, "peq" );
 
     // CHECK dynamo Pact
@@ -1339,7 +1342,7 @@ async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issueData, c
 	let hr     = await hasRaw( authData, pact.PEQActionId );
 	subTest = checkEq( hr, true,                            subTest, "PAct Raw match" ); 
 	subTest = checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
@@ -1370,7 +1373,7 @@ async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, ca
 
     // CHECK dynamo Peq
     let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-    let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    let peqs = allPeqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
     subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
 
@@ -1390,7 +1393,7 @@ async function checkNewlyAccruedIssue( authData, ghLinks, td, loc, issueData, ca
     //         * peq issue is assigned, get assignment notification
     //         * non peq assigned issue, which has not been tracked, gets a peq label.
     let foundAssignment = false;
-    foundAssignment = assignCnt > 0 && peq.GHHolderId.length == assignCnt;
+    foundAssignment = assignCnt > 0 && peq.HostHolderId.length == assignCnt;
 
     if( !foundAssignment ) {
 	for( let i = 0; i < pacts.length; i++ ) {
@@ -1424,7 +1427,7 @@ async function checkUnclaimedAccr( authData, ghLinks, td, loc, issueDataOld, iss
     
     // CHECK dynamo Peq
     let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-    let peqs = allPeqs.filter((peq) => peq.GHIssueId == issueDataNew[0].toString() );
+    let peqs = allPeqs.filter((peq) => peq.HostIssueId == issueDataNew[0].toString() );
     subTest = checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
 
@@ -1443,7 +1446,7 @@ async function checkUnclaimedAccr( authData, ghLinks, td, loc, issueDataOld, iss
     // For source == issue, new peq is added.  Old peq is changed.
     if( source == "issue" ) {
 	// PEQ inactive
-	peqs = allPeqs.filter((peq) => peq.GHIssueId == issueDataOld[0].toString() );
+	peqs = allPeqs.filter((peq) => peq.HostIssueId == issueDataOld[0].toString() );
 	peq = peqs[0];
 	subTest = checkEq( peqs.length, 1,                      subTest, "Peq count" );
 	subTest = checkEq( peq.Active, "false",                 subTest, "peq should be inactive" );
@@ -1480,7 +1483,7 @@ async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, test
 
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let link   = links.find( l => l.GHCardId == cardId );
+    let link   = links.find( l => l.hostCardId == cardId );
     subTest = checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
@@ -1512,15 +1515,15 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
     
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let link   = links.find( l => l.GHIssueId == issueData[0].toString() );
+    let link   = links.find( l => l.hostIssueId == issueData[0].toString() );
     subTest = checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueId": issueData[0] });
     if( peqs != -1 ) {
-	let peq = peqs.find(peq => peq.GHIssueId == issueData[0].toString() );
+	let peq = peqs.find(peq => peq.HostIssueId == issueData[0].toString() );
 	subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
-	subTest = checkEq( peq.GHIssueTitle, issueData[2],       subTest, "peq title is wrong" );
+	subTest = checkEq( peq.HostIssueTitle, issueData[2],       subTest, "peq title is wrong" );
 	subTest = checkEq( peq.CEGrantorId, config.EMPTY,        subTest, "peq grantor wrong" );
     }
 
@@ -1563,8 +1566,8 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
     
 	// Get cards
 	let allLinks  = await getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
-	let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
-	let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
+	let issLink   = allLinks.find( l => l.hostIssueId == issDat[0].toString() );
+	let splitLink = allLinks.find( l => l.hostIssueId == splitDat[0].toString() );
 	
 	if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
 	
@@ -1572,8 +1575,8 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
 	subTest = checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
 
 	if( typeof issLink !== 'undefined' && typeof splitLink !== 'undefined' ) {
-	    const card      = await getCard( authData, issLink.GHCardId );
-	    const splitCard = await getCard( authData, splitLink.GHCardId );
+	    const card      = await getCard( authData, issLink.hostCardId );
+	    const splitCard = await getCard( authData, splitLink.hostCardId );
 
 	    // NOTE: orig issue will not adjust initial peq value.  new issue will be set with new value.  label is up to date tho.
 	    if( situated ) {
@@ -1625,16 +1628,16 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
 	
 	// Get cards
 	let allLinks  = await getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
-	let issLink   = allLinks.find( l => l.GHIssueId == issDat[0].toString() );
-	let splitLink = allLinks.find( l => l.GHIssueId == splitDat[0].toString() );
+	let issLink   = allLinks.find( l => l.hostIssueId == issDat[0].toString() );
+	let splitLink = allLinks.find( l => l.hostIssueId == splitDat[0].toString() );
 	
 	if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
 	
 	// Break this in two to avoid nested loop for settle timer
 	if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
 	    
-	    const card      = await getCard( authData, issLink.GHCardId );
-	    const splitCard = await getCard( authData, splitLink.GHCardId );
+	    const card      = await getCard( authData, issLink.hostCardId );
+	    const splitCard = await getCard( authData, splitLink.hostCardId );
 	    
 	    let lval = origVal / 2;
 	    testStatus = await checkAlloc( authData, ghLinks, td, origLoc, issDat, card, testStatus, {opVal: origVal, val: lval, lblCount: labelCnt, assignees: assignCnt } );
@@ -1684,7 +1687,7 @@ async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, test
 
     // Check peq
     let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-    let peq = allPeqs.find( peq => peq.GHIssueTitle.includes( splitName ));
+    let peq = allPeqs.find( peq => peq.HostIssueTitle.includes( splitName ));
     subTest = checkEq( typeof peq === 'undefined', true,   subTest, "Peq should not exist" );
 
     // Linkage, id search.
@@ -1721,7 +1724,7 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let link   = links.find( l => l.GHCardId == cardId.toString() );
+    let link   = links.find( l => l.hostCardId == cardId.toString() );
     subTest = checkEq( typeof link === "undefined", true, subTest, "Link should not exist" );
 
     // CHECK dynamo Peq.  inactive, if it exists
@@ -1732,7 +1735,7 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
 	if( checkPeq ) {
 	    let peq = peqs[0];
 	    subTest = checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
-	    subTest = checkEq( peq.GHIssueTitle, title,              subTest, "peq title is wrong" );
+	    subTest = checkEq( peq.HostIssueTitle, title,              subTest, "peq title is wrong" );
 	    subTest = checkEq( peq.CEGrantorId, config.EMPTY,        subTest, "peq grantor wrong" );
 	}
 	else {
@@ -1813,7 +1816,7 @@ async function checkNoIssue( authData, ghLinks, td, issueData, testStatus ) {
 
     // CHECK linkage
     let links  = await getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let link   = links.find( l => l.GHIssueId == issueData[0] );
+    let link   = links.find( l => l.hostIssueId == issueData[0] );
     subTest = checkEq( typeof link, "undefined",                subTest, "Link should not exist" );
 
     return await settle( subTest, testStatus, checkNoIssue, authData, ghLinks, td, issueData, testStatus );
@@ -1840,19 +1843,19 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     // CHECK Dynamo PEQ
     // Should be no change
     let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-    let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0].toString() );
+    let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0].toString() );
     subTest = checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = checkEq( meltPeq.GHProjectSub.length, 3,              subTest, "peq project sub invalid" );
-    subTest = checkEq( meltPeq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-    subTest = checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
+    subTest = checkEq( meltPeq.HostProjectSub.length, 3,              subTest, "peq project sub invalid" );
+    subTest = checkEq( meltPeq.hostIssueName, issueData[2],          subTest, "peq title is wrong" );
+    subTest = checkEq( meltPeq.HostHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );
     subTest = checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
     subTest = checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
-    subTest = checkEq( meltPeq.GHProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
-    subTest = checkEq( meltPeq.GHProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
+    subTest = checkEq( meltPeq.HostProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
+    subTest = checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
+    subTest = checkEq( meltPeq.HostProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
     subTest = checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
     
@@ -1867,7 +1870,7 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     for( const pact of meltPacts ) {
 	let hr  = await hasRaw( authData, pact.PEQActionId );
 	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
@@ -1888,19 +1891,19 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     // CHECK Dynamo PEQ
     // Should be no change
     let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-    let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
+    let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
     subTest = checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = checkEq( meltPeq.GHProjectSub.length, 3,              subTest, "peq project sub invalid" );
-    subTest = checkEq( meltPeq.GHIssueTitle, issueData[2],          subTest, "peq title is wrong" );
-    subTest = checkEq( meltPeq.GHHolderId.length, 0,                subTest, "peq holders wrong" );
+    subTest = checkEq( meltPeq.HostProjectSub.length, 3,              subTest, "peq project sub invalid" );
+    subTest = checkEq( meltPeq.HostIssueTitle, issueData[2],          subTest, "peq title is wrong" );
+    subTest = checkEq( meltPeq.HostHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
     subTest = checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = checkEq( meltPeq.GHProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
-    subTest = checkEq( meltPeq.GHProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
-    subTest = checkEq( meltPeq.GHProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
+    subTest = checkEq( meltPeq.HostProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
+    subTest = checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
+    subTest = checkEq( meltPeq.HostProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
     subTest = checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
     
@@ -1929,7 +1932,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
 	let hr  = await hasRaw( authData, pact.PEQActionId );
 	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 
@@ -1965,7 +1968,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
 
     // CHECK Dynamo PEQ  .. no change already verified
     let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-    let meltPeqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
+    let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
     subTest = checkEq( meltPeqs.length, 1, subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     
@@ -1985,7 +1988,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
 	let hr     = await hasRaw( authData, pact.PEQActionId );
 	subTest = checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = checkEq( pact.GHUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
 	subTest = checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
