@@ -21,11 +21,12 @@ class CEProjects {
 		}
 	    }
 	}
-	// console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
+	console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
 	return retVal;
     }
     
     async init( authData ) {
+	console.log( "Initializing ceProjects" );
 	this.cep = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
 	for( const entry of this.cep ) {
 	    await this.add( authData, entry );
@@ -88,6 +89,7 @@ class CEProjects {
 		     this.fill( "Host", 15 ),
 		     this.fill( "Organization", 15 ),
 		     this.fill( "HostProjectId", 22 ),
+		     this.fill( "HostParts", 22 ),
 		   );
 	
 	let printables = [];
@@ -103,11 +105,13 @@ class CEProjects {
 	start = start < 0 ? 0 : start;
 	
 	for( let i = start; i < printables.length; i++ ) {
-	    let p = printables[i]; 
+	    let p     = printables[i];
+	    let parts = ( this.cep.find( c => c.CEProjectId == p.cp ) ).HostParts;
 	    console.log( this.fill( p.cp,  20 ),
 			 this.fill( p.h,   15 ),
 			 this.fill( p.o,   15 ),
 			 this.fill( p.hp,  22 ),
+			 this.fill( parts, 22 )
 		       );
 	}
     }

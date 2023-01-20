@@ -105,9 +105,16 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 	    // Loc data only needs to be built once.  Will be the same for every issue.
 	    // Note: can not build this from issues below, since we may have empty columns in board view.
 	    if( locData.length <= 0 ) {
-		
+
+		// XXX why process every view?
 		// Plunder the first view to get status (i.e. column) info
 		let views = project.views;
+		if( typeof views === 'undefined' ) {
+		    console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?" );
+		    statusId = 0;
+		    locData = [-1];
+		    return;
+		}
 		for( let i = 0; i < views.edges.length; i++ ) {
 		    const aview = views.edges[i].node;
 		    for( let j = 0; j < aview.fields.edges.length; j++ ) {
@@ -128,17 +135,18 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 			}
 		    }
 		}
+		// Build "No Status" by hand, since it corresponds to a null entry
+		let datum   = {};
+		datum.hostRepository  = config.EMPTY;
+		datum.hostProjectName = project.title;
+		datum.hostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
+		datum.hostColumnName  = config.GH_NO_STATUS; 
+		datum.hostColumnId    = config.EMPTY;           // no status column does not exist in view options above.  special case.
+		datum.hostUtility     = statusId;
+		locData.push( datum );
 	    }
-	    
-	    // Build "No Status" by hand, since it corresponds to a null entry
-	    let datum   = {};
-	    datum.hostRepository  = config.EMPTY;
-	    datum.hostProjectName = project.title;
-	    datum.hostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
-	    datum.hostColumnName  = config.GH_NO_STATUS; 
-	    datum.hostColumnId    = config.EMPTY;           // no status column does not exist in view options above.  special case.
-	    locData.push( datum );
-	    
+
+	    if( statusId == 0 ) { return; }
 	    assert( locData.length > 0 );
 	    assert( statusId != -1 );
 	    
@@ -1084,6 +1092,59 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 	.catch( e => ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, owner, repo, labelName, data, cursor ));
 }
 
+async function getProjectIds( authData, repoFullName, data, cursor ) {
+    
+    let rp = repoFullName.split('/');
+    assert( rp.length == 2 );
+
+    const query1 = `query($owner: String!, $name: String!) {
+	repository(owner: $owner, name: $name) {
+           id
+           projectsV2(first:100) {
+             pageInfo{hasNextPage, endCursor}
+             edges{node{title id}}}        
+           projects(first:100) {edges{node{name id}}}
+		}}`;
+    
+    const queryN = `query($owner: String!, $name: String!, $cursor: String!) {
+	repository(owner: $owner, name: $name) {
+           id
+           projectsV2(first:100 after: $cursor) {
+              pageInfo{hasNextPage, endCursor }
+              edges{node{title id}}}
+           projects(first:100) {edges{node{name id}}}
+		}}`;
+
+    let query     = cursor == -1 ? query1 : queryN;
+    let variables = cursor == -1 ? {"owner": rp[0], "name": rp[1] } : {"owner": rp[0], "name": rp[1], "cursor": cursor };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+
+	    // Run this once only
+	    if( cursor == -1 )
+	    {
+		let classics = raw.data.repository.projects;
+		if(classics.edges.length >= 100 ) { console.log( "WARNING.  Too many classic projects, ignoring some." ); }
+		for( const c of classics.edges ) {
+		    console.log( "   - pushing", c.node.name );
+		    data.push( c.node.id );
+		}
+	    }
+
+	    let projs = raw.data.repository.projectsV2;
+	    for( const p of projs.edges ) {
+		console.log( "   - pushing", p.node.title );
+		data.push( p.node.id );
+	    }
+	    // Wait.  Data is modified
+	    if( projs.pageInfo.hasNextPage ) { await getProjectIds( authData, repoFullName, data, issues.pageInfo.endCursor ); }
+
+	})
+	.catch( e => ghUtils.errorHandler( "getProjectIds", e, getProjectIds, authData, repoFullName, data, cursor ));
+}
+
 
 // NOTE: As of 1/2023 GH API does not support management of the status column for projects
 //       For now, verify that a human has created this by hand.... https://github.com/orgs/community/discussions/44265 
@@ -1207,7 +1268,6 @@ exports.updateProject      = updateProject;
 exports.createProject      = createProject;
 
 exports.getColumnName      = getColumnName;
-exports.updateColumn       = updateColumn;   // XXX NYI
 
 exports.getCard            = getCard;
 exports.moveCard           = moveCard;
@@ -1219,7 +1279,10 @@ exports.getOwnerId         = getOwnerId;
 exports.getRepoId          = getRepoId;
 exports.getLabelIssues     = getLabelIssues;
 
-exports.createColumn           = createColumn;
-exports.createUnClaimedProject = createUnClaimedProject;
-exports.createUnClaimedColumn  = createUnClaimedColumn;
-exports.createUnClaimedCard    = createUnClaimedCard;
+exports.getProjectIds      = getProjectIds;
+
+exports.createColumn           = createColumn;           // XXX NYI
+exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
+exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
+exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI
+exports.updateColumn           = updateColumn;           // XXX NYI

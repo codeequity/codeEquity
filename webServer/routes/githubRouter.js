@@ -292,6 +292,9 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     let retVal = "";
 
     let pd = new gh2Data.GH2Data( jd, ceProjects );
+
+    console.log( "switcherGH2.." );
+    ceProjects.show();
     
     assert( jd.queueId == authData.job ) ;
     await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
@@ -369,7 +372,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	
 	if( !found ) {
 	    console.log( authData.who, "Did not find matching pv2Notice." );
-	    if( jd.delayCount > 3 ) {
+	    if( jd.delayCount > 5 ) {
 		console.log( "This job has already been delayed several times.. Checking for PV2" );
 		let foundPV2 = await ghUtils.checkForPV2( authData.pat, nodeId );
 		// XXX disturbing?  where's the pv2Notice?
@@ -398,6 +401,8 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 
 async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
+    console.log( "Switching.. " );
+    ceProjects.show();
     if( jd.action == "synchronize" || jd.reqBody.hasOwnProperty( "pull_request" )) {
 	console.log( "Notification for Pull Request.  CodeEquity does not require these.  Skipping." );
 	return res.end();

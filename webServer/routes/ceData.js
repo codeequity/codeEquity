@@ -52,7 +52,7 @@ class CEData {
     
     show() {
 	console.log( "CEData object contents" );
-	if( this.ceProjectId != -1           ) { console.log( "ceProjectId", this.CEProjectId ); }
+	if( this.ceProjectId != -1           ) { console.log( "ceProjectId", this.ceProjectId ); }
 	if( this.org         != config.EMPTY ) { console.log( "org", this.org ); }
 	if( this.actor       != config.EMPTY ) { console.log( "actor", this.actor ); }
 

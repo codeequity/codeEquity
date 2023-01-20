@@ -106,39 +106,41 @@ class Linkage {
 	    // XXX local implementations should not be here.
 	    // All ids for GH2 are GQL node_ids.
 	    else if( pms == config.PMS_GH2 ) {
-		console.log( "linkage: GH2" );
-
 		// mainly to get pat
 		await ceRouter.getAuths( authData, host, pms, org, config.CE_USER ); 
-	    
-		let awsLinks = await awsUtils.getLinkage( authData, { "CEProjectId": entry.CEProjectId } );		
-		assert( awsLinks.length == 1 );
 
+		// XXX handle entry.HostParts.hostProjectIds
+		// XXX any point in adding hostRepo to locData?  Probably not unless want list.  Confirm.
 		let hostProjs = [];
+		for( const repoName of entry.HostParts.hostRepositories ) {
+		    await ghV2.getProjectIds( authData, repoName, hostProjs, -1 );
+		}
 
-		for( const awsLoc of awsLinks[0].Locations ) {
-		    if( !hostProjs.includes( awsLoc.hostProjectId ) ) {
-			hostProjs.push(  awsLoc.hostProjectId );
-			let rLinks = [];			
-			
-			ldPromise = ghV2.getHostLinkLoc( authData, awsLoc.hostProjectId, locData, rLinks, -1 )
-			    .catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
-			
-			ldPromise = await ldPromise;  // no val here, just ensures locData is set
-			
-			// console.log( "LINKAGE: Locs", locData );
-			// console.log( "LINKAGE: Links", rLinks );
-			for( var loc of locData ) {
-			    loc.ceProjectId = entry.CEProjectId;
-			    loc.active = "true";
-			    this.addLoc( authData, loc, false ); 
-			}
-
-			// XXX revisit this repo designation.  It is not shared, but per loc, no need to pass along.
-			//     will need to facelift GHC above.
-			this.populateLinkage( authData, entry.CEProjectId, config.EMPTY, rLinks );
-			baseLinks = baseLinks.concat( rLinks );
+		console.log( "GET FOR PROJECT", entry.CEProjectId, hostProjs.length );
+		
+		for( const projId of hostProjs ) {
+		    console.log( "GET FOR PROJECT", entry.CEProjectId, projId );
+		    let rLinks = [];
+		    let rLocs  = [];
+		    
+		    ldPromise = ghV2.getHostLinkLoc( authData, projId, rLocs, rLinks, -1 )
+			.catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
+		    
+		    ldPromise = await ldPromise;  // no val here, just ensures locData is set
+		    
+		    // console.log( "LINKAGE: Locs",  rLocs );
+		    // console.log( "LINKAGE: Links", rLinks );
+		    for( var loc of rLocs ) {
+			loc.ceProjectId = entry.CEProjectId;
+			loc.active = "true";
+			this.addLoc( authData, loc, false ); 
 		    }
+		    
+		    // XXX revisit this repo designation.  It is not shared, but per loc, no need to pass along.
+		    //     will need to facelift GHC above.
+		    this.populateLinkage( authData, entry.CEProjectId, config.EMPTY, rLinks );
+		    baseLinks = baseLinks.concat( rLinks );
+		    locData = locData.concat( rLocs );
 		}
 	    }
 	}

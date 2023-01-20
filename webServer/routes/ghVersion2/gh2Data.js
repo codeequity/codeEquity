@@ -18,8 +18,8 @@ class GH2Data extends ceData.CEData{
 
 	super( settings );
 
-	if( typeof ceProjectId !== 'undefined' ) { this.ceProjectId = ceProjectId; }
-	else                                     { this.ceProjectId = this.getCEProjectId( jd, ceProjects ); }
+	if( typeof ceProjectId !== 'undefined' && ceProjectId != config.EMPTY ) { this.ceProjectId = ceProjectId; }
+	else                                                                    { this.ceProjectId = this.getCEProjectId( jd, ceProjects ); }
 
 	// Specific to gh2
 	this.issueNum       = -1;
@@ -40,6 +40,8 @@ class GH2Data extends ceData.CEData{
     
     getCEProjectId( jd, ceProjects ) {
 
+	console.log( "getCEProjectId",  jd.reqBody );
+	
 	if( Object.keys(ceProjects).length == 0 ) { return config.EMPTY; }
 	
 	// Have to get this from pv2Notice.  If this is contentNotice, skip.

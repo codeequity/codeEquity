@@ -316,4 +316,4 @@ async function populateCELinkage( authData, ghLinks, pd )
 
 exports.resolve          = resolve;
 exports.processNewPEQ    = processNewPEQ;
-exports.populateCELinage = populateCELinkage;
+exports.populateCELinkage = populateCELinkage;

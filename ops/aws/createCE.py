@@ -113,13 +113,14 @@ def createTestDDBEntries( sam ) :
     # absolute path, or relative from ops.  above relative path is incorrect.
     # splitAndLoad(sam, "../webServer/tests/testData/baselineData/dynamoCEPEQRaw.json", "CEPEQRaw" )
     # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEGithub_latest.json", "CEHostUser" )
-    splitAndLoad(sam, "../../webServer/tests/testData/dynamoCELinkage_latest.json", "CELinkage" )
     # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPeople_latest.json", "CEPeople" )
     # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQActions_latest.json", "CEPEQActions" )
     # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQRaw_latest.json", "CEPEQRaw" )
     # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQs_latest.json", "CEPEQs" )
     # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQSummary_latest.json", "CEPEQSummary" )
-    # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEProjects_latest.json", "CEProjects" )
+    splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEProjects_latest.json", "CEProjects" )
+
+    # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCELinkage_latest.json", "CELinkage" )
 
     
 def createConfigFiles( sam, Xs = False ):
