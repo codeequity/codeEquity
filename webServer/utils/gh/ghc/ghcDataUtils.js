@@ -164,6 +164,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	}
 	else if( pd.issueId != -1 ) {
 	    let blank      = config.EMPTY;
+	    let orig = {};
+	    // XXXXXXXXXXXXXX
 	    ghLinks.addLinkage( authData, pd.ceProjectId, pd.repoName, pd.issueId, pd.GHIssueNum, pd.projectId, blank , -1, blank, origCardId, blank );
 	}
     }

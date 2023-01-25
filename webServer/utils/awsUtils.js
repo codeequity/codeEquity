@@ -340,7 +340,7 @@ async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) 
 
     if( gql ) {
 	for( var loc of locData ) {
-            loc.Active = "true";
+            loc.active = "true";
 	}
     }
 

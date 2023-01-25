@@ -287,14 +287,13 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 }
 
 
-async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp ) {
+async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, ceProjectId ) {
 
     let retVal = "";
 
-    let pd = new gh2Data.GH2Data( jd, ceProjects );
+    let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
     console.log( "switcherGH2.." );
-    ceProjects.show();
     
     assert( jd.queueId == authData.job ) ;
     await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
@@ -361,11 +360,12 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	    // If the id's match, then we know the contentNotice is pv2.  No need to match further
 	    // console.log( "... looking at", pendingNotices[i], nodeId, jd.event );
 	    if( nodeId == pendingNotices[i].id ) {
-		console.log( "Found pv2Notice matching contentNotice" );
-		pendingNotices.splice( i, 1 );
+		console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
 		// console.log( "pendingNotices, after removal" );
+		let cpid = ceProjects.find( jd.host, pendingNotices[i].org, pendingNotices[i].hpid );
 		found = true;
-		await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
+		pendingNotices.splice( i, 1 );
+		await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, cpid );
 		break;
 	    }
 	}
@@ -399,10 +399,25 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     }
 }
 
+function makePendingNotice( rb ) {
+    // Need to push GH2 info, not GHC.
+    assert( typeof rb.projects_v2_item !== 'undefined' );
+    assert( typeof rb.projects_v2_item.content_node_id !== 'undefined' );
+    assert( typeof rb.changes !== 'undefined' && typeof rb.changes.field_value !== 'undefined' && typeof rb.changes.field_value.field_type !== 'undefined' );
+    assert( typeof rb.organization !== 'undefined' );
+    
+    let pn = {};
+    pn.id   = rb.projects_v2_item.content_node_id;
+    pn.mod  = rb.changes.field_value.field_type;
+    pn.hpid = rb.projects_v2_item.project_node_id;
+    pn.org  = rb.organization.login;
+	
+    return pn;
+}
+
 async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
     console.log( "Switching.. " );
-    ceProjects.show();
     if( jd.action == "synchronize" || jd.reqBody.hasOwnProperty( "pull_request" )) {
 	console.log( "Notification for Pull Request.  CodeEquity does not require these.  Skipping." );
 	return res.end();
@@ -410,12 +425,8 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
     if( jd.projMgmtSys == config.PMS_GH2 ) {
 	if( jd.action == "edited" ) {
-	    let rb = jd.reqBody;
-	    assert( typeof rb.projects_v2_item.content_node_id !== 'undefined' );
-	    assert( typeof rb.changes !== 'undefined' && typeof rb.changes.field_value !== 'undefined' && typeof rb.changes.field_value.field_type !== 'undefined' );
-
-	    pendingNotices.push( {id: rb.projects_v2_item.content_node_id, mod: rb.changes.field_value.field_type} );
-	    console.log( "pending after push", pendingNotices );
+	    pendingNotices.push( makePendingNotice( jd.reqBody ) );
+	    // console.log( "pending after push", pendingNotices );
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
 	}
 	else {

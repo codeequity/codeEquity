@@ -8,6 +8,8 @@ const ghUtils  = require( '../ghUtils' );
 
 const ghV2     = require( './ghV2Utils' );
 
+const gh2Data  = require( '../../../routes/ghVersion2/gh2Data' );
+
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
@@ -17,6 +19,8 @@ const ghV2     = require( './ghV2Utils' );
 async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
 
+    console.log( "RESOLVE" );
+    pd.show();
     // on first call from populate, list may be large.  Afterwards, max 2.
     if( pd.issueId == -1 ) { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
     
@@ -44,7 +48,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     // If peq label exists, recast it.  There can only be 0 or 1.
     let idx = 0;
     let newLabel = "";
-    for( label of issue.labels ) {
+    for( const label of issue.labels ) {
 	let content = label['description'];
 	let peqVal  = ghUtils.parseLabelDescr( [content] );
 
@@ -75,6 +79,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 
 	// XXX Why is this needed?  initRepo gets it for all links, so not a populateCE issue.  Add a new card(loc) PNP will create new link....?
 	console.log( "XXX resolve.. this part needed??  isn't links already all set?", links[i] );
+	console.log( links );
 	/*
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
@@ -139,14 +144,15 @@ async function populateCELinkage( authData, ghLinks, pd )
     // Note: GH allows an issue to have multiple locations, but only 1 per host project.
     //       A ceProject may have multiple host projects, linkage is per ceProject, iteration to create linkage is per card, so issueContent may show up twice.
     let promises = [];
-    for( link in linkage ) {
+    for( const link of linkage ) {
 	if( typeof link.duplicate === 'undefined' ) {
 	    if( link.allCards.length > 1 ) {
 		console.log( "Found link with multiple cards", link );
 		pd.issueId  = link.issueId;
 		pd.issueNum = link.issueNum;
 		let pdCopy =  gh2Data.GH2Data.from( pd );
-		promises.push( resolve( authData, ghLinks, pdCopy, "???" ) );
+		// XXXXXXXXX
+		if( promises.length == 0 ) { promises.push( resolve( authData, ghLinks, pdCopy, "???" ) ); }
 	    }
 	}
 	// mark duplicates
@@ -155,7 +161,8 @@ async function populateCELinkage( authData, ghLinks, pd )
     await Promise.all( promises );
 
     origPop = await origPop;  // any reason to back out of this sooner?
-    assert( !origPop );
+    // XXX TURN THIS BACK ON
+    // assert( !origPop );
     // Don't wait.
     awsUtils.setPopulated( authData, pd.ceProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );

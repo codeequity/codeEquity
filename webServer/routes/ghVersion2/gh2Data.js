@@ -31,16 +31,18 @@ class GH2Data extends ceData.CEData{
 	jd.actor   = orig.actor;
 	jd.reqBody = orig.reqBody;
 	
-	let newPD = new GH2Data( jd, {}, orig.CEProjectId );
+	let newPD = new GH2Data( jd, {}, orig.ceProjectId );
 
-	newPD.issueNum   = orig.issueNum;
+	newPD.issueNum  = orig.issueNum;
+	newPD.issueId   = orig.issueId;
+	newPD.repoId    = orig.repoId;
 
 	return newPD;
     }
     
     getCEProjectId( jd, ceProjects ) {
 
-	console.log( "getCEProjectId",  jd.reqBody );
+	// console.log( "getCEProjectId",  jd.reqBody );
 	
 	if( Object.keys(ceProjects).length == 0 ) { return config.EMPTY; }
 	
