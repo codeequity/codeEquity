@@ -10,6 +10,7 @@ const ghV2     = require( './ghV2Utils' );
 
 const gh2Data  = require( '../../../routes/ghVersion2/gh2Data' );
 
+// XXX allocation set per label - don't bother to pass in
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
@@ -19,13 +20,14 @@ const gh2Data  = require( '../../../routes/ghVersion2/gh2Data' );
 async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
 
-    console.log( "RESOLVE" );
-    pd.show();
-    // on first call from populate, list may be large.  Afterwards, max 2.
-    if( pd.issueId == -1 ) { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
+    console.log( "RESOLVE", pd.issueId );
+    // pd.show();
+    if( pd.issueId == -1 ) { console.log(authData.who, "Resolve: early return, no issueId." ); return gotSplit; }
     
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId });
-    if( links == -1 || links.length < 2 ) { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
+    // This can happen if an issue in a non-ceProj repo links to a project that is in a ceProj.  The 'visiting' issue should not
+    // be managed by ceServer.
+    if( links == -1 || links.length < 2 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
     gotSplit = true;
     
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
@@ -42,15 +44,18 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     assert( links[0].hostIssueNum == pd.issueNum );
     let issue = await ghV2.getFullIssue( authData, pd.issueId );  
     assert( issue != -1 );
-
+    pd.repoId    = links[1].hostRepoId;
+    pd.projectId = links[1].hostProjectId;
+    
     // Can get here with blank slate from Populate, in which case no peq label to split.
     // Can get here with peq issue that just added new card, so will have peq label to split.
     // If peq label exists, recast it.  There can only be 0 or 1.
     let idx = 0;
     let newLabel = "";
     for( const label of issue.labels ) {
-	let content = label['description'];
-	let peqVal  = ghUtils.parseLabelDescr( [content] );
+	let content = ghUtils.parseLabelName( label.name );
+	let peqVal  = content[0];
+	allocation  = content[1];
 
 	if( peqVal > 0 ) {
 	    console.log( "Resolve, original peqValue:", peqVal );
@@ -76,21 +81,11 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     for( let i = 1; i < links.length; i++ ) {
 	let origCardId = links[i].hostCardId;
 	let splitTag   = utils.randAlpha(8);
-
-	// XXX Why is this needed?  initRepo gets it for all links, so not a populateCE issue.  Add a new card(loc) PNP will create new link....?
-	console.log( "XXX resolve.. this part needed??  isn't links already all set?", links[i] );
-	console.log( links );
-	/*
-	if( pd.peqType != "end" ) {
-	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
-	    links[i].hostProjectName = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, links[i].hostProjectId );  // if have pid, then have name..!
-	    links[i].hostColumnId    = ( await ghV2.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].hostColumnName  = ghV2.getColumnName( authData, ghLinks, pd.ceProjectId, pd.repoName, links[i].hostColumnId ); 
-	}
-	*/
-	
+	pd.repoId      = links[i].hostRepoId;
+	pd.projectId   = links[i].hostProjectId;
+	    
 	let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
-	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, links[i].hostColumnId, origCardId, issueData );
+	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, links[i].hostColumnId, origCardId, issueData, {projId: pd.projectId} );
 
 	pd.issueId    = issueData[0];
 	pd.issueNum   = issueData[1];
@@ -151,8 +146,9 @@ async function populateCELinkage( authData, ghLinks, pd )
 		pd.issueId  = link.issueId;
 		pd.issueNum = link.issueNum;
 		let pdCopy =  gh2Data.GH2Data.from( pd );
+		promises.push( resolve( authData, ghLinks, pdCopy, "???" ) );
 		// XXXXXXXXX
-		if( promises.length == 0 ) { promises.push( resolve( authData, ghLinks, pdCopy, "???" ) ); }
+		// break;
 	    }
 	}
 	// mark duplicates

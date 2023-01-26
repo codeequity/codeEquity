@@ -318,7 +318,7 @@ async function checkPopulated( authData, ceProjId ) {
 }
 
 async function setPopulated( authData, ceProjId ) {
-    console.log( authData.who, "Set populated: ", repo );
+    console.log( authData.who, "Set populated: ", ceProjId );
 
     let shortName = "CheckSetHostPop";
     let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "true" };

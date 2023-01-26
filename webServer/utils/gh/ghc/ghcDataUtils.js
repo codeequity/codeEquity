@@ -165,8 +165,12 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	else if( pd.issueId != -1 ) {
 	    let blank      = config.EMPTY;
 	    let orig = {};
-	    // XXXXXXXXXXXXXX
-	    ghLinks.addLinkage( authData, pd.ceProjectId, pd.repoName, pd.issueId, pd.GHIssueNum, pd.projectId, blank , -1, blank, origCardId, blank );
+	    orig.hostRepoName = pd.repoName;
+	    orig.issueId      = pd.issueId;
+	    orig.issueNum     = pd.GHIssueNum;
+	    orig.projectId    = pd.projectId;
+	    orig.hostCardId   = origCardId;
+	    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
 	}
     }
     else {
@@ -198,8 +202,17 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	
 	// issue->card:  issueId is available, but linkage has not yet been added
 	if( pd.GHIssueNum > -1 ) {
-	    ghLinks.addLinkage( authData, pd.ceProjectId, pd.repoName, pd.issueId, pd.GHIssueNum, pd.projectId, projName,
-				pd.columnId, colName, origCardId, issueCardContent[0] );
+	    let orig = {};
+	    orig.hostRepoName = pd.repoName;
+	    orig.issueId      = pd.issueId;
+	    orig.issueNum     = pd.GHIssueNum;
+	    orig.projectId    = pd.projectId;
+	    orig.projectName  = projName;
+	    orig.columnId     = pd.columnId;
+	    orig.columnName   = colName;
+	    orig.hostCardId   = origCardId;
+	    orig.title        = issueCardContent[0];
+	    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
 
 	    // If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
 	    // Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
@@ -230,8 +243,17 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	    let newCardId = await gh.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, pd.columnId, origCardId, issueData, locData );
 
 	    // Add card issue linkage
-	    ghLinks.addLinkage( authData, pd.ceProjectId, pd.repoName, pd.issueId, pd.GHIssueNum, pd.projectId, projName,
-				pd.columnId, colName, newCardId, pd.issueName);
+	    let orig = {};
+	    orig.hostRepoName = pd.repoName;
+	    orig.issueId      = pd.issueId;
+	    orig.issueNum     = pd.GHIssueNum;
+	    orig.projectId    = pd.projectId;
+	    orig.projectName  = projName;
+	    orig.columnId     = pd.columnId;
+	    orig.columnName   = colName;
+	    orig.hostCardId   = newCardId;
+	    orig.title        = pd.issueName;
+	    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
 	}
     }
 

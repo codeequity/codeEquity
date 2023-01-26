@@ -171,7 +171,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		    datum.projectId   = locData[0].hostProjectId;    
 		    datum.columnName  = status;
 		    datum.columnId    = optionId;
-		    datum.allCards    = links;
+		    datum.allCards    = links.map( link => link.node.id );
 		    
 		    linkData.push( datum );
 		}
@@ -345,7 +345,7 @@ async function getProjectFromNode( authData, pNodeId ) {
 // Note: mutation:addProjectV2DraftIssue works, but can't seem to find how to convert draft to full issue in gql?!!??
 // Note: issue below is a collection of issue details, not a true issue.
 async function createIssue( authData, repoNode, projNode, issue ) {
-    let issueData = [-1,-1]; // contentId, num
+    let issueData = [-1,-1,-1]; // contentId, num, cardId
 
     assert( typeof issue.title !== 'undefined', "Error.  createIssue requires a title." );
     if( typeof issue.allocation === 'undefined' ) { issue.allocation = false; }
@@ -363,6 +363,10 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	issue.body += "It is safe to filter this out of your issues list.\n\n";
 	issue.body += "It is NOT safe to close, reopen, or edit this issue.";
     }
+
+    // assignees, labels are lists of IDs, not full labels.
+    issue.labels    = issue.labels.map(    lab  => Object.keys( lab  ).length > 0 ? lab.id  : lab );
+    issue.assignees = issue.assignees.map( assn => Object.keys( assn ).length > 0 ? assn.id : assn );
     
     let query = `mutation( $repo:ID!, $title:String!, $body:String!, $labels:[ID!], $assg:[ID!], $mile:ID )
                     { createIssue( input:{ repositoryId: $repo, title: $title, body: $body, labelIds: $labels, assigneeIds: $assg, milestoneId: $mile }) 
@@ -381,7 +385,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
 	       
     query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
-    variables = {"proj": projNode, "contentId": ret.data.createIssue.issue.id };
+    variables = {"proj": projNode, "contentId": issueData[0]};
     queryJ    = JSON.stringify({ query, variables });
 
     // XXX If the create above succeeds and this triggers, the it will attempt to create again.  Copy made?  Split this out.
@@ -390,6 +394,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
 	    pvId = ret.data.addProjectV2ItemById.item.id;
+	    issueData[2] = pvId;
 	    console.log( " .. issue added to project, pv2ItemId:", pvId );
 	})
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
@@ -436,18 +441,19 @@ async function getFullIssue( authData, issueId ) {
     let variables = {"id": issueId};
     let queryJ    = JSON.stringify({ query, variables });
 
-    let issue = {};
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    let issue = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
+	    let iss = {};
 	    if( ret.status != 200 ) { throw ret; }
-	    issue = ret.data.node;
-	    if( issue.assignees.edges.length > 99 ) { console.log( "WARNING.  Large number of assignees.  Ignoring some." ); }
-	    if( issue.labels.edges.length > 99 )    { console.log( "WARNING.  Large number of labels.  Ignoring some." ); }
-	    issue.assignees = issue.assignees.edges.map( edge => edge.node );
-	    issue.labels    = issue.labels.edges.map( edge => edge.node );
+	    iss = ret.data.node;
+	    if( iss.assignees.edges.length > 99 ) { console.log( "WARNING.  Large number of assignees.  Ignoring some." ); }
+	    if( iss.labels.edges.length > 99 )    { console.log( "WARNING.  Large number of labels.  Ignoring some." ); }
+	    iss.assignees = iss.assignees.edges.map( edge => edge.node );
+	    iss.labels    = iss.labels.edges.map( edge => edge.node );
+	    return iss;
 	})
 	.catch( e => ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, issueId ));
-    
+
     return issue;
 }
 
@@ -499,9 +505,9 @@ async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, sp
 	    .catch( e => issueData = ghUtils.errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, repoNodeId, projectNodeId, issue, msg, splitTag ));
     }
     else {
-	console.log( "Calling create", issue );
+	console.log( "Calling create", repoNodeId, projectNodeId, issue );
 	issueData = await createIssue( authData, repoNodeId, projectNodeId, issue );
-	if( issueData[0] != -1 && issueData[1] != -1 ) { success = true; }
+	if( issueData[0] != -1 && issueData[1] != -1 && issueData[2] != -1 ) { success = true; }
     }
 
     if( success ) {
@@ -620,7 +626,7 @@ async function createLabel( authData, repoNode, name, color, desc ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
-	    if( ret.errors !== 'undefined' ) { console.log( "WARNING. Label not created", ret.errors ); }
+	    if( typeof ret.errors !== 'undefined' ) { console.log( "WARNING. Label not created", ret.errors ); }
 	    else {
 		console.log( " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
 		label = ret.data.createLabel.label;
@@ -930,6 +936,7 @@ async function createProjectCard( authData, projNodeId, issueNodeId, fieldId, va
 
 // Deleting the pv2 node has no impact on the underlying issue content, as is expected
 async function removeCard( authData, projNodeId, issueNodeId ) {
+    console.log( "RemoveCard", projNodeId, issueNodeId );
     let query     = `mutation( $projId:ID!, $itemId:ID! ) { deleteProjectV2Item( input:{ projectId: $projId, itemId: $itemId })  {clientMutationId}}`;
     let variables = {"projId": projNodeId, "itemId": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
@@ -942,15 +949,22 @@ async function removeCard( authData, projNodeId, issueNodeId ) {
 }
 
 async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issueData, locData ) {
-
+    
     let isReserved = typeof locData !== 'undefined' && locData.hasOwnProperty( "reserved" ) ? locData.reserved : false;    
     let projId     = typeof locData !== 'undefined' && locData.hasOwnProperty( "projId" )   ? locData.projId   : -1;
     let projName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "projName" ) ? locData.projName : "";
     let fullName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "fullName" ) ? locData.fullName : "";
 
-    assert( issueData.length == 2 );
-    let issueId  = issueData[0];
-    let issueNum = issueData[1];
+    assert( issueData.length == 3 );
+    let issueId   = issueData[0];
+    let issueNum  = issueData[1];
+    let newCardId = issueData[2];
+
+    if( colId == config.EMPTY ) {
+	console.log( "Card rebuild is for No Status column, which is a no-op.  Early return." );
+	return newCardId;
+    }
+    
     let statusId  = -1;
     assert.notEqual( issueId, -1, "Attempting to attach card to non-issue." );
 
@@ -967,6 +981,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 	statusId = locs[0].hostUtility;
     }
 
+    // XXX Untested
     // Trying to build new card in reserved space .. move out of reserved, prog is preferred.
     // Finding or creating non-reserved is a small subset of getCEprojectLayout
     // StatusId is per-project.  No need to find again.
@@ -1006,8 +1021,8 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 	}
     }
 
-    // create issue-linked project_card, requires id not num
-    let newCardId = await createProjectCard( authData, projId, issueId, statusId, colId, true );
+    // issue-linked project_card already exists if issue exists, in No Status.  Move it.
+    await createProjectCard( authData, projId, newCardId, statusId, colId, true );
     assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
     
     // remove orig card
@@ -1160,10 +1175,10 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	    for( const p of projs.edges ) {
 		console.log( "   - pushing", p.node.title, repoFullName, repoId );
 		let datum = {};
-		datum.hostProjectId = c.node.id;
+		datum.hostProjectId = p.node.id;
 		datum.hostRepoName  = repoFullName;
 		datum.hostRepoId    = repoId;
-		data.push( p.node.id );
+		data.push( datum );
 	    }
 	    // Wait.  Data is modified
 	    if( projs.pageInfo.hasNextPage ) { await getProjectIds( authData, repoFullName, data, issues.pageInfo.endCursor ); }

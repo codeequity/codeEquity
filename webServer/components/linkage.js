@@ -99,9 +99,9 @@ class Linkage {
 			
 			blPromise = await blPromise;  // no val here, just ensures linkData is set
 
-			rLinks.forEach( (link) { link.hostRepo = repo;
-						 this.addLinkage( authData, entry.CEProjectId, link ); 
-					       });
+			rLinks.forEach( function (link) { link.hostRepo = repo;
+							  this.addLinkage( authData, entry.CEProjectId, link ); 
+							}, this);
 
 			baseLinks = baseLinks.concat( rlinks );
 		    }
@@ -123,17 +123,18 @@ class Linkage {
 		
 		for( const proj of hostProjs ) {
 		    const projId = proj.hostProjectId;
-		    console.log( "GET FOR PROJECT", entry.CEProjectId, projId );
+		    console.log( "GET FOR PROJECT", entry.CEProjectId, proj.hostProjectId );
 		    let rLinks = [];
 		    let rLocs  = [];
 		    
-		    await ghV2.getHostLinkLoc( authData, projId, rLocs, rLinks, -1 )
+		    await ghV2.getHostLinkLoc( authData, proj.hostProjectId, rLocs, rLinks, -1 )
 			.catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
 
-		    rLinks.forEach( (link) { link.hostRepo   = proj.hostRepoName;
-					     link.hostRepoId = proj.hostRepoId;
-					     this.addLinkage( authData, entry.CEProjectId, link );
-					   });
+		    console.log( "Populate Linkage", proj.hostProjectId );
+		    rLinks.forEach( function (link) { link.hostRepo   = proj.hostRepoName;
+						      link.hostRepoId = proj.hostRepoId;
+						      this.addLinkage( authData, entry.CEProjectId, link );
+						    }, this);
 		    
 		    // console.log( "LINKAGE: Locs",  rLocs );
 		    // console.log( "LINKAGE: Links", rLinks );
@@ -191,7 +192,7 @@ class Linkage {
 	    }
 	}
 
-	assert( !badPeq  );  // will be caught.
+	assert( !badPeq, "Mismatching PEQs."  );  // will be caught.
 	return baseLinks; 
     }
 
@@ -223,7 +224,19 @@ class Linkage {
 	console.log( "Creating ghLinks from json data" );
 	for( const [_, clinks] of Object.entries( linkData ) ) {
 	    for( const [_, link] of Object.entries( clinks ) ) {
-		this.addLinkage( {}, link.ceProjectId, link );
+		// XXX grunk.  naming in addLinkage causes this conversion. kinda silly.  but testUtils only, so min impact.
+		let orig = {};
+		orig.hostRepoName  = link.hostRepo;
+		orig.hostRepoId    = link.hostRepoId;
+		orig.issueId       = link.hostIssueId;
+		orig.issueNum      = link.hostIssueNum;
+		orig.projectId     = link.hostProjectId;
+		orig.projectName   = link.hostProjectName;
+		orig.columnId      = link.hostColumnId;
+		orig.columnName    = link.hostColumnName;
+		orig.cardId        = link.hostCardId;
+		orig.title         = link.hostIssueName;
+		this.addLinkage( {}, link.ceProjectId, orig, link.flatSource );
 	    }
 	}
     }
@@ -233,6 +246,9 @@ class Linkage {
 	
 	// console.log( authData.who, "add link", ceProjId, orig.issueId, orig.cardId, orig.columnName, orig.columnId, orig.title );
 
+	assert( ceProjId     != config.EMPTY );
+	assert( orig.issueId != config.EMPTY );
+	assert( orig.cardId  != config.EMPTY );
 	if( !this.links.hasOwnProperty( ceProjId ) )                            { this.links[ceProjId] = {}; }
 	if( !this.links[ceProjId].hasOwnProperty( orig.issueId ) )              { this.links[ceProjId][orig.issueId] = {}; }
 	if( !this.links[ceProjId][orig.issueId].hasOwnProperty( orig.cardId ) ) { this.links[ceProjId][orig.issueId][orig.cardId] = {}; }
@@ -240,21 +256,19 @@ class Linkage {
 	let haveSource = false;
 	if( typeof source !== 'undefined' ) { haveSource = true; }
 
-	// XXX check undefined then config.empty for all below
-	// XXX no source ever?
 	let link = this.links[ceProjId][orig.issueId][orig.cardId];
-	// issuedId, cardId doubly-stored for convenience
+
 	link.ceProjectId     = ceProjId;
-	link.hostRepo        = orig.hostRepoName;
-	link.hostRepoId      = orig.hostRepoId;
-	link.hostIssueId     = orig.issueId.toString();
-	link.hostIssueNum    = orig.issueNum.toString();
-	link.hostProjectId   = orig.projectId.toString();
-	link.hostProjectName = orig.projectName;
-	link.hostColumnId    = orig.columnId.toString();
-	link.hostColumnName  = orig.columnName;
-	link.hostCardId      = orig.cardId.toString();
-	link.hostIssueName   = orig.title;   
+	link.hostRepo        = typeof orig.hostRepoName === 'undefined' ? config.EMPTY : orig.hostRepoName;
+	link.hostRepoId      = typeof orig.hostRepoId   === 'undefined' ? config.EMPTY : orig.hostRepoId;
+	link.hostIssueId     = typeof orig.issueId      === 'undefined' ? config.EMPTY : orig.issueId.toString();
+	link.hostIssueNum    = typeof orig.issueNum     === 'undefined' ? config.EMPTY : orig.issueNum.toString();
+	link.hostProjectId   = typeof orig.projectId    === 'undefined' ? config.EMPTY : orig.projectId.toString();
+	link.hostProjectName = typeof orig.projectName  === 'undefined' ? config.EMPTY : orig.projectName;
+	link.hostColumnId    = typeof orig.columnId     === 'undefined' ? config.EMPTY : orig.columnId.toString();
+	link.hostColumnName  = typeof orig.columnName   === 'undefined' ? config.EMPTY : orig.columnName;
+	link.hostCardId      = typeof orig.cardId       === 'undefined' ? config.EMPTY : orig.cardId.toString();
+	link.hostIssueName   = typeof orig.title        === 'undefined' ? config.EMPTY : orig.title;   
 	link.flatSource      = haveSource ? source : link.hostColumnId;
 
 	// Do not track source col if is in full layout
@@ -455,13 +469,17 @@ class Linkage {
 	if( typeof splitTitle !== 'undefined' ) {
 	    newTitle = oldLink.hostColumnId == -1 ? config.EMPTY : splitTitle;
 	}
-	
-	let link = this.addLinkage( authData, oldLink.ceProjectId, 
-				    oldLink.hostRepo,
-				    issueData[0].toString(), issueData[1].toString(),
-				    oldLink.hostProjectId, oldLink.hostProjectName,
-				    oldLink.hostColumnId, oldLink.hostColumnName,
-				    cardId.toString(), newTitle, oldLink.flatSource );
+	let alink = {};
+	alink.hostRepoName = oldLink.hostRepo;
+	alink.issueId      = issueData[0].toString();
+	alink.issueNum     = issueData[1].toString();
+	alink.projectId    = oldLink.hostProjectId;
+	alink.projectName  = oldLink.hostProjectName;
+	alink.columnId     = oldLink.hostColumnId;
+	alink.columnName   = oldLink.hostColumnName;
+	alink.hostCardId   = cardId.toString();
+	alink.title        = newTitle;
+	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, oldLink.flatSource );
 	
 	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );
 
