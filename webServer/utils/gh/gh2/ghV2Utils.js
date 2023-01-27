@@ -441,18 +441,18 @@ async function getFullIssue( authData, issueId ) {
     let variables = {"id": issueId};
     let queryJ    = JSON.stringify({ query, variables });
 
-    let issue = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+    let issue = {};
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
-	    let iss = {};
 	    if( ret.status != 200 ) { throw ret; }
-	    iss = ret.data.node;
-	    if( iss.assignees.edges.length > 99 ) { console.log( authData.who, "WARNING.  Large number of assignees.  Ignoring some." ); }
-	    if( iss.labels.edges.length > 99 )    { console.log( authData.who, "WARNING.  Large number of labels.  Ignoring some." ); }
-	    iss.assignees = iss.assignees.edges.map( edge => edge.node );
-	    iss.labels    = iss.labels.edges.map( edge => edge.node );
-	    return iss;
+	    issue = ret.data.node;
+	    if( issue.assignees.edges.length > 99 ) { console.log( authData.who, "WARNING.  Large number of assignees.  Ignoring some." ); }
+	    if( issue.labels.edges.length > 99 )    { console.log( authData.who, "WARNING.  Large number of labels.  Ignoring some." ); }
+	    issue.assignees = issue.assignees.edges.map( edge => edge.node );
+	    issue.labels    = issue.labels.edges.map( edge => edge.node );
 	})
-	.catch( e => ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, issueId ));
+	.catch( e => issue = ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, issueId ));
+
 
     return issue;
 }
@@ -632,7 +632,7 @@ async function createLabel( authData, repoNode, name, color, desc ) {
 		label = ret.data.createLabel.label;
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "createLabel", e, createLabel, authData, repoNode, name, color, desc ));
+	.catch( e => label = ghUtils.errorHandler( "createLabel", e, createLabel, authData, repoNode, name, color, desc ));
     
     return label;
 }
@@ -699,7 +699,7 @@ async function getLabels( authData, issueId ) {
 		labels.push( label );
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getLabels", e, getLabels, authData, issueId ));
+	.catch( e => labels = ghUtils.errorHandler( "getLabels", e, getLabels, authData, issueId ));
     
     return labels;
 }    
@@ -843,7 +843,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
 	    }
 	    console.log( authData.who, "New project id: ", pid );
 	})
-	.catch( e => ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
+	.catch( e => pid = ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
 
     return pid;
 }
@@ -1052,7 +1052,7 @@ async function getOwnerId( authData, ownerLogin ) {
 	    }
 	    console.log( authData.who, ownerLogin, retId );
 	  })
-	  .catch( e => ghUtils.errorHandler( "getOwnerId", e, getOwnerId, authData, ownerLogin ));
+	  .catch( e => retId = ghUtils.errorHandler( "getOwnerId", e, getOwnerId, authData, ownerLogin ));
 
     return retId;
 }
@@ -1070,7 +1070,7 @@ async function getRepoId( authData, ownerLogin, repoName ) {
 	    console.log( authData.who, ownerLogin, repoName, retId );
 	    
 	})
-	.catch( e => ghUtils.errorHandler( "getRepoId", e, getRepoId, authData, ownerLogin, repoName ));
+	.catch( e => retId = ghUtils.errorHandler( "getRepoId", e, getRepoId, authData, ownerLogin, repoName ));
 
     return retId;
 }
