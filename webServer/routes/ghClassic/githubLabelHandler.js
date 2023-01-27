@@ -64,7 +64,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    // Allow, if no active peqs for current label
-	    const query = { CEProjectId: pd.CEProjectId, Active: "true", Amount: lVal, PeqType: tVal };
+	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: lVal, PeqType: tVal };
 	    const peqs  = await awsUtils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs to handle with this edited label" );
@@ -111,15 +111,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			// console.log( "Labels for", issue.title, issue.num, newLabel, issueLabels );
 
 			// modify, fill pd
-			let newPD          = new ghcData.GHCData();
-			newPD.GHIssueNum   = issue.num;
-			newPD.GHIssueTitle = issue.title;
-			newPD.GHIssueId    = issue.issueId;
-			newPD.GHRepo       = pd.GHRepo;
-			newPD.GHOwner      = pd.GHOwner;
-			newPD.GHFullName   = pd.GHFullName;
-			newPD.GHCreator    = pd.reqBody.sender.login;
-			newPD.reqBody      = pd.reqBody;
+			let newPD       = new ghcData.GHCData();
+			newPD.issueNum  = issue.num;
+			newPD.issueName = issue.title;
+			newPD.issueId   = issue.issueId;
+			newPD.GHRepo    = pd.GHRepo;
+			newPD.GHOwner   = pd.GHOwner;
+			newPD.repoName  = pd.repoName;
+			newPD.actor     = pd.reqBody.sender.login;
+			newPD.reqBody   = pd.reqBody;
 
 			promises.push( issHan.labelIssue( authData, ghLinks, newPD, issue.num, issueLabels, newLabel ) );
 		    }
@@ -141,7 +141,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		const descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
 		ghSafe.createLabel( authData, pd.GHOwner, pd.GHRepo, newName, pd.reqBody.label.color, descr );
 	    }
-	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId, 
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId, 
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label edit attempt",
 				   utils.getToday(), pd.reqBody );
 	}
@@ -159,7 +159,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let   tVal = ghUtils.getAllocated( [ desc ] );
 	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
-	    const query = { CEProjectId: pd.CEProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
+	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
 	    const peqs  = await awsUtils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs with this deleted label" );
@@ -173,25 +173,25 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // add label to all.  recreate card.  peq was not modified.
 	    console.log( "WARNING.  Active Peq labels can not be deleted.  To delete, remove them from issues first. Recreating." );
 	    for( const peq of peqs ) {
-		let links = ghLinks.getLinks( authData, { "repo": pd.GHFullName, "issueId": peq.GHIssueId });
+		let links = ghLinks.getLinks( authData, { "repo": pd.repoName, "issueId": peq.GHIssueId });
 		assert( links.length == 1 );
 
 		// PEQ labels are updated during ingest - they can be out of date.  Make sure issue is not already peq-labeled.
 		let pv = 0;
-		let issueLabels = await gh.getLabels( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum );
+		let issueLabels = await gh.getLabels( authData, pd.GHOwner, pd.GHRepo, links[0].issueNum );
 		if( issueLabels != -1 ) {
 		    [pv,_] = ghUtils.theOnePEQ( issueLabels.data );
 		}
 		if( issueLabels == -1 ||  pv <= 0 ) {
 		    console.log( "No peq label conflicts, adding label back" );
-		    ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].GHIssueNum, label );
+		    ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, links[0].issueNum, label );
 		}
 		else {
-		    console.log( "Looks like peq label was outdated, will not add a 2nd peq label", links[0].GHIssueNum );
+		    console.log( "Looks like peq label was outdated, will not add a 2nd peq label", links[0].issueNum );
 		}
 
 	    }
-	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label delete attempt",
 				   utils.getToday(), pd.reqBody );
 	}

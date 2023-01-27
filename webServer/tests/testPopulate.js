@@ -166,7 +166,7 @@ async function testPopulate( authData, td ) {
     // Check DYNAMO PEQ
     let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
     for( const name of allNames ) {
-	let fpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( name ));
+	let fpeqs = peqs.filter((peq) => peq.HostIssueTitle.includes( name ));
 	testStatus = tu.checkEq( fpeqs.length, 0,   testStatus, "Bad peq created" );
     }
 
@@ -289,11 +289,11 @@ async function testResolve( authData, ghLinks, td ) {
     let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
 
     for( const name of [ ISS_NEWBIE, ISS_SINREC, ISS_DUBREC, ISS_SINFLAT, ISS_DUBMIX ] ) {
-	let fpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( name ));
+	let fpeqs = peqs.filter((peq) => peq.HostIssueTitle.includes( name ));
 	testStatus = tu.checkEq( fpeqs.length, 0,   testStatus, "Bad peq created" );
     }
 
-    let tpeqs = peqs.filter((peq) => peq.GHIssueTitle.includes( ISS_TRIPREC ) );
+    let tpeqs = peqs.filter((peq) => peq.HostIssueTitle.includes( ISS_TRIPREC ) );
     testStatus = tu.checkEq( tpeqs.length, 2,   testStatus, "Peq issues count" );
     assert( tpeqs.length == 2 );
     
@@ -301,27 +301,27 @@ async function testResolve( authData, ghLinks, td ) {
     for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].PeqType, config.PEQTYPE_PLAN, testStatus, "Peq Type" ); }
     for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].Active, "true",        testStatus, "Peq Active" ); }
     for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].CEHolderId.length, 0,  testStatus, "Peq ce holder ids" ); }
-    for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].GHHolderId.length, 0,  testStatus, "Peq gh holder ids" ); }
+    for( let i = 0; i < 2; i++ ) { testStatus = tu.checkEq( tpeqs[i].HostHolderId.length, 0,  testStatus, "Peq gh holder ids" ); }
     let foundPeq = 0;
     // tpeqs is from dynamo.  ghdata below is from GH
     for( let i = 0; i < 2; i++ ) {
-	console.log( tpeqs[i].GHProjectId, td.masterPID.toString(), tpeqs[i].GHHolderId );
-	if( tpeqs[i].GHProjectId == td.masterPID.toString()) {
+	console.log( tpeqs[i].HostProjectId, td.masterPID.toString(), tpeqs[i].HostHolderId );
+	if( tpeqs[i].HostProjectId == td.masterPID.toString()) {
 	    foundPeq++;
-	    testStatus = tu.checkEq( tpeqs[i].GHProjectSub.length, 1,                            testStatus, "Project Sub" );
-	    testStatus = tu.checkEq( tpeqs[i].GHProjectSub.includes(td.softContTitle ), true,    testStatus, "Project Sub" );
-	    let ghdata = softContData.filter((datum) => datum[3] == tpeqs[i].GHIssueTitle);
-	    console.log( "mas", ghdata[0][2], tpeqs[i].GHIssueId );
-	    testStatus = tu.checkEq( ghdata[0][2], tpeqs[i].GHIssueId,                           testStatus, "Issue Id/title mismatch" );
+	    testStatus = tu.checkEq( tpeqs[i].HostProjectSub.length, 1,                            testStatus, "Project Sub" );
+	    testStatus = tu.checkEq( tpeqs[i].HostProjectSub.includes(td.softContTitle ), true,    testStatus, "Project Sub" );
+	    let ghdata = softContData.filter((datum) => datum[3] == tpeqs[i].HostIssueTitle);
+	    console.log( "mas", ghdata[0][2], tpeqs[i].HostIssueId );
+	    testStatus = tu.checkEq( ghdata[0][2], tpeqs[i].HostIssueId,                           testStatus, "Issue Id/title mismatch" );
 	}
-	else if( tpeqs[i].GHProjectId == td.dataSecPID.toString()) {
+	else if( tpeqs[i].HostProjectId == td.dataSecPID.toString()) {
 	    foundPeq++;
-	    testStatus = tu.checkEq( tpeqs[i].GHProjectSub.length, 2,                            testStatus, "Project Sub" );
-	    testStatus = tu.checkEq( tpeqs[i].GHProjectSub[0].includes(td.softContTitle ), true, testStatus, "Project Sub" );
-	    testStatus = tu.checkEq( tpeqs[i].GHProjectSub[1].includes(td.dataSecTitle ), true,  testStatus, "Project Sub" );
-	    let ghdata = dsPlanData.filter((datum) => datum[3] == tpeqs[i].GHIssueTitle);
-	    console.log( "ds", ghdata[0][2], tpeqs[i].GHIssueId );
-	    testStatus = tu.checkEq( ghdata[0][2], tpeqs[i].GHIssueId,                           testStatus, "Issue Id/title mismatch" );
+	    testStatus = tu.checkEq( tpeqs[i].HostProjectSub.length, 2,                            testStatus, "Project Sub" );
+	    testStatus = tu.checkEq( tpeqs[i].HostProjectSub[0].includes(td.softContTitle ), true, testStatus, "Project Sub" );
+	    testStatus = tu.checkEq( tpeqs[i].HostProjectSub[1].includes(td.dataSecTitle ), true,  testStatus, "Project Sub" );
+	    let ghdata = dsPlanData.filter((datum) => datum[3] == tpeqs[i].HostIssueTitle);
+	    console.log( "ds", ghdata[0][2], tpeqs[i].HostIssueId );
+	    testStatus = tu.checkEq( ghdata[0][2], tpeqs[i].HostIssueId,                           testStatus, "Issue Id/title mismatch" );
 	}
     }
     testStatus = tu.checkEq( foundPeq, 2, testStatus, "Missing trip rec peq" ); 
@@ -329,8 +329,8 @@ async function testResolve( authData, ghLinks, td ) {
 
     // Check DYNAMO PAct
     let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
-    let masPeq = tpeqs.filter((peq) => peq.GHProjectId == td.masterPID.toString() );
-    let dsPeq  = tpeqs.filter((peq) => peq.GHProjectId == td.dataSecPID.toString() );
+    let masPeq = tpeqs.filter((peq) => peq.HostProjectId == td.masterPID.toString() );
+    let dsPeq  = tpeqs.filter((peq) => peq.HostProjectId == td.dataSecPID.toString() );
     testStatus = tu.checkGE( pacts.length, 3,         testStatus, "Number of PActs" );
 
     let f1 = 0;
@@ -341,7 +341,7 @@ async function testResolve( authData, ghLinks, td ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	    testStatus = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            testStatus, "PAct Verb"); 
 	    testStatus = tu.checkEq( hasRaw, true,                               testStatus, "PAct Raw match" ); 
-	    testStatus = tu.checkEq( pact.GHUserName, config.TESTER_BOT,         testStatus, "PAct user name" ); 
+	    testStatus = tu.checkEq( pact.HostUserName, config.TESTER_BOT,         testStatus, "PAct user name" ); 
 	    testStatus = tu.checkEq( pact.Ingested, "false",                     testStatus, "PAct ingested" );
 	    testStatus = tu.checkEq( pact.Locked, "false",                       testStatus, "PAct locked" );
 	    if     ( pact.Action == config.PACTACT_ADD )    { f1 = 1; }
@@ -380,47 +380,47 @@ async function testResolve( authData, ghLinks, td ) {
     let allGHData = softContData.concat( busOpsData ).concat( dsPlanData ).concat( ghProgData ).concat( eggData ).concat( baconData );
     let lcounts = [0,0,0,0];
     for( const link of links ) {
-	if( tripPeqIds.includes( link.GHIssueId )) {
+	if( tripPeqIds.includes( link.hostIssueId )) {
 	    let ghData = {};
-	    if( link.GHProjectId == td.masterPID.toString() ) {
+	    if( link.hostProjectId == td.masterPID.toString() ) {
 		tf0 = 1;
-		ghData = ( softContData.filter((dat) => dat[2].toString() == link.GHIssueId ))[0];
+		ghData = ( softContData.filter((dat) => dat[2].toString() == link.hostIssueId ))[0];
 		
-		testStatus = tu.checkEq( link.GHIssueNum, ghData[1].toString(),  testStatus, "Linkage Issue num" );
-		testStatus = tu.checkEq( link.GHCardId, ghData[0].toString(),    testStatus, "Linkage Card Id" );
-		testStatus = tu.checkEq( link.GHColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
-		testStatus = tu.checkEq( link.GHIssueTitle, ghData[3],            testStatus, "Linkage Card Title" );
-		testStatus = tu.checkEq( link.GHProjectName, config.MAIN_PROJ,   testStatus, "Linkage Project Title" );
-		testStatus = tu.checkEq( link.GHColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
+		testStatus = tu.checkEq( link.hostIssueNum, ghData[1].toString(),  testStatus, "Linkage Issue num" );
+		testStatus = tu.checkEq( link.hostCardId, ghData[0].toString(),    testStatus, "Linkage Card Id" );
+		testStatus = tu.checkEq( link.hostColumnName, td.softContTitle,    testStatus, "Linkage Col name" );
+		testStatus = tu.checkEq( link.hostIssueName, ghData[3],            testStatus, "Linkage Card Title" );
+		testStatus = tu.checkEq( link.hostProjectName, config.MAIN_PROJ,   testStatus, "Linkage Project Title" );
+		testStatus = tu.checkEq( link.hostColumnId, td.scColID.toString(), testStatus, "Linkage Col Id" );
 	    }
-	    else if( link.GHProjectId == td.dataSecPID.toString() ) {
+	    else if( link.hostProjectId == td.dataSecPID.toString() ) {
 		tf1 = 1;
-		ghData = ( dsPlanData.filter((dat) => dat[2].toString() == link.GHIssueId ))[0];
+		ghData = ( dsPlanData.filter((dat) => dat[2].toString() == link.hostIssueId ))[0];
 
-		testStatus = tu.checkEq( link.GHIssueNum, ghData[1].toString(),   testStatus, "Linkage Issue num" );
-		testStatus = tu.checkEq( link.GHCardId, ghData[0].toString(),     testStatus, "Linkage Card Id" );
-		testStatus = tu.checkEq( link.GHColumnName, plan,                 testStatus, "Linkage Col name" );
-		testStatus = tu.checkEq( link.GHIssueTitle, ghData[3],             testStatus, "Linkage Card Title" );
-		testStatus = tu.checkEq( link.GHProjectName, td.dataSecTitle,     testStatus, "Linkage Project Title" );
-		testStatus = tu.checkEq( link.GHColumnId, td.dsPlanID.toString(), testStatus, "Linkage Col Id" );
+		testStatus = tu.checkEq( link.hostIssueNum, ghData[1].toString(),   testStatus, "Linkage Issue num" );
+		testStatus = tu.checkEq( link.hostCardId, ghData[0].toString(),     testStatus, "Linkage Card Id" );
+		testStatus = tu.checkEq( link.hostColumnName, plan,                 testStatus, "Linkage Col name" );
+		testStatus = tu.checkEq( link.hostIssueName, ghData[3],             testStatus, "Linkage Card Title" );
+		testStatus = tu.checkEq( link.hostProjectName, td.dataSecTitle,     testStatus, "Linkage Project Title" );
+		testStatus = tu.checkEq( link.hostColumnId, td.dsPlanID.toString(), testStatus, "Linkage Col Id" );
 	    }
 	}
-	else if( othPeqIds.includes( link.GHIssueId )) {
+	else if( othPeqIds.includes( link.hostIssueId )) {
 	    tf2 += 1;
-	    ghData = ( allGHData.filter((dat) => dat[2].toString() == link.GHIssueId ))[0];
+	    ghData = ( allGHData.filter((dat) => dat[2].toString() == link.hostIssueId ))[0];
 
-	    if     ( link.GHProjectId == td.masterPID.toString() )    { lcounts[0]++; }
-	    else if( link.GHProjectId == td.dataSecPID.toString() )   { lcounts[1]++; }
-	    else if( link.GHProjectId == td.githubOpsPID.toString() ) { lcounts[2]++; }
-	    else if( link.GHProjectId == td.flatPID.toString() )      { lcounts[3]++; }
+	    if     ( link.hostProjectId == td.masterPID.toString() )    { lcounts[0]++; }
+	    else if( link.hostProjectId == td.dataSecPID.toString() )   { lcounts[1]++; }
+	    else if( link.hostProjectId == td.githubOpsPID.toString() ) { lcounts[2]++; }
+	    else if( link.hostProjectId == td.flatPID.toString() )      { lcounts[3]++; }
 	    
-	    testStatus = tu.checkEq( link.GHIssueNum, ghData[1].toString(), testStatus, "Linkage Issue num" );
-	    testStatus = tu.checkEq( link.GHCardId, ghData[0].toString(),   testStatus, "Linkage Card Id" );
+	    testStatus = tu.checkEq( link.hostIssueNum, ghData[1].toString(), testStatus, "Linkage Issue num" );
+	    testStatus = tu.checkEq( link.hostCardId, ghData[0].toString(),   testStatus, "Linkage Card Id" );
 
-	    testStatus = tu.checkEq( link.GHColumnName, config.EMPTY,       testStatus, "Linkage Col name" );
-	    testStatus = tu.checkEq( link.GHIssueTitle, config.EMPTY,        testStatus, "Linkage Card Title" );
-	    testStatus = tu.checkEq( link.GHProjectName, config.EMPTY,      testStatus, "Linkage Project Title" );
-	    testStatus = tu.checkEq( link.GHColumnId, -1,                   testStatus, "Linkage Col Id" );
+	    testStatus = tu.checkEq( link.hostColumnName, config.EMPTY,       testStatus, "Linkage Col name" );
+	    testStatus = tu.checkEq( link.hostIssueName, config.EMPTY,        testStatus, "Linkage Card Title" );
+	    testStatus = tu.checkEq( link.hostProjectName, config.EMPTY,      testStatus, "Linkage Project Title" );
+	    testStatus = tu.checkEq( link.hostColumnId, -1,                   testStatus, "Linkage Col Id" );
 	}
 
     }

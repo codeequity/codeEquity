@@ -1,39 +1,50 @@
 const config  = require( '../../config' );
 
+const ceData  = require( '../ceData' );
 const jobData = require( '../jobData' );
 
-class GH2Data {
+class GH2Data extends ceData.CEData{
 
-    constructor( jd, ceProjects ) {
-	// If project_node_id is not in ceProjects, then a new project has been created 'secretly' (thanks GH).
-	// this can be done with or without a repo, or by linking to several repos.
-	// XXX after the fact, CE will need to check if two repos from different CEProjectIds were linked, then reject.
-	// XXX the above may be unnecessarily restrictive..
-	// XXX in either case, may need ceFlutter to assign hostProj to ceProj.
+    // Use projectV2 node ids, not databaseIds
+    constructor( jd, ceProjects, ceProjectId ) {
+	// XXX May need ceFlutter to assign hostProj to ceProj.
 	//     when linking hostProj to repo, could do assignment to ceProj internally.
 
-	this.ceProjectId = this.getCEProjectId( jd, ceProjects );
-	
-	this.org        = jd.org;
-	this.actor      = jd.actor;
-	this.reqBody    = jd.reqBody;
+	let settings = {};
 
-	this.fullName   = config.EMPTY;  // of the current repository.. maybe remove?
+	settings.org     = jd.org;
+	settings.actor   = jd.actor;
+	settings.reqBody = jd.reqBody;
 
-	this.projectId      = config.EMPTY;    // host project data, gql node_id's not databaseIds
-	this.issueId        = config.EMPTY;
+	super( settings );
+
+	if( typeof ceProjectId !== 'undefined' && ceProjectId != config.EMPTY ) { this.ceProjectId = ceProjectId; }
+	else                                                                    { this.ceProjectId = this.getCEProjectId( jd, ceProjects ); }
+
+	// Specific to gh2
 	this.issueNum       = -1;
-	this.issueTitle     = config.EMPTY;
-
-	this.peqValue   = -1;
-	this.peqType    = config.PEQTYPE_END;
-	this.assignees  = [];
-	this.projSub    = [];
     }
 
+    static from( orig ) {
+	let jd     = {};
+	jd.org     = orig.org;
+	jd.actor   = orig.actor;
+	jd.reqBody = orig.reqBody;
+	
+	let newPD = new GH2Data( jd, {}, orig.ceProjectId );
+
+	newPD.issueNum  = orig.issueNum;
+	newPD.issueId   = orig.issueId;
+	newPD.repoId    = orig.repoId;
+
+	return newPD;
+    }
+    
     getCEProjectId( jd, ceProjects ) {
 
-	// ceProjects.show();
+	// console.log( "getCEProjectId",  jd.reqBody );
+	
+	if( Object.keys(ceProjects).length == 0 ) { return config.EMPTY; }
 	
 	// Have to get this from pv2Notice.  If this is contentNotice, skip.
 	if( typeof jd.reqBody.projects_v2_item === 'undefined' ||
@@ -59,25 +70,12 @@ class GH2Data {
     }
     
     show() {
-	console.log( "GH2Data object contents" );
-	if( this.ceProjectId != -1           ) { console.log( "ceProjectId", this.ceProjectId ); }
-	if( this.org         != config.EMPTY ) { console.log( "org", this.org ); }
-	if( this.actor       != config.EMPTY ) { console.log( "actor", this.actor ); }
-	if( this.fullName    != config.EMPTY ) { console.log( "fullName", this.fullName ); }
-
-	if( this.projectId      != config.EMPTY ) { console.log( "projectId", this.projectId ); }
-	if( this.issueId        != config.EMPTY ) { console.log( "issueId", this.issueId ); }
+	super.show();
 	if( this.issueNum       != -1 )           { console.log( "issueNum", this.issueNum ); }
-	if( this.issueTitle     != config.EMPTY ) { console.log( "issueTitle", this.issueTitle ); }
-
-	if( this.peqValue    != -1 ) { console.log( "peqValue", this.peqValue ); }
-	console.log( "peqType", this.peqType );
-	if( this.assignees.length > 0 ) { console.log( "assignees", this.assignees ); }
-	if( this.projSub.length > 0   ) { console.log( "projSub", this.projSub ); }
     }
     
     updateFromLink( link ) {
-	this.projectId = link.projectId;
+	this.projectId = link.projectId; 
 	this.issueNum  = link.issueNum;
     }
 }

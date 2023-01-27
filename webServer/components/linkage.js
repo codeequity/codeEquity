@@ -45,7 +45,7 @@ class Linkage {
 	assert( host != "" && pms != "" && org != "" );
 	assert( entry.hasOwnProperty( "CEProjectId" ) );
 	
-	console.log( ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
+	console.log( authData.who, ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
 	// Wait later
 	let peqs = awsUtils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
@@ -72,11 +72,11 @@ class Linkage {
 		let repos = [];
 		
 		for( const awsLoc of awsLinks[0].Locations ) {
-		    let repo = awsLoc.HostRepository;
+		    let repo = awsLoc.hostRepository;
 		    if( !repos.includes( repo )) {
 			repos.push( repo );
 
-			console.log( "Refreshing", entry.CEProjectId, repo );
+			console.log( authData.who, "Refreshing", entry.CEProjectId, repo );
 			let fnParts = repo.split('/');
 			let rlinks = [];
 			
@@ -85,20 +85,24 @@ class Linkage {
 			
 			// XXX this should not be here
 			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
-			    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
+			    .catch( e => console.log( authData.who, "Error.  GraphQL for basic linkage failed.", e ));
 			
 			ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
-			    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
+			    .catch( e => console.log( authData.who, "Error.  GraphQL for repo cols failed.", e ));
 			
 			ldPromise = await ldPromise;  // no val here, just ensures locData is set
 			for( var loc of locData ) {
-			    loc.CEProjectId = entry.CEProjectId;
-			    loc.Active = "true";
+			    loc.ceProjectId = entry.CEProjectId;
+			    loc.active = "true";
 			    this.addLoc( authData, loc, false ); 
 			}
 			
 			blPromise = await blPromise;  // no val here, just ensures linkData is set
-			this.populateLinkage( authData, entry.CEProjectId, repo, rlinks );
+
+			rlinks.forEach( function (link) { link.hostRepo = repo;
+							  this.addLinkage( authData, entry.CEProjectId, link ); 
+							}, this);
+
 			baseLinks = baseLinks.concat( rlinks );
 		    }
 		}
@@ -106,39 +110,42 @@ class Linkage {
 	    // XXX local implementations should not be here.
 	    // All ids for GH2 are GQL node_ids.
 	    else if( pms == config.PMS_GH2 ) {
-		console.log( "linkage: GH2" );
-
 		// mainly to get pat
 		await ceRouter.getAuths( authData, host, pms, org, config.CE_USER ); 
-	    
-		let awsLinks = await awsUtils.getLinkage( authData, { "CEProjectId": entry.CEProjectId } );		
-		assert( awsLinks.length == 1 );
 
+		// XXX handle entry.HostParts.hostProjectIds
 		let hostProjs = [];
+		for( const repoName of entry.HostParts.hostRepositories ) {
+		    await ghV2.getProjectIds( authData, repoName, hostProjs, -1 );
+		}
 
-		for( const awsLoc of awsLinks[0].Locations ) {
-		    if( !hostProjs.includes( awsLoc.HostProjectId ) ) {
-			hostProjs.push(  awsLoc.HostProjectId );
-			let rLinks = [];			
-			
-			ldPromise = ghV2.getHostLinkLoc( authData, awsLoc.HostProjectId, locData, rLinks, -1 )
-			    .catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
-			
-			ldPromise = await ldPromise;  // no val here, just ensures locData is set
-			
-			// console.log( "LINKAGE: Locs", locData );
-			// console.log( "LINKAGE: Links", rLinks );
-			for( var loc of locData ) {
-			    loc.CEProjectId = entry.CEProjectId;
-			    loc.Active = "true";
-			    this.addLoc( authData, loc, false ); 
-			}
+		// console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, hostProjs.length );
+		
+		for( const proj of hostProjs ) {
+		    const projId = proj.hostProjectId;
+		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, proj.hostProjectId );
+		    let rLinks = [];
+		    let rLocs  = [];
+		    
+		    await ghV2.getHostLinkLoc( authData, proj.hostProjectId, rLocs, rLinks, -1 )
+			.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
 
-			// XXX revisit this repo designation.  It is not shared, but per loc, no need to pass along.
-			//     will need to facelift GHC above.
-			this.populateLinkage( authData, entry.CEProjectId, config.EMPTY, rLinks );
-			baseLinks = baseLinks.concat( rLinks );
+		    // console.log( authData.who, "Populate Linkage", proj.hostProjectId );
+		    rLinks.forEach( function (link) { link.hostRepo   = proj.hostRepoName;
+						      link.hostRepoId = proj.hostRepoId;
+						      this.addLinkage( authData, entry.CEProjectId, link );
+						    }, this);
+		    
+		    // console.log( authData.who, "LINKAGE: Locs",  rLocs );
+		    // console.log( authData.who, "LINKAGE: Links", rLinks );
+		    for( var loc of rLocs ) {
+			loc.ceProjectId = entry.CEProjectId;
+			loc.active = "true";
+			this.addLoc( authData, loc, false ); 
 		    }
+		    
+		    baseLinks = baseLinks.concat( rLinks );
+		    locData = locData.concat( rLocs );
 		}
 	    }
 	}
@@ -161,31 +168,31 @@ class Linkage {
 	    const iid = peq.HostIssueId;
 	    let link = this.getUniqueLink( authData, entry.CEProjectId, iid );
 	    if( link == -1 ) {
-		console.log( "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.HostIssueTitle );
-		this.show(20);
+		console.log( authData.who, "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.HostIssueTitle );
+		// this.show(20);
 		badPeq = true;
 		continue;
 	    }
 
-	    let card = baseLinks.find( datum => datum.cardId == link.HostCardId );
+	    let card = baseLinks.find( datum => datum.cardId == link.hostCardId );
 	    
-	    link.HostIssueTitle  = card.title;
-	    link.HostColumnId    = card.columnId.toString();
-	    link.HostProjectName = card.projectName;
-	    link.HostColumnName  = card.columnName;
+	    link.hostIssueName   = card.title;
+	    link.hostColumnId    = card.columnId.toString();
+	    link.hostProjectName = card.projectName;
+	    link.hostColumnName  = card.columnName;
 
 	    // need a name here
 	    link.flatSource    = peq.HostProjectSub[ peq.HostProjectSub.length - 1 ];
 	    if( config.PROJ_COLS.includes( link.flatSource )) { link.flatSource = -1; }
 	    // XXX could make this faster if cols use gets broader.
 	    if( link.flatSource != -1 ) {
-		const loc = locData.find( loc => loc.HostProjectId == link.HostProjectId && loc.HostColumnName == link.flatSource );
-		if( typeof loc !== 'undefined' ) { link.flatSource = loc.HostColumnId; }
+		const loc = locData.find( loc => loc.hostProjectId == link.hostProjectId && loc.hostColumnName == link.flatSource );
+		if( typeof loc !== 'undefined' ) { link.flatSource = loc.hostColumnId; }
 		else { link.flatSource = -1; }   // e.g. projSub is (master)[softCont, dataSec]
 	    }
 	}
 
-	assert( !badPeq  );  // will be caught.
+	assert( !badPeq, "Mismatching PEQs."  );  // will be caught.
 	return baseLinks; 
     }
 
@@ -195,7 +202,7 @@ class Linkage {
     // init here is to handle a server restart, only 'remembers' official CE projects.
     async init( authData ) {
 	let tstart = Date.now();
-	console.log( "Init linkages" );
+	console.log( authData.who, "Init linkages" );
 	
 	// XXX aws fix name here.  Get ceProj status.
 	let ceProjects = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
@@ -203,10 +210,10 @@ class Linkage {
 	let promises = [];
 	for( const entry of ceProjects ) {
 	    promises.push( this.initOneProject( authData, entry )
-			   .catch( e => console.log( "Error.  Init Linkage failed.", e )) );
+			   .catch( e => console.log( authData.who, "Error.  Init Linkage failed.", e )) );
 	}
 	await Promise.all( promises );
-	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
+	console.log( authData.who, "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
 	this.show(50);
 	this.showLocs();
     }
@@ -214,49 +221,59 @@ class Linkage {
     // linkData is ceProject-specific, i.e. a single "cplinks"
     fromJson( linkData ) {
 	this.links = {};
-	console.log( "Creating ghLinks from json data" );
+	console.log( authData.who, "Creating ghLinks from json data" );
 	for( const [_, clinks] of Object.entries( linkData ) ) {
 	    for( const [_, link] of Object.entries( clinks ) ) {
-		this.addLinkage( {}, link.CEProjectId, link.HostRepo, link.HostIssueId, link.HostIssueNum,
-				 link.HostProjectId, link.HostProjectName, link.HostColumnId, link.HostColumnName,
-				 link.HostCardId, link.HostIssueTitle );
+		// XXX grunk.  naming in addLinkage causes this conversion. kinda silly.  but testUtils only, so min impact.
+		let orig = {};
+		orig.hostRepoName  = link.hostRepo;
+		orig.hostRepoId    = link.hostRepoId;
+		orig.issueId       = link.hostIssueId;
+		orig.issueNum      = link.hostIssueNum;
+		orig.projectId     = link.hostProjectId;
+		orig.projectName   = link.hostProjectName;
+		orig.columnId      = link.hostColumnId;
+		orig.columnName    = link.hostColumnName;
+		orig.cardId        = link.hostCardId;
+		orig.title         = link.hostIssueName;
+		this.addLinkage( {}, link.ceProjectId, orig, link.flatSource );
 	    }
 	}
     }
 
     // Linkage table only contains situated issues or better.  Card titles point to issue titles for situated issues.
-    addLinkage( authData, ceProjId, repo, issueId, issueNum, projId, projName, colId, colName, cardId, issueTitle, source ) {
+    addLinkage( authData, ceProjId, orig, source ) {
+	
+	// console.log( authData.who, "add link", ceProjId, orig.issueId, orig.cardId, orig.columnName, orig.columnId, orig.title );
 
-	// console.log( authData.who, "add link", ceProjId, issueId, cardId, colName, colId, issueTitle );
-
-	if( !this.links.hasOwnProperty( ceProjId ) )                  { this.links[ceProjId] = {}; }
-	if( !this.links[ceProjId].hasOwnProperty( issueId ) )         { this.links[ceProjId][issueId] = {}; }
-	if( !this.links[ceProjId][issueId].hasOwnProperty( cardId ) ) { this.links[ceProjId][issueId][cardId] = {}; }
+	assert( ceProjId     != config.EMPTY );
+	assert( orig.issueId != config.EMPTY );
+	assert( orig.cardId  != config.EMPTY );
+	if( !this.links.hasOwnProperty( ceProjId ) )                            { this.links[ceProjId] = {}; }
+	if( !this.links[ceProjId].hasOwnProperty( orig.issueId ) )              { this.links[ceProjId][orig.issueId] = {}; }
+	if( !this.links[ceProjId][orig.issueId].hasOwnProperty( orig.cardId ) ) { this.links[ceProjId][orig.issueId][orig.cardId] = {}; }
 
 	let haveSource = false;
 	if( typeof source !== 'undefined' ) { haveSource = true; }
 
-	let link = this.links[ceProjId][issueId][cardId];
-	// issuedId, cardId doubly-stored for convenience
-	link.CEProjectId     = ceProjId;
-	link.HostRepo        = repo;
-	link.HostIssueId     = issueId.toString();
-	link.HostIssueNum    = issueNum.toString();   // XXX GHC only?  remove?
-	link.HostProjectId   = projId.toString();
-	link.HostProjectName = projName;
-	link.HostColumnId    = colId.toString();
-	link.HostColumnName  = colName;
-	link.HostCardId      = cardId.toString();
-	link.HostIssueTitle  = issueTitle;   
-	link.flatSource      = haveSource ? source : link.HostColumnId;
+	let link = this.links[ceProjId][orig.issueId][orig.cardId];
+
+	link.ceProjectId     = ceProjId;
+	link.hostRepo        = typeof orig.hostRepoName === 'undefined' ? config.EMPTY : orig.hostRepoName;
+	link.hostRepoId      = typeof orig.hostRepoId   === 'undefined' ? config.EMPTY : orig.hostRepoId;
+	link.hostIssueId     = typeof orig.issueId      === 'undefined' ? config.EMPTY : orig.issueId.toString();
+	link.hostIssueNum    = typeof orig.issueNum     === 'undefined' ? config.EMPTY : orig.issueNum.toString();
+	link.hostProjectId   = typeof orig.projectId    === 'undefined' ? config.EMPTY : orig.projectId.toString();
+	link.hostProjectName = typeof orig.projectName  === 'undefined' ? config.EMPTY : orig.projectName;
+	link.hostColumnId    = typeof orig.columnId     === 'undefined' ? config.EMPTY : orig.columnId.toString();
+	link.hostColumnName  = typeof orig.columnName   === 'undefined' ? config.EMPTY : orig.columnName;
+	link.hostCardId      = typeof orig.cardId       === 'undefined' ? config.EMPTY : orig.cardId.toString();
+	link.hostIssueName   = typeof orig.title        === 'undefined' ? config.EMPTY : orig.title;   
+	link.flatSource      = haveSource ? source : link.hostColumnId;
 
 	// Do not track source col if is in full layout
-	if( !haveSource && config.PROJ_COLS.includes( link.HostColumnName ) ) { link.flatSource = -1; }
+	if( !haveSource && config.PROJ_COLS.includes( link.hostColumnName ) ) { link.flatSource = -1; }
 
-	// XXX
-	// console.log( "XXX link", link )
-	// console.log( "XXX this.links", this.links )
-	
 	return link;
     }
 
@@ -269,7 +286,7 @@ class Linkage {
 	// Need to purge first!
 	this.purgeLocs( "TESTING-FROMJSONLOCS" );
 	
-	console.log( "Creating ghLinks.locs from json data" );
+	console.log( authData.who, "Creating ghLinks.locs from json data" );
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, loc] of Object.entries( clocs ) ) {
 		this.addLoc( {}, loc );
@@ -279,17 +296,17 @@ class Linkage {
 
     // ProjectID is the kanban project.  repo:pid  is 1:many
     async addLoc( authData, locD, pushAWS = false ) {
-	locD.HostColumnId  = locD.HostColumnId.toString();
-	locD.HostProjectId = locD.HostProjectId.toString();
-	let ceProjId       = locD.CEProjectId;
+	locD.hostColumnId  = locD.hostColumnId.toString();
+	locD.hostProjectId = locD.hostProjectId.toString();
+	let ceProjId       = locD.ceProjectId;
 
-	if( typeof ceProjId === 'undefined' ) { console.log( "Warning.  Linkage addLoc was called without a CE Project Id." ); }
+	if( typeof ceProjId === 'undefined' ) { console.log( authData.who, "Warning.  Linkage addLoc was called without a CE Project Id." ); }
 	    
 	if( !this.locs.hasOwnProperty( ceProjId ))                                        { this.locs[ceProjId] = {}; }
-	if( !this.locs[ceProjId].hasOwnProperty( locD.HostProjectId ))                    { this.locs[ceProjId][locD.HostProjectId] = {}; }
-	if( !this.locs[ceProjId][locD.HostProjectId].hasOwnProperty( locD.HostColumnId )) { this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId] = new locData.LocData(); }
+	if( !this.locs[ceProjId].hasOwnProperty( locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
+	if( !this.locs[ceProjId][locD.hostProjectId].hasOwnProperty( locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData.LocData(); }
 											    
-	let loc = this.locs[ceProjId][locD.HostProjectId][locD.HostColumnId];
+	let loc = this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId];
 	loc.fromLoc( locD ); 
 
 	// Must wait.. aws dynamo ops handled by multiple threads.. order of processing is not dependable in rapid-fire situations.
@@ -298,14 +315,6 @@ class Linkage {
 	
 	return loc;
     }
-    
-    populateLinkage( authData, ceProjId, fn, baseLinkData ) {
-	console.log( authData.who, "Populate linkage", fn );
-	for( const elt of baseLinkData ) {
-	    this.addLinkage( authData, ceProjId, fn, elt.issueId, elt.issueNum, elt.projectId, config.EMPTY, -1, config.EMPTY, elt.cardId, config.EMPTY );
-	}
-    }
-    
 
     getUniqueLink( authData, ceProjId, issueId ) {
 
@@ -328,18 +337,19 @@ class Linkage {
     getLinks( authData, query ) {
 
 	if( typeof query.ceProjId === 'undefined' ) {
-	    console.log( "Error.  ceProjectId was not defined in Links query." );
+	    console.log( authData.who, "Error.  ceProjectId was not defined in Links query." );
 	    assert( false );
 	}
 
 	const ceProjId   = query.ceProjId;
-	const repo       = query.hasOwnProperty( "repo" )      ? query.repo               : config.EMPTY;
-	const issueId    = query.hasOwnProperty( "issueId" )   ? query.issueId.toString() : -1;
-	const cardId     = query.hasOwnProperty( "cardId" )    ? query.cardId.toString()  : -1;
-	const projId     = query.hasOwnProperty( "projId" )    ? query.projId             : -1;
-	const projName   = query.hasOwnProperty( "projName" )  ? query.projName           : config.EMPTY;
-	const colName    = query.hasOwnProperty( "colName" )   ? query.colName            : config.EMPTY;
-	const issueTitle = query.hasOwnProperty( "issueTitle" ) ? query.issueTitle        : config.EMPTY;
+	const repo       = query.hasOwnProperty( "repo" )       ? query.repo               : config.EMPTY;
+	const repoId     = query.hasOwnProperty( "repoId" )     ? query.repoId.toString()  : config.EMPTY;
+	const issueId    = query.hasOwnProperty( "issueId" )    ? query.issueId.toString() : -1;
+	const cardId     = query.hasOwnProperty( "cardId" )     ? query.cardId.toString()  : -1;
+	const projId     = query.hasOwnProperty( "projId" )     ? query.projId             : -1;
+	const projName   = query.hasOwnProperty( "projName" )   ? query.projName           : config.EMPTY;
+	const colName    = query.hasOwnProperty( "colName" )    ? query.colName            : config.EMPTY;
+	const issueTitle = query.hasOwnProperty( "issueTitle" ) ? query.issueTitle         : config.EMPTY;
 
 	// console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, issueTitle );
 	
@@ -348,14 +358,15 @@ class Linkage {
 	    // Note, during initial resolve, this may NOT be 1:1 issue:card
 	    for( const [_, link] of Object.entries( clinks ) ) {
 		let match = true;
-		match = issueId == -1              ? match : match && (link.HostIssueId     == issueId);
-		match = cardId == -1               ? match : match && (link.HostCardId      == cardId);
-		match = projId == -1               ? match : match && (link.HostProjectId   == projId);
-		match = repo == config.EMPTY       ? match : match && (link.HostRepo        == repo);
-		match = projName == config.EMPTY   ? match : match && (link.HostProjectName == projName );
-		match = colName == config.EMPTY    ? match : match && (link.HostColumnName  == colName );
-		match = issueTitle == config.EMPTY ? match : match && (link.HostIssueTitle  == issueTitle );
-		match = ceProjId == config.EMPTY   ? match : match && (link.CEProjectId     == ceProjId );
+		match = issueId == -1              ? match : match && (link.hostIssueId     == issueId);
+		match = cardId == -1               ? match : match && (link.hostCardId      == cardId);
+		match = projId == -1               ? match : match && (link.hostProjectId   == projId);
+		match = repo == config.EMPTY       ? match : match && (link.hostRepo        == repo);
+		match = repoId == config.EMPTY     ? match : match && (link.hostRepoId      == repoId);
+		match = projName == config.EMPTY   ? match : match && (link.hostProjectName == projName );
+		match = colName == config.EMPTY    ? match : match && (link.hostColumnName  == colName );
+		match = issueTitle == config.EMPTY ? match : match && (link.hostIssueName   == issueTitle );
+		match = ceProjId == config.EMPTY   ? match : match && (link.ceProjectId     == ceProjId );
 		
 		if( match ) { links.push( link ); }
 	    }
@@ -365,12 +376,13 @@ class Linkage {
 	return links;
     }
 
+    // No match on utility slot.  yet?
     getLocs( authData, query ) {
-	console.log( authData.who, "get Locs", query );
-	this.showLocs();
+	// console.log( authData.who, "get Locs", query );
+	// this.showLocs();
 	    
 	if( typeof query.ceProjId === 'undefined' ) {
-	    console.log( "Error.  ceProjectId was not defined in Locs query." );
+	    console.log( authData.who, "Error.  ceProjectId was not defined in Locs query." );
 	    assert( false );
 	}
 
@@ -386,13 +398,13 @@ class Linkage {
 	    for( const [_, loc] of Object.entries( clocs ) ) {
 		let match = true;
 		
-		match = projId == -1             ? match : match && (loc.HostProjectId   == projId);
-		match = colId == -1              ? match : match && (loc.HostColumnId    == colId);
-		match = ceProjId == config.EMPTY ? match : match && (loc.CEProjectId     == ceProjId);
-		match = repo == config.EMPTY     ? match : match && (loc.HostRepo        == repo);
-		match = projName == config.EMPTY ? match : match && (loc.HostProjectName == projName);
-		match = colName == config.EMPTY  ? match : match && (loc.HostColumnName  == colName);
-		match =                                    match && (loc.Active          == "true");
+		match = projId == -1             ? match : match && (loc.hostProjectId   == projId);
+		match = colId == -1              ? match : match && (loc.hostColumnId    == colId);
+		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId     == ceProjId);
+		match = repo == config.EMPTY     ? match : match && (loc.hostRepo        == repo);
+		match = projName == config.EMPTY ? match : match && (loc.hostProjectName == projName);
+		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName  == colName);
+		match =                                    match && (loc.active          == "true");
 		
 		if( match ) { locs.push( loc ); }
 	    }
@@ -420,10 +432,10 @@ class Linkage {
 	assert( Object.keys( cLinks ).length == 1 );
 	let [_, link] = Object.entries( cLinks )[0];
 
-	link.HostProjectName = config.EMPTY;
-	link.HostColumnId    = -1;
-	link.HostColumnName  = config.EMPTY;
-	link.HostIssueTitle  = config.EMPTY;
+	link.hostProjectName = config.EMPTY;
+	link.hostColumnId    = -1;
+	link.hostColumnName  = config.EMPTY;
+	link.hostIssueName  = config.EMPTY;
 	link.flatSource    = -1;
     }
 
@@ -432,48 +444,52 @@ class Linkage {
 	let link = this.links[ceProjId][issueId][cardId];
 	assert( link !== 'undefined' );
 
-	link.HostColumnId   = newColId.toString();
-	link.HostColumnName = newColName;
+	link.hostColumnId   = newColId.toString();
+	link.hostColumnName = newColName;
 
 	// update, need to track specially
-	if( !config.PROJ_COLS.includes( newColName ) ) { link.flatSource = link.HostColumnId; }
+	if( !config.PROJ_COLS.includes( newColName ) ) { link.flatSource = link.hostColumnId; }
 	return true;
     }
 
     updateTitle( authData, linkData, newTitle ) {
-	let link = this.links[linkData.CEProjectId][linkData.HostIssueId][linkData.HostCardId];
+	let link = this.links[linkData.ceProjectId][linkData.hostIssueId][linkData.hostCardId];
 	assert( link !== 'undefined' );
 
-	link.HostIssueTitle  = newTitle;
+	link.hostIssueName  = newTitle;
 
 	return true;
     }
 
     // primary keys have changed.
     rebuildLinkage( authData, oldLink, issueData, cardId, splitTitle ) {
-	console.log( authData.who, "Rebuild linkage", oldLink.CEProjectId, oldLink.HostIssueNum, "->", issueData[0] );
-	let newTitle = oldLink.HostIssueTitle;
+	console.log( authData.who, "Rebuild linkage", oldLink.ceProjectId, oldLink.hostIssueNum, "->", issueData[0] );
+	let newTitle = oldLink.hostIssueName;
 	if( typeof splitTitle !== 'undefined' ) {
-	    newTitle = oldLink.HostColumnId == -1 ? config.EMPTY : splitTitle;
+	    newTitle = oldLink.hostColumnId == -1 ? config.EMPTY : splitTitle;
 	}
+	let alink = {};
+	alink.hostRepoName = oldLink.hostRepo;
+	alink.issueId      = issueData[0].toString();
+	alink.issueNum     = issueData[1].toString();
+	alink.projectId    = oldLink.hostProjectId;
+	alink.projectName  = oldLink.hostProjectName;
+	alink.columnId     = oldLink.hostColumnId;
+	alink.columnName   = oldLink.hostColumnName;
+	alink.hostCardId   = cardId.toString();
+	alink.title        = newTitle;
+	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, oldLink.flatSource );
 	
-	let link = this.addLinkage( authData, oldLink.CEProjectId, 
-				    oldLink.HostRepo,
-				    issueData[0].toString(), issueData[1].toString(),
-				    oldLink.HostProjectId, oldLink.HostProjectName,
-				    oldLink.HostColumnId, oldLink.HostColumnName,
-				    cardId.toString(), newTitle, oldLink.flatSource );
-	
-	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.CEProjectId, "issueId": oldLink.HostIssueId, "cardId": oldLink.HostCardId } );
+	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );
 
 	return link;
     }
 
     removeLinkage({ authData, ceProjId, issueId, cardId }) {
 	let retVal = false;
-	if( !authData ) { console.log( "missing authData" ); return retVal; }
-	if( !issueId )  { console.log( "missing issueId" );  return retVal; }
-	if( !ceProjId ) { console.log( "missing ceProjId" ); return retVal; }
+	if( !authData ) { console.log( authData.who, "missing authData" ); return retVal; }
+	if( !issueId )  { console.log( authData.who, "missing issueId" );  return retVal; }
+	if( !ceProjId ) { console.log( authData.who, "missing ceProjId" ); return retVal; }
 	// cardId can be missing
 
 	console.log( authData.who, "Remove link for issueId:", ceProjId, issueId );
@@ -488,7 +504,7 @@ class Linkage {
     }
 
     removeLocs({ authData, ceProjId, projId, colId }) {
-	if( !authData ) { console.log( "missing authData" ); return false; }
+	if( !authData ) { console.log( authData.who, "missing authData" ); return false; }
 
 
 	if( colId )       { console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); }    // one delete
@@ -509,15 +525,15 @@ class Linkage {
 	else if( havePID && this.locs[ceProjId].hasOwnProperty( projId )) {
 	    if( haveCID && this.locs[ceProjId][projId].hasOwnProperty( colId ))
 	    {
-		assert( cpid == "" || cpid == this.locs[ceProjId][projId][colId].CEProjectId );
-		cpid = this.locs[ceProjId][projId][colId].CEProjectId;
-		this.locs[ceProjId][projId][colId].Active = "false"; 
+		assert( cpid == "" || cpid == this.locs[ceProjId][projId][colId].ceProjectId );
+		cpid = this.locs[ceProjId][projId][colId].ceProjectId;
+		this.locs[ceProjId][projId][colId].active = "false"; 
 	    }
 	    else if( !haveCID ) {
 		for( var [_, loc] of Object.entries( this.locs[ceProjId][projId] )) {
-		    assert( cpid == "" || cpid == loc.CEProjectId );
-		    cpid = loc.CEProjectId;
-		    loc.Active = "false"; 
+		    assert( cpid == "" || cpid == loc.ceProjectId );
+		    cpid = loc.ceProjectId;
+		    loc.active = "false"; 
 		}
 	    }
 	}
@@ -526,9 +542,9 @@ class Linkage {
 	    for( const [ceproj,cplinks] of Object.entries( this.locs )) {
 		for( const [proj,cloc] of Object.entries( cplinks )) {
 		    if( cloc.hasOwnProperty( colId )) {
-			assert( cpid == "" || cpid == this.locs[ceproj][proj][colId].CEProjectId );
-			cpid = this.locs[ceproj][proj][colId].CEProjectId;
-			this.locs[ceproj][proj][colId].Active = "false";
+			assert( cpid == "" || cpid == this.locs[ceproj][proj][colId].ceProjectId );
+			cpid = this.locs[ceproj][proj][colId].ceProjectId;
+			this.locs[ceproj][proj][colId].active = "false";
 			break;
 		    }
 		}
@@ -541,13 +557,14 @@ class Linkage {
 	    for( const [_, cloc] of Object.entries( this.locs ) ) {
 		for( const [_, loc] of Object.entries( cloc )) {
 
-		    if( loc.CEProjectId == cpid ) {
+		    if( loc.ceProjectId == cpid ) {
 			let aloc = {};
-			aloc.HostProjectId   = loc.HostProjectId;
-			aloc.HostProjectName = loc.HostProjectName;
-			aloc.HostColumnId    = loc.HostColumnId;
-			aloc.HostColumnName  = loc.HostColumnName;
-			aloc.Active          = loc.Active;
+			aloc.hostProjectId   = loc.hostProjectId;
+			aloc.hostProjectName = loc.hostProjectName;
+			aloc.hostColumnId    = loc.hostColumnId;
+			aloc.hostColumnName  = loc.hostColumnName;
+			aloc.hostUtility     = loc.hostUtility;
+			aloc.active          = loc.active;
 
 			locs.push( aloc );
 		    }
@@ -566,7 +583,7 @@ class Linkage {
 	for( const [_,cplinks] of Object.entries( this.locs )) {
 	    for( const [_,cloc] of Object.entries( cplinks )) {
 		for( const [col,loc] of Object.entries( cloc )) {
-		    if( repo == "TESTING-FROMJSONLOCS" || loc.HostRepo == repo ) { killList.push({ "cpid": loc.CEProjectId, "pid": loc.HostProjectId }); }  
+		    if( repo == "TESTING-FROMJSONLOCS" || loc.hostRepo == repo ) { killList.push({ "cpid": loc.ceProjectId, "pid": loc.hostProjectId }); }  
 		}
 	    }
 	}
@@ -575,12 +592,12 @@ class Linkage {
     }
     
     purge( repo ) {
-	console.log( "Removing links, locs for", repo );
+	console.log( authData.who, "Removing links, locs for", repo );
 	let killList = [];
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {
 		for( const [cid,link] of Object.entries( clink )) {
-		    if( link.HostRepo == repo ) { killList.push( {"cpid": link.CEProjectId, "iid": link.HostIssueId} ); }
+		    if( link.hostRepo == repo ) { killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} ); }
 		}
 	    }
 	}
@@ -633,17 +650,17 @@ class Linkage {
 	
 	for( let i = start; i < printables.length; i++ ) {
 	    let link = printables[i]; 
-	    console.log( link.CEProjectId,
-			 link.HostIssueId,
-			 link.HostIssueNum,
-			 this.fill( link.HostCardId, 10 ),
-			 this.fill( link.HostIssueTitle, 35 ),
-			 link.HostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( link.HostColumnId, 10 ),
-			 this.fill( link.HostColumnName, 20 ),
-			 link.HostProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( link.HostProjectId, 10 ),
-			 this.fill( link.HostProjectName, 15 ),
+	    console.log( link.ceProjectId,
+			 link.hostIssueId,
+			 link.hostIssueNum,
+			 this.fill( link.hostCardId, 10 ),
+			 this.fill( link.hostIssueName, 35 ),
+			 link.hostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( link.hostColumnId, 10 ),
+			 this.fill( link.hostColumnName, 20 ),
+			 link.hostProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( link.hostProjectId, 10 ),
+			 this.fill( link.hostProjectName, 15 ),
 			 link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
-			 // link.HostRepo,
+			 // link.hostRepo,
 		       );
 	}
     }
@@ -653,7 +670,7 @@ class Linkage {
 	for( const [_, cplinks] of Object.entries( this.locs )) {
 	    for( const [_, clocs] of Object.entries( cplinks )) {
 		for( const [_, loc] of Object.entries( clocs )) {
-		    // if( loc.Active == "true" ) { printables.push( loc ); }
+		    // if( loc.active == "true" ) { printables.push( loc ); }
 		    printables.push( loc );
 		}
 	    }
@@ -676,12 +693,12 @@ class Linkage {
 
 	for( let i = start; i < printables.length; i++ ) {
 	    const loc = printables[i];
-	    console.log( this.fill( loc.CEProjectId, 16 ),
-			 this.fill( loc.HostRepository, 20 ),
-			 loc.HostProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.HostProjectId, 10 ),
-			 this.fill( loc.HostProjectName, 15 ),
-			 loc.HostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.HostColumnId, 10 ),
-			 this.fill( loc.HostColumnName, 20 ), this.fill( loc.Active, 7 )
+	    console.log( this.fill( loc.ceProjectId, 16 ),
+			 this.fill( loc.hostRepository, 20 ),
+			 loc.hostProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.hostProjectId, 10 ),
+			 this.fill( loc.hostProjectName, 15 ),
+			 loc.hostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.hostColumnId, 10 ),
+			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )
 		       );
 	}
     }

@@ -21,24 +21,24 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
 
     // on first call from populate, list may be large.  Afterwards, max 2.
-    if( pd.GHIssueId == -1 )              { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
+    if( pd.issueId == -1 )              { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
 
-    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
     if( links == -1 || links.length < 2 ) { console.log(authData.who, "Resolve: early return" ); return gotSplit; }
     gotSplit = true;
 
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
     // For case b, ensure ordering such that pd element (the current card-link) is acted on below - i.e. is not in position 0
     //             since the carded issue has already been acted on earlier.
-    if( pd.peqType != "end" && links[0].GHColumnId == pd.GHColumnId ) {
+    if( pd.peqType != "end" && links[0].hostColumnId == pd.columnId ) {
 	console.log( "Ping" );
 	[links[0], links[1]] = [links[1], links[0]];
     }
     
-    console.log( authData.who, "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.GHIssueId, pd.GHIssueNum );
+    console.log( authData.who, "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.issueId, pd.GHIssueNum );
 
     // Need all issue data, with mod to title and to comment
-    assert( links[0].GHIssueNum == pd.GHIssueNum );
+    assert( links[0].hostIssueNum == pd.GHIssueNum );
     let issue = await gh.getFullIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );  
     assert( issue != -1 );
 
@@ -73,36 +73,36 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     }
 
     for( let i = 1; i < links.length; i++ ) {
-	let origCardId = links[i].GHCardId;
+	let origCardId = links[i].hostCardId;
 	let splitTag   = utils.randAlpha(8);
 
 	// Note: This information could be passed down.. but save speedups for graphql
 	if( pd.peqType != "end" ) {
 	    // PopulateCELink trigger is a peq labeling.  If applied to a multiply-carded issue, need to update info here.
-	    links[i].GHProjectName = gh.getProjectName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, links[i].GHProjectId );
-	    links[i].GHColumnId    = ( await gh.getCard( authData, origCardId ) ).column_url.split('/').pop();
-	    links[i].GHColumnName  = gh.getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, links[i].GHColumnId );
+	    links[i].hostProjectName = gh.getProjectName( authData, ghLinks, pd.ceProjectId, pd.repoName, links[i].hostProjectId );
+	    links[i].hostColumnId    = ( await gh.getCard( authData, origCardId ) ).column_url.split('/').pop();
+	    links[i].hostColumnName  = gh.getColumnName( authData, ghLinks, pd.ceProjectId, pd.repoName, links[i].hostColumnId );
 	}
 
 	let issueData   = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, issue, "", splitTag );  
-	let newCardId   = await gh.rebuildCard( authData, pd.CEProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].GHColumnId, origCardId, issueData );
+	let newCardId   = await gh.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, links[i].hostColumnId, origCardId, issueData );
 
-	pd.GHIssueId    = issueData[0];
+	pd.issueId    = issueData[0];
 	pd.GHIssueNum   = issueData[1];
-	pd.GHIssueTitle = issue.title + " split: " + splitTag;
-	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.GHIssueTitle );
+	pd.issueName = issue.title + " split: " + splitTag;
+	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.issueName );
     }
 
     // On initial populate call, this is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
-    console.log( "Building peq for", links[1].GHIssueTitle );
+    console.log( "Building peq for", links[1].hostIssueName );
     for( let i = 1; i < links.length; i++ ) {    
 	// Don't record simple multiply-carded issues
 	if( pd.peqType != "end" ) {
-	    let projName   = links[i].GHProjectName;
-	    let colName    = links[i].GHColumnName;
+	    let projName   = links[i].hostProjectName;
+	    let colName    = links[i].hostColumnName;
 	    assert( projName != "" );
-	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, pd.GHFullName, projName, colName );	    
+	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
 	    
 	    awsUtils.recordPeqData(authData, pd, false );
 	}
@@ -114,7 +114,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 // Note: this function can be sped up, especially when animating an unclaimed
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
 async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, specials ) {
-    pd.GHIssueTitle = issueCardContent[0];
+    pd.issueName = issueCardContent[0];
 
     // normal for card -> issue.  odd but legal for issue -> card
     let allocation = ghUtils.getAllocated( issueCardContent );
@@ -124,22 +124,22 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     else                      { pd.peqValue = ghUtils.parseLabelDescr( issueCardContent ); }
 
     // Don't wait
-    awsUtils.checkPopulated( authData, pd.CEProjectId ).then( res => assert( res != -1 ));
+    awsUtils.checkPopulated( authData, pd.ceProjectId ).then( res => assert( res != -1 ));
     
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
-    let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.GHCardId;
-    pd.GHColumnId  = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.GHColumnId;
-    pd.GHProjectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.GHProjectId;
-    let colName    = gh.getColumnName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, pd.GHColumnId );
+    let origCardId = link == -1 ? pd.reqBody['project_card']['id']                           : link.hostCardId;
+    pd.columnId  = link == -1 ? pd.reqBody['project_card']['column_id']                    : link.hostColumnId;
+    pd.projectId = link == -1 ? pd.reqBody['project_card']['project_url'].split('/').pop() : link.hostProjectId;
+    let colName    = gh.getColumnName( authData, ghLinks, pd.ceProjectId, pd.repoName, pd.columnId );
     let projName   = "";
 
-    const links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "issueId": pd.GHIssueId } );
+    const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
 
     // Bail, if this create is an add-on to an ACCR 
-    if( links != -1 && links[0].GHColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
-	console.log( authData.who, "WARNING.", links[0].GHColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
+    if( links != -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
 	gh.removeCard( authData, origCardId );
 	return 'early';
     }
@@ -162,16 +162,22 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	    console.log( "WARNING.", colName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue (if any)." );
 	    gh.removeCard( authData, origCardId );
 	}
-	else if( pd.GHIssueId != -1 ) {
+	else if( pd.issueId != -1 ) {
 	    let blank      = config.EMPTY;
-	    ghLinks.addLinkage( authData, pd.CEProjectId, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, blank , -1, blank, origCardId, blank );
+	    let orig = {};
+	    orig.hostRepoName = pd.repoName;
+	    orig.issueId      = pd.issueId;
+	    orig.issueNum     = pd.GHIssueNum;
+	    orig.projectId    = pd.projectId;
+	    orig.hostCardId   = origCardId;
+	    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
 	}
     }
     else {
 	let peqHumanLabelName = pd.peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
 	// Wait later, maybe
 	let peqLabel = gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
-	projName = gh.getProjectName( authData, ghLinks, pd.CEProjectId, pd.GHFullName, pd.GHProjectId );
+	projName = gh.getProjectName( authData, ghLinks, pd.ceProjectId, pd.repoName, pd.projectId );
 
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
 	assert( colName != -1 ); 
@@ -186,8 +192,8 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 		peqLabel = await peqLabel;
 		ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
 		// chances are, an unclaimed PEQ exists.  deactivate it.
-		if( pd.GHIssueId != -1 ) {
-		    const daPEQ = await awsUtils.getPeq( authData, pd.CEProjectId, pd.HostIssueId );
+		if( pd.issueId != -1 ) {
+		    const daPEQ = await awsUtils.getPeq( authData, pd.ceProjectId, pd.hostIssueId );
 		    awsUtils.removePEQ( authData, daPEQ.PEQId );
 		}
 	    }
@@ -196,26 +202,35 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	
 	// issue->card:  issueId is available, but linkage has not yet been added
 	if( pd.GHIssueNum > -1 ) {
-	    ghLinks.addLinkage( authData, pd.CEProjectId, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName,
-				pd.GHColumnId, colName, origCardId, issueCardContent[0] );
+	    let orig = {};
+	    orig.hostRepoName = pd.repoName;
+	    orig.issueId      = pd.issueId;
+	    orig.issueNum     = pd.GHIssueNum;
+	    orig.projectId    = pd.projectId;
+	    orig.projectName  = projName;
+	    orig.columnId     = pd.columnId;
+	    orig.columnName   = colName;
+	    orig.hostCardId   = origCardId;
+	    orig.title        = issueCardContent[0];
+	    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
 
 	    // If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
 	    // Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
 	    // Note: assigments are not relevant for allocations
 	    // If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
 	    if( specials != "relocate" && !allocation ) {
-		pd.GHAssignees = await gh.getAssignees( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );
+		pd.assignees = await gh.getAssignees( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );
 	    }
 	    
 	}
 	// card -> issue..  exactly one linkage.
 	else {
-	    pd.GHIssueTitle = issueCardContent[0];
+	    pd.issueName = issueCardContent[0];
 
 	    // create new issue, rebuild card
 	    peqLabel = await peqLabel; // peqHumanLabelName dep
-	    let issueData = await ghSafe.createIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueTitle, [peqHumanLabelName], allocation );
-	    pd.GHIssueId  = issueData[0];
+	    let issueData = await ghSafe.createIssue( authData, pd.GHOwner, pd.GHRepo, pd.issueName, [peqHumanLabelName], allocation );
+	    pd.issueId  = issueData[0];
 	    pd.GHIssueNum = issueData[1];
 
 	    // Creating a situated card.. no assignees possible so no PEND possible.  Accrued handled above.
@@ -224,12 +239,21 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 		console.log( authData.who, "WARNING.", colName, "is reserved, requires assignees.  Moving card out of reserved column." );
 		isReserved = true;
 	    }
-	    let locData = { "reserved": isReserved, "projId": pd.GHProjectId, "projName": pd.GHProjectName, "fullName": pd.GHFullName };
-	    let newCardId = await gh.rebuildCard( authData, pd.CEProjectId, ghLinks, pd.GHOwner, pd.GHRepo, pd.GHColumnId, origCardId, issueData, locData );
+	    let locData = { "reserved": isReserved, "projId": pd.projectId, "projName": pd.projectName, "fullName": pd.repoName };
+	    let newCardId = await gh.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, pd.columnId, origCardId, issueData, locData );
 
 	    // Add card issue linkage
-	    ghLinks.addLinkage( authData, pd.CEProjectId, pd.GHFullName, pd.GHIssueId, pd.GHIssueNum, pd.GHProjectId, projName,
-				pd.GHColumnId, colName, newCardId, pd.GHIssueTitle);
+	    let orig = {};
+	    orig.hostRepoName = pd.repoName;
+	    orig.issueId      = pd.issueId;
+	    orig.issueNum     = pd.GHIssueNum;
+	    orig.projectId    = pd.projectId;
+	    orig.projectName  = projName;
+	    orig.columnId     = pd.columnId;
+	    orig.columnName   = colName;
+	    orig.hostCardId   = newCardId;
+	    orig.title        = pd.issueName;
+	    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
 	}
     }
 
@@ -244,7 +268,7 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     //                issue is to create card.  Furthermore populate does not call this function.
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( !gotSplit && pd.peqType != "end" ) {
-	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.CEProjectId, pd.GHFullName, projName, colName );
+	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
 	awsUtils.recordPeqData( authData, pd, true, specials );
     }
 }
@@ -266,10 +290,10 @@ async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
     // Wait later
-    let origPop = awsUtils.checkPopulated( authData, pd.CEProjectId );
+    let origPop = awsUtils.checkPopulated( authData, pd.ceProjectId );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
-    const proj = await awsUtils.getProjectStatus( authData, pd.CEProjectId );
+    const proj = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
     let linkage = await ghLinks.initOneProject( authData, proj );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
@@ -299,7 +323,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     //        serial... SLOOOOOOOOOOW   will revisit entire populate with graphql. 
     // Note - this mods values of pd, but exits immediately afterwards.
     for( const link of one2Many ) {
-	pd.GHIssueId  = link[3];
+	pd.issueId  = link[3];
 	pd.GHIssueNum = link[2];
 	await resolve( authData, ghLinks, pd, "???" );
     }
@@ -307,7 +331,7 @@ async function populateCELinkage( authData, ghLinks, pd )
     origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
     // Don't wait.
-    awsUtils.setPopulated( authData, pd.CEProjectId );
+    awsUtils.setPopulated( authData, pd.ceProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );
     return true;
 }
@@ -316,4 +340,4 @@ async function populateCELinkage( authData, ghLinks, pd )
 
 exports.resolve          = resolve;
 exports.processNewPEQ    = processNewPEQ;
-exports.populateCELinage = populateCELinkage;
+exports.populateCELinkage = populateCELinkage;

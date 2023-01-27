@@ -536,12 +536,13 @@ async function updateLinkage( newLoc ) {
     let foundLoc = false;
     if( 'Locations' in oldSummary ) {
 	for( var loc of oldSummary.Locations ) {
-	    if( loc.HostProjectId == newLoc.Location.HostProjectId && loc.HostColumnId == newLoc.Location.HostColumnId ) {
-		console.log( "updating with", newLoc.Location.HostProjectName, newLoc.Location.HostColumnName );
-		loc.HostRepository  = newLoc.Location.HostRepository;
-		loc.HostProjectName = newLoc.Location.HostProjectName;
-		loc.HostColumnName  = newLoc.Location.HostColumnName;
-		loc.Active          = newLoc.Location.Active;
+	    if( loc.HostProjectId == newLoc.Location.hostProjectId && loc.HostColumnId == newLoc.Location.hostColumnId ) {
+		console.log( "updating with", newLoc.Location.hostProjectName, newLoc.Location.hostColumnName );
+		loc.HostRepository  = newLoc.Location.hostRepository;
+		loc.HostProjectName = newLoc.Location.hostProjectName;
+		loc.HostColumnName  = newLoc.Location.hostColumnName;
+		loc.HostUtility     = newLoc.Location.hostUtility;
+		loc.Active          = newLoc.Location.active;
 		foundLoc = true;
 	    }
 	}
@@ -551,13 +552,14 @@ async function updateLinkage( newLoc ) {
     // Add, if not already present
     if( !foundLoc ) {
 	let aloc = {};
-	console.log( "Create new for", newLoc.Location.HostProjectName, newLoc.Location.HostColumnName );
-	aloc.HostProjectId   = newLoc.Location.HostProjectId;
-	aloc.HostProjectName = newLoc.Location.HostProjectName;
-	aloc.HostRepository  = newLoc.Location.HostRepository;
-	aloc.HostColumnId    = newLoc.Location.HostColumnId;
-	aloc.HostColumnName  = newLoc.Location.HostColumnName;
-	aloc.Active          = newLoc.Location.Active;
+	console.log( "Create new for", newLoc.Location.hostProjectName, newLoc.Location.hostColumnName );
+	aloc.HostProjectId   = newLoc.Location.hostProjectId;
+	aloc.HostProjectName = newLoc.Location.hostProjectName;
+	aloc.HostRepository  = newLoc.Location.hostRepository;
+	aloc.HostColumnId    = newLoc.Location.hostColumnId;
+	aloc.HostColumnName  = newLoc.Location.hostColumnName;
+	aloc.HostUtility     = newLoc.Location.hostUtility;
+	aloc.Active          = newLoc.Location.active;
 	oldSummary.Locations.push( aloc );
     }
     

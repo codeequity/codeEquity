@@ -26,11 +26,11 @@ function getData( fname ) {
 }
 
 async function clearIngested( authData, td ) {
-    let success = await awsUtils.clearIngested( authData, { "CEProjectId": td.CEProjectId });
+    let success = await awsUtils.clearIngested( authData, { "CEProjectId": td.ceProjectId });
 }
 
 async function clearSummary( authData, td ) {
-    const sums = await awsUtils.getSummaries( authData, { "CEProjectId": td.CEProjectId });
+    const sums = await awsUtils.getSummaries( authData, { "CEProjectId": td.ceProjectId });
     if( sums != -1 ) {
 	const sumIds = sums.map( summary => [summary.PEQSummaryId] );    
 	console.log( "Clearing summaries for", sumIds );
@@ -43,7 +43,7 @@ async function clearSummary( authData, td ) {
 async function loadPEQ( authData, td ) {
 
     // First, remove.
-    const oldPeqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId } );
+    const oldPeqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId } );
     if( oldPeqs != -1 ) {
 	const opids = oldPeqs.map( peq => [peq.PEQId] );
 	await awsUtils.cleanDynamo( authData, "CEPEQs", opids );				   
@@ -101,8 +101,8 @@ async function loadPEQ( authData, td ) {
 async function loadPAct( authData, td ) {
 
     // First, remove.
-    const oldPacts = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
-    const oldPraws = await awsUtils.getPRaws( authData, { "CEProjectId": td.CEProjectId });
+    const oldPacts = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
+    const oldPraws = await awsUtils.getPRaws( authData, { "CEProjectId": td.ceProjectId });
     if( oldPacts != -1 ) {
 	const opids = oldPacts.map( pact => [pact.PEQActionId] );
 	await awsUtils.cleanDynamo( authData, "CEPEQActions", opids );				   
@@ -207,18 +207,18 @@ async function loadLinkage( authData, td ) {
 		let loc = locs[i].M;
 
 		let nLoc = {};
-		nLoc.CEProjectId     = loc.CEProjectId.S;
-		nLoc.HostRepository  = repo;
-		nLoc.HostProjectId   = loc.HostProjectId.S;
-		nLoc.HostProjectName = loc.HostProjectName.S;
-		nLoc.HostColumnId    = loc.HostColumnId.S;
-		nLoc.HostColumnName  = loc.HostColumnName.S;
-		nLoc.Active          = loc.Active.S;
+		nLoc.ceProjectId     = loc.CEProjectId.S;
+		nLoc.hostRepository  = repo;
+		nLoc.hostProjectId   = loc.HostProjectId.S;
+		nLoc.hostProjectName = loc.HostProjectName.S;
+		nLoc.hostColumnId    = loc.HostColumnId.S;
+		nLoc.hostColumnName  = loc.HostColumnName.S;
+		nLoc.active          = loc.Active.S;
 		
 		ghLinks.addLoc( authData, nLoc, false);
 	    }
 
-	    var locsL = ghLinks.getLocs( authData, { "ceProjId": nLoc.CEProjectId, "repo": repo } );
+	    var locsL = ghLinks.getLocs( authData, { "ceProjId": nLoc.ceProjectId, "repo": repo } );
 	    await awsUtils.refreshLinkageSummary( authData, repo, locsL, false );
 	    break;
 	}

@@ -37,7 +37,7 @@ async function checkDubLabel( authData, ghLinks, td, loc, issueData, card, testS
 	
 	// CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
 	let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
-	peqs = peqs.filter((peq) => peq.GHIssueId == issueData[0] );
+	peqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
 	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
 	
@@ -1142,9 +1142,9 @@ async function testAlloc( authData, ghLinks, td ) {
 	await tu.makeAllocCard( authData, ghLinks, td.CEProjectId, td.GHFullName, starLoc.colId, "Alloc star 1", "1,000,000" );     
 	await utils.sleep( 2000 );
 	const links       = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
-	const link        = links.find( link => link.GHIssueTitle == "Alloc star 1" );
-	const starCard1   = await tu.getCard( authData, link.GHCardId );
-	const issStarDat1 = [link.GHIssueId, link.GHIssueNum, link.GHIssueTitle];
+	const link        = links.find( link => link.hostIssueName == "Alloc star 1" );
+	const starCard1   = await tu.getCard( authData, link.hostCardId );
+	const issStarDat1 = [link.hostIssueId, link.hostIssueNum, link.hostIssueName];
 	testStatus        = await tu.checkAlloc( authData, ghLinks, td, starLoc, issStarDat1, starCard1, testStatus, {assignees: 0, lblCount: 1} );
 
 	// Create from issue  ... should be makeAllocIssue to create comment, but not testing that here
@@ -1174,8 +1174,8 @@ async function testAlloc( authData, ghLinks, td ) {
 	await tu.makeAllocCard( authData, ghLinks, td.CEProjectId, td.GHFullName, accrLoc.colId, "Alloc accr", "1,000,000" );
 	await utils.sleep( 2000 );
 	const links      = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
-	const linkProg   = links.find( link => link.GHIssueTitle == "Alloc prog" );
-	const linkAccr   = links.find( link => link.GHIssueTitle == "Alloc accr" );
+	const linkProg   = links.find( link => link.hostIssueName == "Alloc prog" );
+	const linkAccr   = links.find( link => link.hostIssueName == "Alloc accr" );
 
 	testStatus = tu.checkEq( typeof linkProg, 'undefined',     testStatus, "link should not exist" );
 	testStatus = tu.checkEq( typeof linkAccr, 'undefined',     testStatus, "link should not exist" );

@@ -102,19 +102,28 @@ function stampJob( jd, delayCount ) {
     jd.stamp = Date.now();
 }
 
-function summarizeQueue( ceJobs, msg, limit ) {
-    console.log( msg, " Depth", ceJobs.jobs.length, "Max depth", ceJobs.maxDepth, "Count:", ceJobs.count, "Demotions:", ceJobs.delay);
+function summarizeQueue( ceJobs, msg, limit, short ) {
     const jobs = ceJobs.jobs.getAll();
     limit = ceJobs.jobs.length < limit ? ceJobs.jobs.length : limit;
-    for( let i = 0; i < limit; i++ ) {
-	console.log( "   ", jobs[i].queueId, jobs[i].host, jobs[i].tag, jobs[i].stamp, jobs[i].delayCount );
+    if( short ) {
+	let top3 = "";
+	for( let i = 0; i < limit; i++ ) {
+	    top3 += jobs[i].queueId + " ";
+	}
+	console.log( msg, " Depth", ceJobs.jobs.length, "Max depth", ceJobs.maxDepth, "Count:", ceJobs.count, "Demotions:", ceJobs.delay, "Top3:", top3);
+    }
+    else {
+	console.log( msg, " Depth", ceJobs.jobs.length, "Max depth", ceJobs.maxDepth, "Count:", ceJobs.count, "Demotions:", ceJobs.delay);
+	for( let i = 0; i < limit; i++ ) {
+	    console.log( "   ", jobs[i].queueId, jobs[i].host, jobs[i].tag, jobs[i].stamp, jobs[i].delayCount );
+	}
     }
 }
 
 // Do not remove top, that is getNextJob's sole perogative
 // add at least 2 jobs down (top is self).  if Queue is empty, await.  If too many times, we have a problem.
 async function demoteJob( jd ) {
-    console.log( "Demoting", jd.queueId, jd.delayCount );
+    console.log( "    Demoting", jd.queueId, jd.delayCount );
     let oldDelayCount = jd.delayCount; 
     stampJob( jd, oldDelayCount+1 );
 
@@ -152,7 +161,7 @@ async function demoteJob( jd ) {
     // console.log( "Got splice index of", spliceIndex );
     jobs.splice( spliceIndex, 0, jd );
 
-    summarizeQueue( ceJobs, "\nceJobs, after demotion", 7 );
+    summarizeQueue( ceJobs, "\nceJobs, after demotion", 7, true );
 }
 
 function purgeQueue( ceJobs ) {
@@ -178,7 +187,7 @@ function checkQueue( ceJobs, jd ) {
 	ceJobs.count++;
     }
 
-    summarizeQueue( ceJobs, "\nceJobs, after push", 3 );
+    summarizeQueue( ceJobs, "\nceJobs, after push", 3, true );
     
     return ceJobs.jobs.first;
 }
@@ -216,13 +225,11 @@ async function getNextJob( authData, res ) {
 	// Send authData so cogLast, is correct.
 	// But reset authData.pat to keep parent pat correct.
 	let tmp = authData.pat;
-	// XXX
-	console.log( "XXX Get next job" );
 	getAuths( authData, jobData.host, jobData.projMgmtSys, jobData.org, jobData.actor );
 	ic.pat = authData.pat;
 	authData.pat = tmp;
 	
-	console.log( "\n\n", authData.who, "Got next job:", ic.who );
+	console.log( "\n\nGot next job:", ic.who );
 	await hostHandler( ic, ceProjects, hostLinks, jobData, res, jobData.stamp );   
     }
     else {
@@ -276,10 +283,12 @@ router.post('/:location?', async function (req, res) {
     let ret = hostGetJobData( newStamp, jd, req.headers, locator );
     if( ret == -1 ) { return res.end(); }
 
-    if( jd.actor == config.CE_BOT) {
+    // XXX GQL prefers using CE_USER.  REST prefers CE_BOT.  Can they be reconciled?
+    if( jd.actor == config.CE_USER || jd.actor == config.CE_BOT) {
 	console.log( "Notification for", jd.event, jd.action, "Bot-sent, skipping." );
 	return res.end();
     }
+    console.log( "Notification:", jd.actor, jd.event, jd.action, jd.tag, jd.queueId, "for", jd.org, newStamp );
     
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
     notificationCount++;

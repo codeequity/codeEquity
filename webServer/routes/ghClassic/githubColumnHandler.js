@@ -17,30 +17,30 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( authData.job, pd.reqBody.project_column.updated_at, "column name:", pd.reqBody.project_column.name, action );
     console.log( authData.who, "start", authData.job );
 
-    pd.GHColumnId    = pd.reqBody.project_column.id.toString();
-    pd.GHColumnName  = pd.reqBody.project_column.name;
-    pd.GHProjectId   = pd.reqBody.project_column.project_url.split('/').pop();
+    pd.columnId    = pd.reqBody.project_column.id.toString();
+    pd.columnName  = pd.reqBody.project_column.name;
+    pd.projectId   = pd.reqBody.project_column.project_url.split('/').pop();
 
     switch( action ) {
     case 'deleted':
 	{
-	    ghLinks.removeLocs( { authData: authData, ceProjId: pd.CEProjectId, colId: pd.GHColumnId } );
+	    ghLinks.removeLocs( { authData: authData, ceProjId: pd.ceProjectId, colId: pd.columnId } );
 	}
 	break;
     case 'created':
 	{
-	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "projId": pd.GHProjectId } );
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": pd.projectId } );
 	    const loc = locs == -1 ? locs : locs[0];
 	    assert( loc != -1 );
 
 	    let nLoc = {};
-	    nLoc.CEProjectId     = pd.CEProjectId;
-	    nLoc.HostRepository  = pd.GHFullName;
-	    nLoc.HostProjectId   = pd.GHProjectId;
-	    nLoc.HostProjectName = loc.HostProjectName;
-	    nLoc.HostColumnId    = pd.GHColumnId;
-	    nLoc.HostColumnName  = pd.GHColumnName;
-	    nLoc.Active          = "true";
+	    nLoc.ceProjectId     = pd.ceProjectId;
+	    nLoc.hostRepository  = pd.repoName;
+	    nLoc.hostProjectId   = pd.projectId;
+	    nLoc.hostProjectName = loc.hostProjectName;
+	    nLoc.hostColumnId    = pd.columnId;
+	    nLoc.hostColumnName  = pd.columnName;
+	    nLoc.active          = "true";
 	    
 	    await ghLinks.addLoc( authData, nLoc, true );
 	}
@@ -60,27 +60,27 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    ghSafe.updateColumn( authData, pd.reqBody.project_column.id, oldName );
 
 		    // send 1 PAct to update any peq projSub.  don't wait.
-		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_NOTE, [oldName], "Column rename attempted",
 					   utils.getToday(), pd.reqBody );
 		}
 		else {
-		    let links = ghLinks.getLinks( authData, { "ceProjId": pd.CEProjectId, "repo": pd.GHFullName, "colName": oldName } );
-		    links.forEach( link => link.GHColumnName = newName );
+		    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "colName": oldName } );
+		    links.forEach( link => link.hostColumnName = newName );
 
 		    // send 1 PAct to update any peq projSub.  don't wait.
-		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.CEProjectId,
-					   config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.GHColumnId, oldName, newName], "Column rename",
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
+					   config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.columnId, oldName, newName], "Column rename",
 					   utils.getToday(), pd.reqBody );
 
 		    let nLoc = {};
-		    nLoc.CEProjectId     = pd.CEProjectId;
-		    nLoc.HostRepository  = pd.GHFullName;
-		    nLoc.HostProjectId   = pd.GHProjectId;
-		    nLoc.HostProjectName = loc.HostProjectName;
-		    nLoc.HostColumnId    = pd.GHColumnId;
-		    nLoc.HostColumnName  = newName;
-		    nLoc.Active          = "true";
+		    nLoc.ceProjectId     = pd.ceProjectId;
+		    nLoc.hostRepository  = pd.repoName;
+		    nLoc.hostProjectId   = pd.projectId;
+		    nLoc.hostProjectName = loc.hostProjectName;
+		    nLoc.hostColumnId    = pd.columnId;
+		    nLoc.hostColumnName  = newName;
+		    nLoc.active          = "true";
 		    
 		    await ghLinks.addLoc( authData, nLoc, true );
 		}

@@ -4,8 +4,6 @@ const config = require( '../../config' );
 
 const utils = require( '../ceUtils' );
 
-
-
 // XXX Accept header is for label preview.  Check back to delete.
 async function postGH( PAT, url, postData ) {
     const params = {
@@ -28,8 +26,14 @@ async function postGH( PAT, url, postData ) {
 
     // XXX Still waiting to see this.. 
     if( gotchya ) { let x = await ret.json(); console.log( "Error.  XXXXXXXXXXXXXX got one!", x, ret ); }
+
+    // Oddly, some GQl queries/mutations return with a status, some do not.
+    ret = await ret.json();
+    if( typeof ret !== 'undefined' && typeof ret.status === 'undefined' ) {
+	if( typeof ret.data !== 'undefined' ) { ret.status = 200; }
+    }
     
-    return await ret.json();
+    return ret;
 }
 
 
@@ -113,12 +117,14 @@ async function checkForPV2( PAT, nodeId ) {
     }
     else {
 	let data = ret.data.node.projectItems;
-	if( data.edges.length > 99 ) { console.log( "WARNING.  Detected a very large number of projectItems.  Ignoring some." ); }
-	for( let i = 0; i < data.edges.length; i++ ) {
-	    let project = data.edges[i];
-	    if( typeof project.id !== 'undefined' ) {
-		found = true;
-		break;
+	if( typeof data !== 'undefined' && typeof data.edges !== 'undefined' ) {
+	    if( data.edges.length > 99 ) { console.log( "WARNING.  Detected a very large number of projectItems.  Ignoring some." ); }
+	    for( let i = 0; i < data.edges.length; i++ ) {
+		let project = data.edges[i];
+		if( typeof project.id !== 'undefined' ) {
+		    found = true;
+		    break;
+		}
 	    }
 	}
     }
@@ -126,6 +132,22 @@ async function checkForPV2( PAT, nodeId ) {
     return found;
 
 }
+
+
+function populateRequest( labels ) {
+    let retVal = false;
+
+    for( label of labels ) {
+	if( label.name == config.POPULATE ) {
+	    retVal = true;
+	    break;
+	}
+    }
+
+    return retVal;
+}
+
+
 
 // no commas, no shorthand, just like this:  'PEQ value: 500'  or 'Allocation PEQ value: 30000'
 function parseLabelDescr( labelDescr ) {
@@ -212,7 +234,9 @@ function theOnePEQ( labels ) {
 exports.errorHandler = errorHandler;
 exports.postGH       = postGH;
 
-exports.checkForPV2  = checkForPV2;
+exports.checkForPV2     = checkForPV2;
+
+exports.populateRequest   = populateRequest;
 
 exports.parseLabelDescr = parseLabelDescr;
 exports.parseLabelName  = parseLabelName;
