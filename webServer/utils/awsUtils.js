@@ -104,7 +104,7 @@ async function wrappedPostAWS( authData, shortName, postData ) {
 	return -1;
     }
     else {
-	console.log("Unhandled status code:", response['status'] );
+	console.log(authData.who, "Unhandled status code:", response['status'] );
 	let body = await response.json();
 	console.log(authData.who, shortName, postData, "Body:", body);
 	return -1;
@@ -172,7 +172,7 @@ async function updatePEQPSub( authData, peqId, projSub ) {
 // Note: Only called by resolve.  PNP rejects all attempts to create in ACCR before calling resolve.
 // The only critical component here for interleaving is getting the ID.
 async function changeReportPeqVal( authData, pd, peqVal, link ) {
-    console.log( "rebuild existing peq for issue:", pd.issueId );
+    console.log( authData.who, "rebuild existing peq for issue:", pd.issueId );
 
     // Confirm call chain is as expected.  Do NOT want to be modifying ACCR peq vals
     assert( link.hostColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
@@ -181,7 +181,7 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
 
     // do NOT update aws.. rely on ceFlutter to update values during ingest, using pact.  otherwise, when a split happens after
     // the initial peq has been ingested, if ingest is ignoring this pact, new value will not be picked up correctly.
-    // console.log( "Updating peq", newPEQ.PEQId, peqVal );
+    // console.log( authData.who, "Updating peq", newPEQ.PEQId, peqVal );
     // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
     recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
@@ -190,6 +190,7 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
 }
 
 async function recordPEQ( authData, postData ) {
+    assert( postData.CEProjectId !== 'undefined' );
     if( !postData.hasOwnProperty( "silent" )) { console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.HostIssueTitle ); }
 
     let shortName = "RecordPEQ";
@@ -237,6 +238,8 @@ async function rebuildPEQ( authData, link, oldPeq ) {
 // NOTE PNP sets hostAssignees based on call to host.  This means we MAY have assignees, or not, upon first
 //      creation of AWS PEQ, depending on if assignment occured in host before peq label notification processing completes.
 async function recordPeqData( authData, pd, checkDup, specials ) {
+    assert(typeof pd.ceProjectId !== 'undefined' );
+	
     let newPEQId = -1;
     let newPEQ = -1
     if( checkDup ) { 
@@ -253,6 +256,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     }
     
     let postData = {};
+    postData.CEProjectId    = pd.ceProjectId;
     postData.PEQId          = newPEQId;
     postData.HostHolderId   = specials == "relocate" ? newPEQ.HostHolderId : pd.assignees;   // list of hostUserLogins assigned
     postData.PeqType        = pd.peqType;               
@@ -335,8 +339,7 @@ async function rewritePAct( authData, postData ) {
 
 // locData can be from GQL, or linkage
 async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) {
-    console.log( "Refreshing linkage summary", ceProjId, locData.length );
-
+    // console.log( "Refreshing linkage summary", ceProjId, locData.length );
 
     if( gql ) {
 	for( var loc of locData ) {
@@ -356,7 +359,7 @@ async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) 
 
 // Called via linkage:addLoc from project/col handlers, and from ghUtils when creating unclaimed, ACCR, etc.
 async function updateLinkageSummary( authData, ceProjId, loc ) {
-    console.log( "Updating linkage summary" );
+    console.log( authData.who, "Updating linkage summary" );
 
     let newLoc = {};
     newLoc.CEProjId  = ceProjId;

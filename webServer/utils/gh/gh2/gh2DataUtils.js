@@ -20,8 +20,7 @@ const gh2Data  = require( '../../../routes/ghVersion2/gh2Data' );
 async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
 
-    console.log( "RESOLVE", pd.issueId );
-    // pd.show();
+    console.log( authData.who, "RESOLVE", pd.issueId );
     if( pd.issueId == -1 ) { console.log(authData.who, "Resolve: early return, no issueId." ); return gotSplit; }
     
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId });
@@ -58,9 +57,9 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	allocation  = content[1];
 
 	if( peqVal > 0 ) {
-	    console.log( "Resolve, original peqValue:", peqVal );
+	    console.log( authData.who, "Resolve, original peqValue:", peqVal );
 	    peqVal = Math.floor( peqVal / links.length );
-	    console.log( ".... new peqValue:", peqVal );
+	    console.log( authData.who, ".... new peqValue:", peqVal );
 
 	    pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; 
 	    let peqHumanLabelName = peqVal.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );
@@ -89,13 +88,13 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 
 	pd.issueId    = issueData[0];
 	pd.issueNum   = issueData[1];
-	pd.issueName  = issue.title + " split: " + splitTag;
+	pd.issueName  = issue.title;
 	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.issueName );
     }
 
     // On initial populate call, resolve is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
-    console.log( "Building peq for", links[1].hostIssueName );
+    console.log( authData.who, "Building peq for", links[1].hostIssueName );
     for( let i = 1; i < links.length; i++ ) {    
 	// Don't record simple multiply-carded issues
 	if( pd.peqType != "end" ) {
@@ -142,13 +141,11 @@ async function populateCELinkage( authData, ghLinks, pd )
     for( const link of linkage ) {
 	if( typeof link.duplicate === 'undefined' ) {
 	    if( link.allCards.length > 1 ) {
-		console.log( "Found link with multiple cards", link );
+		console.log( authData.who, "Found link with multiple cards", link.title, link.issueId );
 		pd.issueId  = link.issueId;
 		pd.issueNum = link.issueNum;
 		let pdCopy =  gh2Data.GH2Data.from( pd );
 		promises.push( resolve( authData, ghLinks, pdCopy, "???" ) );
-		// XXXXXXXXX
-		// break;
 	    }
 	}
 	// mark duplicates

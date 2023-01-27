@@ -49,8 +49,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let actor    = pd.actor;        // Actor is the event generator.
     let reqBody  = pd.reqBody;
     pd.projectId = item.project_node_id;
-    console.log( "In pv2 handler, pd:");
-    pd.show();
+    // console.log( "In pv2 handler");
+    // pd.show();
 
     // XXX need to pass in and return res from ceRouter
 

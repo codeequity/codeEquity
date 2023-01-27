@@ -229,7 +229,7 @@ async function getNextJob( authData, res ) {
 	ic.pat = authData.pat;
 	authData.pat = tmp;
 	
-	console.log( "\n\n", authData.who, "Got next job:", ic.who );
+	console.log( "\n\nGot next job:", ic.who );
 	await hostHandler( ic, ceProjects, hostLinks, jobData, res, jobData.stamp );   
     }
     else {
@@ -283,10 +283,12 @@ router.post('/:location?', async function (req, res) {
     let ret = hostGetJobData( newStamp, jd, req.headers, locator );
     if( ret == -1 ) { return res.end(); }
 
-    if( jd.actor == config.CE_BOT) {
+    // XXX GQL prefers using CE_USER.  REST prefers CE_BOT.  Can they be reconciled?
+    if( jd.actor == config.CE_USER || jd.actor == config.CE_BOT) {
 	console.log( "Notification for", jd.event, jd.action, "Bot-sent, skipping." );
 	return res.end();
     }
+    console.log( "Notification:", jd.actor, jd.event, jd.action, jd.tag, jd.queueId, "for", jd.org, newStamp );
     
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
     notificationCount++;

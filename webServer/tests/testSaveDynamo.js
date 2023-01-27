@@ -57,20 +57,19 @@ async function runTests( flutterTest ) {
 
     success = execAWS_CLI( "CEPEQRaw", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save raw PAct Table" );
-*/
     
     success = execAWS_CLI( "CEProjects", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save Projects Table" );
-/*
+
     success = execAWS_CLI( "CEPeople", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save People Table" );
 
     success = execAWS_CLI( "CEAgreements", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save Agreements Table" );
-
+*/
     success = execAWS_CLI( "CELinkage", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save Linkage Table" );
-
+/*
     // XXX Has PATS.  Don't save this here, typically.
     success = execAWS_CLI( "CEHostUser", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save HostUser Table" );

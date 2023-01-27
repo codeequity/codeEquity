@@ -159,9 +159,7 @@ function getJobSummaryGHC( newStamp, jobData, locator ) {
 	jobData.tag = jobData.reqBody[jobData.event].name;
     }
 
-    locator.source += jobData.action+" "+jobData.tag+"> ";
-    console.log( "Notification:", jobData.event, jobData.action, jobData.tag, jobData.queueId, "for", jobData.org, newStamp );
-
+    locator.source  += jobData.action+" "+jobData.tag+"> ";
     locator.projPath = config.HOST_GH + "/" + jobData.reqBody.repository.full_name;
     return true;
 }
@@ -191,9 +189,7 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
 	console.log( "Not yet handled", jobData.reqBody ); 
     }
 
-    locator.source += jobData.action+" "+jobData.tag+"> ";
-    console.log( "Notification:", jobData.event, jobData.action, jobData.tag, jobData.queueId, "for", jobData.org, newStamp );
-
+    locator.source  += jobData.action+" "+jobData.tag+"> ";
     locator.projPath = config.HOST_GH + "/" + fullName;
     return true;
 }
@@ -203,8 +199,8 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
 function getJobSummary( newStamp, jobData, headers, locator ) {
     let retVal = -1;
     
-    jobData.actor  = jobData.reqBody.sender.login;
     jobData.action = jobData.reqBody.action;
+    jobData.actor  = jobData.reqBody.sender.login;
 
     jobData.event  = headers['x-github-event'];
     if( jobData.event == "issues" ) { jobData.event = "issue"; }
@@ -293,7 +289,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 
     let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
-    console.log( "switcherGH2.." );
+    // console.log( "switcherGH2.." );
     
     assert( jd.queueId == authData.job ) ;
     await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
@@ -371,7 +367,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	}
 	
 	if( !found ) {
-	    console.log( authData.who, "Did not find matching pv2Notice." );
+	    console.log( authData.who, "Did not find matching pv2Notice, delaying." );
 	    if( jd.delayCount > 5 ) {
 		console.log( "This job has already been delayed several times.. Checking for PV2" );
 		let foundPV2 = await ghUtils.checkForPV2( authData.pat, nodeId );
@@ -392,7 +388,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     
     if( demote || resolved ) {
 	if( demote ) {
-	    console.log( authData.who, "Delaying this job." ); 
+	    // console.log( authData.who, "Delaying this job." ); 
 	    await ceRouter.demoteJob( jd );
 	}
 	ceRouter.getNextJob( authData, res );
@@ -417,7 +413,6 @@ function makePendingNotice( rb ) {
 
 async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
-    console.log( "Switching.. " );
     if( jd.action == "synchronize" || jd.reqBody.hasOwnProperty( "pull_request" )) {
 	console.log( "Notification for Pull Request.  CodeEquity does not require these.  Skipping." );
 	return res.end();

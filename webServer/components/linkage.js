@@ -45,7 +45,7 @@ class Linkage {
 	assert( host != "" && pms != "" && org != "" );
 	assert( entry.hasOwnProperty( "CEProjectId" ) );
 	
-	console.log( ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
+	console.log( authData.who, ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
 	// Wait later
 	let peqs = awsUtils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
@@ -76,7 +76,7 @@ class Linkage {
 		    if( !repos.includes( repo )) {
 			repos.push( repo );
 
-			console.log( "Refreshing", entry.CEProjectId, repo );
+			console.log( authData.who, "Refreshing", entry.CEProjectId, repo );
 			let fnParts = repo.split('/');
 			let rlinks = [];
 			
@@ -85,10 +85,10 @@ class Linkage {
 			
 			// XXX this should not be here
 			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
-			    .catch( e => console.log( "Error.  GraphQL for basic linkage failed.", e ));
+			    .catch( e => console.log( authData.who, "Error.  GraphQL for basic linkage failed.", e ));
 			
 			ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
-			    .catch( e => console.log( "Error.  GraphQL for repo cols failed.", e ));
+			    .catch( e => console.log( authData.who, "Error.  GraphQL for repo cols failed.", e ));
 			
 			ldPromise = await ldPromise;  // no val here, just ensures locData is set
 			for( var loc of locData ) {
@@ -99,7 +99,7 @@ class Linkage {
 			
 			blPromise = await blPromise;  // no val here, just ensures linkData is set
 
-			rLinks.forEach( function (link) { link.hostRepo = repo;
+			rlinks.forEach( function (link) { link.hostRepo = repo;
 							  this.addLinkage( authData, entry.CEProjectId, link ); 
 							}, this);
 
@@ -119,25 +119,25 @@ class Linkage {
 		    await ghV2.getProjectIds( authData, repoName, hostProjs, -1 );
 		}
 
-		// console.log( "GET FOR PROJECT", entry.CEProjectId, hostProjs.length );
+		// console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, hostProjs.length );
 		
 		for( const proj of hostProjs ) {
 		    const projId = proj.hostProjectId;
-		    console.log( "GET FOR PROJECT", entry.CEProjectId, proj.hostProjectId );
+		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, proj.hostProjectId );
 		    let rLinks = [];
 		    let rLocs  = [];
 		    
 		    await ghV2.getHostLinkLoc( authData, proj.hostProjectId, rLocs, rLinks, -1 )
-			.catch( e => console.log( "Error.  GraphQL for project layout failed.", e ));
+			.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
 
-		    console.log( "Populate Linkage", proj.hostProjectId );
+		    // console.log( authData.who, "Populate Linkage", proj.hostProjectId );
 		    rLinks.forEach( function (link) { link.hostRepo   = proj.hostRepoName;
 						      link.hostRepoId = proj.hostRepoId;
 						      this.addLinkage( authData, entry.CEProjectId, link );
 						    }, this);
 		    
-		    // console.log( "LINKAGE: Locs",  rLocs );
-		    // console.log( "LINKAGE: Links", rLinks );
+		    // console.log( authData.who, "LINKAGE: Locs",  rLocs );
+		    // console.log( authData.who, "LINKAGE: Links", rLinks );
 		    for( var loc of rLocs ) {
 			loc.ceProjectId = entry.CEProjectId;
 			loc.active = "true";
@@ -168,8 +168,8 @@ class Linkage {
 	    const iid = peq.HostIssueId;
 	    let link = this.getUniqueLink( authData, entry.CEProjectId, iid );
 	    if( link == -1 ) {
-		console.log( "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.HostIssueTitle );
-		this.show(20);
+		console.log( authData.who, "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.HostIssueTitle );
+		// this.show(20);
 		badPeq = true;
 		continue;
 	    }
@@ -202,7 +202,7 @@ class Linkage {
     // init here is to handle a server restart, only 'remembers' official CE projects.
     async init( authData ) {
 	let tstart = Date.now();
-	console.log( "Init linkages" );
+	console.log( authData.who, "Init linkages" );
 	
 	// XXX aws fix name here.  Get ceProj status.
 	let ceProjects = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
@@ -210,10 +210,10 @@ class Linkage {
 	let promises = [];
 	for( const entry of ceProjects ) {
 	    promises.push( this.initOneProject( authData, entry )
-			   .catch( e => console.log( "Error.  Init Linkage failed.", e )) );
+			   .catch( e => console.log( authData.who, "Error.  Init Linkage failed.", e )) );
 	}
 	await Promise.all( promises );
-	console.log( "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
+	console.log( authData.who, "Linkage init done", Object.keys(this.links).length, "links", Date.now() - tstart, "millis" );
 	this.show(50);
 	this.showLocs();
     }
@@ -221,7 +221,7 @@ class Linkage {
     // linkData is ceProject-specific, i.e. a single "cplinks"
     fromJson( linkData ) {
 	this.links = {};
-	console.log( "Creating ghLinks from json data" );
+	console.log( authData.who, "Creating ghLinks from json data" );
 	for( const [_, clinks] of Object.entries( linkData ) ) {
 	    for( const [_, link] of Object.entries( clinks ) ) {
 		// XXX grunk.  naming in addLinkage causes this conversion. kinda silly.  but testUtils only, so min impact.
@@ -286,7 +286,7 @@ class Linkage {
 	// Need to purge first!
 	this.purgeLocs( "TESTING-FROMJSONLOCS" );
 	
-	console.log( "Creating ghLinks.locs from json data" );
+	console.log( authData.who, "Creating ghLinks.locs from json data" );
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, loc] of Object.entries( clocs ) ) {
 		this.addLoc( {}, loc );
@@ -300,7 +300,7 @@ class Linkage {
 	locD.hostProjectId = locD.hostProjectId.toString();
 	let ceProjId       = locD.ceProjectId;
 
-	if( typeof ceProjId === 'undefined' ) { console.log( "Warning.  Linkage addLoc was called without a CE Project Id." ); }
+	if( typeof ceProjId === 'undefined' ) { console.log( authData.who, "Warning.  Linkage addLoc was called without a CE Project Id." ); }
 	    
 	if( !this.locs.hasOwnProperty( ceProjId ))                                        { this.locs[ceProjId] = {}; }
 	if( !this.locs[ceProjId].hasOwnProperty( locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
@@ -337,7 +337,7 @@ class Linkage {
     getLinks( authData, query ) {
 
 	if( typeof query.ceProjId === 'undefined' ) {
-	    console.log( "Error.  ceProjectId was not defined in Links query." );
+	    console.log( authData.who, "Error.  ceProjectId was not defined in Links query." );
 	    assert( false );
 	}
 
@@ -373,17 +373,16 @@ class Linkage {
 	}
 	
 	if( links.length == 0 ) { links = -1; }
-	console.log( links );
 	return links;
     }
 
     // No match on utility slot.  yet?
     getLocs( authData, query ) {
-	console.log( authData.who, "get Locs", query );
-	this.showLocs();
+	// console.log( authData.who, "get Locs", query );
+	// this.showLocs();
 	    
 	if( typeof query.ceProjId === 'undefined' ) {
-	    console.log( "Error.  ceProjectId was not defined in Locs query." );
+	    console.log( authData.who, "Error.  ceProjectId was not defined in Locs query." );
 	    assert( false );
 	}
 
@@ -488,9 +487,9 @@ class Linkage {
 
     removeLinkage({ authData, ceProjId, issueId, cardId }) {
 	let retVal = false;
-	if( !authData ) { console.log( "missing authData" ); return retVal; }
-	if( !issueId )  { console.log( "missing issueId" );  return retVal; }
-	if( !ceProjId ) { console.log( "missing ceProjId" ); return retVal; }
+	if( !authData ) { console.log( authData.who, "missing authData" ); return retVal; }
+	if( !issueId )  { console.log( authData.who, "missing issueId" );  return retVal; }
+	if( !ceProjId ) { console.log( authData.who, "missing ceProjId" ); return retVal; }
 	// cardId can be missing
 
 	console.log( authData.who, "Remove link for issueId:", ceProjId, issueId );
@@ -505,7 +504,7 @@ class Linkage {
     }
 
     removeLocs({ authData, ceProjId, projId, colId }) {
-	if( !authData ) { console.log( "missing authData" ); return false; }
+	if( !authData ) { console.log( authData.who, "missing authData" ); return false; }
 
 
 	if( colId )       { console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); }    // one delete
@@ -593,7 +592,7 @@ class Linkage {
     }
     
     purge( repo ) {
-	console.log( "Removing links, locs for", repo );
+	console.log( authData.who, "Removing links, locs for", repo );
 	let killList = [];
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {

@@ -185,6 +185,8 @@ exports.millisDiff    = millisDiff;
 exports.getToday      = getToday;
 exports.settleWithVal = settleWithVal;
 
+exports.getProjectSubs = getProjectSubs;
+
 // TESTING ONLY
 exports.TEST_EH       = TEST_EH;          // TESTING ONLY
 exports.TEST_EH_PCT   = TEST_EH_PCT;      // TESTING ONLY

@@ -119,7 +119,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		for( let i = 0; i < views.edges.length; i++ ) {
 		    const aview = views.edges[i].node;
 		    for( let j = 0; j < aview.fields.edges.length; j++ ) {
-			if( j >= 99 ) { console.log( "WARNING.  Detected a very large number of columns, ignoring some." ); }
+			if( j >= 99 ) { console.log( authData.who, "WARNING.  Detected a very large number of columns, ignoring some." ); }
 			const pfc = aview.fields.edges[j].node;
 			if( pfc.name == "Status" ) {
 			    statusId = pfc.id;
@@ -160,7 +160,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		if( issue.type == "ISSUE" ) {
 
 		    let links = issue.content.projectItems.edges;    // reverse links.. yay!  used only for populateCELinkage, then tossed
-		    if( links.length >= 100 ) { console.log( "WARNING.  Detected a very large number of cards, ignoring some." ); }
+		    if( links.length >= 100 ) { console.log( authData.who, "WARNING.  Detected a very large number of cards, ignoring some." ); }
 		    
 		    let datum = {};
 		    datum.issueId     = issue.content.id;              // contentId I_*
@@ -354,7 +354,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
     if( typeof issue.assignees === 'undefined' )  { issue.assignees = []; }
     if( typeof issue.milestone === 'undefined' )  { issue.milestone = null; }
     
-    console.log( "Create issue, from alloc?", repoNode, projNode, issue.title, issue.allocation );
+    console.log( authData.who, "Create issue, from alloc?", repoNode, projNode, issue.title, issue.allocation );
 
     assert( !issue.allocation || typeof issue.body === 'undefined', "Error.  createIssue body is about to be overwritten." );
     if( issue.allocation ) {
@@ -380,7 +380,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	    if( ret.status != 200 ) { throw ret; }
 	    issueData[0] = ret.data.createIssue.issue.id;
 	    issueData[1] = ret.data.createIssue.issue.number;
-	    console.log( " .. issue created, issueData:", issueData );
+	    console.log( authData.who, " .. issue created, issueData:", issueData );
 	})
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
 	       
@@ -395,7 +395,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	    if( ret.status != 200 ) { throw ret; }
 	    pvId = ret.data.addProjectV2ItemById.item.id;
 	    issueData[2] = pvId;
-	    console.log( " .. issue added to project, pv2ItemId:", pvId );
+	    console.log( authData.who, " .. issue added to project, pv2ItemId:", pvId );
 	})
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
     
@@ -423,7 +423,7 @@ async function getIssue( authData, issueId ) {
 
 // More is available.. needed?.  Content id here, not project item id
 async function getFullIssue( authData, issueId ) {
-    console.log( "Get Full Issue", issueId );
+    console.log( authData.who, "Get Full Issue", issueId );
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -446,8 +446,8 @@ async function getFullIssue( authData, issueId ) {
 	    let iss = {};
 	    if( ret.status != 200 ) { throw ret; }
 	    iss = ret.data.node;
-	    if( iss.assignees.edges.length > 99 ) { console.log( "WARNING.  Large number of assignees.  Ignoring some." ); }
-	    if( iss.labels.edges.length > 99 )    { console.log( "WARNING.  Large number of labels.  Ignoring some." ); }
+	    if( iss.assignees.edges.length > 99 ) { console.log( authData.who, "WARNING.  Large number of assignees.  Ignoring some." ); }
+	    if( iss.labels.edges.length > 99 )    { console.log( authData.who, "WARNING.  Large number of labels.  Ignoring some." ); }
 	    iss.assignees = iss.assignees.edges.map( edge => edge.node );
 	    iss.labels    = iss.labels.edges.map( edge => edge.node );
 	    return iss;
@@ -505,7 +505,7 @@ async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, sp
 	    .catch( e => issueData = ghUtils.errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, repoNodeId, projectNodeId, issue, msg, splitTag ));
     }
     else {
-	console.log( "Calling create", repoNodeId, projectNodeId, issue );
+	// console.log( "Calling create", repoNodeId, projectNodeId, issue );
 	issueData = await createIssue( authData, repoNodeId, projectNodeId, issue );
 	if( issueData[0] != -1 && issueData[1] != -1 && issueData[2] != -1 ) { success = true; }
     }
@@ -528,7 +528,7 @@ async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, sp
 async function addAssignee( authData, issueId, aNodeId ) {
 
     let ret = false;
-    console.log( "Add assignee", issueId, aNodeId );
+    console.log( authData.who, "Add assignee", issueId, aNodeId );
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "addAssignee" )
 	    .catch( e => ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, issueId, aNodeId )); 
@@ -565,7 +565,7 @@ async function remAssignee( authData, issueId, aNodeId ) {
 async function getAssignees( authData, issueId ) {
 
     let retVal = [];
-    if( issueId == -1 ) { console.log( "getAssignees: bad issue", issueId ); return retVal; }
+    if( issueId == -1 ) { console.log( authData.who, "getAssignees: bad issue", issueId ); return retVal; }
 
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
@@ -614,7 +614,7 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
 
 async function createLabel( authData, repoNode, name, color, desc ) {
 
-    console.log( "Create label", repoNode, name, desc, color );
+    console.log( authData.who, "Create label", repoNode, name, desc, color );
 
     let query     = `mutation( $id:ID!, $color:String!, $name:String!, $desc:String! )
                        { createLabel( input:{ repositoryId: $id, color: $color, description: $desc, name: $name }) {clientMutationId, label {id, name, color, description}}}`;
@@ -626,9 +626,9 @@ async function createLabel( authData, repoNode, name, color, desc ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
-	    if( typeof ret.errors !== 'undefined' ) { console.log( "WARNING. Label not created", ret.errors ); }
+	    if( typeof ret.errors !== 'undefined' ) { console.log( authData.who, "WARNING. Label not created", ret.errors ); }
 	    else {
-		console.log( " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
+		console.log( authData.who, " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
 		label = ret.data.createLabel.label;
 	    }
 	})
@@ -641,7 +641,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     let labelRes = {}
     labelRes.status = 404;
 
-    console.log( "Get label", repoNode, peqHumanLabelName );
+    console.log( authData.who, "Get label", repoNode, peqHumanLabelName );
 
     // query below checks both name and description
     let query = `query( $repoNode:ID!, $name:String! ) {
@@ -660,7 +660,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
 	    let labels = ret.data.node.labels; 
 	    if( typeof labels === 'undefined' ) { return labelRes; }
 	    
-	    if( labels.edges.length > 99 ) { console.log( "WARNING. Found too many labels.  Ignoring some." ); }
+	    if( labels.edges.length > 99 ) { console.log( authData.who, "WARNING. Found too many labels.  Ignoring some." ); }
 	    
 	    for( let i = 0; i < labels.edges.length; i++ ) {
 		const lab = labels.edges[i].node;
@@ -676,7 +676,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
 }
 
 async function getLabels( authData, issueId ) {
-    console.log( "Get labels on issue", issueId );
+    console.log( authData.who, "Get labels on issue", issueId );
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -705,7 +705,7 @@ async function getLabels( authData, issueId ) {
 }    
 
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
-    console.log( "Creating PEQ label", allocation, peqValue );
+    console.log( authData.who, "Creating PEQ label", allocation, peqValue );
     let peqHumanLabelName = peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
@@ -715,7 +715,7 @@ async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
 
 async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelName, peqValue ) {
 
-    console.log( "\n\nFind or create label", repoNode, allocation, peqHumanLabelName, peqValue );
+    console.log( authData.who, "Find or create label", repoNode, allocation, peqHumanLabelName, peqValue );
 
     // Find?
     const labelRes = await getLabel( authData, repoNode, peqHumanLabelName );
@@ -760,7 +760,7 @@ async function updateLabel( authData, labelNodeId, name, desc, color ) {
 
 // Primarily used when double-peq label an issue
 async function removeLabel( authData, labelNodeId, issueId ) {
-    console.log( "Remove label", labelNodeId, "from", issueId );
+    console.log( authData.who, "Remove label", labelNodeId, "from", issueId );
 
     let query     = `mutation( $labelIds:[ID!]!, $labelableId:ID! ) 
                         { removeLabelsFromLabelable( input:{ labelIds: $labelIds, labelableId: $labelableId })  {clientMutationId}}`;
@@ -776,7 +776,7 @@ async function removePeqLabel( authData, issueId ) {
     var labels = await getLabels( authData, issueId );
 
     if( typeof labels === 'undefined' || labels == false || labels.length <= 0 ) { return false; }
-    if( labels.length > 99 ) { console.log( "Error.  Too many labels for issue", issueNum );} 
+    if( labels.length > 99 ) { console.log( authData.who, "Error.  Too many labels for issue", issueNum );} 
 
     let peqLabel = {};
     // There can only be one, by definition.
@@ -790,7 +790,7 @@ async function removePeqLabel( authData, issueId ) {
 }
 
 async function addLabel( authData, labelNodeId, issueId ) {
-    console.log( "Add label", labelNodeId, "to", issueId );
+    console.log( authData.who, "Add label", labelNodeId, "to", issueId );
 
     let query     = `mutation( $labelIds:[ID!]!, $labelableId:ID! ) 
                         { addLabelsToLabelable( input:{ labelIds: $labelIds, labelableId: $labelableId })  {clientMutationId}}`;
@@ -841,7 +841,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
 	    {
 		pid = ret.data.createProjectV2.projectV2.id;
 	    }
-	    console.log( "New project id: ", pid );
+	    console.log( authData.who, "New project id: ", pid );
 	})
 	.catch( e => ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
 
@@ -860,8 +860,8 @@ function getColumnName( authData, ghLinks, ceProjId, colId ) {
 
 // 12/22
 async function updateColumn( authData, projNodeId, colId, title ) {
-    console.log( "NYI.  Github does not yet support managing status with the API" );
-    console.log( "https://github.com/orgs/community/discussions/38225" );
+    console.log( authData.who, "NYI.  Github does not yet support managing status with the API" );
+    console.log( authData.who, "https://github.com/orgs/community/discussions/38225" );
 }
 
 
@@ -872,7 +872,7 @@ async function updateColumn( authData, projNodeId, colId, title ) {
 //    Each issueNodeId (i.e. PVTI_*) has a content pointer, which points to a single, shared issue id (i.e. I_*).
 async function getCard( authData, issueNodeId ) {
     let retVal = {};
-    if( issueNodeId == -1 ) { console.log( "getCard bad issue", issueNodeId ); return retVal; }
+    if( issueNodeId == -1 ) { console.log( authData.who, "getCard bad issue", issueNodeId ); return retVal; }
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -904,7 +904,7 @@ async function getCard( authData, issueNodeId ) {
 
 // Currently, just relocates issue to another column (i.e. status).
 async function moveCard( authData, projId, itemId, fieldId, value ) {
-    console.log( "Updating column: project item field value", projId, itemId, fieldId, value );
+    console.log( authData.who, "Updating column: project item field value", projId, itemId, fieldId, value );
 
     let query     = `mutation( $projId:ID!, $itemId:ID!, $fieldId:ID! $value:String! ) 
                       { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value }})  
@@ -917,7 +917,6 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
     let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.catch( e => ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, projId, itemId, fieldId, value ));
 
-    console.log( "OI?  ", ret );
     return ret;
 }
 
@@ -936,7 +935,7 @@ async function createProjectCard( authData, projNodeId, issueNodeId, fieldId, va
 
 // Deleting the pv2 node has no impact on the underlying issue content, as is expected
 async function removeCard( authData, projNodeId, issueNodeId ) {
-    console.log( "RemoveCard", projNodeId, issueNodeId );
+    console.log( authData.who, "RemoveCard", projNodeId, issueNodeId );
     let query     = `mutation( $projId:ID!, $itemId:ID! ) { deleteProjectV2Item( input:{ projectId: $projId, itemId: $itemId })  {clientMutationId}}`;
     let variables = {"projId": projNodeId, "itemId": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
@@ -961,7 +960,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
     let newCardId = issueData[2];
 
     if( colId == config.EMPTY ) {
-	console.log( "Card rebuild is for No Status column, which is a no-op.  Early return." );
+	console.log( authData.who, "Card rebuild is for No Status column, which is a no-op.  Early return." );
 	return newCardId;
     }
     
@@ -1007,7 +1006,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 	// Create in progress, if needed
 	if( colId == -1 ) {
 	    let progCol = await createColumn( authData, ghLinks, ceProjId, projId, progName );
-	    console.log( "Creating new column:", progName );
+	    console.log( authData.who, "Creating new column:", progName );
 	    colId = progCol.data.id;
 	    let nLoc = {};
 	    nLoc.ceProjectId     = ceProjId; 
@@ -1051,7 +1050,7 @@ async function getOwnerId( authData, ownerLogin ) {
 		if( ret.data.hasOwnProperty( 'user' ))              { retId = ret.data.user.id; }
 		else if( ret.data.hasOwnProperty( 'organization' )) { retId = ret.data.user.id; }
 	    }
-	    console.log( ownerLogin, retId );
+	    console.log( authData.who, ownerLogin, retId );
 	  })
 	  .catch( e => ghUtils.errorHandler( "getOwnerId", e, getOwnerId, authData, ownerLogin ));
 
@@ -1068,7 +1067,7 @@ async function getRepoId( authData, ownerLogin, repoName ) {
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
 	    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
-	    console.log( ownerLogin, repoName, retId );
+	    console.log( authData.who, ownerLogin, repoName, retId );
 	    
 	})
 	.catch( e => ghUtils.errorHandler( "getRepoId", e, getRepoId, authData, ownerLogin, repoName ));
@@ -1118,7 +1117,7 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 	    }
 	    else {
 		// XXX may not be an error.. 
-		console.log( "XXX Error, no issues for label", labelName, res );
+		console.log( authData.who, "XXX Error, no issues for label", labelName, res );
 	    }
 	})
 	.catch( e => ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, owner, repo, labelName, data, cursor ));
@@ -1160,9 +1159,9 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	    if( cursor == -1 )
 	    {
 		let classics = raw.data.repository.projects;
-		if(classics.edges.length >= 100 ) { console.log( "WARNING.  Too many classic projects, ignoring some." ); }
+		if(classics.edges.length >= 100 ) { console.log( authData.who, "WARNING.  Too many classic projects, ignoring some." ); }
 		for( const c of classics.edges ) {
-		    console.log( "   - pushing", c.node.name, repoFullName, repoId );
+		    console.log( authData.who, "   - pushing", c.node.name, repoFullName, repoId );
 		    let datum = {};
 		    datum.hostProjectId = c.node.id;
 		    datum.hostRepoName  = repoFullName;
@@ -1173,7 +1172,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	    
 	    let projs = raw.data.repository.projectsV2;
 	    for( const p of projs.edges ) {
-		console.log( "   - pushing", p.node.title, repoFullName, repoId );
+		console.log( authData.who, "   - pushing", p.node.title, repoFullName, repoId );
 		let datum = {};
 		datum.hostProjectId = p.node.id;
 		datum.hostRepoName  = repoFullName;
@@ -1202,7 +1201,7 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
 	    
 	if( typeof locs === 'undefined' ) {
 	    // XXX revisit once (if) GH API supports column creation
-	    console.log( "Error.  Please create the column", colName, "by hand, for now." );
+	    console.log( authData.who, "Error.  Please create the column", colName, "by hand, for now." );
 	    loc = -1;
 	}
 	else { loc = locs[0]; }
@@ -1223,7 +1222,7 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
 	// XXX revisit once (if) GH API supports column creation
 	//     note, we CAN create projects, but there is little point if required columns must also be created.
 	//     note, could make do with 'no status' for unclaimed:unclaimed, but would fail for unclaimed:accrued and other required columns.
-	console.log( "Error.  Please create the", unClaimed, "project by hand, for now." );
+	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand, for now." );
     }
 
     return unClaimedProjId;
@@ -1241,7 +1240,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
     if( locs == -1 ) {
 	// XXX revisit once (if) GH API supports column creation
-	console.log( "Error.  Please create the", unClaimed, "project by hand, for now." );
+	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand, for now." );
     }
     else {
 	assert( unClaimedProjId == locs[0].hostProjectId );
@@ -1250,7 +1249,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 	
 	if( typeof loc === 'undefined' ) {
 	    // XXX revisit once (if) GH API supports column creation
-	    console.log( "Error.  Please create the", unClaimed, "and", config.PROJ_COLS[config.PROJ_ACCR], "columns, by hand, for now." );
+	    console.log( authData.who, "Error.  Please create the", unClaimed, "and", config.PROJ_COLS[config.PROJ_ACCR], "columns, by hand, for now." );
 	    loc = -1;
 	}
     }
