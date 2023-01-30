@@ -1,17 +1,17 @@
 var assert    = require( 'assert' );
-const awsAuth = require( '../auth/aws/awsAuth' );
-const ghAuth  = require( '../auth/gh/ghAuth' );
-var config    = require( '../config' );
+const awsAuth = require( '../../auth/aws/awsAuth' );
+const ghAuth  = require( '../../auth/gh/ghAuth' );
+var config    = require( '../../config' );
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
+const utils    = require( '../../utils/ceUtils' );
+const awsUtils = require( '../../utils/awsUtils' );
 
-const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
+const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
-var links     = require('../components/linkage.js');
-var circBuff  = require('../components/circBuff.js');
+var links     = require('../../components/linkage.js');
+var circBuff  = require('../../components/circBuff.js');
 
 const tu             = require('./testUtils');
 const testSaveDynamo = require( './testSaveDynamo' );
@@ -23,8 +23,8 @@ const testBasicFlow  = require( './testBasicFlow' );
 const testComponents = require( './testComponents' );
 const testCross      = require( './testCross' );
 
-const testData  = require( './testData' );
-const authDataC = require( '../auth/authData' );
+const testData  = require( '../testData' );
+const authDataC = require( '../../auth/authData' );
 
 async function runTests() {
 
