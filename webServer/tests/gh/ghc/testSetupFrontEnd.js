@@ -1,19 +1,21 @@
 var assert    = require( 'assert' );
-const awsAuth = require( '../auth/aws/awsAuth' );
-const ghAuth  = require( '../auth/gh/ghAuth' );
-var config    = require( '../config' );
+const awsAuth = require( '../../../auth/aws/awsAuth' );
+const ghAuth  = require( '../../../auth/gh/ghAuth' );
+var config    = require( '../../../config' );
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
+const utils    = require( '../../../utils/ceUtils' );
+const awsUtils = require( '../../../utils/awsUtils' );
 
-var links     = require( '../components/linkage.js' );
+const tu       = require( '../../ceTestUtils ');
 
-const tu             = require( './testUtils' );
+const links    = require( '../../../components/linkage.js' );
+
+const ghctu          = require( './ghcTestUtils' );
 const testSaveDynamo = require( './testSaveDynamo' );
 const testDelete     = require( './testDelete' );
 
 const testData  = require( './testData' );
-const authDataC = require( '../auth/authData' );
+const authDataC = require( '../../../auth/authData' );
 
 // Separate ceServer testing from ceFlutter testing.
 // Delete all from FLUTTER_TEST_REPO
@@ -71,7 +73,7 @@ async function runTests() {
     
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up
-    const wakeyPID = await tu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
+    const wakeyPID = await ghctu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
     const pacts    = await awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
     const mrp = pacts != -1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
@@ -81,8 +83,8 @@ async function runTests() {
     }
 
     // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, wakeyPID, td.softContTitle );
-    tu.remProject( authData, wakeyPID );
+    let mastCol1  = await ghctu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, wakeyPID, td.softContTitle );
+    ghctu.remProject( authData, wakeyPID );
     // assert( false );
 
 

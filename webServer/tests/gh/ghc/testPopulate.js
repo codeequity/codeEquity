@@ -1,16 +1,18 @@
 var assert  = require( 'assert' );
 
-var config  = require( '../config' );
+var config  = require( '../../../config' );
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
+const utils    = require( '../../../utils/ceUtils' );
+const awsUtils = require( '../../../utils/awsUtils' );
 
-const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
+const tu       = require( '../../ceTestUtils ');
+
+const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
 const testData = require( './testData' );
-const tu = require('./testUtils');
+const ghctu    = require( './ghcTestUtils' );
 
 const ISS_NEWBIE   = "A newborn issue";
 const ISS_SINREC   = "A singly-carded issue";
@@ -23,8 +25,8 @@ const ISS_DUBMIX   = "doubly in Flat-Recommended mix";
 async function makePrePopulateData( authData, td ) {
     console.log( "Setting up for populate test" );
 
-    await tu.refreshRec( authData, td );
-    await tu.refreshFlat( authData, td );
+    await ghctu.refreshRec( authData, td );
+    await ghctu.refreshFlat( authData, td );
 
     // !!!!!!!!!!!
     // NOTE: you must TURN OFF ceServer to construct this test.
@@ -64,16 +66,16 @@ async function testPopulate( authData, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    await tu.refreshRec( authData, td );
-    await tu.refreshFlat( authData, td );
+    await ghctu.refreshRec( authData, td );
+    await ghctu.refreshFlat( authData, td );
 
     // TRIGGER
     // Unset 'populated' flag
     await tu.setUnpopulated( authData, td );
 
     let popLabel    = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
-    let singleIssue = await tu.findIssueByName( authData, td, ISS_SINREC );
-    await tu.addLabel( authData, td, [singleIssue.id, singleIssue.number, singleIssue.title], popLabel.name );       // ready.. set... Go!
+    let singleIssue = await ghctu.findIssueByName( authData, td, ISS_SINREC );
+    await ghctu.addLabel( authData, td, [singleIssue.id, singleIssue.number, singleIssue.title], popLabel.name );       // ready.. set... Go!
 
     await utils.sleep( 15000 );
 
@@ -84,7 +86,7 @@ async function testPopulate( authData, td ) {
 
     // Check GITHUB issues & labels
     let allNames = [ ISS_NEWBIE, ISS_SINREC, ISS_DUBREC, ISS_TRIPREC, ISS_SINFLAT, ISS_DUBMIX ]; 
-    let issues = await tu.getIssues( authData, td );
+    let issues = await ghctu.getIssues( authData, td );
     
     let counts = [0,0,0,0,0,0];
     for( let i = 0; i < allNames.length; i++ ) {
@@ -104,21 +106,21 @@ async function testPopulate( authData, td ) {
 
     
     // Check GITHUB card distribution
-    let softContCards = await tu.getCards( authData, td.scColID );
-    let busOpsCards   = await tu.getCards( authData, td.boColID );
-    let dsPlanCards   = await tu.getCards( authData, td.dsPlanID );
-    let ghProgCards   = await tu.getCards( authData, td.ghProgID );
-    let eggCards      = await tu.getCards( authData, td.col1ID );
-    let baconCards    = await tu.getCards( authData, td.col2ID );
+    let softContCards = await ghctu.getCards( authData, td.scColID );
+    let busOpsCards   = await ghctu.getCards( authData, td.boColID );
+    let dsPlanCards   = await ghctu.getCards( authData, td.dsPlanID );
+    let ghProgCards   = await ghctu.getCards( authData, td.ghProgID );
+    let eggCards      = await ghctu.getCards( authData, td.col1ID );
+    let baconCards    = await ghctu.getCards( authData, td.col2ID );
 
     let issueMap = tu.buildIssueMap( issues ); // {issue_num: {<issue>} }
 
-    let softContData = softContCards.map((card) => tu.getQuad( card, issueMap ));   // [ cardId, issueNum, issueId, issueTitle]
-    let busOpsData   = busOpsCards.map((card) => tu.getQuad( card, issueMap )); 
-    let dsPlanData   = dsPlanCards.map((card) => tu.getQuad( card, issueMap )); 
-    let ghProgData   = ghProgCards.map((card) => tu.getQuad( card, issueMap )); 
-    let eggData      = eggCards.map((card) => tu.getQuad( card, issueMap )); 
-    let baconData    = baconCards.map((card) => tu.getQuad( card, issueMap )); 
+    let softContData = softContCards.map((card) => ghctu.getQuad( card, issueMap ));   // [ cardId, issueNum, issueId, issueTitle]
+    let busOpsData   = busOpsCards.map((card) => ghctu.getQuad( card, issueMap )); 
+    let dsPlanData   = dsPlanCards.map((card) => ghctu.getQuad( card, issueMap )); 
+    let ghProgData   = ghProgCards.map((card) => ghctu.getQuad( card, issueMap )); 
+    let eggData      = eggCards.map((card) => ghctu.getQuad( card, issueMap )); 
+    let baconData    = baconCards.map((card) => ghctu.getQuad( card, issueMap )); 
 
     let softContTitles = softContData.map((datum) => datum[3] );
     let busOpsTitles   = busOpsData.map((datum) => datum[3] );
@@ -190,15 +192,15 @@ async function testResolve( authData, ghLinks, td ) {
 
     console.log( "Test Resolve, as part of populate" );
 
-    await tu.refreshRec( authData, td );
-    await tu.refreshFlat( authData, td );
+    await ghctu.refreshRec( authData, td );
+    await ghctu.refreshFlat( authData, td );
 
     // First add a few normal labels
     // At the start, will have 3 triprecs, non are peq
-    let tripleIssue = await tu.findIssue( authData, td, ISS_TRIPREC );
+    let tripleIssue = await ghctu.findIssue( authData, td, ISS_TRIPREC );
     let tiDat = [tripleIssue.id, tripleIssue.number, tripleIssue.title];
-    await tu.addLabel( authData, td, tiDat, "bug" );       
-    await tu.addLabel( authData, td, tiDat, "enhancement" );       
+    await ghctu.addLabel( authData, td, tiDat, "bug" );       
+    await ghctu.addLabel( authData, td, tiDat, "enhancement" );       
 
     // Add a peq label
     let newLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 " + config.PEQ_LABEL, 1000 );
@@ -209,7 +211,7 @@ async function testResolve( authData, ghLinks, td ) {
     //       triage.  Adds a (bigger than this) delay.
     // Note: test setup has 2 random delays.  1: local -> gh rest time.  2: gh -> local.   by-hand has 1.
     console.log( "Send add label" );
-    await tu.addLabel( authData, td, tiDat, newLabel.name );       
+    await ghctu.addLabel( authData, td, tiDat, newLabel.name );       
 
     console.log( "Send create card" );
     await ghSafe.createProjectCard( authData, td.dsPlanID, tripleIssue.id, false );  // ready.. set... Go!
@@ -222,7 +224,7 @@ async function testResolve( authData, ghLinks, td ) {
 
     // Check GITHUB issues & labels
     let allNames = [ ISS_NEWBIE, ISS_SINREC, ISS_DUBREC, ISS_TRIPREC, ISS_SINFLAT, ISS_DUBMIX ]; 
-    let issues = await tu.getIssues( authData, td );
+    let issues = await ghctu.getIssues( authData, td );
 
 
     let tripIssues = [];
@@ -254,21 +256,21 @@ async function testResolve( authData, ghLinks, td ) {
 
     
     // Check trip GITHUB card distribution
-    let softContCards = await tu.getCards( authData, td.scColID );
-    let busOpsCards   = await tu.getCards( authData, td.boColID );
-    let dsPlanCards   = await tu.getCards( authData, td.dsPlanID );
-    let ghProgCards   = await tu.getCards( authData, td.ghProgID );
-    let eggCards      = await tu.getCards( authData, td.col1ID );
-    let baconCards    = await tu.getCards( authData, td.col2ID );
+    let softContCards = await ghctu.getCards( authData, td.scColID );
+    let busOpsCards   = await ghctu.getCards( authData, td.boColID );
+    let dsPlanCards   = await ghctu.getCards( authData, td.dsPlanID );
+    let ghProgCards   = await ghctu.getCards( authData, td.ghProgID );
+    let eggCards      = await ghctu.getCards( authData, td.col1ID );
+    let baconCards    = await ghctu.getCards( authData, td.col2ID );
 
     let issueMap = tu.buildIssueMap( issues ); // {issue_num: {<issue>} }
 
-    let softContData = softContCards.map((card) => tu.getQuad( card, issueMap ));   // [ cardId, issueNum, issueId, issueTitle]
-    let busOpsData   = busOpsCards.map((card) => tu.getQuad( card, issueMap )); 
-    let dsPlanData   = dsPlanCards.map((card) => tu.getQuad( card, issueMap )); 
-    let ghProgData   = ghProgCards.map((card) => tu.getQuad( card, issueMap )); 
-    let eggData      = eggCards.map((card) => tu.getQuad( card, issueMap )); 
-    let baconData    = baconCards.map((card) => tu.getQuad( card, issueMap )); 
+    let softContData = softContCards.map((card) => ghctu.getQuad( card, issueMap ));   // [ cardId, issueNum, issueId, issueTitle]
+    let busOpsData   = busOpsCards.map((card) => ghctu.getQuad( card, issueMap )); 
+    let dsPlanData   = dsPlanCards.map((card) => ghctu.getQuad( card, issueMap )); 
+    let ghProgData   = ghProgCards.map((card) => ghctu.getQuad( card, issueMap )); 
+    let eggData      = eggCards.map((card) => ghctu.getQuad( card, issueMap )); 
+    let baconData    = baconCards.map((card) => ghctu.getQuad( card, issueMap )); 
 
     let softContTitles = softContData.map((datum) => datum[3] );
     let busOpsTitles   = busOpsData.map((datum) => datum[3] );
@@ -450,62 +452,62 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     const ISS_PEND = "IR Pending";
     const ISS_ACCR = "IR Accrued";
 
-    await tu.refreshRec( authData, td );
-    await tu.refreshFlat( authData, td );
+    await ghctu.refreshRec( authData, td );
+    await ghctu.refreshFlat( authData, td );
 
     // 1. Setup.
     let label1k  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 " + config.PEQ_LABEL, 1000 );
     let labelDoc = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "documentation", -1 );
     let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
 
-    const issMoonDat = await tu.makeIssue( authData, td, ISS_MOON, [ labelBug, labelDoc ] );
-    const issPlanDat = await tu.makeIssue( authData, td, ISS_PLAN, [ label1k, labelDoc, labelBug ] );
-    const issProgDat = await tu.makeIssue( authData, td, ISS_PROG, [ label1k, labelDoc ] );
-    const issPendDat = await tu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
-    const issAccrDat = await tu.makeIssue( authData, td, ISS_ACCR, [ label1k, labelDoc, labelBug ] );
+    const issMoonDat = await ghctu.makeIssue( authData, td, ISS_MOON, [ labelBug, labelDoc ] );
+    const issPlanDat = await ghctu.makeIssue( authData, td, ISS_PLAN, [ label1k, labelDoc, labelBug ] );
+    const issProgDat = await ghctu.makeIssue( authData, td, ISS_PROG, [ label1k, labelDoc ] );
+    const issPendDat = await ghctu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
+    const issAccrDat = await ghctu.makeIssue( authData, td, ISS_ACCR, [ label1k, labelDoc, labelBug ] );
 
-    await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.githubOpsPID, "Moons" );	    
+    await ghctu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.githubOpsPID, "Moons" );	    
 
     // From
-    const moonLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Moons" );
-    const planLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
-    const progLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const pendLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
-    const accrLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const moonLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Moons" );
+    const planLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const progLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const pendLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const accrLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
     
     // To
-    const toBacnLoc = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
-    const toProgLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const toPendLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
-    const toAccrLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const toBacnLoc = await ghctu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
+    const toProgLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const toPendLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const toAccrLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
     
     // Need assignees for pend/accr. 
-    await tu.addAssignee( authData, td, issMoonDat, ASSIGNEE1 );	
-    await tu.addAssignee( authData, td, issPlanDat, ASSIGNEE1 );	
-    await tu.addAssignee( authData, td, issProgDat, ASSIGNEE2 );	
-    await tu.addAssignee( authData, td, issPendDat, ASSIGNEE1 );	
-    await tu.addAssignee( authData, td, issPendDat, ASSIGNEE2 );	
-    await tu.addAssignee( authData, td, issAccrDat, ASSIGNEE1 );
+    await ghctu.addAssignee( authData, td, issMoonDat, ASSIGNEE1 );	
+    await ghctu.addAssignee( authData, td, issPlanDat, ASSIGNEE1 );	
+    await ghctu.addAssignee( authData, td, issProgDat, ASSIGNEE2 );	
+    await ghctu.addAssignee( authData, td, issPendDat, ASSIGNEE1 );	
+    await ghctu.addAssignee( authData, td, issPendDat, ASSIGNEE2 );	
+    await ghctu.addAssignee( authData, td, issAccrDat, ASSIGNEE1 );
 
     // Set up first cards
-    const cardMoon = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, moonLoc.colId, issMoonDat[0] );
-    const cardPlan = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, planLoc.colId, issPlanDat[0] );
-    const cardProg = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, progLoc.colId, issProgDat[0] );
-    const cardPend = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, planLoc.colId, issPendDat[0] );
-    const cardAccr = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, planLoc.colId, issAccrDat[0] );
+    const cardMoon = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, moonLoc.colId, issMoonDat[0] );
+    const cardPlan = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, planLoc.colId, issPlanDat[0] );
+    const cardProg = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, progLoc.colId, issProgDat[0] );
+    const cardPend = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, planLoc.colId, issPendDat[0] );
+    const cardAccr = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, planLoc.colId, issAccrDat[0] );
 
     // Close & accrue
-    await tu.closeIssue( authData, td, issPendDat );
+    await ghctu.closeIssue( authData, td, issPendDat );
 
-    await tu.closeIssue( authData, td, issAccrDat );
-    await tu.moveCard( authData, td, cardAccr.id, accrLoc.colId );
+    await ghctu.closeIssue( authData, td, issAccrDat );
+    await ghctu.moveCard( authData, td, cardAccr.id, accrLoc.colId );
 
     await utils.sleep( 2000 );	
-    testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
-    testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus, {peq: true, lblCount: 3 } );
-    testStatus = await tu.checkNewlySituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {peq: true, lblCount: 2 } );
-    testStatus = await tu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {peq: true, lblCount: 1 } );
-    testStatus = await tu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {peq: true, lblCount: 3 } );
+    testStatus = await ghctu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
+    testStatus = await ghctu.checkNewlySituatedIssue( authData, ghLinks, td, planLoc, issPlanDat, cardPlan, testStatus, {peq: true, lblCount: 3 } );
+    testStatus = await ghctu.checkNewlySituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {peq: true, lblCount: 2 } );
+    testStatus = await ghctu.checkNewlyClosedIssue(   authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {peq: true, lblCount: 1 } );
+    testStatus = await ghctu.checkNewlyAccruedIssue(  authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {peq: true, lblCount: 3 } );
     if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
     
     if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
@@ -516,9 +518,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     
     // Plan += Bacon  (add new plan card to bacon column)
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toBacnLoc.colId, issPlanDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toBacnLoc.colId, issPlanDat[0] );
 	await utils.sleep( 4000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, 1000, testStatus, {peq: true, lblCount: 3 } );
+	testStatus = await ghctu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, 1000, testStatus, {peq: true, lblCount: 3 } );
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve A" );
@@ -527,9 +529,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     // Plan += Pend 
     {
 	// At this point, plan lval is 500
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toPendLoc.colId, issPlanDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toPendLoc.colId, issPlanDat[0] );
 	await utils.sleep( 3000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, 1000, testStatus, {peq: true, lblCount: 3 } );
+	testStatus = await ghctu.checkSplit( authData, ghLinks, td, issPlanDat, planLoc, toPendLoc, 500, 1000, testStatus, {peq: true, lblCount: 3 } );
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve B" );
@@ -537,10 +539,10 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 
     // Moon += Pend .. Fail not peq.
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toPendLoc.colId, issMoonDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toPendLoc.colId, issMoonDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
-	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issMoonDat, toPendLoc, cardNew.id, testStatus );
+	testStatus = await ghctu.checkUntrackedIssue( authData, ghLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
+	testStatus = await ghctu.checkNoSplit( authData, ghLinks, td, issMoonDat, toPendLoc, cardNew.id, testStatus );
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve C" );
@@ -548,9 +550,9 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     
     // Moon += Prog 
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toProgLoc.colId, issMoonDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toProgLoc.colId, issMoonDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, -1, testStatus, {peq: false, lblCount: 2 } );
+	testStatus = await ghctu.checkSplit( authData, ghLinks, td, issMoonDat, moonLoc, toProgLoc, -1, -1, testStatus, {peq: false, lblCount: 2 } );
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve D" );
@@ -558,10 +560,10 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 
     // Prog += Accr  .. Fail no create in accr
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toAccrLoc.colId, issProgDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toAccrLoc.colId, issProgDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
-	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issProgDat, toAccrLoc, cardNew.id, testStatus );
+	testStatus = await ghctu.checkSituatedIssue( authData, ghLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
+	testStatus = await ghctu.checkNoSplit( authData, ghLinks, td, issProgDat, toAccrLoc, cardNew.id, testStatus );
 	
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve E" );
@@ -570,10 +572,10 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     
     // Pend += Accr  .. Fail no create in accr
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toAccrLoc.colId, issPendDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toAccrLoc.colId, issPendDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
-	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issPendDat, toAccrLoc, cardNew.id, testStatus );
+	testStatus = await ghctu.checkSituatedIssue( authData, ghLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
+	testStatus = await ghctu.checkNoSplit( authData, ghLinks, td, issPendDat, toAccrLoc, cardNew.id, testStatus );
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve F" );
@@ -581,10 +583,10 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
 
     // Accr += Pend  .. Fail no modify accr
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toPendLoc.colId, issAccrDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toPendLoc.colId, issAccrDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {lblCount: 3 } );
-	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAccrDat, toPendLoc, cardNew.id, testStatus );
+	testStatus = await ghctu.checkSituatedIssue( authData, ghLinks, td, accrLoc, issAccrDat, cardAccr, testStatus, {lblCount: 3 } );
+	testStatus = await ghctu.checkNoSplit( authData, ghLinks, td, issAccrDat, toPendLoc, cardNew.id, testStatus );
 
 	tu.testReport( testStatus, "Incremental resolve G" );
     }
@@ -605,50 +607,50 @@ async function testSplitAlloc( authData, ghLinks, td ) {
 
     const ISS_ALLOC = "IR Alloc";
 
-    await tu.refreshRec( authData, td );
-    await tu.refreshFlat( authData, td );
+    await ghctu.refreshRec( authData, td );
+    await ghctu.refreshFlat( authData, td );
 
     // 1. Setup.
     let label1m  = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, true, "1000000 " + config.ALLOC_LABEL, 1000000 );
     let labelBug = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
 
-    const issAllocDat = await tu.makeIssue( authData, td, ISS_ALLOC, [ labelBug, label1m ] );
+    const issAllocDat = await ghctu.makeIssue( authData, td, ISS_ALLOC, [ labelBug, label1m ] );
 
     // From
-    const starLoc = await tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+    const starLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
     
     // To
-    const toBacnLoc = await tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
-    const toProgLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const toAccrLoc = await tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const toBacnLoc = await ghctu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
+    const toProgLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const toAccrLoc = await ghctu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
     // NOTE: assignee added after makeIssue - will not show up
-    await tu.addAssignee( authData, td, issAllocDat, ASSIGNEE2 );
+    await ghctu.addAssignee( authData, td, issAllocDat, ASSIGNEE2 );
     
     // Set up first card
-    const cardAlloc = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, starLoc.colId, issAllocDat[0] );
+    const cardAlloc = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, starLoc.colId, issAllocDat[0] );
     await utils.sleep( 1000 );
-    testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, val: 1000000} );
+    testStatus = await ghctu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, val: 1000000} );
     
     tu.testReport( testStatus, "Split Alloc setup" );
 
     // += Prog.  Fail.  No create into x4
     {
 	// At this point, lval is 500k
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toProgLoc.colId, issAllocDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toProgLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
-	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toProgLoc, cardNew.id, testStatus );
+	testStatus = await ghctu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
+	testStatus = await ghctu.checkNoSplit( authData, ghLinks, td, issAllocDat, toProgLoc, cardNew.id, testStatus );
 
 	tu.testReport( testStatus, "Split Alloc A" );
     }
 
     // += Accr.  Fail.  No create into x4
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toAccrLoc.colId, issAllocDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toAccrLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
-	testStatus = await tu.checkNoSplit( authData, ghLinks, td, issAllocDat, toAccrLoc, cardNew.id, testStatus );
+	testStatus = await ghctu.checkAlloc( authData, ghLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
+	testStatus = await ghctu.checkNoSplit( authData, ghLinks, td, issAllocDat, toAccrLoc, cardNew.id, testStatus );
 
 	tu.testReport( testStatus, "Split Alloc B" );
     }
@@ -656,9 +658,9 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     // += Bacon
     // Note - this must be last, else will cause issue to be found in checkNoSplit
     {
-	const cardNew = await tu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toBacnLoc.colId, issAllocDat[0] );
+	const cardNew = await ghctu.makeProjectCard( authData, ghLinks, td.CEProjectId, td.GHFullName, toBacnLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await tu.checkAllocSplit( authData, ghLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { issAssignees: 1, lblCount: 2 } );
+	testStatus = await ghctu.checkAllocSplit( authData, ghLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { issAssignees: 1, lblCount: 2 } );
 
 	tu.testReport( testStatus, "Split Alloc C" );
     }
