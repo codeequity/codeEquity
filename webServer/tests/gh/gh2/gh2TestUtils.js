@@ -7,6 +7,8 @@ const awsUtils = require( '../../../utils/awsUtils' );
 
 const ghUtils  = require( '../../../utils/gh/ghUtils' );
 
+const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
+
 const tu       = require( '../../ceTestUtils ');
 
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
@@ -16,35 +18,38 @@ const GH_DELAY = 0;
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
 
+// NOTE
+// Wherever possible, all data acquisition and checks are against what exists in GH, 
+// since most tests are confirming both GH state, and internal ceServer state in one way or another.
+
 async function refresh( authData, td, projName ){
     if( td.masterPID != config.EMPTY ) { return; }
 
-    await authData.ic.projects.listForRepo({ owner: td.GHOwner, repo: td.GHRepo, state: "open" })
-	.then((projects) => {
-	    for( const project of projects.data ) {
-		if( project.name ==  projName ) { td.masterPID = project.id; }
-	    }
-	})
-	.catch( e => { console.log( authData.who, "list projects failed.", e ); });
+    let hostProjs = [];
+    await ghV2.getProjectIds( authData, td.GHFullname, hostProjs, -1 );
+
+    hostProjs.forEach( proj => if( proj.hostProjectName == projName ) { td.masterPID = project.id; } );
 }
 
 
 // Refresh a recommended project layout.  This is useful when running tests piecemeal.
 async function refreshRec( authData, td ) {
-    let projects = await getProjects( authData, td );
-    for( const proj of projects ) {
-	if( proj.name == config.MAIN_PROJ ) {
-	    td.masterPID = proj.id;
+    let hostProjs = [];
+    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
 
-	    let columns = await getColumns( authData, proj.id );
+    for( const proj of hostProjs ) {
+	if( proj.hostProjectName == config.MAIN_PROJ ) {
+	    td.masterPID = proj.hostProjectId;
+
+	    let columns = await getColumns( authData, proj.hostProjectId );
 	    for( const col of columns ) {
 		if( col.name == td.softContTitle ) { td.scColID = col.id; }
 		if( col.name == td.busOpsTitle )   { td.boColID = col.id; }
 		if( col.name == td.unallocTitle )  { td.unColID = col.id; }
 	    }
 	}
-	if( proj.name == td.dataSecTitle )   { td.dataSecPID = proj.id; }
-	if( proj.name == td.githubOpsTitle ) { td.githubOpsPID = proj.id; }
+	if( proj.hostProjectName == td.dataSecTitle )   { td.dataSecPID = proj.hostProjectId; }
+	if( proj.hostProjectName == td.githubOpsTitle ) { td.githubOpsPID = proj.hostProjectId; }
     }
     assert( td.masterPID != -1 );
     assert( td.dataSecPID != -1 );
@@ -66,12 +71,14 @@ async function refreshRec( authData, td ) {
 
 // Refresh a flat project layout.  This is useful when running tests piecemeal.
 async function refreshFlat( authData, td ) {
-    let projects = await getProjects( authData, td );
-    for( const proj of projects ) {
-	if( proj.name == td.flatTitle ) {
-	    td.flatPID = proj.id;
+    let hostProjs = [];
+    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
 
-	    let columns = await getColumns( authData, proj.id );
+    for( const proj of hostProjs ) {
+	if( proj.hostProjectName == td.flatTitle ) {
+	    td.flatPID = proj.hostProjectId;
+
+	    let columns = await getColumns( authData, proj.hostProjectId );
 	    for( const col of columns ) {
 		if( col.name == td.col1Title )  { td.col1ID = col.id; }
 		if( col.name == td.col2Title )  { td.col2ID = col.id; }
@@ -83,12 +90,14 @@ async function refreshFlat( authData, td ) {
 
 // Refresh unclaimed.
 async function refreshUnclaimed( authData, td ) {
-    let projects = await getProjects( authData, td );
-    for( const proj of projects ) {
-	if( proj.name == td.unclaimTitle ) {
-	    td.unclaimPID = proj.id;
+    let hostProjs = [];
+    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
 
-	    let columns = await getColumns( authData, proj.id );
+    for( const proj of hostProjs ) {
+	if( proj.hostProjectName == td.unclaimTitle ) {
+	    td.unclaimPID = proj.hostProjectId;
+
+	    let columns = await getColumns( authData, proj.hostProjectId );
 	    for( const col of columns ) {
 		if( col.name == td.unclaimTitle )  { td.unclaimCID = col.id; }
 	    }
@@ -97,44 +106,18 @@ async function refreshUnclaimed( authData, td ) {
     assert( td.unclaimPID != -1 );
 }
 
-
 // [ cardId, issueNum, issueId, issueTitle]
+// Cards can not exist without issues in V2
 function getQuad( card, issueMap ) {
-    if( !card.hasOwnProperty( 'content_url' )) { return [card.id, -1, -1, ""]; }
+    if( !card.hasOwnProperty( 'issNum' )) { return [card.id, -1, -1, ""]; }  // XXX probably unused
 
-    let parts = card['content_url'].split('/');
-    let issNum = parts[ parts.length - 1] ;
-    let issue = issueMap[issNum];
+    let issue = issueMap[card.issNum];
     
-    return [card.id, issNum, issue.id, issue.title];
+    return [card.id, card.issNum, issue.id, issue.title];
 }
 
-// Can't just rely on GH for confirmation.  Notification arrival to CE can be much slower, and in this case we need
-// CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
-async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
-    /*
-    let retVal = false;
-    await( authData.ic.projects.get( { project_id: projId }))
-	.then( proj => { retVal = true; })
-	.catch( e => { console.log( authData.who, "get project failed.", e ); });
-    return retVal;
-    */
-    
-    let locs = await tu.getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
-    return locs != -1; 
-}
 
-async function confirmColumn( authData, ghLinks, ceProjId, fullName, colId ) {
-    /*
-    let retVal = false;
-    await( authData.ic.projects.getColumn( { column_id: colId }))
-	.then( proj => { retVal = true; })
-	.catch( e => { console.log( authData.who, "get column failed.", e ); });
-    return retVal;
-    */
-    let locs = await tu.getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, colId: colId } );
-    return locs != -1; 
-}
+// XXXXXXXXXXXXXXXXXXXXXxx
 
 
 // If need be, could also add check for issue state
@@ -170,46 +153,186 @@ async function getPeqLabels( authData, td ) {
     return peqLabels;
 }
 
+// Note, this is not returning full issues, just faceplate.  could return, say, labels.length..
 async function getIssues( authData, td ) {
-    let issues = -1;
+    let issues = [];
 
-    await( authData.ic.issues.listForRepo( { owner: td.GHOwner, repo: td.GHRepo, state: "all" }))
-	.then( allissues => { issues = allissues['data']; })
-	.catch( e => { console.log( authData.who, "list issues failed.", e ); });
+    let query = `query($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            ProjectV2(first:100) {
+               edges{node{
+                 title id
+                 items(first: 100) {
+                     edges{node{
+                     ... on ProjectV2Item {
+                         type id
+                         content {
+                         ... on ProjectV2ItemContent {
+                            ... on Issue { id title number }}}}}}}}}}
 
-    return issues;
+
+    }}}`;
+    let variables = {"nodeId": td.GHRepoId };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = raw.data.projectsV2.edges;
+	    assert( projects.length < 99, "Need to paginate getIssues." );
+
+	    for( let i = 0; i < projects.length; i++ ) {
+		const p = projects[i].node;
+		let items = p.items.edges;
+		assert( items.length < 99, "Need to paginate getIssues(items)". );
+
+		for( let k = 0; k < items.length; k++ ) {
+		    let iss = items[i].node;
+		    if( iss.type == "ISSUE" ) {
+			let datum = {};
+			datum.id       = iss.content.id;
+			datum.number   = iss.content.number;
+			datum.title    = iss.content.title;
+			datum.projName = p.title;
+			datum.projId   = p.id;
+			issues.push( datum );
+		    }}
+	    }})
+	.catch( e => { console.log( authData.who, "get issues failed.", e ); });
+
+    return issues.length == 0 ? -1 : issues;
 }
 
+// ids, names, faceplate for zeroth repo
 async function getProjects( authData, td ) {
-    let projects = -1;
+    let projects = [];
 
-    await( authData.ic.projects.listForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
-	.then( allproj => { projects = allproj['data']; })
-	.catch( e => { console.log( authData.who, "list projects failed.", e ); });
+    let query = `query($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            ProjectV2(first:100) {
+               edges{node{
+                 title id 
+                 repositories(first:100) {
+                    edges{node{ id name owner { login }}}}}}}
 
-    return projects;
+
+    }}}`;
+    let variables = {"nodeId": td.GHRepoId };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = raw.data.projectsV2.edges;
+	    assert( projects.length < 99, "Need to paginate getProjects." );
+
+	    for( let i = 0; i < projects.length; i++ ) {
+		const p    = projects[i].node;
+		const repo = p.repositories.edges[0].node;
+
+		let datum = {};
+		datum.id        = p.id;
+		datum.title     = p.title;
+		datum.repoCount = p.repositories.edges.length;
+		datum.repoId    = repo.id;
+		datum.repoOwner = repo.owner.login;
+		datum.repoName  = repo.name;
+		projects.push( datum );
+	    }})
+	.catch( e => { console.log( authData.who, "get projects failed.", e ); });
+
+    return projects.length == 0 ? -1 : projects; 
 }
 
-async function getColumns( authData, projId ) {
-    let cols = -1;
+// Note: first view only
+async function getColumns( authData, pNodeId ) {
+    let cols = [];
 
-    await( authData.ic.projects.listColumns( { project_id: projId }))
-	.then( allcols => { cols = allcols['data']; })
-	.catch( e => { console.log( authData.who, "list columns failed.", e ); });
+    let query = `query($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on ProjectV2 {
+            views(first: 1) {
+              edges { node { 
+              ... on ProjectV2View {
+                    fields(first: 100) {
+                     edges { node { 
+                     ... on ProjectV2FieldConfiguration {
+                        ... on ProjectV2SingleSelectField {id name options {id name}
+                              }}}}}}}}}
+    }}}`;
+    let variables = {"nodeId": pNodeId };
+    query = JSON.stringify({ query, variables });
 
-    return cols;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let views = raw.data.node.views.edges;
+	    assert( views.length == 1 );
+
+	    let view = views[0].node;
+	    let statusId = -1;
+	    
+	    for( let i = 0; i < view.fields.edges.length; i++ ) {
+		const afield = view.fields.edges[i].node;
+		if( afield.name == "Status" ) {
+		    statusId = afield.id;  
+		    for( let k = 0; k < afield.options.length; k++ ) {
+			let datum = {};
+			datum.statusId = statusId;
+			datum.id = afield.options[i].id;
+			datum.name = afield.options[i].name;
+			cols.push( datum );
+		    }
+		    break;
+		}
+	    }
+	})
+	.catch( e => { console.log( authData.who, "get columns failed.", e ); });
+
+    return cols.length == 0 ? -1 : cols;
 }
 
-async function getCards( authData, colId ) {
-    let cards = -1;
+// Get all cards for project.  Filter for column.  Could very easily add, say, col info.. useful?
+async function getCards( authData, pNodeId, colId ) {
+    let cards = [];
 
-    if( colId != config.EMPTY ) {
-	await( authData.ic.projects.listCards( { column_id: colId }))
-	    .then( allcards => { cards = allcards['data']; })
-	    .catch( e => { console.log( authData.who, "list cards failed.", e ); });
-    }
+    let query = `query($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on ProjectV2 {
+            items(first: 100) {
+               edges { node {
+               ... on ProjectV2Item {
+                   type id
+                   fieldValueByName(name: "Status") {
+                   ... on ProjectV2ItemFieldSingleSelectValue { name optionId }}
+                   content {
+                   ... on ProjectV2ItemContent { ... on Issue { id title number }}}
+               }}}}
+    }}}`;
+    let variables = {"nodeId": pNodeId };
+    query = JSON.stringify({ query, variables });
 
-    return cards;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let issues = raw.data.node.items.edges;
+	    assert( issues.length < 99, "Need to paginate getCards." );
+
+	    for( let i = 0; i < issues.length; i++ ) {
+		const iss = issues[i].node;
+		if( iss.type == "ISSUE" && iss.fieldValueByName.optionId == colId ) {
+		    let datum = {};
+		    datum.id     = iss.id;
+		    datum.issNum = iss.content.number;
+		    datum.title  = iss.content.title;
+		}
+	    }
+	})
+	.catch( e => { console.log( authData.who, "get cards failed.", e ); });
+
+    return cards.length == 0 ? -1 : cards;
 }
 
 async function getCard( authData, cardId ) {
@@ -361,7 +484,7 @@ async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name )
     // There should be NO need for this, but most GH failures start here.  Notification never sent along.
     await utils.sleep( 2000 );
 
-    await tu.settleWithVal( "confirmProj", confirmProject, authData, ghLinks, ceProjId, fullName, projId );
+    await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
     
     let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
 	.then((column) => { return column.data.id; })
@@ -389,7 +512,7 @@ async function make4xCols( authData, ghLinks, ceProjId, fullName, projId ) {
 // do NOT return card or id here.  card is rebuilt to be driven from issue.
 async function makeAllocCard( authData, ghLinks, ceProjId, fullName, colId, title, amount ) {
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make alloc card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let note = title + "\n<allocation, PEQ: " + amount + ">";
     
@@ -403,7 +526,7 @@ async function makeAllocCard( authData, ghLinks, ceProjId, fullName, colId, titl
 
 async function makeNewbornCard( authData, ghLinks, ceProjId, fullName, colId, title ) {
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make newbie card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make newbie card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let note = title;
     
@@ -417,7 +540,7 @@ async function makeNewbornCard( authData, ghLinks, ceProjId, fullName, colId, ti
 
 async function makeProjectCard( authData, ghLinks, ceProjId, fullName, colId, issueId ) {
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make Proj card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make Proj card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let card = await ghSafe.createProjectCard( authData, colId, issueId );
 

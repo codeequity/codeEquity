@@ -4,7 +4,7 @@ const utils  = require( '../../../utils/ceUtils' );
 
 const tu     = require( '../../ceTestUtils' );
 
-const testData = require( './testData' );
+const testData = require( '../testData' );
 const ghctu    = require( './ghcTestUtils' );
 
 

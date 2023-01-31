@@ -112,33 +112,6 @@ function getQuad( card, issueMap ) {
     return [card.id, issNum, issue.id, issue.title];
 }
 
-// Can't just rely on GH for confirmation.  Notification arrival to CE can be much slower, and in this case we need
-// CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
-async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
-    /*
-    let retVal = false;
-    await( authData.ic.projects.get( { project_id: projId }))
-	.then( proj => { retVal = true; })
-	.catch( e => { console.log( authData.who, "get project failed.", e ); });
-    return retVal;
-    */
-    
-    let locs = await tu.getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
-    return locs != -1; 
-}
-
-async function confirmColumn( authData, ghLinks, ceProjId, fullName, colId ) {
-    /*
-    let retVal = false;
-    await( authData.ic.projects.getColumn( { column_id: colId }))
-	.then( proj => { retVal = true; })
-	.catch( e => { console.log( authData.who, "get column failed.", e ); });
-    return retVal;
-    */
-    let locs = await tu.getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, colId: colId } );
-    return locs != -1; 
-}
-
 
 // If need be, could also add check for issue state
 async function checkLoc( authData, td, issueData, loc ) {
@@ -364,7 +337,7 @@ async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name )
     // There should be NO need for this, but most GH failures start here.  Notification never sent along.
     await utils.sleep( 2000 );
 
-    await tu.settleWithVal( "confirmProj", confirmProject, authData, ghLinks, ceProjId, fullName, projId );
+    await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
     
     let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
 	.then((column) => { return column.data.id; })
@@ -392,7 +365,7 @@ async function make4xCols( authData, ghLinks, ceProjId, fullName, projId ) {
 // do NOT return card or id here.  card is rebuilt to be driven from issue.
 async function makeAllocCard( authData, ghLinks, ceProjId, fullName, colId, title, amount ) {
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make alloc card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let note = title + "\n<allocation, PEQ: " + amount + ">";
     
@@ -406,7 +379,7 @@ async function makeAllocCard( authData, ghLinks, ceProjId, fullName, colId, titl
 
 async function makeNewbornCard( authData, ghLinks, ceProjId, fullName, colId, title ) {
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make newbie card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make newbie card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let note = title;
     
@@ -420,7 +393,7 @@ async function makeNewbornCard( authData, ghLinks, ceProjId, fullName, colId, ti
 
 async function makeProjectCard( authData, ghLinks, ceProjId, fullName, colId, issueId ) {
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make Proj card", confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make Proj card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
 
     let card = await ghSafe.createProjectCard( authData, colId, issueId );
 

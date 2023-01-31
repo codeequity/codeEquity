@@ -11,7 +11,7 @@ const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
-const testData  = require( './testData' );
+const testData  = require( '../testData' );
 const authDataC = require( '../../../auth/authData' );
 
 // NOTE:

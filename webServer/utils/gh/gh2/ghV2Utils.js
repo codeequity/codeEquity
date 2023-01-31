@@ -1163,9 +1163,10 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 		for( const c of classics.edges ) {
 		    console.log( authData.who, "   - pushing", c.node.name, repoFullName, repoId );
 		    let datum = {};
-		    datum.hostProjectId = c.node.id;
-		    datum.hostRepoName  = repoFullName;
-		    datum.hostRepoId    = repoId;
+		    datum.hostProjectId   = c.node.id;
+		    datum.hostProjectName = c.node.name;
+		    datum.hostRepoName    = repoFullName;
+		    datum.hostRepoId      = repoId;
 		    data.push( datum );
 		}
 	    }
@@ -1174,9 +1175,10 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	    for( const p of projs.edges ) {
 		console.log( authData.who, "   - pushing", p.node.title, repoFullName, repoId );
 		let datum = {};
-		datum.hostProjectId = p.node.id;
-		datum.hostRepoName  = repoFullName;
-		datum.hostRepoId    = repoId;
+		datum.hostProjectId   = p.node.id;
+		datum.hostProjectName = p.node.title;
+		datum.hostRepoName    = repoFullName;
+		datum.hostRepoId      = repoId;
 		data.push( datum );
 	    }
 	    // Wait.  Data is modified

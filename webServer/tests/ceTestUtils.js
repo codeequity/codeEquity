@@ -109,6 +109,19 @@ function makeTitleReducer( aStr ) {
     return ( accumulator, cur ) => ( accumulator || cur.includes( aStr ) ); 
 }
 
+// Can't just rely on host for confirmation.  Notification arrival to CE can be much slower, and in some cases we need
+// CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
+async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
+    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
+    return locs != -1; 
+}
+
+async function confirmColumn( authData, ghLinks, ceProjId, fullName, colId ) {
+    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, colId: colId } );
+    return locs != -1; 
+}
+
+
 
 function checkEq( lhs, rhs, testStatus, msg ) {
     if( lhs == rhs ) {
@@ -246,6 +259,8 @@ exports.setUnpopulated   = setUnpopulated;
 exports.hasRaw           = hasRaw; 
 exports.buildIssueMap    = buildIssueMap;
 exports.makeTitleReducer = makeTitleReducer;
+exports.confirmProject   = confirmProject;
+exports.confirmColumn    = confirmColumn;
 
 // Core testing 
 exports.checkEq         = checkEq;

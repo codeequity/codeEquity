@@ -14,7 +14,7 @@ const ghctu          = require( './ghcTestUtils' );
 const testSaveDynamo = require( './testSaveDynamo' );
 const testDelete     = require( './testDelete' );
 
-const testData  = require( './testData' );
+const testData  = require( '../testData' );
 const authDataC = require( '../../../auth/authData' );
 
 // Separate ceServer testing from ceFlutter testing.

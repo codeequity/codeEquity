@@ -10,7 +10,7 @@ const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
-const testData = require( './testData' );
+const testData = require( '../testData' );
 const ghctu    = require( './ghcTestUtils' );
 
 const ISS_FLOW = "Snow melt";
