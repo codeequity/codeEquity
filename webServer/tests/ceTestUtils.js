@@ -116,8 +116,8 @@ async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
     return locs != -1; 
 }
 
-async function confirmColumn( authData, ghLinks, ceProjId, fullName, colId ) {
-    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, colId: colId } );
+async function confirmColumn( authData, ghLinks, ceProjId, pNodeId, colId ) {
+    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, projId: pNodeId, colId: colId } );
     return locs != -1; 
 }
 

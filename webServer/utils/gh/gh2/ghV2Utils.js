@@ -383,26 +383,29 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	    console.log( authData.who, " .. issue created, issueData:", issueData );
 	})
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
-	       
-    query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
-    variables = {"proj": projNode, "contentId": issueData[0]};
-    queryJ    = JSON.stringify({ query, variables });
 
-    // XXX If the create above succeeds and this triggers, the it will attempt to create again.  Copy made?  Split this out.
-    let pvId = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    pvId = ret.data.addProjectV2ItemById.item.id;
-	    issueData[2] = pvId;
-	    console.log( authData.who, " .. issue added to project, pv2ItemId:", pvId );
-	})
-	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
+    // Sometimes, just want unsituated issue
+    if( projNode != -1 ) {
+	query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
+	variables = {"proj": projNode, "contentId": issueData[0]};
+	queryJ    = JSON.stringify({ query, variables });
+	
+	// XXX If the create above succeeds and this triggers, the it will attempt to create again.  Copy made?  Split this out.
+	let pvId = -1;
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	    .then( ret => {
+		if( ret.status != 200 ) { throw ret; }
+		pvId = ret.data.addProjectV2ItemById.item.id;
+		issueData[2] = pvId;
+		console.log( authData.who, " .. issue added to project, pv2ItemId:", pvId );
+	    })
+	    .catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
+    }
     
     return issueData;
 }
 
-
+// get unusual faceplate info
 // Label descriptions help determine if issue is an allocation
 async function getIssue( authData, issueId ) {
     let retVal   = [];
@@ -414,7 +417,7 @@ async function getIssue( authData, issueId ) {
     retIssue.push( issue.id );
     retVal.push( issue.title );
     if( issue.labels.edges.length > 0 ) {
-	for( label of issue.labels.edges ) { retVal.push( label.node.description ); }
+	for( label of issue.labels ) { retVal.push( label.description ); }
     }
     retIssue.push( retVal );
     return retIssue;
@@ -915,7 +918,7 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
     let queryJ    = JSON.stringify({ query, variables });
 	
     let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, projId, itemId, fieldId, value ));
+	.catch( e => ghUtils.errorHandler( "moveCard", e, moveCard, authData, projId, itemId, fieldId, value ));
 
     return ret;
 }

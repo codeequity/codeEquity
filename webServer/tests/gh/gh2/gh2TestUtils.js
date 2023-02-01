@@ -116,10 +116,6 @@ function getQuad( card, issueMap ) {
     return [card.id, card.issNum, issue.id, issue.title];
 }
 
-
-// XXXXXXXXXXXXXXXXXXXXXxx
-
-
 // If need be, could also add check for issue state
 async function checkLoc( authData, td, issueData, loc ) {
 
@@ -135,7 +131,7 @@ async function checkLoc( authData, td, issueData, loc ) {
 	    let cards = await getCards( authData, loc.colId );
 	    if( cards == -1 ) { retVal = false; }
 	    else {
-		let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+		let mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issueData[1].toString() : false );
 		if( typeof mCard[0] === 'undefined' ) { retVal = false; }
 	    }
 	}
@@ -143,14 +139,38 @@ async function checkLoc( authData, td, issueData, loc ) {
     return retVal;
 }
 
-async function getPeqLabels( authData, td ) {
-    let peqLabels = -1;
+// was getPeqLabels, but never filtered
+async function getLabels( authData, td ) {
+    let labels = [];
 
-    await( authData.ic.issues.listLabelsForRepo( { owner: td.GHOwner, repo: td.GHRepo }))
-	.then( labels => { peqLabels = labels['data']; })
-	.catch( e => { console.log( authData.who, "list projects failed.", e ); });
+    let query = `query($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            labels(first:100) {
+               edges{node{
+                 id, name, color, description}}}
+    }}}`;
+    let variables = {"nodeId": td.GHRepoId };
+    query = JSON.stringify({ query, variables });
 
-    return peqLabels;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let labs = raw.data.labels.edges;
+	    assert( labs.length < 99, "Need to paginate getLabels." );
+
+	    for( let i = 0; i < labs.length; i++ ) {
+		const label = labs[i].node;
+		let datum = {};
+		datum.id          = label.id;
+		datum.name        = label.name;
+		datum.color       = label.color;
+		datum.description = label.description;
+		labels.push( datum );
+	    }})
+	.catch( e => { console.log( authData.who, "get labels failed.", e ); });
+
+    return labels.length == 0 ? -1 : labels;
 }
 
 // Note, this is not returning full issues, just faceplate.  could return, say, labels.length..
@@ -336,36 +356,60 @@ async function getCards( authData, pNodeId, colId ) {
 }
 
 async function getCard( authData, cardId ) {
-    let card = await gh.getCard( authData, cardId );
+    let card = await ghV2.getCard( authData, cardId );
     return card;
 }
 
-async function getComments( authData, td, issueNum ) {
-    let comments = -1;
+async function getComments( authData, issueId ) {
+    let comments = [];
 
-    await authData.ic.issues.listComments( { owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNum })
-	.then( allcom => { comments = allcom['data']; })
-	.catch( e => { console.log( authData.who, "list comments failed.", e ); });
+    let query = `query($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on Issue {
+            id title
+            comments(first: 100) {
+               edges{node { id body }}}
+    }}}`;
+    let variables = {"nodeId": issueId };
+    query = JSON.stringify({ query, variables });
 
-    return comments
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let coms = raw.data.node.comments.edges;
+	    assert( coms.length < 99, "Need to paginate getComments." );
+
+	    for( let i = 0; i < coms.length; i++ ) {
+		const com = coms[i].node;
+		let datum = {};
+		datum.id     = com.id;
+		datum.body   = com.body;
+		comments.push( datum );
+	    }
+	})
+	.catch( e => { console.log( authData.who, "get comments failed.", e ); });
+
+    return comments.length == 0 ? -1 : comments;
 }
 
-
-
-async function findIssue( authData, td, issueId ) {
-    let retVal = -1;
-    let issues = await getIssues( authData, td );
-    retVal = issues.find( issue => issue.id == issueId );
-    if( typeof retVal == 'undefined' ) { retVal = -1; }
+async function findIssue( authData, issueId ) {
+    let retVal = ghV2.getFullIssue( authData, issueId );
+    if( Object.keys( retVal ).length <= 0 ) { retVal = -1; }
     return retVal; 
 }
 
-// Prefer to use findIssue.  IssueNames are not unique.
+
+// Prefer to use findIssue.  IssueNames are not unique. 
 async function findIssueByName( authData, td, issueName ) {
     let retVal = -1;
     let issues = await getIssues( authData, td );
     retVal = issues.find( issue => issue.title == issueName );
-    if( typeof retVal == 'undefined' ) { retVal = -1; }
+    if( typeof retVal == 'undefined' ) {
+	retVal = -1;
+    }
+    else {
+	retVal = findIssue( authData, retVal.id );
+    }
     return retVal; 
 }
 
@@ -377,14 +421,11 @@ async function findProject( authData, td, projId ) {
     return retVal; 
 }
 
+
 async function findRepo( authData, td ) {
-    let repo = -1;
-
-    await( authData.ic.repos.get( { owner: td.GHOwner, repo: td.GHRepo }))
-	.then( r => { repo = r['data']; })
-	.catch( e => { console.log( authData.who, "Get repo failed.", e ); });
-
-    return repo;
+    let repoId = ghV2.getRepoId( authData, td.GHOwner, td.GHRepo ); 
+    if( repoId != -1 ) { repoId = {id:repoId}; }
+    return repoId;
 }
 
 async function getFlatLoc( authData, projId, projName, colName ) {
@@ -422,17 +463,8 @@ async function getFullLoc( authData, masterColName, projId, projName, colName ) 
 
 
 function findCardForIssue( cards, issueNum ) {
-    let cardId = -1;
-    for( const card of cards ) {
-	let parts = card['content_url'].split('/');
-	let issNum = parts[ parts.length - 1] ;
-	if( issNum == issueNum ) {
-	    cardId = card.id;
-	    break;
-	}
-    }
-
-    return cardId;
+    let card = cards.find( c => c.issNum == issueNum );
+    return typeof card === 'undefined' ? -1 : card.id; 
 }
 
 
@@ -445,51 +477,54 @@ async function ingestPActs( authData, issueData ) {
 }
 */
 
+
 async function makeProject(authData, td, name, body ) {
 
-    /*
-    // Old rest interface for classic projects no longer works, permissions.  GQL works.
-    let pid = await authData.ic.projects.createForRepo({ owner: td.GHOwner, repo: td.GHRepo, name: name, body: body })
-	.then((project) => { return  project.data.id; })
-	.catch( e => { console.log( authData.who, "Create project failed.", e ); });
-    */
-    let pid = await ghSafe.createProjectGQL( td.GHOwnerId, authData.pat, td.GHRepo, td.GHRepoId, name, body, false );
+    let pid = await ghV2.createProject( authData, td.GHOwnerId, td.GHRepoId, name );
     
     console.log( "MakeProject:", name, pid );
     await utils.sleep( GH_DELAY );
     return pid;
 }
 
-// XXX need working gql delete project.
+// XXX This is not working.. but without ability to create columns yet, this may not get used.  wait.
 async function remProject( authData, projId ) {
-    await ( authData.ic.projects.delete( {project_id: projId}) )
-	.catch( e => { console.log( authData.who, "Problem in delete Project", e ); });
+
+    assert( false, "Delete project  NYI." );
+    /* 
+       // Can't find id.. because classic only?  or because pvt is closed?
+       mutation {
+       deleteProject(input: {projectId: "PVT_kwDOA8JELs4AGXxl"}) {
+       clientMutationId
+       }
+       }
+       
+       // first error here is your token has insufficient scopes
+       mutation {
+       deleteProjectV2Item(input: {itemId: "PVT_kwDOA8JELs4AGXxl", projectId: "PVT_kwDOA8JELs4AGXxl"}) {
+       clientMutationId
+       }
+    */
+
     await utils.sleep( tu.MIN_DELAY );
 }
 
-
-async function updateColumn( authData, colId, name ) {
-    await ghSafe.updateColumn( authData, colId, name );
+async function updateColumn( authData, pNodeId, colId, name ) {
+    await ghV2.updateColumn( authData, pNodeId, colId, name );
     await utils.sleep( tu.MIN_DELAY);
 }
 
 async function updateProject( authData, projId, name ) {
-    await ghSafe.updateProject( authData, projId, name );
+    await ghV2.updateProject( authData, projId, name );
     await utils.sleep( tu.MIN_DELAY);
 }
 
+
 async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name ) {
     // First, wait for projId, can lag
-
-    // There should be NO need for this, but most GH failures start here.  Notification never sent along.
-    await utils.sleep( 2000 );
-
     await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
+    let cid = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
     
-    let cid = await authData.ic.projects.createColumn({ project_id: projId, name: name })
-	.then((column) => { return column.data.id; })
-	.catch( e => { console.log( authData.who, "Create column failed.", e ); });
-
     console.log( "MakeColumn:", name, cid );
     let query = "project_column created " + name + " " + fullName;
     await tu.settleWithVal( "makeCol", tu.findNotice, query );
@@ -508,43 +543,75 @@ async function make4xCols( authData, ghLinks, ceProjId, fullName, projId ) {
     return [prog, plan, pend, accr];
 }
 
+async function createDraftIssue( authData, pNodeId, title, body ) {
+    console.log( authData.who, "Create Draft issue" );
+
+    let query = `mutation( $pid:ID!, $title:String!, $body:String! )
+                    {addProjectV2DraftIssue( input:{ projectId: $pid, title: $title, body: $body }) 
+                    {clientMutationId, projectItem{id}}}`;
+
+    let variables = { "pid": pNodeId, "title": title, "body": body };
+    let queryJ    = JSON.stringify({ query, variables });
+
+    let pvId = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    pvId = ret.data.addProjectV2DraftIssue.projectItem.id;
+	    console.log( authData.who, " .. draft issue created, id:", pvId );
+	})
+	.catch( e => { console.log( "createDraftIssue failed.", e ); });
+    
+    return pvId;
+}
 
 // do NOT return card or id here.  card is rebuilt to be driven from issue.
-async function makeAllocCard( authData, ghLinks, ceProjId, fullName, colId, title, amount ) {
+async function makeAllocCard( authData, ghLinks, ceProjId, pNodeId, colId, title, amount ) {
+    // Will need statusId
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
+    assert( locs != -1 );
+    let statusId = locs[0].hostUtility;
+
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
     let note = title + "\n<allocation, PEQ: " + amount + ">";
+    let pvId = createDraftIssue( authData, pNodeId, title, note );
+    await ghV2.moveCard( authData, pNodeId, pvId, statusId, colId );
     
-    let card = await authData.ic.projects.createCard({ column_id: colId, note: note })
-	.then( c => c.data )
-	.catch( e => console.log( authData.who, "Create alloc card failed.", e ));
-
-    console.log( "Made AllocCard:", card.id, "but this will be deleted to make room for issue-card" );
+    console.log( "Made AllocCard:", pvId, "but this will be deleted to make room for issue-card" );
     await utils.sleep( tu.MIN_DELAY );
 }
 
-async function makeNewbornCard( authData, ghLinks, ceProjId, fullName, colId, title ) {
+async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, title ) {
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
+    assert( locs != -1 );
+    let statusId = locs[0].hostUtility;
+
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make newbie card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make newbie card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    let note = title;
+    let pvId = createDraftIssue( authData, pNodeId, title, "" );
+    await ghV2.moveCard( authData, pNodeId, pvId, statusId, colId );
     
-    let cid = await authData.ic.projects.createCard({ column_id: colId, note: note })
-	.then((card) => { return card.data.id; })
-	.catch( e => { console.log( authData.who, "Create newborn card failed.", e ); });
-
     await utils.sleep( tu.MIN_DELAY );
     return cid;
 }
 
-async function makeProjectCard( authData, ghLinks, ceProjId, fullName, colId, issueId ) {
+async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId ) {
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
+    assert( locs != -1 );
+    let statusId = locs[0].hostUtility;
+
     // First, wait for colId, can lag
-    await tu.settleWithVal( "make Proj card", tu.confirmColumn, authData, ghLinks, ceProjId, fullName, colId );
+    await tu.settleWithVal( "make Proj card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    let card = await ghSafe.createProjectCard( authData, colId, issueId );
+    // If i have an issue, then I have a card.  find, then move it
+    let link = ghLinks.getUniqueLink( authData, ceProjId, issueId );
+    await ghV2.moveCard( authData, pNodeId, link.hostCardId, statusId, colId );
 
-    let query = "project_card created iss" + card.content_url.split('/').pop() + " " + fullName;
+    // XXX check new form of this notice
+    let query = "project_card moved iss" + link.hostIssueNum;
     await tu.settleWithVal( "makeProjCard", tu.findNotice, query );
 
     // XXX either leave this in to allow peq data to record, or set additional post condition.
@@ -553,14 +620,14 @@ async function makeProjectCard( authData, ghLinks, ceProjId, fullName, colId, is
 }
 
 async function makeIssue( authData, td, title, labels ) {
-    let issue = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, title, labels, false );
+    let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels} );
     issue.push( title );
     await utils.sleep( tu.MIN_DELAY );
     return issue;
 }
 
 async function makeAllocIssue( authData, td, title, labels ) {
-    let issue = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, title, labels, true );
+    let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels, allocation: true} );
     issue.push( title );
     await utils.sleep( tu.MIN_DELAY );
     return issue;
@@ -569,79 +636,73 @@ async function makeAllocIssue( authData, td, title, labels ) {
 async function blastIssue( authData, td, title, labels, assignees, specials ) {
     let wait  = typeof specials !== 'undefined' && specials.hasOwnProperty( "wait" )   ? specials.wait   : true;
 
-    let issueData = [-1,-1];  // issue id, num
-
-    const body = "Hola";
-    await( authData.ic.issues.create( { owner: td.GHOwner, repo: td.GHRepo, title: title, labels: labels, body: body, assignees: assignees } ))
-	.then( issue => {
-	    issueData[0] = issue['data']['id'];
-	    issueData[1] = issue['data']['number'];
-	})
-	.catch( e => {
-	    console.log( authData.who, "Create Blast issue failed.", e );
-	});
+    let issueData = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels, assignees: assignees, body: "Hola"} );    
     
-    issueData.push( title );
+    issueData[2] = title;
     if( wait ) { await utils.sleep( tu.MIN_DELAY ); }
     return issueData;
 }
 
-async function addLabel( authData, td, issDat, labelName ) {
-    await authData.ic.issues.addLabels({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issDat[1], labels: [labelName] })
-	.catch( e => { console.log( authData.who, "Add label failed.", e ); });
 
-    let query = "issue labeled " + issDat[2] + " " + td.GHFullName;
+async function addLabel( authData, lNodeId, issDat ) {
+    await ghV2.addLabel( authData, lNodeId, issDat[0] );
+
+    // XXX verify all notice query strings
+    let query = "issue labeled " + issDat[2];
     await tu.settleWithVal( "label", tu.findNotice, query );
 }	
 
-async function remLabel( authData, td, issueData, label ) {
-    console.log( "Removing", label.name, "from issueNum", issueData[1] );
-    await authData.ic.issues.removeLabel({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], name: label.name })
-	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
+async function remLabel( authData, label, issDat ) {
+    console.log( "Removing", label.name, "from issueNum", issDat[1] );
+    await ghV2.removeLabel( authData, label.id, issDat[0] );
 
-    let query = "issue unlabeled " + issueData[2] + " " + td.GHFullName;
+    let query = "issue unlabeled " + issueData[2];
     await tu.settleWithVal( "unlabel", tu.findNotice, query );
 }
 
 // NOTE - this ignores color... 
-async function updateLabel( authData, td, label, updates ) {
+async function updateLabel( authData, label, updates ) {
     console.log( "Updating", label.name );
 
     let newName = updates.hasOwnProperty( "name" )        ? updates.name : label.name;
     let newDesc = updates.hasOwnProperty( "description" ) ? updates.description : label.description;
     
-    await( authData.ic.issues.updateLabel( { owner: td.GHOwner, repo: td.GHRepo, name: label.name, new_name: newName, description: newDesc }))
-	.catch( e => console.log( authData.who, "Update label failed.", e ));
-
+    await ghV2.updateLabel( authData, label.id, newName, newDesc, label.color );
     await utils.sleep( tu.MIN_DELAY );
 }
 
-async function delLabel( authData, td, name ) {
-    console.log( "Removing label:", name );
-    await authData.ic.issues.deleteLabel({ owner: td.GHOwner, repo: td.GHRepo, name: name })
-	.catch( e => { console.log( authData.who, "Remove label failed.", e ); });
+async function delLabel( authData, label ) {
+    console.log( "Removing label from repo:", label.name );
 
-    let query = "label deleted " + name + " " + td.GHFullName;
+    let query     = `mutation( $labelId:ID! ) 
+                        { deleteLabel( input:{ id: $labelId })  {clientMutationId}}`;
+    let variables = {"labelId": label.id };
+    let queryJ    = JSON.stringify({ query, variables });
+    
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.catch( e => console.log( "Delete label failed.", e ));
+    
+    let query = "label deleted " + name;
     await tu.settleWithVal( "del label", tu.findNotice, query );
 }
 
-async function addAssignee( authData, td, issueData, assignee ) {
-    await authData.ic.issues.addAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], assignees: [assignee] })
-	.catch( e => { console.log( authData.who, "Add assignee failed.", e ); });
+async function addAssignee( authData, issDat, assignee ) {
+    await ghV2.addAssignee( authData, issDat[0], assignee.id );
 
-    let query = "issue assigned " + issueData[2] + " " + td.GHFullName;
+    let query = "issue assigned " + issueData[2];
     await tu.settleWithVal( "assign issue", tu.findNotice, query );
 }
 
-async function remAssignee( authData, td, issueNumber, assignee ) {
-    await authData.ic.issues.removeAssignees({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, assignees: [assignee] })
-	.catch( e => { console.log( authData.who, "Remove assignee failed.", e ); });
+async function remAssignee( authData, iNodeId, assignee ) {
+    await ghV2.remAssignee( authData, iNodeId, assignee.id );
     await utils.sleep( tu.MIN_DELAY );
 }
 
-async function moveCard( authData, td, cardId, columnId, specials ) {
-    await authData.ic.projects.moveCard({ card_id: cardId, position: "top", column_id: columnId })
-	.catch( e => { console.log( authData.who, "Move card failed.", e );	});
+async function moveCard( authData, ghLinks, ceProjId, cardId, columnId, specials ) {
+    const links = ghLinks.getLinks( authData, { "ceProjId": ceProjId, "cardId": cardId } );    
+    assert( links != -1 && links.length == 1);
+    
+    await ghV2.moveCard( authData, links[0].hostProjectId, cardId, links[0].hostUtility, columnId );
 
     let issNum  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issNum" )  ? specials.issNum : false;
 
@@ -653,11 +714,20 @@ async function moveCard( authData, td, cardId, columnId, specials ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
-async function remCard( authData, cardId ) {
-    await authData.ic.projects.deleteCard( { card_id: cardId } )
-	.catch( e => console.log( authData.who, "Remove card failed.", e ));
+// We can no longer remove a card - just move to no status.
+async function remCard( authData, ceProjId, cardId ) {
+    const links = ghLinks.getLinks( authData, { "ceProjId": ceProjId, "cardId": cardId } );
+    assert( links != -1 && links.length == 1);    
+
+    const locs  = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": links[0].hostProjectId, "colName": "No Status" } );
+    assert( locs != -1 && locs.length == 1 );
+
+    await ghV2.moveCard( authData, links[0].hostProjectId, cardId, links[0].hostUtility, locs[0].hostColumnId );
+    
     await utils.sleep( tu.MIN_DELAY );
 }
+
+//XXXXXXXX
 
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
@@ -1952,7 +2022,7 @@ exports.closeIssue      = closeIssue;
 exports.reopenIssue     = reopenIssue;
 exports.remIssue        = remIssue;
 
-exports.getPeqLabels    = getPeqLabels;
+exports.getLabels       = getLabels;
 exports.getIssues       = getIssues;
 exports.getProjects     = getProjects;
 exports.getColumns      = getColumns;
