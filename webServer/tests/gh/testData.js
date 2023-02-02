@@ -2,6 +2,7 @@ var config    = require('../../config');
 
 class TestData {
     constructor( ) {
+	this.ceProjectId  = config.EMPTY;
 	this.GHRepo       = config.EMPTY;
 	this.GHOwner      = config.EMPTY;
 	this.GHOwnerId    = config.EMPTY; 

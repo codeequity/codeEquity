@@ -119,7 +119,7 @@ function getQuad( card, issueMap ) {
 // If need be, could also add check for issue state
 async function checkLoc( authData, td, issueData, loc ) {
 
-    let issue = await findIssue( authData, td, issueData[0] );
+    let issue = await findIssue( authData, issueData[0] );
     let retVal = true;
     if( typeof issue === 'undefined' || issue == -1 ) { retVal = false; }
 
@@ -128,7 +128,7 @@ async function checkLoc( authData, td, issueData, loc ) {
 	    retVal = retVal && (issue.state == 'open' || issue.state == 'closed' );
 	}
 	else {
-	    let cards = await getCards( authData, loc.colId );
+	    let cards = await getCards( authData, loc.projId, loc.colId );
 	    if( cards == -1 ) { retVal = false; }
 	    else {
 		let mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issueData[1].toString() : false );
@@ -509,6 +509,31 @@ async function remProject( authData, projId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
+
+async function linkProject( authData, pNodeId, rNodeId ) {
+    let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
+    let variables = {"pid": pNodeId, "rid": rNodeId };
+    query         = JSON.stringify({ query, variables });
+    
+    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
+
+    if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
+    
+    await utils.sleep( tu.MIN_DELAY );
+}
+
+async function unlinkProject( authData, pNodeId, rNodeId ) {
+    let query     = "mutation( $pid:ID!, $rid:ID! ) { unlinkProjectV2FromRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
+    let variables = {"pid": pNodeId, "rid": rNodeId };
+    query         = JSON.stringify({ query, variables });
+    
+    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
+
+    if( typeof res.data === 'undefined' ) { console.log( "UnlinkProject failed.", res ); }
+    
+    await utils.sleep( tu.MIN_DELAY );
+}
+
 async function updateColumn( authData, pNodeId, colId, name ) {
     await ghV2.updateColumn( authData, pNodeId, colId, name );
     await utils.sleep( tu.MIN_DELAY);
@@ -727,25 +752,20 @@ async function remCard( authData, ceProjId, cardId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
-//XXXXXXXX
-
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
-async function closeIssue( authData, td, issueData, loc = -1 ) {
-    await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueData[1], state: "closed" })
-	.catch( e => { console.log( authData.who, "Close issue failed.", e );	});
+async function closeIssue( authData, td, issDat, loc = -1 ) {
+    await ghV2.updateIssue( authData, issDat[0], "state", "closed" );
 
-    let query = "issue closed " + issueData[2] + " " + td.GHFullName;
+    let query = "issue closed " + issDat[2];
     await tu.settleWithVal( "closeIssue", tu.findNotice, query );
 
     // Send loc for serious checks.  Otherwise, just check state of issue from GH - if connection is slow, this will help with pacing.
-    await tu.settleWithVal( "closeIssue finished", checkLoc, authData, td, issueData, loc );
+    await tu.settleWithVal( "closeIssue finished", checkLoc, authData, td, issDat, loc );
 }
 
-async function reopenIssue( authData, td, issueNumber ) {
-    console.log( "Opening", td.GHRepo, issueNumber );
-    await authData.ic.issues.update({ owner: td.GHOwner, repo: td.GHRepo, issue_number: issueNumber, state: "open" })
-	.catch( e => { console.log( authData.who, "Open issue failed.", e );	});
+async function reopenIssue( authData, td, issueId ) {
+    await ghV2.updateIssue( authData, issueId, "state", "open" );
 
     // Can take GH a long time to move card.  
     await utils.sleep( tu.MIN_DELAY + 500 );
@@ -753,16 +773,14 @@ async function reopenIssue( authData, td, issueNumber ) {
 
 async function remIssue( authData, td, issueId ) {
 
-    let issue     = await findIssue( authData, td, issueId );
-    let endpoint  = config.GQL_ENDPOINT;
+    let issue     = await findIssue( authData, issueId );
     let query     = "mutation( $id:ID! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
-    let variables = {"id": issue.node_id };
+    let variables = {"id": issueId };
     query         = JSON.stringify({ query, variables });
     
-    let res = await ghUtils.postGH( authData.pat, endpoint, query );
+    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
 
     console.log( "remIssue query", query );
-    console.log( "remIssue res", res.data );
     if( typeof res.data === 'undefined' ) { console.log( "ERROR.", res ); }
     
     await utils.sleep( tu.MIN_DELAY );
@@ -778,7 +796,7 @@ async function checkUntrackedIssue( authData, ghLinks, td, loc, issueData, card,
     let subTest = [ 0, 0, []];
 
     // CHECK github issues
-    let issue  = await findIssue( authData, td, issueData[0] );
+    let issue  = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label" );
@@ -820,12 +838,12 @@ async function checkDemotedIssue( authData, ghLinks, td, loc, issueData, card, t
     let subTest = [ 0, 0, []];
     
      // CHECK github location
-    let cards  = await getCards( authData, td.unclaimCID );   
-    let tCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+    let cards  = await getCards( authData, td.unclaimPID, td.unclaimCID );   
+    let tCard  = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issueData[1].toString() : false );
     subTest = tu.checkEq( tCard.length, 0,                       subTest, "No unclaimed" );
     
-    cards      = await getCards( authData, loc.colId );   
-    let mCard  = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+    cards      = await getCards( authData, loc.projId, loc.colId );   
+    let mCard  = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issueData[1].toString() : false );
 
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
     if( typeof mCard[0] !== 'undefined' ) {
@@ -879,7 +897,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     let subTest = [ 0, 0, []];
 
     // CHECK github issues
-    let issue  = await findIssue( authData, td, issueData[0] );
+    let issue  = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
@@ -890,8 +908,8 @@ async function checkAlloc( authData, ghLinks, td, loc, issueData, card, testStat
     labelVal = opVal ? opVal : labelVal;
 
     // CHECK github location
-    cards = await getCards( authData, loc.colId );
-    let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+    cards = await getCards( authData, loc.projId, loc.colId );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issueData[1].toString() : false );
 
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
     if( typeof mCard[0] !== 'undefined' ) {
@@ -964,14 +982,14 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let subTest = [ 0, 0, []];
     
     // Start promises
-    let cardsP = getCards( authData, loc.colId );
-    let cardsU = getCards( authData, td.unclaimCID );
+    let cardsP = getCards( authData, loc.projId, loc.colId );
+    let cardsU = getCards( authData, loc.unclaimPID, td.unclaimCID );
     let linksP = tu.getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
     let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     // CHECK github issues
-    let issue  = await findIssue( authData, td, issueData[0] );
+    let issue  = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
 
@@ -999,12 +1017,12 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     if( !assignCnt ) {
 	let tCard = [1,2,3]; 
-	if( cards != -1 ) { tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false ); }
+	if( cards != -1 ) { tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issueData[1].toString() : false ); }
 	subTest = tu.checkEq( tCard.length, 0,                           subTest, "No unclaimed" );
     }
 
     cards = await cardsP;
-    let mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issueData[1].toString() : false );
 
     // Long GH pauses show their fury here, more likely than not.
     if( typeof mCard[0] === 'undefined' ) {
@@ -1109,13 +1127,13 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
     let subTest = [ 0, 0, []];
     
     // Start promises
-    let cardsU = getCards( authData, td.unclaimCID );
+    let cardsU = getCards( authData, td.unclaimPID, td.unclaimCID );
     let linksP = tu.getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
     let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     // CHECK github issues
-    let issue  = await findIssue( authData, td, issueData[0] );
+    let issue  = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
@@ -1127,7 +1145,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issueData, card,
 
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
-    let tCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == issueData[1].toString() : false );
+    let tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issueData[1].toString() : false );
     subTest = tu.checkEq( tCard.length, 1,                        subTest, "No unclaimed" );
     subTest = tu.checkEq( tCard[0].id, card.id,                   subTest, "Card id" );
     
@@ -1445,10 +1463,10 @@ async function checkNewbornCard( authData, ghLinks, td, loc, cardId, title, test
     // no need, get content link below
     
     // CHECK github card
-    let cards  = await getCards( authData, loc.colId );
+    let cards  = await getCards( authData, loc.projId, loc.colId );
     let card   = cards.find( card => card.id == cardId );
     const cardTitle = card.note.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-    subTest = tu.checkEq( card.hasOwnProperty( "content_url" ), false, subTest, "Newbie has content" );
+    subTest = tu.checkEq( card.hasOwnProperty( "issueNum" ), false, subTest, "Newbie has content" );
     subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
 
     // CHECK linkage
@@ -1474,7 +1492,7 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
     let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 0;
     
     // CHECK github issue
-    let issue  = await findIssue( authData, td, issueData[0] );
+    let issue  = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.title, issueData[2],             subTest, "Github issue troubles" );
@@ -1514,15 +1532,15 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
     
     // Get new issue
     let issues   = await getIssues( authData, td );
-    let issue    = await findIssue( authData, td, issDat[0] );
+    let issue    = await findIssue( authData, issDat[0] );
 
     // Some tests will have two split issues here.  Find the right one before proceeding
     let splitIssues = issues.filter( issue => issue.title.includes( issDat[2] + " split" ));
-    let cards = await getCards( authData, newLoc.colId );
+    let cards = await getCards( authData, newLoc.projId, newLoc.colId );
     if( cards == -1 ) { cards = []; }
     let splitIss = -1;
     for( const iss of splitIssues ) {
-	mCard = cards.filter((card) => card.hasOwnProperty( "content_url" ) ? card.content_url.split('/').pop() == iss.number.toString() : false );
+	mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == iss.number.toString() : false );
 	if( typeof mCard !== 'undefined' ) {
 	    splitIss = iss;
 	    break;
@@ -1565,7 +1583,7 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
 	    subTest = tu.checkEq( splitIss.assignees.length, assignCnt, subTest, "Issue assignee count" );
 	
 	    // Check comment on splitIss
-	    const comments = await getComments( authData, td, splitDat[1] );
+	    const comments = await getComments( authData, splitDat[1] );
 	    subTest = tu.checkEq( typeof comments !== 'undefined',                      true,   subTest, "Comment not yet ready" );
 	    subTest = tu.checkEq( typeof comments[0] !== 'undefined',                   true,   subTest, "Comment not yet ready" );
 	    if( typeof comments !== 'undefined' && typeof comments[0] !== 'undefined' ) {
@@ -1589,7 +1607,7 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
 
     // Get new issue
     let issues   = await getIssues( authData, td );
-    let issue    = await findIssue( authData, td, issDat[0] );    
+    let issue    = await findIssue( authData, issDat[0] );    
     let splitIss = issues.find( issue => issue.title.includes( issDat[2] + " split" ));
     const splitDat = typeof splitIss == 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
 
@@ -1622,7 +1640,7 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
 	    subTest = tu.checkEq( splitIss.assignees.length, issAssignCnt, subTest, "Issue assignee count" );
 	    
 	    // Check comment on splitIss
-	    const comments = await getComments( authData, td, splitDat[1] );
+	    const comments = await getComments( authData, splitDat[1] );
 	    subTest = tu.checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
 	}
 	
@@ -1647,7 +1665,7 @@ async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, test
     subTest = tu.checkEq( typeof splitIss === 'undefined', true, subTest, "Split issue should not exist" );
 				
     // Check card
-    let colCards = await getCards( authData, newLoc.colId );
+    let colCards = await getCards( authData, newLoc.projId, newLoc.colId );
     let noCard = true;
     if( colCards != -1 ) {
 	const card = colCards.find( c => c.note && c.note.includes( splitName ));
@@ -1679,13 +1697,13 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     // CHECK github card
     // XXX XXX XXX 6/8 notes.  This is no longer dependable, ATM
     /*
-    let cards  = await getCards( authData, loc.colId );
+    let cards  = await getCards( authData, loc.projId, loc.colId );
     if( cards != -1 ) { 
 	let card   = cards.find( card => card.id == cardId );
 	subTest = tu.checkEq( typeof card === "undefined", true,  subTest, "Card should not exist" );
     }
     */
-    let cards  = await getCards( authData, loc.colId );
+    let cards  = await getCards( authData, loc.projId, loc.colId );
     if( cards != -1 ) { 
 	let card   = cards.find( card => card.id == cardId );
 	if( typeof card === "undefined") { console.log( "XXX ERROR.  Card", title, cardId, "was rightfully deleted this time." ); }
@@ -1781,7 +1799,7 @@ async function checkNoIssue( authData, ghLinks, td, issueData, testStatus ) {
     let subTest = [ 0, 0, []];
 
     // CHECK github issue
-    let issue  = await findIssue( authData, td, issueData[0] );
+    let issue  = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( issue, -1,                               subTest, "Issue should not exist" );
 
     // CHECK linkage
@@ -1800,7 +1818,7 @@ async function checkAssignees( authData, td, assigns, issueData, testStatus ) {
     let plan = config.PROJ_COLS[config.PROJ_PLAN];
     
     // CHECK github issues
-    let issue  = await findIssue( authData, td, issueData[0] );
+    let issue  = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( issue.id, issueData[0].toString(),      subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issueData[1].toString(),  subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.assignees.length, assigns.length, subTest, "Issue assignee count" );
@@ -1853,7 +1871,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issueData, testStatus
     let subTest = [ 0, 0, []];
     
     // CHECK github issues
-    let meltIssue = await findIssue( authData, td, issueData[0] );
+    let meltIssue = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( meltIssue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( meltIssue.number, issueData[1].toString(), subTest, "Github issue troubles" );
     subTest = tu.checkEq( meltIssue.assignees.length, 0,             subTest, "Issue assignee count" );
@@ -1931,7 +1949,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
     let subTest = [ 0, 0, []];
 
     // CHECK github issues
-    let meltIssue = await findIssue( authData, td, issueData[0] );
+    let meltIssue = await findIssue( authData, issueData[0] );
     subTest = tu.checkEq( meltIssue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( meltIssue.number, issueData[1].toString(), subTest, "Github issue troubles" );
     subTest = tu.checkEq( meltIssue.assignees.length, 2,             subTest, "Issue assignee count" );
@@ -1999,6 +2017,8 @@ exports.getQuad         = getQuad;
 
 exports.makeProject     = makeProject;
 exports.remProject      = remProject;
+exports.linkProject     = linkProject;
+exports.unlinkProject   = unlinkProject;
 exports.makeColumn      = makeColumn;
 exports.updateColumn    = updateColumn;
 exports.updateProject   = updateProject;

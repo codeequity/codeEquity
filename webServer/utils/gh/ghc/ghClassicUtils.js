@@ -33,14 +33,6 @@ var githubSafe = {
 	return createProjectGQL( ownerId, PAT, repo, repoId, name, body, beta );
     },
 
-    getOwnerIdGQL: function( PAT, owner ) {
-	return getOwnerIdGQL( PAT, owner );
-    },
-
-    getRepoIdGQL: function( PAT, owner, repo ) {
-	return getRepoIdGQL( PAT, owner, repo );
-    },
-    
     createProjectCard: function( authData, columnId, issueId, justId ) {
 	return createProjectCard( authData, columnId, issueId, justId );
     },
@@ -1066,39 +1058,6 @@ async function createProjectGQL( ownerId, PAT, repo, repoId, name, body, beta ) 
     
     return retId;
 }
-
-async function getOwnerIdGQL( PAT, owner ) {
-    let query       = `query getOwner($owner: String!) { user(login: $owner) { id } }`;
-    const variables = {"owner": owner};
-
-    query = JSON.stringify({ query, variables });
-
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => ghUtils.errorHandler( "getOwnerIdGQL", e, getOwnerIdGQL, PAT, owner ));
-
-    // console.log( "owner_GQL:", ret );
-    let retId = -1;
-    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'user' ) ) { retId = ret.data.user.id; }
-    return retId;
-}
-
-async function getRepoIdGQL( PAT, owner, repo ) {
-    let query       = `query getRepo($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) { id } }`;
-    const variables = {"owner": owner, "repo": repo};
-
-    query = JSON.stringify({ query, variables });
-
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => ghUtils.errorHandler( "getRepoIdGQL", e, getRepoIdGQL, PAT, owner, repo ));
-
-    console.log( "repo_GQL:", ret );
-    let retId = -1;
-    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
-    return retId;
-}
-
-
-
 
 async function removeCard( authData, cardId ) {
     await authData.ic.projects.deleteCard( { card_id: cardId } )
