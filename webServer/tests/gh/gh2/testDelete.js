@@ -1,50 +1,33 @@
-var assert = require( 'assert' );
+const assert   = require( 'assert' );
 
-var config = require( '../../config' );
+const config   = require( '../../../config' );
 
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
 const ghUtils  = require( '../../../utils/gh/ghUtils' );
 
-const tu = require('../../ceTestUtils');
+const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
 
-const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
-const gh        = ghClassic.githubUtils;
-const ghSafe    = ghClassic.githubSafe;
+const tu       = require('../../ceTestUtils');
 
-
-/*
-https://developer.github.com/webhooks/event-payloads/#issues
-https://octokit.github.io/rest.js/v18#projects-delete-card
-https://developer.github.com/v3/issues/#create-an-issue
-https://docs.github.com/en/free-pro-team@latest/rest/reference/issues
-https://developer.github.com/v4/explorer/
-https://graphql.org/graphql-js/graphql-clients/
-*/
+const gh2tu    = require( './gh2TestUtils' );
 
 
 async function remIssues( authData, ghLinks, pd ) {
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     console.log( "Removing all issues. " );
-    let issues = await authData.ic.paginate( authData.ic.issues.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
-	.catch( e => console.log( authData.who, "Problem in listIssues", e ));
+    let issues = await gh2tu.getIssues( authData, pd );
     
     let allLinks = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.repoName } );
     
     // Could probably do this in one fel swoop, but for now
     // Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
-    let endpoint = "https://api.github.com/graphql";
-    for( const issue of issues) {
-	const nodeId = issue.node_id;
-	let query = "mutation( $id:ID! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
-	let variables = {"id": nodeId };
-	query = JSON.stringify({ query, variables });
 
-	res = await ghUtils.postGH( authData.pat, endpoint, query );
+    for( const issue of issues) {
+	await gh2tu.remIssue( authData, issue.id );
 	let link = allLinks == -1 ? allLinks : allLinks.find(link => link.hostIssueId == issue.id.toString());
 	if( link != -1 && typeof link != 'undefined' && link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) { await utils.sleep( 800 ); }
-	else                                                                                                      { await utils.sleep( 400 ); }
-	console.log( res );
+	else                                                                                                        { await utils.sleep( 400 ); }
     }
 }
 
@@ -67,21 +50,18 @@ async function clearRepo( authData, ghLinks, pd ) {
     await utils.sleep( 1000 );
 
     // Start here, else lots left undeleted after issue munging. 
-    let peqsP  = awsUtils.getPeqs( authData,  { "CEProjectId": td.CEProjectId });
-    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.CEProjectId });
+    let peqsP  = awsUtils.getPeqs( authData,  { "CEProjectId": pd.ceProjectId });
+    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
 
+    // XXX would like to delete.. buuut..
     // Get all existing projects in repo for deletion
-    console.log( "Removing all Projects. " );
-    let projIds = [];
-    await authData.ic.paginate( authData.ic.projects.listForRepo, { owner: pd.GHOwner, repo: pd.GHRepo, state: "all" } )
-	.then((projects) => { projIds = projects.map((project) => project.id ); })
-	.catch( e => { console.log( authData.who, "Problem in listProjects", e ); });
+    console.log( "Unlinking all Projects. " );
+    let projIds = gh2tu.getProjects( authData, pd );
+    projIds = projIds.map((project) => project.id );
     console.log( "ProjIds", pd.repoName, projIds );
     
     for( const projId of projIds ) {
-	await ( authData.ic.projects.delete( {project_id: projId}) )
-	    .catch( e => { console.log( authData.who, "Problem in delete Project", e ); });
-	// Option 1: big sleep at end.  This option: space things out a bit.
+	await gh2tu.unlinkProject( authData, projId, pd.GHRepoId );
 	await utils.sleep( 1000 );
     }
 
@@ -109,51 +89,45 @@ async function clearRepo( authData, ghLinks, pd ) {
     
     // Get all peq labels in repo for deletion... dependent on peq removal first.
     console.log( "Removing all PEQ Labels.", pd.repoName );
-    let labelNames = [];
-    await authData.ic.paginate( authData.ic.issues.listLabelsForRepo, { owner: pd.GHOwner, repo: pd.GHRepo } )
-	.then((labels) => {
-	    for( const label of labels ) {
-		if( ghUtils.parseLabelName( label.name )[0] > 0 ) { labelNames.push( label.name ); }
-		else if( label.name == config.POPULATE )          { labelNames.push( label.name ); }
-	    }
-	})
-	.catch( e => { console.log( authData.who, "Problem in listLabels", e ); });
-    console.log( "Labels", labelNames );
+    let pLabels = [];
+    let labels  = await gh2tu.getLabels( authData, pd ); 
 
-    for( const label of labelNames ) {
-	await ( authData.ic.issues.deleteLabel( { owner: pd.GHOwner, repo: pd.GHRepo, name: label }) )
-	    .catch( e => { console.log( authData.who, "Problem in delete label", e ); });
+    for( const label of labels ) {
+	if( ghUtils.parseLabelName( label.name )[0] > 0 ) { pLabels.push( label.name ); }
+	else if( label.name == config.POPULATE )          { pLabels.push( label.name ); }
+    }
+    console.log( "Labels", pLabels.map( p => p.name ) );
+
+    for( const label of pLabels ) {
+	await gh2tu.delLabel( authData, label );
     }
 
     // Delete special label mod adds
-    let labelRes = await gh.getLabel( authData, pd.GHOwner, pd.GHRepo, "nonPeq1" );
-    if( typeof labelRes.label != 'undefined' ) { tu.delLabel( authData, pd, labelRes.label.name ); }
-    labelRes = await gh.getLabel( authData, pd.GHOwner, pd.GHRepo, "nonPeq2" );
-    if( typeof labelRes.label != 'undefined' ) { tu.delLabel( authData, pd, labelRes.label.name ); }
-    labelRes = await gh.getLabel( authData, pd.GHOwner, pd.GHRepo, "newName" );
-    if( typeof labelRes.label != 'undefined' ) { tu.delLabel( authData, pd, labelRes.label.name ); }
+    let labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "nonPeq1" );
+    if( typeof labelRes.label != 'undefined' ) { gh2tu.delLabel( authData, labelRes.label ); }
+    labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "nonPeq2" );
+    if( typeof labelRes.label != 'undefined' ) { gh2tu.delLabel( authData, labelRes.label ); }
+    labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "newName" );
+    if( typeof labelRes.label != 'undefined' ) { gh2tu.delLabel( authData, labelRes.label ); }
     
 
     // Linkages
     // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
     console.log( "Remove links", pd.repoName );
-    await tu.remLinks( authData, ghLinks, pd.repoName );
-    let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.repoName } );
+    await tu.remLinks( authData, ghLinks, pd.GHFullName );
+    let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName } );
     if( links != -1 ) { console.log( links ); }
     assert( links == -1 );
 
     peqP   = await peqP;
     pactP  = await pactP;
     pactRP = await pactRP;
-    
-    // RepoStatus
-    // XXX no longer here
-    console.log( "Error.  ceprojects does not hold repo" );
-    assert( false );
-    let status = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
-    let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
-    console.log( "Dynamo status id", statusIds );
-    await awsUtils.cleanDynamo( authData, "CERepoStatus", statusIds );
+
+
+    // set unpopulated
+    // XXX Maybe clear hostRepos at some point?
+    console.log( "Depopulate" );
+    await awsUtils.unpopulate( authData, pd.ceProjectId );
 }
 
 

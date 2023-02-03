@@ -1,6 +1,6 @@
 var assert = require( 'assert' );
 
-var config = require( '../../config' );
+var config = require( '../../../config' );
 
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );

@@ -771,9 +771,8 @@ async function reopenIssue( authData, td, issueId ) {
     await utils.sleep( tu.MIN_DELAY + 500 );
 }
 
-async function remIssue( authData, td, issueId ) {
+async function remIssue( authData, issueId ) {
 
-    let issue     = await findIssue( authData, issueId );
     let query     = "mutation( $id:ID! ) { deleteIssue( input:{ issueId: $id }) {clientMutationId}}";
     let variables = {"id": issueId };
     query         = JSON.stringify({ query, variables });

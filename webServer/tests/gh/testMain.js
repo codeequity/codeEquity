@@ -30,6 +30,7 @@ const ghcTestCross      = require( './ghc/testCross' );
 // GH V2
 const gh2tu             = require( './gh2/gh2TestUtils' );
 const gh2TestPopulate   = require( './gh2/testPopulate' );
+const gh2TestDelete     = require( './gh2/testDelete' );
 
 
 async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks ) {
@@ -84,13 +85,12 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-    */
     
     subTest = await gh2TestPopulate.runTests( authData, ghLinks, td );
     console.log( "\n\nResolve test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-    /*
+
     subTest = await gh2TestComponents.runTests( authData, ghLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
@@ -160,6 +160,8 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
 
 
 async function runTests() {
+
+    console.log( "ENTER RUNTESTS" );
 
     const args = process.argv.slice(2);
     let flutterTest = ( args[0] == "ceFlutter" );
