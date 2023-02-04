@@ -6,6 +6,8 @@ const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
 const config   = require( '../config' );
 
+const ceAuth   = require( '../auth/ceAuth' );
+
 const fifoQ    = require( '../components/queue' );
 const links    = require( '../components/linkage' );
 const hist     = require( '../components/histogram' );
@@ -74,18 +76,6 @@ async function initAuth( authData ) {
 }
 
 
-// Called from host handlers, switchers.  Mainly to allow refreshing host-independent tokens
-async function getAuths( authData, host, pms, org, actor ) {
-    // Cognito auth token expires every hour.  Can make it last longer if needed..
-    const stamp = Date.now();
-    if( stamp - authData.cogLast > 3500000 ) {
-	console.log( "********  Old cognito auth.. refreshing." );
-	authData.cog = await awsAuth.getCogIDToken();	
-	authData.cogLast = Date.now();
-    }
-
-    if( host == config.HOST_GH ) { await ghr.ghGetAuths( authData, pms, org, actor ); }
-}
 
 
 // ceRouter core
@@ -225,7 +215,7 @@ async function getNextJob( authData, res ) {
 	// Send authData so cogLast, is correct.
 	// But reset authData.pat to keep parent pat correct.
 	let tmp = authData.pat;
-	getAuths( authData, jobData.host, jobData.projMgmtSys, jobData.org, jobData.actor );
+	ceAuth.getAuths( authData, jobData.host, jobData.projMgmtSys, jobData.org, jobData.actor );
 	ic.pat = authData.pat;
 	authData.pat = tmp;
 	
@@ -323,7 +313,6 @@ router.post('/:location?', async function (req, res) {
 module.exports     = router;
 
 exports.getNextJob = getNextJob; 
-exports.getAuths   = getAuths;
 
 exports.purgeQueue = purgeQueue;
 exports.demoteJob  = demoteJob;

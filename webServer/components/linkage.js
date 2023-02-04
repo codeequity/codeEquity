@@ -1,7 +1,7 @@
 const assert = require( 'assert' );
 
 const config   = require( '../config' );
-const ceRouter = require( '../routes/ceRouter' );
+const ceAuth   = require( '../auth/ceAuth' );
 
 const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
@@ -80,8 +80,8 @@ class Linkage {
 			let fnParts = repo.split('/');
 			let rlinks = [];
 			
-			if( isOrg ) { await ceRouter.getAuths( authData, host, pms, org,  config.CE_USER ); }
-			else        { await ceRouter.getAuths( authData, host, pms, repo, config.CE_USER ); }
+			if( isOrg ) { await ceAuth.getAuths( authData, host, pms, org,  config.CE_USER ); }
+			else        { await ceAuth.getAuths( authData, host, pms, repo, config.CE_USER ); }
 			
 			// XXX this should not be here
 			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
@@ -111,7 +111,7 @@ class Linkage {
 	    // All ids for GH2 are GQL node_ids.
 	    else if( pms == config.PMS_GH2 ) {
 		// mainly to get pat
-		await ceRouter.getAuths( authData, host, pms, org, config.CE_USER ); 
+		await ceAuth.getAuths( authData, host, pms, org, config.CE_USER ); 
 
 		// XXX handle entry.HostParts.hostProjectIds
 		let hostProjs = [];
