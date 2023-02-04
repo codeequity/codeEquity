@@ -286,7 +286,7 @@ class Linkage {
 	// Need to purge first!
 	this.purgeLocs( "TESTING-FROMJSONLOCS" );
 	
-	console.log( authData.who, "Creating ghLinks.locs from json data" );
+	console.log( "Creating ghLinks.locs from json data" );
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, loc] of Object.entries( clocs ) ) {
 		this.addLoc( {}, loc );

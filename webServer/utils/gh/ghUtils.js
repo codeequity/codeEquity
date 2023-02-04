@@ -236,8 +236,8 @@ async function getOwnerId( PAT, owner ) {
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => ghUtils.errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
+    const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
+	  .catch( e => errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
 
     let retId = -1;
     if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'user' ) ) { retId = ret.data.user.id; }
@@ -250,8 +250,8 @@ async function getRepoId( PAT, owner, repo ) {
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => ghUtils.errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
+    const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
+	  .catch( e => errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
 
     let retId = -1;
     if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }

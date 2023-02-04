@@ -1,18 +1,20 @@
-var assert    = require( 'assert' );
-const awsAuth = require( '../../auth/aws/awsAuth' );
-const ghAuth  = require( '../../auth/gh/ghAuth' );
-var config    = require( '../../config' );
+const assert    = require( 'assert' );
+const awsAuth   = require( '../../auth/aws/awsAuth' );
+const ghAuth    = require( '../../auth/gh/ghAuth' );
+const config    = require( '../../config' );
 
 const authDataC = require( '../../auth/authData' );
 const utils     = require( '../../utils/ceUtils' );
 const awsUtils  = require( '../../utils/awsUtils' );
 
-const ghUtils  = require( '../../utils/gh/ghUtils' );
+const ghUtils   = require( '../../utils/gh/ghUtils' );
 
-var links     = require('../../components/linkage.js');
-var circBuff  = require('../../components/circBuff.js');
+const links     = require('../../components/linkage.js');
+const circBuff  = require('../../components/circBuff.js');
 
 const tu        = require( '../ceTestUtils' );
+
+const ceProjData = require( '../../routes/ceProjects' );
 const testData  = require( './testData' );
 
 const testSaveDynamo = require( '../testSaveDynamo' );
@@ -36,8 +38,9 @@ const gh2TestDelete     = require( './gh2/testDelete' );
 async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks ) {
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up
+
     // XXX so far, V2 can't delete pv2, so no point making.  link and unlink instead.
-    const wakeyPID = await gh2tu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
+    // const wakeyPID = await gh2tu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
 
     await gh2tu.linkProject( authData, wakeyPID, td.GHRepoId );
     
@@ -170,16 +173,11 @@ async function runTests() {
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
     let ghLinks = new links.Linkage();
 
-    let ceProjects = new ceProjData.CEProjects();
-    await ceProjects.init( authData );
-    
     // TEST_REPO auth
-    // XXX get ceProjectId
     let td          = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
     td.GHRepo       = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
-    td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.GHFullName );
 
     let authData     = new authDataC.AuthData(); 
     authData.who     = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
@@ -191,6 +189,11 @@ async function runTests() {
     td.GHOwnerId     = await ghUtils.getOwnerId( authData.pat, td.GHOwner );
     td.GHRepoId      = await ghUtils.getRepoId( authData.pat, td.GHOwner, td.GHRepo );
 
+    // First ceProj init requires authData, which needs .cog, .api and .who
+    let ceProjects = new ceProjData.CEProjects();
+    await ceProjects.init( authData );
+    td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.GHFullName );
+    
     // CROSS_TEST_REPO auth
     let tdX        = new testData.TestData();
     tdX.GHOwner    = config.CROSS_TEST_OWNER;
@@ -228,13 +231,13 @@ async function runTests() {
     let testStatus = [ 0, 0, []];
 
     // XXX Add an arg if these are ever useful again
-    // runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
+    // await runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
 
-    runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
+    await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
 	
     // Save dynamo data if run was successful
     if( testStatus[1] == 0 ) {
-	subTest = await testSaveDynamo.runTests( flutterTest );
+	subTest = await testSaveDynamo.runTests( flutterTest );   // XXXXXX
 	console.log( "\n\nSave Dynamo complete" );
 	await utils.sleep( 1000 );
 	testStatus = tu.mergeTests( testStatus, subTest );

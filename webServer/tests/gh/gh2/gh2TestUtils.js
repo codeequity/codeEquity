@@ -9,7 +9,7 @@ const ghUtils  = require( '../../../utils/gh/ghUtils' );
 
 const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
 
-const tu       = require( '../../ceTestUtils ');
+const tu       = require( '../../ceTestUtils' );
 
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
 // Server is fast enough for sub 1s, but GH struggles.
@@ -28,7 +28,7 @@ async function refresh( authData, td, projName ){
     let hostProjs = [];
     await ghV2.getProjectIds( authData, td.GHFullname, hostProjs, -1 );
 
-    hostProjs.forEach( proj => if( proj.hostProjectName == projName ) { td.masterPID = project.id; } );
+    hostProjs.forEach( proj => { if( proj.hostProjectName == projName ) { td.masterPID = project.id; } });
 }
 
 
@@ -205,7 +205,7 @@ async function getIssues( authData, td ) {
 	    for( let i = 0; i < projects.length; i++ ) {
 		const p = projects[i].node;
 		let items = p.items.edges;
-		assert( items.length < 99, "Need to paginate getIssues(items)". );
+		assert( items.length < 99, "Need to paginate getIssues(items)." );
 
 		for( let k = 0; k < items.length; k++ ) {
 		    let iss = items[i].node;
@@ -482,7 +482,7 @@ async function makeProject(authData, td, name, body ) {
 
     let pid = await ghV2.createProject( authData, td.GHOwnerId, td.GHRepoId, name );
     
-    console.log( "MakeProject:", name, pid );
+    console.log( "MakeProject:", name, pid, td.GHRepoId );
     await utils.sleep( GH_DELAY );
     return pid;
 }
