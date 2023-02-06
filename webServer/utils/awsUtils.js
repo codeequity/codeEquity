@@ -461,6 +461,17 @@ async function getStoredLocs( authData, ceProjId ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+// UNIT TESTING ONLY!!
+async function unpopulate( authData, ceProjId ) {
+    console.log( authData.who, "unpopulate TESTING ONLY", ceProjId )
+
+    let shortName = "Depop";
+    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "CEProjectId": ceProjId };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+
 /* Not in use
 async function clearLinkage( authData, pd ) {
     let shortName = "GetEntry";
@@ -524,3 +535,4 @@ exports.cleanDynamo   = cleanDynamo;
 exports.clearIngested = clearIngested;
 
 exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
+exports.unpopulate    = unpopulate;       // TESTING ONLY

@@ -25,6 +25,13 @@ class CEProjects {
 	// console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
 	return retVal;
     }
+
+    findByRepo( host, org, repo ) {
+	let retVal = config.EMPTY;
+	let proj = this.cep.find( cep => cep.HostPlatform == host && cep.Organization == org && cep.HostParts.hostRepositories.includes( repo ));
+	retVal = typeof proj === 'undefined' ? retVal : proj.CEProjectId;
+	return retVal;
+    }
     
     async init( authData ) {
 	console.log( "Initializing ceProjects" );

@@ -1,37 +1,40 @@
 var assert = require( 'assert' );
 
-var config = require( '../config' );
+var config = require( '../../../config' );
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
-const ghUtils  = require( '../utils/gh/ghUtils' );
+const utils    = require( '../../../utils/ceUtils' );
+const awsUtils = require( '../../../utils/awsUtils' );
 
-const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
+const ghUtils  = require( '../../../utils/gh/ghUtils' );
+
+const tu       = require( '../../ceTestUtils' );
+
+const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 
-const tu = require( './testUtils' );
+const ghctu    = require( './ghcTestUtils' );
 
 
-// Adding a small sleep in each tu.make* - GH seems to get confused if requests come in too fast
+// Adding a small sleep in each ghctu.make* - GH seems to get confused if requests come in too fast
 async function createPreferredCEProjects( authData, ghLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
     
     // Master: softwareContr, businessOps, unallocated
-    td.masterPID  = await tu.makeProject( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
-    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.softContTitle );
-    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.busOpsTitle );
-    let mastCol3  = await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.unallocTitle );
+    td.masterPID  = await ghctu.makeProject( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
+    let mastCol1  = await ghctu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.softContTitle );
+    let mastCol2  = await ghctu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.busOpsTitle );
+    let mastCol3  = await ghctu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.unallocTitle );
 
     // dataSec: 4x
-    let dataPID  = await tu.makeProject( authData, td, td.dataSecTitle, "Make PII safe" );
-    let dataCols = await tu.make4xCols( authData, ghLinks, td.ceProjectId, td.GHFullName, dataPID );
+    let dataPID  = await ghctu.makeProject( authData, td, td.dataSecTitle, "Make PII safe" );
+    let dataCols = await ghctu.make4xCols( authData, ghLinks, td.ceProjectId, td.GHFullName, dataPID );
 
     // githubOPs: 4x
-    let ghOpPID  = await tu.makeProject( authData, td, td.githubOpsTitle, "Make it giddy" );
-    let ghOpCols = await tu.make4xCols( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID );
-    await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
-    await tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );
+    let ghOpPID  = await ghctu.makeProject( authData, td, td.githubOpsTitle, "Make it giddy" );
+    let ghOpCols = await ghctu.make4xCols( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID );
+    await ghctu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
+    await ghctu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );
 
 
     // TRIGGER
@@ -39,16 +42,16 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     let card11   = await ghSafe.createProjectCard( authData, mastCol1, nbi1[0] );
     let popLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
     let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
-    await tu.addLabel( authData, td, nbiDat, popLabel.name );       // ready.. set... Go!
+    await ghctu.addLabel( authData, td, nbiDat, popLabel.name );       // ready.. set... Go!
     await utils.sleep( 1000 );
 
     // softCont: dataSecurity, githubOps, unallocated
-    await tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.dataSecTitle, "1,000,000" );
-    await tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.githubOpsTitle, "1,500,000" );
-    await tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.unallocTitle, "3,000,000" );
+    await ghctu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.dataSecTitle, "1,000,000" );
+    await ghctu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await ghctu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol2, td.unallocTitle, "1,000,000" );
+    await ghctu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
 async function testPreferredCEProjects( authData, ghLinks, td ) {
@@ -56,7 +59,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     // [pass, fail, msgs]
     let subTest  = [ 0, 0, []];
     
-    await tu.refresh( authData, td, config.MAIN_PROJ );
+    await ghctu.refresh( authData, td, config.MAIN_PROJ );
 
     // Check DYNAMO PEQ table
     let ghPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.githubOpsTitle });
@@ -126,7 +129,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	
 	// Check GITHUB Labels
-	let peqLabels = await tu.getPeqLabels( authData, td );
+	let peqLabels = await ghctu.getPeqLabels( authData, td );
 	subTest = tu.checkGE( peqLabels.length, 3,   subTest, "Peq Label count" );
 	let foundLabs = 0;
 	for( label of peqLabels ) {
@@ -141,7 +144,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	
 	// Check GITHUB Issues
-	let issues = await tu.getIssues( authData, td );
+	let issues = await ghctu.getIssues( authData, td );
 	subTest = tu.checkGE( issues.length, 4,     subTest, "Issue count" );
 	let foundIss = 0;
 	for( const issue of issues ) {
@@ -164,7 +167,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 
 	
 	// Check GITHUB Projects
-	let projects = await tu.getProjects( authData, td );
+	let projects = await ghctu.getProjects( authData, td );
 	subTest = tu.checkGE( projects.length, 3,     subTest, "Project count" );
 	let foundProj = 0;
 	for( const proj of projects ) {
@@ -186,9 +189,9 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	// Check GITHUB Columns
 	// td.show();
-	let mastCols = await tu.getColumns( authData, td.masterPID  );
-	let dsCols   = await tu.getColumns( authData, td.dataSecPID  );
-	let ghCols   = await tu.getColumns( authData, td.githubOpsPID  );
+	let mastCols = await ghctu.getColumns( authData, td.masterPID  );
+	let dsCols   = await ghctu.getColumns( authData, td.dataSecPID  );
+	let ghCols   = await ghctu.getColumns( authData, td.githubOpsPID  );
 	
 	subTest = tu.checkEq( mastCols.length, 3,   subTest, "Master proj col count" );
 	subTest = tu.checkEq( dsCols.length, 4,     subTest, "Data security proj col count" );
@@ -216,9 +219,9 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	// Check GITHUB Cards
 	// Don't try checking names - they belong to & were already checked, in issues.
-	let scCards = await tu.getCards( authData, td.scColID );
-	let boCards = await tu.getCards( authData, td.boColID );
-	let noCards = await tu.getCards( authData, td.unColID );
+	let scCards = await ghctu.getCards( authData, td.scColID );
+	let boCards = await ghctu.getCards( authData, td.boColID );
+	let noCards = await ghctu.getCards( authData, td.unColID );
 	
 	subTest = tu.checkEq( scCards.length, 4, subTest, "Soft cont col card count" );
 	subTest = tu.checkEq( boCards.length, 1, subTest, "Bus ops col card count" );
@@ -230,7 +233,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	console.log( "rands", rn2, rn4 );
 	let cols = dsCols;
 	if( rn2 == 1 )  { cols = ghCols; }
-	noCards = await tu.getCards( authData, cols[rn4].id );
+	noCards = await ghctu.getCards( authData, cols[rn4].id );
 	subTest = tu.checkEq( noCards.length, 0, subTest, "Unalloc col card count" );
 
 	
@@ -248,7 +251,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 		subTest = tu.checkEq( link.hostColumnName, td.softContTitle,    subTest, "Linkage Col name" );
 		subTest = tu.checkEq( link.hostColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
 		subTest = tu.checkEq( link.issueName, td.githubOpsTitle,    subTest, "Linkage Card Title" );
-		let cardId = tu.findCardForIssue( scCards, link.hostIssueNum );
+		let cardId = ghctu.findCardForIssue( scCards, link.hostIssueNum );
 		subTest = tu.checkEq( link.hostCardId, cardId,                  subTest, "Linkage Card Id" );
 		found = true;
 	    }
@@ -257,7 +260,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 		subTest = tu.checkEq( link.hostColumnName, td.softContTitle,    subTest, "Linkage Col name" );
 		subTest = tu.checkEq( link.hostColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
 		subTest = tu.checkEq( link.issueName, td.dataSecTitle,      subTest, "Linkage Card Title" );
-		let cardId = tu.findCardForIssue( scCards, link.hostIssueNum );
+		let cardId = ghctu.findCardForIssue( scCards, link.hostIssueNum );
 		subTest = tu.checkEq( link.hostCardId, cardId,                  subTest, "Linkage Card Id" );
 		found = true;
 	    }

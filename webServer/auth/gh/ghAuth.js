@@ -1,18 +1,23 @@
 const { App }     = require("@octokit/app");
 const { Octokit } = require("@octokit/rest");
 const { request } = require("@octokit/request");
-const { retry } = require("@octokit/plugin-retry");
+const { retry }   = require("@octokit/plugin-retry");
 
 // Hmm.. this is looking very slow.  too bad.
 const OctokitRetry = Octokit.plugin(retry);
 
-
-const fetch = require("node-fetch");
+const fetch  = require("node-fetch");
 const dotenv = require("dotenv");
-var fs = require('fs'), json;
-var assert = require('assert');
+var   fs     = require('fs'), json;
+const assert = require('assert');
 
-var config    = require('../../config');
+const ceAuth   = require( '../ceAuth' );
+const config   = require( '../../config' );
+const awsUtils = require( '../../utils/awsUtils' );
+
+// Auths
+var octokitClients = {};
+var githubPATs     = {};
 
 
 // Generate an installationAccessToken, for use in creating installation client for GitHub API.
@@ -113,6 +118,88 @@ async function getPAT( owner ) {
     return PAT.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
 }
 
+
+
+// Octokit using auth-token ATM, which expires every hour. Refresh as needed.
+async function refreshAuths( authData, pms, host, org, actor) {
+
+    const stamp = Date.now();
+
+    if( pms == config.PMS_GHC ) {
+	if( stamp - octokitClients[host][org][actor].last > 3500000 ) {
+	    console.log( "********  Old octo auth.. refreshing." );
+	    octokitClients[host][org][actor].auth = await auth.getInstallationClient( org, actor, actor );
+	    authData.ic  = octokitClients[host][org][actor].auth;
+	    octokitClients[host][org][actor].last = Date.now();
+	}
+    }
+    return;
+}
+
+
+
+// Auths are kept in distinct host.org.actor buckets.  For example, Connie from CodeEquity on GitHub will have different perms than
+//       Connie from CodeEquity on Atlassian.
+// If private repo, get key from aws.  If public repo, use ceServer key.  if tester repos, use config keys.
+// NOTE this is called from ceRouter, only.  
+async function getAuths( authData, pms, org, actor ) {
+
+    const host = config.HOST_GH;
+
+    // console.log( "GHR auths", pms, org, actor );
+    
+    // Only relevant for classic projects (!!)  Even so, keep auth breakdown consistent between parts.
+    // Need installation client from octokit for every owner/repo/jwt triplet.  
+    //   jwt is per app install, 1 codeEquity for all.
+    //   owner and repo can switch with notification.  need multiple.
+    if( pms == config.PMS_GHC ) {
+	if( !octokitClients.hasOwnProperty( host ) )            { octokitClients[host] = {};      }
+	if( !octokitClients[host].hasOwnProperty( org ))        { octokitClients[host][org] = {}; }
+	if( !octokitClients[host][org].hasOwnProperty( actor )) {
+	    console.log( authData.who, "get octo", host, org, actor );  
+	    // Wait later
+	    let repoParts = org.split('/');        // XXX rp[1] is undefined for orgs
+	    octokitClients[host][org][actor] = {};
+	    octokitClients[host][org][actor].auth = getInstallationClient( repoParts[0], repoParts[1], actor ); 
+	    octokitClients[host][org][actor].last = Date.now();
+	}
+    }
+
+    
+    if( !githubPATs.hasOwnProperty( host ))             { githubPATs[host] = {}; }
+    if( !githubPATs[host].hasOwnProperty( org ))        { githubPATs[host][org] = {}; }
+    if( !githubPATs[host][org].hasOwnProperty( actor )) {
+	// Wait later
+	let reservedUsers = [config.CE_USER, config.TEST_OWNER, config.CROSS_TEST_OWNER, config.MULTI_TEST_OWNER];
+	// console.log( "Get PAT for", actor, "in", host, org );
+	githubPATs[host][org][actor] = reservedUsers.includes( actor ) ?  getPAT( actor ) :  awsUtils.getStoredPAT( authData, host, actor );
+    }
+    githubPATs[host][org][actor] = await githubPATs[host][org][actor];
+    // console.log( "PATTY", githubPATs[host][org][actor] );
+
+    if( actor == config.GH_GHOST ) {
+	console.log( "Skipping PAT acquisition for GitHub ghost action" );
+    }
+    else if( githubPATs[host][org][actor] == -1 ) {
+	console.log( "Warning.  Did not find PAT for", host, org, actor );
+	assert( false );
+    }
+    else { authData.pat = githubPATs[host][org][actor]; }
+
+    authData.ic  = -1;
+    if( pms == config.PMS_GHC ) {    
+	octokitClients[host][org][actor].auth = await octokitClients[host][org][actor].auth;
+	authData.ic  = octokitClients[host][org][actor].auth;
+    }
+
+    // Might have gotten older auths above.  Check stamp and refresh as needed.
+    await refreshAuths( authData, host, pms, org, actor );
+    
+    return;
+}
+
+
 exports.getInstallationAccessToken = getInstallationAccessToken;
 exports.getInstallationClient      = getInstallationClient;
 exports.getPAT                     = getPAT;
+exports.getAuths                   = getAuths;

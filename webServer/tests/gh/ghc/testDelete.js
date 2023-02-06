@@ -1,16 +1,16 @@
 var assert = require( 'assert' );
 
-var config = require( '../config' );
+var config = require( '../../../config' );
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
-const ghUtils  = require( '../utils/gh/ghUtils' );
+const utils    = require( '../../../utils/ceUtils' );
+const awsUtils = require( '../../../utils/awsUtils' );
+const ghUtils  = require( '../../../utils/gh/ghUtils' );
 
-const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
+const tu = require('../../ceTestUtils');
+
+const ghClassic = require( '../../../utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
-
-const tu = require('./testUtils');
 
 
 /*

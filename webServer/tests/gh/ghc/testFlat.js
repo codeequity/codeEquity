@@ -1,8 +1,11 @@
-const config = require( '../config' );
-const utils  = require( '../utils/ceUtils' );
+const config = require( '../../../config' );
 
-const testData = require( './testData' );
-const tu = require('./testUtils');
+const utils  = require( '../../../utils/ceUtils' );
+
+const tu     = require( '../../ceTestUtils' );
+
+const testData = require( '../testData' );
+const ghctu    = require( './ghcTestUtils' );
 
 
 const FLAT_PROJ = "A Pre-Existing Project";
@@ -11,13 +14,13 @@ const FLAT_PROJ = "A Pre-Existing Project";
 async function createFlatProject( authData, ghLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
-    td.masterPID  = await tu.makeProject( authData, td, FLAT_PROJ, "" );
-    let mastCol1  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Eggs" );
-    let mastCol2  = await tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Bacon" );
+    td.masterPID  = await ghctu.makeProject( authData, td, FLAT_PROJ, "" );
+    let mastCol1  = await ghctu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Eggs" );
+    let mastCol2  = await ghctu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Bacon" );
 
-    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Parsley" );
-    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol2, "Rosemary" );
-    await tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Sage" );
+    await ghctu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Parsley" );
+    await ghctu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol2, "Rosemary" );
+    await ghctu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Sage" );
 }
 
 async function testFlatProject( authData, ghLinks, td ) {
@@ -25,7 +28,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    await tu.refresh( authData, td, FLAT_PROJ );
+    await ghctu.refresh( authData, td, FLAT_PROJ );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
     let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
@@ -49,7 +52,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     
     
     // Check GITHUB Issues... weak test - only verify herbs were not issue-ified.
-    let issues = await tu.getIssues( authData, td );
+    let issues = await ghctu.getIssues( authData, td );
     let foundIss = false;
     for( const issue of issues ) {
 	if( issues.title == "Parlsey" || issues.title == "Rosemary" || issues.title == "Sage" ) {
@@ -61,7 +64,7 @@ async function testFlatProject( authData, ghLinks, td ) {
 
 
     // Check GITHUB Projects
-    let projects = await tu.getProjects( authData, td );
+    let projects = await ghctu.getProjects( authData, td );
     testStatus = tu.checkGE( projects.length, 1,     testStatus, "Project count" );
     let foundProj = 0;
     for( const proj of projects ) {
@@ -74,7 +77,7 @@ async function testFlatProject( authData, ghLinks, td ) {
 
     
     // Check GITHUB Columns
-    let mastCols   = await tu.getColumns( authData, td.masterPID  );
+    let mastCols   = await ghctu.getColumns( authData, td.masterPID  );
     testStatus = tu.checkEq( mastCols.length, 2,   testStatus, "Master proj col count" );
 
     let colNames = mastCols.map((col) => col.name );
@@ -90,8 +93,8 @@ async function testFlatProject( authData, ghLinks, td ) {
 
 
     // Check GITHUB Cards
-    let eggCards = await tu.getCards( authData, eggsId );
-    let bacCards = await tu.getCards( authData, baconId );
+    let eggCards = await ghctu.getCards( authData, eggsId );
+    let bacCards = await ghctu.getCards( authData, baconId );
 
     testStatus = tu.checkEq( eggCards.length, 2, testStatus, "Egg col card count" );
     testStatus = tu.checkEq( bacCards.length, 1, testStatus, "Bacon col card count" );

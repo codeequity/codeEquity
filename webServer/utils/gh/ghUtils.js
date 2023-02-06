@@ -230,6 +230,36 @@ function theOnePEQ( labels ) {
     return [peqValue, alloc];
 }
 
+async function getOwnerId( PAT, owner ) {
+    let query       = `query getOwner($owner: String!) { user(login: $owner) { id } }`;
+    const variables = {"owner": owner};
+
+    query = JSON.stringify({ query, variables });
+
+    const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
+	  .catch( e => errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
+
+    let retId = -1;
+    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'user' ) ) { retId = ret.data.user.id; }
+    return retId;
+}
+
+async function getRepoId( PAT, owner, repo ) {
+    let query       = `query getRepo($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) { id } }`;
+    const variables = {"owner": owner, "repo": repo};
+
+    query = JSON.stringify({ query, variables });
+
+    const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
+	  .catch( e => errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
+
+    // console.log( "GET RID..??", ret );
+    
+    let retId = -1;
+    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
+    return retId;
+}
+
 
 exports.errorHandler = errorHandler;
 exports.postGH       = postGH;
@@ -242,3 +272,6 @@ exports.parseLabelDescr = parseLabelDescr;
 exports.parseLabelName  = parseLabelName;
 exports.getAllocated    = getAllocated;
 exports.theOnePEQ       = theOnePEQ;
+
+exports.getOwnerId      = getOwnerId;
+exports.getRepoId       = getRepoId;

@@ -1,11 +1,10 @@
 const assert  = require('assert');
 
 const config  = require( '../config');
-const auth    = require( '../auth/gh/ghAuth' );
+const ceAuth  = require( '../auth/ceAuth' );
 
-const utils    = require( '../utils/ceUtils' );
-const awsUtils = require( '../utils/awsUtils' );
-const ghUtils  = require( '../utils/gh/ghUtils' );
+const utils   = require( '../utils/ceUtils' );
+const ghUtils = require( '../utils/gh/ghUtils' );
 
 const links   = require( '../components/linkage' );
 
@@ -27,91 +26,10 @@ const gh2Issues = require( './ghVersion2/githubPV2IssueHandler' );
 // When switching between GHC and GH2, look for pv2Notices that match contentNotices.
 var pendingNotices = [];
 
-// Auths
-var octokitClients = {};
-var githubPATs     = {};
-
-
 
 // CE_USER used for app-wide jwt
 // owner, repo needed for octokit installation client.
 // owner needed for personal access token
-
-// Auths are kept in distinct host.org.actor buckets.  For example, Connie from CodeEquity on GitHub will have different perms than
-//       Connie from CodeEquity on Atlassian.
-// If private repo, get key from aws.  If public repo, use ceServer key.  if tester repos, use config keys.
-// NOTE this is called from ceRouter, only.  
-async function getAuths( authData, pms, org, actor ) {
-
-    const host = config.HOST_GH;
-
-    // console.log( "GHR auths", pms, org, actor );
-    
-    // Only relevant for classic projects (!!)  Even so, keep auth breakdown consistent between parts.
-    // Need installation client from octokit for every owner/repo/jwt triplet.  
-    //   jwt is per app install, 1 codeEquity for all.
-    //   owner and repo can switch with notification.  need multiple.
-    if( pms == config.PMS_GHC ) {
-	if( !octokitClients.hasOwnProperty( host ) )            { octokitClients[host] = {};      }
-	if( !octokitClients[host].hasOwnProperty( org ))        { octokitClients[host][org] = {}; }
-	if( !octokitClients[host][org].hasOwnProperty( actor )) {
-	    console.log( authData.who, "get octo", host, org, actor );  
-	    // Wait later
-	    let repoParts = org.split('/');        // XXX rp[1] is undefined for orgs
-	    octokitClients[host][org][actor] = {};
-	    octokitClients[host][org][actor].auth = auth.getInstallationClient( repoParts[0], repoParts[1], actor ); 
-	    octokitClients[host][org][actor].last = Date.now();
-	}
-    }
-
-    
-    if( !githubPATs.hasOwnProperty( host ))             { githubPATs[host] = {}; }
-    if( !githubPATs[host].hasOwnProperty( org ))        { githubPATs[host][org] = {}; }
-    if( !githubPATs[host][org].hasOwnProperty( actor )) {
-	// Wait later
-	let reservedUsers = [config.CE_USER, config.TEST_OWNER, config.CROSS_TEST_OWNER, config.MULTI_TEST_OWNER];
-	// console.log( "Get PAT for", actor, "in", host, org );
-	githubPATs[host][org][actor] = reservedUsers.includes( actor ) ?  auth.getPAT( actor ) :  awsUtils.getStoredPAT( authData, host, actor );
-    }
-    githubPATs[host][org][actor] = await githubPATs[host][org][actor];
-    // console.log( "PATTY", githubPATs[host][org][actor] );
-
-    if( actor == config.GH_GHOST ) {
-	console.log( "Skipping PAT acquisition for GitHub ghost action" );
-    }
-    else if( githubPATs[host][org][actor] == -1 ) {
-	console.log( "Warning.  Did not find PAT for", host, org, actor );
-	assert( false );
-    }
-    else { authData.pat = githubPATs[host][org][actor]; }
-
-    authData.ic  = -1;
-    if( pms == config.PMS_GHC ) {    
-	octokitClients[host][org][actor].auth = await octokitClients[host][org][actor].auth;
-	authData.ic  = octokitClients[host][org][actor].auth;
-    }
-
-    // Might have gotten older auths above.  Check stamp and refresh as needed.
-    await refreshAuths( authData, host, pms, org, actor );
-    
-    return;
-}
-
-// Octokit using auth-token ATM, which expires every hour. Refresh as needed.
-async function refreshAuths( authData, pms, host, org, actor) {
-
-    const stamp = Date.now();
-
-    if( pms == config.PMS_GHC ) {
-	if( stamp - octokitClients[host][org][actor].last > 3500000 ) {
-	    console.log( "********  Old octo auth.. refreshing." );
-	    octokitClients[host][org][actor].auth = await auth.getInstallationClient( org, actor, actor );
-	    authData.ic  = octokitClients[host][org][actor].auth;
-	    octokitClients[host][org][actor].last = Date.now();
-	}
-    }
-    return;
-}
 
 
 
@@ -233,7 +151,7 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
     console.log( "XXX Switcher GHC" );
-    await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.repoName, config.CE_USER );
+    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.repoName, config.CE_USER );
     
     switch( jd.event ) {
     case 'issue' :
@@ -292,7 +210,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
     // console.log( "switcherGH2.." );
     
     assert( jd.queueId == authData.job ) ;
-    await ceRouter.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
+    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
 
     switch( jd.event ) {
     case 'projects_v2_item' :
@@ -437,5 +355,4 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
 
 exports.ghSwitcher          = switcher;
-exports.ghGetAuths          = getAuths;
 exports.ghGetJobSummaryData = getJobSummary;

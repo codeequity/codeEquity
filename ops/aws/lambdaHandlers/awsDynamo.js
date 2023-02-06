@@ -86,6 +86,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
+    else if( endPoint == "Depop")          { resultPromise = depopulate( rb.CEProjectId ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -1253,6 +1254,19 @@ async function getHostA( uid ) {
     return success( hostAccs );
 }
 
+async function depopulate( ceProjId ) {
+
+    let params = { TableName: 'CEProjects' };
+    let promise = null;
+
+    params.Key                       = { "CEProjectId": ceProjId };
+    params.UpdateExpression          = 'set Populated = :f';
+    params.ExpressionAttributeValues = { ':f': false };
+
+    console.log( params );
+    promise = bsdb.update( params ).promise();
+    return promise.then(() => success( true ));
+}
 
 
 
