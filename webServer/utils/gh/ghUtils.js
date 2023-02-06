@@ -253,6 +253,8 @@ async function getRepoId( PAT, owner, repo ) {
     const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
 	  .catch( e => errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
 
+    // console.log( "GET RID..??", ret );
+    
     let retId = -1;
     if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
     return retId;

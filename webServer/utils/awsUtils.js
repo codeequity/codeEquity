@@ -466,8 +466,7 @@ async function unpopulate( authData, ceProjId ) {
     console.log( authData.who, "unpopulate TESTING ONLY", ceProjId )
 
     let shortName = "Depop";
-    let query     = { "CEProjectId": ceProjId };
-    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "CEProjectId": ceProjId };
 
     return await wrappedPostAWS( authData, shortName, postData );
 }

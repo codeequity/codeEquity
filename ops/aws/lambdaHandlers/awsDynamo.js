@@ -1262,7 +1262,8 @@ async function depopulate( ceProjId ) {
     params.Key                       = { "CEProjectId": ceProjId };
     params.UpdateExpression          = 'set Populated = :f';
     params.ExpressionAttributeValues = { ':f': false };
-    
+
+    console.log( params );
     promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));
 }

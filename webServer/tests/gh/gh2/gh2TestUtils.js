@@ -156,7 +156,7 @@ async function getLabels( authData, td ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
-	    let labs = raw.data.labels.edges;
+	    let labs = raw.data.node.labels.edges;
 	    assert( labs.length < 99, "Need to paginate getLabels." );
 
 	    for( let i = 0; i < labs.length; i++ ) {
@@ -168,7 +168,7 @@ async function getLabels( authData, td ) {
 		datum.description = label.description;
 		labels.push( datum );
 	    }})
-	.catch( e => { console.log( authData.who, "get labels failed.", e ); });
+	.catch( e => ghUtils.errorHandler( "getLabels", e, getLabels, authData, td )); 
 
     return labels.length == 0 ? -1 : labels;
 }
@@ -180,16 +180,7 @@ async function getIssues( authData, td ) {
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on Repository {
-            ProjectV2(first:100) {
-               edges{node{
-                 title id
-                 items(first: 100) {
-                     edges{node{
-                     ... on ProjectV2Item {
-                         type id
-                         content {
-                         ... on ProjectV2ItemContent {
-                            ... on Issue { id title number }}}}}}}}}}
+            issues(first:100) {edges {node { id title number }}}
 
 
     }}}`;
@@ -199,27 +190,18 @@ async function getIssues( authData, td ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
-	    let projects = raw.data.projectsV2.edges;
-	    assert( projects.length < 99, "Need to paginate getIssues." );
-
-	    for( let i = 0; i < projects.length; i++ ) {
-		const p = projects[i].node;
-		let items = p.items.edges;
-		assert( items.length < 99, "Need to paginate getIssues(items)." );
-
-		for( let k = 0; k < items.length; k++ ) {
-		    let iss = items[i].node;
-		    if( iss.type == "ISSUE" ) {
-			let datum = {};
-			datum.id       = iss.content.id;
-			datum.number   = iss.content.number;
-			datum.title    = iss.content.title;
-			datum.projName = p.title;
-			datum.projId   = p.id;
-			issues.push( datum );
-		    }}
-	    }})
-	.catch( e => { console.log( authData.who, "get issues failed.", e ); });
+	    let items = raw.data.node.issues.edges;
+	    assert( items.length <= 99, "Need to paginate getIssues." );
+	    for( let i = 0; i < items.length; i++ ) {
+		let iss = items[i].node;
+		let datum = {};
+		datum.id       = iss.id;
+		datum.number   = iss.number;
+		datum.title    = iss.title;
+		issues.push( datum );
+	    }
+	})
+	.catch( e => ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
 
     return issues.length == 0 ? -1 : issues;
 }
@@ -261,7 +243,14 @@ async function getProjects( authData, td ) {
 		datum.repoName  = repo.name;
 		projects.push( datum );
 	    }})
-	.catch( e => { console.log( authData.who, "get projects failed.", e ); });
+	.catch( e => {
+	    if( e.errors.length >= 1 ) {
+		let m = e.errors[0].message;
+		if( m == 'Field \'ProjectV2\' doesn\'t exist on type \'Repository\'' ) { return -1; }
+		else                                                                   { console.log( authData.who, "get projects failed.", e ); }
+	    }
+	    else { ghUtils.errorHandler( "getProjects", e, getProjects, authData, td ); }
+	});
 
     return projects.length == 0 ? -1 : projects; 
 }
@@ -309,7 +298,7 @@ async function getColumns( authData, pNodeId ) {
 		}
 	    }
 	})
-	.catch( e => { console.log( authData.who, "get columns failed.", e ); });
+	.catch( e => ghUtils.errorHandler( "getColumns", e, getColumns, authData, pNodeId ));
 
     return cols.length == 0 ? -1 : cols;
 }
@@ -350,7 +339,7 @@ async function getCards( authData, pNodeId, colId ) {
 		}
 	    }
 	})
-	.catch( e => { console.log( authData.who, "get cards failed.", e ); });
+	.catch( e => ghUtils.errorHandler( "getCards", e, getCards, authData, pNodeId, colId )); 
 
     return cards.length == 0 ? -1 : cards;
 }
@@ -387,7 +376,7 @@ async function getComments( authData, issueId ) {
 		comments.push( datum );
 	    }
 	})
-	.catch( e => { console.log( authData.who, "get comments failed.", e ); });
+	.catch( e => ghUtils.errorHandler( "getComments", e, getComments, authData, issueId )); 
 
     return comments.length == 0 ? -1 : comments;
 }
@@ -421,6 +410,29 @@ async function findProject( authData, td, projId ) {
     return retVal; 
 }
 
+async function findProjectByName( authData, userLogin, projName ) {
+    let pid = -1;
+
+    let query = `query($uLogin: String!, $pName: String!) {
+        user( login: $uLogin ) {
+           login id
+           projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
+    }`;
+    let variables = {"uLogin": userLogin, "pName": projName };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = raw.data.user.projectsV2.edges;
+	    if( projects.length >= 2 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
+	    assert( projects.length > 0 );
+	    pid = projects[0].node.id;
+	})
+	.catch( e => ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
+
+    return pid;
+}
 
 async function findRepo( authData, td ) {
     let repoId = ghV2.getRepoId( authData, td.GHOwner, td.GHRepo ); 
@@ -585,7 +597,7 @@ async function createDraftIssue( authData, pNodeId, title, body ) {
 	    pvId = ret.data.addProjectV2DraftIssue.projectItem.id;
 	    console.log( authData.who, " .. draft issue created, id:", pvId );
 	})
-	.catch( e => { console.log( "createDraftIssue failed.", e ); });
+	.catch( e => ghUtils.errorHandler( "createDraftIssue", e, createDraftIssue, authData, pNodeId, title, body ));
     
     return pvId;
 }
@@ -705,9 +717,9 @@ async function delLabel( authData, label ) {
     let queryJ    = JSON.stringify({ query, variables });
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => console.log( "Delete label failed.", e ));
+	.catch( e => ghUtils.errorHandler( "delLabel", e, delLabel, authData, label ));
     
-    let query = "label deleted " + name;
+    query = "label deleted " + label.name;
     await tu.settleWithVal( "del label", tu.findNotice, query );
 }
 
@@ -2051,6 +2063,7 @@ exports.getComments     = getComments;
 exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
 exports.findProject     = findProject;
+exports.findProjectByName = findProjectByName;
 exports.findRepo        = findRepo;
 exports.getFlatLoc      = getFlatLoc; 
 exports.getFullLoc      = getFullLoc; 

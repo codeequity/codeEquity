@@ -37,11 +37,15 @@ const gh2TestDelete     = require( './gh2/testDelete' );
 
 async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks ) {
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
-    // If this is first PAct for the day, start it up
+    // If this is first PAct for the day, start it up.  The purpose of wakey is to kick off both aws and each host.
 
+    const wakeyName = "ceServer wakey XYZZYXXK837598";
     // XXX so far, V2 can't delete pv2, so no point making.  link and unlink instead.
-    // const wakeyPID = await gh2tu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
-
+    // const wakeyPID = await gh2tu.makeProject( authData, td, wakeyName, "" );
+    let wakeyPID = await gh2tu.findProjectByName( authData, td.GHOwner, wakeyName );
+    assert( wakeyPID != -1 );
+    console.log( "Found", wakeyName, "with PID:", wakeyPID );
+    
     await gh2tu.linkProject( authData, wakeyPID, td.GHRepoId );
     
     const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.ceProjectId });
@@ -52,13 +56,8 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
 	await utils.sleep( 8000 );
     }
 
-    // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, wakeyPID, td.softContTitle );
-
     // gh2tu.remProject( authData, wakeyPID );
     gh2tu.unlinkProject( authData, wakeyPID, td.GHRepoId );
-    assert( false );
-
     
     // TESTS
 

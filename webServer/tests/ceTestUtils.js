@@ -36,7 +36,7 @@ function shuffle(arr) {
 async function getLinks( authData, ghLinks, query ) {
     let postData = {"Endpoint": "Testing", "Request": "getLinks" };
     let linkData = await utils.postCE( "testHandler", JSON.stringify( postData ));
-    ghLinks.fromJson( linkData );
+    ghLinks.fromJson( authData, linkData );
     return ghLinks.getLinks( authData, query );
 }
 
@@ -112,6 +112,7 @@ function makeTitleReducer( aStr ) {
 // Can't just rely on host for confirmation.  Notification arrival to CE can be much slower, and in some cases we need
 // CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
 async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
+    console.log( "Confirm Proj", ceProjId, fullName, projId );
     let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
     return locs != -1; 
 }

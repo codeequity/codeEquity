@@ -219,24 +219,26 @@ class Linkage {
     }
 
     // linkData is ceProject-specific, i.e. a single "cplinks"
-    fromJson( linkData ) {
+    fromJson( authData, linkData ) {
 	this.links = {};
-	console.log( authData.who, "Creating ghLinks from json data" );
+	// console.log( "Creating ghLinks from json data" );
 	for( const [_, clinks] of Object.entries( linkData ) ) {
-	    for( const [_, link] of Object.entries( clinks ) ) {
-		// XXX grunk.  naming in addLinkage causes this conversion. kinda silly.  but testUtils only, so min impact.
-		let orig = {};
-		orig.hostRepoName  = link.hostRepo;
-		orig.hostRepoId    = link.hostRepoId;
-		orig.issueId       = link.hostIssueId;
-		orig.issueNum      = link.hostIssueNum;
-		orig.projectId     = link.hostProjectId;
-		orig.projectName   = link.hostProjectName;
-		orig.columnId      = link.hostColumnId;
-		orig.columnName    = link.hostColumnName;
-		orig.cardId        = link.hostCardId;
-		orig.title         = link.hostIssueName;
-		this.addLinkage( {}, link.ceProjectId, orig, link.flatSource );
+	    for( const [_, plinks] of Object.entries( clinks ) ) {
+		for( const [col, link] of Object.entries( plinks ) ) {
+		    // XXX grunk.  naming in addLinkage causes this conversion. kinda silly.  but testUtils only, so min impact.
+		    let orig = {};
+		    orig.hostRepoName  = link.hostRepo;
+		    orig.hostRepoId    = link.hostRepoId;
+		    orig.issueId       = link.hostIssueId;
+		    orig.issueNum      = link.hostIssueNum;
+		    orig.projectId     = link.hostProjectId;
+		    orig.projectName   = link.hostProjectName;
+		    orig.columnId      = link.hostColumnId;
+		    orig.columnName    = link.hostColumnName;
+		    orig.cardId        = link.hostCardId;
+		    orig.title         = link.hostIssueName;
+		    this.addLinkage( authData, link.ceProjectId, orig, link.flatSource );
+		}
 	    }
 	}
     }
@@ -245,7 +247,7 @@ class Linkage {
     addLinkage( authData, ceProjId, orig, source ) {
 	
 	// console.log( authData.who, "add link", ceProjId, orig.issueId, orig.cardId, orig.columnName, orig.columnId, orig.title );
-
+	
 	assert( ceProjId     != config.EMPTY );
 	assert( orig.issueId != config.EMPTY );
 	assert( orig.cardId  != config.EMPTY );
@@ -286,10 +288,12 @@ class Linkage {
 	// Need to purge first!
 	this.purgeLocs( "TESTING-FROMJSONLOCS" );
 	
-	console.log( "Creating ghLinks.locs from json data" );
+	// console.log( "Creating ghLinks.locs from json data" );
 	for( const [_, clocs] of Object.entries( locData ) ) {
-	    for( const [_, loc] of Object.entries( clocs ) ) {
-		this.addLoc( {}, loc );
+	    for( const [_, plocs] of Object.entries( clocs ) ) {
+		for( const [col, loc] of Object.entries( plocs )) {
+		    this.addLoc( {}, loc );
+		}
 	    }
 	}
     }
@@ -351,9 +355,11 @@ class Linkage {
 	const colName    = query.hasOwnProperty( "colName" )    ? query.colName            : config.EMPTY;
 	const issueTitle = query.hasOwnProperty( "issueTitle" ) ? query.issueTitle         : config.EMPTY;
 
-	// console.log( authData.who, "get Links", issueId, cardId, projId, projName, colName, issueTitle );
+	// console.log( authData.who, "get Links", ceProjId, issueId, cardId, projId, projName, colName, issueTitle );
 	
 	let links = [];
+	if( this.links[ceProjId] == null ) { return -1; }  // could be an empty ceproj
+	
 	for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
 	    // Note, during initial resolve, this may NOT be 1:1 issue:card
 	    for( const [_, link] of Object.entries( clinks ) ) {
@@ -592,7 +598,7 @@ class Linkage {
     }
     
     purge( repo ) {
-	console.log( authData.who, "Removing links, locs for", repo );
+	console.log( "Removing links, locs for", repo );
 	let killList = [];
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {
