@@ -417,6 +417,9 @@ async function findProjectByName( authData, userLogin, projName ) {
         user( login: $uLogin ) {
            login id
            projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
+        organization( login: $uLogin ) {
+           login id
+           projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
     }`;
     let variables = {"uLogin": userLogin, "pName": projName };
     query = JSON.stringify({ query, variables });
@@ -424,10 +427,12 @@ async function findProjectByName( authData, userLogin, projName ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
-	    let projects = raw.data.user.projectsV2.edges;
-	    if( projects.length >= 2 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
-	    assert( projects.length > 0 );
-	    pid = projects[0].node.id;
+	    let projects = [];
+	    if( ghUtils.validField( raw.data, "user" ))              { projects = raw.data.user.projectsV2.edges; }
+	    else if( ghUtils.validField( raw.data, "organization" )) { projects = raw.data.organization.projectsV2.edges; }
+
+	    if     ( projects.length >= 2 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
+	    else if( projects.length >= 1 ) { pid = projects[0].node.id; }
 	})
 	.catch( e => ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
 
@@ -490,11 +495,12 @@ async function ingestPActs( authData, issueData ) {
 */
 
 
-async function makeProject(authData, td, name, body ) {
+async function makeProject(authData, td, name, body, specials ) {
 
-    let pid = await ghV2.createProject( authData, td.GHOwnerId, td.GHRepoId, name );
+    let ownerId = typeof specials !== 'undefined' && specials.hasOwnProperty( "owner" ) ? specials.owner : td.actorId;
+    let pid = await ghV2.createProject( authData, ownerId, td.GHRepoId, name );
     
-    console.log( "MakeProject:", name, pid, td.GHRepoId );
+    console.log( "MakeProject returned:", pid, name, ownerId );
     await utils.sleep( GH_DELAY );
     return pid;
 }

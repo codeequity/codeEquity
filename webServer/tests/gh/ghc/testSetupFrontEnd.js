@@ -29,7 +29,7 @@ async function runTests() {
 
     // TEST_REPO auth
     let td          = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
+    td.GHOwner      = config.TEST_ACTOR;
     td.GHRepo       = config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
@@ -43,7 +43,7 @@ async function runTests() {
 
     // CROSS_TEST_REPO auth
     let tdX        = new testData.TestData();
-    tdX.GHOwner    = config.CROSS_TEST_OWNER;
+    tdX.GHOwner    = config.CROSS_TEST_ACTOR;
     tdX.GHRepo     = config.CROSS_TEST_REPO;
     tdX.GHFullName = tdX.GHOwner + "/" + tdX.GHRepo;
     
@@ -57,7 +57,7 @@ async function runTests() {
 
     // MULTI_TEST_REPO auth
     let tdM        = new testData.TestData();
-    tdM.GHOwner    = config.MULTI_TEST_OWNER;
+    tdM.GHOwner    = config.MULTI_TEST_ACTOR;
     tdM.GHRepo     = config.MULTI_TEST_REPO;
     tdM.GHFullName = tdM.GHOwner + "/" + tdM.GHRepo;
     

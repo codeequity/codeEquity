@@ -831,6 +831,7 @@ async function updateProject( authData, projNodeId, title ) {
 
 // Only repository owner can use this to create a project.  
 async function createProject( authData, ownerNodeId, repoNodeId, title ) {
+    console.log( "Create project", ownerNodeId, repoNodeId, title );
     let query     = `mutation( $ownerId:ID!, $repoId:ID!, $title:String! ) 
                              { createProjectV2( input:{ repositoryId: $repoId, ownerId: $ownerId, title: $title }) {clientMutationId projectV2 {id}}}`;
     let variables = {"repoId": repoNodeId, "ownerId": ownerNodeId, "title": title };
@@ -840,7 +841,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
-	    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'createProjectV2' ) && ret.data.createProjectV2.hasOwnProperty( 'projectV2' ) )
+	    if( ghUtils.validField( ret, "data" ) && ghUtils.validField( ret.data, "createProjectV2" ) && ghUtils.validField( ret.data.createProjectV2, "projectV2" ))
 	    {
 		pid = ret.data.createProjectV2.projectV2.id;
 	    }
@@ -848,7 +849,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
 	})
 	.catch( e => pid = ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
 
-    return pid;
+    return pid == false ? -1 : pid;
 }
 
 // XXX revisit once column id is fixed.
@@ -1050,8 +1051,8 @@ async function getOwnerId( authData, ownerLogin ) {
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
 	    if( ret.hasOwnProperty( 'data' )) {
-		if( ret.data.hasOwnProperty( 'user' ))              { retId = ret.data.user.id; }
-		else if( ret.data.hasOwnProperty( 'organization' )) { retId = ret.data.user.id; }
+		if( ghUtils.validField( ret.data, "user" ))              { retId = ret.data.user.id; }
+		else if( ghUtils.validField( ret.data, "organization" )) { retId = ret.data.organization.id; }
 	    }
 	    console.log( authData.who, ownerLogin, retId );
 	  })
@@ -1127,6 +1128,8 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 }
 
 async function getProjectIds( authData, repoFullName, data, cursor ) {
+
+    console.log( "GPID", repoFullName );
     
     let rp = repoFullName.split('/');
     assert( rp.length == 2 );

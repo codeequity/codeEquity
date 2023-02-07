@@ -1,7 +1,7 @@
 // ceServerConfig
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
-const CE_USER    = 'builderCE';
+const CE_ACTOR    = 'builderCE';
 const CE_BOT     = 'codeequity[bot]';
 const TESTER_BOT = 'cetester[bot]';
 
@@ -37,15 +37,18 @@ const TEST_PAT_PATH     = "../ops/github/auth/ghAriPAT";
 const CROSS_PAT_PATH    = "../ops/github/auth/ghAriPAT";
 const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT"; 
 
-const TEST_OWNER        = "ariCETester";
-const TEST_REPO         = "CodeEquityTester";
+const TEST_OWNER        = "codeequity";
+const TEST_ACTOR        = "ariCETester";
+const TEST_REPO         = "ceTesterAri";
 const FLUTTER_TEST_REPO = "ceFlutterTester";
 
-const CROSS_TEST_OWNER  = "ariCETester";          
-const CROSS_TEST_REPO   = "ceTesterAlt";
+const CROSS_TEST_OWNER  = "codeequity";          
+const CROSS_TEST_ACTOR  = "ariCETester";          
+const CROSS_TEST_REPO   = "ceTesterAriAlt";
 
-const MULTI_TEST_OWNER  = "connieCE";
-const MULTI_TEST_REPO   = "CodeEquityTester";
+const MULTI_TEST_OWNER  = "codeequity";
+const MULTI_TEST_ACTOR  = "connieCE";
+const MULTI_TEST_REPO   = "ceTesterConnie";
 
 
 // Required project columns.  Can rename, not reorder, and retain CE functionality
@@ -127,7 +130,7 @@ const APEQ_COLOR = 'fef2c0';   // github color Alloc PEQ labels
 
 
 
-exports.CE_USER   = CE_USER;
+exports.CE_ACTOR   = CE_ACTOR;
 exports.CE_BOT    = CE_BOT;
 exports.TESTER_BOT = TESTER_BOT;
 exports.PROJ_COLS = PROJ_COLS;
@@ -174,11 +177,14 @@ exports.TEST_PAT_PATH    = TEST_PAT_PATH
 exports.CROSS_PAT_PATH   = CROSS_PAT_PATH
 exports.MULTI_PAT_PATH   = MULTI_PAT_PATH
 exports.TEST_OWNER       = TEST_OWNER;
+exports.TEST_ACTOR        = TEST_ACTOR;
 exports.TEST_REPO        = TEST_REPO;
 exports.FLUTTER_TEST_REPO = FLUTTER_TEST_REPO;
 exports.CROSS_TEST_OWNER = CROSS_TEST_OWNER;
+exports.CROSS_TEST_ACTOR  = CROSS_TEST_ACTOR;
 exports.CROSS_TEST_REPO  = CROSS_TEST_REPO;
 exports.MULTI_TEST_OWNER = MULTI_TEST_OWNER;
+exports.MULTI_TEST_ACTOR  = MULTI_TEST_ACTOR;
 exports.MULTI_TEST_REPO  = MULTI_TEST_REPO;
 
 exports.PEQ_LABEL   = PEQ_LABEL;

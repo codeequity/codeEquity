@@ -8,6 +8,7 @@ class CEData {
 
 	this.org         = settings.hasOwnProperty( "org" )         ? settings.org         : config.EMPTY;
 	this.actor       = settings.hasOwnProperty( "actor" )       ? settings.actor       : config.EMPTY;
+	this.actorId     = settings.hasOwnProperty( "actorId" )     ? settings.actorId     : config.EMPTY;
 	this.reqBody     = settings.hasOwnProperty( "reqBody" )     ? settings.reqBody     : config.EMPTY;
 
 	this.repoId      = settings.hasOwnProperty( "repoId" )      ? settings.repoId      : config.EMPTY;
@@ -33,6 +34,7 @@ class CEData {
 	settings.ceProjectId = orig.ceProjectId;
 	settings.org         = orig.org;
 	settings.actor       = orig.actor;
+	settings.actorId     = orig.actorId;
 	settings.reqBody     = orig.reqBody;
 	settings.repoId      = orig.repoId;
 	settings.repoName    = orig.repoName;
@@ -55,6 +57,7 @@ class CEData {
 	if( this.ceProjectId != -1           ) { console.log( "ceProjectId", this.ceProjectId ); }
 	if( this.org         != config.EMPTY ) { console.log( "org", this.org ); }
 	if( this.actor       != config.EMPTY ) { console.log( "actor", this.actor ); }
+	if( this.actorId     != config.EMPTY ) { console.log( "actorId", this.actorId ); }
 
 	if( this.repoId      != config.EMPTY ) { console.log( "repoId", this.repoId ); }
 	if( this.repoName    != config.EMPTY ) { console.log( "repoName", this.repoName ); }

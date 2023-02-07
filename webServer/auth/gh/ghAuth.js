@@ -59,7 +59,7 @@ function getInstallationClientFromToken(installationAccessToken) {
     //return new OctokitRetry({ auth: `token ${installationAccessToken}` });
 }
 
-async function getInstallationClient(owner, repo, actor) {
+async function getInstallationClient(actor, repo, source) {
 
     // Both the codeEquity app, and the ceTester app are installed for local development, both are authorized against the github repo.
     // the codeEquity app contains the webServer - use those credentials for posting to GH, otherwise secondary notification filtering
@@ -67,13 +67,13 @@ async function getInstallationClient(owner, repo, actor) {
     // sender, for bot posts, appears to be drawn from the installed app name.
     // Use ceTester creds for testing, codeEquity for everything else
     let credPath = config.CREDS_PATH;
-    if( actor != config.CE_USER &&
-	( owner == config.TEST_OWNER || owner == config.CROSS_TEST_OWNER || owner == config.MULTI_TEST_OWNER ) &&
-	( repo == config.TEST_REPO   || repo == config.FLUTTER_TEST_REPO || repo == config.CROSS_TEST_REPO   || owner == config.MULTI_TEST_OWNER )) {
+    if( source != config.CE_ACTOR &&
+	( actor == config.TEST_ACTOR || actor == config.CROSS_TEST_ACTOR || actor == config.MULTI_TEST_ACTOR ) &&
+	( repo == config.TEST_REPO   || repo == config.FLUTTER_TEST_REPO || repo == config.CROSS_TEST_REPO   || actor == config.MULTI_TEST_ACTOR )) {
 	credPath = config.CREDS_TPATH;
     }
 
-    // console.log( "GIC", owner, repo );
+    // console.log( "GIC", actor, repo );
     // console.log( "GIC", credPath );
     
     dotenv.config({ path: credPath });
@@ -90,13 +90,13 @@ async function getInstallationClient(owner, repo, actor) {
     // console.log( "GIC app", app );
     // console.log( "GIC jwt", jwt );
 
-    installationAccessToken = await getInstallationAccessToken( owner, repo, app, jwt )
+    installationAccessToken = await getInstallationAccessToken( actor, repo, app, jwt )
         .catch( e => {
 	    console.log( "Get Install Client failed.", e );
 	    return "";
 	});
 
-    console.log( "Get AUTH for", owner, repo, credPath, jwt.substring(0,15), installationAccessToken.substring( 0,50) );
+    console.log( "Get AUTH for", actor, repo, credPath, jwt.substring(0,15), installationAccessToken.substring( 0,50) );
 
     if( installationAccessToken == -1 ) { return -1; }
     return getInstallationClientFromToken(installationAccessToken);
@@ -104,13 +104,13 @@ async function getInstallationClient(owner, repo, actor) {
 }
 
 
-async function getPAT( owner ) {
+async function getPAT( actor ) {
     let PAT = "";
     let fname = "";
-    if(      owner == config.CE_USER )          { fname = config.SERVER_PAT_PATH; }
-    else if( owner == config.TEST_OWNER )       { fname = config.TEST_PAT_PATH; }
-    else if( owner == config.CROSS_TEST_OWNER ) { fname = config.CROSS_PAT_PATH; }
-    else if( owner == config.MULTI_TEST_OWNER ) { fname = config.MULTI_PAT_PATH; }
+    if(      actor == config.CE_ACTOR )         { fname = config.SERVER_PAT_PATH; }
+    else if( actor == config.TEST_ACTOR )       { fname = config.TEST_PAT_PATH; }
+    else if( actor == config.CROSS_TEST_ACTOR ) { fname = config.CROSS_PAT_PATH; }
+    else if( actor == config.MULTI_TEST_ACTOR ) { fname = config.MULTI_PAT_PATH; }
     
     try { PAT = fs.readFileSync(fname, 'utf8'); }
     catch(e) { console.log('Error:', e.stack); }
@@ -126,9 +126,10 @@ async function refreshAuths( authData, pms, host, org, actor) {
     const stamp = Date.now();
 
     if( pms == config.PMS_GHC ) {
+	let repoParts = org.split('/');        // XXX rp[1] is undefined for orgs	
 	if( stamp - octokitClients[host][org][actor].last > 3500000 ) {
 	    console.log( "********  Old octo auth.. refreshing." );
-	    octokitClients[host][org][actor].auth = await auth.getInstallationClient( org, actor, actor );
+	    octokitClients[host][org][actor].auth = await auth.getInstallationClient( actor, repoParts[1], config.CE_ACTOR );
 	    authData.ic  = octokitClients[host][org][actor].auth;
 	    octokitClients[host][org][actor].last = Date.now();
 	}
@@ -149,9 +150,9 @@ async function getAuths( authData, pms, org, actor ) {
     // console.log( "GHR auths", pms, org, actor );
     
     // Only relevant for classic projects (!!)  Even so, keep auth breakdown consistent between parts.
-    // Need installation client from octokit for every owner/repo/jwt triplet.  
+    // Need installation client from octokit for every actor/repo/jwt triplet.  
     //   jwt is per app install, 1 codeEquity for all.
-    //   owner and repo can switch with notification.  need multiple.
+    //   actor and repo can switch with notification.  need multiple.
     if( pms == config.PMS_GHC ) {
 	if( !octokitClients.hasOwnProperty( host ) )            { octokitClients[host] = {};      }
 	if( !octokitClients[host].hasOwnProperty( org ))        { octokitClients[host][org] = {}; }
@@ -160,7 +161,7 @@ async function getAuths( authData, pms, org, actor ) {
 	    // Wait later
 	    let repoParts = org.split('/');        // XXX rp[1] is undefined for orgs
 	    octokitClients[host][org][actor] = {};
-	    octokitClients[host][org][actor].auth = getInstallationClient( repoParts[0], repoParts[1], actor ); 
+	    octokitClients[host][org][actor].auth = getInstallationClient( repoParts[0], repoParts[1], config.CE_ACTOR ); 
 	    octokitClients[host][org][actor].last = Date.now();
 	}
     }
@@ -170,7 +171,7 @@ async function getAuths( authData, pms, org, actor ) {
     if( !githubPATs[host].hasOwnProperty( org ))        { githubPATs[host][org] = {}; }
     if( !githubPATs[host][org].hasOwnProperty( actor )) {
 	// Wait later
-	let reservedUsers = [config.CE_USER, config.TEST_OWNER, config.CROSS_TEST_OWNER, config.MULTI_TEST_OWNER];
+	let reservedUsers = [config.CE_ACTOR, config.TEST_ACTOR, config.CROSS_TEST_ACTOR, config.MULTI_TEST_ACTOR];
 	// console.log( "Get PAT for", actor, "in", host, org );
 	githubPATs[host][org][actor] = reservedUsers.includes( actor ) ?  getPAT( actor ) :  awsUtils.getStoredPAT( authData, host, actor );
     }

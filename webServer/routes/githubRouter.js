@@ -27,7 +27,7 @@ const gh2Issues = require( './ghVersion2/githubPV2IssueHandler' );
 var pendingNotices = [];
 
 
-// CE_USER used for app-wide jwt
+// CE_ACTOR used for app-wide jwt
 // owner, repo needed for octokit installation client.
 // owner needed for personal access token
 
@@ -151,7 +151,7 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
     console.log( "XXX Switcher GHC" );
-    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.repoName, config.CE_USER );
+    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.repoName, config.CE_ACTOR );
     
     switch( jd.event ) {
     case 'issue' :

@@ -55,7 +55,9 @@ async function getNotices() {
 async function findNotice( query ) {
     let notes = await getNotices();
     CE_Notes.fromJson( notes );
-    // console.log( "NOTICES.  Looking for", query );
+    console.log( "NOTICES.  Looking for", query, notes, CENotes );
+    CE_Notes.show();
+    console.log( "boat" );
     // if( Math.random() < .05 ) { console.log(""); CE_Notes.show(); console.log(""); }
     return CE_Notes.find( query );
 }

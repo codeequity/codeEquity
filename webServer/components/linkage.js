@@ -57,7 +57,7 @@ class Linkage {
 
 	// XXX local implementations should not be here.
 	// classic is per repo.
-	// Init repo with CE_USER, which is typically a builder account that needs full access.
+	// Init repo with CE_ACTOR, which is typically a builder account that needs full access.
 	if( host == config.HOST_GH ) {
 	    if( pms == config.PMS_GHC ) {
 		
@@ -80,8 +80,8 @@ class Linkage {
 			let fnParts = repo.split('/');
 			let rlinks = [];
 			
-			if( isOrg ) { await ceAuth.getAuths( authData, host, pms, org,  config.CE_USER ); }
-			else        { await ceAuth.getAuths( authData, host, pms, repo, config.CE_USER ); }
+			if( isOrg ) { await ceAuth.getAuths( authData, host, pms, org,  config.CE_ACTOR ); }
+			else        { await ceAuth.getAuths( authData, host, pms, repo, config.CE_ACTOR ); }
 			
 			// XXX this should not be here
 			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
@@ -111,7 +111,7 @@ class Linkage {
 	    // All ids for GH2 are GQL node_ids.
 	    else if( pms == config.PMS_GH2 ) {
 		// mainly to get pat
-		await ceAuth.getAuths( authData, host, pms, org, config.CE_USER ); 
+		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
 
 		// XXX handle entry.HostParts.hostProjectIds
 		let hostProjs = [];

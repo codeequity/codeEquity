@@ -6,7 +6,7 @@ class GHCData extends ceData.CEData{
     constructor( ) {
 	super( {} );
 	this.GHRepo       = config.EMPTY;  // repo shortname
-	this.GHOwner      = config.EMPTY;  
+	this.GHOwner      = config.EMPTY;  // repo owner
 	this.GHIssueNum   = -1;
     }
     show() {

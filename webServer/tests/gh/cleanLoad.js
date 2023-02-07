@@ -39,7 +39,7 @@ async function clearSummary( authData, td ) {
 }
 
 
-// Only load items for  TEST_OWNER, FLUTTER_TEST_REPO.  Need to work through dynamo storage format.
+// Only load items for  TEST_ACTOR, FLUTTER_TEST_REPO.  Need to work through dynamo storage format.
 async function loadPEQ( authData, td ) {
 
     // First, remove.
@@ -228,22 +228,23 @@ async function loadLinkage( authData, td ) {
 
 
 
-
+async function runTests() {
     console.log( "Clean and recreate ceFlutter testing environment in AWS" );
 
     // TEST_REPO auth
     let td          = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
+    td.actor        = config.TEST_ACTOR;
     td.GHRepo       = config.FLUTTER_TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
     let authData     = new authDataC.AuthData();
     authData.who     = "<TEST: Main> ";
-    authData.ic      = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
+    authData.ic      = await auth.getInstallationClient( td.actor, td.GHRepo, td.GHOwner );
     authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();        
-    authData.pat     = await auth.getPAT( td.GHOwner );
+    authData.pat     = await auth.getPAT( td.actor );
 
     let promises = [];
     promises.push( clearIngested( authData, td ));

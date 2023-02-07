@@ -273,8 +273,8 @@ router.post('/:location?', async function (req, res) {
     let ret = hostGetJobData( newStamp, jd, req.headers, locator );
     if( ret == -1 ) { return res.end(); }
 
-    // XXX GQL prefers using CE_USER.  REST prefers CE_BOT.  Can they be reconciled?
-    if( jd.actor == config.CE_USER || jd.actor == config.CE_BOT) {
+    // XXX GQL prefers using CE_ACTOR.  REST prefers CE_BOT.  Can they be reconciled?
+    if( jd.actor == config.CE_ACTOR || jd.actor == config.CE_BOT) {
 	console.log( "Notification for", jd.event, jd.action, "Bot-sent, skipping." );
 	return res.end();
     }

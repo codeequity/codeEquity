@@ -37,6 +37,12 @@ async function postGH( PAT, url, postData ) {
 }
 
 
+// GQL queries can return null field values that hurt when checking a chain
+function validField( arr, field ) {
+    return arr.hasOwnProperty( field ) && !!arr[field] && typeof arr[field] !== 'undefined';
+}
+
+
 // NOTE.  This is very simplistic.  Consider at least random backoff delay, elay entire chain.
 // Ignore:
 //   422:  validation failed.  e.g. create failed name exists.. chances are, will continue to fail.
@@ -230,9 +236,10 @@ function theOnePEQ( labels ) {
     return [peqValue, alloc];
 }
 
+// This needs to work for both users and orgs
 async function getOwnerId( PAT, owner ) {
-    let query       = `query getOwner($owner: String!) { user(login: $owner) { id } }`;
-    const variables = {"owner": owner};
+    let query       = `query ($login: String!) { user(login: $login) { id } organization(login: $login) { id } }`;
+    const variables = {"login": owner};
 
     query = JSON.stringify({ query, variables });
 
@@ -240,7 +247,10 @@ async function getOwnerId( PAT, owner ) {
 	  .catch( e => errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
 
     let retId = -1;
-    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'user' ) ) { retId = ret.data.user.id; }
+    if ( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'user' ) && ret.data.hasOwnProperty( 'organization' )) {
+	if( !!ret.data.user ) { retId = ret.data.user.id; }
+	else                  { retId = ret.data.organization.id; }
+    }
     return retId;
 }
 
@@ -261,8 +271,9 @@ async function getRepoId( PAT, owner, repo ) {
 }
 
 
-exports.errorHandler = errorHandler;
 exports.postGH       = postGH;
+exports.validField   = validField;
+exports.errorHandler = errorHandler;
 
 exports.checkForPV2     = checkForPV2;
 
