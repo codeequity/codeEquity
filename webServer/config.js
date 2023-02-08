@@ -119,7 +119,7 @@ const POPULATE = "populate";
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
 const PROJ_COLS = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];    // Project columns used by codeEquity
-const MAIN_PROJ = 'Master';                                                          // Parent project for all tracked github projects in repo
+const MAIN_PROJ = 'Modules';                                                         // Parent project for all tracked github projects in repo
 const UNCLAIMED = 'UnClaimed';                                                       // Catch-all project for peq issues with no project home
 
 const PEQ_COLOR  = 'ffcc80';   // github color for PEQ labels

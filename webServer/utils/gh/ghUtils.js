@@ -243,14 +243,17 @@ async function getOwnerId( PAT, owner ) {
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
-
     let retId = -1;
-    if ( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'user' ) && ret.data.hasOwnProperty( 'organization' )) {
-	if( !!ret.data.user ) { retId = ret.data.user.id; }
-	else                  { retId = ret.data.organization.id; }
-    }
+    await postGH( PAT, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    if ( validField( ret, "data" ) && validField( ret.data, "user" ) && validField( ret.data, "organization" )) {
+		if( !!ret.data.user ) { retId = ret.data.user.id; }
+		else                  { retId = ret.data.organization.id; }
+	    }
+	})
+	.catch( e => retId = errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
+
     return retId;
 }
 
@@ -260,13 +263,14 @@ async function getRepoId( PAT, owner, repo ) {
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
-
-    // console.log( "GET RID..??", ret );
-    
     let retId = -1;
-    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
+    await postGH( PAT, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    if( validField( ret, "data" ) && validField( ret.data, "repository" )) { retId = ret.data.repository.id; }
+	})
+	.catch( e => retId = errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
+
     return retId;
 }
 

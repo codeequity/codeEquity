@@ -35,8 +35,9 @@ async function refresh( authData, td, projName ){
 // Refresh a recommended project layout.  This is useful when running tests piecemeal.
 async function refreshRec( authData, td ) {
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
+    console.log( "Got hprojs", hostProjs );
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == config.MAIN_PROJ ) {
 	    td.masterPID = proj.hostProjectId;
@@ -72,7 +73,7 @@ async function refreshRec( authData, td ) {
 // Refresh a flat project layout.  This is useful when running tests piecemeal.
 async function refreshFlat( authData, td ) {
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == td.flatTitle ) {
@@ -91,7 +92,7 @@ async function refreshFlat( authData, td ) {
 // Refresh unclaimed.
 async function refreshUnclaimed( authData, td ) {
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == td.unclaimTitle ) {
@@ -168,7 +169,7 @@ async function getLabels( authData, td ) {
 		datum.description = label.description;
 		labels.push( datum );
 	    }})
-	.catch( e => ghUtils.errorHandler( "getLabels", e, getLabels, authData, td )); 
+	.catch( e => labels = ghUtils.errorHandler( "getLabels", e, getLabels, authData, td )); 
 
     return labels.length == 0 ? -1 : labels;
 }
@@ -201,7 +202,7 @@ async function getIssues( authData, td ) {
 		issues.push( datum );
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
+	.catch( e => issues = ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
 
     return issues.length == 0 ? -1 : issues;
 }
@@ -244,12 +245,12 @@ async function getProjects( authData, td ) {
 		projects.push( datum );
 	    }})
 	.catch( e => {
-	    if( e.errors.length >= 1 ) {
+	    if( ghUtils.validField( e, "errors" ) && e.errors.length >= 1 ) {
 		let m = e.errors[0].message;
-		if( m == 'Field \'ProjectV2\' doesn\'t exist on type \'Repository\'' ) { return -1; }
+		if( m == 'Field \'ProjectV2\' doesn\'t exist on type \'Repository\'' ) { projects = []; }
 		else                                                                   { console.log( authData.who, "get projects failed.", e ); }
 	    }
-	    else { ghUtils.errorHandler( "getProjects", e, getProjects, authData, td ); }
+	    else { projects = ghUtils.errorHandler( "getProjects", e, getProjects, authData, td ); }
 	});
 
     return projects.length == 0 ? -1 : projects; 
@@ -258,7 +259,7 @@ async function getProjects( authData, td ) {
 // Note: first view only
 async function getColumns( authData, pNodeId ) {
     let cols = [];
-
+    console.log( "get cols", pNodeId );
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -298,7 +299,7 @@ async function getColumns( authData, pNodeId ) {
 		}
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getColumns", e, getColumns, authData, pNodeId ));
+	.catch( e => cols = ghUtils.errorHandler( "getColumns", e, getColumns, authData, pNodeId ));
 
     return cols.length == 0 ? -1 : cols;
 }
@@ -339,7 +340,7 @@ async function getCards( authData, pNodeId, colId ) {
 		}
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getCards", e, getCards, authData, pNodeId, colId )); 
+	.catch( e => cards = ghUtils.errorHandler( "getCards", e, getCards, authData, pNodeId, colId )); 
 
     return cards.length == 0 ? -1 : cards;
 }
@@ -376,7 +377,7 @@ async function getComments( authData, issueId ) {
 		comments.push( datum );
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getComments", e, getComments, authData, issueId )); 
+	.catch( e => comments = ghUtils.errorHandler( "getComments", e, getComments, authData, issueId )); 
 
     return comments.length == 0 ? -1 : comments;
 }
@@ -434,13 +435,38 @@ async function findProjectByName( authData, userLogin, projName ) {
 	    if     ( projects.length >= 2 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
 	    else if( projects.length >= 1 ) { pid = projects[0].node.id; }
 	})
-	.catch( e => ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
+
+    return pid;
+}
+async function findProjectByRepo( authData, rNodeId, projName ) {
+    let pid = -1;
+
+    let query = `query($rid:ID!, $pName:String!) {
+        node( id:$rid ) {
+           ... on Repository {
+              id nameWithOwner
+              projectsV2(first:99, query: $pName ) {edges{ node{ id title }}}}
+    }}`;
+    let variables = {"rid": rNodeId, "pName": projName };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = [];
+	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
+
+	    if     ( projects.length >= 2 ) { console.log( "WARNING.  Project exists multiple times", projects ); }
+	    else if( projects.length >= 1 ) { pid = projects[0].node.id; }
+	})
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
 
     return pid;
 }
 
 async function findRepo( authData, td ) {
-    let repoId = ghV2.getRepoId( authData, td.GHOwner, td.GHRepo ); 
+    let repoId = ghUtils.getRepoId( authData, td.GHOwner, td.GHRepo ); 
     if( repoId != -1 ) { repoId = {id:repoId}; }
     return repoId;
 }
@@ -505,6 +531,24 @@ async function makeProject(authData, td, name, body, specials ) {
     return pid;
 }
 
+async function findOrCreateProject( authData, td, name, body ) {
+    td.show();
+    let pid = await findProjectByName( authData, td.GHOwner, name );
+    if( pid == -1 ) {
+	pid = await makeProject( authData, td, name, body, {"owner": td.GHOwnerId} );
+    }
+    else {
+	let rp = await findProjectByRepo( authData, td.GHRepoId, name );
+	if( rp == -1 ) {
+	    await linkProject( authData, pid, td.GHRepoId );
+	}
+    }
+    
+    assert( pid != -1 );
+    console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
+    return pid;
+}
+
 // XXX This is not working.. but without ability to create columns yet, this may not get used.  wait.
 async function remProject( authData, projId ) {
 
@@ -533,7 +577,13 @@ async function linkProject( authData, pNodeId, rNodeId ) {
     let variables = {"pid": pNodeId, "rid": rNodeId };
     query         = JSON.stringify({ query, variables });
     
-    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
+    let res = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    res = ret;
+	})
+	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, pNodeId, rNodeId ));
 
     if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
     
@@ -568,9 +618,11 @@ async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name )
     await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
     let cid = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
     
-    console.log( "MakeColumn:", name, cid );
-    let query = "project_column created " + name + " " + fullName;
-    await tu.settleWithVal( "makeCol", tu.findNotice, query );
+    console.log( "Found column:", name );
+
+    // XXX Can't verify this, since we know col can not be created by apiV2 yet
+    // let query = "project_column created " + name + " " + fullName;
+    // await tu.settleWithVal( "makeCol", tu.findNotice, query );
 
     return cid;
 }
@@ -603,7 +655,7 @@ async function createDraftIssue( authData, pNodeId, title, body ) {
 	    pvId = ret.data.addProjectV2DraftIssue.projectItem.id;
 	    console.log( authData.who, " .. draft issue created, id:", pvId );
 	})
-	.catch( e => ghUtils.errorHandler( "createDraftIssue", e, createDraftIssue, authData, pNodeId, title, body ));
+	.catch( e => pvId = ghUtils.errorHandler( "createDraftIssue", e, createDraftIssue, authData, pNodeId, title, body ));
     
     return pvId;
 }
@@ -2032,6 +2084,8 @@ exports.refreshFlat     = refreshFlat;
 exports.refreshUnclaimed = refreshUnclaimed;
 exports.getQuad         = getQuad;
 
+exports.findOrCreateProject = findOrCreateProject;
+
 exports.makeProject     = makeProject;
 exports.remProject      = remProject;
 exports.linkProject     = linkProject;
@@ -2070,6 +2124,7 @@ exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
 exports.findProject     = findProject;
 exports.findProjectByName = findProjectByName;
+exports.findProjectByRepo = findProjectByRepo;
 exports.findRepo        = findRepo;
 exports.getFlatLoc      = getFlatLoc; 
 exports.getFullLoc      = getFullLoc; 

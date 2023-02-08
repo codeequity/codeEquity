@@ -5,7 +5,6 @@ const config   = require( '../../../config' );
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
 const ghUtils  = require( '../../../utils/gh/ghUtils' );
-
 const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
 
 const tu       = require('../../ceTestUtils');
@@ -143,6 +142,8 @@ async function clearRepo( authData, ghLinks, pd ) {
 async function runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM ) {
 
     console.log( "Clear testing environment" );
+    console.log( "TESTDELETE" );
+    td.show();
 
     let promises = [];
     promises.push( clearRepo( authData,  ghLinks, td ));

@@ -55,7 +55,7 @@ async function getNotices() {
 async function findNotice( query ) {
     let notes = await getNotices();
     CE_Notes.fromJson( notes );
-    console.log( "NOTICES.  Looking for", query, notes, CENotes );
+    console.log( "NOTICES.  Looking for", query, notes, CE_Notes );
     CE_Notes.show();
     console.log( "boat" );
     // if( Math.random() < .05 ) { console.log(""); CE_Notes.show(); console.log(""); }
@@ -116,6 +116,8 @@ function makeTitleReducer( aStr ) {
 async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
     console.log( "Confirm Proj", ceProjId, fullName, projId );
     let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
+    // ghLinks.showLocs();
+    // console.log( "query got", locs );
     return locs != -1; 
 }
 

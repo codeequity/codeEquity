@@ -1037,48 +1037,6 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 
 
 
-
-// Owner can be user, or organization.  This works for either.
-// XXX Is there a nicer way to run this as a single query?  i.e. without having 1 or the two be correct, 1 be an error?
-async function getOwnerId( authData, ownerLogin ) {
-    let query       = `query($owner: String!) { organization(login: $owner) {id} 
-                                                user        (login: $owner) {id} }`;
-    const variables = {"owner": ownerLogin };
-    let queryJ      = JSON.stringify({ query, variables });
-
-    let retId = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    if( ret.hasOwnProperty( 'data' )) {
-		if( ghUtils.validField( ret.data, "user" ))              { retId = ret.data.user.id; }
-		else if( ghUtils.validField( ret.data, "organization" )) { retId = ret.data.organization.id; }
-	    }
-	    console.log( authData.who, ownerLogin, retId );
-	  })
-	  .catch( e => retId = ghUtils.errorHandler( "getOwnerId", e, getOwnerId, authData, ownerLogin ));
-
-    return retId;
-}
-
-async function getRepoId( authData, ownerLogin, repoName ) {
-    let query       = `query($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo ) { id } }`;
-    const variables = {"owner": ownerLogin, "repo": repoName };
-    let queryJ      = JSON.stringify({ query, variables });
-
-    let retId = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
-	    console.log( authData.who, ownerLogin, repoName, retId );
-	    
-	})
-	.catch( e => retId = ghUtils.errorHandler( "getRepoId", e, getRepoId, authData, ownerLogin, repoName ));
-
-    return retId;
-}
-
 // Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
 // Returning issueId, not issueNodeId
 async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) {
@@ -1323,8 +1281,6 @@ exports.createProjectCard  = createProjectCard;
 exports.removeCard         = removeCard; 
 exports.rebuildCard        = rebuildCard;
 
-exports.getOwnerId         = getOwnerId;
-exports.getRepoId          = getRepoId;
 exports.getLabelIssues     = getLabelIssues;
 
 exports.getProjectIds      = getProjectIds;

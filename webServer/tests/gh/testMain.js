@@ -31,11 +31,15 @@ const ghcTestCross      = require( './ghc/testCross' );
 
 // GH V2
 const gh2tu             = require( './gh2/gh2TestUtils' );
-const gh2TestPopulate   = require( './gh2/testPopulate' );
 const gh2TestDelete     = require( './gh2/testDelete' );
+const gh2TestSetup      = require( './gh2/testSetup' );
+const gh2TestFlat       = require( './gh2/testFlat' );
+const gh2TestPopulate   = require( './gh2/testPopulate' );
 
 
 async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks ) {
+    console.log( "RUNV2" );
+    td.show();
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up.  The purpose of wakey is to kick off both aws and each host.
 
@@ -69,7 +73,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
 
-    /*
+
     subTest = await gh2TestSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
@@ -80,6 +84,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
+    /*
     subTest = await gh2TestBasicFlow.runTests( authData, ghLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
@@ -89,12 +94,14 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
+    */
     
     subTest = await gh2TestPopulate.runTests( authData, ghLinks, td );
     console.log( "\n\nResolve test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
+    /*
     subTest = await gh2TestComponents.runTests( authData, ghLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
@@ -244,6 +251,8 @@ async function runTests() {
     // XXX Add an arg if these are ever useful again
     // await runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
 
+    console.log( "TESTMAIN" );
+    td.show();
     await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
 	
     // Save dynamo data if run was successful
