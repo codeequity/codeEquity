@@ -198,6 +198,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	// Wait here, since delete issue can createUnclaimed
+	// XXX NYI
 	await deleteIssue( authData, ghLinks, pd );
 	break;
     case 'closed':

@@ -142,8 +142,6 @@ async function clearRepo( authData, ghLinks, pd ) {
 async function runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM ) {
 
     console.log( "Clear testing environment" );
-    console.log( "TESTDELETE" );
-    td.show();
 
     let promises = [];
     promises.push( clearRepo( authData,  ghLinks, td ));

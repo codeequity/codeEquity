@@ -339,6 +339,24 @@ async function getProjectFromNode( authData, pNodeId ) {
     return retVal;
 }
 
+async function situateIssue( authData, projNode, issDat ) {
+    assert( issDat.length == 3 );
+    let issueData = [issDat[0],issDat[1],-1]; // contentId, num, cardId
+    
+    query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
+    variables = {"proj": projNode, "contentId": issDat[0]};
+    queryJ    = JSON.stringify({ query, variables });
+    
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    issueData[2] = ret.data.addProjectV2ItemById.item.id;
+	    console.log( authData.who, " .. issue added to project, pv2ItemId:", issueData[2] );
+	})
+	.catch( e => issueData = ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
+
+    return issueData;
+}
 
 // createIssue, then addProjectV2ItemById
 // Note: mutation:createIssue with inputObject that includes projIds only works for classic projects, not PV2.
@@ -384,23 +402,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	})
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
 
-    // Sometimes, just want unsituated issue
-    if( projNode != -1 ) {
-	query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
-	variables = {"proj": projNode, "contentId": issueData[0]};
-	queryJ    = JSON.stringify({ query, variables });
-	
-	// XXX If the create above succeeds and this triggers, the it will attempt to create again.  Copy made?  Split this out.
-	let pvId = -1;
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	    .then( ret => {
-		if( ret.status != 200 ) { throw ret; }
-		pvId = ret.data.addProjectV2ItemById.item.id;
-		issueData[2] = pvId;
-		console.log( authData.who, " .. issue added to project, pv2ItemId:", pvId );
-	    })
-	    .catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
-    }
+    if( projNode != -1 ) { issueData = await situateIssue( authData, projNode, issueData ); }
     
     return issueData;
 }
@@ -917,21 +919,30 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
     let variables = {"projId": projId, "itemId": itemId, "fieldId": fieldId, "value": value };
 
     let queryJ    = JSON.stringify({ query, variables });
-	
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "moveCard", e, moveCard, authData, projId, itemId, fieldId, value ));
+
+    let ret = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( r => { ret = r; })
+	.catch( e => ret = ghUtils.errorHandler( "moveCard", e, moveCard, authData, projId, itemId, fieldId, value ));
 
     return ret;
 }
 
-// Moving from status: "No Status" to a different value
-async function createProjectCard( authData, projNodeId, issueNodeId, fieldId, valueId, justId ) {
-    let retVal = await moveCard( authData, projNodeId, issueNodeId, fieldId, valueId );
-
+// Note this is used to situate an issue, then put into correct column.
+// Note issueId is contentId.  issDat[2] is issueNodeId
+async function createProjectCard( authData, projNodeId, issueId, fieldId, valueId, justId ) {
+    let issDat = [issueId, -1, -1];
+    // console.log( "CPC", projNodeId, issueId, fieldId, valueId, justId ) ;
+    issDat = await situateIssue( authData, projNodeId, issDat );
+    // console.log( "CPC", issDat );
+    
+    // Move from "No Status".  If good, retVal contains null clientMutationId
+    let retVal = await moveCard( authData, projNodeId, issDat[2], fieldId, valueId );
+    
     if( retVal != -1 ) {
-	retVal = justId ?
-	    issueNodeId : 
-	    {"projId": projNodeId, "issueId": issueNodeId, "statusId": fieldId, "statusValId": valueId };
+	retVal = justId ? 
+	    issDat[2] : 
+	    {"projId": projNodeId, "cardId": issDat[2], "statusId": fieldId, "statusValId": valueId };
     }
 
     return retVal;
@@ -1160,12 +1171,12 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "createColumn" )
-	    .catch( e => retVal = ghUtils.errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, issueId));
+	    .catch( e => loc = ghUtils.errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, ghLinks, ceProjectId, projId, colName));
     }
     else {
 	locs = ghLinks.getLocs( authData, { "ceProjId": ceProjectId, "projId": projId, "colName": colName } );    
 	    
-	if( typeof locs === 'undefined' ) {
+	if( locs == -1 ) {
 	    // XXX revisit once (if) GH API supports column creation
 	    console.log( authData.who, "Error.  Please create the column", colName, "by hand, for now." );
 	    loc = -1;

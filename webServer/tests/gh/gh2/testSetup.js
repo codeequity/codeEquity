@@ -21,8 +21,6 @@ const gh2tu    = require( './gh2TestUtils' );
 // Adding a small sleep in each gh2tu.make* - GH seems to get confused if requests come in too fast
 async function createPreferredCEProjects( authData, ghLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
-    console.log( "TESTCREATEPREF" );
-    td.show();
     
     // Modules: softwareContr, businessOps, unallocated
     td.masterPID  = await gh2tu.findOrCreateProject( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
@@ -42,17 +40,17 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
 
 
     // TRIGGER
-    let nbi1     = await ghSafe.createIssue( authData, td.GHOwner, td.GHRepo, "A special populate issue", [], false );
-    let card11   = await ghSafe.createProjectCard( authData, mastCol1, nbi1[0] );
-    let popLabel = await gh.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, config.POPULATE, -1 );
+    let nbi1     = await gh2tu.makeIssue( authData, td, "A special populate issue", [] );
+    let card11   = await gh2tu.makeProjectCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, nbi1[0], true );
+    let popLabel = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, config.POPULATE, -1 );
     let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
-    await gh2tu.addLabel( authData, td, nbiDat, popLabel.name );       // ready.. set... Go!
+    await gh2tu.addLabel( authData, popLabel.id, nbiDat );       // ready.. set... Go!
     await utils.sleep( 1000 );
 
     // softCont: dataSecurity, githubOps, unallocated
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.dataSecTitle, "1,000,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.githubOpsTitle, "1,500,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol1, td.unallocTitle, "3,000,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol2, td.unallocTitle, "1,000,000" );
@@ -303,8 +301,6 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 async function runTests( authData, ghLinks, td ) {
 
     console.log( "Preferred CE project structure =================" );
-    console.log( "TESTSETUP" );
-    td.show();
 
     let testStatus = [ 0, 0, []];
 

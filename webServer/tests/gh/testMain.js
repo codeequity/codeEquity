@@ -38,8 +38,6 @@ const gh2TestPopulate   = require( './gh2/testPopulate' );
 
 
 async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks ) {
-    console.log( "RUNV2" );
-    td.show();
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up.  The purpose of wakey is to kick off both aws and each host.
 
@@ -251,8 +249,6 @@ async function runTests() {
     // XXX Add an arg if these are ever useful again
     // await runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
 
-    console.log( "TESTMAIN" );
-    td.show();
     await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
 	
     // Save dynamo data if run was successful

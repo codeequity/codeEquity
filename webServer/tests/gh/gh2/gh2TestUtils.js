@@ -532,7 +532,6 @@ async function makeProject(authData, td, name, body, specials ) {
 }
 
 async function findOrCreateProject( authData, td, name, body ) {
-    td.show();
     let pid = await findProjectByName( authData, td.GHOwner, name );
     if( pid == -1 ) {
 	pid = await makeProject( authData, td, name, body, {"owner": td.GHOwnerId} );
@@ -618,7 +617,8 @@ async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name )
     await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
     let cid = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
     
-    console.log( "Found column:", name );
+    if( cid == -1 ) { console.log( "Missing column:", name ); }
+    else            { console.log( "Found column:", name ); }
 
     // XXX Can't verify this, since we know col can not be created by apiV2 yet
     // let query = "project_column created " + name + " " + fullName;
@@ -660,9 +660,10 @@ async function createDraftIssue( authData, pNodeId, title, body ) {
     return pvId;
 }
 
-// do NOT return card or id here.  card is rebuilt to be driven from issue.
-async function makeAllocCard( authData, ghLinks, ceProjId, pNodeId, colId, title, amount ) {
-    // Will need statusId
+// GH projects have changed - you can no longer create a card without a companion draft issue.
+// In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
+// In GH2, this function instead creates an issue directly, and adds it to the project.
+async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, colId, title, amount ) {
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
     assert( locs != -1 );
     let statusId = locs[0].hostUtility;
@@ -670,13 +671,41 @@ async function makeAllocCard( authData, ghLinks, ceProjId, pNodeId, colId, title
     // First, wait for colId, can lag
     await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    let note = title + "\n<allocation, PEQ: " + amount + ">";
-    let pvId = createDraftIssue( authData, pNodeId, title, note );
-    await ghV2.moveCard( authData, pNodeId, pvId, statusId, colId );
-    
-    console.log( "Made AllocCard:", pvId, "but this will be deleted to make room for issue-card" );
+    let label = await ghV2.findOrCreateLabel( authData, rNodeId, true, amount.toString() + " " + config.ALLOC_LABEL );
+
+    let allocIssue = {};
+    allocIssue.title = title;
+    allocIssue.labels = [label];
+
+    let issDat = ghV2.createIssue( authData, rNodeId, pNodeId, allocIssue );
+    assert( issDat.length == 3 && issDat[0] != -1 && issDat[2] != -1 );
+
+    await ghV2.moveCard( authData, pNodeId, issDat[2], statusId, colId );
+	
+    console.log( "Made AllocCard and issue:", issDat );
     await utils.sleep( tu.MIN_DELAY );
 }
+
+// XXX untested.  Get this working before using makeNewbornCard.
+//     My not be possible given spotty api coverage.
+async function removeNewbornCard( authData, pNodeId, dissueNodeId, dissueContentId ) {
+    console.log( authData.who, "Remove Newborn Card (draft issue)" );
+
+    // First try removing the draft issue project node.  This should work - does it remove content node?
+    let query = `mutation( $pid:ID!, $did:ID! )
+                    {deleteProjectV2Item( input:{ projectId: $pid, itemId: $did }) 
+                    {clientMutationId}}`;
+
+    let variables = { "pid": pNodeId, "did": dissueNodeId };
+    let queryJ    = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	})
+	.catch( e => ghUtils.errorHandler( "removeNewbornCard", e, removeNewbornCard, authData, pNodeId, dissueNodeId, dissueContentId ));
+}
+
 
 async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, title ) {
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
@@ -693,7 +722,7 @@ async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, tit
     return cid;
 }
 
-async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId ) {
+async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId, justId ) {
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
     assert( locs != -1 );
     let statusId = locs[0].hostUtility;
@@ -701,12 +730,15 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
     // First, wait for colId, can lag
     await tu.settleWithVal( "make Proj card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    // If i have an issue, then I have a card.  find, then move it
-    let link = ghLinks.getUniqueLink( authData, ceProjId, issueId );
-    await ghV2.moveCard( authData, pNodeId, link.hostCardId, statusId, colId );
+    justId = typeof justId === undefined ? false : true;
+    let card = await ghV2.createProjectCard( authData, pNodeId, issueId, statusId, colId, justId );
 
-    // XXX check new form of this notice
-    let query = "project_card moved iss" + link.hostIssueNum;
+    // XXX very weak notice - could be anything.  Verbose ceNotification.  
+    // Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fNfog VudsdHVkWc for codeequity 03.17.798
+    // gives notice: projects_v2_item edited codeequity/I_kwDOIiH6ss5fNinX GitHub/codeequity/I_kwDOIiH6ss5fNinX
+    let path = config.TEST_OWNER + "/" + issueId;
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
+    let query = "projects_v2_item edited " + path + locator;
     await tu.settleWithVal( "makeProjCard", tu.findNotice, query );
 
     // XXX either leave this in to allow peq data to record, or set additional post condition.
@@ -714,6 +746,7 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
     return card;
 }
 
+// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
 async function makeIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels} );
     issue.push( title );
@@ -721,6 +754,7 @@ async function makeIssue( authData, td, title, labels ) {
     return issue;
 }
 
+// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
 async function makeAllocIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels, allocation: true} );
     issue.push( title );
@@ -728,6 +762,7 @@ async function makeAllocIssue( authData, td, title, labels ) {
     return issue;
 }
 
+// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
 async function blastIssue( authData, td, title, labels, assignees, specials ) {
     let wait  = typeof specials !== 'undefined' && specials.hasOwnProperty( "wait" )   ? specials.wait   : true;
 
@@ -743,7 +778,8 @@ async function addLabel( authData, lNodeId, issDat ) {
     await ghV2.addLabel( authData, lNodeId, issDat[0] );
 
     // XXX verify all notice query strings
-    let query = "issue labeled " + issDat[2];
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
+    let query = "issue labeled " + issDat[2] + locator;
     await tu.settleWithVal( "label", tu.findNotice, query );
 }	
 
@@ -751,7 +787,8 @@ async function remLabel( authData, label, issDat ) {
     console.log( "Removing", label.name, "from issueNum", issDat[1] );
     await ghV2.removeLabel( authData, label.id, issDat[0] );
 
-    let query = "issue unlabeled " + issueData[2];
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
+    let query = "issue unlabeled " + issueData[2] + locator;
     await tu.settleWithVal( "unlabel", tu.findNotice, query );
 }
 
@@ -776,15 +813,17 @@ async function delLabel( authData, label ) {
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.catch( e => ghUtils.errorHandler( "delLabel", e, delLabel, authData, label ));
-    
-    query = "label deleted " + label.name;
+
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
+    query = "label deleted " + label.name + locator;
     await tu.settleWithVal( "del label", tu.findNotice, query );
 }
 
 async function addAssignee( authData, issDat, assignee ) {
     await ghV2.addAssignee( authData, issDat[0], assignee.id );
 
-    let query = "issue assigned " + issueData[2];
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
+    let query = "issue assigned " + issueData[2] + locator;
     await tu.settleWithVal( "assign issue", tu.findNotice, query );
 }
 
@@ -801,8 +840,9 @@ async function moveCard( authData, ghLinks, ceProjId, cardId, columnId, specials
 
     let issNum  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issNum" )  ? specials.issNum : false;
 
-    if( issNum ) { 
-	let query = "project_card moved iss" + issNum + " " + td.GHFullName;
+    if( issNum ) {
+	let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;	
+	let query = "project_card moved iss" + issNum + " " + td.GHFullName + locator;
 	await tu.settleWithVal( "moveCard", tu.findNotice, query );
     }
     
@@ -827,7 +867,8 @@ async function remCard( authData, ceProjId, cardId ) {
 async function closeIssue( authData, td, issDat, loc = -1 ) {
     await ghV2.updateIssue( authData, issDat[0], "state", "closed" );
 
-    let query = "issue closed " + issDat[2];
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
+    let query = "issue closed " + issDat[2] + locator;
     await tu.settleWithVal( "closeIssue", tu.findNotice, query );
 
     // Send loc for serious checks.  Otherwise, just check state of issue from GH - if connection is slow, this will help with pacing.
@@ -2095,6 +2136,7 @@ exports.updateColumn    = updateColumn;
 exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
 exports.makeAllocCard   = makeAllocCard;
+exports.removeNewbornCard = removeNewbornCard;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;

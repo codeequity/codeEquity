@@ -122,6 +122,10 @@ async function checkForPV2( PAT, nodeId ) {
 	await errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, nodeId ); 
     }
     else {
+	// XXX non-pv2 claim here can be false (e.g. delete populate issue, nodeId is already gone)
+	//     but may fine those cases to handle as classic?
+	if( !validField( ret.data, "node" ) ) { return found; }
+	
 	let data = ret.data.node.projectItems;
 	if( typeof data !== 'undefined' && typeof data.edges !== 'undefined' ) {
 	    if( data.edges.length > 99 ) { console.log( "WARNING.  Detected a very large number of projectItems.  Ignoring some." ); }
@@ -243,11 +247,13 @@ async function getOwnerId( PAT, owner ) {
 
     query = JSON.stringify({ query, variables });
 
+    console.log( "GetOwnerId", PAT, owner );
+    
     let retId = -1;
     await postGH( PAT, config.GQL_ENDPOINT, query )
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
-	    if ( validField( ret, "data" ) && validField( ret.data, "user" ) && validField( ret.data, "organization" )) {
+	    if ( validField( ret, "data" ) && (validField( ret.data, "user" ) || validField( ret.data, "organization" ))) {
 		if( !!ret.data.user ) { retId = ret.data.user.id; }
 		else                  { retId = ret.data.organization.id; }
 	    }

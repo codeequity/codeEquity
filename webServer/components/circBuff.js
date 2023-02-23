@@ -26,7 +26,7 @@ class CircularBuffer {
 	while( elts <= this.buffCount ) {
 	    const idx = this.at >= elts ? this.at - elts : this.at + this.buffCount - elts;
 	    if( this.elements[idx] == -1 ) { break; }
-	    console.log( this.elements[ idx ] );
+	    console.log( "  <", idx, "> ", this.elements[ idx ] );
 	    elts++;
 	}
     }
