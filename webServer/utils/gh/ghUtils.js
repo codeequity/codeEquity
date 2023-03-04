@@ -140,7 +140,23 @@ async function checkForPV2( PAT, nodeId ) {
     }
 
     return found;
+}
 
+// XXX Consider promoting this to ceUtils
+async function validatePEQ( authData, repo, issueId, title, projId ) {
+    let peq = -1;
+
+    let peqType = "";
+    assert( issueId != -1 );
+    peq = await utils.getPeq( authData, issueId );
+
+    if( peq != -1 && peq.issueName == title && peq.HostRepo == repo && peq.HostProjectId == projId )  {
+	// console.log( authData.who, "validatePeq success" );
+    }
+    else {
+	console.log( "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostRepo, repo, peq.HostProjectId, projId );
+    }
+    return peq;
 }
 
 
@@ -286,6 +302,7 @@ exports.validField   = validField;
 exports.errorHandler = errorHandler;
 
 exports.checkForPV2     = checkForPV2;
+exports.validatePEQ     = validatePEQ;
 
 exports.populateRequest   = populateRequest;
 

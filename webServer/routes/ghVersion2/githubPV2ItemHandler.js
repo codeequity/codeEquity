@@ -3,10 +3,9 @@ var assert      = require( 'assert' );
 
 const utils = require( '../../utils/ceUtils' );
 
-const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
-const gh        = ghClassic.githubUtils;
-const ghSafe    = ghClassic.githubSafe;
-const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
+const ghV2        = require( '../../utils/gh/gh2/ghV2Utils' );
+
+const cardHandler = require( './githubPV2CardHandler' );
 
 // XXX 
 // Terminology:
@@ -94,6 +93,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     switch( action ) {
     case 'edited':
 	{
+	    //  -> card moved
 	    //  -> issues          :labeled     
 	    //  -> projects_v2_item:edited     issue
 	    // This is the generic notification sent alongside the content-specific notice (i.e. issue:label).
@@ -107,8 +107,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // assert( typeof item.changes !== 'undefined' && typeof item.changes.field_value !== 'undefined' && typeof item.changes.field_value.field_type !== 'undefined' );
 	    // assert( item.changes.field_value.field_type == "labels" );
 
-	    console.log( "PV2: Issue labels changed for projectv2 nodeId", item.id );
-	    // console.log( reqBody );
+	    console.log( reqBody );
 	}
 	break;
     case 'converted':
@@ -123,10 +122,12 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'created':
+	// creating a card here.
+	// generated from situateIssue or adding issue to project in GH
 	{
-	    // Draft issue only.  Could use this to offline look for new proj/col.
 	    console.log( "PV2ItemHandler", action );
 	    console.log( reqBody );
+	    cardHandler.handler( authData, ghLinks, pd, action, tag ); 
 	}
 	break;
     case 'deleted':

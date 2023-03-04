@@ -885,13 +885,13 @@ async function getCard( authData, issueNodeId ) {
                      ... on ProjectV2Item {
                         project { id }
                         fieldValueByName(name: "Status") {
-                          ... on ProjectV2ItemFieldSingleSelectValue {optionId field { ... on ProjectV2SingleSelectField { id }}}}
+                          ... on ProjectV2ItemFieldSingleSelectValue {optionId name field { ... on ProjectV2SingleSelectField { id }}}}
                         content { 
                           ... on ProjectV2ItemContent { ... on Issue { number }}}
                   }}}`;
     let variables = {"id": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
-    
+
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( raw => {
 	    if( raw.status != 200 ) { throw raw; }
@@ -900,6 +900,7 @@ async function getCard( authData, issueNodeId ) {
 	    retVal.projId      = card.project.id;                    
 	    retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
 	    retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
+	    retVal.columnName  = card.fieldValueByName.name;         
 	    retVal.issueNum    = card.content.number; 
 	})
 	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, issueNodeId ));

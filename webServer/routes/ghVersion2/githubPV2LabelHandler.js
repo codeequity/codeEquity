@@ -6,8 +6,8 @@ const utils    = require( '../../utils/ceUtils' );
 const awsUtils = require( '../../utils/awsUtils' );
 const ghUtils  = require( '../../utils/gh/ghUtils' );
 
-const ghV2     = require( '../../utils/gh/gh2/ghV2Utils' );
-const gh2Data  = require( '../../utils/gh/gh2/gh2DataUtils' );
+const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
+const gh2DUtils = require( '../../utils/gh/gh2/gh2DataUtils' );
 
 
 
