@@ -422,6 +422,7 @@ async function getIssue( authData, issueId ) {
 	for( label of issue.labels ) { retVal.push( label.description ); }
     }
     retIssue.push( retVal );
+    retIssue.push( issue.number );
     return retIssue;
     
 }
@@ -433,12 +434,12 @@ async function getFullIssue( authData, issueId ) {
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
                    ... on Issue {
-                     id
+                     id number
                      body
                      assignees(first:99) { edges { node { id login }}}
                      labels(first: 99)   { edges { node { id name description }}}
                      milestone { id }
-                     repository { id }
+                     repository { id nameWithOwner }
                      state
                      title
                   }}}`;
@@ -711,7 +712,16 @@ async function getLabels( authData, issueId ) {
 
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
     console.log( authData.who, "Creating PEQ label", allocation, peqValue );
-    let peqHumanLabelName = peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
+
+    // GH no longer allows commas in label names.  Convert, say, 1,500 PEQ to 1.5k PEQ
+    let pvName = "";
+    assert( peqValue < 1000000000, "Error. Peq values can not reach the billions.  Something is wrong with your usage." );
+    if     ( peqValue >= 1000000 ) { pvName = (peqValue / 1000000).toString() + "M"; }
+    else if( peqValue >= 1000 )    { pvName = (peqValue / 1000).toString() + "k"; }
+    else                           { pvName = peqValue.toString(); }
+    
+    let peqHumanLabelName = pvName + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );
+    
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
     let label = await createLabel( authData, repoNode, peqHumanLabelName, pcolor, desc );
@@ -722,6 +732,8 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
 
     console.log( authData.who, "Find or create label", repoNode, allocation, peqHumanLabelName, peqValue );
 
+    if( typeof peqValue == "string" ) { peqValue = parseInt( peqValue.replace(/,/g, "" )); }
+    
     // Find?
     const labelRes = await getLabel( authData, repoNode, peqHumanLabelName );
     let   theLabel = labelRes.label;
@@ -1251,6 +1263,28 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
     return card;
 }
 
+// GitHub add assignee can take a second or two to complete, internally.
+// If this fails, retry a small number of times before returning false.
+async function checkReserveSafe( authData, issueId, colNameIndex ) {
+    let retVal = true;
+    if( colNameIndex > config.PROJ_PROG ) { 
+	let assignees = await getAssignees( authData, issueId );
+	let retries = 0;
+	while( assignees.length == 0 && retries < config.MAX_GH_RETRIES ) {
+	    retries++;
+	    console.log( "XXX WARNING.  No assignees found.  Retrying.", retries, Date.now() );
+	    assignees = await getAssignees( authData, issueId );	    
+	}
+	
+	if( assignees.length == 0  ) {
+	    console.log( "WARNING.  Update card failed - no assignees" );   // can't propose grant without a grantee
+	    retVal = false;
+	}
+    }
+    return retVal;
+}
+
+
 
 
 exports.getProjectFromNode = getProjectFromNode;
@@ -1302,3 +1336,5 @@ exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
 exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
 exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI
 exports.updateColumn           = updateColumn;           // XXX NYI
+
+exports.checkReserveSafe       = checkReserveSafe;

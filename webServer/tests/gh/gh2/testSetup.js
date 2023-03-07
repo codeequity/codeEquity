@@ -48,12 +48,12 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     await utils.sleep( 1000 );
 
     // softCont: dataSecurity, githubOps, unallocated
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHFullName, mastCol2, td.unallocTitle, "1,000,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2.hostColumnId, td.unallocTitle, "1,000,000" );
 }
 
 async function testPreferredCEProjects( authData, ghLinks, td ) {

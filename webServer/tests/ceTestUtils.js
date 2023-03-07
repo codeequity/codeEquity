@@ -55,10 +55,8 @@ async function getNotices() {
 async function findNotice( query ) {
     let notes = await getNotices();
     CE_Notes.fromJson( notes );
-    // console.log( "NOTICES.  Looking for", query, notes, CE_Notes );
     console.log( "NOTICES.  Looking for", query );
-    CE_Notes.show();
-    // if( Math.random() < .05 ) { console.log(""); CE_Notes.show(); console.log(""); }
+    if( CETestDelayCounts["findNotice"] > 3 ) { CE_Notes.show(); }
     return CE_Notes.find( query );
 }
 

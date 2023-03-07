@@ -206,7 +206,12 @@ function parseLabelName( name ) {
     let alloc = false;
     let splits = name.split(" ");
     if( splits.length == 2 && ( splits[1] == config.ALLOC_LABEL || splits[1] == config.PEQ_LABEL )) {
-	peqValue = parseInt( splits[0] );
+	// read "k" or "M" to make up for GH no longer allowing comma's in label names (big numbers became unreadable)
+	let unit = splits[0].slice(-1);
+	peqValue = ( unit == "M" || unit == "k" ) ? parseFloat( splits[0].slice(0,-1) ) : parseInt( splits[0] );
+	peqValue = ( unit == "M" )                ? peqValue * 1000000 : peqValue;
+	peqValue = (                unit == "k" ) ? peqValue * 1000    : peqValue;
+	
 	alloc = splits[1] == config.ALLOC_LABEL;
     }
     return [peqValue, alloc];

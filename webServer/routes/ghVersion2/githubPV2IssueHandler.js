@@ -102,7 +102,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     if( pd.peqValue <= 0 && curVal > 0 ) {
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
-	ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, issueNum, label );
+	ghV2.removeLabel( authData, pd.issueId, label.id );
 	return false;
     }
     
@@ -113,10 +113,11 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     }
     
     // Was this a carded issue?  Get linkage
-    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
+    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links == -1 || links.length == 1 );
     let link = links == -1 ? links : links[0];
-    
+
+    // XXXX XXXXX XXXX  erm.. still need unclaimed:unclaimed?  issue not assigned to project yet.
     // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
     // since can't create card without column_id.  No project, or column_id without triage.
     if( link == -1 || link.hostColumnId == -1) {
@@ -164,7 +165,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     pd.actor      = pd.reqBody.sender.login;
     pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
-    // switch( issueId ) {
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
@@ -174,11 +174,12 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
 	    // XXXX XXXXX This will go away with ceFlutter
-	    if( ghUtils.populateRequest( pd.reqBody['issue']['labels'] )) {
+	    if( ghUtils.populateRequest( pd.reqBody.issue.labels )) {
 		await gh2DUtils.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
 
+	    // XXX here
 	    let success = await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
@@ -188,7 +189,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( "PEQ labeled closed issue." )
 
 		// Must be situated by now.  Move, if in flatworld.
-		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
 		assert( links.length == 1 );
 		let link = links[0];
 

@@ -24,9 +24,10 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     if( pd.issueId == -1 ) { console.log(authData.who, "Resolve: early return, no issueId." ); return gotSplit; }
     
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId });
-    // This can happen if an issue in a non-ceProj repo links to a project that is in a ceProj.  The 'visiting' issue should not
-    // be managed by ceServer.
-    if( links == -1 || links.length < 2 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
+    // This can happen if an issue in a non-ceProj repo links to a project that is in a ceProj.  The 'visiting' issue should not be managed by ceServer.
+    if( links == -1 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
+    console.log( links[0] );
+    if( links.length < 2 ) { console.log(authData.who, "Resolve: early return, nothing to resolve." ); return gotSplit; }
     gotSplit = true;
     
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
@@ -162,16 +163,23 @@ async function populateCELinkage( authData, ghLinks, pd )
 }
 
 
-
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
-async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, specials ) {
-    pd.issueName = issueCardContent[0];
+async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
+    let issDat = [issue.title];
+    if( ghUtils.validField( issue.labels, "edges" ) && issue.labels.edges.length > 0 ) {
+	for( label of issue.labels ) { issDat.push( label.description ); }
+    }
+
+    pd.issueName = issDat[0];
+    pd.issueNum  = issue.number;
+    pd.repoName  = issue.repository.nameWithOwner;
+    pd.repoId    = issue.repository.id;
 
     // normal for card -> issue.  odd but legal for issue -> card
-    let allocation = ghUtils.getAllocated( issueCardContent );
+    let allocation = ghUtils.getAllocated( issDat );
 
-    // XXX If support convert from draft issue with <> shorthand, will need to use parsePEQ( issueCardContent, allocation ) instead
-    pd.peqValue = ghUtils.parseLabelDescr( issueCardContent );
+    // XXX If support convert from draft issue with <> shorthand, will need to use parsePEQ( issDat, allocation ) instead
+    pd.peqValue = ghUtils.parseLabelDescr( issDat );
 
     // Don't wait
     // XXX remove this after ceFlutter initialization is in place
@@ -182,13 +190,15 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
-    let card       = pd.reqBody.projects_v2_item;   
-    let origCardId = link == -1 ? card.node_id         : link.hostCardId;
-    pd.projectId   = link == -1 ? card.project_node_id : link.hostProjectId;
-    pd.columnId    = link == -1 ? -1                   : link.hostColumnId;
-    let colName    = link == -1 ? ""                   : link.hostColumnName;
+    let cardDat    = pd.reqBody.projects_v2_item;   
+    let origCardId = link == -1 ? cardDat.node_id         : link.hostCardId;
+    pd.projectId   = link == -1 ? cardDat.project_node_id : link.hostProjectId;
+    pd.columnId    = link == -1 ? -1                      : link.hostColumnId;
+    let colName    = link == -1 ? config.EMPTY            : link.hostColumnName;
     let projName   = "";
 
+    console.log( authData.who, "PNP:", origCardId, pd.projectId );
+    
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
 
     // Bail, if this create is an add-on to an ACCR 
@@ -206,44 +216,47 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	return 'early';
     }
 
-    // XXX at this point, card is missing colId, colName (but this could be found), repo, issueNum
-    
-    // from card
+    // XXX revisit after issue:label is rebuilt.  May be able to simplify here.  
+    // purely from card
     if( pd.peqType == "end" ) {
 	assert( link == -1 );
 
-	// XXX card getIssue already calls getFullIssue.  double call here is a waste.
-	// !!!!!!!!  change getIssue, only used here.  [id, [title labels], repoId, issueNum ].. or... just getfullissue?
-	//           use getCard to get col data.  modify getCard to include colName
+	let card = ghV2.getCard( authData, origCardId );
+	pd.columnId = card.columnId;
+	colName = card.columnName;
+
+	console.log( "PNP: type 1", pd.columnId, colName );
 	
 	// All cards are created in "no status", originally.  No need to check for reserved.
 	let blank      = config.EMPTY;
 	let orig = {};
 	orig.hostRepoName = pd.repoName;
+	orig.hostRepoId   = pd.repoId;
 	orig.issueId      = pd.issueId;
-	orig.issueNum     = pd.GHIssueNum;
+	orig.issueNum     = pd.issueNum;
 	orig.projectId    = pd.projectId;
-	orig.hostCardId   = origCardId;
+	orig.cardId       = origCardId;
 	ghLinks.addLinkage( authData, pd.ceProjectId, orig );
     }
     else {
 	let peqHumanLabelName = pd.peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
-	// Wait later, maybe
-	let peqLabel = gh.findOrCreateLabel( authData, pd.GHOwner, pd.GHRepo, allocation, peqHumanLabelName, pd.peqValue );
-	projName = gh.getProjectName( authData, ghLinks, pd.ceProjectId, pd.repoName, pd.projectId );
+	// Wait later
+	let peqLabel = ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, pd.peqValue );
+	projName = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 
+	// XXX -1 check is no longer useful?
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
-	assert( colName != -1 ); 
+	assert( colName != config.EMPTY && colName != -1 ); 
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
 	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
-	    gh.removeCard( authData, origCardId );
+	    ghV2.removeCard( authData, pd.projectId, origCardId );
 
 	    // If already exists, will be in links.  Do not destroy it
 	    if( links == -1 ) {
-		// Don't wait
 		peqLabel = await peqLabel;
-		ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, peqLabel );
+		// Don't wait
+		ghV2.removeLabel( authData, peqLabel.id, pd.issueId );
 		// chances are, an unclaimed PEQ exists.  deactivate it.
 		if( pd.issueId != -1 ) {
 		    const daPEQ = await awsUtils.getPeq( authData, pd.ceProjectId, pd.hostIssueId );
@@ -254,58 +267,26 @@ async function processNewPEQ( authData, ghLinks, pd, issueCardContent, link, spe
 	}
 	
 	// issue->card:  issueId is available, but linkage has not yet been added
-	if( pd.GHIssueNum > -1 ) {
-	    let orig = {};
-	    orig.hostRepoName = pd.repoName;
-	    orig.issueId      = pd.issueId;
-	    orig.issueNum     = pd.GHIssueNum;
-	    orig.projectId    = pd.projectId;
-	    orig.projectName  = projName;
-	    orig.columnId     = pd.columnId;
-	    orig.columnName   = colName;
-	    orig.hostCardId   = origCardId;
-	    orig.title        = issueCardContent[0];
-	    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
-
-	    // If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
-	    // Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
-	    // Note: assigments are not relevant for allocations
-	    // If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
-	    if( specials != "relocate" && !allocation ) {
-		pd.assignees = await gh.getAssignees( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );
-	    }
-	}
-	// card -> issue..  exactly one linkage.
-	else {
-	    pd.issueName = issueCardContent[0];
-
-	    // create new issue, rebuild card
-	    peqLabel = await peqLabel; // peqHumanLabelName dep
-	    let issueData = await ghSafe.createIssue( authData, pd.GHOwner, pd.GHRepo, pd.issueName, [peqHumanLabelName], allocation );
-	    pd.issueId  = issueData[0];
-	    pd.GHIssueNum = issueData[1];
-
-	    // Creating a situated card.. no assignees possible so no PEND possible.  Accrued handled above.
-	    let isReserved = false;
-	    if( colName == config.PROJ_COLS[config.PROJ_PEND] ) {
-		console.log( authData.who, "WARNING.", colName, "is reserved, requires assignees.  Moving card out of reserved column." );
-		isReserved = true;
-	    }
-	    let locData = { "reserved": isReserved, "projId": pd.projectId, "projName": pd.projectName, "fullName": pd.repoName };
-	    let newCardId = await gh.rebuildCard( authData, pd.ceProjectId, ghLinks, pd.GHOwner, pd.GHRepo, pd.columnId, origCardId, issueData, locData );
-
-	    // Add card issue linkage
-	    let orig = {};
-	    orig.hostRepoName = pd.repoName;
-	    orig.issueId      = pd.issueId;
-	    orig.issueNum     = pd.GHIssueNum;
-	    orig.projectId    = pd.projectId;
-	    orig.projectName  = projName;
-	    orig.columnId     = pd.columnId;
-	    orig.columnName   = colName;
-	    orig.hostCardId   = newCardId;
-	    orig.title        = pd.issueName;
-	    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
+	assert( pd.issueNum > -1 );
+	let orig = {};
+	orig.hostRepoName = pd.repoName;
+	orig.hostRepoId   = pd.repoId;
+	orig.issueId      = pd.issueId;
+	orig.issueNum     = pd.issueNum;
+	orig.projectId    = pd.projectId;
+	orig.projectName  = projName;
+	orig.columnId     = pd.columnId;
+	orig.columnName   = colName;
+	orig.cardId       = origCardId;
+	orig.title        = issDat[0];
+	ghLinks.addLinkage( authData, pd.ceProjectId, orig );
+	
+	// If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
+	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
+	// Note: assigments are not relevant for allocations
+	// If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
+	if( specials != "relocate" && !allocation ) {
+	    pd.assignees = await ghV2.getAssignees( authData, pd.issueId );
 	}
     }
 

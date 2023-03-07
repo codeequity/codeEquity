@@ -664,20 +664,22 @@ async function createDraftIssue( authData, pNodeId, title, body ) {
 // In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
 // In GH2, this function instead creates an issue directly, and adds it to the project.
 async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, colId, title, amount ) {
-    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
+    console.log( "MAC", ceProjId, rNodeId, pNodeId, colId, title, amount );
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );
+    // ghLinks.showLocs();
     assert( locs != -1 );
     let statusId = locs[0].hostUtility;
 
     // First, wait for colId, can lag
     await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    let label = await ghV2.findOrCreateLabel( authData, rNodeId, true, amount.toString() + " " + config.ALLOC_LABEL );
+    let label = await ghV2.findOrCreateLabel( authData, rNodeId, true, amount.toString() + " " + config.ALLOC_LABEL, amount );
 
     let allocIssue = {};
     allocIssue.title = title;
     allocIssue.labels = [label];
 
-    let issDat = ghV2.createIssue( authData, rNodeId, pNodeId, allocIssue );
+    let issDat = await ghV2.createIssue( authData, rNodeId, pNodeId, allocIssue );
     assert( issDat.length == 3 && issDat[0] != -1 && issDat[2] != -1 );
 
     await ghV2.moveCard( authData, pNodeId, issDat[2], statusId, colId );
