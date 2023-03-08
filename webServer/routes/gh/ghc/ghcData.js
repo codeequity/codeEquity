@@ -1,6 +1,8 @@
-const config  = require('../../config');
+const rootLoc = "../../../";
 
-const ceData  = require( '../ceData' );
+const config  = require(rootLoc + 'config');
+
+const ceData  = require( '../../ceData' );
 
 class GHCData extends ceData.CEData{
     constructor( ) {

@@ -1,14 +1,16 @@
-var assert      = require( 'assert' );
+const rootLoc = "../../../";
 
-var config      = require( '../../config' );
-var cardHandler = require( './githubCardHandler' );
+const assert      = require( 'assert' );
 
-const utils    = require( '../../utils/ceUtils' );
-const awsUtils = require( '../../utils/awsUtils' );
-const ghUtils  = require( '../../utils/gh/ghUtils' );
-const ghcDUtils = require( '../../utils/gh/ghc/ghcDataUtils' );
+const config      = require( rootLoc + 'config' );
+const cardHandler = require( './githubCardHandler' );
 
-const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
+const utils     = require( rootLoc + 'utils/ceUtils' );
+const awsUtils  = require( rootLoc + 'utils/awsUtils' );
+const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
+const ghcDUtils = require( rootLoc + 'utils/gh/ghc/ghcDataUtils' );
+
+const ghClassic = require( rootLoc + 'utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 

@@ -1,14 +1,15 @@
-var assert  = require( 'assert' );
+const rootLoc = "../../../";
 
-var config  = require( '../../config' );
+const assert  = require( 'assert' );
+const config  = require( rootLoc + 'config' );
 
-const utils     = require( '../../utils/ceUtils' );
-const awsUtils  = require( '../../utils/awsUtils' );
+const utils     = require( rootLoc + 'utils/ceUtils' );
+const awsUtils  = require( rootLoc + 'utils/awsUtils' );
 
-const ghUtils   = require( '../../utils/gh/ghUtils' );
-const gh2DUtils = require( '../../utils/gh/gh2/gh2DataUtils' );
+const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
+const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
 
-const ghV2     = require( '../../utils/gh/gh2/ghV2Utils' );
+const ghV2     = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
 
 
 /*

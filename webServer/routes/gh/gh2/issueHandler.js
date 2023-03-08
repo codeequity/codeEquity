@@ -1,13 +1,15 @@
-var assert      = require( 'assert' );
+const rootLoc = "../../../";
 
-var config      = require( '../../config' );
+const assert      = require( 'assert' );
 
-const utils    = require( '../../utils/ceUtils' );
-const awsUtils = require( '../../utils/awsUtils' );
-const ghUtils  = require( '../../utils/gh/ghUtils' );
+const config      = require( rootLoc + 'config' );
 
-const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
-const gh2DUtils = require( '../../utils/gh/gh2/gh2DataUtils' );
+const utils    = require( rootLoc + 'utils/ceUtils' );
+const awsUtils = require( rootLoc + 'utils/awsUtils' );
+const ghUtils  = require( rootLoc + 'utils/gh/ghUtils' );
+
+const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
+const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
 
 // Terminology:
 // situated issue: an issue with a card in a CE-valid project structure

@@ -11,18 +11,18 @@ const links   = require( '../components/linkage' );
 const ceRouter = require( './ceRouter' );
 
 // PMS_GHC
-const ghcIssues   = require( './ghClassic/githubIssueHandler' );
-const ghcCards    = require( './ghClassic/githubCardHandler' );
-const ghcProjects = require( './ghClassic/githubProjectHandler' );
-const ghcColumns  = require( './ghClassic/githubColumnHandler' );
-const ghcLabels   = require( './ghClassic/githubLabelHandler' );
-const ghcData  = require( './ghClassic/ghcData' );
+const ghcIssues   = require( './gh/ghc/githubIssueHandler' );
+const ghcCards    = require( './gh/ghc/githubCardHandler' );
+const ghcProjects = require( './gh/ghc/githubProjectHandler' );
+const ghcColumns  = require( './gh/ghc/githubColumnHandler' );
+const ghcLabels   = require( './gh/ghc/githubLabelHandler' );
+const ghcData  = require( './gh/ghc/ghcData' );
 
 // PMS_GH2
-const gh2Data   = require( './ghVersion2/gh2Data' );
-const gh2Item   = require( './ghVersion2/githubPV2ItemHandler' );
-const gh2Issue  = require( './ghVersion2/githubPV2IssueHandler' );
-const gh2Label  = require( './ghVersion2/githubPV2LabelHandler' );
+const gh2Data   = require( './gh/gh2/gh2Data' );
+const gh2Item   = require( './gh/gh2/itemHandler' );
+const gh2Issue  = require( './gh/gh2/issueHandler' );
+const gh2Label  = require( './gh/gh2/labelHandler' );
 
 // When switching between GHC and GH2, look for pv2Notices that match contentNotices.
 var pendingNotices = [];

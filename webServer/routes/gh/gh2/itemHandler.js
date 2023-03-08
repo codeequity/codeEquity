@@ -1,12 +1,14 @@
-var config      = require( '../../config' );
-var assert      = require( 'assert' );
+const rootLoc = "../../../";
 
-const utils     = require( '../../utils/ceUtils' );
-const ghUtils   = require( '../../utils/gh/ghUtils' );
+const assert    = require( 'assert' );
+const config    = require( rootLoc + 'config' );
 
-const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
+const utils     = require( rootLoc + 'utils/ceUtils' );
+const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
 
-const cardHandler = require( './githubPV2CardHandler' );
+const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
+
+const cardHandler = require( './cardHandler' );
 
 // XXX 
 // Terminology:
