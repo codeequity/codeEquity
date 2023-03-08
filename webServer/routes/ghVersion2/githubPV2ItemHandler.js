@@ -132,8 +132,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// creating a card here.
 	// generated from situateIssue or adding issue to project in GH
 	{
-	    console.log( "PV2ItemHandler", action );
-	    console.log( reqBody );
 	    cardHandler.handler( authData, ghLinks, pd, action, tag ); 
 	}
 	break;

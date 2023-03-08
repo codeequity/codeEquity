@@ -26,7 +26,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId });
     // This can happen if an issue in a non-ceProj repo links to a project that is in a ceProj.  The 'visiting' issue should not be managed by ceServer.
     if( links == -1 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
-    console.log( links[0] );
+    // console.log( links[0] );
     if( links.length < 2 ) { console.log(authData.who, "Resolve: early return, nothing to resolve." ); return gotSplit; }
     gotSplit = true;
     
@@ -221,7 +221,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     if( pd.peqType == "end" ) {
 	assert( link == -1 );
 
-	let card = ghV2.getCard( authData, origCardId );
+	let card = await ghV2.getCard( authData, origCardId );
 	pd.columnId = card.columnId;
 	colName = card.columnName;
 
@@ -236,6 +236,8 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	orig.issueNum     = pd.issueNum;
 	orig.projectId    = pd.projectId;
 	orig.cardId       = origCardId;
+	orig.columnId     = pd.columnId;
+	orig.columnName   = colName;
 	ghLinks.addLinkage( authData, pd.ceProjectId, orig );
     }
     else {

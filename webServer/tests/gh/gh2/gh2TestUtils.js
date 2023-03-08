@@ -673,7 +673,8 @@ async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, col
     // First, wait for colId, can lag
     await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    let label = await ghV2.findOrCreateLabel( authData, rNodeId, true, amount.toString() + " " + config.ALLOC_LABEL, amount );
+    let lname = ghV2.makeHumanLabel( amount, config.ALLOC_LABEL );
+    let label = await ghV2.findOrCreateLabel( authData, rNodeId, true, lname, amount );
 
     let allocIssue = {};
     allocIssue.title = title;

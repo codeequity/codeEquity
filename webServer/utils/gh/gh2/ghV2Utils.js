@@ -710,6 +710,25 @@ async function getLabels( authData, issueId ) {
     return labels;
 }    
 
+// Turn 1000000 or "1,000,000" into "1M" then plus label type.  Leave properly formed alone.
+function makeHumanLabel( amount, peqTypeLabel ) {
+    let retVal = "";
+    if( typeof amount == "string" ) {
+	let unit = amount.slice(-1);
+	if ( unit == "M" || unit == "k" ) { retVal = amount; }
+	else { amount = parseInt( amount.replace(/,/g, "" )); }   // create int for further processing below
+    }
+    
+    if( typeof amount == "number" ) {
+	assert ( amount < 1000000000, "Error. Peq values can not reach the billions.  Something is wrong with your usage." );
+	if     ( amount >= 1000000 ) { retVal = (amount / 1000000).toString() + "M"; }
+	else if( amount >= 1000 )    { retVal = (amount / 1000).toString() + "k"; }
+	else                         { retVal = amount.toString(); }
+    }
+
+    return retVal + " " + peqTypeLabel;
+}
+
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
     console.log( authData.who, "Creating PEQ label", allocation, peqValue );
 
@@ -903,7 +922,7 @@ async function getCard( authData, issueNodeId ) {
                   }}}`;
     let variables = {"id": issueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
-
+    
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( raw => {
 	    if( raw.status != 200 ) { throw raw; }
@@ -1304,6 +1323,7 @@ exports.remAssignee        = remAssignee;
 exports.getAssignees       = getAssignees;
 exports.transferIssue      = transferIssue;
 
+exports.makeHumanLabel     = makeHumanLabel;
 exports.createLabel        = createLabel;
 exports.createPeqLabel     = createPeqLabel;
 exports.getLabel           = getLabel;

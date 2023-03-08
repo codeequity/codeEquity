@@ -176,6 +176,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     pd.actor = pd.reqBody.sender.login;
     let card = pd.reqBody.projects_v2_item;
+
+    console.log( authData.who, "Card", action, "Actor:", pd.actor )
     
     switch( action ) {
     case 'created' :
@@ -199,7 +201,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	{
 	    // within gh project, move card from 1 col to another.
 	    // Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
-	    console.log( authData.who, "Card", action, "Actor:", pd.actor )
 	    
 	    if( pd.reqBody.changes == null ) {
 		console.log( authData.who, "Move within columns are ignored.", pd.reqBody['project_card']['id'] );
