@@ -8,7 +8,7 @@ const ghUtils  = require( '../ghUtils' );
 
 const ghV2     = require( './ghV2Utils' );
 
-const gh2Data  = require( '../../../routes/ghVersion2/gh2Data' );
+const gh2Data  = require( '../../../routes/gh/gh2/gh2Data' );
 
 // XXX allocation set per label - don't bother to pass in
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
