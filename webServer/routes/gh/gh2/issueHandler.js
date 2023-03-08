@@ -3,16 +3,13 @@ const rootLoc = "../../../";
 const assert      = require( 'assert' );
 
 const config      = require( rootLoc + 'config' );
-const cardHandler = require( './githubCardHandler' );
 
-const utils     = require( rootLoc + 'utils/ceUtils' );
-const awsUtils  = require( rootLoc + 'utils/awsUtils' );
-const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
-const ghcDUtils = require( rootLoc + 'utils/gh/ghc/ghcDataUtils' );
+const utils    = require( rootLoc + 'utils/ceUtils' );
+const awsUtils = require( rootLoc + 'utils/awsUtils' );
+const ghUtils  = require( rootLoc + 'utils/gh/ghUtils' );
 
-const ghClassic = require( rootLoc + 'utils/gh/ghc/ghClassicUtils' );
-const gh        = ghClassic.githubUtils;
-const ghSafe    = ghClassic.githubSafe;
+const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
+const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
 
 // Terminology:
 // situated issue: an issue with a card in a CE-valid project structure
@@ -27,6 +24,8 @@ const ghSafe    = ghClassic.githubSafe;
 //               and inclusion in linkage table.
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
+
+// XXX NOTE deleteCard notification will NOT be sent, but pv2item edit (?) will be?  Revisit
 async function deleteIssue( authData, ghLinks, pd ) {
 
     let tstart = Date.now();
@@ -36,23 +35,13 @@ async function deleteIssue( authData, ghLinks, pd ) {
     if( links == -1 ) return;
     let link = links[0];
 
+    console.log( "DELETE" );
+    console.log( pd.reqBody );
+
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
     // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
     // [pd.peqValue, _] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
     // if( pd.peqValue <= 0 ) return;
-
-    // After June, 2022, Github behavior when deleting a situated issue has taken a wrong turn.
-    // Delete issue notification is generate immediately.  good.
-    // Delete card notification is only generated after human browses the project board (!!!!!), at which time the human will see:
-    //        'You can not see this card.  This card references something that has spammy content.'
-
-    // Update, GH delete behavior has been reverted. Reverting to original method, no special cases required during ingest
-    // Carded, not tracked (i.e. not peq).  We know issue was deleted - don't know if card was.
-    // Remove card now, as of 6/2022.  If delCard was already called, links above would already by -1, won't get here.
-    // if( link.hostColumnId == -1 ) {
-    // gh.removeCard( authData, link.hostCardId );
-    // return;
-    // }
 
     // PEQ.  Card is gone, issue is gone.  Delete card will handle all but the one case below, in which case it leaves link intact.
     
@@ -101,20 +90,12 @@ async function deleteIssue( authData, ghLinks, pd ) {
 			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
 			       utils.getToday(), pd.reqBody );
     }
-    // Revert 6/2022
-    // else {
-	// Here, have a peq issue that is not ACCR/!unclaimed.
-	// delCard action & notice is no longer automatic - call here.  CardHandler handles all the details.
 
-	// XXX can NOT remove this card - seems to be protected internal GH junk.  Must wait for it to
-	//     disappear on its own.  UGLY.
-	// gh.removeCard( authData, link.hostCardId );
-        // cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId );
-    // }
     console.log( "Delete", Date.now() - tstart );
 }
 
 async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label ) {
+    console.log( "LabelIssue" );
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
     
@@ -123,7 +104,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     if( pd.peqValue <= 0 && curVal > 0 ) {
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
-	ghSafe.removeLabel( authData, pd.GHOwner, pd.GHRepo, issueNum, label );
+	ghV2.removeLabel( authData, pd.issueId, label.id );
 	return false;
     }
     
@@ -134,10 +115,11 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     }
     
     // Was this a carded issue?  Get linkage
-    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
+    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links == -1 || links.length == 1 );
     let link = links == -1 ? links : links[0];
-    
+
+    // XXXX XXXXX XXXX  erm.. still need unclaimed:unclaimed?  issue not assigned to project yet.
     // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
     // since can't create card without column_id.  No project, or column_id without triage.
     if( link == -1 || link.hostColumnId == -1) {
@@ -146,7 +128,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
 	    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.issueId );
 	    let issueURL = card.content_url.split('/');
 	    assert( issueURL.length > 0 );
-	    link.hostIssueNum  = pd.GHIssueNum;
+	    link.hostIssueNum  = pd.issueNum;
 	    link.hostCardId    = card.id
 	    link.hostProjectId = card.project_url.split('/').pop();
 	    link.hostColumnId  = card.column_url.split('/').pop();
@@ -168,6 +150,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     return (retVal != 'early' && retVal != 'removeLabel')
 }
 
+
 // Actions: opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, 
 //          pinned, unpinned, assigned, unassigned,  locked, unlocked, milestoned, or demilestoned.
 // Note: issue:opened         notification after 'submit' is pressed.
@@ -175,18 +158,14 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
 //       project_card:created notification after submit, then projects:triage to pick column.
 async function handler( authData, ghLinks, pd, action, tag ) {
 
-    // Sender is the event generator.
-    let sender   = pd.reqBody['sender']['login'];
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
-    console.log( authData.who, "start", authData.job );
+    console.log( authData.who, "issueHandler start", authData.job );
     
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
-    pd.issueId    = pd.reqBody['issue']['id'];
-    pd.GHIssueNum = pd.reqBody['issue']['number'];		
-    pd.actor      = pd.reqBody['issue']['user']['login'];
-    pd.issueName  = (pd.reqBody['issue']['title']).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
-
-    // await gh.checkRateLimit(authData);
+    pd.issueId    = pd.reqBody.issue.node_id;         // issue content id
+    pd.issueNum   = pd.reqBody.issue.number;		
+    pd.actor      = pd.reqBody.sender.login;
+    pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
 
     switch( action ) {
     case 'labeled':
@@ -197,11 +176,12 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
 	    // XXXX XXXXX This will go away with ceFlutter
-	    if( ghUtils.populateRequest( pd.reqBody['issue']['labels'] )) {
-		await ghcDUtils.populateCELinkage( authData, ghLinks, pd );
+	    if( ghUtils.populateRequest( pd.reqBody.issue.labels )) {
+		await gh2DUtils.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
 
+	    // XXX here
 	    let success = await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
@@ -211,7 +191,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( "PEQ labeled closed issue." )
 
 		// Must be situated by now.  Move, if in flatworld.
-		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
 		assert( links.length == 1 );
 		let link = links[0];
 
@@ -225,7 +205,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
-			    let peq = await utils.settleWithVal( "validatePeq", ghSafe.validatePEQ, authData, pd.repoName,
+			    let peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.repoName,
 								 link.hostIssueId, link.hostIssueName, link.hostProjectId );
 
 			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
@@ -260,7 +240,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // GH already removed this.  Put it back.
 	    if( newNameIndex >= config.PROJ_ACCR ) {
 		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
-		ghSafe.addLabel( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, pd.reqBody.label );
+		ghSafe.addLabel( authData, pd.Owner, pd.Repo, pd.issueNum, pd.reqBody.label );  // XXXXXX
 		return;
 	    }
 	    
@@ -291,6 +271,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	// Wait here, since delete issue can createUnclaimed
+	// XXX NYI
 	await deleteIssue( authData, ghLinks, pd );
 	break;
     case 'closed':
@@ -319,7 +300,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let newColId = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
-		    let peqId = ( await( ghSafe.validatePEQ( authData, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
+		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
 		    if( peqId == -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }
@@ -335,7 +316,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			    subject = [ peqId.toString(), newColId.toString() ];
 			}
 			
-			awsUtils.recordPEQAction( authData, config.EMPTY, sender, pd.ceProjectId,
+			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					       verb, paction, subject, "",
 					       utils.getToday(), pd.reqBody );
 		    }
@@ -385,12 +366,12 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		console.log( "WARNING.", links[0].hostColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
 		paction = config.PACTACT_NOTE;
 		note = "Bad assignment attempted";
-		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, assignee ); }
-		else                       { ghSafe.addAssignee( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, assignee ); }
+		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.Owner, pd.Repo, pd.issueNum, assignee ); }
+		else                       { ghSafe.addAssignee( authData, pd.Owner, pd.Repo, pd.issueNum, assignee ); }
 	    }
 	    
 	    let subject = [peq.PEQId.toString(), assignee];
-	    awsUtils.recordPEQAction( authData, config.EMPTY, sender, pd.ceProjectId,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 				   verb, paction, subject, note,
 				   utils.getToday(), pd.reqBody );
 	}
@@ -410,7 +391,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
 		    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
-			ghSafe.updateTitle( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum, link.hostIssueName );
+			ghSafe.updateTitle( authData, pd.Owner, pd.Repo, pd.issueNum, link.hostIssueName );
 		    }
 		    else {
 			assert( pd.reqBody.changes.title.from == link.hostIssueName );
@@ -421,7 +402,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 			assert( peq != -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
-			awsUtils.recordPEQAction( authData, config.EMPTY, sender, pd.ceProjectId,
+			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
 					       utils.getToday(), pd.reqBody );
 		    }
@@ -445,7 +426,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// only xfer between repos 1) owned by same person/org; 2) where you have write access to both
 	
 	{
-	    if( pd.reqBody.changes.new_repository.full_name != pd.GHRepo ) {
+	    if( pd.reqBody.changes.new_repository.full_name != pd.Repo ) {
 		console.log( authData.who, "Transfer out.  Cleanup." );
 		const fullRepoName = pd.reqBody.changes.new_repository.full_name;
 		const newRepoName = pd.reqBody.changes.new_repository.name;
@@ -462,11 +443,11 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		    authData.ic = authData.icXfer;
 		    assert( authData.ic != -1 );
 		    console.log( authData.who, newIssNum.toString(), "Landed in ceProject", newRepoName );
-		    let newLabs = await gh.getLabels( authData, pd.GHOwner, newRepoName, newIssNum );
+		    let newLabs = await gh.getLabels( authData, pd.Owner, newRepoName, newIssNum );
 		    console.log( "New labels:", newLabs.data );
 
 		    // Owner must be the same according to GH
-		    let newAssigns = await gh.getAssignees( authData, pd.GHOwner, newRepoName, newIssNum );
+		    let newAssigns = await gh.getAssignees( authData, pd.Owner, newRepoName, newIssNum );
 		    console.log( "New Assignees:", newAssigns.data );
 		    // XXX Will need to move this to unclaimed:unclaimed
 
@@ -479,7 +460,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
 		if( peq != -1 ) {
 		    const subject = [ peq.PEQId, fullRepoName ];
-		    awsUtils.recordPEQAction( authData, config.EMPTY, sender, pd.ceProjectId,
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
 					   utils.getToday(), pd.reqBody );
 		}
@@ -491,9 +472,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	}
 	break;
 
-    case 'opened':	        // Do nothing.
-	// Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle in cards.
-	// Get here with: or more commonly, New issue with submit.
+    case 'opened':	        // Do nothing.  newborn issue created.
     case 'pinned':             	// Do nothing.
     case 'unpinned':      	// Do nothing.
     case 'locked':      	// Do nothing.
@@ -510,4 +489,4 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 }
 
 exports.handler    = handler;
-exports.labelIssue = labelIssue;
+// exports.labelIssue = labelIssue;

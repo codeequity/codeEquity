@@ -1,7 +1,9 @@
-var config  = require( '../../config' );
+const rootLoc = "../../../";
 
-const utils    = require( '../../utils/ceUtils' );
-const awsUtils = require( '../../utils/awsUtils' );
+const config  = require( rootLoc + 'config' );
+
+const utils    = require( rootLoc + 'utils/ceUtils' );
+const awsUtils = require( rootLoc + 'utils/awsUtils' );
 
 // Actions: created, edited, closed, reopened, or deleted
 async function handler( authData, ghLinks, pd, action, tag ) {

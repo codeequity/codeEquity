@@ -1,10 +1,12 @@
-var assert = require( 'assert' );
-var config = require( '../../config' );
+const rootLoc = "../../../";
 
-const utils    = require( '../../utils/ceUtils' );
-const awsUtils = require( '../../utils/awsUtils' );
+const assert = require( 'assert' );
+const config = require( rootLoc + 'config' );
 
-const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
+const utils    = require( rootLoc + 'utils/ceUtils' );
+const awsUtils = require( rootLoc + 'utils/awsUtils' );
+
+const ghClassic = require( rootLoc + 'utils/gh/ghc/ghClassicUtils' );
 const gh        = ghClassic.githubUtils;
 const ghSafe    = ghClassic.githubSafe;
 

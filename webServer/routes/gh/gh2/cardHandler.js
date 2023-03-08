@@ -1,18 +1,15 @@
 const rootLoc = "../../../";
 
 const assert  = require( 'assert' );
-
 const config  = require( rootLoc + 'config' );
 
 const utils     = require( rootLoc + 'utils/ceUtils' );
 const awsUtils  = require( rootLoc + 'utils/awsUtils' );
 
-const ghUtils  = require( rootLoc + 'utils/gh/ghUtils' );
-const ghcDUtils = require( rootLoc + 'utils/gh/ghc/ghcDataUtils' );
+const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
+const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
 
-const ghClassic = require( rootLoc + 'utils/gh/ghc/ghClassicUtils' );
-const gh        = ghClassic.githubUtils;
-const ghSafe    = ghClassic.githubSafe;
+const ghV2     = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
 
 
 /*
@@ -36,7 +33,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 
     // I want peqId for notice PActions, with or without issueId
     if( typeof peq == 'undefined' ) {
-	peq = await ghSafe.validatePEQ( authData, fullName, link.issueId, link.issueName, link.hostProjectId );
+	peq = await ghUtils.validatePEQ( authData, fullName, link.issueId, link.issueName, link.hostProjectId );
     }
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );
@@ -126,9 +123,9 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
     if( !accr || link.hostProjectName == config.UNCLAIMED ) {
 	console.log( authData.who, "Removing peq", accr, issueExists );
 	if( issueExists ) {
-	    let success = await ghSafe.removePeqLabel( authData, pd.GHOwner, pd.GHRepo, link.hostIssueNum );
+	    let success = await ghV2.removePeqLabel( authData, link.hostIssueId );
 	    // Don't wait
-	    if( success ) { ghSafe.addComment( authData, pd.GHOwner, pd.GHRepo, link.hostIssueNum, comment ); }
+	    if( success ) { ghV2.addComment( authData, link.hostIssueId, comment ); }
 	}
 	ghLinks.removeLinkage({"authData": authData, "ceProjId": link.ceProjectId, "issueId": link.hostIssueId });
 	
@@ -175,42 +172,24 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
+// NOTE this does not receive direct notifications, but is instead called from other handlers 
 async function handler( authData, ghLinks, pd, action, tag ) {
 
-    let sender  = pd.reqBody['sender']['login'];
-    // if( !reqBody.hasOwnProperty( 'project_card') || !reqBody.project_card.hasOwnProperty( 'updated_at')) { console.log( reqBody ); }
-    // console.log( authData.job, pd.reqBody.project_card.updated_at, "Card", action );
-    console.log( authData.who, "start", authData.job );
+    pd.actor = pd.reqBody.sender.login;
+    let card = pd.reqBody.projects_v2_item;
 
-    // pd.actor       = pd.reqBody['project_card']['creator']['login'];
-    pd.actor     = pd.reqBody['sender']['login'];
-    pd.repoName  = pd.reqBody['repository']['full_name'];
-
+    console.log( authData.who, "Card", action, "Actor:", pd.actor )
+    
     switch( action ) {
     case 'created' :
-	if( pd.reqBody['project_card']['content_url'] != null ) {
-	    // In issues, add to project, triage to add to column.  May or may not be PEQ.  
-	    // content_url: 'https://api.github.com/repos/codeequity/codeEquity/issues/57' },
-	    let issueURL = pd.reqBody['project_card']['content_url'].split('/');
-	    assert( issueURL.length > 0 );
-	    pd.GHIssueNum = parseInt( issueURL[issueURL.length - 1] );
-	    let issue = await gh.getIssue( authData, pd.GHOwner, pd.GHRepo, pd.GHIssueNum );   // [ id, [content] ]
-	    pd.issueId = issue[0];
-	    
-	    // Is underlying issue already linked to unclaimed?  if so, remove it.
-	    // Wait here, else unclaimed link can force a resolve-split
-	    await ghSafe.cleanUnclaimed( authData, ghLinks, pd );
-	    // Don't wait.
-	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, issue[1], -1, "relocate" ); 
-	}
-	else {
-	    // In projects, creating a card that MAY have a human PEQ label in content...  PNP will create issue and label it, rebuild card, etc.
-	    // console.log( "New card created, unattached" );
-	    let cardContent = pd.reqBody['project_card']['note'].split('\n');
-	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
-	    
-	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
-	}
+	// In issues, add to project, will automatically be placed in "No Status".  May or may not be PEQ.
+	assert( card.content_type == "Issue" );
+	pd.issueId = card.content_node_id;
+
+	let issue = await ghV2.getFullIssue( authData, pd.issueId);  
+	
+	// Don't wait.
+	gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, "relocate" ); 
 	break;
     case 'converted' :
 	{
@@ -221,43 +200,44 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	break;
     case 'moved' :
 	{
-	    // Note: Unclaimed card - try to uncheck it directly from column bar gives: cardHander move within same column.  Check stays.
-	    //       Need to click on projects, then on pd.GHRepo, then can check/uncheck successfully.  Get cardHandler:card deleted
 	    // within gh project, move card from 1 col to another.
 	    // Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
-	    console.log( authData.who, "Card", action, "Sender:", sender )
 	    
-	    if( pd.reqBody['changes'] == null ) {
+	    if( pd.reqBody.changes == null ) {
 		console.log( authData.who, "Move within columns are ignored.", pd.reqBody['project_card']['id'] );
 		return;
 	    }
 	    
-	    let cardId    = pd.reqBody['project_card']['id'];
-	    let oldColId  = pd.reqBody['changes']['column_id']['from'];
-	    let newColId  = pd.reqBody['project_card']['column_id'];
-	    let newProjId = pd.reqBody['project_card']['project_url'].split('/').pop();
-	    
-	    let newColName = gh.getColumnName( authData, ghLinks, pd.repoName, newColId );
+	    let cardId    = card.node_id;
+
+	    let newCard      = await ghV2.getCard( authData, cardId );
+	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
-	    console.log( authData.who, "attempting to move card to", newColName );
+	    const locs       = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colName": "No Status" } );  // XXX formalize
+	    assert( locs != -1 );
 
 	    // Ignore newborn, untracked cards
-	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "cardId": cardId } );
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
 	    if( links == -1 || links[0].hostColumnId == -1 ) {
 		if( newNameIndex > config.PROJ_PROG ) {
-		    // Don't wait
 		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
-		    gh.moveCard( authData, cardId, oldColId );
+		    // No origination data.  use default
+		    // Don't wait
+		    ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, locs[0].hostColumnId );
 		}
 		else { console.log( authData.who, "Non-PEQ cards are not tracked.  Ignoring.", cardId ); }
 		return;
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
 
+	    let oldColId  = link.hostColumnId;
+	    
+	    console.log( authData.who, "attempting to move card to", newColName, "from", oldColId );
+
 	    // Do not allow move out of ACCR
 	    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( authData.who, "WARNING.  Can't move Accrued issue.  Move not processed.", cardId );
-		gh.moveCard( authData, cardId, oldColId );
+		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
 		return;
 	    }
 
@@ -265,25 +245,21 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    let issueId = link.hostIssueId;
 	    assert( issueId != -1 );
 
-	    const fullIssue = await gh.getFullIssue( authData, pd.GHOwner, pd.GHRepo, link.hostIssueNum );   
+	    const fullIssue = await ghV2.getFullIssue( authData, issueId );   
 	    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
 	    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newColName )) {
 		console.log( authData.who, "WARNING.", "Allocations are only useful in config:PROJ_PLAN, or flat columns.  Moving card back." );
-		gh.moveCard( authData, cardId, oldColId );
+		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
 		return;
 	    }
 	    
 	    let oldNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );
-	    assert( cardId == link.hostCardId );
-	    
-	    // In speed mode, GH doesn't keep up - the changes_from column is a step behind.
-	    // assert( oldColId     == link['hostColumnId'] );
-	    
-	    assert( newProjId     == link['hostProjectId'] );               // not yet supporting moves between projects
-	    
-	    let success = await gh.checkReserveSafe( authData, pd.GHOwner, pd.GHRepo, link['hostIssueNum'], newNameIndex );
+	    assert( cardId    == link.hostCardId );
+	    assert( newProjId == link.hostProjectId );               // not yet supporting moves between projects
+
+	    let success = await ghV2.checkReserveSafe( authData, link.hostIssueId, newNameIndex );
 	    if( !success ) {
-		gh.moveCard( authData, cardId, oldColId );
+		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
 		return;
 	    }
 	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newColId, newColName );
@@ -295,8 +271,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
 	    
 	    if( newIssueState != "" ) {
-		// Don't wait
-		ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, link['hostIssueNum'], newIssueState );
+		// Don't wait 
+		ghV2.updateIssue( authData, link.hostIssueId, "state", newIssueState );
 	    }
 	    // Don't wait
 	    recordMove( authData, ghLinks, pd, oldNameIndex, newNameIndex, link );

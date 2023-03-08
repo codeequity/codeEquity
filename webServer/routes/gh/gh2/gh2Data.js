@@ -1,7 +1,9 @@
-const config  = require( '../../config' );
+const rootLoc = "../../../";
 
-const ceData  = require( '../ceData' );
-const jobData = require( '../jobData' );
+const config  = require( rootLoc + 'config' );
+
+const ceData  = require( '../../ceData' );
+const jobData = require( '../../jobData' );
 
 class GH2Data extends ceData.CEData{
 
