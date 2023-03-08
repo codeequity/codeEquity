@@ -1,12 +1,12 @@
 var config      = require( '../../config' );
 var assert      = require( 'assert' );
 
-const utils = require( '../../utils/ceUtils' );
+const utils     = require( '../../utils/ceUtils' );
+const ghUtils   = require( '../../utils/gh/ghUtils' );
 
-const ghClassic = require( '../../utils/gh/ghc/ghClassicUtils' );
-const gh        = ghClassic.githubUtils;
-const ghSafe    = ghClassic.githubSafe;
 const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
+
+const cardHandler = require( './githubPV2CardHandler' );
 
 // XXX 
 // Terminology:
@@ -46,11 +46,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     }
 
     // Note: can't set repo here for pd.. can be several.  
-    let actor    = pd.actor;        // Actor is the event generator.
     let reqBody  = pd.reqBody;
     pd.projectId = item.project_node_id;
-    // console.log( "In pv2 handler");
-    // pd.show();
 
     // XXX need to pass in and return res from ceRouter
 
@@ -94,6 +91,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     switch( action ) {
     case 'edited':
 	{
+	    //  -> card moved
 	    //  -> issues          :labeled     
 	    //  -> projects_v2_item:edited     issue
 	    // This is the generic notification sent alongside the content-specific notice (i.e. issue:label).
@@ -103,12 +101,20 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    // No need to rebuild the map on server startup, since notice comes every time.  Demote content_node job this notice hasn't arrived yet.
 	    console.log( "PV2ItemHandler", action );
 
-	    // no need, checked in switcher
-	    // assert( typeof item.changes !== 'undefined' && typeof item.changes.field_value !== 'undefined' && typeof item.changes.field_value.field_type !== 'undefined' );
-	    // assert( item.changes.field_value.field_type == "labels" );
+	    if( ghUtils.validField( reqBody, "changes" )) {
+		let fv = reqBody.changes.field_value;
+		if( ghUtils.validField( fv, "field_type" )) {
+		    
+		    if( fv.field_type == "single_select" ) {
+			await cardHandler.handler( authData, ghLinks, pd, 'moved', tag );
+		    }
+		    else if( fv.field_type == "labels" ) {
+			console.log( "Item handler found edit:labels.. no action taken in favor of issue:labels" );
+		    }
+		}
+	    }
+	    else { console.log( "Unrecognized, skipping.", item.changes ); }
 
-	    console.log( "PV2: Issue labels changed for projectv2 nodeId", item.id );
-	    // console.log( reqBody );
 	}
 	break;
     case 'converted':
@@ -123,10 +129,10 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'created':
+	// creating a card here.
+	// generated from situateIssue or adding issue to project in GH
 	{
-	    // Draft issue only.  Could use this to offline look for new proj/col.
-	    console.log( "PV2ItemHandler", action );
-	    console.log( reqBody );
+	    cardHandler.handler( authData, ghLinks, pd, action, tag ); 
 	}
 	break;
     case 'deleted':

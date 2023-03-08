@@ -6,6 +6,8 @@ class TestData {
 	this.GHRepo       = config.EMPTY;
 	this.GHOwner      = config.EMPTY;
 	this.GHOwnerId    = config.EMPTY; 
+	this.actor        = config.EMPTY;
+	this.actorId      = config.EMPTY; 
 	this.GHRepoId     = config.EMPTY; 
 	this.GHFullName   = config.EMPTY;
 
@@ -137,7 +139,11 @@ class TestData {
     show() {
 	console.log( "TestData object contents.. Recommended==============" );
 	if( this.GHRepo     != config.EMPTY ) { console.log( "GHRepo", this.GHRepo ); }
+	if( this.GHRepoId   != config.EMPTY ) { console.log( "GHRepoId", this.GHRepoId ); }
 	if( this.GHOwner    != config.EMPTY ) { console.log( "GHOwner", this.GHOwner ); }
+	if( this.GHOwnerId  != config.EMPTY ) { console.log( "GHOwnerId", this.GHOwnerId ); }
+	if( this.actor      != config.EMPTY ) { console.log( "actor", this.actor ); }
+	if( this.actorId    != config.EMPTY ) { console.log( "GHactorId", this.actorId ); }
 	if( this.GHFullName != config.EMPTY ) { console.log( "GHFullName", this.GHFullName ); }
 
 	if( this.masterPID    != config.EMPTY ) { console.log( "masterPID", this.masterPID ); }

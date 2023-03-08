@@ -30,16 +30,17 @@ async function runTests() {
     // TEST_REPO auth
     let td          = new testData.TestData();
     td.GHOwner      = config.TEST_OWNER;
+    td.actor        = config.TEST_ACTOR;
     td.GHRepo       = config.FLUTTER_TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
     let authData     = new authDataC.AuthData();
     authData.who     = "<TEST: Main> ";
-    authData.ic      = await auth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
+    authData.ic      = await auth.getInstallationClient( td.actor, td.GHRepo, td.GHOwner );
     authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();        
-    authData.pat     = await auth.getPAT( td.GHOwner );
+    authData.pat     = await auth.getPAT( td.actor );
 
     let promises = [];
     promises.push( clearIngested( authData, td ) );

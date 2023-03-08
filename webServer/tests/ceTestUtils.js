@@ -55,8 +55,8 @@ async function getNotices() {
 async function findNotice( query ) {
     let notes = await getNotices();
     CE_Notes.fromJson( notes );
-    // console.log( "NOTICES.  Looking for", query );
-    // if( Math.random() < .05 ) { console.log(""); CE_Notes.show(); console.log(""); }
+    console.log( "NOTICES.  Looking for", query );
+    if( CETestDelayCounts["findNotice"] > 3 ) { CE_Notes.show(); }
     return CE_Notes.find( query );
 }
 
@@ -112,8 +112,10 @@ function makeTitleReducer( aStr ) {
 // Can't just rely on host for confirmation.  Notification arrival to CE can be much slower, and in some cases we need
 // CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
 async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
-    console.log( "Confirm Proj", ceProjId, fullName, projId );
+    // console.log( "Confirm Proj", ceProjId, fullName, projId );
     let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
+    // ghLinks.showLocs();
+    // console.log( "query got", locs );
     return locs != -1; 
 }
 

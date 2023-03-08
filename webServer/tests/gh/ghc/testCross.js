@@ -26,8 +26,8 @@ async function cardPresentHelp( authData, colId, issNum ) {
 }
 
 
-// Requires config.TEST_OWNER to have installed the codeEquity app for all repos, not just one.
-// Requires config.CROSS_TEST_REPO & config.TEST_REPO & config.FLUTTER_TEST_REPO to allow both config.CE_USER and config.TEST_OWNER to have R/W access
+// Requires config.TEST_ACTOR to have installed the codeEquity app for all repos, not just one.
+// Requires config.CROSS_TEST_REPO & config.TEST_REPO & config.FLUTTER_TEST_REPO to allow both config.CE_ACTOR and config.TEST_ACTOR to have R/W access
 // This way, authData is shared.   td is NOT shared.
 async function testCrossRepo( flutterTest, authData, authDataX, ghLinks, td, tdX ) {
 
@@ -40,7 +40,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, ghLinks, td, tdX
 
     await ghctu.refreshRec( authData, td );
 
-    assert( config.CROSS_TEST_OWNER == config.TEST_OWNER );
+    assert( config.CROSS_TEST_ACTOR == config.TEST_ACTOR );
     assert( config.CROSS_TEST_REPO  != config.TEST_REPO );
     assert( config.CROSS_TEST_REPO  != config.FLUTTER_TEST_REPO );
 
@@ -123,9 +123,9 @@ async function testCrossRepo( flutterTest, authData, authDataX, ghLinks, td, tdX
     let testRepo = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
 	
     // Careful.. peq is gone at this point.   Delete may come after relocate, hence depth
-    sub         = [peqX.PEQId, config.TEST_OWNER + "/" + testRepo];
+    sub         = [peqX.PEQId, config.TEST_ACTOR + "/" + testRepo];
     testStatus  = await ghctu.checkPact( authDataX, ghLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer out", testStatus, {sub: sub, depth: 2} );
-    sub         = [peq.PEQId, config.TEST_OWNER + "/" + config.CROSS_TEST_REPO];
+    sub         = [peq.PEQId, config.TEST_ACTOR + "/" + config.CROSS_TEST_REPO];
     testStatus  = await ghctu.checkPact( authData, ghLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer out", testStatus, {sub: sub, depth: 2} );
 
     
@@ -148,7 +148,7 @@ async function testMultithread( authData, authDataM, ghLinks, td, tdM ) {
     await ghctu.refreshRec( authData, td );
 
     // Setup for blasting from two different testers / repos. 
-    assert( config.MULTI_TEST_OWNER != config.TEST_OWNER );
+    assert( config.MULTI_TEST_ACTOR != config.TEST_ACTOR );
     assert( td.GHFullName != tdM.GHFullName );
 
     // Add populate label to testProject2, to invoke repostatus. 

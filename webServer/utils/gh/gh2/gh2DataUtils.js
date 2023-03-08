@@ -24,9 +24,10 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     if( pd.issueId == -1 ) { console.log(authData.who, "Resolve: early return, no issueId." ); return gotSplit; }
     
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId });
-    // This can happen if an issue in a non-ceProj repo links to a project that is in a ceProj.  The 'visiting' issue should not
-    // be managed by ceServer.
-    if( links == -1 || links.length < 2 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
+    // This can happen if an issue in a non-ceProj repo links to a project that is in a ceProj.  The 'visiting' issue should not be managed by ceServer.
+    if( links == -1 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
+    // console.log( links[0] );
+    if( links.length < 2 ) { console.log(authData.who, "Resolve: early return, nothing to resolve." ); return gotSplit; }
     gotSplit = true;
     
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
@@ -162,6 +163,151 @@ async function populateCELinkage( authData, ghLinks, pd )
 }
 
 
+// Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
+async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
+    let issDat = [issue.title];
+    if( ghUtils.validField( issue.labels, "edges" ) && issue.labels.edges.length > 0 ) {
+	for( label of issue.labels ) { issDat.push( label.description ); }
+    }
+
+    pd.issueName = issDat[0];
+    pd.issueNum  = issue.number;
+    pd.repoName  = issue.repository.nameWithOwner;
+    pd.repoId    = issue.repository.id;
+
+    // normal for card -> issue.  odd but legal for issue -> card
+    let allocation = ghUtils.getAllocated( issDat );
+
+    // XXX If support convert from draft issue with <> shorthand, will need to use parsePEQ( issDat, allocation ) instead
+    pd.peqValue = ghUtils.parseLabelDescr( issDat );
+
+    // Don't wait
+    // XXX remove this after ceFlutter initialization is in place
+    if( pd.issueName != "A special populate issue" ) { 
+	awsUtils.checkPopulated( authData, pd.ceProjectId ).then( res => assert( res != -1 ));
+    }
+    
+    if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
+    console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
+
+    let cardDat    = pd.reqBody.projects_v2_item;   
+    let origCardId = link == -1 ? cardDat.node_id         : link.hostCardId;
+    pd.projectId   = link == -1 ? cardDat.project_node_id : link.hostProjectId;
+    pd.columnId    = link == -1 ? -1                      : link.hostColumnId;
+    let colName    = link == -1 ? config.EMPTY            : link.hostColumnName;
+    let projName   = "";
+
+    console.log( authData.who, "PNP:", origCardId, pd.projectId );
+    
+    const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
+
+    // Bail, if this create is an add-on to an ACCR 
+    if( links != -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
+	ghV2.removeCard( authData, pd.projectId, origCardId );
+	return 'early';
+    }
+
+    // Bail, if this is alloc in x3
+    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
+	// remove card, leave issue & label in place.
+	console.log( authData.who, "WARNING.", "Allocations only useful in config:PROJ_PLAN, or flat columns.  Removing card from", colName );
+	ghV2.removeCard( authData, pd.projectId, origCardId );
+	return 'early';
+    }
+
+    // XXX revisit after issue:label is rebuilt.  May be able to simplify here.  
+    // purely from card
+    if( pd.peqType == "end" ) {
+	assert( link == -1 );
+
+	let card = await ghV2.getCard( authData, origCardId );
+	pd.columnId = card.columnId;
+	colName = card.columnName;
+
+	console.log( "PNP: type 1", pd.columnId, colName );
+	
+	// All cards are created in "no status", originally.  No need to check for reserved.
+	let blank      = config.EMPTY;
+	let orig = {};
+	orig.hostRepoName = pd.repoName;
+	orig.hostRepoId   = pd.repoId;
+	orig.issueId      = pd.issueId;
+	orig.issueNum     = pd.issueNum;
+	orig.projectId    = pd.projectId;
+	orig.cardId       = origCardId;
+	orig.columnId     = pd.columnId;
+	orig.columnName   = colName;
+	ghLinks.addLinkage( authData, pd.ceProjectId, orig );
+    }
+    else {
+	let peqHumanLabelName = pd.peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
+	// Wait later
+	let peqLabel = ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, pd.peqValue );
+	projName = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
+
+	// XXX -1 check is no longer useful?
+	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
+	assert( colName != config.EMPTY && colName != -1 ); 
+
+	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
+	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
+	    ghV2.removeCard( authData, pd.projectId, origCardId );
+
+	    // If already exists, will be in links.  Do not destroy it
+	    if( links == -1 ) {
+		peqLabel = await peqLabel;
+		// Don't wait
+		ghV2.removeLabel( authData, peqLabel.id, pd.issueId );
+		// chances are, an unclaimed PEQ exists.  deactivate it.
+		if( pd.issueId != -1 ) {
+		    const daPEQ = await awsUtils.getPeq( authData, pd.ceProjectId, pd.hostIssueId );
+		    awsUtils.removePEQ( authData, daPEQ.PEQId );
+		}
+	    }
+	    return "removeLabel";
+	}
+	
+	// issue->card:  issueId is available, but linkage has not yet been added
+	assert( pd.issueNum > -1 );
+	let orig = {};
+	orig.hostRepoName = pd.repoName;
+	orig.hostRepoId   = pd.repoId;
+	orig.issueId      = pd.issueId;
+	orig.issueNum     = pd.issueNum;
+	orig.projectId    = pd.projectId;
+	orig.projectName  = projName;
+	orig.columnId     = pd.columnId;
+	orig.columnName   = colName;
+	orig.cardId       = origCardId;
+	orig.title        = issDat[0];
+	ghLinks.addLinkage( authData, pd.ceProjectId, orig );
+	
+	// If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
+	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
+	// Note: assigments are not relevant for allocations
+	// If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
+	if( specials != "relocate" && !allocation ) {
+	    pd.assignees = await ghV2.getAssignees( authData, pd.issueId );
+	}
+    }
+
+    // Resolve splits issues to ensure a 1:1 mapping issue:card, record data for all newly created issue:card(s)
+    let gotSplit = await resolve( authData, ghLinks, pd, allocation );
+
+    // record peq data for the original issue:card
+    // NOTE: If peq == end, there is no peq/pact to record, in resolve or here.
+    //       else, if resolve splits an issue due to create card, that means the base link is already fully in dynamo.
+    //                Resolve will add the new one, which means work is done.
+    //       resolve with an already-populated repo can NOT split an issue based on a labeling, since the only way to add a card to an existing
+    //                issue is to create card.  Furthermore populate does not call this function.
+    //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
+    if( !gotSplit && pd.peqType != "end" ) {
+	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
+	awsUtils.recordPeqData( authData, pd, true, specials );
+    }
+}
+
 exports.resolve           = resolve;
 exports.populateCELinkage = populateCELinkage;
-
+exports.processNewPEQ     = processNewPEQ;

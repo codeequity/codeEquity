@@ -31,8 +31,10 @@ const ghcTestCross      = require( './ghc/testCross' );
 
 // GH V2
 const gh2tu             = require( './gh2/gh2TestUtils' );
-const gh2TestPopulate   = require( './gh2/testPopulate' );
 const gh2TestDelete     = require( './gh2/testDelete' );
+const gh2TestSetup      = require( './gh2/testSetup' );
+const gh2TestFlat       = require( './gh2/testFlat' );
+const gh2TestPopulate   = require( './gh2/testPopulate' );
 
 
 async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks ) {
@@ -41,8 +43,10 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
 
     const wakeyName = "ceServer wakey XYZZYXXK837598";
     // XXX so far, V2 can't delete pv2, so no point making.  link and unlink instead.
-    // const wakeyPID = await gh2tu.makeProject( authData, td, wakeyName, "" );
     let wakeyPID = await gh2tu.findProjectByName( authData, td.GHOwner, wakeyName );
+    if( wakeyPID == -1 ) { 
+	wakeyPID = await gh2tu.makeProject( authData, td, wakeyName, "", {"owner": td.GHOwnerId} );
+    }
     assert( wakeyPID != -1 );
     console.log( "Found", wakeyName, "with PID:", wakeyPID );
     
@@ -67,7 +71,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
 
-    /*
+
     subTest = await gh2TestSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
@@ -78,6 +82,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
+    /*
     subTest = await gh2TestBasicFlow.runTests( authData, ghLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
@@ -87,12 +92,14 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
+    */
     
     subTest = await gh2TestPopulate.runTests( authData, ghLinks, td );
     console.log( "\n\nResolve test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
+    /*
     subTest = await gh2TestComponents.runTests( authData, ghLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
@@ -172,9 +179,11 @@ async function runTests() {
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
     let ghLinks = new links.Linkage();
 
+    
     // TEST_REPO auth
     let td          = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
+    td.GHOwner      = config.TEST_OWNER
+    td.actor        = config.TEST_ACTOR;
     td.GHRepo       = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 
@@ -184,8 +193,12 @@ async function runTests() {
     authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();    
-    authData.pat     = await ghAuth.getPAT( td.GHOwner );
+    authData.pat     = await ghAuth.getPAT( td.actor );
+    console.log( "Get pat for owner", td.GHOwner );
     td.GHOwnerId     = await ghUtils.getOwnerId( authData.pat, td.GHOwner );
+    console.log( "Get pat for actor", td.actor );
+    
+    td.actorId       = await ghUtils.getOwnerId( authData.pat, td.actor );
     td.GHRepoId      = await ghUtils.getRepoId( authData.pat, td.GHOwner, td.GHRepo );
 
     // First ceProj init requires authData, which needs .cog, .api and .who
@@ -196,6 +209,7 @@ async function runTests() {
     // CROSS_TEST_REPO auth
     let tdX        = new testData.TestData();
     tdX.GHOwner    = config.CROSS_TEST_OWNER;
+    tdX.actor      = config.CROSS_TEST_ACTOR;
     tdX.GHRepo     = config.CROSS_TEST_REPO;
     tdX.GHFullName = tdX.GHOwner + "/" + tdX.GHRepo;
     tdX.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.GHFullName );
@@ -206,13 +220,15 @@ async function runTests() {
     authDataX.api     = authData.api;
     authDataX.cog     = authData.cog;
     authDataX.cogLast = Date.now();        
-    authDataX.pat     = await ghAuth.getPAT( tdX.GHOwner );
+    authDataX.pat     = await ghAuth.getPAT( tdX.actor );
     tdX.GHOwnerId     = await ghUtils.getOwnerId( authDataX.pat, tdX.GHOwner );
+    tdX.actorId       = await ghUtils.getOwnerId( authDataX.pat, tdX.actor );
     tdX.GHRepoId      = await ghUtils.getRepoId( authDataX.pat, tdX.GHOwner, tdX.GHRepo );
     
     // MULTI_TEST_REPO auth
     let tdM        = new testData.TestData();
     tdM.GHOwner    = config.MULTI_TEST_OWNER;
+    tdM.actor      = config.MULTI_TEST_ACTOR;
     tdM.GHRepo     = config.MULTI_TEST_REPO;
     tdM.GHFullName = tdM.GHOwner + "/" + tdM.GHRepo;
     tdM.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.GHFullName );
@@ -223,8 +239,9 @@ async function runTests() {
     authDataM.api     = authData.api;
     authDataM.cog     = authData.cog;
     authDataM.cogLast = Date.now();            
-    authDataM.pat     = await ghAuth.getPAT( tdM.GHOwner );
+    authDataM.pat     = await ghAuth.getPAT( tdM.actor );
     tdM.GHOwnerId     = await ghUtils.getOwnerId( authDataM.pat, tdM.GHOwner );
+    tdM.actorId       = await ghUtils.getOwnerId( authDataM.pat, tdM.actor );
     tdM.GHRepoId      = await ghUtils.getRepoId( authDataM.pat, tdM.GHOwner, tdM.GHRepo );
 
     let testStatus = [ 0, 0, []];

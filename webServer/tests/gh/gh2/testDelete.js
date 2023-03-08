@@ -5,7 +5,6 @@ const config   = require( '../../../config' );
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
 const ghUtils  = require( '../../../utils/gh/ghUtils' );
-
 const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
 
 const tu       = require('../../ceTestUtils');
@@ -85,7 +84,7 @@ async function clearRepo( authData, ghLinks, pd ) {
     let peqP = awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
 
     // PActions raw and otherwise
-    // Note: bot, ceServer and GHOwner may have pacts.  Just clean out all.
+    // Note: bot, ceServer and actor may have pacts.  Just clean out all.
     let pacts = await pactsP;
     let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
     console.log( "Dynamo bot PActIds", pd.GHFullName, pactIds );
@@ -135,7 +134,7 @@ async function clearRepo( authData, ghLinks, pd ) {
 
     // set unpopulated
     // XXX Maybe clear hostRepos at some point?
-    console.log( "Depopulate" );
+    console.log( "Depopulate", pd.GHFullname, pd.ceProjectId );
     await awsUtils.unpopulate( authData, pd.ceProjectId );
 }
 

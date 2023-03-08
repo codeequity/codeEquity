@@ -35,8 +35,9 @@ async function refresh( authData, td, projName ){
 // Refresh a recommended project layout.  This is useful when running tests piecemeal.
 async function refreshRec( authData, td ) {
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
+    console.log( "Got hprojs", hostProjs );
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == config.MAIN_PROJ ) {
 	    td.masterPID = proj.hostProjectId;
@@ -72,7 +73,7 @@ async function refreshRec( authData, td ) {
 // Refresh a flat project layout.  This is useful when running tests piecemeal.
 async function refreshFlat( authData, td ) {
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == td.flatTitle ) {
@@ -91,7 +92,7 @@ async function refreshFlat( authData, td ) {
 // Refresh unclaimed.
 async function refreshUnclaimed( authData, td ) {
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == td.unclaimTitle ) {
@@ -168,7 +169,7 @@ async function getLabels( authData, td ) {
 		datum.description = label.description;
 		labels.push( datum );
 	    }})
-	.catch( e => ghUtils.errorHandler( "getLabels", e, getLabels, authData, td )); 
+	.catch( e => labels = ghUtils.errorHandler( "getLabels", e, getLabels, authData, td )); 
 
     return labels.length == 0 ? -1 : labels;
 }
@@ -201,7 +202,7 @@ async function getIssues( authData, td ) {
 		issues.push( datum );
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
+	.catch( e => issues = ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
 
     return issues.length == 0 ? -1 : issues;
 }
@@ -244,12 +245,12 @@ async function getProjects( authData, td ) {
 		projects.push( datum );
 	    }})
 	.catch( e => {
-	    if( e.errors.length >= 1 ) {
+	    if( ghUtils.validField( e, "errors" ) && e.errors.length >= 1 ) {
 		let m = e.errors[0].message;
-		if( m == 'Field \'ProjectV2\' doesn\'t exist on type \'Repository\'' ) { return -1; }
+		if( m == 'Field \'ProjectV2\' doesn\'t exist on type \'Repository\'' ) { projects = []; }
 		else                                                                   { console.log( authData.who, "get projects failed.", e ); }
 	    }
-	    else { ghUtils.errorHandler( "getProjects", e, getProjects, authData, td ); }
+	    else { projects = ghUtils.errorHandler( "getProjects", e, getProjects, authData, td ); }
 	});
 
     return projects.length == 0 ? -1 : projects; 
@@ -258,7 +259,7 @@ async function getProjects( authData, td ) {
 // Note: first view only
 async function getColumns( authData, pNodeId ) {
     let cols = [];
-
+    console.log( "get cols", pNodeId );
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -298,7 +299,7 @@ async function getColumns( authData, pNodeId ) {
 		}
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getColumns", e, getColumns, authData, pNodeId ));
+	.catch( e => cols = ghUtils.errorHandler( "getColumns", e, getColumns, authData, pNodeId ));
 
     return cols.length == 0 ? -1 : cols;
 }
@@ -339,7 +340,7 @@ async function getCards( authData, pNodeId, colId ) {
 		}
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getCards", e, getCards, authData, pNodeId, colId )); 
+	.catch( e => cards = ghUtils.errorHandler( "getCards", e, getCards, authData, pNodeId, colId )); 
 
     return cards.length == 0 ? -1 : cards;
 }
@@ -376,7 +377,7 @@ async function getComments( authData, issueId ) {
 		comments.push( datum );
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getComments", e, getComments, authData, issueId )); 
+	.catch( e => comments = ghUtils.errorHandler( "getComments", e, getComments, authData, issueId )); 
 
     return comments.length == 0 ? -1 : comments;
 }
@@ -417,6 +418,9 @@ async function findProjectByName( authData, userLogin, projName ) {
         user( login: $uLogin ) {
            login id
            projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
+        organization( login: $uLogin ) {
+           login id
+           projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
     }`;
     let variables = {"uLogin": userLogin, "pName": projName };
     query = JSON.stringify({ query, variables });
@@ -424,18 +428,45 @@ async function findProjectByName( authData, userLogin, projName ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
-	    let projects = raw.data.user.projectsV2.edges;
-	    if( projects.length >= 2 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
-	    assert( projects.length > 0 );
-	    pid = projects[0].node.id;
+	    let projects = [];
+	    if( ghUtils.validField( raw.data, "user" ))              { projects = raw.data.user.projectsV2.edges; }
+	    else if( ghUtils.validField( raw.data, "organization" )) { projects = raw.data.organization.projectsV2.edges; }
+
+	    if     ( projects.length >= 2 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
+	    else if( projects.length >= 1 ) { pid = projects[0].node.id; }
 	})
-	.catch( e => ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
+
+    return pid;
+}
+async function findProjectByRepo( authData, rNodeId, projName ) {
+    let pid = -1;
+
+    let query = `query($rid:ID!, $pName:String!) {
+        node( id:$rid ) {
+           ... on Repository {
+              id nameWithOwner
+              projectsV2(first:99, query: $pName ) {edges{ node{ id title }}}}
+    }}`;
+    let variables = {"rid": rNodeId, "pName": projName };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = [];
+	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
+
+	    if     ( projects.length >= 2 ) { console.log( "WARNING.  Project exists multiple times", projects ); }
+	    else if( projects.length >= 1 ) { pid = projects[0].node.id; }
+	})
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
 
     return pid;
 }
 
 async function findRepo( authData, td ) {
-    let repoId = ghV2.getRepoId( authData, td.GHOwner, td.GHRepo ); 
+    let repoId = ghUtils.getRepoId( authData, td.GHOwner, td.GHRepo ); 
     if( repoId != -1 ) { repoId = {id:repoId}; }
     return repoId;
 }
@@ -490,12 +521,30 @@ async function ingestPActs( authData, issueData ) {
 */
 
 
-async function makeProject(authData, td, name, body ) {
+async function makeProject(authData, td, name, body, specials ) {
 
-    let pid = await ghV2.createProject( authData, td.GHOwnerId, td.GHRepoId, name );
+    let ownerId = typeof specials !== 'undefined' && specials.hasOwnProperty( "owner" ) ? specials.owner : td.actorId;
+    let pid = await ghV2.createProject( authData, ownerId, td.GHRepoId, name );
     
-    console.log( "MakeProject:", name, pid, td.GHRepoId );
+    console.log( "MakeProject returned:", pid, name, ownerId );
     await utils.sleep( GH_DELAY );
+    return pid;
+}
+
+async function findOrCreateProject( authData, td, name, body ) {
+    let pid = await findProjectByName( authData, td.GHOwner, name );
+    if( pid == -1 ) {
+	pid = await makeProject( authData, td, name, body, {"owner": td.GHOwnerId} );
+    }
+    else {
+	let rp = await findProjectByRepo( authData, td.GHRepoId, name );
+	if( rp == -1 ) {
+	    await linkProject( authData, pid, td.GHRepoId );
+	}
+    }
+    
+    assert( pid != -1 );
+    console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
     return pid;
 }
 
@@ -527,7 +576,13 @@ async function linkProject( authData, pNodeId, rNodeId ) {
     let variables = {"pid": pNodeId, "rid": rNodeId };
     query         = JSON.stringify({ query, variables });
     
-    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
+    let res = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    res = ret;
+	})
+	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, pNodeId, rNodeId ));
 
     if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
     
@@ -562,9 +617,12 @@ async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name )
     await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
     let cid = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
     
-    console.log( "MakeColumn:", name, cid );
-    let query = "project_column created " + name + " " + fullName;
-    await tu.settleWithVal( "makeCol", tu.findNotice, query );
+    if( cid == -1 ) { console.log( "Missing column:", name ); }
+    else            { console.log( "Found column:", name ); }
+
+    // XXX Can't verify this, since we know col can not be created by apiV2 yet
+    // let query = "project_column created " + name + " " + fullName;
+    // await tu.settleWithVal( "makeCol", tu.findNotice, query );
 
     return cid;
 }
@@ -597,28 +655,60 @@ async function createDraftIssue( authData, pNodeId, title, body ) {
 	    pvId = ret.data.addProjectV2DraftIssue.projectItem.id;
 	    console.log( authData.who, " .. draft issue created, id:", pvId );
 	})
-	.catch( e => ghUtils.errorHandler( "createDraftIssue", e, createDraftIssue, authData, pNodeId, title, body ));
+	.catch( e => pvId = ghUtils.errorHandler( "createDraftIssue", e, createDraftIssue, authData, pNodeId, title, body ));
     
     return pvId;
 }
 
-// do NOT return card or id here.  card is rebuilt to be driven from issue.
-async function makeAllocCard( authData, ghLinks, ceProjId, pNodeId, colId, title, amount ) {
-    // Will need statusId
-    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
+// GH projects have changed - you can no longer create a card without a companion draft issue.
+// In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
+// In GH2, this function instead creates an issue directly, and adds it to the project.
+async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, colId, title, amount ) {
+    console.log( "MAC", ceProjId, rNodeId, pNodeId, colId, title, amount );
+    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );
+    // ghLinks.showLocs();
     assert( locs != -1 );
     let statusId = locs[0].hostUtility;
 
     // First, wait for colId, can lag
     await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    let note = title + "\n<allocation, PEQ: " + amount + ">";
-    let pvId = createDraftIssue( authData, pNodeId, title, note );
-    await ghV2.moveCard( authData, pNodeId, pvId, statusId, colId );
-    
-    console.log( "Made AllocCard:", pvId, "but this will be deleted to make room for issue-card" );
+    let lname = ghV2.makeHumanLabel( amount, config.ALLOC_LABEL );
+    let label = await ghV2.findOrCreateLabel( authData, rNodeId, true, lname, amount );
+
+    let allocIssue = {};
+    allocIssue.title = title;
+    allocIssue.labels = [label];
+
+    let issDat = await ghV2.createIssue( authData, rNodeId, pNodeId, allocIssue );
+    assert( issDat.length == 3 && issDat[0] != -1 && issDat[2] != -1 );
+
+    await ghV2.moveCard( authData, pNodeId, issDat[2], statusId, colId );
+	
+    console.log( "Made AllocCard and issue:", issDat );
     await utils.sleep( tu.MIN_DELAY );
 }
+
+// XXX untested.  Get this working before using makeNewbornCard.
+//     My not be possible given spotty api coverage.
+async function removeNewbornCard( authData, pNodeId, dissueNodeId, dissueContentId ) {
+    console.log( authData.who, "Remove Newborn Card (draft issue)" );
+
+    // First try removing the draft issue project node.  This should work - does it remove content node?
+    let query = `mutation( $pid:ID!, $did:ID! )
+                    {deleteProjectV2Item( input:{ projectId: $pid, itemId: $did }) 
+                    {clientMutationId}}`;
+
+    let variables = { "pid": pNodeId, "did": dissueNodeId };
+    let queryJ    = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	})
+	.catch( e => ghUtils.errorHandler( "removeNewbornCard", e, removeNewbornCard, authData, pNodeId, dissueNodeId, dissueContentId ));
+}
+
 
 async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, title ) {
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
@@ -635,7 +725,7 @@ async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, tit
     return cid;
 }
 
-async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId ) {
+async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId, justId ) {
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
     assert( locs != -1 );
     let statusId = locs[0].hostUtility;
@@ -643,12 +733,15 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
     // First, wait for colId, can lag
     await tu.settleWithVal( "make Proj card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    // If i have an issue, then I have a card.  find, then move it
-    let link = ghLinks.getUniqueLink( authData, ceProjId, issueId );
-    await ghV2.moveCard( authData, pNodeId, link.hostCardId, statusId, colId );
+    justId = typeof justId === undefined ? false : true;
+    let card = await ghV2.createProjectCard( authData, pNodeId, issueId, statusId, colId, justId );
 
-    // XXX check new form of this notice
-    let query = "project_card moved iss" + link.hostIssueNum;
+    // XXX very weak notice - could be anything.  Verbose ceNotification.  
+    // Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fNfog VudsdHVkWc for codeequity 03.17.798
+    // gives notice: projects_v2_item edited codeequity/I_kwDOIiH6ss5fNinX GitHub/codeequity/I_kwDOIiH6ss5fNinX
+    let path = config.TEST_OWNER + "/" + issueId;
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
+    let query = "projects_v2_item edited " + path + locator;
     await tu.settleWithVal( "makeProjCard", tu.findNotice, query );
 
     // XXX either leave this in to allow peq data to record, or set additional post condition.
@@ -656,6 +749,7 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
     return card;
 }
 
+// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
 async function makeIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels} );
     issue.push( title );
@@ -663,6 +757,7 @@ async function makeIssue( authData, td, title, labels ) {
     return issue;
 }
 
+// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
 async function makeAllocIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels, allocation: true} );
     issue.push( title );
@@ -670,6 +765,7 @@ async function makeAllocIssue( authData, td, title, labels ) {
     return issue;
 }
 
+// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
 async function blastIssue( authData, td, title, labels, assignees, specials ) {
     let wait  = typeof specials !== 'undefined' && specials.hasOwnProperty( "wait" )   ? specials.wait   : true;
 
@@ -685,7 +781,8 @@ async function addLabel( authData, lNodeId, issDat ) {
     await ghV2.addLabel( authData, lNodeId, issDat[0] );
 
     // XXX verify all notice query strings
-    let query = "issue labeled " + issDat[2];
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
+    let query = "issue labeled " + issDat[2] + locator;
     await tu.settleWithVal( "label", tu.findNotice, query );
 }	
 
@@ -693,7 +790,8 @@ async function remLabel( authData, label, issDat ) {
     console.log( "Removing", label.name, "from issueNum", issDat[1] );
     await ghV2.removeLabel( authData, label.id, issDat[0] );
 
-    let query = "issue unlabeled " + issueData[2];
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
+    let query = "issue unlabeled " + issueData[2] + locator;
     await tu.settleWithVal( "unlabel", tu.findNotice, query );
 }
 
@@ -718,15 +816,17 @@ async function delLabel( authData, label ) {
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.catch( e => ghUtils.errorHandler( "delLabel", e, delLabel, authData, label ));
-    
-    query = "label deleted " + label.name;
+
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
+    query = "label deleted " + label.name + locator;
     await tu.settleWithVal( "del label", tu.findNotice, query );
 }
 
 async function addAssignee( authData, issDat, assignee ) {
     await ghV2.addAssignee( authData, issDat[0], assignee.id );
 
-    let query = "issue assigned " + issueData[2];
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
+    let query = "issue assigned " + issueData[2] + locator;
     await tu.settleWithVal( "assign issue", tu.findNotice, query );
 }
 
@@ -743,8 +843,9 @@ async function moveCard( authData, ghLinks, ceProjId, cardId, columnId, specials
 
     let issNum  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issNum" )  ? specials.issNum : false;
 
-    if( issNum ) { 
-	let query = "project_card moved iss" + issNum + " " + td.GHFullName;
+    if( issNum ) {
+	let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;	
+	let query = "project_card moved iss" + issNum + " " + td.GHFullName + locator;
 	await tu.settleWithVal( "moveCard", tu.findNotice, query );
     }
     
@@ -769,7 +870,8 @@ async function remCard( authData, ceProjId, cardId ) {
 async function closeIssue( authData, td, issDat, loc = -1 ) {
     await ghV2.updateIssue( authData, issDat[0], "state", "closed" );
 
-    let query = "issue closed " + issDat[2];
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
+    let query = "issue closed " + issDat[2] + locator;
     await tu.settleWithVal( "closeIssue", tu.findNotice, query );
 
     // Send loc for serious checks.  Otherwise, just check state of issue from GH - if connection is slow, this will help with pacing.
@@ -2026,6 +2128,8 @@ exports.refreshFlat     = refreshFlat;
 exports.refreshUnclaimed = refreshUnclaimed;
 exports.getQuad         = getQuad;
 
+exports.findOrCreateProject = findOrCreateProject;
+
 exports.makeProject     = makeProject;
 exports.remProject      = remProject;
 exports.linkProject     = linkProject;
@@ -2035,6 +2139,7 @@ exports.updateColumn    = updateColumn;
 exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
 exports.makeAllocCard   = makeAllocCard;
+exports.removeNewbornCard = removeNewbornCard;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;
@@ -2064,6 +2169,7 @@ exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
 exports.findProject     = findProject;
 exports.findProjectByName = findProjectByName;
+exports.findProjectByRepo = findProjectByRepo;
 exports.findRepo        = findRepo;
 exports.getFlatLoc      = getFlatLoc; 
 exports.getFullLoc      = getFullLoc; 

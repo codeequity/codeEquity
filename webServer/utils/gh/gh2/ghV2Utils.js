@@ -339,6 +339,24 @@ async function getProjectFromNode( authData, pNodeId ) {
     return retVal;
 }
 
+async function situateIssue( authData, projNode, issDat ) {
+    assert( issDat.length == 3 );
+    let issueData = [issDat[0],issDat[1],-1]; // contentId, num, cardId
+    
+    query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
+    variables = {"proj": projNode, "contentId": issDat[0]};
+    queryJ    = JSON.stringify({ query, variables });
+    
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    issueData[2] = ret.data.addProjectV2ItemById.item.id;
+	    console.log( authData.who, " .. issue added to project, pv2ItemId:", issueData[2] );
+	})
+	.catch( e => issueData = ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
+
+    return issueData;
+}
 
 // createIssue, then addProjectV2ItemById
 // Note: mutation:createIssue with inputObject that includes projIds only works for classic projects, not PV2.
@@ -384,23 +402,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	})
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
 
-    // Sometimes, just want unsituated issue
-    if( projNode != -1 ) {
-	query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
-	variables = {"proj": projNode, "contentId": issueData[0]};
-	queryJ    = JSON.stringify({ query, variables });
-	
-	// XXX If the create above succeeds and this triggers, the it will attempt to create again.  Copy made?  Split this out.
-	let pvId = -1;
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	    .then( ret => {
-		if( ret.status != 200 ) { throw ret; }
-		pvId = ret.data.addProjectV2ItemById.item.id;
-		issueData[2] = pvId;
-		console.log( authData.who, " .. issue added to project, pv2ItemId:", pvId );
-	    })
-	    .catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
-    }
+    if( projNode != -1 ) { issueData = await situateIssue( authData, projNode, issueData ); }
     
     return issueData;
 }
@@ -420,6 +422,7 @@ async function getIssue( authData, issueId ) {
 	for( label of issue.labels ) { retVal.push( label.description ); }
     }
     retIssue.push( retVal );
+    retIssue.push( issue.number );
     return retIssue;
     
 }
@@ -431,12 +434,12 @@ async function getFullIssue( authData, issueId ) {
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
                    ... on Issue {
-                     id
+                     id number
                      body
                      assignees(first:99) { edges { node { id login }}}
                      labels(first: 99)   { edges { node { id name description }}}
                      milestone { id }
-                     repository { id }
+                     repository { id nameWithOwner }
                      state
                      title
                   }}}`;
@@ -707,9 +710,37 @@ async function getLabels( authData, issueId ) {
     return labels;
 }    
 
+// Turn 1000000 or "1,000,000" into "1M" then plus label type.  Leave properly formed alone.
+function makeHumanLabel( amount, peqTypeLabel ) {
+    let retVal = "";
+    if( typeof amount == "string" ) {
+	let unit = amount.slice(-1);
+	if ( unit == "M" || unit == "k" ) { retVal = amount; }
+	else { amount = parseInt( amount.replace(/,/g, "" )); }   // create int for further processing below
+    }
+    
+    if( typeof amount == "number" ) {
+	assert ( amount < 1000000000, "Error. Peq values can not reach the billions.  Something is wrong with your usage." );
+	if     ( amount >= 1000000 ) { retVal = (amount / 1000000).toString() + "M"; }
+	else if( amount >= 1000 )    { retVal = (amount / 1000).toString() + "k"; }
+	else                         { retVal = amount.toString(); }
+    }
+
+    return retVal + " " + peqTypeLabel;
+}
+
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
     console.log( authData.who, "Creating PEQ label", allocation, peqValue );
-    let peqHumanLabelName = peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
+
+    // GH no longer allows commas in label names.  Convert, say, 1,500 PEQ to 1.5k PEQ
+    let pvName = "";
+    assert( peqValue < 1000000000, "Error. Peq values can not reach the billions.  Something is wrong with your usage." );
+    if     ( peqValue >= 1000000 ) { pvName = (peqValue / 1000000).toString() + "M"; }
+    else if( peqValue >= 1000 )    { pvName = (peqValue / 1000).toString() + "k"; }
+    else                           { pvName = peqValue.toString(); }
+    
+    let peqHumanLabelName = pvName + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );
+    
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;
     let label = await createLabel( authData, repoNode, peqHumanLabelName, pcolor, desc );
@@ -720,6 +751,8 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
 
     console.log( authData.who, "Find or create label", repoNode, allocation, peqHumanLabelName, peqValue );
 
+    if( typeof peqValue == "string" ) { peqValue = parseInt( peqValue.replace(/,/g, "" )); }
+    
     // Find?
     const labelRes = await getLabel( authData, repoNode, peqHumanLabelName );
     let   theLabel = labelRes.label;
@@ -831,6 +864,7 @@ async function updateProject( authData, projNodeId, title ) {
 
 // Only repository owner can use this to create a project.  
 async function createProject( authData, ownerNodeId, repoNodeId, title ) {
+    console.log( "Create project", ownerNodeId, repoNodeId, title );
     let query     = `mutation( $ownerId:ID!, $repoId:ID!, $title:String! ) 
                              { createProjectV2( input:{ repositoryId: $repoId, ownerId: $ownerId, title: $title }) {clientMutationId projectV2 {id}}}`;
     let variables = {"repoId": repoNodeId, "ownerId": ownerNodeId, "title": title };
@@ -840,7 +874,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
-	    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'createProjectV2' ) && ret.data.createProjectV2.hasOwnProperty( 'projectV2' ) )
+	    if( ghUtils.validField( ret, "data" ) && ghUtils.validField( ret.data, "createProjectV2" ) && ghUtils.validField( ret.data.createProjectV2, "projectV2" ))
 	    {
 		pid = ret.data.createProjectV2.projectV2.id;
 	    }
@@ -848,7 +882,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
 	})
 	.catch( e => pid = ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
 
-    return pid;
+    return pid == false ? -1 : pid;
 }
 
 // XXX revisit once column id is fixed.
@@ -882,7 +916,7 @@ async function getCard( authData, issueNodeId ) {
                      ... on ProjectV2Item {
                         project { id }
                         fieldValueByName(name: "Status") {
-                          ... on ProjectV2ItemFieldSingleSelectValue {optionId field { ... on ProjectV2SingleSelectField { id }}}}
+                          ... on ProjectV2ItemFieldSingleSelectValue {optionId name field { ... on ProjectV2SingleSelectField { id }}}}
                         content { 
                           ... on ProjectV2ItemContent { ... on Issue { number }}}
                   }}}`;
@@ -897,6 +931,7 @@ async function getCard( authData, issueNodeId ) {
 	    retVal.projId      = card.project.id;                    
 	    retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
 	    retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
+	    retVal.columnName  = card.fieldValueByName.name;         
 	    retVal.issueNum    = card.content.number; 
 	})
 	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, issueNodeId ));
@@ -916,21 +951,30 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
     let variables = {"projId": projId, "itemId": itemId, "fieldId": fieldId, "value": value };
 
     let queryJ    = JSON.stringify({ query, variables });
-	
-    let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "moveCard", e, moveCard, authData, projId, itemId, fieldId, value ));
+
+    let ret = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( r => { ret = r; })
+	.catch( e => ret = ghUtils.errorHandler( "moveCard", e, moveCard, authData, projId, itemId, fieldId, value ));
 
     return ret;
 }
 
-// Moving from status: "No Status" to a different value
-async function createProjectCard( authData, projNodeId, issueNodeId, fieldId, valueId, justId ) {
-    let retVal = await moveCard( authData, projNodeId, issueNodeId, fieldId, valueId );
-
+// Note this is used to situate an issue, then put into correct column.
+// Note issueId is contentId.  issDat[2] is issueNodeId
+async function createProjectCard( authData, projNodeId, issueId, fieldId, valueId, justId ) {
+    let issDat = [issueId, -1, -1];
+    // console.log( "CPC", projNodeId, issueId, fieldId, valueId, justId ) ;
+    issDat = await situateIssue( authData, projNodeId, issDat );
+    // console.log( "CPC", issDat );
+    
+    // Move from "No Status".  If good, retVal contains null clientMutationId
+    let retVal = await moveCard( authData, projNodeId, issDat[2], fieldId, valueId );
+    
     if( retVal != -1 ) {
-	retVal = justId ?
-	    issueNodeId : 
-	    {"projId": projNodeId, "issueId": issueNodeId, "statusId": fieldId, "statusValId": valueId };
+	retVal = justId ? 
+	    issDat[2] : 
+	    {"projId": projNodeId, "cardId": issDat[2], "statusId": fieldId, "statusValId": valueId };
     }
 
     return retVal;
@@ -1036,48 +1080,6 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 
 
 
-
-// Owner can be user, or organization.  This works for either.
-// XXX Is there a nicer way to run this as a single query?  i.e. without having 1 or the two be correct, 1 be an error?
-async function getOwnerId( authData, ownerLogin ) {
-    let query       = `query($owner: String!) { organization(login: $owner) {id} 
-                                                user        (login: $owner) {id} }`;
-    const variables = {"owner": ownerLogin };
-    let queryJ      = JSON.stringify({ query, variables });
-
-    let retId = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    if( ret.hasOwnProperty( 'data' )) {
-		if( ret.data.hasOwnProperty( 'user' ))              { retId = ret.data.user.id; }
-		else if( ret.data.hasOwnProperty( 'organization' )) { retId = ret.data.user.id; }
-	    }
-	    console.log( authData.who, ownerLogin, retId );
-	  })
-	  .catch( e => retId = ghUtils.errorHandler( "getOwnerId", e, getOwnerId, authData, ownerLogin ));
-
-    return retId;
-}
-
-async function getRepoId( authData, ownerLogin, repoName ) {
-    let query       = `query($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo ) { id } }`;
-    const variables = {"owner": ownerLogin, "repo": repoName };
-    let queryJ      = JSON.stringify({ query, variables });
-
-    let retId = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
-	    console.log( authData.who, ownerLogin, repoName, retId );
-	    
-	})
-	.catch( e => retId = ghUtils.errorHandler( "getRepoId", e, getRepoId, authData, ownerLogin, repoName ));
-
-    return retId;
-}
-
 // Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
 // Returning issueId, not issueNodeId
 async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) {
@@ -1127,6 +1129,8 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 }
 
 async function getProjectIds( authData, repoFullName, data, cursor ) {
+
+    console.log( "GPID", repoFullName );
     
     let rp = repoFullName.split('/');
     assert( rp.length == 2 );
@@ -1199,12 +1203,12 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "createColumn" )
-	    .catch( e => retVal = ghUtils.errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, issueId));
+	    .catch( e => loc = ghUtils.errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, ghLinks, ceProjectId, projId, colName));
     }
     else {
 	locs = ghLinks.getLocs( authData, { "ceProjId": ceProjectId, "projId": projId, "colName": colName } );    
 	    
-	if( typeof locs === 'undefined' ) {
+	if( locs == -1 ) {
 	    // XXX revisit once (if) GH API supports column creation
 	    console.log( authData.who, "Error.  Please create the column", colName, "by hand, for now." );
 	    loc = -1;
@@ -1278,6 +1282,28 @@ async function createUnClaimedCard( authData, ghLinks, pd, issueId, accr )
     return card;
 }
 
+// GitHub add assignee can take a second or two to complete, internally.
+// If this fails, retry a small number of times before returning false.
+async function checkReserveSafe( authData, issueId, colNameIndex ) {
+    let retVal = true;
+    if( colNameIndex > config.PROJ_PROG ) { 
+	let assignees = await getAssignees( authData, issueId );
+	let retries = 0;
+	while( assignees.length == 0 && retries < config.MAX_GH_RETRIES ) {
+	    retries++;
+	    console.log( "XXX WARNING.  No assignees found.  Retrying.", retries, Date.now() );
+	    assignees = await getAssignees( authData, issueId );	    
+	}
+	
+	if( assignees.length == 0  ) {
+	    console.log( "WARNING.  Update card failed - no assignees" );   // can't propose grant without a grantee
+	    retVal = false;
+	}
+    }
+    return retVal;
+}
+
+
 
 
 exports.getProjectFromNode = getProjectFromNode;
@@ -1297,6 +1323,7 @@ exports.remAssignee        = remAssignee;
 exports.getAssignees       = getAssignees;
 exports.transferIssue      = transferIssue;
 
+exports.makeHumanLabel     = makeHumanLabel;
 exports.createLabel        = createLabel;
 exports.createPeqLabel     = createPeqLabel;
 exports.getLabel           = getLabel;
@@ -1320,8 +1347,6 @@ exports.createProjectCard  = createProjectCard;
 exports.removeCard         = removeCard; 
 exports.rebuildCard        = rebuildCard;
 
-exports.getOwnerId         = getOwnerId;
-exports.getRepoId          = getRepoId;
 exports.getLabelIssues     = getLabelIssues;
 
 exports.getProjectIds      = getProjectIds;
@@ -1331,3 +1356,5 @@ exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
 exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
 exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI
 exports.updateColumn           = updateColumn;           // XXX NYI
+
+exports.checkReserveSafe       = checkReserveSafe;

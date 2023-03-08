@@ -57,7 +57,7 @@ class Linkage {
 
 	// XXX local implementations should not be here.
 	// classic is per repo.
-	// Init repo with CE_USER, which is typically a builder account that needs full access.
+	// Init repo with CE_ACTOR, which is typically a builder account that needs full access.
 	if( host == config.HOST_GH ) {
 	    if( pms == config.PMS_GHC ) {
 		
@@ -80,8 +80,8 @@ class Linkage {
 			let fnParts = repo.split('/');
 			let rlinks = [];
 			
-			if( isOrg ) { await ceAuth.getAuths( authData, host, pms, org,  config.CE_USER ); }
-			else        { await ceAuth.getAuths( authData, host, pms, repo, config.CE_USER ); }
+			if( isOrg ) { await ceAuth.getAuths( authData, host, pms, org,  config.CE_ACTOR ); }
+			else        { await ceAuth.getAuths( authData, host, pms, repo, config.CE_ACTOR ); }
 			
 			// XXX this should not be here
 			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
@@ -111,7 +111,7 @@ class Linkage {
 	    // All ids for GH2 are GQL node_ids.
 	    else if( pms == config.PMS_GH2 ) {
 		// mainly to get pat
-		await ceAuth.getAuths( authData, host, pms, org, config.CE_USER ); 
+		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
 
 		// XXX handle entry.HostParts.hostProjectIds
 		let hostProjs = [];
@@ -141,6 +141,7 @@ class Linkage {
 		    for( var loc of rLocs ) {
 			loc.ceProjectId = entry.CEProjectId;
 			loc.active = "true";
+			loc.hostRepository = proj.hostRepoName;
 			this.addLoc( authData, loc, false ); 
 		    }
 		    
@@ -407,7 +408,7 @@ class Linkage {
 		match = projId == -1             ? match : match && (loc.hostProjectId   == projId);
 		match = colId == -1              ? match : match && (loc.hostColumnId    == colId);
 		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId     == ceProjId);
-		match = repo == config.EMPTY     ? match : match && (loc.hostRepo        == repo);
+		match = repo == config.EMPTY     ? match : match && (loc.hostRepository  == repo);
 		match = projName == config.EMPTY ? match : match && (loc.hostProjectName == projName);
 		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName  == colName);
 		match =                                    match && (loc.active          == "true");
@@ -589,7 +590,7 @@ class Linkage {
 	for( const [_,cplinks] of Object.entries( this.locs )) {
 	    for( const [_,cloc] of Object.entries( cplinks )) {
 		for( const [col,loc] of Object.entries( cloc )) {
-		    if( repo == "TESTING-FROMJSONLOCS" || loc.hostRepo == repo ) { killList.push({ "cpid": loc.ceProjectId, "pid": loc.hostProjectId }); }  
+		    if( repo == "TESTING-FROMJSONLOCS" || loc.hostRepository == repo ) { killList.push({ "cpid": loc.ceProjectId, "pid": loc.hostProjectId }); }  
 		}
 	    }
 	}
@@ -597,8 +598,10 @@ class Linkage {
 	return true;
     }
     
-    purge( repo ) {
-	console.log( "Removing links, locs for", repo );
+    purge( repo, specials ) {
+	let linksOnly  = typeof specials !== 'undefined' && specials.hasOwnProperty( "linksOnly" )  ? specials.linksOnly : false;	
+	console.log( "Removing links, locs for", repo, "links only?", linksOnly );
+
 	let killList = [];
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {
@@ -609,7 +612,8 @@ class Linkage {
 	}
 	for( const id of killList ) { delete this.links[id.cpid][id.iid]; }
 
-	this.purgeLocs( repo );
+	// GH Testing can't purge links until apiV2 allows create col, and make project notifications
+	if( !linksOnly ) {  this.purgeLocs( repo ); }
 	
 	return true;
     }

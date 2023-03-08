@@ -19,15 +19,16 @@ const ghcLabels   = require( './ghClassic/githubLabelHandler' );
 const ghcData  = require( './ghClassic/ghcData' );
 
 // PMS_GH2
-const gh2Items  = require( './ghVersion2/githubPV2ItemHandler' );
 const gh2Data   = require( './ghVersion2/gh2Data' );
-const gh2Issues = require( './ghVersion2/githubPV2IssueHandler' );
+const gh2Item   = require( './ghVersion2/githubPV2ItemHandler' );
+const gh2Issue  = require( './ghVersion2/githubPV2IssueHandler' );
+const gh2Label  = require( './ghVersion2/githubPV2LabelHandler' );
 
 // When switching between GHC and GH2, look for pv2Notices that match contentNotices.
 var pendingNotices = [];
 
 
-// CE_USER used for app-wide jwt
+// CE_ACTOR used for app-wide jwt
 // owner, repo needed for octokit installation client.
 // owner needed for personal access token
 
@@ -78,7 +79,7 @@ function getJobSummaryGHC( newStamp, jobData, locator ) {
     }
 
     locator.source  += jobData.action+" "+jobData.tag+"> ";
-    locator.projPath = config.HOST_GH + "/" + jobData.reqBody.repository.full_name;
+    locator.projPath = config.HOST_GH + "/"  + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
     return true;
 }
 
@@ -108,7 +109,7 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
     }
 
     locator.source  += jobData.action+" "+jobData.tag+"> ";
-    locator.projPath = config.HOST_GH + "/" + fullName;
+    locator.projPath = config.HOST_GH + "/"  + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
     return true;
 }
 
@@ -151,7 +152,7 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
     console.log( "XXX Switcher GHC" );
-    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.repoName, config.CE_USER );
+    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, pd.repoName, config.CE_ACTOR );
     
     switch( jd.event ) {
     case 'issue' :
@@ -201,6 +202,18 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 }
 
 
+
+/*
+Notification: ariCETester issue deleted A special populate issue gPLIYUWIGp for codeequity/ceTesterAri 52.35.457
+Notification: ariCETester label deleted populate uKmqbWrhjY for codeequity/ceTesterAri 52.42.83
+
+Notification: ariCETester issue opened A special populate issue mTFRjQcztF for codeequity/ceTesterAri 52.54.709
+Notification: ariCETester projects_v2_item created codeequity/I_kwDOIiH6ss5fOBwx dJZeEOtxIw for codeequity 52.56.726
+Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fOBwx oQrlTGCJFx for codeequity 52.57.28
+Notification: ariCETester label created populate fzUNPcBCYG for codeequity/ceTesterAri 53.00.292
+Notification: ariCETester issue labeled A special populate issue EbJIwsnxNa for codeequity/ceTesterAri 53.01.92
+Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fOBwx mxFNGsryyH for codeequity 53.01.197
+*/
 async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, ceProjectId ) {
 
     let retVal = "";
@@ -215,14 +228,21 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
     switch( jd.event ) {
     case 'projects_v2_item' :
 	{
-	    retVal = await gh2Items.handler( authData, ghLinks, pd, jd.action, jd.tag )
+	    // item created/deleted is ~ cardHandler.  Edited..?
+	    retVal = await gh2Item.handler( authData, ghLinks, pd, jd.action, jd.tag )
 		.catch( e => console.log( "Error.  Item Handler failed.", e ));
 	}
 	break;
     case 'issue' :
 	{
-	    retVal = await gh2Issues.handler( authData, ghLinks, pd, jd.action, jd.tag )
+	    retVal = await gh2Issue.handler( authData, ghLinks, pd, jd.action, jd.tag )
 		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
+	}
+	break;
+    case 'label' :
+	{
+	    retVal = await gh2Label.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		.catch( e => console.log( "Error.  Label Handler failed.", e ));
 	}
 	break;
     default:
@@ -268,39 +288,53 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 
     let demote = false;
     if( !resolved ) {
-	let nodeId = jd.reqBody[ jd.event ].node_id;
-	let found = false;
-	for( let i = 0; i < pendingNotices.length; i++ ) {
-	    // If the id's match, then we know the contentNotice is pv2.  No need to match further
-	    // console.log( "... looking at", pendingNotices[i], nodeId, jd.event );
-	    if( nodeId == pendingNotices[i].id ) {
-		console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
-		// console.log( "pendingNotices, after removal" );
-		let cpid = ceProjects.find( jd.host, pendingNotices[i].org, pendingNotices[i].hpid );
-		found = true;
-		pendingNotices.splice( i, 1 );
-		await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, cpid );
-		break;
-	    }
+
+	// Some notices can be for pv2 projects, but will never see a pv2 notice
+	// Basically, any core content.  These become PV2.
+	// NOTE: it would be fair at this point to cast everything as PV2, given evident demise of GHC...
+	if( jd.event == "issue" && jd.action == "deleted" ||
+	    jd.event == "label" && jd.action == "deleted" ||
+	    jd.event == "label" && jd.action == "created" )
+	{
+	    console.log( "Found PV2.  Switching GH2" );
+	    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
 	}
-	
-	if( !found ) {
-	    console.log( authData.who, "Did not find matching pv2Notice, delaying." );
-	    if( jd.delayCount > 5 ) {
-		console.log( "This job has already been delayed several times.. Checking for PV2" );
-		let foundPV2 = await ghUtils.checkForPV2( authData.pat, nodeId );
-		// XXX disturbing?  where's the pv2Notice?
-		if( foundPV2 ) {
-		    console.log( "Found PV2.  Switching GH2" );
-		    console.log( "XXX Increase delay count?  Otherwise Pending will grow?" );
-		    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
-		}
-		else {
-		    console.log( "Did not find PV2.  Switching GHC" );
-		    await switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp );
+	else {
+	    // Look for matching notices for the rest
+	    let nodeId = jd.reqBody[ jd.event ].node_id;
+	    let found = false;
+	    for( let i = 0; i < pendingNotices.length; i++ ) {
+		// If the id's match, then we know the contentNotice is pv2.  No need to match further
+		// console.log( "... looking at", pendingNotices[i], nodeId, jd.event );
+		if( nodeId == pendingNotices[i].id ) {
+		    console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
+		    // console.log( "pendingNotices, after removal" );
+		    let cpid = ceProjects.find( jd.host, pendingNotices[i].org, pendingNotices[i].hpid );
+		    found = true;
+		    pendingNotices.splice( i, 1 );
+		    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, cpid );
+		    break;
 		}
 	    }
-	    else { demote = true; }
+	    
+	    if( !found ) {
+		console.log( authData.who, "Did not find matching pv2Notice, delaying." );
+		if( jd.delayCount > 5 ) {
+		    console.log( "This job has already been delayed several times.. Checking for PV2", nodeId, jd.event, jd.action );
+		    let foundPV2 = await ghUtils.checkForPV2( authData.pat, nodeId );
+		    // XXX disturbing?  where's the pv2Notice?
+		    if( foundPV2 ) {
+			console.log( "Found PV2.  Switching GH2" );
+			console.log( "XXX Increase delay count?  Otherwise Pending will grow?" );
+			await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
+		    }
+		    else {
+			console.log( "Did not find PV2.  Switching GHC" );
+			await switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp );
+		    }
+		}
+		else { demote = true; }
+	    }
 	}
     }
     
@@ -313,16 +347,19 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     }
 }
 
-function makePendingNotice( rb ) {
+function makePendingNotice( rb, action ) {
     // Need to push GH2 info, not GHC.
     assert( typeof rb.projects_v2_item !== 'undefined' );
     assert( typeof rb.projects_v2_item.content_node_id !== 'undefined' );
-    assert( typeof rb.changes !== 'undefined' && typeof rb.changes.field_value !== 'undefined' && typeof rb.changes.field_value.field_type !== 'undefined' );
-    assert( typeof rb.organization !== 'undefined' );
-    
+
     let pn = {};
+    if( action == "edited" ) {
+	assert( typeof rb.changes !== 'undefined' && typeof rb.changes.field_value !== 'undefined' && typeof rb.changes.field_value.field_type !== 'undefined' );
+	assert( typeof rb.organization !== 'undefined' );
+	pn.mod  = rb.changes.field_value.field_type;
+    }
+    
     pn.id   = rb.projects_v2_item.content_node_id;
-    pn.mod  = rb.changes.field_value.field_type;
     pn.hpid = rb.projects_v2_item.project_node_id;
     pn.org  = rb.organization.login;
 	
@@ -337,8 +374,8 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
     }
 
     if( jd.projMgmtSys == config.PMS_GH2 ) {
-	if( jd.action == "edited" ) {
-	    pendingNotices.push( makePendingNotice( jd.reqBody ) );
+	if( jd.action == "edited" || jd.action == "created" ) {
+	    pendingNotices.push( makePendingNotice( jd.reqBody, jd.action ) );
 	    // console.log( "pending after push", pendingNotices );
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
 	}

@@ -450,21 +450,28 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     const ISS_PEND = "IR Pending";
     const ISS_ACCR = "IR Accrued";
 
+    console.log( "Refresh rec" );
     await gh2tu.refreshRec( authData, td );
+    console.log( "Refresh Flat" );
     await gh2tu.refreshFlat( authData, td );
+    console.log( "make labels" );
 
     // 1. Setup.
     let label1k  = await ghV2.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "1000 " + config.PEQ_LABEL, 1000 );
     let labelDoc = await ghV2.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "documentation", -1 );
     let labelBug = await ghV2.findOrCreateLabel( authData, td.GHOwner, td.GHRepo, false, "bug", -1 );
 
+    console.log( "make issues" );
     const issMoonDat = await gh2tu.makeIssue( authData, td, ISS_MOON, [ labelBug, labelDoc ] );
     const issPlanDat = await gh2tu.makeIssue( authData, td, ISS_PLAN, [ label1k, labelDoc, labelBug ] );
     const issProgDat = await gh2tu.makeIssue( authData, td, ISS_PROG, [ label1k, labelDoc ] );
     const issPendDat = await gh2tu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
     const issAccrDat = await gh2tu.makeIssue( authData, td, ISS_ACCR, [ label1k, labelDoc, labelBug ] );
 
-    await gh2tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.githubOpsPID, "Moons" );	    
+    console.log( "make col herm" );
+    await gh2tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.githubOpsPID, "Moons" );
+
+    assert( false );
 
     // From
     const moonLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Moons" );

@@ -391,7 +391,7 @@ async function runTests() {
 
     // TEST_REPO auth
     let td          = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
+    td.GHOwner      = config.TEST_ACTOR;
     td.GHRepo       = config.TEST_REPO;
     td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
 

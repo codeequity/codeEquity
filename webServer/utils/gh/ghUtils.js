@@ -37,6 +37,12 @@ async function postGH( PAT, url, postData ) {
 }
 
 
+// GQL queries can return null field values that hurt when checking a chain
+function validField( arr, field ) {
+    return arr.hasOwnProperty( field ) && !!arr[field] && typeof arr[field] !== 'undefined';
+}
+
+
 // NOTE.  This is very simplistic.  Consider at least random backoff delay, elay entire chain.
 // Ignore:
 //   422:  validation failed.  e.g. create failed name exists.. chances are, will continue to fail.
@@ -116,6 +122,10 @@ async function checkForPV2( PAT, nodeId ) {
 	await errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, nodeId ); 
     }
     else {
+	// XXX non-pv2 claim here can be false (e.g. delete populate issue, nodeId is already gone)
+	//     but may fine those cases to handle as classic?
+	if( !validField( ret.data, "node" ) ) { return found; }
+	
 	let data = ret.data.node.projectItems;
 	if( typeof data !== 'undefined' && typeof data.edges !== 'undefined' ) {
 	    if( data.edges.length > 99 ) { console.log( "WARNING.  Detected a very large number of projectItems.  Ignoring some." ); }
@@ -130,7 +140,23 @@ async function checkForPV2( PAT, nodeId ) {
     }
 
     return found;
+}
 
+// XXX Consider promoting this to ceUtils
+async function validatePEQ( authData, repo, issueId, title, projId ) {
+    let peq = -1;
+
+    let peqType = "";
+    assert( issueId != -1 );
+    peq = await utils.getPeq( authData, issueId );
+
+    if( peq != -1 && peq.issueName == title && peq.HostRepo == repo && peq.HostProjectId == projId )  {
+	// console.log( authData.who, "validatePeq success" );
+    }
+    else {
+	console.log( "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostRepo, repo, peq.HostProjectId, projId );
+    }
+    return peq;
 }
 
 
@@ -180,7 +206,12 @@ function parseLabelName( name ) {
     let alloc = false;
     let splits = name.split(" ");
     if( splits.length == 2 && ( splits[1] == config.ALLOC_LABEL || splits[1] == config.PEQ_LABEL )) {
-	peqValue = parseInt( splits[0] );
+	// read "k" or "M" to make up for GH no longer allowing comma's in label names (big numbers became unreadable)
+	let unit = splits[0].slice(-1);
+	peqValue = ( unit == "M" || unit == "k" ) ? parseFloat( splits[0].slice(0,-1) ) : parseInt( splits[0] );
+	peqValue = ( unit == "M" )                ? peqValue * 1000000 : peqValue;
+	peqValue = (                unit == "k" ) ? peqValue * 1000    : peqValue;
+	
 	alloc = splits[1] == config.ALLOC_LABEL;
     }
     return [peqValue, alloc];
@@ -230,17 +261,26 @@ function theOnePEQ( labels ) {
     return [peqValue, alloc];
 }
 
+// This needs to work for both users and orgs
 async function getOwnerId( PAT, owner ) {
-    let query       = `query getOwner($owner: String!) { user(login: $owner) { id } }`;
-    const variables = {"owner": owner};
+    let query       = `query ($login: String!) { user(login: $login) { id } organization(login: $login) { id } }`;
+    const variables = {"login": owner};
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
-
+    console.log( "GetOwnerId", PAT, owner );
+    
     let retId = -1;
-    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'user' ) ) { retId = ret.data.user.id; }
+    await postGH( PAT, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    if ( validField( ret, "data" ) && (validField( ret.data, "user" ) || validField( ret.data, "organization" ))) {
+		if( !!ret.data.user ) { retId = ret.data.user.id; }
+		else                  { retId = ret.data.organization.id; }
+	    }
+	})
+	.catch( e => retId = errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
+
     return retId;
 }
 
@@ -250,21 +290,24 @@ async function getRepoId( PAT, owner, repo ) {
 
     query = JSON.stringify({ query, variables });
 
-    const ret = await postGH( PAT, config.GQL_ENDPOINT, query )
-	  .catch( e => errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
-
-    // console.log( "GET RID..??", ret );
-    
     let retId = -1;
-    if( ret.hasOwnProperty( 'data' ) && ret.data.hasOwnProperty( 'repository' ) ) { retId = ret.data.repository.id; }
+    await postGH( PAT, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    if( validField( ret, "data" ) && validField( ret.data, "repository" )) { retId = ret.data.repository.id; }
+	})
+	.catch( e => retId = errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
+
     return retId;
 }
 
 
-exports.errorHandler = errorHandler;
 exports.postGH       = postGH;
+exports.validField   = validField;
+exports.errorHandler = errorHandler;
 
 exports.checkForPV2     = checkForPV2;
+exports.validatePEQ     = validatePEQ;
 
 exports.populateRequest   = populateRequest;
 
