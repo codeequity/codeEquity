@@ -77,8 +77,8 @@ class GH2Data extends ceData.CEData{
     }
     
     updateFromLink( link ) {
-	this.projectId = link.projectId; 
-	this.issueNum  = link.issueNum;
+	this.projectId = link.hostProjectId; 
+	this.issueNum  = link.hostIssueNum;
     }
 }
 

@@ -374,7 +374,8 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
     }
 
     if( jd.projMgmtSys == config.PMS_GH2 ) {
-	if( jd.action == "edited" || jd.action == "created" ) {
+	// deleting draft issue will cause 'deleted' to be sent
+	if( jd.action == "edited" || jd.action == "created" || jd.action == "deleted" ) { 
 	    pendingNotices.push( makePendingNotice( jd.reqBody, jd.action ) );
 	    // console.log( "pending after push", pendingNotices );
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );

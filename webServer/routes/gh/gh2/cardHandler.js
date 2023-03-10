@@ -254,15 +254,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    let oldNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );
-	    assert( cardId    == link.hostCardId );
-	    assert( newProjId == link.hostProjectId );               // not yet supporting moves between projects
+	    assert( cardId == link.hostCardId );
+	    assert( newCard.projId == link.hostProjectId );               // not yet supporting moves between projects
 
 	    let success = await ghV2.checkReserveSafe( authData, link.hostIssueId, newNameIndex );
 	    if( !success ) {
 		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
 		return;
 	    }
-	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newColId, newColName );
+	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.colId, newColName );
 	    // ghLinks.show();
 	    
 	    // handle issue.  Don't update issue state if not clear reopen/closed

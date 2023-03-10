@@ -214,7 +214,7 @@ async function getProjects( authData, td ) {
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on Repository {
-            ProjectV2(first:100) {
+            projectsV2(first:100) {
                edges{node{
                  title id 
                  repositories(first:100) {
@@ -228,21 +228,23 @@ async function getProjects( authData, td ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
-	    let projects = raw.data.projectsV2.edges;
-	    assert( projects.length < 99, "Need to paginate getProjects." );
+	    if( ghUtils.validField( raw.data.node.projectsV2, "edges" )) {
+		let projs = raw.data.node.projectsV2.edges;
+		assert( projs.length < 99, "Need to paginate getProjects." );
 
-	    for( let i = 0; i < projects.length; i++ ) {
-		const p    = projects[i].node;
-		const repo = p.repositories.edges[0].node;
-
-		let datum = {};
-		datum.id        = p.id;
-		datum.title     = p.title;
-		datum.repoCount = p.repositories.edges.length;
-		datum.repoId    = repo.id;
-		datum.repoOwner = repo.owner.login;
-		datum.repoName  = repo.name;
-		projects.push( datum );
+		for( let i = 0; i < projs.length; i++ ) {
+		    const p    = projs[i].node;
+		    const repo = p.repositories.edges[0].node;
+		    
+		    let datum = {};
+		    datum.id        = p.id;
+		    datum.title     = p.title;
+		    datum.repoCount = p.repositories.edges.length;
+		    datum.repoId    = repo.id;
+		    datum.repoOwner = repo.owner.login;
+		    datum.repoName  = repo.name;
+		    projects.push( datum );
+		}
 	    }})
 	.catch( e => {
 	    if( ghUtils.validField( e, "errors" ) && e.errors.length >= 1 ) {
@@ -304,6 +306,38 @@ async function getColumns( authData, pNodeId ) {
     return cols.length == 0 ? -1 : cols;
 }
 
+async function getDraftIssues( authData, pNodeId ) {
+    let diss = [];
+
+    let query = `query($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on ProjectV2 {
+            items(first: 100) {
+               edges { node {
+               ... on ProjectV2Item {
+                   type id
+               }}}}
+    }}}`;
+    let variables = {"nodeId": pNodeId };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let drafts = raw.data.node.items.edges;
+	    assert( drafts.length < 99, "Need to paginate getDraftIssues." );
+
+	    for( let i = 0; i < drafts.length; i++ ) {
+		const iss = drafts[i].node;
+		if( iss.type == "DRAFT_ISSUE" ) { diss.push( iss.id ); }
+	    }
+	})
+	.catch( e => diss = ghUtils.errorHandler( "getDraftIssues", e, getDraftIssues, authData, pNodeId )); 
+
+    return diss.length == 0 ? -1 : diss;
+}
+
+
 // Get all cards for project.  Filter for column.  Could very easily add, say, col info.. useful?
 async function getCards( authData, pNodeId, colId ) {
     let cards = [];
@@ -337,6 +371,7 @@ async function getCards( authData, pNodeId, colId ) {
 		    datum.id     = iss.id;
 		    datum.issNum = iss.content.number;
 		    datum.title  = iss.content.title;
+		    cards.push( datum );
 		}
 	    }
 	})
@@ -893,8 +928,15 @@ async function remIssue( authData, issueId ) {
     
     let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
 
-    console.log( "remIssue query", query );
+    // console.log( "remIssue query", query );
     if( typeof res.data === 'undefined' ) { console.log( "ERROR.", res ); }
+    
+    await utils.sleep( tu.MIN_DELAY );
+}
+
+async function remDraftIssue( authData, pNodeId, dissueId ) {
+
+    await ghV2.removeCard( authData, pNodeId, dissueId ); 
     
     await utils.sleep( tu.MIN_DELAY );
 }
@@ -2157,11 +2199,13 @@ exports.remCard         = remCard;
 exports.closeIssue      = closeIssue;
 exports.reopenIssue     = reopenIssue;
 exports.remIssue        = remIssue;
+exports.remDraftIssue   = remDraftIssue;
 
 exports.getLabels       = getLabels;
 exports.getIssues       = getIssues;
 exports.getProjects     = getProjects;
 exports.getColumns      = getColumns;
+exports.getDraftIssues  = getDraftIssues;
 exports.getCards        = getCards;
 exports.getCard         = getCard;
 exports.getComments     = getComments;

@@ -166,10 +166,15 @@ async function populateCELinkage( authData, ghLinks, pd )
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
 async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let issDat = [issue.title];
-    if( ghUtils.validField( issue.labels, "edges" ) && issue.labels.edges.length > 0 ) {
-	for( label of issue.labels ) { issDat.push( label.description ); }
+
+    // labelIssue does not call getFullIssue
+    if( ghUtils.validField( issue, "labelContent" ) ) { issDat.push( issue.labelContent ); }
+    else if( ghUtils.validField( issue.labels, "edges" ) && issue.labels.edges.length > 0 ) {
+	for( node of issue.labels.edges ) { issDat.push( node.description ); }
     }
 
+    console.log( "PNP: issDat", issDat );
+    
     pd.issueName = issDat[0];
     pd.issueNum  = issue.number;
     pd.repoName  = issue.repository.nameWithOwner;

@@ -933,6 +933,7 @@ async function getCard( authData, issueNodeId ) {
 	    retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
 	    retVal.columnName  = card.fieldValueByName.name;         
 	    retVal.issueNum    = card.content.number; 
+	    retVal.issueId     = card.content.id;
 	})
 	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, issueNodeId ));
 

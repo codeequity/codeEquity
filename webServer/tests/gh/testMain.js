@@ -71,6 +71,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
 
+    assert( false );
 
     subTest = await gh2TestSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );

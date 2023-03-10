@@ -12,6 +12,16 @@ const tu       = require('../../ceTestUtils');
 const gh2tu    = require( './gh2TestUtils' );
 
 
+async function remDraftIssues( authData, ghLinks, pd ) {
+    console.log( "Removing all draft issues. " );
+    let drafts = await gh2tu.getDraftIssues( authData, pd.projectId );
+    console.log( "REMDRAFT", pd.projectId, drafts );
+    
+    if( drafts != -1 ) {
+	for( const draft of drafts) { await gh2tu.remDraftIssue( authData, pd.projectId, draft ); }
+    }
+}
+
 async function remIssues( authData, ghLinks, pd ) {
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     console.log( "Removing all issues. " );
@@ -57,13 +67,15 @@ async function clearRepo( authData, ghLinks, pd ) {
 
     // XXX would like to delete.. buuut..
     // Get all existing projects in repo for deletion
-    console.log( "Unlinking all Projects. " );
     let projIds = await gh2tu.getProjects( authData, pd );
+    console.log( "Unlinking all Projects.", pd.GHRepoId, pd.GHFullName, projIds );
     if( projIds != -1 ) {
-	projIds = projIds.map((project) => project.id );
-	console.log( "ProjIds", pd.repoName, projIds );
+	projIds = projIds.map( project => project.id );
+	console.log( "ProjIds", pd.GHRepoName, projIds );
 	
 	for( const projId of projIds ) {
+	    pd.projectId = projId;
+	    await remDraftIssues( authData, ghLinks, pd );
 	    await gh2tu.unlinkProject( authData, projId, pd.GHRepoId );
 	    await utils.sleep( 1000 );
 	}
@@ -134,7 +146,7 @@ async function clearRepo( authData, ghLinks, pd ) {
 
     // set unpopulated
     // XXX Maybe clear hostRepos at some point?
-    console.log( "Depopulate", pd.GHFullname, pd.ceProjectId );
+    console.log( "Depopulate", pd.GHFullName, pd.ceProjectId );
     await awsUtils.unpopulate( authData, pd.ceProjectId );
 }
 
