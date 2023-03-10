@@ -362,9 +362,9 @@ async function updateLinkageSummary( authData, ceProjId, loc ) {
     console.log( authData.who, "Updating linkage summary" );
 
     let newLoc = {};
-    newLoc.CEProjId  = ceProjId;
-    newLoc.LastMod   = utils.getToday();
-    newLoc.Location  = loc;
+    newLoc.CEProjectId  = ceProjId;
+    newLoc.LastMod      = utils.getToday();
+    newLoc.Location     = loc;
 
     let shortName = "UpdateLinkage"; 
 

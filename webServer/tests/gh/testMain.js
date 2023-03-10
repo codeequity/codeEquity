@@ -50,7 +50,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     assert( wakeyPID != -1 );
     console.log( "Found", wakeyName, "with PID:", wakeyPID );
     
-    await gh2tu.linkProject( authData, wakeyPID, td.GHRepoId );
+    await gh2tu.linkProject( authData, ghLinks, td.ceProjectId, wakeyPID, td.GHRepoId, td.GHFullName );
     
     const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.ceProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
@@ -61,7 +61,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     }
 
     // gh2tu.remProject( authData, wakeyPID );
-    gh2tu.unlinkProject( authData, wakeyPID, td.GHRepoId );
+    gh2tu.unlinkProject( authData, ghLinks, td.ceProjectId, wakeyPID, td.GHRepoId );
     
     // TESTS
 
@@ -70,8 +70,6 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await gh2TestDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
-
-    assert( false );
 
     subTest = await gh2TestSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );

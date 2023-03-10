@@ -540,6 +540,7 @@ async function updateLinkage( newLoc ) {
 	    if( loc.HostProjectId == newLoc.Location.hostProjectId && loc.HostColumnId == newLoc.Location.hostColumnId ) {
 		console.log( "updating with", newLoc.Location.hostProjectName, newLoc.Location.hostColumnName );
 		loc.HostRepository  = newLoc.Location.hostRepository;
+		loc.HostRepositoryId  = newLoc.Location.hostRepositoryId;
 		loc.HostProjectName = newLoc.Location.hostProjectName;
 		loc.HostColumnName  = newLoc.Location.hostColumnName;
 		loc.HostUtility     = newLoc.Location.hostUtility;
@@ -557,6 +558,7 @@ async function updateLinkage( newLoc ) {
 	aloc.HostProjectId   = newLoc.Location.hostProjectId;
 	aloc.HostProjectName = newLoc.Location.hostProjectName;
 	aloc.HostRepository  = newLoc.Location.hostRepository;
+	aloc.HostRepositoryId  = newLoc.Location.hostRepositoryId;
 	aloc.HostColumnId    = newLoc.Location.hostColumnId;
 	aloc.HostColumnName  = newLoc.Location.hostColumnName;
 	aloc.HostUtility     = newLoc.Location.hostUtility;

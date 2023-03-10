@@ -76,7 +76,7 @@ async function clearRepo( authData, ghLinks, pd ) {
 	for( const projId of projIds ) {
 	    pd.projectId = projId;
 	    await remDraftIssues( authData, ghLinks, pd );
-	    await gh2tu.unlinkProject( authData, projId, pd.GHRepoId );
+	    await gh2tu.unlinkProject( authData, ghLinks, pd.ceProjectId, projId, pd.GHRepoId );
 	    await utils.sleep( 1000 );
 	}
     }

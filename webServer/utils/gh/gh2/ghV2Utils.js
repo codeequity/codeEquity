@@ -50,7 +50,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
                      ... on ProjectV2ItemFieldSingleSelectValue { name optionId field { ... on ProjectV2SingleSelectField { id }}}}
                     content {
                      ... on ProjectV2ItemContent {
-                       ... on Issue { id number repository {nameWithOwner} title projectItems(first: 100) { edges {node { id }}} }}}
+                       ... on Issue { id number repository {id nameWithOwner} title projectItems(first: 100) { edges {node { id }}} }}}
             }}}}
             views(first: 1) {
               edges {
@@ -77,7 +77,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
                      ... on ProjectV2ItemFieldSingleSelectValue { name optionId field { ... on ProjectV2SingleSelectField { id }}}}
                     content {
                      ... on ProjectV2ItemContent {
-                       ... on Issue { id number repository {nameWithOwner} title projectItems(first: 100) { edges {node { id }}} }}}
+                       ... on Issue { id number repository {id nameWithOwner} title projectItems(first: 100) { edges {node { id }}} }}}
             }}}}
             views(first: 1) {
               edges {
@@ -125,12 +125,13 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 			    statusId = pfc.id;
 			    for( let k = 0; k < pfc.options.length; k++ ) {
 				let datum   = {};
-				datum.hostRepository  = config.EMPTY;
-				datum.hostProjectName = project.title;
-				datum.hostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
-				datum.hostColumnName  = pfc.options[k].name;
-				datum.hostColumnId    = pfc.options[k].id;
-				datum.hostUtility     = statusId;
+				datum.hostRepository   = config.EMPTY;
+				datum.hostRepositoryId = config.EMPTY;
+				datum.hostProjectName  = project.title;
+				datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
+				datum.hostColumnName   = pfc.options[k].name;
+				datum.hostColumnId     = pfc.options[k].id;
+				datum.hostUtility      = statusId;
 				locData.push( datum );
 			    }
 			}
@@ -138,12 +139,13 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		}
 		// Build "No Status" by hand, since it corresponds to a null entry
 		let datum   = {};
-		datum.hostRepository  = config.EMPTY;
-		datum.hostProjectName = project.title;
-		datum.hostProjectId   = project.id;             // all ids should be projectV2 or projectV2Item ids
-		datum.hostColumnName  = config.GH_NO_STATUS; 
-		datum.hostColumnId    = config.EMPTY;           // no status column does not exist in view options above.  special case.
-		datum.hostUtility     = statusId;
+		datum.hostRepository   = config.EMPTY;
+		datum.hostRepositoryId = config.EMPTY;
+		datum.hostProjectName  = project.title;
+		datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
+		datum.hostColumnName   = config.GH_NO_STATUS; 
+		datum.hostColumnId     = config.EMPTY;           // no status column does not exist in view options above.  special case.
+		datum.hostUtility      = statusId;
 		locData.push( datum );
 	    }
 
@@ -885,6 +887,51 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
     return pid == false ? -1 : pid;
 }
 
+// XXX unit testing required
+async function linkProject( authData, ghLinks, ceProjId, pNodeId, rNodeId, rName ) {
+    let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
+    let variables = {"pid": pNodeId, "rid": rNodeId };
+    query         = JSON.stringify({ query, variables });
+
+    console.log( "GHV2:LP" );
+    let res = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    res = ret;
+	})
+	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, pNodeId, rNodeId ));
+
+    if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
+    else {
+	// No notification from GH.  Manage internal state here.
+	// This is very similar to linkage:initOneProject - need to read from GH, update local state.
+	await ghLinks.linkProject( authData, ceProjId, pNodeId, rNodeId, rName );
+    }
+}
+
+async function unlinkProject( authData, ghLinks, ceProjId, pNodeId, rNodeId ) {
+    let query     = "mutation( $pid:ID!, $rid:ID! ) { unlinkProjectV2FromRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
+    let variables = {"pid": pNodeId, "rid": rNodeId };
+    query         = JSON.stringify({ query, variables });
+
+    let res = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    res = ret;
+	})
+	.catch( e => res = ghUtils.errorHandler( "unlinkProject", e, unlinkProject, authData, ghLinks, pNodeId, rNodeId ));
+    
+    if( typeof res.data === 'undefined' ) { console.log( "UnlinkProject failed.", res ); }
+    else {
+	// Cards are still valid, just can't find the project from the repo.  Clear repo info
+	ghLinks.unlinkProject( authData, ceProjId, pNodeId, rNodeId );
+    }
+}
+
+
+
 // XXX revisit once column id is fixed.
 function getColumnName( authData, ghLinks, ceProjId, colId ) {
     if( colId == -1 ) { return -1; }
@@ -1339,6 +1386,8 @@ exports.rebuildLabel       = rebuildLabel;
 exports.getProjectName     = getProjectName;
 exports.updateProject      = updateProject;
 exports.createProject      = createProject;
+exports.linkProject        = linkProject;
+exports.unlinkProject      = unlinkProject;
 
 exports.getColumnName      = getColumnName;
 

@@ -566,7 +566,9 @@ async function makeProject(authData, td, name, body, specials ) {
     return pid;
 }
 
-async function findOrCreateProject( authData, td, name, body ) {
+// If can't find project by collab login or organization name, make it.
+// If did find it, then see if it is already linked to the repo.  If not, link it.
+async function findOrCreateProject( authData, ghLinks, td, name, body ) {
     let pid = await findProjectByName( authData, td.GHOwner, name );
     if( pid == -1 ) {
 	pid = await makeProject( authData, td, name, body, {"owner": td.GHOwnerId} );
@@ -574,7 +576,7 @@ async function findOrCreateProject( authData, td, name, body ) {
     else {
 	let rp = await findProjectByRepo( authData, td.GHRepoId, name );
 	if( rp == -1 ) {
-	    await linkProject( authData, pid, td.GHRepoId );
+	    await linkProject( authData, ghLinks, td.ceProjectId, pid, td.GHRepoId, td.GHFullName );
 	}
     }
     
@@ -605,34 +607,13 @@ async function remProject( authData, projId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
-
-async function linkProject( authData, pNodeId, rNodeId ) {
-    let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
-    let variables = {"pid": pNodeId, "rid": rNodeId };
-    query         = JSON.stringify({ query, variables });
-    
-    let res = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    res = ret;
-	})
-	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, pNodeId, rNodeId ));
-
-    if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
-    
+async function linkProject( authData, ghLinks, ceProjId, pNodeId, rNodeId, rName ) {
+    await ghV2.linkProject( authData, ghLinks, ceProjId, pNodeId, rNodeId, rName );
     await utils.sleep( tu.MIN_DELAY );
 }
 
-async function unlinkProject( authData, pNodeId, rNodeId ) {
-    let query     = "mutation( $pid:ID!, $rid:ID! ) { unlinkProjectV2FromRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
-    let variables = {"pid": pNodeId, "rid": rNodeId };
-    query         = JSON.stringify({ query, variables });
-    
-    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
-
-    if( typeof res.data === 'undefined' ) { console.log( "UnlinkProject failed.", res ); }
-    
+async function unlinkProject( authData, ghLinks, ceProjId, pNodeId, rNodeId ) {
+    await ghV2.unlinkProject( authData, ghLinks, ceProjId, pNodeId, rNodeId );    
     await utils.sleep( tu.MIN_DELAY );
 }
 
