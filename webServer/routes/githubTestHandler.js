@@ -25,6 +25,12 @@ async function handler( ghLinks, ceJobs, ceNotification, reqBody, res ) {
 	// NOTE, this removes ALL pending jobs for FullName, including user, server and tester jobs.
 	ceRouter.purgeQueue( ceJobs );
     }
+    else if( reqBody.Request == "linkProject" ) {
+	retVal = ghLinks.linkProject( reqBody.auth, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId, reqBody.rName );
+    }
+    else if( reqBody.Request == "unlinkProject" ) {
+	retVal = ghLinks.unlinkProject( reqBody.auth, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId );
+    }
 	
     return res
 	.status(201)

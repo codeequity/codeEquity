@@ -71,12 +71,12 @@ async function clearRepo( authData, ghLinks, pd ) {
     console.log( "Unlinking all Projects.", pd.GHRepoId, pd.GHFullName, projIds );
     if( projIds != -1 ) {
 	projIds = projIds.map( project => project.id );
-	console.log( "ProjIds", pd.GHRepoName, projIds );
+	console.log( "ProjIds", pd.GHFullName, projIds );
 	
 	for( const projId of projIds ) {
 	    pd.projectId = projId;
 	    await remDraftIssues( authData, ghLinks, pd );
-	    await gh2tu.unlinkProject( authData, ghLinks, pd.ceProjectId, projId, pd.GHRepoId );
+	    await gh2tu.unlinkProject( authData, pd.ceProjectId, projId, pd.GHRepoId );
 	    await utils.sleep( 1000 );
 	}
     }

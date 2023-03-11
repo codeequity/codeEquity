@@ -403,14 +403,12 @@ class Linkage {
 	const colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
 
 	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
-	if( this.links[ceProjId] == null ) { return -1; }
+	if( !this.locs[ceProjId] ) { return -1; }
 
 	let locs = [];
 	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) {// one clocs is {projId1: { coldata }, projId2: { coldata }}
 	    for( const [_, loc] of Object.entries( clocs ) ) {            
 		let match = true;
-
-		console.log( "XXXXXXXXXXX", loc );
 		
 		match = projId == -1             ? match : match && (loc.hostProjectId    == projId);
 		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
@@ -609,15 +607,15 @@ class Linkage {
 		}}
 	}
 
-	this.removeLocs( { authData: authData, ceProjId: ceProjId, projId: hostProjectId } );	
+	this.removeLocs( { authData: authData, ceProjId: ceProjId, projId: hostProjectId } );
+	return true;
     }
 
 
-    // XXXX XXXX addLoc not properly modifying dynamo?
     async linkProject( authData, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
 	let rLocs  = [];
 	let rLinks = [];
-	console.log( "linkage:LP" );
+	console.log( "linkage:LP", ceProjId, hostProjectId, hostRepoId, hostRepoName );
 
 	await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	    .catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
@@ -625,19 +623,21 @@ class Linkage {
 	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
 	
 	// add (or overwrite matching.. hmm see above)
+	// Don't wait, no adds to dynamo
 	rLinks.forEach( function (link) { link.hostRepo   = hostRepoName;
 					  link.hostRepoId = hostRepoId;
 					  this.addLinkage( authData, ceProjId, link );
 					}, this);
-	
+	// Wait.. adds to dynamo
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
 	    loc.active = "true";
 	    loc.hostRepository = hostRepoName;
 	    loc.hostRepositoryId = hostRepoId;
 	    console.log( "linkage:addLoc", loc );
-	    this.addLoc( authData, loc, true );
+	    await this.addLoc( authData, loc, true );
 	}
+	return true;
     }
     
     // NOTE: testing will purge every repo
@@ -745,8 +745,8 @@ class Linkage {
 	if( printables.length > 0 ) {
 	    console.log( this.fill( "ceProj", 16 ),
 			 this.fill( "Repo", 20 ),
-			 this.fill( "RepoId", 10 ),
-			 this.fill( "ProjId", 10 ), 
+			 this.fill( "RepoId", 12 ),
+			 this.fill( "ProjId", 20 ), 
 			 this.fill( "ProjName", 15 ),
 			 this.fill( "ColId", 10),
 			 this.fill( "ColName", 20)
@@ -762,8 +762,8 @@ class Linkage {
 	    const loc = printables[i];
 	    console.log( this.fill( loc.ceProjectId, 16 ),
 			 this.fill( loc.hostRepository, 20 ),
-			 this.fill( loc.hostRepositoryId, 10 ),
-			 loc.hostProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.hostProjectId, 10 ),
+			 this.fill( loc.hostRepositoryId, 12 ),
+			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
 			 this.fill( loc.hostProjectName, 15 ),
 			 loc.hostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.hostColumnId, 10 ),
 			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )
