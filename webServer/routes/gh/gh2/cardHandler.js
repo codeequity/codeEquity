@@ -262,7 +262,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
 		return;
 	    }
-	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.colId, newColName );
+	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.columnId, newColName );
 	    // ghLinks.show();
 	    
 	    // handle issue.  Don't update issue state if not clear reopen/closed

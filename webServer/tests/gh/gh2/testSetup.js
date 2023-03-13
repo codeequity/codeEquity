@@ -38,11 +38,10 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
     await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );
 
-
     // TRIGGER
     let nbi1     = await gh2tu.makeIssue( authData, td, "A special populate issue", [] );
     let card11   = await gh2tu.makeProjectCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, nbi1[0], true );
-    let popLabel = await ghV2.findOrCreateLabel( authData, ghLinks, td.GHRepoId, false, config.POPULATE, -1 );
+    let popLabel = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, config.POPULATE, -1 );
     let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
     await gh2tu.addLabel( authData, popLabel.id, nbiDat );       // ready.. set... Go!
     await utils.sleep( 1000 );
@@ -51,6 +50,40 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
+
+
+    /*  3/13  For GH thread, delete soon
+    // softCont: dataSecurity, githubOps, unallocated
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
+    let cardId = await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
+
+    // let locsA = await tu.getLocs( authData, ghLinks, { "ceProjId": td.ceProjectId, "projId": ghOpPID, "colName": "Stars" } );
+    // await ghV2.updateColumn( authData, ghOpPID, locs[0].hostColumnId, locs[0].hostUtility, locsA[0].hostColumnId );
+    // let locs = await tu.getLocs( authData, ghLinks, { "ceProjId": td.ceProjectId, "projId": ghOpPID, "colName": "Stripes" } );
+    assert( locs.length == 1 );
+    // await ghV2.updateColumn( authData, td.masterPID, cardId, mastCol1.hostUtility, {"text": "gooby"} );
+    await ghV2.updateColumn( authData, td.masterPID, cardId, mastCol1.hostColumnId, {"text": "gooby"} );
+
+    let pid = "PVT_kwDOA8JELs4ALvih";
+    let cid = "PVTI_lADOA8JELs4ALvihzgFb3po";
+    let col  = "f75ad846";
+    let col2 = "8dc16716";
+    let status = "PVTSSF_lADOA8JELs4ALvihzgHfSLo";
+    let val = {"text": "gooby"};
+
+    let huh = "PVTFSV_lQDOA8JELs4ALvihzgFb3prOA7lw7A";
+
+    // value: {singleSelectOptionId: $value }})   this is for moveCard, which is not what I want
+
+    //                                   proj  item  field  value
+    // await ghV2.updateColumn( authData, pid, cid, status, {"text": "gooby"} );  // 'Did not receive a single select option Id to update a field of type single_select'   closest?
+    // await ghV2.updateColumn( authData, pid, cid, col, {"text": "gooby"} ); // Could not resolve to a node with the global id of \'f75ad846\'
+    // await ghV2.updateColumn( authData, pid, status, col, {"text": "gooby"} );  // Could not resolve to ProjectV2Item node with the global id of PVTSSF_lADOA8JELs4ALvihzgHfSLo
+    // await ghV2.updateColumn( authData, pid, col, status, {"text": "gooby"} );  // Could not resolve to a node with the global id of \'f75ad846\'
+    // await ghV2.updateColumn( authData, pid, huh, status, {"text": "gooby"} );     // Could not resolve to ProjectV2Item node with the global id of PVTFSV_lQDOA8JELs4ALvihzgFb..
+    assert( false );
+    */
     
     // busOps:  unallocated
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2.hostColumnId, td.unallocTitle, "1,000,000" );

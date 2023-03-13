@@ -738,6 +738,7 @@ async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, col
 	
     console.log( "Made AllocCard and issue:", issDat );
     await utils.sleep( tu.MIN_DELAY );
+    return issDat[2];
 }
 
 // XXX untested.  Get this working before using makeNewbornCard.

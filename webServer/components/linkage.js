@@ -634,7 +634,7 @@ class Linkage {
 	    loc.active = "true";
 	    loc.hostRepository = hostRepoName;
 	    loc.hostRepositoryId = hostRepoId;
-	    console.log( "linkage:addLoc", loc );
+	    // console.log( "linkage:addLoc", loc );
 	    await this.addLoc( authData, loc, true );
 	}
 	return true;

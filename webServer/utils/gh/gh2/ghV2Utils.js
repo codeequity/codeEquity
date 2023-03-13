@@ -898,10 +898,33 @@ function getColumnName( authData, ghLinks, ceProjId, colId ) {
     return colName
 }
 
+
 // 12/22
-async function updateColumn( authData, projNodeId, colId, title ) {
+async function updateColumn( authData, pNodeId, colId, statusId, newValue ) {
+    console.log( "UC", pNodeId, colId, statusId, newValue );
     console.log( authData.who, "NYI.  Github does not yet support managing status with the API" );
     console.log( authData.who, "https://github.com/orgs/community/discussions/38225" );
+
+    let query     = `mutation( $fieldId:ID!, $itemId:ID!, $projId:ID!, $val:ProjectV2FieldValue! ) 
+                             { updateProjectV2ItemFieldValue( input:{ fieldId: $fieldId, itemId: $itemId, projectId: $projId, value: $val }) 
+                             {clientMutationId projectV2Item {id}}}`;
+
+    let variables = {"projId": pNodeId, "itemId": colId, "fieldId": statusId, "val": newValue };
+
+    let queryJ    = JSON.stringify({ query, variables });
+
+    console.log( "query", queryJ );
+    
+    let retVal = false;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    console.log( "Result", ret );
+	    if( ret.status != 200 ) { throw ret; }
+	    retVal = true;
+	})
+	.catch( e => retVal = ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, pNodeId, colId, statusId, newValue ));
+
+    return retVal;
 }
 
 
