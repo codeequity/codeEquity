@@ -447,55 +447,16 @@ async function findProject( authData, td, projId ) {
 }
 
 async function findProjectByName( authData, userLogin, projName ) {
-    let pid = -1;
+    let pid = await ghV2.findProjectByName( authData, userLogin, projName );
 
-    let query = `query($uLogin: String!, $pName: String!) {
-        user( login: $uLogin ) {
-           login id
-           projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
-        organization( login: $uLogin ) {
-           login id
-           projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
-    }`;
-    let variables = {"uLogin": userLogin, "pName": projName };
-    query = JSON.stringify({ query, variables });
-
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
-	    let projects = [];
-	    if( ghUtils.validField( raw.data, "user" ))              { projects = raw.data.user.projectsV2.edges; }
-	    else if( ghUtils.validField( raw.data, "organization" )) { projects = raw.data.organization.projectsV2.edges; }
-
-	    if     ( projects.length >= 2 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
-	    else if( projects.length >= 1 ) { pid = projects[0].node.id; }
-	})
-	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
+    if( pid < -1 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
 
     return pid;
 }
 async function findProjectByRepo( authData, rNodeId, projName ) {
-    let pid = -1;
+    let pid = await ghV2.findProjectByRepo( authData, rNodeId, projName );
 
-    let query = `query($rid:ID!, $pName:String!) {
-        node( id:$rid ) {
-           ... on Repository {
-              id nameWithOwner
-              projectsV2(first:99, query: $pName ) {edges{ node{ id title }}}}
-    }}`;
-    let variables = {"rid": rNodeId, "pName": projName };
-    query = JSON.stringify({ query, variables });
-
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
-	    let projects = [];
-	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
-
-	    if     ( projects.length >= 2 ) { console.log( "WARNING.  Project exists multiple times", projects ); }
-	    else if( projects.length >= 1 ) { pid = projects[0].node.id; }
-	})
-	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
+    if( pid < -1 ) { console.log( "WARNING.  Project exists multiple times", projects ); }
 
     return pid;
 }
@@ -569,17 +530,7 @@ async function makeProject(authData, td, name, body, specials ) {
 // If can't find project by collab login or organization name, make it.
 // If did find it, then see if it is already linked to the repo.  If not, link it.
 async function findOrCreateProject( authData, td, name, body ) {
-    let pid = await findProjectByName( authData, td.GHOwner, name );
-    if( pid == -1 ) {
-	pid = await makeProject( authData, td, name, body, {"owner": td.GHOwnerId} );
-    }
-    else {
-	let rp = await findProjectByRepo( authData, td.GHRepoId, name );
-	if( rp == -1 ) {
-	    await linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName );
-	}
-    }
-    
+    let pid = await ghV2.findOrCreateProject( authData, td.ceProjectId, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
     assert( pid != -1 );
     console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
     return pid;
@@ -607,29 +558,7 @@ async function remProject( authData, projId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
-// XXX unit testing required
-async function linkProject( authData, ceProjId, pNodeId, rNodeId, rName ) {
-    let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
-    let variables = {"pid": pNodeId, "rid": rNodeId };
-    query         = JSON.stringify({ query, variables });
-
-    let res = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    res = ret;
-	})
-	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ceProjId, pNodeId, rNodeId, rName ));
-
-    if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
-    else {
-	// No notification from GH.  Manage internal state here.
-	// This is very similar to linkage:initOneProject - need to read from GH, update local state.
-	await tu.linkProject( authData, ceProjId, pNodeId, rNodeId, rName );
-    }
-    await utils.sleep( tu.MIN_DELAY );
-}
-
+// XXX move to ghV2?
 async function unlinkProject( authData, ceProjId, pNodeId, rNodeId ) {
     let query     = "mutation( $pid:ID!, $rid:ID! ) { unlinkProjectV2FromRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
     let variables = {"pid": pNodeId, "rid": rNodeId };
@@ -2191,7 +2120,6 @@ exports.findOrCreateProject = findOrCreateProject;
 
 exports.makeProject     = makeProject;
 exports.remProject      = remProject;
-exports.linkProject     = linkProject;
 exports.unlinkProject   = unlinkProject;
 exports.makeColumn      = makeColumn;
 exports.updateColumn    = updateColumn;

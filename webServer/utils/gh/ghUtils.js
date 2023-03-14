@@ -1,3 +1,4 @@
+const assert  = require( 'assert' );
 const fetch = require( 'node-fetch' );
 
 const config = require( '../../config' );

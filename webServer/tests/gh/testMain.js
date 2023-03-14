@@ -8,6 +8,7 @@ const utils     = require( '../../utils/ceUtils' );
 const awsUtils  = require( '../../utils/awsUtils' );
 
 const ghUtils   = require( '../../utils/gh/ghUtils' );
+const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
 
 const links     = require('../../components/linkage.js');
 const circBuff  = require('../../components/circBuff.js');
@@ -50,7 +51,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     assert( wakeyPID != -1 );
     console.log( "Found", wakeyName, "with PID:", wakeyPID );
     
-    await gh2tu.linkProject( authData, td.ceProjectId, wakeyPID, td.GHRepoId, td.GHFullName );
+    await ghV2.linkProject( authData, td.ceProjectId, wakeyPID, td.GHRepoId, td.GHFullName );
     
     const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.ceProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
@@ -62,7 +63,6 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
 
     // gh2tu.remProject( authData, wakeyPID );
     gh2tu.unlinkProject( authData, td.ceProjectId, wakeyPID, td.GHRepoId );
-
 
     // TESTS
 

@@ -855,17 +855,24 @@ function getProjectName( authData, ghLinks, ceProjId, projId ) {
     return projName
 }
 
-async function updateProject( authData, projNodeId, title ) {
-    let query     = `mutation( $projId:ID!, $title:String ) { updateProjectV2( input:{ projectId: $projId, title: $title })  {clientMutationId}}`;
-    let variables = {"projId": projNodeId, "title": title };
+async function updateProject( authData, projNodeId, title, body ) {
+
+    if( typeof body === 'undefined' ) {
+	let query     = `mutation( $projId:ID!, $title:String ) { updateProjectV2( input:{ projectId: $projId, title: $title })  {clientMutationId}}`;
+	let variables = {"projId": projNodeId, "title": title };
+    }
+    else {
+	let query     = `mutation( $projId:ID!, $body:String ) { updateProjectV2( input:{ projectId: $projId, shortDescription: $body })  {clientMutationId}}`;
+	let variables = {"projId": projNodeId, "body": body };
+    }
     let queryJ    = JSON.stringify({ query, variables });
 	
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, projNodeId, title ));
+	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, projNodeId, title, body ));
 }
 
 // Only repository owner can use this to create a project.  
-async function createProject( authData, ownerNodeId, repoNodeId, title ) {
+async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
     console.log( "Create project", ownerNodeId, repoNodeId, title );
     let query     = `mutation( $ownerId:ID!, $repoId:ID!, $title:String! ) 
                              { createProjectV2( input:{ repositoryId: $repoId, ownerId: $ownerId, title: $title }) {clientMutationId projectV2 {id}}}`;
@@ -884,6 +891,9 @@ async function createProject( authData, ownerNodeId, repoNodeId, title ) {
 	})
 	.catch( e => pid = ghUtils.errorHandler( "createProject", e, createProject, authData, ownerNodeId, repoNodeId, title ));
 
+    // arg GH.. would be nice to do this in 1 query!
+    if( pid ) { await updateProject( authData, pid, "", body ); }
+    
     return pid == false ? -1 : pid;
 }
 
@@ -898,18 +908,18 @@ function getColumnName( authData, ghLinks, ceProjId, colId ) {
     return colName
 }
 
-
-// 12/22
-async function updateColumn( authData, pNodeId, colId, statusId, newValue ) {
-    console.log( "UC", pNodeId, colId, statusId, newValue );
+// XXX create not update
+// create new column
+async function updateColumn( authData, pNodeId, newValue ) {
+    console.log( "UC", pNodeId, newValue );
     console.log( authData.who, "NYI.  Github does not yet support managing status with the API" );
     console.log( authData.who, "https://github.com/orgs/community/discussions/38225" );
 
-    let query     = `mutation( $fieldId:ID!, $itemId:ID!, $projId:ID!, $val:ProjectV2FieldValue! ) 
-                             { updateProjectV2ItemFieldValue( input:{ fieldId: $fieldId, itemId: $itemId, projectId: $projId, value: $val }) 
-                             {clientMutationId projectV2Item {id}}}`;
+    let query     = `mutation( $dt:ProjectV2CustomFieldType!, $projId:ID!, $val:[ProjectV2SingleSelectFieldOptionInput!] ) 
+                             { createProjectV2Field( input:{ dataType: $dt, name: "Statusus", projectId: $projId, singleSelectOptions: $val }) 
+                             {clientMutationId}}`;
 
-    let variables = {"projId": pNodeId, "itemId": colId, "fieldId": statusId, "val": newValue };
+    let variables = {"dt": "SINGLE_SELECT", "projId": pNodeId, "val": newValue };
 
     let queryJ    = JSON.stringify({ query, variables });
 
@@ -922,7 +932,54 @@ async function updateColumn( authData, pNodeId, colId, statusId, newValue ) {
 	    if( ret.status != 200 ) { throw ret; }
 	    retVal = true;
 	})
-	.catch( e => retVal = ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, pNodeId, colId, statusId, newValue ));
+	.catch( e => retVal = ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, pNodeId, newValue ));
+
+    return retVal;
+}
+
+async function deleteColumn( authData, newValue ) {
+    let query     = `mutation( $dt:DeleteProjectV2FieldInput! ) 
+                             { deleteProjectV2Field( input: $dt ) 
+                             {clientMutationId}}`;
+
+    let variables = {"dt": newValue };
+
+    let queryJ    = JSON.stringify({ query, variables });
+
+    console.log( "query", queryJ );
+    
+    let retVal = false;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    console.log( "Result", ret );
+	    if( ret.status != 200 ) { throw ret; }
+	    retVal = true;
+	})
+	.catch( e => retVal = ghUtils.errorHandler( "deleteColumn", e, deleteColumn, authData, newValue ));
+
+    return retVal;
+}
+
+// XXX not done  .. this will probably move me to no status.
+async function clearColumn( authData, newValue ) {
+    let query     = `mutation( $dt:DeleteProjectV2FieldInput! ) 
+                             { clearProjectV2ItemFieldValue( input: $dt ) 
+                             {clientMutationId}}`;
+
+    let variables = {"dt": newValue };
+
+    let queryJ    = JSON.stringify({ query, variables });
+
+    console.log( "query", queryJ );
+    
+    let retVal = false;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    console.log( "Result", ret );
+	    if( ret.status != 200 ) { throw ret; }
+	    retVal = true;
+	})
+	.catch( e => retVal = ghUtils.errorHandler( "clearColumn", e, deleteColumn, authData, newValue ));
 
     return retVal;
 }
@@ -1244,16 +1301,117 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
     }
     return loc;
 }
+async function findProjectByName( authData, userLogin, projName ) {
+    let pid = -1;
+
+    let query = `query($uLogin: String!, $pName: String!) {
+        user( login: $uLogin ) {
+           login id
+           projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
+        organization( login: $uLogin ) {
+           login id
+           projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
+    }`;
+    let variables = {"uLogin": userLogin, "pName": projName };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = [];
+	    if( ghUtils.validField( raw.data, "user" ))              { projects = raw.data.user.projectsV2.edges; }
+	    else if( ghUtils.validField( raw.data, "organization" )) { projects = raw.data.organization.projectsV2.edges; }
+
+	    if( projects.length <= 1 ) { pid = projects[0].node.id; }
+	    else                       { pid = -1 * projects.length; }
+	})
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
+
+    return pid;
+}
+
+async function findProjectByRepo( authData, rNodeId, projName ) {
+    let pid = -1;
+
+    let query = `query($rid:ID!, $pName:String!) {
+        node( id:$rid ) {
+           ... on Repository {
+              id nameWithOwner
+              projectsV2(first:99, query: $pName ) {edges{ node{ id title }}}}
+    }}`;
+    let variables = {"rid": rNodeId, "pName": projName };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = [];
+	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
+
+	    if( projects.length <= 1 ) { pid = projects[0].node.id; }
+	    else                       { pid = -1 * projects.length; }
+	})
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
+
+    return pid;
+}
+
+// XXX unit testing required
+// XXX moving linkProj here removes need for testHandler:linkProject.  Remove.
+async function linkProject( authData, ceProjId, pNodeId, rNodeId, rName ) {
+    let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
+    let variables = {"pid": pNodeId, "rid": rNodeId };
+    query         = JSON.stringify({ query, variables });
+
+    let res = -1;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( ret.status != 200 ) { throw ret; }
+	    res = ret;
+	})
+	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ceProjId, pNodeId, rNodeId, rName ));
+
+    if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
+    else {
+	// No notification from GH.  Manage internal state here.
+	// This is very similar to linkage:initOneProject - need to read from GH, update local state.
+	await tu.linkProject( authData, ceProjId, pNodeId, rNodeId, rName );
+    }
+    await utils.sleep( tu.MIN_DELAY );
+}
+
+
+// XXX linkProj is only done if ceServer.  gh2TestUtils will carry out for testing.  return is [pid, rp]  this removes tu.link here.
+
+// XXX Placed here to support createUnclaimedProject..
+//     relocate to gh2TestUtils once column support in the API is resolved.
+async function findOrCreateProject( authData, ceProjId, ownerLogin, ownerId, repoId, repoName, name, body ) {
+    // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.
+    let pid = await findProjectByName( authData, ownerLogin, name );
+    if( pid == -1 ) {
+	pid = await createProject( authData, ownerId, repoId, name, body );
+    }
+    else {
+	let rp = await findProjectByRepo( authData, repoId, name );
+	if( rp == -1 ) {
+	    await linkProject( authData, ceProjId, pid, repoId, repoName );
+	}
+    }
+    
+    return pid;
+}
+
 
 // NOTE: As of 1/2023 GH API does not support management of the status column for projects
-//       For now, verify that a human has created this by hand.... https://github.com/orgs/community/discussions/44265 
+//       For now, verify that a human has created this by hand.... https://github.com/orgs/community/discussions/44265
+// NOTE: if this creates, then create unclaimed column below will fail.
 async function createUnClaimedProject( authData, ghLinks, pd  )
 {
     const unClaimed = config.UNCLAIMED;
 
-    let unClaimedProjId = -1;
-    let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
-    unClaimedProjId = locs == -1 ? locs : locs[0].hostProjectId;
+    let unClaimedProjId = await findOrCreateProject( authData, pd.ceProjectId, pd.actor, pd.actorId, pd.repoId, pd.repoName,
+						     config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
+    
     if( unClaimedProjId == -1 ) {
 	// XXX revisit once (if) GH API supports column creation
 	//     note, we CAN create projects, but there is little point if required columns must also be created.
@@ -1362,9 +1520,13 @@ exports.removePeqLabel     = removePeqLabel;
 exports.addLabel           = addLabel;
 exports.rebuildLabel       = rebuildLabel;
 
-exports.getProjectName     = getProjectName;
-exports.updateProject      = updateProject;
-exports.createProject      = createProject;
+exports.getProjectName      = getProjectName;
+exports.updateProject       = updateProject;
+exports.createProject       = createProject;
+exports.linkProject         = linkProject;
+exports.findProjectByName   = findProjectByName;
+exports.findProjectByRepo   = findProjectByRepo;
+exports.findOrCreateProject = findOrCreateProject;
 
 exports.getColumnName      = getColumnName;
 
@@ -1383,5 +1545,7 @@ exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
 exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
 exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI
 exports.updateColumn           = updateColumn;           // XXX NYI
+exports.deleteColumn           = deleteColumn;           // XXX NYI
+exports.clearColumn            = clearColumn;           // XXX NYI
 
 exports.checkReserveSafe       = checkReserveSafe;

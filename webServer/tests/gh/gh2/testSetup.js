@@ -51,8 +51,7 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
 
-
-    /*  3/13  For GH thread, delete soon
+    /*
     // softCont: dataSecurity, githubOps, unallocated
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
     let cardId = await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
@@ -60,7 +59,7 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
 
     // let locsA = await tu.getLocs( authData, ghLinks, { "ceProjId": td.ceProjectId, "projId": ghOpPID, "colName": "Stars" } );
     // await ghV2.updateColumn( authData, ghOpPID, locs[0].hostColumnId, locs[0].hostUtility, locsA[0].hostColumnId );
-    // let locs = await tu.getLocs( authData, ghLinks, { "ceProjId": td.ceProjectId, "projId": ghOpPID, "colName": "Stripes" } );
+    let locs = await tu.getLocs( authData, ghLinks, { "ceProjId": td.ceProjectId, "projId": ghOpPID, "colName": "Stripes" } );
     assert( locs.length == 1 );
     // await ghV2.updateColumn( authData, td.masterPID, cardId, mastCol1.hostUtility, {"text": "gooby"} );
     await ghV2.updateColumn( authData, td.masterPID, cardId, mastCol1.hostColumnId, {"text": "gooby"} );
@@ -82,6 +81,11 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     // await ghV2.updateColumn( authData, pid, status, col, {"text": "gooby"} );  // Could not resolve to ProjectV2Item node with the global id of PVTSSF_lADOA8JELs4ALvihzgHfSLo
     // await ghV2.updateColumn( authData, pid, col, status, {"text": "gooby"} );  // Could not resolve to a node with the global id of \'f75ad846\'
     // await ghV2.updateColumn( authData, pid, huh, status, {"text": "gooby"} );     // Could not resolve to ProjectV2Item node with the global id of PVTFSV_lQDOA8JELs4ALvihzgFb..
+
+    let pid = "PVT_kwDOA8JELs4ALvih";
+    // clearProjectV2ItemFieldValue
+    // await ghV2.updateColumn( authData, pid, [ {"color": "BLUE", "description": "green", "name": "goobers"} ] );  
+    // await ghV2.deleteColumn( authData, {fieldId:"PVTSSF_lADOA8JELs4ALvihzgHfSLo"} );    // 'Only custom fields can be deleted.' 
     assert( false );
     */
     
