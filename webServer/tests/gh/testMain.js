@@ -49,9 +49,9 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
 	wakeyPID = await gh2tu.makeProject( authData, td, wakeyName, "", {"owner": td.GHOwnerId} );
     }
     assert( wakeyPID != -1 );
-    console.log( "Found", wakeyName, "with PID:", wakeyPID );
+    console.log( "Found", wakeyName, "with PID:", wakeyPID, "for ceProj:", td.ceProjectId );
     
-    await ghV2.linkProject( authData, td.ceProjectId, wakeyPID, td.GHRepoId, td.GHFullName );
+    await gh2tu.linkProject( authData, td, wakeyPID );
     
     const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.ceProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
@@ -205,6 +205,7 @@ async function runTests() {
     let ceProjects = new ceProjData.CEProjects();
     await ceProjects.init( authData );
     td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.GHFullName );
+    assert( td.ceProjectId != config.EMPTY );
     
     // CROSS_TEST_REPO auth
     let tdX        = new testData.TestData();

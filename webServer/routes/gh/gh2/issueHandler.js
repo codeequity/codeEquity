@@ -189,6 +189,8 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
+	    console.log( "Label issue pd" );
+	    pd.show();
 	    let success = await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
@@ -212,7 +214,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
-			    let peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.repoName,
+			    let peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.ceProjectId, pd.repoName,
 								 link.hostIssueId, link.hostIssueName, link.hostProjectId );
 
 			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
@@ -307,7 +309,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let newColId = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
-		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
+		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.ceProjectId, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
 		    if( peqId == -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }

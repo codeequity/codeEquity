@@ -529,10 +529,17 @@ async function makeProject(authData, td, name, body, specials ) {
 
 // If can't find project by collab login or organization name, make it.
 // If did find it, then see if it is already linked to the repo.  If not, link it.
+// do NOT send ghLinks, as that would create in local testServer copy.
 async function findOrCreateProject( authData, td, name, body ) {
-    let pid = await ghV2.findOrCreateProject( authData, td.ceProjectId, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
+    let [pid,ld] = await ghV2.findOrCreateProject( authData, -1, td.ceProjectId, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
     assert( pid != -1 );
+
+    // force linking in ceServer:ghLinks, not local ghLinks
+    if( !ld ) { await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); }
+
     console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
+
+    await utils.sleep( tu.MIN_DELAY );
     return pid;
 }
 
@@ -577,6 +584,16 @@ async function unlinkProject( authData, ceProjId, pNodeId, rNodeId ) {
 	// Cards are still valid, just can't find the project from the repo.  Clear repo info
 	tu.unlinkProject( authData, ceProjId, pNodeId, rNodeId );
     }
+
+    await utils.sleep( tu.MIN_DELAY );
+}
+
+async function linkProject( authData, td, pNodeId ) {
+
+    await ghV2.linkProject( authData, -1, td.ceProjectId, pNodeId, td.GHRepoId, td.GHFullName);
+    
+    // force linking in ceServer:ghLinks, not local ghLinks
+    await tu.linkProject( authData, td.ceProjectId, pNodeId, td.GHRepoId, td.GHFullName ); 
 
     await utils.sleep( tu.MIN_DELAY );
 }
@@ -2121,6 +2138,7 @@ exports.findOrCreateProject = findOrCreateProject;
 exports.makeProject     = makeProject;
 exports.remProject      = remProject;
 exports.unlinkProject   = unlinkProject;
+exports.linkProject     = linkProject;
 exports.makeColumn      = makeColumn;
 exports.updateColumn    = updateColumn;
 exports.updateProject   = updateProject;

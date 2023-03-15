@@ -173,7 +173,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	for( node of issue.labels.edges ) { issDat.push( node.description ); }
     }
 
-    console.log( "PNP: issDat", issDat );
+    console.log( authData.who, "PNP: issDat", issDat );
     
     pd.issueName = issDat[0];
     pd.issueNum  = issue.number;
@@ -241,8 +241,8 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	orig.issueNum     = pd.issueNum;
 	orig.projectId    = pd.projectId;
 	orig.cardId       = origCardId;
-	orig.columnId     = pd.columnId;
-	orig.columnName   = colName;
+	orig.columnId     = config.EMPTY;   // do not track non-peq   cardHandler depends on this to avoid peq check
+	orig.columnName   = config.EMPTY;   // do not track non-peq
 	ghLinks.addLinkage( authData, pd.ceProjectId, orig );
     }
     else {

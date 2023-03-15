@@ -857,13 +857,15 @@ function getProjectName( authData, ghLinks, ceProjId, projId ) {
 
 async function updateProject( authData, projNodeId, title, body ) {
 
+    let query = "";
+    let variables = "";
     if( typeof body === 'undefined' ) {
-	let query     = `mutation( $projId:ID!, $title:String ) { updateProjectV2( input:{ projectId: $projId, title: $title })  {clientMutationId}}`;
-	let variables = {"projId": projNodeId, "title": title };
+	query     = `mutation( $projId:ID!, $title:String ) { updateProjectV2( input:{ projectId: $projId, title: $title })  {clientMutationId}}`;
+	variables = {"projId": projNodeId, "title": title };
     }
     else {
-	let query     = `mutation( $projId:ID!, $body:String ) { updateProjectV2( input:{ projectId: $projId, shortDescription: $body })  {clientMutationId}}`;
-	let variables = {"projId": projNodeId, "body": body };
+	query     = `mutation( $projId:ID!, $body:String ) { updateProjectV2( input:{ projectId: $projId, shortDescription: $body })  {clientMutationId}}`;
+	variables = {"projId": projNodeId, "body": body };
     }
     let queryJ    = JSON.stringify({ query, variables });
 	
@@ -1322,8 +1324,8 @@ async function findProjectByName( authData, userLogin, projName ) {
 	    if( ghUtils.validField( raw.data, "user" ))              { projects = raw.data.user.projectsV2.edges; }
 	    else if( ghUtils.validField( raw.data, "organization" )) { projects = raw.data.organization.projectsV2.edges; }
 
-	    if( projects.length <= 1 ) { pid = projects[0].node.id; }
-	    else                       { pid = -1 * projects.length; }
+	    if( projects.length == 1 )     { pid = projects[0].node.id; }
+	    else if( projects.length > 1 ) { pid = -1 * projects.length; }
 	})
 	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, userLogin, projName ));
 
@@ -1348,8 +1350,8 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 	    let projects = [];
 	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
 
-	    if( projects.length <= 1 ) { pid = projects[0].node.id; }
-	    else                       { pid = -1 * projects.length; }
+	    if( projects.length == 1 )     { pid = projects[0].node.id; }
+	    else if( projects.length > 1 ) { pid = -1 * projects.length; }
 	})
 	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
 
@@ -1357,8 +1359,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 }
 
 // XXX unit testing required
-// XXX moving linkProj here removes need for testHandler:linkProject.  Remove.
-async function linkProject( authData, ceProjId, pNodeId, rNodeId, rName ) {
+async function linkProject( authData, ghLinks, ceProjId, pNodeId, rNodeId, rName ) {
     let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
     let variables = {"pid": pNodeId, "rid": rNodeId };
     query         = JSON.stringify({ query, variables });
@@ -1372,21 +1373,20 @@ async function linkProject( authData, ceProjId, pNodeId, rNodeId, rName ) {
 	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ceProjId, pNodeId, rNodeId, rName ));
 
     if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
-    else {
-	// No notification from GH.  Manage internal state here.
-	// This is very similar to linkage:initOneProject - need to read from GH, update local state.
-	await tu.linkProject( authData, ceProjId, pNodeId, rNodeId, rName );
+    else if( ghLinks != -1 ) {
+	// testServer needs to do this for itself, since testServer ghLinks is not the same object as ceServer ghLinks
+	await ghLinks.linkProject( authData, ceProjId, pNodeId, rNodeId, rName );
     }
-    await utils.sleep( tu.MIN_DELAY );
 }
 
 
-// XXX linkProj is only done if ceServer.  gh2TestUtils will carry out for testing.  return is [pid, rp]  this removes tu.link here.
-
 // XXX Placed here to support createUnclaimedProject..
 //     relocate to gh2TestUtils once column support in the API is resolved.
-async function findOrCreateProject( authData, ceProjId, ownerLogin, ownerId, repoId, repoName, name, body ) {
-    // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.
+async function findOrCreateProject( authData, ghLinks, ceProjId, ownerLogin, ownerId, repoId, repoName, name, body ) {
+    let linkageDone = false;
+
+    console.log( "FindOrCreate with", ceProjId, ownerLogin, ownerId, repoId, repoName, name );
+    // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, ownerLogin, name );
     if( pid == -1 ) {
 	pid = await createProject( authData, ownerId, repoId, name, body );
@@ -1394,11 +1394,12 @@ async function findOrCreateProject( authData, ceProjId, ownerLogin, ownerId, rep
     else {
 	let rp = await findProjectByRepo( authData, repoId, name );
 	if( rp == -1 ) {
-	    await linkProject( authData, ceProjId, pid, repoId, repoName );
+	    await linkProject( authData, ghLinks, ceProjId, pid, repoId, repoName );
+	    linkageDone = (ghLinks != -1);
 	}
     }
     
-    return pid;
+    return [pid, linkageDone];
 }
 
 
@@ -1409,8 +1410,8 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
 {
     const unClaimed = config.UNCLAIMED;
 
-    let unClaimedProjId = await findOrCreateProject( authData, pd.ceProjectId, pd.actor, pd.actorId, pd.repoId, pd.repoName,
-						     config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
+    let [unClaimedProjId,_] = await findOrCreateProject( authData, ghLinks, pd.ceProjectId, pd.actor, pd.actorId, pd.repoId, pd.repoName,
+							 config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
     
     if( unClaimedProjId == -1 ) {
 	// XXX revisit once (if) GH API supports column creation

@@ -33,7 +33,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 
     // I want peqId for notice PActions, with or without issueId
     if( typeof peq == 'undefined' ) {
-	peq = await ghUtils.validatePEQ( authData, fullName, link.issueId, link.issueName, link.hostProjectId );
+	peq = await ghUtils.validatePEQ( authData, pd.ceProjectId, fullName, link.hostIssueId, link.hostIssueName, link.hostProjectId );
     }
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );
@@ -218,7 +218,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
-	    if( links == -1 || links[0].hostColumnId == -1 ) {
+	    if( links == -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
+		// XXX Decide -1 or config.EMPTY
+		if( links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }
 		if( newNameIndex > config.PROJ_PROG ) {
 		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    // No origination data.  use default
@@ -229,7 +231,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
-
 	    let oldColId  = link.hostColumnId;
 	    
 	    console.log( authData.who, "attempting to move card to", newColName, "from", oldColId );

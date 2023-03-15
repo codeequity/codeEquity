@@ -3,7 +3,8 @@ const fetch = require( 'node-fetch' );
 
 const config = require( '../../config' );
 
-const utils = require( '../ceUtils' );
+const utils    = require( '../ceUtils' );
+const awsUtils = require( '../awsUtils' );
 
 // XXX Accept header is for label preview.  Check back to delete.
 async function postGH( PAT, url, postData ) {
@@ -144,12 +145,12 @@ async function checkForPV2( PAT, nodeId ) {
 }
 
 // XXX Consider promoting this to ceUtils
-async function validatePEQ( authData, repo, issueId, title, projId ) {
+async function validatePEQ( authData, ceProjId, repo, issueId, title, projId ) {
     let peq = -1;
 
     let peqType = "";
     assert( issueId != -1 );
-    peq = await utils.getPeq( authData, issueId );
+    peq = await awsUtils.getPeq( authData, ceProjId, issueId );
 
     if( peq != -1 && peq.issueName == title && peq.HostRepo == repo && peq.HostProjectId == projId )  {
 	// console.log( authData.who, "validatePeq success" );

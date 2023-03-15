@@ -86,7 +86,7 @@ async function linkProject( authData, ceProjId, pNodeId, rNodeId, rName ) {
 // No notifications from GH for link/unlink project.  Update ceServer internal state as push from testHandler.
 async function unlinkProject( authData, ceProjId, pNodeId, rNodeId ) {
     let auth = {"pat": authData.pat, "who": authData.who };
-    let postData = {"Endpoint": "Testing", "Request": "unlinkProject", "ceProjectId": ceProjId, "pNodeId": pNodeId, "rNodeId": rNodeId, "auth": auth }; 
+    let postData = {"Endpoint": "Testing", "Request": "unlinkProject", "ceProjId": ceProjId, "pNodeId": pNodeId, "rNodeId": rNodeId, "auth": authData }; 
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }
