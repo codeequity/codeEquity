@@ -607,6 +607,9 @@ class Linkage {
 		}}
 	}
 
+	// don't wait
+	awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ) );
+	
 	this.removeLocs( { authData: authData, ceProjId: ceProjId, projId: hostProjectId } );
 	return true;
     }
@@ -628,15 +631,21 @@ class Linkage {
 					  link.hostRepoId = hostRepoId;
 					  this.addLinkage( authData, ceProjId, link );
 					}, this);
+
 	// Wait.. adds to dynamo
+	let promises = [];
+	promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ) );
+	    
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
 	    loc.active = "true";
 	    loc.hostRepository = hostRepoName;
 	    loc.hostRepositoryId = hostRepoId;
 	    // console.log( "linkage:addLoc", loc );
-	    await this.addLoc( authData, loc, true );
+	    promises.push( this.addLoc( authData, loc, true ) );
 	}
+	await Promise.all( promises );
+	
 	return true;
     }
     

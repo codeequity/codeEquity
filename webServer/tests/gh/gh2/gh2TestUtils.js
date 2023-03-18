@@ -537,6 +537,8 @@ async function findOrCreateProject( authData, td, name, body ) {
     // force linking in ceServer:ghLinks, not local ghLinks
     if( !ld ) { await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); }
 
+    // XXX assert in ceproj
+
     console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
 
     await utils.sleep( tu.MIN_DELAY );

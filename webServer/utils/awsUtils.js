@@ -445,6 +445,19 @@ async function clearIngested( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function linkProject( authData, query ) {
+    let shortName = "LinkProject";
+    let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+async function unlinkProject( authData, query ) {
+    let shortName = "UnlinkProject";
+    let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+
 // ******************
 // Pure Testing support
 // ******************
@@ -470,7 +483,6 @@ async function unpopulate( authData, ceProjId ) {
 
     return await wrappedPostAWS( authData, shortName, postData );
 }
-
 
 /* Not in use
 async function clearLinkage( authData, pd ) {

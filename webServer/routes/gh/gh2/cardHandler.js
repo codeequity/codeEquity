@@ -179,6 +179,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     let card = pd.reqBody.projects_v2_item;
 
     console.log( authData.who, "Card", action, "Actor:", pd.actor )
+    pd.show();
     
     switch( action ) {
     case 'created' :

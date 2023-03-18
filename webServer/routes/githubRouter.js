@@ -221,35 +221,40 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
     let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
     // console.log( "switcherGH2.." );
-    
-    assert( jd.queueId == authData.job ) ;
-    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
 
-    switch( jd.event ) {
-    case 'projects_v2_item' :
-	{
-	    // item created/deleted is ~ cardHandler.  Edited..?
-	    retVal = await gh2Item.handler( authData, ghLinks, pd, jd.action, jd.tag )
-		.catch( e => console.log( "Error.  Item Handler failed.", e ));
-	}
-	break;
-    case 'issue' :
-	{
-	    retVal = await gh2Issue.handler( authData, ghLinks, pd, jd.action, jd.tag )
-		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
-	}
-	break;
-    case 'label' :
-	{
-	    retVal = await gh2Label.handler( authData, ghLinks, pd, jd.action, jd.tag )
-		.catch( e => console.log( "Error.  Label Handler failed.", e ));
-	}
-	break;
-    default:
-	{
-	    console.log( "Event unhandled", event );
-	    retVal = res.json({ status: 400 });
+    if( pd.ceProjectId == config.EMPTY ) {
+	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
+    }
+    else {
+	assert( jd.queueId == authData.job ) ;
+	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
+	
+	switch( jd.event ) {
+	case 'projects_v2_item' :
+	    {
+		// item created/deleted is ~ cardHandler.  Edited..?
+		retVal = await gh2Item.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Item Handler failed.", e ));
+	    }
 	    break;
+	case 'issue' :
+	    {
+		retVal = await gh2Issue.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
+	    }
+	    break;
+	case 'label' :
+	    {
+		retVal = await gh2Label.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Label Handler failed.", e ));
+	    }
+	    break;
+	default:
+	    {
+		console.log( "Event unhandled", event );
+		retVal = res.json({ status: 400 });
+		break;
+	    }
 	}
     }
 

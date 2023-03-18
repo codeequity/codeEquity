@@ -22,7 +22,7 @@ class CEProjects {
 	    }
 	}
 	// this.show(10);
-	// console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
+	console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
 	return retVal;
     }
 

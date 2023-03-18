@@ -87,6 +87,8 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "Depop")          { resultPromise = depopulate( rb.CEProjectId ); }
+    else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
+    else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -1268,6 +1270,42 @@ async function depopulate( ceProjId ) {
     console.log( params );
     promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));
+}
+
+// https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html#Expressions.Modifying.UpdateExpressions.DELETE
+async function link( query ) {
+
+    let params = { TableName: 'CEProjects' };
+    let promise = null;
+
+    params.Key                       = { "CEProjectId": query.ceProjId };
+    params.UpdateExpression          = 'set HostParts.hostProjectIds = list_append( HostParts.hostProjectIds, :pid )';
+    params.ExpressionAttributeValues = { ':pid': query.hostProjectId };
+
+    console.log( params );
+    promise = bsdb.update( params ).promise();
+    return promise.then(() => success( true ));
+}
+
+async function unlink( query ) {
+    let oldProjData = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
+    let index = -1;
+    for( let i = 0; i < oldProjData.HostParts.hostProjectIds.length; i++ ) {
+	if( query.hostProjectId == oldProjData.HostParts.hostProjectIds[i] ) { index = i; break; }
+    }
+
+    if( index == -1 ) { return success( true ); }
+    else {
+	let params = { TableName: 'CEProjects' };
+	let promise = null;
+	
+	params.Key                       = { "CEProjectId": query.ceProjId };
+	params.UpdateExpression          = 'REMOVE HostParts.hostProjectIds[index]';
+	
+	console.log( params );
+	promise = bsdb.update( params ).promise();
+	return promise.then(() => success( true ));
+    }
 }
 
 
