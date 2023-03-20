@@ -1375,6 +1375,8 @@ async function linkProject( authData, ghLinks, ceProjId, pNodeId, rNodeId, rName
     if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
     else if( ghLinks != -1 ) {
 	// testServer needs to do this for itself, since testServer ghLinks is not the same object as ceServer ghLinks
+	// XXX fix when handle link/unlink in projectHandler.  if ever.  notifications missing.  Need to add ceProjects, chain from ceRouter to handlers to here.
+	assert( false );  
 	await ghLinks.linkProject( authData, ceProjId, pNodeId, rNodeId, rName );
     }
 }

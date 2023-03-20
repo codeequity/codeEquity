@@ -113,7 +113,8 @@ class Linkage {
 		// mainly to get pat
 		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
 
-		// XXX handle entry.HostParts.hostProjectIds
+		// No need to handle entry.HostParts.hostProjectIds.  hostRepositories have linked projects.  If not linked,
+		// ceProj will not interact.  If linked, then it is part of ceProj.
 		let hostProjs = [];
 		for( const repoName of entry.HostParts.hostRepositories ) {
 		    await ghV2.getProjectIds( authData, repoName, hostProjs, -1 );
@@ -588,7 +589,7 @@ class Linkage {
     }
 
     // Unlink project from repo.  in this case, remove repo info
-    unlinkProject( authData, ceProjId, hostProjectId, hostRepoId ) {
+    async unlinkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId ) {
 	console.log( "Unlink repo", ceProjId, hostRepoId, hostProjectId );
 
 	if( this.locs[ceProjId] != null && this.locs[ceProjId][hostProjectId] != null ) {
@@ -607,15 +608,15 @@ class Linkage {
 		}}
 	}
 
-	// don't wait
-	awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ) );
+	await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
+	await ceProjects.init( authData );
 	
 	this.removeLocs( { authData: authData, ceProjId: ceProjId, projId: hostProjectId } );
 	return true;
     }
 
 
-    async linkProject( authData, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
+    async linkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
 	let rLocs  = [];
 	let rLinks = [];
 	console.log( "linkage:LP", ceProjId, hostProjectId, hostRepoId, hostRepoName );
@@ -634,7 +635,7 @@ class Linkage {
 
 	// Wait.. adds to dynamo
 	let promises = [];
-	promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ) );
+	promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ));
 	    
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
@@ -645,6 +646,8 @@ class Linkage {
 	    promises.push( this.addLoc( authData, loc, true ) );
 	}
 	await Promise.all( promises );
+	// Could just add/remove... but why?
+	await ceProjects.init( authData );
 	
 	return true;
     }

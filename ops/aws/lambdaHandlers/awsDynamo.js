@@ -1280,7 +1280,7 @@ async function link( query ) {
 
     params.Key                       = { "CEProjectId": query.ceProjId };
     params.UpdateExpression          = 'set HostParts.hostProjectIds = list_append( HostParts.hostProjectIds, :pid )';
-    params.ExpressionAttributeValues = { ':pid': query.hostProjectId };
+    params.ExpressionAttributeValues = { ':pid': [query.hostProjectId] };
 
     console.log( params );
     promise = bsdb.update( params ).promise();
@@ -1288,8 +1288,11 @@ async function link( query ) {
 }
 
 async function unlink( query ) {
-    let oldProjData = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
+    let oldProjWrap = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
     let index = -1;
+
+    const oldProjData = JSON.parse( oldProjWrap.body );    
+
     for( let i = 0; i < oldProjData.HostParts.hostProjectIds.length; i++ ) {
 	if( query.hostProjectId == oldProjData.HostParts.hostProjectIds[i] ) { index = i; break; }
     }
@@ -1298,9 +1301,12 @@ async function unlink( query ) {
     else {
 	let params = { TableName: 'CEProjects' };
 	let promise = null;
-	
+
+	// Can't pass parameter in this remove bit.  Build string, pass that.
+	// params.UpdateExpression          = 'REMOVE HostParts.hostProjectIds[:ind]';	
+
 	params.Key                       = { "CEProjectId": query.ceProjId };
-	params.UpdateExpression          = 'REMOVE HostParts.hostProjectIds[index]';
+	params.UpdateExpression          = "REMOVE HostParts.hostProjectIds[" + index.toString() + "]";
 	
 	console.log( params );
 	promise = bsdb.update( params ).promise();

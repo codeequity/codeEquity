@@ -454,7 +454,14 @@ async function linkProject( authData, query ) {
 async function unlinkProject( authData, query ) {
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
-    return await wrappedPostAWS( authData, shortName, postData );
+    let retVal = await wrappedPostAWS( authData, shortName, postData );
+
+    shortName = "GetEntry";
+    postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
+    let ceProj = await wrappedPostAWS( authData, shortName, postData );
+    assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ) );
+
+    return retVal;
 }
 
 
@@ -545,6 +552,9 @@ exports.getLinkage   = getLinkage;
 
 exports.cleanDynamo   = cleanDynamo;
 exports.clearIngested = clearIngested;
+
+exports.linkProject   = linkProject;
+exports.unlinkProject = unlinkProject;
 
 exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
 exports.unpopulate    = unpopulate;       // TESTING ONLY

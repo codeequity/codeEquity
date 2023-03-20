@@ -1,7 +1,7 @@
 const assert   = require( 'assert' );
 const ceRouter = require( './ceRouter' );
 
-async function handler( ghLinks, ceJobs, ceNotification, reqBody, res ) {
+async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, res ) {
 
     assert( reqBody.hasOwnProperty( "Request" ) );
 
@@ -26,10 +26,10 @@ async function handler( ghLinks, ceJobs, ceNotification, reqBody, res ) {
 	ceRouter.purgeQueue( ceJobs );
     }
     else if( reqBody.Request == "linkProject" ) {
-	retVal = ghLinks.linkProject( reqBody.auth, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId, reqBody.rName );
+	retVal = ghLinks.linkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId, reqBody.rName );
     }
     else if( reqBody.Request == "unlinkProject" ) {
-	retVal = ghLinks.unlinkProject( reqBody.auth, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId );
+	retVal = ghLinks.unlinkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId );
     }
 	
     return res

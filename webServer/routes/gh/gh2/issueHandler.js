@@ -173,7 +173,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     pd.issueId    = pd.reqBody.issue.node_id;         // issue content id
     pd.issueNum   = pd.reqBody.issue.number;		
     pd.actor      = pd.reqBody.sender.login;
-    pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
+    pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");
 
     switch( action ) {
     case 'labeled':
@@ -189,6 +189,11 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
+	    // XXX need repoId, repoName, ownerId
+	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
+	    assert( ghUtils.validField( pd.reqBody, "repository" ) && ghUtils.validField( pd.reqBody.repository, "node_id" ));
+	    pd.repoName = pd.reqBody.repository.full_name; 
+	    pd.repoId   = pd.reqBody.repository.node_id; 
 	    console.log( "Label issue pd" );
 	    pd.show();
 	    let success = await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
