@@ -25,7 +25,7 @@ const cardHandler = require( './cardHandler' );
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
-async function handler( authData, ghLinks, pd, action, tag ) {
+async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 
     console.log( authData.who, "itemHandler start", authData.job );
     
@@ -108,7 +108,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		if( ghUtils.validField( fv, "field_type" )) {
 		    
 		    if( fv.field_type == "single_select" ) {
-			await cardHandler.handler( authData, ghLinks, pd, 'moved', tag );
+			await cardHandler.handler( authData, ghLinks, ceProjects, pd, 'moved', tag );
 		    }
 		    else if( fv.field_type == "labels" ) {
 			console.log( "Item handler found edit:labels.. no action taken in favor of issue:labels" );
@@ -134,7 +134,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	// creating a card here.
 	// generated from situateIssue or adding issue to project in GH
 	{
-	    cardHandler.handler( authData, ghLinks, pd, action, tag ); 
+	    cardHandler.handler( authData, ghLinks, ceProjects, pd, action, tag ); 
 	}
 	break;
     case 'deleted':

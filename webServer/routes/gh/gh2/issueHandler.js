@@ -65,7 +65,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
 	// Promises
 	console.log( authData.who, "creating card from new issue" );
-	let card = gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );
+	let card = gh.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
 	ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
@@ -94,7 +94,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
     console.log( "Delete", Date.now() - tstart );
 }
 
-async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label ) {
+async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
     console.log( "LabelIssue" );
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
@@ -125,7 +125,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     if( link == -1 || link.hostColumnId == -1) {
 	if( link == -1 ) {    
 	    link = {};
-	    card = await ghV2.createUnClaimedCard( authData, ghLinks, pd, pd.issueId );
+	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
 	    console.log( "LI:", card );
 	    pd.show();
 	    assert( card.issueNum >= 0 && pd.issueNum == card.issueNum );
@@ -164,7 +164,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
 // Note: issue:opened         notification after 'submit' is pressed.
 //       issue:labeled        notification after click out of label section
 //       project_card:created notification after submit, then projects:triage to pick column.
-async function handler( authData, ghLinks, pd, action, tag ) {
+async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     console.log( authData.who, "issueHandler start", authData.job );
@@ -196,7 +196,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    pd.repoId   = pd.reqBody.repository.node_id; 
 	    console.log( "Label issue pd" );
 	    pd.show();
-	    let success = await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
+	    let success = await labelIssue( authData, ghLinks, ceProjects, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
 	    // Will not allow this in ACCR.

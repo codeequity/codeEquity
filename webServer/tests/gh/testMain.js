@@ -43,15 +43,18 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     // If this is first PAct for the day, start it up.  The purpose of wakey is to kick off both aws and each host.
 
     const wakeyName = "ceServer wakey XYZZYXXK837598";
+
     // XXX so far, V2 can't delete pv2, so no point making.  link and unlink instead.
-    let wakeyPID = await gh2tu.findProjectByName( authData, td.GHOwner, wakeyName );
+    /*
+    let wakeyPID = await gh2tu.findProjectByName( authData, config.TEST_OWNER, td.GHOwner, wakeyName );
     if( wakeyPID == -1 ) { 
 	wakeyPID = await gh2tu.makeProject( authData, td, wakeyName, "", {"owner": td.GHOwnerId} );
+	await gh2tu.linkProject( authData, td, wakeyPID );
     }
+    */
+    let wakeyPID = await gh2tu.findOrCreateProject( authData, td, wakeyName, "" );
     assert( wakeyPID != -1 );
     console.log( "Found", wakeyName, "with PID:", wakeyPID, "for ceProj:", td.ceProjectId );
-    
-    await gh2tu.linkProject( authData, td, wakeyPID );
     
     const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.ceProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }

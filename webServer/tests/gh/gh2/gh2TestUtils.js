@@ -446,13 +446,14 @@ async function findProject( authData, td, projId ) {
     return retVal; 
 }
 
-async function findProjectByName( authData, userLogin, projName ) {
-    let pid = await ghV2.findProjectByName( authData, userLogin, projName );
+async function findProjectByName( authData, orgLogin, userLogin, projName ) {
+    let pid = await ghV2.findProjectByName( authData, orgLogin, userLogin, projName );
 
     if( pid < -1 ) { console.log( "WARNING.  Wakey project exists multiple times", projects ); }
 
     return pid;
 }
+
 async function findProjectByRepo( authData, rNodeId, projName ) {
     let pid = await ghV2.findProjectByRepo( authData, rNodeId, projName );
 
@@ -529,10 +530,12 @@ async function makeProject(authData, td, name, body, specials ) {
 
 // If can't find project by collab login or organization name, make it.
 // If did find it, then see if it is already linked to the repo.  If not, link it.
-// do NOT send ghLinks, as that would create in local testServer copy.
+// do NOT send ghLinks, ceProjects as that would create in local testServer copy.
+// NOTE: testing projects are created by codeequity
 async function findOrCreateProject( authData, td, name, body ) {
-    let [pid,ld] = await ghV2.findOrCreateProject( authData, -1, td.ceProjectId, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
-    assert( pid != -1 );
+
+    let [pid,ld] = await ghV2.findOrCreateProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
+    assert( typeof pid !== 'undefined' && pid != -1 );
 
     // force linking in ceServer:ghLinks, not local ghLinks
     if( !ld ) { await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); }
@@ -592,7 +595,7 @@ async function unlinkProject( authData, ceProjId, pNodeId, rNodeId ) {
 
 async function linkProject( authData, td, pNodeId ) {
 
-    await ghV2.linkProject( authData, -1, td.ceProjectId, pNodeId, td.GHRepoId, td.GHFullName);
+    await ghV2.linkProject( authData, -1, -1, td.ceProjectId, pNodeId, td.GHRepoId, td.GHFullName);
     
     // force linking in ceServer:ghLinks, not local ghLinks
     await tu.linkProject( authData, td.ceProjectId, pNodeId, td.GHRepoId, td.GHFullName ); 

@@ -125,8 +125,6 @@ async function getStoredPAT( authData, host, actor ) {
 }
 
 async function getProjectStatus( authData, ceProjId ) {
-    console.log( authData.who, "Get Status for a given CE Project", ceProjId );
-
     let shortName = ceProjId == -1 ? "GetEntries" : "GetEntry";
     let query     = ceProjId == -1 ? { "empty": config.EMPTY } : { "CEProjectId": ceProjId};
     let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
@@ -459,7 +457,7 @@ async function unlinkProject( authData, query ) {
     shortName = "GetEntry";
     postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
     let ceProj = await wrappedPostAWS( authData, shortName, postData );
-    assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ) );
+    assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ), query );
 
     return retVal;
 }

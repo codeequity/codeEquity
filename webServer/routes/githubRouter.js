@@ -220,7 +220,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 
     let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
-    // console.log( "switcherGH2.." );
+    console.log( "switcherGH2..", ceProjectId, pd.ceProjectId );
 
     if( pd.ceProjectId == config.EMPTY ) {
 	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
@@ -233,13 +233,13 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	case 'projects_v2_item' :
 	    {
 		// item created/deleted is ~ cardHandler.  Edited..?
-		retVal = await gh2Item.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		retVal = await gh2Item.handler( authData, ghLinks, ceProjects, pd, jd.action, jd.tag )
 		    .catch( e => console.log( "Error.  Item Handler failed.", e ));
 	    }
 	    break;
 	case 'issue' :
 	    {
-		retVal = await gh2Issue.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		retVal = await gh2Issue.handler( authData, ghLinks, ceProjects, pd, jd.action, jd.tag )
 		    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
 	    }
 	    break;
@@ -315,6 +315,11 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 		    console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
 		    // console.log( "pendingNotices, after removal" );
 		    let cpid = ceProjects.find( jd.host, pendingNotices[i].org, pendingNotices[i].hpid );
+
+		    // Many notifications come in as content (i.e. issue:label), initially identified as GHC.
+		    // Adjust organization to fit GH2
+		    jd.org = pendingNotices[i].org;
+		    
 		    found = true;
 		    pendingNotices.splice( i, 1 );
 		    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, cpid );

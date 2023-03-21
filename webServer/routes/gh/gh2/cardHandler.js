@@ -144,7 +144,7 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 	console.log( authData.who, "Moving ACCR", accr, issueExists, link.hostIssueId );
 	// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
 	//           card creation can fail, and results can be uncertain at this point.  
-	let card = await gh.createUnClaimedCard( authData, ghLinks, pd, parseInt( link.hostIssueId ), accr );  
+	let card = await gh.createUnClaimedCard( authData, ghLinks, ceProjects, pd, parseInt( link.hostIssueId ), accr );  
 	link.hostCardId      = card.id.toString();
 	link.hostProjectId   = card.project_url.split('/').pop();
 	link.hostProjectName = config.UNCLAIMED;
@@ -173,7 +173,7 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
 // NOTE this does not receive direct notifications, but is instead called from other handlers 
-async function handler( authData, ghLinks, pd, action, tag ) {
+async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 
     pd.actor = pd.reqBody.sender.login;
     let card = pd.reqBody.projects_v2_item;

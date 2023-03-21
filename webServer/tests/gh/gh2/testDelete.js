@@ -62,8 +62,9 @@ async function clearRepo( authData, ghLinks, pd ) {
     await utils.sleep( 1000 );
 
     // Start here, else lots left undeleted after issue munging. 
-    let peqsP  = awsUtils.getPeqs( authData,  { "CEProjectId": pd.ceProjectId });
-    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
+    let peqsP   = awsUtils.getPeqs( authData,  { "CEProjectId": pd.ceProjectId });
+    let pactsP  = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
+    let ceProjP = awsUtils.getProjectStatus( authData, pd.ceProjectId ); 
 
     // XXX would like to delete.. buuut..
     // Get all existing projects in repo for deletion
@@ -102,6 +103,14 @@ async function clearRepo( authData, ghLinks, pd ) {
     console.log( "Dynamo bot PActIds", pd.GHFullName, pactIds );
     let pactP  = awsUtils.cleanDynamo( authData, "CEPEQActions", pactIds );
     let pactRP = awsUtils.cleanDynamo( authData, "CEPEQRaw", pactIds );
+
+    // ceProjects
+    // XXX Note: Only removing hostProjectIds for now.  Once ceFlutter handles populate, this will change.
+    // Need to wait here, unlink has a check in it.
+    let ceProj = await ceProjP;
+    for( const pid of ceProj.HostParts.hostProjectIds ) {
+	await awsUtils.unlinkProject( authData, {"ceProjId": pd.ceProjectId, "hostProjectId": pid} );
+    }
     
     // Get all peq labels in repo for deletion... dependent on peq removal first.
     console.log( "Removing all PEQ Labels.", pd.GHFullName );
