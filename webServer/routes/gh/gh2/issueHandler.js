@@ -65,7 +65,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
 	// Promises
 	console.log( authData.who, "creating card from new issue" );
-	let card = gh.createUnClaimedCard( authData, ghLinks, pd, issueData[0], true );
+	let card = gh.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
 	ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
@@ -94,7 +94,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
     console.log( "Delete", Date.now() - tstart );
 }
 
-async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label ) {
+async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
     console.log( "LabelIssue" );
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
@@ -104,7 +104,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     if( pd.peqValue <= 0 && curVal > 0 ) {
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
-	ghV2.removeLabel( authData, pd.issueId, label.id );
+	ghV2.removeLabel( authData, label.id, pd.issueId );
 	return false;
     }
     
@@ -119,34 +119,42 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
     assert( links == -1 || links.length == 1 );
     let link = links == -1 ? links : links[0];
 
-    // XXXX XXXXX XXXX  erm.. still need unclaimed:unclaimed?  issue not assigned to project yet.
     // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
     // since can't create card without column_id.  No project, or column_id without triage.
+    let card = {};
     if( link == -1 || link.hostColumnId == -1) {
 	if( link == -1 ) {    
 	    link = {};
-	    let card = await gh.createUnClaimedCard( authData, ghLinks, pd, pd.issueId );
-	    let issueURL = card.content_url.split('/');
-	    assert( issueURL.length > 0 );
+	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
+	    console.log( "LI:", card );
+	    pd.show();
+	    assert( card.issueNum >= 0 && pd.issueNum == card.issueNum );
 	    link.hostIssueNum  = pd.issueNum;
 	    link.hostCardId    = card.id
-	    link.hostProjectId = card.project_url.split('/').pop();
-	    link.hostColumnId  = card.column_url.split('/').pop();
+	    link.hostProjectId = card.projId;
+	    link.hostColumnId  = card.columnId;
 	}
 	else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
-	    let card = await gh.getCard( authData, link.hostCardId );
-	    link.hostColumnId  = card.column_url.split('/').pop();
+	    if( link.hostColumnId == -1 || link.hostColumnId == config.EMPTY ) { console.log( "label issue excess call to getCard", link ); }
+	    card = await ghV2.getCard( authData, link.hostCardId );
+	    link.hostColumnId  = card.columnId;
 	}
     }
     
     pd.updateFromLink( link );
     console.log( authData.who, "Ready to update Proj PEQ PAct:", link.hostCardId, link.hostIssueNum );
-    
-    let content = [];
-    content.push( pd.issueName );
-    content.push( label.description );
+
+    // Could getFullIssue, but we already have all required info
+    let content                      = {};
+    content.title                    = pd.issueName;
+    content.number                   = card.issueNum;
+    content.repository               = {};
+    content.repository.id            = pd.reqBody.repository.node_id;
+    content.repository.nameWithOwner = pd.reqBody.repository.full_name;
+    content.labelContent             = pd.reqBody.label.description;
+	
     // Don't wait, no dependence
-    let retVal = ghcDUtils.processNewPEQ( authData, ghLinks, pd, content, link );
+    let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link );
     return (retVal != 'early' && retVal != 'removeLabel')
 }
 
@@ -156,7 +164,7 @@ async function labelIssue( authData, ghLinks, pd, issueNum, issueLabels, label )
 // Note: issue:opened         notification after 'submit' is pressed.
 //       issue:labeled        notification after click out of label section
 //       project_card:created notification after submit, then projects:triage to pick column.
-async function handler( authData, ghLinks, pd, action, tag ) {
+async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     console.log( authData.who, "issueHandler start", authData.job );
@@ -165,14 +173,14 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     pd.issueId    = pd.reqBody.issue.node_id;         // issue content id
     pd.issueNum   = pd.reqBody.issue.number;		
     pd.actor      = pd.reqBody.sender.login;
-    pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");  
+    pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");
 
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
 	// Can peq-label newborn and carded issues that are not >= PROJ_PEND
 	// PROJ_PEND label can be added during pend negotiation, but it if is situated already, adding a second peq label is ignored.
-	// Note: a 1:1 mapping issue:card is maintained here, via utils:resolve.  So, this labeling is relevant to 1 card only
+	// Note: a 1:1 mapping issue:card is maintained here, via resolve.  So, this labeling is relevant to 1 card only
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
 	    // XXXX XXXXX This will go away with ceFlutter
@@ -181,8 +189,14 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    // XXX here
-	    let success = await labelIssue( authData, ghLinks, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
+	    // XXX need repoId, repoName, ownerId
+	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
+	    assert( ghUtils.validField( pd.reqBody, "repository" ) && ghUtils.validField( pd.reqBody.repository, "node_id" ));
+	    pd.repoName = pd.reqBody.repository.full_name; 
+	    pd.repoId   = pd.reqBody.repository.node_id; 
+	    console.log( "Label issue pd" );
+	    pd.show();
+	    let success = await labelIssue( authData, ghLinks, ceProjects, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
 	    // Will not allow this in ACCR.
@@ -205,7 +219,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
-			    let peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.repoName,
+			    let peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.ceProjectId, pd.repoName,
 								 link.hostIssueId, link.hostIssueName, link.hostProjectId );
 
 			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
@@ -300,7 +314,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		let newColId = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
-		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
+		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.ceProjectId, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
 		    if( peqId == -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }
@@ -489,4 +503,3 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 }
 
 exports.handler    = handler;
-// exports.labelIssue = labelIssue;

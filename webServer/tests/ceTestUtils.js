@@ -44,6 +44,7 @@ async function getLocs( authData, ghLinks, query ) {
     let postData = {"Endpoint": "Testing", "Request": "getLocs" };
     let locData = await utils.postCE( "testHandler", JSON.stringify( postData ));
     ghLinks.fromJsonLocs( locData );
+    // ghLinks.showLocs();
     return ghLinks.getLocs( authData, query );
 }
 
@@ -70,6 +71,22 @@ async function remLinks( authData, ghLinks, repo ) {
 // Purge ceJobs from ceServer
 async function purgeJobs( repo ) {
     let postData = {"Endpoint": "Testing", "Request": "purgeJobs" }; 
+    let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
+    return res;
+}
+
+// No notifications from GH for link/unlink project.  Update ceServer internal state as push from testHandler.
+async function linkProject( authData, ceProjId, pNodeId, rNodeId, rName ) {
+    let auth = {"pat": authData.pat, "who": authData.who, "api": authData.api, "cog": authData.cog };
+    let postData = {"Endpoint": "Testing", "Request": "linkProject", "ceProjId": ceProjId, "pNodeId": pNodeId, "rNodeId": rNodeId, "rName": rName, "auth": auth }; 
+    let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
+    return res;
+}
+
+// No notifications from GH for link/unlink project.  Update ceServer internal state as push from testHandler.
+async function unlinkProject( authData, ceProjId, pNodeId, rNodeId ) {
+    let auth = {"pat": authData.pat, "who": authData.who };
+    let postData = {"Endpoint": "Testing", "Request": "unlinkProject", "ceProjId": ceProjId, "pNodeId": pNodeId, "rNodeId": rNodeId, "auth": authData }; 
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }
@@ -112,7 +129,7 @@ function makeTitleReducer( aStr ) {
 // Can't just rely on host for confirmation.  Notification arrival to CE can be much slower, and in some cases we need
 // CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
 async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
-    // console.log( "Confirm Proj", ceProjId, fullName, projId );
+    console.log( "Confirm Proj", ceProjId, fullName, projId );
     let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
     // ghLinks.showLocs();
     // console.log( "query got", locs );
@@ -256,6 +273,8 @@ exports.getLocs          = getLocs;
 exports.findNotice       = findNotice;
 exports.remLinks         = remLinks;
 exports.purgeJobs        = purgeJobs;
+exports.linkProject      = linkProject;
+exports.unlinkProject    = unlinkProject;
 exports.setUnpopulated   = setUnpopulated;
 
 // minor testing utils

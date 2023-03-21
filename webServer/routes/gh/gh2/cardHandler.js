@@ -33,7 +33,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 
     // I want peqId for notice PActions, with or without issueId
     if( typeof peq == 'undefined' ) {
-	peq = await ghUtils.validatePEQ( authData, fullName, link.issueId, link.issueName, link.hostProjectId );
+	peq = await ghUtils.validatePEQ( authData, pd.ceProjectId, fullName, link.hostIssueId, link.hostIssueName, link.hostProjectId );
     }
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );
@@ -144,7 +144,7 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 	console.log( authData.who, "Moving ACCR", accr, issueExists, link.hostIssueId );
 	// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
 	//           card creation can fail, and results can be uncertain at this point.  
-	let card = await gh.createUnClaimedCard( authData, ghLinks, pd, parseInt( link.hostIssueId ), accr );  
+	let card = await gh.createUnClaimedCard( authData, ghLinks, ceProjects, pd, parseInt( link.hostIssueId ), accr );  
 	link.hostCardId      = card.id.toString();
 	link.hostProjectId   = card.project_url.split('/').pop();
 	link.hostProjectName = config.UNCLAIMED;
@@ -173,12 +173,13 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
 // NOTE this does not receive direct notifications, but is instead called from other handlers 
-async function handler( authData, ghLinks, pd, action, tag ) {
+async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 
     pd.actor = pd.reqBody.sender.login;
     let card = pd.reqBody.projects_v2_item;
 
     console.log( authData.who, "Card", action, "Actor:", pd.actor )
+    pd.show();
     
     switch( action ) {
     case 'created' :
@@ -218,7 +219,9 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
-	    if( links == -1 || links[0].hostColumnId == -1 ) {
+	    if( links == -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
+		// XXX Decide -1 or config.EMPTY
+		if( links != -1 && links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
 		if( newNameIndex > config.PROJ_PROG ) {
 		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    // No origination data.  use default
@@ -229,7 +232,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
-
 	    let oldColId  = link.hostColumnId;
 	    
 	    console.log( authData.who, "attempting to move card to", newColName, "from", oldColId );
@@ -254,15 +256,15 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    let oldNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );
-	    assert( cardId    == link.hostCardId );
-	    assert( newProjId == link.hostProjectId );               // not yet supporting moves between projects
+	    assert( cardId == link.hostCardId );
+	    assert( newCard.projId == link.hostProjectId );               // not yet supporting moves between projects
 
 	    let success = await ghV2.checkReserveSafe( authData, link.hostIssueId, newNameIndex );
 	    if( !success ) {
 		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
 		return;
 	    }
-	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newColId, newColName );
+	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.columnId, newColName );
 	    // ghLinks.show();
 	    
 	    // handle issue.  Don't update issue state if not clear reopen/closed

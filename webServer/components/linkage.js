@@ -113,7 +113,8 @@ class Linkage {
 		// mainly to get pat
 		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
 
-		// XXX handle entry.HostParts.hostProjectIds
+		// No need to handle entry.HostParts.hostProjectIds.  hostRepositories have linked projects.  If not linked,
+		// ceProj will not interact.  If linked, then it is part of ceProj.
 		let hostProjs = [];
 		for( const repoName of entry.HostParts.hostRepositories ) {
 		    await ghV2.getProjectIds( authData, repoName, hostProjs, -1 );
@@ -142,6 +143,7 @@ class Linkage {
 			loc.ceProjectId = entry.CEProjectId;
 			loc.active = "true";
 			loc.hostRepository = proj.hostRepoName;
+			loc.hostRepositoryId = proj.hostRepoId;
 			this.addLoc( authData, loc, false ); 
 		    }
 		    
@@ -395,23 +397,28 @@ class Linkage {
 
 	const ceProjId  = query.ceProjId;
 	const repo      = query.hasOwnProperty( "repo" )     ? query.repo              : config.EMPTY;
+	const repoId    = query.hasOwnProperty( "repoId" )   ? query.repoId            : -1;
 	const projId    = query.hasOwnProperty( "projId" )   ? query.projId.toString() : -1;
 	const colId     = query.hasOwnProperty( "colId" )    ? query.colId.toString()  : -1;
 	const projName  = query.hasOwnProperty( "projName" ) ? query.projName          : config.EMPTY;
 	const colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
-	
+
+	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
+	if( !this.locs[ceProjId] ) { return -1; }
+
 	let locs = [];
-	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) { 
-	    for( const [_, loc] of Object.entries( clocs ) ) {
+	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) {// one clocs is {projId1: { coldata }, projId2: { coldata }}
+	    for( const [_, loc] of Object.entries( clocs ) ) {            
 		let match = true;
 		
-		match = projId == -1             ? match : match && (loc.hostProjectId   == projId);
-		match = colId == -1              ? match : match && (loc.hostColumnId    == colId);
-		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId     == ceProjId);
-		match = repo == config.EMPTY     ? match : match && (loc.hostRepository  == repo);
-		match = projName == config.EMPTY ? match : match && (loc.hostProjectName == projName);
-		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName  == colName);
-		match =                                    match && (loc.active          == "true");
+		match = projId == -1             ? match : match && (loc.hostProjectId    == projId);
+		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
+		match = repoId == -1             ? match : match && (loc.hostRepositoryId == repoId);
+		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
+		match = repo == config.EMPTY     ? match : match && (loc.hostRepository   == repo);
+		match = projName == config.EMPTY ? match : match && (loc.hostProjectName  == projName);
+		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName   == colName);
+		match =                                    match && (loc.active           == "true");
 		
 		if( match ) { locs.push( loc ); }
 	    }
@@ -579,11 +586,72 @@ class Linkage {
 	    }
 	    awsUtils.refreshLinkageSummary( authData, cpid, locs, false );
 	}
-	
-    	// this.showLocs();
-	return repo != "";
     }
 
+    // Unlink project from repo.  in this case, remove repo info
+    async unlinkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId ) {
+	console.log( "Unlink repo", ceProjId, hostRepoId, hostProjectId );
+
+	if( this.locs[ceProjId] != null && this.locs[ceProjId][hostProjectId] != null ) {
+	    for( const [_, loc] of Object.entries( this.locs[ceProjId][hostProjectId] ) ) {
+		// console.log( "  .. clearing", loc );
+		loc.hostRepository   = config.EMPTY;
+		loc.hostRepositoryId = config.EMPTY;
+	    }
+	}
+
+	if( this.links[ceProjId] != null ) {
+	    for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {
+		for( const [_, link] of Object.entries( clinks ) ) {
+		    link.hostRepo   = config.EMPTY;
+		    link.hostRepoId = config.EMPTY;
+		}}
+	}
+
+	await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
+	await ceProjects.init( authData );
+	
+	this.removeLocs( { authData: authData, ceProjId: ceProjId, projId: hostProjectId } );
+	return true;
+    }
+
+
+    async linkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
+	let rLocs  = [];
+	let rLinks = [];
+	console.log( "linkage:LP", ceProjId, hostProjectId, hostRepoId, hostRepoName );
+
+	await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
+	    .catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
+
+	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
+	
+	// add (or overwrite matching.. hmm see above)
+	// Don't wait, no adds to dynamo
+	rLinks.forEach( function (link) { link.hostRepo   = hostRepoName;
+					  link.hostRepoId = hostRepoId;
+					  this.addLinkage( authData, ceProjId, link );
+					}, this);
+
+	// Wait.. adds to dynamo
+	let promises = [];
+	promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ));
+	    
+	for( var loc of rLocs ) {
+	    loc.ceProjectId = ceProjId;
+	    loc.active = "true";
+	    loc.hostRepository = hostRepoName;
+	    loc.hostRepositoryId = hostRepoId;
+	    // console.log( "linkage:addLoc", loc );
+	    promises.push( this.addLoc( authData, loc, true ) );
+	}
+	await Promise.all( promises );
+	// Could just add/remove... but why?
+	await ceProjects.init( authData );
+	
+	return true;
+    }
+    
     // NOTE: testing will purge every repo
     purgeLocs( repo ) {
 	let killList = [];	
@@ -689,7 +757,8 @@ class Linkage {
 	if( printables.length > 0 ) {
 	    console.log( this.fill( "ceProj", 16 ),
 			 this.fill( "Repo", 20 ),
-			 this.fill( "ProjId", 10 ), 
+			 this.fill( "RepoId", 12 ),
+			 this.fill( "ProjId", 20 ), 
 			 this.fill( "ProjName", 15 ),
 			 this.fill( "ColId", 10),
 			 this.fill( "ColName", 20)
@@ -705,7 +774,8 @@ class Linkage {
 	    const loc = printables[i];
 	    console.log( this.fill( loc.ceProjectId, 16 ),
 			 this.fill( loc.hostRepository, 20 ),
-			 loc.hostProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.hostProjectId, 10 ),
+			 this.fill( loc.hostRepositoryId, 12 ),
+			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
 			 this.fill( loc.hostProjectName, 15 ),
 			 loc.hostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.hostColumnId, 10 ),
 			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )

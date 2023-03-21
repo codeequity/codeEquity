@@ -1,7 +1,7 @@
 const assert   = require( 'assert' );
 const ceRouter = require( './ceRouter' );
 
-async function handler( ghLinks, ceJobs, ceNotification, reqBody, res ) {
+async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, res ) {
 
     assert( reqBody.hasOwnProperty( "Request" ) );
 
@@ -24,6 +24,12 @@ async function handler( ghLinks, ceJobs, ceNotification, reqBody, res ) {
     else if( reqBody.Request == "purgeJobs" ) {
 	// NOTE, this removes ALL pending jobs for FullName, including user, server and tester jobs.
 	ceRouter.purgeQueue( ceJobs );
+    }
+    else if( reqBody.Request == "linkProject" ) {
+	retVal = ghLinks.linkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId, reqBody.rName );
+    }
+    else if( reqBody.Request == "unlinkProject" ) {
+	retVal = ghLinks.unlinkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId );
     }
 	
     return res

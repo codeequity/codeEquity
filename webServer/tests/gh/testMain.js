@@ -8,6 +8,7 @@ const utils     = require( '../../utils/ceUtils' );
 const awsUtils  = require( '../../utils/awsUtils' );
 
 const ghUtils   = require( '../../utils/gh/ghUtils' );
+const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
 
 const links     = require('../../components/linkage.js');
 const circBuff  = require('../../components/circBuff.js');
@@ -42,15 +43,18 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     // If this is first PAct for the day, start it up.  The purpose of wakey is to kick off both aws and each host.
 
     const wakeyName = "ceServer wakey XYZZYXXK837598";
+
     // XXX so far, V2 can't delete pv2, so no point making.  link and unlink instead.
-    let wakeyPID = await gh2tu.findProjectByName( authData, td.GHOwner, wakeyName );
+    /*
+    let wakeyPID = await gh2tu.findProjectByName( authData, config.TEST_OWNER, td.GHOwner, wakeyName );
     if( wakeyPID == -1 ) { 
 	wakeyPID = await gh2tu.makeProject( authData, td, wakeyName, "", {"owner": td.GHOwnerId} );
+	await gh2tu.linkProject( authData, td, wakeyPID );
     }
+    */
+    let wakeyPID = await gh2tu.findOrCreateProject( authData, td, wakeyName, "" );
     assert( wakeyPID != -1 );
-    console.log( "Found", wakeyName, "with PID:", wakeyPID );
-    
-    await gh2tu.linkProject( authData, wakeyPID, td.GHRepoId );
+    console.log( "Found", wakeyName, "with PID:", wakeyPID, "for ceProj:", td.ceProjectId );
     
     const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.ceProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
@@ -61,8 +65,8 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     }
 
     // gh2tu.remProject( authData, wakeyPID );
-    gh2tu.unlinkProject( authData, wakeyPID, td.GHRepoId );
-    
+    gh2tu.unlinkProject( authData, td.ceProjectId, wakeyPID, td.GHRepoId );
+
     // TESTS
 
     let subTest = "";
@@ -70,7 +74,6 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await gh2TestDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
-
 
     subTest = await gh2TestSetup.runTests( authData, ghLinks, td );
     console.log( "\n\nSetup test complete." );
@@ -114,7 +117,7 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
     // StayPut project to keep classics tab in play in GH, for now.
     // const aPID = await ghctu.makeProject( authData, td, "ceServer stayPut XYZZYXXK837598", "" );
 
-    const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.CEProjectId });
+    const pacts    = await awsUtils.getPActs( authData,  { "CEProjectId": td.ceProjectId });
     if( pacts!= -1 ) { pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) ); }
     const mrp = pacts != -1 ? pacts[ pacts.length - 1] : {"EntryDate": "01/01/1970"};
     if( utils.getToday() != mrp.EntryDate ) {
@@ -123,7 +126,7 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
     }
 
     // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    let mastCol1  = await ghctu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, wakeyPID, td.softContTitle );
+    let mastCol1  = await ghctu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, wakeyPID, td.softContTitle );
     ghctu.remProject( authData, wakeyPID );
     assert( false );
 
@@ -205,6 +208,7 @@ async function runTests() {
     let ceProjects = new ceProjData.CEProjects();
     await ceProjects.init( authData );
     td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.GHFullName );
+    assert( td.ceProjectId != config.EMPTY );
     
     // CROSS_TEST_REPO auth
     let tdX        = new testData.TestData();

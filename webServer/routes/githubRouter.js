@@ -220,36 +220,41 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 
     let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
-    // console.log( "switcherGH2.." );
-    
-    assert( jd.queueId == authData.job ) ;
-    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
+    console.log( "switcherGH2..", ceProjectId, pd.ceProjectId );
 
-    switch( jd.event ) {
-    case 'projects_v2_item' :
-	{
-	    // item created/deleted is ~ cardHandler.  Edited..?
-	    retVal = await gh2Item.handler( authData, ghLinks, pd, jd.action, jd.tag )
-		.catch( e => console.log( "Error.  Item Handler failed.", e ));
-	}
-	break;
-    case 'issue' :
-	{
-	    retVal = await gh2Issue.handler( authData, ghLinks, pd, jd.action, jd.tag )
-		.catch( e => console.log( "Error.  Issue Handler failed.", e ));
-	}
-	break;
-    case 'label' :
-	{
-	    retVal = await gh2Label.handler( authData, ghLinks, pd, jd.action, jd.tag )
-		.catch( e => console.log( "Error.  Label Handler failed.", e ));
-	}
-	break;
-    default:
-	{
-	    console.log( "Event unhandled", event );
-	    retVal = res.json({ status: 400 });
+    if( pd.ceProjectId == config.EMPTY ) {
+	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
+    }
+    else {
+	assert( jd.queueId == authData.job ) ;
+	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
+	
+	switch( jd.event ) {
+	case 'projects_v2_item' :
+	    {
+		// item created/deleted is ~ cardHandler.  Edited..?
+		retVal = await gh2Item.handler( authData, ghLinks, ceProjects, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Item Handler failed.", e ));
+	    }
 	    break;
+	case 'issue' :
+	    {
+		retVal = await gh2Issue.handler( authData, ghLinks, ceProjects, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
+	    }
+	    break;
+	case 'label' :
+	    {
+		retVal = await gh2Label.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Label Handler failed.", e ));
+	    }
+	    break;
+	default:
+	    {
+		console.log( "Event unhandled", event );
+		retVal = res.json({ status: 400 });
+		break;
+	    }
 	}
     }
 
@@ -310,6 +315,11 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 		    console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
 		    // console.log( "pendingNotices, after removal" );
 		    let cpid = ceProjects.find( jd.host, pendingNotices[i].org, pendingNotices[i].hpid );
+
+		    // Many notifications come in as content (i.e. issue:label), initially identified as GHC.
+		    // Adjust organization to fit GH2
+		    jd.org = pendingNotices[i].org;
+		    
 		    found = true;
 		    pendingNotices.splice( i, 1 );
 		    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, cpid );
@@ -374,7 +384,8 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
     }
 
     if( jd.projMgmtSys == config.PMS_GH2 ) {
-	if( jd.action == "edited" || jd.action == "created" ) {
+	// deleting draft issue will cause 'deleted' to be sent
+	if( jd.action == "edited" || jd.action == "created" || jd.action == "deleted" ) { 
 	    pendingNotices.push( makePendingNotice( jd.reqBody, jd.action ) );
 	    // console.log( "pending after push", pendingNotices );
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );

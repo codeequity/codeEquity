@@ -21,8 +21,11 @@ class CEProjects {
 		}
 	    }
 	}
-	// this.show(10);
-	// console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
+	console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
+	if( retVal == config.EMPTY ) {
+	    this.show(50);
+	    assert( false );  // XXX debugging
+	}
 	return retVal;
     }
 
@@ -35,10 +38,12 @@ class CEProjects {
     
     async init( authData ) {
 	console.log( "Initializing ceProjects" );
+	this.hp2cp = {};
 	this.cep = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
 	for( const entry of this.cep ) {
 	    await this.add( authData, entry );
 	}
+	this.show(50);
     }
 
     // Called during server initialization,
@@ -49,12 +54,28 @@ class CEProjects {
 	let pms  = newCEP.ProjectManagementSys;
 	let org  = newCEP.Organization;
 
-	let awsLinks = await awsUtils.getLinkage( authData, { "CEProjectId": cpid } );		
-	assert( awsLinks.length == 1 );
+	let awsLinksP = awsUtils.getLinkage( authData, { "CEProjectId": cpid } );
+	let awsLocsP  = awsUtils.getProjectStatus( authData, cpid );
 
 	if( !this.hp2cp.hasOwnProperty( host ))                  { this.hp2cp[host]                  = {}; }
 	if( !this.hp2cp[host].hasOwnProperty( org ))             { this.hp2cp[host][org]             = {}; }
+
+	// use CEProj table instead.  More direct.
+	let awsLocs = await awsLocsP;
+	for( const hpid of awsLocs.HostParts.hostProjectIds ) {
+
+	    if( host == config.HOST_GH && pms == config.PMS_GHC ) {
+		// XXX need to work with hostRepositories instead
+		assert( false );
+		org = awsLoc.hostRepository.split('/')[0];          // Take the owner (individual or org) as org
+	    }
+
+	    if( !this.hp2cp[host][org].hasOwnProperty( hpid )) { this.hp2cp[host][org][hpid] = cpid; }
+	}
 	
+	let awsLinks = await awsLinksP;
+	assert( awsLinks.length == 1 );
+	/*
 	for( const awsLoc of awsLinks[0].Locations ) {
 
 	    if( host == config.HOST_GH && pms == config.PMS_GHC ) {
@@ -64,6 +85,8 @@ class CEProjects {
 
 	    if( !this.hp2cp[host][org].hasOwnProperty( hpid )) { this.hp2cp[host][org][hpid] = cpid; }
 	}
+	*/
+	
     }
 
     // called by ceFlutter to attach a hostProject to a ceProject.

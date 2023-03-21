@@ -125,8 +125,6 @@ async function getStoredPAT( authData, host, actor ) {
 }
 
 async function getProjectStatus( authData, ceProjId ) {
-    console.log( authData.who, "Get Status for a given CE Project", ceProjId );
-
     let shortName = ceProjId == -1 ? "GetEntries" : "GetEntry";
     let query     = ceProjId == -1 ? { "empty": config.EMPTY } : { "CEProjectId": ceProjId};
     let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
@@ -339,7 +337,7 @@ async function rewritePAct( authData, postData ) {
 
 // locData can be from GQL, or linkage
 async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) {
-    // console.log( "Refreshing linkage summary", ceProjId, locData.length );
+    console.log( "Refreshing linkage summary", authData.api, ceProjId, locData.length );
 
     if( gql ) {
 	for( var loc of locData ) {
@@ -362,9 +360,9 @@ async function updateLinkageSummary( authData, ceProjId, loc ) {
     console.log( authData.who, "Updating linkage summary" );
 
     let newLoc = {};
-    newLoc.CEProjId  = ceProjId;
-    newLoc.LastMod   = utils.getToday();
-    newLoc.Location  = loc;
+    newLoc.CEProjectId  = ceProjId;
+    newLoc.LastMod      = utils.getToday();
+    newLoc.Location     = loc;
 
     let shortName = "UpdateLinkage"; 
 
@@ -445,6 +443,26 @@ async function clearIngested( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function linkProject( authData, query ) {
+    let shortName = "LinkProject";
+    let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
+async function unlinkProject( authData, query ) {
+    let shortName = "UnlinkProject";
+    let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    let retVal = await wrappedPostAWS( authData, shortName, postData );
+
+    shortName = "GetEntry";
+    postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
+    let ceProj = await wrappedPostAWS( authData, shortName, postData );
+    assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ), query );
+
+    return retVal;
+}
+
+
 // ******************
 // Pure Testing support
 // ******************
@@ -470,7 +488,6 @@ async function unpopulate( authData, ceProjId ) {
 
     return await wrappedPostAWS( authData, shortName, postData );
 }
-
 
 /* Not in use
 async function clearLinkage( authData, pd ) {
@@ -533,6 +550,9 @@ exports.getLinkage   = getLinkage;
 
 exports.cleanDynamo   = cleanDynamo;
 exports.clearIngested = clearIngested;
+
+exports.linkProject   = linkProject;
+exports.unlinkProject = unlinkProject;
 
 exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
 exports.unpopulate    = unpopulate;       // TESTING ONLY

@@ -87,6 +87,8 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "Depop")          { resultPromise = depopulate( rb.CEProjectId ); }
+    else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
+    else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -540,6 +542,7 @@ async function updateLinkage( newLoc ) {
 	    if( loc.HostProjectId == newLoc.Location.hostProjectId && loc.HostColumnId == newLoc.Location.hostColumnId ) {
 		console.log( "updating with", newLoc.Location.hostProjectName, newLoc.Location.hostColumnName );
 		loc.HostRepository  = newLoc.Location.hostRepository;
+		loc.HostRepositoryId  = newLoc.Location.hostRepositoryId;
 		loc.HostProjectName = newLoc.Location.hostProjectName;
 		loc.HostColumnName  = newLoc.Location.hostColumnName;
 		loc.HostUtility     = newLoc.Location.hostUtility;
@@ -557,6 +560,7 @@ async function updateLinkage( newLoc ) {
 	aloc.HostProjectId   = newLoc.Location.hostProjectId;
 	aloc.HostProjectName = newLoc.Location.hostProjectName;
 	aloc.HostRepository  = newLoc.Location.hostRepository;
+	aloc.HostRepositoryId  = newLoc.Location.hostRepositoryId;
 	aloc.HostColumnId    = newLoc.Location.hostColumnId;
 	aloc.HostColumnName  = newLoc.Location.hostColumnName;
 	aloc.HostUtility     = newLoc.Location.hostUtility;
@@ -1266,6 +1270,48 @@ async function depopulate( ceProjId ) {
     console.log( params );
     promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));
+}
+
+// https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html#Expressions.Modifying.UpdateExpressions.DELETE
+async function link( query ) {
+
+    let params = { TableName: 'CEProjects' };
+    let promise = null;
+
+    params.Key                       = { "CEProjectId": query.ceProjId };
+    params.UpdateExpression          = 'set HostParts.hostProjectIds = list_append( HostParts.hostProjectIds, :pid )';
+    params.ExpressionAttributeValues = { ':pid': [query.hostProjectId] };
+
+    console.log( params );
+    promise = bsdb.update( params ).promise();
+    return promise.then(() => success( true ));
+}
+
+async function unlink( query ) {
+    let oldProjWrap = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
+    let index = -1;
+
+    const oldProjData = JSON.parse( oldProjWrap.body );    
+
+    for( let i = 0; i < oldProjData.HostParts.hostProjectIds.length; i++ ) {
+	if( query.hostProjectId == oldProjData.HostParts.hostProjectIds[i] ) { index = i; break; }
+    }
+
+    if( index == -1 ) { return success( true ); }
+    else {
+	let params = { TableName: 'CEProjects' };
+	let promise = null;
+
+	// Can't pass parameter in this remove bit.  Build string, pass that.
+	// params.UpdateExpression          = 'REMOVE HostParts.hostProjectIds[:ind]';	
+
+	params.Key                       = { "CEProjectId": query.ceProjId };
+	params.UpdateExpression          = "REMOVE HostParts.hostProjectIds[" + index.toString() + "]";
+	
+	console.log( params );
+	promise = bsdb.update( params ).promise();
+	return promise.then(() => success( true ));
+    }
 }
 
 

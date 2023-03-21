@@ -46,7 +46,7 @@ var router   = express.Router();
 
 console.log( "*** CEROUTER init, HOST init ***" );
 
-// CEProjects data
+// CEProjects data.  Few link/unlink.  Many notices in the middle.
 var ceProjects = new ceProjData.CEProjects();
 
 // Host Linkage table
@@ -243,7 +243,7 @@ router.post('/:location?', async function (req, res) {
     // console.log( "BODY", req.body, "\nHEADERS", req.headers );
 
     // invisible, mostly
-    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( hostLinks, ceJobs, ceNotification, req.body, res ); }
+    if( req.body.hasOwnProperty( "Endpoint" ) && req.body.Endpoint == "Testing" ) { return testing.handler( hostLinks, ceJobs, ceProjects, ceNotification, req.body, res ); }
 
     let jd     = new jobData.JobData();
     jd.reqBody = req.body;
