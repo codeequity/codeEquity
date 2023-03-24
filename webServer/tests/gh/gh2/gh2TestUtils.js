@@ -682,7 +682,8 @@ async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, col
     allocIssue.title = title;
     allocIssue.labels = [label];
 
-    let issDat = await ghV2.createIssue( authData, rNodeId, pNodeId, allocIssue );
+    // creating a peq issue.  do not card it, issue:label does the work
+    let issDat = await ghV2.createIssue( authData, rNodeId, -1, allocIssue );
     assert( issDat.length == 3 && issDat[0] != -1 && issDat[2] != -1 );
 
     await ghV2.moveCard( authData, pNodeId, issDat[2], statusId, colId );
@@ -752,7 +753,7 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
     return card;
 }
 
-// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
+// NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function makeIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels} );
     issue.push( title );
@@ -760,7 +761,7 @@ async function makeIssue( authData, td, title, labels ) {
     return issue;
 }
 
-// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
+// NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function makeAllocIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels, allocation: true} );
     issue.push( title );
@@ -768,7 +769,7 @@ async function makeAllocIssue( authData, td, title, labels ) {
     return issue;
 }
 
-// NOTE this creates an unsituated issue.  Call 'createProjectCard' to situate it.
+// NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function blastIssue( authData, td, title, labels, assignees, specials ) {
     let wait  = typeof specials !== 'undefined' && specials.hasOwnProperty( "wait" )   ? specials.wait   : true;
 

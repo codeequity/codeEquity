@@ -25,7 +25,7 @@ const cardHandler = require( './cardHandler' );
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
-async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
+async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
     console.log( authData.who, "itemHandler start", authData.job );
     
@@ -101,17 +101,17 @@ async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 	    // Need to then process the content-specific notice for details.
 	    // Example:  { field_value: { field_node_id: 'PVTF_<*>', field_type: 'labels' }}
 	    // No need to rebuild the map on server startup, since notice comes every time.  Demote content_node job this notice hasn't arrived yet.
-	    console.log( "PV2ItemHandler", action );
+	    console.log( authData.who, "PV2ItemHandler", action );
 
 	    if( ghUtils.validField( reqBody, "changes" )) {
 		let fv = reqBody.changes.field_value;
 		if( ghUtils.validField( fv, "field_type" )) {
 		    
 		    if( fv.field_type == "single_select" ) {
-			await cardHandler.handler( authData, ghLinks, ceProjects, pd, 'moved', tag );
+			await cardHandler.handler( authData, ceProjects, ghLinks, pd, 'moved', tag );
 		    }
 		    else if( fv.field_type == "labels" ) {
-			console.log( "Item handler found edit:labels.. no action taken in favor of issue:labels" );
+			console.log( authData.who, "Item handler found edit:labels.. no action taken in favor of issue:labels" );
 		    }
 		}
 	    }
@@ -132,9 +132,9 @@ async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 	break;
     case 'created':
 	// creating a card here.
-	// generated from situateIssue or adding issue to project in GH
+	// generated from cardIssue or adding issue to project in GH
 	{
-	    cardHandler.handler( authData, ghLinks, ceProjects, pd, action, tag ); 
+	    cardHandler.handler( authData, ceProjects, ghLinks, pd, action, tag ); 
 	}
 	break;
     case 'deleted':

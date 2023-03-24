@@ -12,18 +12,18 @@ const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
 const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
 
 // Terminology:
-// situated issue: an issue with a card in a CE-valid project structure
-// carded issue:   an issue with a card not in a CE-valid structure
+// ceProject:      a codeequity project that includes 0 or more gh projects that CE knows about
+// newborn card :  a card without an issue.. this can NOT exist in projects v2
 // newborn issue:  a plain issue without a project card, without PEQ label
-// newborn card :  a card without an issue
+// carded issue:   an issue with a card, but no PEQ label.
+// situated issue: an issue with a card, with or without a PEQ label.  May reside in unclaimed if PID not known.
+// PEQ issue:      a situated issue with a PEQ label
 
 // Guarantee: Once populateCEProjects has been run once for a repo:
-//            1) Every carded issues in that repo resides in the linkage table.
-//            2) Newborn issues and newborn cards can still exist (pre-existing, or post-populate), and will not reside in the linkage table.
-//            3) {label, add card} operation on newborn issues will cause conversion to carded (unclaimed) or situated issue as needed,
+//            1) Newborn issues and newborn cards can exist (pre-existing, or post-populate), but with no data in the linkage table.
+//            2) Every situated issue in the repo resides in the linkage table, but without column info
+//            3) {label, add card} operation on newborn issues will cause conversion to situated or PEQ issue as needed,
 //               and inclusion in linkage table.
-//            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
-
 
 // XXX NOTE deleteCard notification will NOT be sent, but pv2item edit (?) will be?  Revisit
 async function deleteIssue( authData, ghLinks, pd ) {
@@ -36,7 +36,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
     let link = links[0];
 
     console.log( "DELETE" );
-    console.log( pd.reqBody );
+    // console.log( pd.reqBody );
 
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
     // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
@@ -114,28 +114,29 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	return false;
     }
     
-    // Was this a carded issue?  Get linkage
+    // Was this a situated issue?  Get linkage
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links == -1 || links.length == 1 );
     let link = links == -1 ? links : links[0];
 
-    // Newborn PEQ issue, pre-triage.  Create card in unclaimed to maintain promise of linkage in dynamo,
-    // since can't create card without column_id.  No project, or column_id without triage.
+    // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
+    // No project, or column_id without triage.
     let card = {};
-    if( link == -1 || link.hostColumnId == -1) {
+    if( link == -1 || link.hostCardId == -1) {
 	if( link == -1 ) {    
+	    console.log( "Newborn peq issue" );
 	    link = {};
 	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
-	    console.log( "LI:", card );
-	    pd.show();
-	    assert( card.issueNum >= 0 && pd.issueNum == card.issueNum );
+	    // console.log( "LI:", card );
+	    // pd.show();
+	    assert( pd.issueNum >= 0 );
 	    link.hostIssueNum  = pd.issueNum;
 	    link.hostCardId    = card.id
 	    link.hostProjectId = card.projId;
 	    link.hostColumnId  = card.columnId;
 	}
-	else {  // newborn issue, or carded issue.  colId drives rest of link data in PNP
-	    if( link.hostColumnId == -1 || link.hostColumnId == config.EMPTY ) { console.log( "label issue excess call to getCard", link ); }
+	else {
+	    console.log( "carded issue -> situated issue" );
 	    card = await ghV2.getCard( authData, link.hostCardId );
 	    link.hostColumnId  = card.columnId;
 	}
@@ -147,7 +148,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     // Could getFullIssue, but we already have all required info
     let content                      = {};
     content.title                    = pd.issueName;
-    content.number                   = card.issueNum;
+    content.number                   = pd.issueNum;
     content.repository               = {};
     content.repository.id            = pd.reqBody.repository.node_id;
     content.repository.nameWithOwner = pd.reqBody.repository.full_name;
@@ -164,7 +165,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 // Note: issue:opened         notification after 'submit' is pressed.
 //       issue:labeled        notification after click out of label section
 //       project_card:created notification after submit, then projects:triage to pick column.
-async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
+async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     console.log( authData.who, "issueHandler start", authData.job );
@@ -233,6 +234,8 @@ async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
     case 'unlabeled':
 	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  
 	// Do not move card, would be confusing for user.
+	// XXX NYI
+	break;
 	{
 	    // Unlabel'd label data is not located under issue.. parseLabel looks in arrays
 	    if( typeof pd.reqBody.label !== 'undefined' ) {
@@ -275,7 +278,6 @@ async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 		pd.reqBody        // raw
 	    );
 	}
-	break;
     case 'deleted':
 	// Delete card of carded issue sends 1 notification.  Delete issue of carded issue sends two: card, issue, in random order.
 	// This must be robust given different notification order of { delIssue, delCard}
@@ -286,8 +288,8 @@ async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	// Wait here, since delete issue can createUnclaimed
 	// XXX NYI
-	await deleteIssue( authData, ghLinks, pd );
 	break;
+	await deleteIssue( authData, ghLinks, pd );
     case 'closed':
     case 'reopened':
 	{

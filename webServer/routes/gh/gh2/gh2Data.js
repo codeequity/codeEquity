@@ -1,9 +1,13 @@
+const assert  = require('assert');
+
 const rootLoc = "../../../";
 
 const config  = require( rootLoc + 'config' );
 
 const ceData  = require( '../../ceData' );
 const jobData = require( '../../jobData' );
+
+const ghUtils = require( rootLoc + "utils/gh/ghUtils" );
 
 class GH2Data extends ceData.CEData{
 
@@ -43,20 +47,22 @@ class GH2Data extends ceData.CEData{
     }
     
     getCEProjectId( jd, ceProjects ) {
-
+	
 	// console.log( "getCEProjectId",  jd.reqBody );
+
+	let retVal = config.EMPTY; 
+	if( Object.keys(ceProjects).length == 0 ) { return retVal; }
 	
-	if( Object.keys(ceProjects).length == 0 ) { return config.EMPTY; }
-	
-	// Have to get this from pv2Notice.  If this is contentNotice, skip.
-	if( typeof jd.reqBody.projects_v2_item === 'undefined' ||
-	    typeof jd.reqBody.projects_v2_item.project_node_id === 'undefined' ) {
-	    return config.EMPTY;
+	// If this is content notice, get from repo
+	if( !ghUtils.validField( jd.reqBody, "projects_v2_item" ) || !ghUtils.validField( jd.reqBody.projects_v2_item, "project_node_id" ) ) {
+	    assert( ghUtils.validField( jd.reqBody, "repository" ));
+	    console.log( "Find by repo" );
+	    retVal = ceProjects.findByRepo( config.HOST_GH, jd.org, jd.reqBody.repository.full_name ); 
 	}
-
-	let hostProjId = jd.reqBody.projects_v2_item.project_node_id;
-
-	let retVal = ceProjects.find( config.HOST_GH, jd.org, hostProjId );
+	else {
+	    console.log( "Find by pid" );
+	    retVal = ceProjects.find( config.HOST_GH, jd.org, jd.reqBody.projects_v2_item.project_node_id );
+	}
 
 	// XXX No point to speculatively add.
 	//     push this step down until we have a peq action.
