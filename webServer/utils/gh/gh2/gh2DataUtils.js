@@ -25,7 +25,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId });
     // This can happen if an issue in a non-ceProj repo links to a project that is in a ceProj.  The 'visiting' issue should not be managed by ceServer.
-    if( links == -1 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
+    if( links === -1 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
     // console.log( links[0] );
     if( links.length < 2 ) { console.log(authData.who, "Resolve: early return, nothing to resolve." ); return gotSplit; }
     gotSplit = true;
@@ -197,10 +197,10 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     let cardDat    = pd.reqBody.projects_v2_item;   
-    let origCardId = link == -1 ? cardDat.node_id         : link.hostCardId;
-    pd.projectId   = link == -1 ? cardDat.project_node_id : link.hostProjectId;
-    pd.columnId    = link == -1 ? -1                      : link.hostColumnId;
-    let colName    = link == -1 ? config.EMPTY            : link.hostColumnName;
+    let origCardId = link === -1 ? cardDat.node_id         : link.hostCardId;
+    pd.projectId   = link === -1 ? cardDat.project_node_id : link.hostProjectId;
+    pd.columnId    = link === -1 ? -1                      : link.hostColumnId;
+    let colName    = link === -1 ? config.EMPTY            : link.hostColumnName;
     let projName   = "";
 
     console.log( authData.who, "PNP:", origCardId, pd.projectId );
@@ -208,7 +208,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
 
     // Bail, if this create is an add-on to an ACCR 
-    if( links != -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+    if( links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
 	ghV2.removeCard( authData, pd.projectId, origCardId );
 	return 'early';
@@ -225,14 +225,14 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // XXX revisit after issue:label is rebuilt.  May be able to simplify here.  
     // purely from card
     if( pd.peqType == "end" ) {
-	assert( link == -1 );
+	assert( link === -1 );
 
 	let card = await ghV2.getCard( authData, origCardId );
 	// No reason to do this, situated non-peq do not track col data
 	// pd.columnId = card.columnId;                     
 	colName = card.columnName;
 
-	console.log( "PNP: type 1", pd.columnId, colName );
+	console.log( authData.who, "PNP: type 1", pd.columnId, colName );
 	
 	// All cards are created in "no status", originally.  No need to check for reserved.
 	let blank      = config.EMPTY;
@@ -262,7 +262,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	    ghV2.removeCard( authData, pd.projectId, origCardId );
 
 	    // If already exists, will be in links.  Do not destroy it
-	    if( links == -1 ) {
+	    if( links === -1 ) {
 		peqLabel = await peqLabel;
 		// Don't wait
 		ghV2.removeLabel( authData, peqLabel.id, pd.issueId );

@@ -32,7 +32,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
     // Either not carded, or delete card already fired successfully.  No-op.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
-    if( links == -1 ) return;
+    if( links === -1 ) return;
     let link = links[0];
 
     console.log( "DELETE" );
@@ -95,7 +95,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 }
 
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
-    console.log( "LabelIssue" );
+    console.log( authData.who, "LabelIssue" );
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
     
@@ -116,15 +116,15 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     
     // Was this a situated issue?  Get linkage
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
-    assert( links == -1 || links.length == 1 );
-    let link = links == -1 ? links : links[0];
+    assert( links === -1 || links.length == 1 );
+    let link = links === -1 ? links : links[0];
 
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     // No project, or column_id without triage.
     let card = {};
-    if( link == -1 || link.hostCardId == -1) {
-	if( link == -1 ) {    
-	    console.log( "Newborn peq issue" );
+    if( link === -1 || link.hostCardId == -1) {
+	if( link === -1 ) {    
+	    // console.log( "Newborn peq issue" );
 	    link = {};
 	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
 	    // console.log( "LI:", card );
@@ -195,8 +195,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    assert( ghUtils.validField( pd.reqBody, "repository" ) && ghUtils.validField( pd.reqBody.repository, "node_id" ));
 	    pd.repoName = pd.reqBody.repository.full_name; 
 	    pd.repoId   = pd.reqBody.repository.node_id; 
-	    console.log( "Label issue pd" );
-	    pd.show();
+	    // console.log( "Label issue pd" );
+	    // pd.show();
 	    let success = await labelIssue( authData, ghLinks, ceProjects, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
@@ -317,7 +317,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
 		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.ceProjectId, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
-		    if( peqId == -1 ) {
+		    if( peqId === -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }
 		    else {
@@ -366,7 +366,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 
 	    // This should only happen during blast-issue creation.
-	    if( peq == -1 ) {
+	    if( peq === -1 ) {
 		console.log( "Assignment to peq issue, but peq doesn't exist (yet).  Reshuffle." );
 		return "postpone"; 
 	    }
@@ -378,7 +378,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    // Not if ACCR
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
-	    if( links != -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+	    if( links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( "WARNING.", links[0].hostColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
 		paction = config.PACTACT_NOTE;
 		note = "Bad assignment attempted";
@@ -400,9 +400,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 		const newTitle = pd.reqBody.issue.title;
 		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
-		let link = links == -1 ? links : links[0]; 
+		let link = links === -1 ? links : links[0]; 
 
-		if( link != -1 && link.hostIssueName != config.EMPTY) {
+		if( link !== -1 && link.hostIssueName != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
 		    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
@@ -416,7 +416,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			// if link has title, we have situated card.
 			ghLinks.updateTitle( authData, link, newTitle );
 			let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
-			assert( peq != -1 );  
+			assert( peq !== -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
 			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
@@ -474,7 +474,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
 		let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
-		if( peq != -1 ) {
+		if( peq !== -1 ) {
 		    const subject = [ peq.PEQId, fullRepoName ];
 		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",

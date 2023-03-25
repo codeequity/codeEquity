@@ -220,14 +220,15 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 
     let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
-    console.log( "switcherGH2..", pd.ceProjectId );
+    console.log( authData.who, "switcherGH2..", pd.ceProjectId );
 
     if( pd.ceProjectId == config.EMPTY ) {
 	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
     }
     else {
 	assert( jd.queueId == authData.job ) ;
-	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
+	// await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
+	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, config.CE_ACTOR );
 	
 	switch( jd.event ) {
 	case 'projects_v2_item' :

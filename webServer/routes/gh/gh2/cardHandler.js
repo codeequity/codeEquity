@@ -73,7 +73,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
     let subject = [peq.PEQId];
     if( verb == config.PACTVERB_REJ && newCol >= 0 ) {
 	let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "colName": config.PROJ_COLS[newCol] } );
-	assert( locs != -1 );
+	assert( locs !== -1 );
 	subject = [ peq.PEQId, locs[0].hostColumnName ];
     }
     else if( action == config.PACTACT_RELO ) {
@@ -81,7 +81,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 	assert( cardId > 0 );
 
 	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
-	assert( links  != -1 && links[0].hostColumnId != -1 );
+	assert( links  !== -1 && links[0].hostColumnId != -1 );
 
 	subject = [ peq.PEQId, links[0].hostProjectId, links[0].hostColumnId ];
     }
@@ -98,7 +98,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 async function deleteCard( authData, ghLinks, pd, cardId ) {
     // Not carded?  no-op.  or maybe delete issue arrived first.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "cardId": cardId });
-    if( links == -1 ) { return; }
+    if( links === -1 ) { return; }
     
     let link    = links[0];
     const accr  = link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR];
@@ -179,7 +179,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     let card = pd.reqBody.projects_v2_item;
 
     console.log( authData.who, "Card", action, "Actor:", pd.actor )
-    pd.show();
+    // pd.show();
     
     switch( action ) {
     case 'created' :
@@ -215,13 +215,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	    const locs       = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colName": "No Status" } );  // XXX formalize
-	    assert( locs != -1 );
+	    assert( locs !== -1 );
 
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
-	    if( links == -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
+	    if( links === -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
 		// XXX Decide -1 or config.EMPTY
-		if( links != -1 && links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
+		if( links !== -1 && links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
 		if( newNameIndex > config.PROJ_PROG ) {
 		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    // No origination data.  use default

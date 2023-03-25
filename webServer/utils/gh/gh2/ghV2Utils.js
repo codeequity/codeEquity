@@ -96,8 +96,8 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
     }}}`;
 
 
-    let query     = cursor == -1 ? query1 : queryN;
-    let variables = cursor == -1 ? {"nodeId": pNodeId } : {"nodeId": pNodeId, "cursor": cursor };
+    let query     = cursor === -1 ? query1 : queryN;
+    let variables = cursor === -1 ? {"nodeId": pNodeId } : {"nodeId": pNodeId, "cursor": cursor };
     query = JSON.stringify({ query, variables });
 
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
@@ -154,7 +154,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 
 	    if( statusId == 0 ) { return; }
 	    assert( locData.length > 0 );
-	    assert( statusId != -1 );
+	    assert( statusId !== -1 );
 	    
 	    let items = raw.data.node.items;
 	    for( let i = 0; i < items.edges.length; i++ ) {
@@ -186,7 +186,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 	    // console.log( "UTILS: Links", linkData );
 	    
 	    // Wait.  Data is modified
-	    if( items != -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
+	    if( items !== -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pNodeId, locData, linkData, items.pageInfo.endCursor ); }
 	})
 	.catch( e => ghUtils.errorHandler( "getHostLinkLoc", e, getHostLinkLoc, authData, pNodeId, locData, linkData, cursor )); 
 }
@@ -409,7 +409,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	})
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
 
-    if( projNode != -1 ) { issueData = await cardIssue( authData, projNode, issueData ); }
+    if( projNode !== -1 ) { issueData = await cardIssue( authData, projNode, issueData ); }
     
     return issueData;
 }
@@ -418,7 +418,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 // Label descriptions help determine if issue is an allocation
 async function getIssue( authData, issueId ) {
     let retVal   = [];
-    if( issueId == -1 ) { return retVal; }
+    if( issueId === -1 ) { return retVal; }
     
     let issue = await getFullIssue( authData, issueId );
     let retIssue = [];
@@ -521,7 +521,7 @@ async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, sp
     else {
 	// console.log( "Calling create", repoNodeId, projectNodeId, issue );
 	issueData = await createIssue( authData, repoNodeId, projectNodeId, issue );
-	if( issueData[0] != -1 && issueData[1] != -1 && issueData[2] != -1 ) { success = true; }
+	if( issueData[0] !== -1 && issueData[1] !== -1 && issueData[2] !== -1 ) { success = true; }
     }
 
     if( success ) {
@@ -579,7 +579,7 @@ async function remAssignee( authData, issueId, aNodeId ) {
 async function getAssignees( authData, issueId ) {
 
     let retVal = [];
-    if( issueId == -1 ) { console.log( authData.who, "getAssignees: bad issue", issueId ); return retVal; }
+    if( issueId === -1 ) { console.log( authData.who, "getAssignees: bad issue", issueId ); return retVal; }
 
     // XXX Fugly
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
@@ -853,11 +853,11 @@ async function rebuildLabel( authData, oldLabelId, newLabelId, issueId ) {
 }
 
 function getProjectName( authData, ghLinks, ceProjId, projId ) {
-    if( projId == -1 ) { return -1; }
+    if( projId === -1 ) { return -1; }
 
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": projId } );
 
-    const projName = locs == -1 ? locs : locs[0].hostProjectName;
+    const projName = locs === -1 ? locs : locs[0].hostProjectName;
     return projName
 }
 
@@ -908,11 +908,11 @@ async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
 
 // XXX revisit once column id is fixed.
 function getColumnName( authData, ghLinks, ceProjId, colId ) {
-    if( colId == -1 ) { return -1; }
+    if( colId === -1 ) { return -1; }
 
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "colId": colId } );
 
-    const colName = locs == -1 ? locs : locs[0].hostColumnName;
+    const colName = locs === -1 ? locs : locs[0].hostColumnName;
     return colName
 }
 
@@ -1000,7 +1000,7 @@ async function clearColumn( authData, newValue ) {
 //    Each issueNodeId (i.e. PVTI_*) has a content pointer, which points to a single, shared issue id (i.e. I_*).
 async function getCard( authData, issueNodeId ) {
     let retVal = {};
-    if( issueNodeId == -1 ) { console.log( authData.who, "getCard bad issue", issueNodeId ); return retVal; }
+    if( issueNodeId === -1 ) { console.log( authData.who, "getCard bad issue", issueNodeId ); return retVal; }
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -1018,6 +1018,7 @@ async function getCard( authData, issueNodeId ) {
 	.then( raw => {
 	    if( raw.status != 200 ) { throw raw; }
 	    let card = raw.data.node;
+	    if( !ghUtils.validField( card, "fieldValueByName" ) ) { console.log( "ERROR.  Timing? Settlewval?", card ); }
 	    retVal.cardId      = issueNodeId;                        
 	    retVal.projId      = card.project.id;                    
 	    retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
@@ -1063,7 +1064,7 @@ async function createProjectCard( authData, projNodeId, issueId, fieldId, valueI
     // Move from "No Status".  If good, retVal contains null clientMutationId
     let retVal = await moveCard( authData, projNodeId, issDat[2], fieldId, valueId );
     
-    if( retVal != -1 ) {
+    if( retVal !== -1 ) {
 	retVal = justId ? 
 	    issDat[2] : 
 	    {"projId": projNodeId, "cardId": issDat[2], "statusId": fieldId, "statusValId": valueId };
@@ -1108,14 +1109,14 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 
     // If card has not been tracked, colId could be wrong.  relocate.
     // Note: do not try to avoid this step during populateCE - creates a false expectation (i.e. ce is tracking) for any simple carded issue.
-    if( colId == -1 ) {
+    if( colId === -1 ) {
 	let projCard = await getCard( authData, origCardId ); 
 	colId = projCard.columnId;
 	statusId = projCard.statusId;
     }
     else {
 	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": projId, "colId": colId } );
-	assert( locs != -1 );
+	assert( locs !== -1 );
 	statusId = locs[0].hostUtility;
     }
 
@@ -1124,13 +1125,13 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
     // Finding or creating non-reserved is a small subset of getCEprojectLayout
     // StatusId is per-project.  No need to find again.
     if( isReserved ) {
-	assert( projId   != -1 );
+	assert( projId   !== -1 );
 	assert( fullName != "" );
 	const planName = config.PROJ_COLS[ config.PROJ_PLAN ];
 	const progName = config.PROJ_COLS[ config.PROJ_PROG ];
 
 	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": projId } );   
-	assert( locs != -1 );
+	assert( locs !== -1 );
 	projName = projName == "" ? locs[0].hostProjectName : projName;
 
 	colId = -1;
@@ -1143,7 +1144,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 
 	// XXX this currently fails since columns can't be created programmatically.
 	// Create in progress, if needed
-	if( colId == -1 ) {
+	if( colId === -1 ) {
 	    let progCol = await createColumn( authData, ghLinks, ceProjId, projId, progName );
 	    console.log( authData.who, "Creating new column:", progName );
 	    colId = progCol.data.id;
@@ -1191,8 +1192,8 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 		     edges { node { id title number }}
 		}}}}`;
 
-    let query     = cursor == -1 ? query1 : queryN;
-    let variables = cursor == -1 ? {"owner": owner, "repo": repo, "labelName": labelName } : {"owner": owner, "repo": repo, "labelName": labelName, "cursor": cursor};
+    let query     = cursor === -1 ? query1 : queryN;
+    let variables = cursor === -1 ? {"owner": owner, "repo": repo, "labelName": labelName } : {"owner": owner, "repo": repo, "labelName": labelName, "cursor": cursor};
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
@@ -1210,7 +1211,7 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 		    data.push( datum );
 		}
 		// Wait.  Data is modified
-		if( issues != -1 && issues.pageInfo.hasNextPage ) { await getLabelIssues( authData, owner, repo, labelName, data, issues.pageInfo.endCursor ); }
+		if( issues !== -1 && issues.pageInfo.hasNextPage ) { await getLabelIssues( authData, owner, repo, labelName, data, issues.pageInfo.endCursor ); }
 	    }
 	    else {
 		// XXX may not be an error.. 
@@ -1222,8 +1223,6 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 
 async function getProjectIds( authData, repoFullName, data, cursor ) {
 
-    console.log( "GPID", repoFullName );
-    
     let rp = repoFullName.split('/');
     assert( rp.length == 2 );
 
@@ -1245,8 +1244,8 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
            projects(first:100) {edges{node{name id}}}
 		}}`;
 
-    let query     = cursor == -1 ? query1 : queryN;
-    let variables = cursor == -1 ? {"owner": rp[0], "name": rp[1] } : {"owner": rp[0], "name": rp[1], "cursor": cursor };
+    let query     = cursor === -1 ? query1 : queryN;
+    let variables = cursor === -1 ? {"owner": rp[0], "name": rp[1] } : {"owner": rp[0], "name": rp[1], "cursor": cursor };
     query = JSON.stringify({ query, variables });
 
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
@@ -1255,7 +1254,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 
 	    let repoId = raw.data.repository.id; 
 	    // Run this once only
-	    if( cursor == -1 )
+	    if( cursor === -1 )
 	    {
 		let classics = raw.data.repository.projects;
 		if(classics.edges.length >= 100 ) { console.log( authData.who, "WARNING.  Too many classic projects, ignoring some." ); }
@@ -1300,7 +1299,7 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
     else {
 	locs = ghLinks.getLocs( authData, { "ceProjId": ceProjectId, "projId": projId, "colName": colName } );    
 	    
-	if( locs == -1 ) {
+	if( locs === -1 ) {
 	    // XXX revisit once (if) GH API supports column creation
 	    console.log( authData.who, "Error.  Please create the column", colName, "by hand, for now." );
 	    loc = -1;
@@ -1312,7 +1311,7 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
 
 async function findProjectByName( authData, orgLogin, userLogin, projName ) {
     let pid = -1;
-    console.log( "Find project", orgLogin, userLogin, projName );
+    // console.log( "Find project", orgLogin, userLogin, projName );
     
     let query = `query($oLogin: String!, $uLogin: String!, $pName: String!) {
         user( login: $uLogin ) {
@@ -1381,7 +1380,7 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, pNodeId, rN
 	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, pNodeId, rNodeId, rName ));
 
     if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
-    else if( ghLinks != -1 ) {
+    else if( ghLinks !== -1 ) {
 	// testServer needs to do this for itself, since testServer ghLinks is not the same object as ceServer ghLinks
 	// XXX fix when handle link/unlink in projectHandler.  if ever.  notifications missing.
 	await ghLinks.linkProject( authData, ceProjects, ceProjId, pNodeId, rNodeId, rName );
@@ -1397,18 +1396,14 @@ async function findOrCreateProject( authData, ghLinks, ceProjects, ceProjId, org
     console.log( authData.who, "FindOrCreate with", ceProjId, orgLogin, ownerLogin, repoId, repoName, name );
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
-    if( pid == -1 ) {
-	console.log( "FCP create" );
+    if( pid === -1 ) {
 	pid = await createProject( authData, ownerId, repoId, name, body );
     }
     else {
-	console.log( "FCP findbyrepo" );
 	let rp = await findProjectByRepo( authData, repoId, name );
-	if( rp == -1 ) {
-	    console.log( "FCP link" );
+	if( rp === -1 ) {
 	    await linkProject( authData, ghLinks, ceProjects, ceProjId, pid, repoId, repoName );
-	    console.log( "FCP link done" );
-	    linkageDone = (ghLinks != -1);
+	    linkageDone = (ghLinks !== -1);
 	}
     }
     
@@ -1424,7 +1419,7 @@ async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
     let [unClaimedProjId,_] = await findOrCreateProject( authData, ghLinks, ceProjects, pd.ceProjectId, pd.org, pd.actor, pd.actorId, pd.repoId, pd.repoName,
 							 config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
     
-    if( unClaimedProjId == -1 ) {
+    if( unClaimedProjId === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
 	//     note, we CAN create projects, but there is little point if required columns must also be created.
 	//     note, could make do with 'no status' for unclaimed:unclaimed, but would fail for unclaimed:accrued and other required columns.
@@ -1446,7 +1441,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 
     // Get locs again, to update after uncl. project creation 
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
-    if( locs == -1 ) {
+    if( locs === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
 	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand, for now." );
     }
@@ -1469,19 +1464,19 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 // Don't care about state:open/closed.  unclaimed need not be visible.
 async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, accr )
 {
-    console.log( "  .. CUC enter create proj" );
+    // console.log( "  .. CUC enter create proj" );
     let unClaimedProjId = await createUnClaimedProject( authData, ghLinks, ceProjects, pd );
-    console.log( "  .. CUC enter create col" );
+    // console.log( "  .. CUC enter create col" );
     let loc             = await createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, issueId, accr );
 
-    assert( unClaimedProjId != -1 );
-    assert( loc.hostColumnId != -1  );
-    assert( loc != -1  );
+    assert( unClaimedProjId !== -1 );
+    assert( loc.hostColumnId !== -1  );
+    assert( loc !== -1  );
 
     // create card in unclaimed:unclaimed
-    console.log( "  .. CUC enter create card" );
+    // console.log( "  .. CUC enter create card" );
     let card = await createProjectCard( authData, unClaimedProjId, issueId, loc.hostUtility, loc.hostColumnId, false );
-    console.log( "  .. CUC enter return card", card );
+    // console.log( "  .. CUC enter return card", card );
     return card;
 }
 

@@ -152,7 +152,7 @@ async function validatePEQ( authData, ceProjId, repo, issueId, title, projId ) {
     assert( issueId != -1 );
     peq = await awsUtils.getPeq( authData, ceProjId, issueId );
 
-    if( peq != -1 && peq.issueName == title && peq.HostRepo == repo && peq.HostProjectId == projId )  {
+    if( peq !== -1 && peq.issueName == title && peq.HostRepo == repo && peq.HostProjectId == projId )  {
 	// console.log( authData.who, "validatePeq success" );
     }
     else {
@@ -270,7 +270,7 @@ async function getOwnerId( PAT, owner ) {
 
     query = JSON.stringify({ query, variables });
 
-    console.log( "GetOwnerId", PAT, owner );
+    // console.log( "GetOwnerId", PAT, owner );
     
     let retId = -1;
     await postGH( PAT, config.GQL_ENDPOINT, query )
