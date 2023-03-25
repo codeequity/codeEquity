@@ -9,6 +9,9 @@ const ghUtils   = require( '../ghUtils' );
 
 
 
+
+
+
 function printEdges( base, item, values ) {
     for( let i = 0; i < base[item].edges.length; i++ ) {
 	const datum = base[item].edges[i].node;
@@ -341,7 +344,7 @@ async function getProjectFromNode( authData, pNodeId ) {
     return retVal;
 }
 
-async function situateIssue( authData, projNode, issDat ) {
+async function cardIssue( authData, projNode, issDat ) {
     assert( issDat.length == 3 );
     let issueData = [issDat[0],issDat[1],-1]; // contentId, num, cardId
     
@@ -355,12 +358,14 @@ async function situateIssue( authData, projNode, issDat ) {
 	    issueData[2] = ret.data.addProjectV2ItemById.item.id;
 	    console.log( authData.who, " .. issue added to project, pv2ItemId:", issueData[2] );
 	})
-	.catch( e => issueData = ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
+	.catch( e => issueData = ghUtils.errorHandler( "cardIssue", e, cardIssue, authData, projNode, issDat ));
 
     return issueData;
 }
 
 // createIssue, then addProjectV2ItemById
+// NOTE!  If projNode is not -1, createIssue is being asked to create a carded issue.
+// this can generate Notification: issue:open (content), pv2:create (card)
 // Note: mutation:createIssue with inputObject that includes projIds only works for classic projects, not PV2.
 // Note: mutation:addProjectV2DraftIssue works, but can't seem to find how to convert draft to full issue in gql?!!??
 // Note: issue below is a collection of issue details, not a true issue.
@@ -404,7 +409,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
 	})
 	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, projNode, issue ));
 
-    if( projNode != -1 ) { issueData = await situateIssue( authData, projNode, issueData ); }
+    if( projNode != -1 ) { issueData = await cardIssue( authData, projNode, issueData ); }
     
     return issueData;
 }
@@ -499,6 +504,7 @@ async function addComment( authData, issueId, msg ) {
 
 async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, splitTag ) { 
     console.log( authData.who, "Rebuild issue from", issue.id );
+    console.log( authData.who, "XXX Rebuild - check createIssue.pNodeId XXX" );
     let issueData = [-1,-1];  // issue id, num
     assert( typeof issue.id !== 'undefined', "Error.  rebuildIssue needs an issue to point back to" );
 
@@ -1051,7 +1057,7 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
 async function createProjectCard( authData, projNodeId, issueId, fieldId, valueId, justId ) {
     let issDat = [issueId, -1, -1];
     console.log( "CPC", projNodeId, issueId, fieldId, valueId, justId ) ;
-    issDat = await situateIssue( authData, projNodeId, issDat );
+    issDat = await cardIssue( authData, projNodeId, issDat );
     // console.log( "CPC", issDat );
     
     // Move from "No Status".  If good, retVal contains null clientMutationId
@@ -1392,12 +1398,16 @@ async function findOrCreateProject( authData, ghLinks, ceProjects, ceProjId, org
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
     if( pid == -1 ) {
+	console.log( "FCP create" );
 	pid = await createProject( authData, ownerId, repoId, name, body );
     }
     else {
+	console.log( "FCP findbyrepo" );
 	let rp = await findProjectByRepo( authData, repoId, name );
 	if( rp == -1 ) {
+	    console.log( "FCP link" );
 	    await linkProject( authData, ghLinks, ceProjects, ceProjId, pid, repoId, repoName );
+	    console.log( "FCP link done" );
 	    linkageDone = (ghLinks != -1);
 	}
     }

@@ -220,7 +220,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 
     let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
-    console.log( "switcherGH2..", ceProjectId, pd.ceProjectId );
+    console.log( "switcherGH2..", pd.ceProjectId );
 
     if( pd.ceProjectId == config.EMPTY ) {
 	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
@@ -233,13 +233,13 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	case 'projects_v2_item' :
 	    {
 		// item created/deleted is ~ cardHandler.  Edited..?
-		retVal = await gh2Item.handler( authData, ghLinks, ceProjects, pd, jd.action, jd.tag )
+		retVal = await gh2Item.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
 		    .catch( e => console.log( "Error.  Item Handler failed.", e ));
 	    }
 	    break;
 	case 'issue' :
 	    {
-		retVal = await gh2Issue.handler( authData, ghLinks, ceProjects, pd, jd.action, jd.tag )
+		retVal = await gh2Issue.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
 		    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
 	    }
 	    break;
@@ -295,13 +295,18 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     if( !resolved ) {
 
 	// Some notices can be for pv2 projects, but will never see a pv2 notice
+	// Note: createIssue with label will generate issue:labeled.  May, or may not also generate pv2Notice, if carded issue.
 	// Basically, any core content.  These become PV2.
 	// NOTE: it would be fair at this point to cast everything as PV2, given evident demise of GHC...
 	if( jd.event == "issue" && jd.action == "deleted" ||
+	    jd.event == "issue" && jd.action == "labeled" ||    
 	    jd.event == "label" && jd.action == "deleted" ||
 	    jd.event == "label" && jd.action == "created" )
 	{
-	    console.log( "Found PV2.  Switching GH2" );
+	    console.log( "Found PV2.  Switching GH2 for content node" );
+	    let repo = jd.org.split('/');
+	    assert( repo.length == 2 );
+	    jd.org = repo[0];  // XXX revisit this.  recasting content notification to pv2 .. revisit getJobSummary here.
 	    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
 	}
 	else {
@@ -385,9 +390,14 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
     if( jd.projMgmtSys == config.PMS_GH2 ) {
 	// deleting draft issue will cause 'deleted' to be sent
-	if( jd.action == "edited" || jd.action == "created" || jd.action == "deleted" ) { 
-	    pendingNotices.push( makePendingNotice( jd.reqBody, jd.action ) );
-	    // console.log( "pending after push", pendingNotices );
+	if( jd.action == "edited" || jd.action == "created" || jd.action == "deleted" ) {
+	    // Don't push labeled notices.  Must assume GH2 since may or may not come from carded issue.
+	    let rb = jd.reqBody;
+	    let validField = ghUtils.validField( rb, "changes" ) && ghUtils.validField( rb.changes, "field_value" );
+	    if( !( jd.action == "edited" && validField && rb.changes.field_value.field_type == "labels" )) {
+		pendingNotices.push( makePendingNotice( jd.reqBody, jd.action ) );
+		// console.log( "pending after push", pendingNotices );
+	    }
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
 	}
 	else {

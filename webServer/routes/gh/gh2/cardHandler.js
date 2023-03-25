@@ -173,7 +173,7 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
 // NOTE this does not receive direct notifications, but is instead called from other handlers 
-async function handler( authData, ghLinks, ceProjects, pd, action, tag ) {
+async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
     pd.actor = pd.reqBody.sender.login;
     let card = pd.reqBody.projects_v2_item;

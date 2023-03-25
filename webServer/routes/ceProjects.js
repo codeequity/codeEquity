@@ -21,10 +21,9 @@ class CEProjects {
 		}
 	    }
 	}
-	console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
 	if( retVal == config.EMPTY ) {
+	    console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
 	    this.show(50);
-	    assert( false );  // XXX debugging
 	}
 	return retVal;
     }
@@ -43,7 +42,6 @@ class CEProjects {
 	for( const entry of this.cep ) {
 	    await this.add( authData, entry );
 	}
-	this.show(50);
     }
 
     // Called during server initialization,
@@ -112,6 +110,7 @@ class CEProjects {
 	return retVal
     }
 
+    // XXX does not properly show repositories, nor projectIds.  lists, oi?
     show( count ) {
 	console.log( "CEProjects Map contents" );
 	if( Object.keys( this.hp2cp ).length <= 0 ) { return ""; }

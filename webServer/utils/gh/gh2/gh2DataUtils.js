@@ -164,6 +164,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 
 
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
+// cardHandler:create passes in -1 for link
 async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let issDat = [issue.title];
 
@@ -227,7 +228,8 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	assert( link == -1 );
 
 	let card = await ghV2.getCard( authData, origCardId );
-	pd.columnId = card.columnId;
+	// No reason to do this, situated non-peq do not track col data
+	// pd.columnId = card.columnId;                     
 	colName = card.columnName;
 
 	console.log( "PNP: type 1", pd.columnId, colName );
