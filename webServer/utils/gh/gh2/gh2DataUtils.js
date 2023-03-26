@@ -63,7 +63,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    console.log( authData.who, ".... new peqValue:", peqVal );
 
 	    pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; 
-	    let peqHumanLabelName = peqVal.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );
+	    let peqHumanLabelName = ghV2.makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
 	    newLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, peqVal )
 	    issue.labels[idx] = newLabel;
 	    // update peqData for subsequent recording
@@ -203,7 +203,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let colName    = link === -1 ? config.EMPTY            : link.hostColumnName;
     let projName   = "";
 
-    console.log( authData.who, "PNP:", origCardId, pd.projectId );
+    console.log( authData.who, "PNP:", origCardId, pd.projectId, colName );
     
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
 
@@ -226,13 +226,12 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // purely from card
     if( pd.peqType == "end" ) {
 	assert( link === -1 );
+	console.log( authData.who, "PNP: type 1", pd.columnId, colName );
 
 	let card = await ghV2.getCard( authData, origCardId );
 	// No reason to do this, situated non-peq do not track col data
 	// pd.columnId = card.columnId;                     
 	colName = card.columnName;
-
-	console.log( authData.who, "PNP: type 1", pd.columnId, colName );
 	
 	// All cards are created in "no status", originally.  No need to check for reserved.
 	let blank      = config.EMPTY;
@@ -248,9 +247,9 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	ghLinks.addLinkage( authData, pd.ceProjectId, orig );
     }
     else {
-	let peqHumanLabelName = pd.peqValue.toString() + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );  
-	// Wait later
-	let peqLabel = ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, pd.peqValue );
+	let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
+	console.log( authData.who, "PNP: type 2", peqHumanLabelName );
+
 	projName = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 
 	// XXX -1 check is no longer useful?
@@ -263,7 +262,9 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
 	    // If already exists, will be in links.  Do not destroy it
 	    if( links === -1 ) {
-		peqLabel = await peqLabel;
+		// This should only create a label if shorthand is interpreted from draft issues.  Originally, used for creating issues in projects.
+		let peqLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, pd.peqValue );
+
 		// Don't wait
 		ghV2.removeLabel( authData, peqLabel.id, pd.issueId );
 		// chances are, an unclaimed PEQ exists.  deactivate it.

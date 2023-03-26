@@ -94,6 +94,10 @@ async function deleteIssue( authData, ghLinks, pd ) {
     console.log( "Delete", Date.now() - tstart );
 }
 
+// labelIssue must deal with new wrinkles
+//   0) item:create can arrive before issue:label and issue:open   demote?
+//   1) GH issue dialog can specify project.
+//      So when issue:label is received, card may exist in noStatus.  Or not, then issueLabel must createUnclaimed.
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
     console.log( authData.who, "LabelIssue" );
     // Zero's peqval if 2 found
@@ -114,29 +118,31 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	return false;
     }
     
-    // Was this a situated issue?  Get linkage
+    // Was this a carded issue?  Get linkage
+    // Note: During initial creation, item:create notifications will be delayed until issue:label, so no linkage (yet)
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links === -1 || links.length == 1 );
     let link = links === -1 ? links : links[0];
 
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
-    // No project, or column_id without triage.
     let card = {};
     if( link === -1 || link.hostCardId == -1) {
+
+	// XXX get card info from GH.  Can only be 0 or 1 (i.e. new nostatus), since otherwise link would have existed after populate
+	//     get card from issue
+	//     add third case below, since will have cardId
 	if( link === -1 ) {    
-	    // console.log( "Newborn peq issue" );
+	    console.log( authData.who, "Newborn peq issue" );
 	    link = {};
 	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
-	    // console.log( "LI:", card );
-	    // pd.show();
 	    assert( pd.issueNum >= 0 );
 	    link.hostIssueNum  = pd.issueNum;
-	    link.hostCardId    = card.id
+	    link.hostCardId    = card.cardId
 	    link.hostProjectId = card.projId;
 	    link.hostColumnId  = card.columnId;
 	}
 	else {
-	    console.log( "carded issue -> situated issue" );
+	    console.log( authData.who, "carded issue -> peq issue" );
 	    card = await ghV2.getCard( authData, link.hostCardId );
 	    link.hostColumnId  = card.columnId;
 	}
@@ -189,13 +195,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		await gh2DUtils.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
-
+	    
 	    // XXX need repoId, repoName, ownerId
 	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
 	    assert( ghUtils.validField( pd.reqBody, "repository" ) && ghUtils.validField( pd.reqBody.repository, "node_id" ));
 	    pd.repoName = pd.reqBody.repository.full_name; 
 	    pd.repoId   = pd.reqBody.repository.node_id; 
-	    // console.log( "Label issue pd" );
+	    console.log( "Label issue", pd.reqBody );
 	    // pd.show();
 	    let success = await labelIssue( authData, ghLinks, ceProjects, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    

@@ -184,11 +184,17 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     switch( action ) {
     case 'created' :
 	// In issues, add to project, will automatically be placed in "No Status".  May or may not be PEQ.
+	// XXXXX buut, only if select project in issue dialog.  else, will not.
+	// XXXX missing cleanUnclaimed.
 	assert( card.content_type == "Issue" );
 	pd.issueId = card.content_node_id;
 
+	// XXX Check link before doing more - may need to postpone
+	
 	let issue = await ghV2.getFullIssue( authData, pd.issueId);  
 	
+	// XXX clean unclaimed
+
 	// Don't wait.
 	gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, "relocate" ); 
 	break;

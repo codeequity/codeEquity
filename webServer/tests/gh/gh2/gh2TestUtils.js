@@ -662,13 +662,14 @@ async function createDraftIssue( authData, pNodeId, title, body ) {
     return pvId;
 }
 
-// GH projects have changed - you can no longer create a card without a companion draft issue.
-// In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
-// In GH2, this function instead creates an issue directly, and adds it to the project.
+// Act like a user.  User will create labeled issue in project, then move issue.
+//      This generates the following notifications:  issue:open, issue:label, item:create, maybe (?) item:edit (label), item:edit (move)
+//      The notifications are identical whether select project in issue create interface or not, with possible exception of item:edit(label), and ordering
+// Historical note: GH projects have changed - you can no longer create a card without a companion draft issue.  
+//      In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
 async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, colId, title, amount ) {
     console.log( "MAC", ceProjId, rNodeId, pNodeId, colId, title, amount );
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );
-    // ghLinks.showLocs();
     assert( locs !== -1 );
     let statusId = locs[0].hostUtility;
 
@@ -682,8 +683,9 @@ async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, col
     allocIssue.title = title;
     allocIssue.labels = [label];
 
-    // creating a peq issue.  do not card it, issue:label does the work
-    let issDat = await ghV2.createIssue( authData, rNodeId, -1, allocIssue );
+    // Create labeled issue, create PV2 item in correct project.  This will now be in nostatus.
+    // issue:open, issue:label, item:create, maybe (?) item:edit
+    let issDat = await ghV2.createIssue( authData, rNodeId, pNodeId, allocIssue );
     assert( issDat.length == 3 && issDat[0] != -1 && issDat[2] != -1 );
 
     await ghV2.moveCard( authData, pNodeId, issDat[2], statusId, colId );
