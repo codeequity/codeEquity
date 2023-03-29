@@ -73,15 +73,16 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
     let subject = [peq.PEQId];
     if( verb == config.PACTVERB_REJ && newCol >= 0 ) {
 	let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "colName": config.PROJ_COLS[newCol] } );
-	assert( locs != -1 );
+	assert( locs !== -1 );
 	subject = [ peq.PEQId, locs[0].hostColumnName ];
     }
     else if( action == config.PACTACT_RELO ) {
-	let cardId = reqBody['project_card']['id'];
+	console.log( reqBody );
+	let cardId = reqBody.projects_v2_item.node_id;
 	assert( cardId > 0 );
 
 	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
-	assert( links  != -1 && links[0].hostColumnId != -1 );
+	assert( links  !== -1 && links[0].hostColumnId != -1 );
 
 	subject = [ peq.PEQId, links[0].hostProjectId, links[0].hostColumnId ];
     }
@@ -98,7 +99,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 async function deleteCard( authData, ghLinks, pd, cardId ) {
     // Not carded?  no-op.  or maybe delete issue arrived first.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "cardId": cardId });
-    if( links == -1 ) { return; }
+    if( links === -1 ) { return; }
     
     let link    = links[0];
     const accr  = link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR];
@@ -179,18 +180,34 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     let card = pd.reqBody.projects_v2_item;
 
     console.log( authData.who, "Card", action, "Actor:", pd.actor )
-    pd.show();
+    // pd.show();
     
     switch( action ) {
     case 'created' :
-	// In issues, add to project, will automatically be placed in "No Status".  May or may not be PEQ.
-	assert( card.content_type == "Issue" );
-	pd.issueId = card.content_node_id;
+	{
+	    // May or may not be PEQ.
+	    assert( card.content_type == "Issue" );
+	    pd.issueId = card.content_node_id;
 
-	let issue = await ghV2.getFullIssue( authData, pd.issueId);  
-	
-	// Don't wait.
-	gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, "relocate" ); 
+	    // Get from GH.. will not postpone if populate
+	    // XXX after ceFlutter, move this below postpone, remove populate condition.  pop label not yet attached.  
+	    let issue = await ghV2.getFullIssue( authData, pd.issueId);  
+
+	    // item:create could arrive before issue:open/label.
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });	
+	    if( links === -1 && !issue.title == "A special populate issue" ) {
+		console.log( "issue:label has not yet arrived.  Postponing create card" );
+		return "postpone";
+	    }
+	    
+	    // In issues dialog, if add to project, will automatically be placed in "No Status".
+	    // Otherwise, unclaimed was generated, need to clean it.
+	    await ghV2.cleanUnclaimed( authData, ghLinks, pd );
+
+	    // Don't wait.
+	    // Call PNP to add linkage, resolve, etc.  Make certain to treat as type 1, leaving type 2 for issue
+	    gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, {relocate: true, fromCard: true} );
+	}
 	break;
     case 'converted' :
 	{
@@ -215,13 +232,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	    const locs       = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colName": "No Status" } );  // XXX formalize
-	    assert( locs != -1 );
+	    assert( locs !== -1 );
 
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
-	    if( links == -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
+	    if( links === -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
 		// XXX Decide -1 or config.EMPTY
-		if( links != -1 && links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
+		if( links !== -1 && links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
 		if( newNameIndex > config.PROJ_PROG ) {
 		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    // No origination data.  use default
@@ -293,7 +310,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
 
 	    // Don't wait
-	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
+	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1, {fromCard: true} );
 	}
 	break;
     default:

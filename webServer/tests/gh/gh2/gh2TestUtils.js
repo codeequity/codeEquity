@@ -86,7 +86,7 @@ async function refreshFlat( authData, td ) {
 	    }
 	}
     }
-    assert( td.flatPID != -1 );
+    assert( td.flatPID !== -1 );
 }
 
 // Refresh unclaimed.
@@ -104,7 +104,7 @@ async function refreshUnclaimed( authData, td ) {
 	    }
 	}
     }
-    assert( td.unclaimPID != -1 );
+    assert( td.unclaimPID !== -1 );
 }
 
 // [ cardId, issueNum, issueId, issueTitle]
@@ -122,15 +122,15 @@ async function checkLoc( authData, td, issueData, loc ) {
 
     let issue = await findIssue( authData, issueData[0] );
     let retVal = true;
-    if( typeof issue === 'undefined' || issue == -1 ) { retVal = false; }
+    if( typeof issue === 'undefined' || issue === -1 ) { retVal = false; }
 
     if( retVal ) {
-	if( loc == -1 ) {
+	if( loc === -1 ) {
 	    retVal = retVal && (issue.state == 'open' || issue.state == 'closed' );
 	}
 	else {
 	    let cards = await getCards( authData, loc.projId, loc.colId );
-	    if( cards == -1 ) { retVal = false; }
+	    if( cards === -1 ) { retVal = false; }
 	    else {
 		let mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issueData[1].toString() : false );
 		if( typeof mCard[0] === 'undefined' ) { retVal = false; }
@@ -442,7 +442,7 @@ async function findProject( authData, td, projId ) {
     let retVal = -1;
     const projects = await getProjects( authData, td );
     retVal = projects.find( proj => proj.id == projId );
-    if( typeof retVal == 'undefined' ) { retVal = -1; }
+    if( typeof retVal === 'undefined' ) { retVal = -1; }
     return retVal; 
 }
 
@@ -619,7 +619,7 @@ async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name )
     await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
     let cid = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
     
-    if( cid == -1 ) { console.log( "Missing column:", name ); }
+    if( cid === -1 ) { console.log( "Missing column:", name ); }
     else            { console.log( "Found column:", name ); }
 
     // XXX Can't verify this, since we know col can not be created by apiV2 yet
@@ -662,14 +662,15 @@ async function createDraftIssue( authData, pNodeId, title, body ) {
     return pvId;
 }
 
-// GH projects have changed - you can no longer create a card without a companion draft issue.
-// In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
-// In GH2, this function instead creates an issue directly, and adds it to the project.
+// Act like a user.  User will create labeled issue in project, then move issue.
+//      This generates the following notifications:  issue:open, issue:label, item:create, maybe (?) item:edit (label), item:edit (move)
+//      The notifications are identical whether select project in issue create interface or not, with possible exception of item:edit(label), and ordering
+// Historical note: GH projects have changed - you can no longer create a card without a companion draft issue.  
+//      In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
 async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, colId, title, amount ) {
     console.log( "MAC", ceProjId, rNodeId, pNodeId, colId, title, amount );
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );
-    // ghLinks.showLocs();
-    assert( locs != -1 );
+    assert( locs !== -1 );
     let statusId = locs[0].hostUtility;
 
     // First, wait for colId, can lag
@@ -682,8 +683,9 @@ async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, col
     allocIssue.title = title;
     allocIssue.labels = [label];
 
-    // creating a peq issue.  do not card it, issue:label does the work
-    let issDat = await ghV2.createIssue( authData, rNodeId, -1, allocIssue );
+    // Create labeled issue, create PV2 item in correct project.  This will now be in nostatus.
+    // issue:open, issue:label, item:create, maybe (?) item:edit
+    let issDat = await ghV2.createIssue( authData, rNodeId, pNodeId, allocIssue );
     assert( issDat.length == 3 && issDat[0] != -1 && issDat[2] != -1 );
 
     await ghV2.moveCard( authData, pNodeId, issDat[2], statusId, colId );
@@ -716,7 +718,7 @@ async function removeNewbornCard( authData, pNodeId, dissueNodeId, dissueContent
 
 async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, title ) {
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
-    assert( locs != -1 );
+    assert( locs !== -1 );
     let statusId = locs[0].hostUtility;
 
     // First, wait for colId, can lag
@@ -731,7 +733,7 @@ async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, tit
 
 async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId, justId ) {
     const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
-    assert( locs != -1 );
+    assert( locs !== -1 );
     let statusId = locs[0].hostUtility;
 
     // First, wait for colId, can lag
@@ -841,7 +843,7 @@ async function remAssignee( authData, iNodeId, assignee ) {
 
 async function moveCard( authData, ghLinks, ceProjId, cardId, columnId, specials ) {
     const links = ghLinks.getLinks( authData, { "ceProjId": ceProjId, "cardId": cardId } );    
-    assert( links != -1 && links.length == 1);
+    assert( links !== -1 && links.length == 1);
     
     await ghV2.moveCard( authData, links[0].hostProjectId, cardId, links[0].hostUtility, columnId );
 
@@ -859,10 +861,10 @@ async function moveCard( authData, ghLinks, ceProjId, cardId, columnId, specials
 // We can no longer remove a card - just move to no status.
 async function remCard( authData, ceProjId, cardId ) {
     const links = ghLinks.getLinks( authData, { "ceProjId": ceProjId, "cardId": cardId } );
-    assert( links != -1 && links.length == 1);    
+    assert( links !== -1 && links.length == 1);    
 
     const locs  = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": links[0].hostProjectId, "colName": "No Status" } );
-    assert( locs != -1 && locs.length == 1 );
+    assert( locs !== -1 && locs.length == 1 );
 
     await ghV2.moveCard( authData, links[0].hostProjectId, cardId, links[0].hostUtility, locs[0].hostColumnId );
     
@@ -1141,7 +1143,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     if( !assignCnt ) {
 	let tCard = [1,2,3]; 
-	if( cards != -1 ) { tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issueData[1].toString() : false ); }
+	if( cards !== -1 ) { tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issueData[1].toString() : false ); }
 	subTest = tu.checkEq( tCard.length, 0,                           subTest, "No unclaimed" );
     }
 
@@ -1211,7 +1213,7 @@ async function checkSituatedIssue( authData, ghLinks, td, loc, issueData, card, 
 	    let allPacts = await pactsP;
 	    subTest   = tu.checkNEq( allPacts, -1,                           subTest, "PActs not yet ready" );
 
-	    if( allPacts != -1 ) {
+	    if( allPacts !== -1 ) {
 		
 		let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
 		subTest   = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );  
@@ -1632,7 +1634,7 @@ async function checkNewbornIssue( authData, ghLinks, td, issueData, testStatus, 
 
     // CHECK dynamo Peq.  inactive, if it exists
     let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueId": issueData[0] });
-    if( peqs != -1 ) {
+    if( peqs !== -1 ) {
 	let peq = peqs.find(peq => peq.HostIssueId == issueData[0].toString() );
 	subTest = tu.checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
 	subTest = tu.checkEq( peq.HostIssueTitle, issueData[2],       subTest, "peq title is wrong" );
@@ -1661,7 +1663,7 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
     // Some tests will have two split issues here.  Find the right one before proceeding
     let splitIssues = issues.filter( issue => issue.title.includes( issDat[2] + " split" ));
     let cards = await getCards( authData, newLoc.projId, newLoc.colId );
-    if( cards == -1 ) { cards = []; }
+    if( cards === -1 ) { cards = []; }
     let splitIss = -1;
     for( const iss of splitIssues ) {
 	mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == iss.number.toString() : false );
@@ -1671,7 +1673,7 @@ async function checkSplit( authData, ghLinks, td, issDat, origLoc, newLoc, origV
 	}
     }
     
-    const splitDat = splitIss == -1 ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    const splitDat = splitIss === -1 ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
 
     subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss trouble" );
     if( splitDat[0] != -1 ) {
@@ -1733,7 +1735,7 @@ async function checkAllocSplit( authData, ghLinks, td, issDat, origLoc, newLoc, 
     let issues   = await getIssues( authData, td );
     let issue    = await findIssue( authData, issDat[0] );    
     let splitIss = issues.find( issue => issue.title.includes( issDat[2] + " split" ));
-    const splitDat = typeof splitIss == 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    const splitDat = typeof splitIss === 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
 
     subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss not ready yet" );
     if( splitDat[0] != -1 ) {
@@ -1791,7 +1793,7 @@ async function checkNoSplit( authData, ghLinks, td, issDat, newLoc, cardId, test
     // Check card
     let colCards = await getCards( authData, newLoc.projId, newLoc.colId );
     let noCard = true;
-    if( colCards != -1 ) {
+    if( colCards !== -1 ) {
 	const card = colCards.find( c => c.note && c.note.includes( splitName ));
 	if( typeof card !== 'undefined' ) { noCard = false; }
     }
@@ -1822,13 +1824,13 @@ async function checkNoCard( authData, ghLinks, td, loc, cardId, title, testStatu
     // XXX XXX XXX 6/8 notes.  This is no longer dependable, ATM
     /*
     let cards  = await getCards( authData, loc.projId, loc.colId );
-    if( cards != -1 ) { 
+    if( cards !== -1 ) { 
 	let card   = cards.find( card => card.id == cardId );
 	subTest = tu.checkEq( typeof card === "undefined", true,  subTest, "Card should not exist" );
     }
     */
     let cards  = await getCards( authData, loc.projId, loc.colId );
-    if( cards != -1 ) { 
+    if( cards !== -1 ) { 
 	let card   = cards.find( card => card.id == cardId );
 	if( typeof card === "undefined") { console.log( "XXX ERROR.  Card", title, cardId, "was rightfully deleted this time." ); }
 	else                             { console.log( "XXX ERROR.  Card", title, cardId, "was wrongfully NOT deleted this time." ); }
@@ -2118,7 +2120,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issueData, testStat
 
 async function checkLabel( authData, label, name, desc, testStatus ) {
 
-    if( name == -1 || desc == -1 ) {
+    if( name === -1 || desc === -1 ) {
 	testStatus = tu.checkEq( typeof label, 'undefined',  testStatus, "Label should not exist" );
 	return testStatus;
     }

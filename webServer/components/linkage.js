@@ -619,7 +619,7 @@ class Linkage {
     async linkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
 	let rLocs  = [];
 	let rLinks = [];
-	console.log( "linkage:LP", ceProjId, hostProjectId, hostRepoId, hostRepoName );
+	console.log( authData.who, "link project", ceProjId, hostProjectId, hostRepoName );
 
 	await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	    .catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));

@@ -32,7 +32,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
     // Either not carded, or delete card already fired successfully.  No-op.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
-    if( links == -1 ) return;
+    if( links === -1 ) { return; }
     let link = links[0];
 
     console.log( "DELETE" );
@@ -94,8 +94,12 @@ async function deleteIssue( authData, ghLinks, pd ) {
     console.log( "Delete", Date.now() - tstart );
 }
 
+// labelIssue must deal with new wrinkles
+//   0) item:create can arrive before issue:label and issue:open   demote?
+//   1) GH issue dialog can specify project.
+//      So when issue:label is received, card may exist in noStatus.  Or not, then issueLabel must createUnclaimed.
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
-    console.log( "LabelIssue" );
+    console.log( authData.who, "LabelIssue" );
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
     
@@ -114,32 +118,52 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	return false;
     }
     
-    // Was this a situated issue?  Get linkage
+    // Was this a carded issue?  Get linkage
+    // Note: During initial creation, some item:create notifications are delayed until issue:label, so no linkage (yet)
+    // Note: if issue is opened with a project selected, we will receive open, label and create notices.
+    //       so, card may exist in GH, but linkage has not been established yet if label preceeds create.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
-    assert( links == -1 || links.length == 1 );
-    let link = links == -1 ? links : links[0];
+    assert( links === -1 || links.length == 1 );
+    let link = links === -1 ? links : links[0];
 
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
-    // No project, or column_id without triage.
-    let card = {};
-    if( link == -1 || link.hostCardId == -1) {
-	if( link == -1 ) {    
-	    console.log( "Newborn peq issue" );
+    if( link === -1 || link.hostCardId == -1) {
+
+	console.log( "pre-triage, getting card from issue" );
+	// get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
+	let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
+
+	if( !ghUtils.validField( card, "cardId" )) {
+	    console.log( authData.who, "Newborn peq issue" );
+	    assert( link === -1 );
 	    link = {};
 	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
-	    // console.log( "LI:", card );
-	    // pd.show();
-	    assert( pd.issueNum >= 0 );
-	    link.hostIssueNum  = pd.issueNum;
-	    link.hostCardId    = card.id
-	    link.hostProjectId = card.projId;
-	    link.hostColumnId  = card.columnId;
+	}
+	else if( ghUtils.validField( card, "cardId" ) && !ghUtils.validField( card, "columnId" ) ) {
+	    console.log( authData.who, "carded issue, no status -> peq issue", link === -1 );
+	    // link = {};
+	    // XXX verify link does exist
+	    assert( link !== -1 );
+	    card.columnId   = "No Status";  // XXX formalize
+	    card.columnName = "No Status";  // XXX formalize
 	}
 	else {
-	    console.log( "carded issue -> situated issue" );
-	    card = await ghV2.getCard( authData, link.hostCardId );
-	    link.hostColumnId  = card.columnId;
+	    console.log( authData.who, "carded issue with status -> peq issue" );
+	    // link can still be -1 if issue was created on GH with project, then moved, before label or create notices arrive
+	    if( link === -1 ) { link = {}; }
 	}
+
+	assert( pd.issueNum >= 0 );
+	link.hostIssueNum   = pd.issueNum;
+	link.hostCardId     = card.cardId
+	link.hostProjectId  = card.projId;
+	link.hostColumnId   = card.columnId;
+	link.hostColumnName = card.columnName;;
+
+    }
+    else {
+	console.log( "issue is already carded" );
+	console.log( link );
     }
     
     pd.updateFromLink( link );
@@ -150,8 +174,8 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.title                    = pd.issueName;
     content.number                   = pd.issueNum;
     content.repository               = {};
-    content.repository.id            = pd.reqBody.repository.node_id;
-    content.repository.nameWithOwner = pd.reqBody.repository.full_name;
+    content.repository.id            = pd.repoId;
+    content.repository.nameWithOwner = pd.repoName;
     content.labelContent             = pd.reqBody.label.description;
 	
     // Don't wait, no dependence
@@ -189,14 +213,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		await gh2DUtils.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
-
+	    
 	    // XXX need repoId, repoName, ownerId
 	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
 	    assert( ghUtils.validField( pd.reqBody, "repository" ) && ghUtils.validField( pd.reqBody.repository, "node_id" ));
 	    pd.repoName = pd.reqBody.repository.full_name; 
 	    pd.repoId   = pd.reqBody.repository.node_id; 
-	    console.log( "Label issue pd" );
-	    pd.show();
+	    // console.log( "Label issue", pd.reqBody );
+	    // pd.show();
 	    let success = await labelIssue( authData, ghLinks, ceProjects, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
@@ -317,7 +341,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
 		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.ceProjectId, pd.repoName, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
-		    if( peqId == -1 ) {
+		    if( peqId === -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }
 		    else {
@@ -366,7 +390,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 
 	    // This should only happen during blast-issue creation.
-	    if( peq == -1 ) {
+	    if( peq === -1 ) {
 		console.log( "Assignment to peq issue, but peq doesn't exist (yet).  Reshuffle." );
 		return "postpone"; 
 	    }
@@ -378,7 +402,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    // Not if ACCR
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
-	    if( links != -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+	    if( links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( "WARNING.", links[0].hostColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
 		paction = config.PACTACT_NOTE;
 		note = "Bad assignment attempted";
@@ -400,9 +424,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 		const newTitle = pd.reqBody.issue.title;
 		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
-		let link = links == -1 ? links : links[0]; 
+		let link = links === -1 ? links : links[0]; 
 
-		if( link != -1 && link.hostIssueName != config.EMPTY) {
+		if( link !== -1 && link.hostIssueName != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
 		    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
@@ -416,7 +440,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			// if link has title, we have situated card.
 			ghLinks.updateTitle( authData, link, newTitle );
 			let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
-			assert( peq != -1 );  
+			assert( peq !== -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
 			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
@@ -474,7 +498,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
 		let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
-		if( peq != -1 ) {
+		if( peq !== -1 ) {
 		    const subject = [ peq.PEQId, fullRepoName ];
 		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",

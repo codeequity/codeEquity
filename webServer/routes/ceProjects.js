@@ -36,7 +36,7 @@ class CEProjects {
     }
     
     async init( authData ) {
-	console.log( "Initializing ceProjects" );
+	// console.log( "Initializing ceProjects" );
 	this.hp2cp = {};
 	this.cep = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
 	for( const entry of this.cep ) {

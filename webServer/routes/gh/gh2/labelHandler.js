@@ -18,7 +18,7 @@ async function handler( authData, ghLinks, pd, action, tag ) {
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     console.log( authData.who, "labelHandler start", authData.job );
 
-    console.log( "Label Handler NYI" );
+    console.log( authData.who, "Label Handler NYI" );
     return;
 }
 

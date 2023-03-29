@@ -357,7 +357,7 @@ async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) 
 
 // Called via linkage:addLoc from project/col handlers, and from ghUtils when creating unclaimed, ACCR, etc.
 async function updateLinkageSummary( authData, ceProjId, loc ) {
-    console.log( authData.who, "Updating linkage summary" );
+    // console.log( authData.who, "Updating linkage summary" );
 
     let newLoc = {};
     newLoc.CEProjectId  = ceProjId;

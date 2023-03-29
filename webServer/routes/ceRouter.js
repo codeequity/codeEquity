@@ -195,7 +195,7 @@ async function getFromQueue( ceJobs ) {
 // Called from host handlers's switcher routines.
 async function getNextJob( authData, res ) {
     let jobData = await getFromQueue( ceJobs );   
-    if( jobData != -1 ) {
+    if( jobData !== -1 ) {
 
 	let hostHandler = null; 
 	if( jobData.host == config.HOST_GH ) { hostHandler = ghr.ghSwitcher; }
@@ -275,7 +275,7 @@ router.post('/:location?', async function (req, res) {
 
     // XXX GQL prefers using CE_ACTOR.  REST prefers CE_BOT.  Can they be reconciled?
     if( jd.actor == config.CE_ACTOR || jd.actor == config.CE_BOT) {
-	console.log( "Notification for", jd.event, jd.action, "Bot-sent, skipping." );
+	console.log( "\nNotification for", jd.event, jd.action, "Bot-sent, skipping." );
 	return res.end();
     }
     console.log( "Notification:", jd.actor, jd.event, jd.action, jd.tag, jd.queueId, "for", jd.org, newStamp );
@@ -291,7 +291,7 @@ router.post('/:location?', async function (req, res) {
     // Only 1 externally driven job (i.e. triggered from non-CE host platform notification) active at any time
     // Continue with this job if it's the earliest on the queue.  Otherwise, add to queue and wait for internal activation from getNext
     let qTopJobData = checkQueue( ceJobs, jd ); 
-    assert( qTopJobData != -1 );
+    assert( qTopJobData !== -1 );
     if( jd.queueId != qTopJobData.queueId ) {
 	console.log( locator.source, "Busy with job#", qTopJobData.queueId );
 	return res.end();
