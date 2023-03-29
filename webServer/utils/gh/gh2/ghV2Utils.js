@@ -993,14 +993,12 @@ async function clearColumn( authData, newValue ) {
 }
 
 
-// Get location of an issue in a project from GH, not linkage data, to ensure linkage consistency.
-// Status column for ghV2.
-// PEQ issue will be 1:1, but non-peq issue may exist in several locations. However.  issueNodeId belongs to 1 GHproject, only.
-//    i.e. add an issue to a GHproject, then add it to another project in GH.  The issueNodeId changes for the second issue.
-//    Each issueNodeId (i.e. PVTI_*) has a content pointer, which points to a single, shared issue id (i.e. I_*).
-async function getCard( authData, issueNodeId ) {
+// Get location of an issue in a project from GH, i.e. status column for ghV2.
+// PEQ issue will be 1:1, but non-peq issue may exist in several locations. 
+//    Note: cardId, i.e. pv2 item nodeId PVTI_*, is unique per ghProject, and has a content pointer, which points to a single, shared issue id (i.e. I_*).
+async function getCard( authData, cardId ) {
     let retVal = {};
-    if( issueNodeId === -1 ) { console.log( authData.who, "getCard bad issue", issueNodeId ); return retVal; }
+    if( cardId === -1 ) { console.log( authData.who, "getCard didn't provide id", cardId ); return retVal; }
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -1011,23 +1009,74 @@ async function getCard( authData, issueNodeId ) {
                         content { 
                           ... on ProjectV2ItemContent { ... on Issue { number }}}
                   }}}`;
-    let variables = {"id": issueNodeId };
+    let variables = {"id": cardId };
     let queryJ    = JSON.stringify({ query, variables });
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( raw => {
 	    if( raw.status != 200 ) { throw raw; }
 	    let card = raw.data.node;
-	    if( !ghUtils.validField( card, "fieldValueByName" ) ) { console.log( "ERROR.  Timing? Settlewval?", card ); }
-	    retVal.cardId      = issueNodeId;                        
-	    retVal.projId      = card.project.id;                    
-	    retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
-	    retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
-	    retVal.columnName  = card.fieldValueByName.name;         
+	    retVal.cardId      = cardId;                        
+	    retVal.projId      = card.project.id;
 	    retVal.issueNum    = card.content.number; 
 	    retVal.issueId     = card.content.id;
+	    if( ghUtils.validField( card, "fieldValueByName" ) ) {
+		retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
+		retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
+		retVal.columnName  = card.fieldValueByName.name;
+	    }
+	    else { console.log( "Card is No Status, could not get column info." ); }
 	})
-	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, issueNodeId ));
+	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, cardId ));
+
+    return retVal;
+}
+
+async function getCardFromIssue( authData, issueId ) {
+    let retVal = {};
+    if( issueId === -1 ) { console.log( authData.who, "getCardFromIssue bad issueId", issueId ); return retVal; }
+
+    let query = `query( $id:ID! ) {
+                   node( id: $id ) {
+                   ... on Issue { 
+                        id title number
+                        projectItems (first:2) { edges { node {
+                          id type
+                          project { id }
+                          fieldValueByName(name: "Status") {
+                           ... on ProjectV2ItemFieldSingleSelectValue {optionId name field { ... on ProjectV2SingleSelectField { id }}}}
+                        }}}
+                 }}}`;
+    let variables = {"id": issueId };
+    let queryJ    = JSON.stringify({ query, variables });
+    
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( raw => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let issue = raw.data.node;
+	    retVal.issueId     = issue.id;
+	    retVal.issueNum    = issue.number;
+
+	    let cards = issue.projectItems.edges;
+	    cards     = cards.filter((card) => card.node.type == "ISSUE" );
+	    assert( cards.length <= 1, "Error.  Issue has multiple cards." );
+	    
+	    if( cards.length == 0 )     { console.log( "Issue has no cards" ); }
+	    else {
+		cards.forEach( card => {
+		    retVal.projId      = card.node.project.id;                    
+		    retVal.cardId      = card.node.id;
+		    if( ghUtils.validField( card.node, "fieldValueByName" ) ) {
+			retVal.statusId    = card.node.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
+			retVal.columnId    = card.node.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
+			retVal.columnName  = card.node.fieldValueByName.name;
+		    }
+		    else { console.log( "Card is No Status, could not get column info." ); }
+		});
+	    }
+
+	})
+	.catch( e => retVal = ghUtils.errorHandler( "getCardFromIssue", e, getCardFromIssue, authData, issueId ));
 
     return retVal;
 }
@@ -1283,6 +1332,35 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	    if( projs.pageInfo.hasNextPage ) { await getProjectIds( authData, repoFullName, data, issues.pageInfo.endCursor ); }
 	})
 	.catch( e => ghUtils.errorHandler( "getProjectIds", e, getProjectIds, authData, repoFullName, data, cursor ));
+}
+
+
+
+// NOTE: ONLY call during new situated card.  This is the only means to move accr out of unclaimed safely.
+// NOTE: issues can be closed while in unclaimed, before moving to intended project.
+// Unclaimed cards are peq issues by definition (only added when labeling uncarded issue).  So, linkage table will be complete.
+async function cleanUnclaimed( authData, ghLinks, pd ) {
+    console.log( authData.who, "cleanUnclaimed", pd.issueId );
+    let link = ghLinks.getUniqueLink( authData, pd.ceProjectId, pd.issueId );
+    if( link === -1 ) { return; }
+
+    console.log( link );
+    
+    // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
+    if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName != config.PROJ_ACCR ) { return; }   
+	
+    assert( link.hostCardId != -1 );
+
+    console.log( "Found unclaimed" );
+    
+    // Must wait.  success creates dependence.
+    let success = await removeCard( authData, link.hostProjectId, link.hostCardId ); 
+
+    // Remove turds, report.  
+    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjID": pd.ceProjectId, "issueId": pd.issueId, "cardId": link.hostCardId }); }
+    else { console.log( "WARNING.  cleanUnclaimed failed to remove linkage." ); }
+
+    // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
 }
 
 
@@ -1544,6 +1622,7 @@ exports.findOrCreateProject = findOrCreateProject;
 exports.getColumnName      = getColumnName;
 
 exports.getCard            = getCard;
+exports.getCardFromIssue   = getCardFromIssue;
 exports.moveCard           = moveCard;
 exports.createProjectCard  = createProjectCard;
 exports.removeCard         = removeCard; 
@@ -1552,6 +1631,8 @@ exports.rebuildCard        = rebuildCard;
 exports.getLabelIssues     = getLabelIssues;
 
 exports.getProjectIds      = getProjectIds;
+
+exports.cleanUnclaimed     = cleanUnclaimed;
 
 exports.createColumn           = createColumn;           // XXX NYI
 exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI

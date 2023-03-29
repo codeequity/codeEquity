@@ -134,7 +134,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// creating a card here.
 	// generated from cardIssue or adding issue to project in GH
 	{
-	    cardHandler.handler( authData, ceProjects, ghLinks, pd, action, tag ); 
+	    // add return to catch postpone
+	    return cardHandler.handler( authData, ceProjects, ghLinks, pd, action, tag ); 
 	}
 	break;
     case 'deleted':

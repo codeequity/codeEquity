@@ -77,7 +77,8 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 	subject = [ peq.PEQId, locs[0].hostColumnName ];
     }
     else if( action == config.PACTACT_RELO ) {
-	let cardId = reqBody['project_card']['id'];
+	console.log( reqBody );
+	let cardId = reqBody.projects_v2_item.node_id;
 	assert( cardId > 0 );
 
 	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
@@ -183,20 +184,30 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     
     switch( action ) {
     case 'created' :
-	// In issues, add to project, will automatically be placed in "No Status".  May or may not be PEQ.
-	// XXXXX buut, only if select project in issue dialog.  else, will not.
-	// XXXX missing cleanUnclaimed.
-	assert( card.content_type == "Issue" );
-	pd.issueId = card.content_node_id;
+	{
+	    // May or may not be PEQ.
+	    assert( card.content_type == "Issue" );
+	    pd.issueId = card.content_node_id;
 
-	// XXX Check link before doing more - may need to postpone
-	
-	let issue = await ghV2.getFullIssue( authData, pd.issueId);  
-	
-	// XXX clean unclaimed
+	    // Get from GH.. will not postpone if populate
+	    // XXX after ceFlutter, move this below postpone, remove populate condition.  pop label not yet attached.  
+	    let issue = await ghV2.getFullIssue( authData, pd.issueId);  
 
-	// Don't wait.
-	gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, "relocate" ); 
+	    // item:create could arrive before issue:open/label.
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });	
+	    if( links === -1 && !issue.title == "A special populate issue" ) {
+		console.log( "issue:label has not yet arrived.  Postponing create card" );
+		return "postpone";
+	    }
+	    
+	    // In issues dialog, if add to project, will automatically be placed in "No Status".
+	    // Otherwise, unclaimed was generated, need to clean it.
+	    await ghV2.cleanUnclaimed( authData, ghLinks, pd );
+
+	    // Don't wait.
+	    // Call PNP to add linkage, resolve, etc.  Make certain to treat as type 1, leaving type 2 for issue
+	    gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, {relocate: true, fromCard: true} );
+	}
 	break;
     case 'converted' :
 	{
@@ -299,7 +310,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
 
 	    // Don't wait
-	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1 );
+	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1, {fromCard: true} );
 	}
 	break;
     default:

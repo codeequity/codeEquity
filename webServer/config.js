@@ -96,8 +96,8 @@ const PACTACT_CHAN = "change";
 
 // server job queue operation
 const MAX_DELAYS = 30;          // how many times can a single job be pushed further back into queue waiting for pre-req job to complete
-const STEP_COST  = 300;         // expanding job backoff timer, step_cost * delay number millis
-const NOQ_DELAY  = 20000;       // backoff millis if queue is empty
+const STEP_COST  = 500;         // expanding job backoff timer, step_cost * delay number millis
+const NOQ_DELAY  = 10000;       // backoff millis if queue is empty
 const MIN_DIFF   = 1000;        // min timestamp diff in millis for new insert location 
 
 // GitHub related

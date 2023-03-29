@@ -164,17 +164,19 @@ async function populateCELinkage( authData, ghLinks, pd )
 
 
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
-// cardHandler:create passes in -1 for link
+// only issue:label does peq-related work here. card still does linkage, resolve
 async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
+
+    let relocate = typeof specials !== 'undefined' && specials.hasOwnProperty( "relocate" ) ? specials.relocate : false;
+    let fromCard = typeof specials !== 'undefined' && specials.hasOwnProperty( "relocate" ) ? specials.fromCard : false;
+
     let issDat = [issue.title];
 
-    // labelIssue does not call getFullIssue
+    // labelIssue does not call getFullIssue, cardHandler does
     if( ghUtils.validField( issue, "labelContent" ) ) { issDat.push( issue.labelContent ); }
-    else if( ghUtils.validField( issue.labels, "edges" ) && issue.labels.edges.length > 0 ) {
-	for( node of issue.labels.edges ) { issDat.push( node.description ); }
-    }
+    else if( issue.labels.length > 0 )                { for( node of issue.labels ) { issDat.push( node.description ); } }
 
-    console.log( authData.who, "PNP: issDat", issDat );
+    console.log( authData.who, "PNP: issDat", issDat, pd.repoName );
     
     pd.issueName = issDat[0];
     pd.issueNum  = issue.number;
@@ -224,9 +226,9 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
     // XXX revisit after issue:label is rebuilt.  May be able to simplify here.  
     // purely from card
-    if( pd.peqType == "end" ) {
+    if( fromCard ) {
 	assert( link === -1 );
-	console.log( authData.who, "PNP: type 1", pd.columnId, colName );
+	console.log( authData.who, "PNP: type 1", pd.columnId, colName, pd.repoName );
 
 	let card = await ghV2.getCard( authData, origCardId );
 	// No reason to do this, situated non-peq do not track col data
@@ -247,8 +249,9 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	ghLinks.addLinkage( authData, pd.ceProjectId, orig );
     }
     else {
+	// from issue:label
 	let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
-	console.log( authData.who, "PNP: type 2", peqHumanLabelName );
+	console.log( authData.who, "PNP: type 2", peqHumanLabelName, pd.repoName );
 
 	projName = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 
@@ -295,7 +298,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
 	// Note: assigments are not relevant for allocations
 	// If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
-	if( specials != "relocate" && !allocation ) {
+	if( !relocate && !allocation ) {
 	    pd.assignees = await ghV2.getAssignees( authData, pd.issueId );
 	}
     }
@@ -310,7 +313,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     //       resolve with an already-populated repo can NOT split an issue based on a labeling, since the only way to add a card to an existing
     //                issue is to create card.  Furthermore populate does not call this function.
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
-    if( !gotSplit && pd.peqType != "end" ) {
+    if( !gotSplit && !fromCard ) {
 	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
 	awsUtils.recordPeqData( authData, pd, true, specials );
     }

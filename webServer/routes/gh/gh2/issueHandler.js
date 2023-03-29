@@ -32,7 +32,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 
     // Either not carded, or delete card already fired successfully.  No-op.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
-    if( links === -1 ) return;
+    if( links === -1 ) { return; }
     let link = links[0];
 
     console.log( "DELETE" );
@@ -119,33 +119,51 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     }
     
     // Was this a carded issue?  Get linkage
-    // Note: During initial creation, item:create notifications will be delayed until issue:label, so no linkage (yet)
+    // Note: During initial creation, some item:create notifications are delayed until issue:label, so no linkage (yet)
+    // Note: if issue is opened with a project selected, we will receive open, label and create notices.
+    //       so, card may exist in GH, but linkage has not been established yet if label preceeds create.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links === -1 || links.length == 1 );
     let link = links === -1 ? links : links[0];
 
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
-    let card = {};
     if( link === -1 || link.hostCardId == -1) {
 
-	// XXX get card info from GH.  Can only be 0 or 1 (i.e. new nostatus), since otherwise link would have existed after populate
-	//     get card from issue
-	//     add third case below, since will have cardId
-	if( link === -1 ) {    
+	console.log( "pre-triage, getting card from issue" );
+	// get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
+	let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
+
+	if( !ghUtils.validField( card, "cardId" )) {
 	    console.log( authData.who, "Newborn peq issue" );
+	    assert( link === -1 );
 	    link = {};
 	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
-	    assert( pd.issueNum >= 0 );
-	    link.hostIssueNum  = pd.issueNum;
-	    link.hostCardId    = card.cardId
-	    link.hostProjectId = card.projId;
-	    link.hostColumnId  = card.columnId;
+	}
+	else if( ghUtils.validField( card, "cardId" ) && !ghUtils.validField( card, "columnId" ) ) {
+	    console.log( authData.who, "carded issue, no status -> peq issue", link === -1 );
+	    // link = {};
+	    // XXX verify link does exist
+	    assert( link !== -1 );
+	    card.columnId   = "No Status";  // XXX formalize
+	    card.columnName = "No Status";  // XXX formalize
 	}
 	else {
-	    console.log( authData.who, "carded issue -> peq issue" );
-	    card = await ghV2.getCard( authData, link.hostCardId );
-	    link.hostColumnId  = card.columnId;
+	    console.log( authData.who, "carded issue with status -> peq issue" );
+	    // link can still be -1 if issue was created on GH with project, then moved, before label or create notices arrive
+	    if( link === -1 ) { link = {}; }
 	}
+
+	assert( pd.issueNum >= 0 );
+	link.hostIssueNum   = pd.issueNum;
+	link.hostCardId     = card.cardId
+	link.hostProjectId  = card.projId;
+	link.hostColumnId   = card.columnId;
+	link.hostColumnName = card.columnName;;
+
+    }
+    else {
+	console.log( "issue is already carded" );
+	console.log( link );
     }
     
     pd.updateFromLink( link );
@@ -156,8 +174,8 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.title                    = pd.issueName;
     content.number                   = pd.issueNum;
     content.repository               = {};
-    content.repository.id            = pd.reqBody.repository.node_id;
-    content.repository.nameWithOwner = pd.reqBody.repository.full_name;
+    content.repository.id            = pd.repoId;
+    content.repository.nameWithOwner = pd.repoName;
     content.labelContent             = pd.reqBody.label.description;
 	
     // Don't wait, no dependence
@@ -201,7 +219,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    assert( ghUtils.validField( pd.reqBody, "repository" ) && ghUtils.validField( pd.reqBody.repository, "node_id" ));
 	    pd.repoName = pd.reqBody.repository.full_name; 
 	    pd.repoId   = pd.reqBody.repository.node_id; 
-	    console.log( "Label issue", pd.reqBody );
+	    // console.log( "Label issue", pd.reqBody );
 	    // pd.show();
 	    let success = await labelIssue( authData, ghLinks, ceProjects, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
 	    
