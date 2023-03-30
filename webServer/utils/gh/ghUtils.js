@@ -156,7 +156,7 @@ async function validatePEQ( authData, ceProjId, repo, issueId, title, projId ) {
 	// console.log( authData.who, "validatePeq success" );
     }
     else {
-	console.log( "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostRepo, repo, peq.HostProjectId, projId );
+	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostRepo, repo, peq.HostProjectId, projId );
     }
     return peq;
 }

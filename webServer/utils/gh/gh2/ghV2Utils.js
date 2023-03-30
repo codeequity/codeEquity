@@ -1344,7 +1344,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     let link = ghLinks.getUniqueLink( authData, pd.ceProjectId, pd.issueId );
     if( link === -1 ) { return; }
 
-    console.log( link );
+    // console.log( link );
     
     // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
     if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName != config.PROJ_ACCR ) { return; }   

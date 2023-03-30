@@ -77,9 +77,8 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 	subject = [ peq.PEQId, locs[0].hostColumnName ];
     }
     else if( action == config.PACTACT_RELO ) {
-	console.log( reqBody );
+	// console.log( reqBody );
 	let cardId = reqBody.projects_v2_item.node_id;
-	assert( cardId > 0 );
 
 	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
 	assert( links  !== -1 && links[0].hostColumnId != -1 );
@@ -221,21 +220,25 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // within gh project, move card from 1 col to another.
 	    // Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
 	    
+	    let cardId    = card.node_id;
+	    
 	    if( pd.reqBody.changes == null ) {
-		console.log( authData.who, "Move within columns are ignored.", pd.reqBody['project_card']['id'] );
+		console.log( authData.who, "Move within columns are ignored.", cardId );
 		return;
 	    }
-	    
-	    let cardId    = card.node_id;
 
 	    let newCard      = await ghV2.getCard( authData, cardId );
 	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
+	    // get no status col
 	    const locs       = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colName": "No Status" } );  // XXX formalize
 	    assert( locs !== -1 );
 
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
+	    console.log( "Moving", cardId );
+	    console.log( links[0] );
+	    
 	    if( links === -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
 		// XXX Decide -1 or config.EMPTY
 		if( links !== -1 && links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
