@@ -26,14 +26,14 @@ https://developer.github.com/v3/issues/#create-an-issue
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
 async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) { 
-    let reqBody = pd.reqBody;
-    let fullName = pd.repoName;
+    let reqBody  = pd.reqBody;
+    let fullName = link.hostRepo;
     
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
     if( typeof peq == 'undefined' ) {
-	peq = await ghUtils.validatePEQ( authData, pd.ceProjectId, fullName, link.hostIssueId, link.hostIssueName, link.hostProjectId );
+	peq = await ghUtils.validatePEQ( authData, pd.ceProjectId, link.hostIssueId, link.hostIssueName, link.hostProjectId );
     }
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );
@@ -178,7 +178,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     pd.actor = pd.reqBody.sender.login;
     let card = pd.reqBody.projects_v2_item;
 
-    console.log( authData.who, "Card", action, "Actor:", pd.actor )
+    console.log( authData.who, "Card", action, "Actor:", pd.actor );
     // pd.show();
     
     switch( action ) {
@@ -220,7 +220,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // within gh project, move card from 1 col to another.
 	    // Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
 	    
-	    let cardId    = card.node_id;
+	    let cardId = card.node_id;
 	    
 	    if( pd.reqBody.changes == null ) {
 		console.log( authData.who, "Move within columns are ignored.", cardId );
@@ -237,7 +237,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
 	    console.log( "Moving", cardId );
-	    console.log( links[0] );
 	    
 	    if( links === -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
 		// XXX Decide -1 or config.EMPTY

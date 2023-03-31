@@ -652,13 +652,15 @@ class Linkage {
 	return true;
     }
     
-    // NOTE: testing will purge every repo
-    purgeLocs( repo ) {
+
+    purgeLocs( ceProjId, projId ) {
 	let killList = [];	
 	for( const [_,cplinks] of Object.entries( this.locs )) {
 	    for( const [_,cloc] of Object.entries( cplinks )) {
 		for( const [col,loc] of Object.entries( cloc )) {
-		    if( repo == "TESTING-FROMJSONLOCS" || loc.hostRepository == repo ) { killList.push({ "cpid": loc.ceProjectId, "pid": loc.hostProjectId }); }  
+		    if( ceProjId == "TESTING-FROMJSONLOCS" || ( loc.ceProjectId == ceProjId && loc.hostProjectId == projId )) {
+			killList.push({ "cpid": loc.ceProjectId, "pid": loc.hostProjectId });
+		    }  
 		}
 	    }
 	}
@@ -666,48 +668,57 @@ class Linkage {
 	return true;
     }
     
-    purge( repo, specials ) {
+    purge( ceProjId, projId, specials ) {
 	let linksOnly  = typeof specials !== 'undefined' && specials.hasOwnProperty( "linksOnly" )  ? specials.linksOnly : false;	
-	console.log( "Removing links, locs for", repo, "links only?", linksOnly );
+	console.log( "Removing links, locs for", ceProjId, projId, "links only?", linksOnly );
 
 	let killList = [];
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {
 		for( const [cid,link] of Object.entries( clink )) {
-		    if( link.hostRepo == repo ) { killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} ); }
+		    if( link.ceProjectId == ceProjId && link.hostProjectId == projId ) { killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} ); }
 		}
 	    }
 	}
 	for( const id of killList ) { delete this.links[id.cpid][id.iid]; }
 
 	// GH Testing can't purge links until apiV2 allows create col, and make project notifications
-	if( !linksOnly ) {  this.purgeLocs( repo ); }
+	if( !linksOnly ) {  this.purgeLocs( ceProjId, projId ); }
 	
 	return true;
     }
 
+    // first 4, ..., last 4
     fill( val, num ) {
 	let retVal = "";
 	if( typeof val !== 'undefined' ) {
-	    for( var i = 0; i < num; i++ ) {
-		if( val.length > i ) { retVal = retVal.concat( val[i] ); }
-		else                 { retVal = retVal.concat( " " ); }
+	    if( val.length > num ) {
+		let fromVal = Math.floor( (num-3)/2 );  // number of characters from val in retVal
+		for( var i = 0; i < fromVal; i++ ) { retVal = retVal.concat( val[i] ); }
+		retVal = retVal.concat( "..." );
+		for( var i = val.length - fromVal ; i < val.length; i++ ) { retVal = retVal.concat( val[i] ); }
+	    }
+	    else {
+		for( var i = 0; i < num; i++ ) {
+		    if( val.length > i ) { retVal = retVal.concat( val[i] ); }
+		    else                 { retVal = retVal.concat( " " ); }
+		}
 	    }
 	}
-	return retVal
+	return retVal;
     }
 
-    show( count ) {
+    show( count, cep ) {
 	if( Object.keys( this.links ).length <= 0 ) { return ""; }
 	
-	console.log( this.fill( "ceProjId", 20 ),
-	             "IssueId",
+	console.log( this.fill( "ceProjId", 13 ),
+	             this.fill( "IssueId", 13 ),
 		     "IssueNum",
-		     this.fill( "CardId", 7),
-		     this.fill( "Title", 35 ),
-		     this.fill( "ColId", 10),
+		     this.fill( "CardId", 13),
+		     this.fill( "Title", 25 ),
+		     this.fill( "ColId", 13),
 		     this.fill( "ColName", 20),
-		     this.fill( "ProjId", 10 ), 
+		     this.fill( "ProjId", 13 ), 
 		     this.fill( "ProjName", 15 ),
 		     this.fill( "sourceCol", 10 )
 		   );
@@ -716,10 +727,12 @@ class Linkage {
 	
 	let printables = [];
 	for( const [ceproj, cplink] of Object.entries( this.links )) {
-	    for( const [issueId, clinks] of Object.entries( cplink )) {
-		for( const [_, link] of Object.entries( clinks )) {
-		    printables.push( link );
-		}}
+	    if( typeof cep === 'undefined' || cep == ceproj ) {
+		for( const [issueId, clinks] of Object.entries( cplink )) {
+		    for( const [_, link] of Object.entries( clinks )) {
+			printables.push( link );
+		    }}
+	    }
 	}
 
 	let start = 0;
@@ -728,14 +741,14 @@ class Linkage {
 	
 	for( let i = start; i < printables.length; i++ ) {
 	    let link = printables[i]; 
-	    console.log( link.ceProjectId,
-			 link.hostIssueId,
+	    console.log( this.fill( link.ceProjectId, 13 ),
+			 this.fill( link.hostIssueId, 13 ),
 			 link.hostIssueNum,
-			 this.fill( link.hostCardId, 10 ),
-			 this.fill( link.hostIssueName, 35 ),
-			 link.hostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( link.hostColumnId, 10 ),
+			 this.fill( link.hostCardId, 13 ),
+			 this.fill( link.hostIssueName, 25 ),
+			 link.hostColumnId == -1 ? this.fill( "-1", 13 ) : this.fill( link.hostColumnId, 13 ),
 			 this.fill( link.hostColumnName, 20 ),
-			 link.hostProjectId == -1 ? this.fill( "-1", 10 ) : this.fill( link.hostProjectId, 10 ),
+			 link.hostProjectId == -1 ? this.fill( "-1", 13 ) : this.fill( link.hostProjectId, 13 ),
 			 this.fill( link.hostProjectName, 15 ),
 			 link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
 			 // link.hostRepo,

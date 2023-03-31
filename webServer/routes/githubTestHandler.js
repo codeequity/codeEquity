@@ -19,7 +19,7 @@ async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, re
 	retVal = ceNotification;
     }
     else if( reqBody.Request == "purgeLinks" ) {
-	retVal = ghLinks.purge( reqBody.Repo, {"linksOnly": true} );
+	retVal = ghLinks.purge( reqBody.CEProjectId, reqBody.HostProjectId, {"linksOnly": true} );
     }
     else if( reqBody.Request == "purgeJobs" ) {
 	// NOTE, this removes ALL pending jobs for FullName, including user, server and tester jobs.

@@ -141,12 +141,16 @@ async function clearRepo( authData, ghLinks, pd ) {
 
     // Linkages
     // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
-    console.log( "Remove links", pd.GHFullName );
-    await tu.remLinks( authData, ghLinks, pd.GHFullName );
-    console.log( "getLinks", pd.GHFullName );
-    let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName } );
-    if( links != -1 ) { console.log( links ); }
-    assert( links == -1 );
+    // Note: peq from aws no longer carries repo.
+    for( const pid of ceProj.HostParts.hostProjectIds ) {
+	console.log( "Remove links", pd.GHFullName, pid );
+	await tu.remLinks( authData, ghLinks, pd.ceProjectId, pid );
+
+	console.log( "getLinks", pd.GHFullName, pid );
+	let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "projId": pid } );
+	if( links !== -1 ) { console.log( links ); }
+	assert( links === -1 );
+    }
 
     peqP   = await peqP;
     pactP  = await pactP;

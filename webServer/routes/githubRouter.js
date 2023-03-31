@@ -149,6 +149,7 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     // XXX can set ghLinks... and locs..?  more args?  hmmm
     pd.ceProjectId  = ceProjects.find( jd.host, jd.org, jd.reqBody.repository );
     assert( pd.ceProjectId != -1 );
+    ceRouter.setLastCEP( pd.ceProjectId );
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
     console.log( "XXX Switcher GHC" );
@@ -226,6 +227,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
     }
     else {
+	ceRouter.setLastCEP( pd.ceProjectId );
 	assert( jd.queueId == authData.job ) ;
 	// await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
 	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, config.CE_ACTOR );

@@ -244,7 +244,8 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	let card = await ghV2.getCard( authData, origCardId );
 	colName = card.columnName;
 	if( pd.peqValue > 0 ) {
-	    pd.columnId = card.columnId;
+	    pd.columnId   = card.columnId;
+	    orig.columnId = card.columnId;
 	}
 	// XXX -1 check is no longer useful?
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
@@ -300,12 +301,6 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	orig.columnName   = config.EMPTY;   // do not track non-peq
     }	
     ghLinks.addLinkage( authData, pd.ceProjectId, orig );
-
-    // XXX
-    let check = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
-    console.log( authData.who, "After add linkage.. is repo defined for issue any longer after create?" );
-    console.log( orig );
-    console.log( check[0] );
     
     // Resolve splits issues to ensure a 1:1 mapping issue:card, record data for all newly created issue:card(s)
     let gotSplit = await resolve( authData, ghLinks, pd, allocation );

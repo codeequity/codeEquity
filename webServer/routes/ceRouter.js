@@ -31,6 +31,7 @@ ceJobs.jobs = new fifoQ.Queue();
 ceJobs.count = 0;
 ceJobs.delay = 0;
 ceJobs.maxDepth = 0;
+ceJobs.lastCEP = config.EMPTY;
 
 // XXX verbosity control needed
 var notificationCount = 0;
@@ -224,7 +225,7 @@ async function getNextJob( authData, res ) {
     }
     else {
 	console.log( authData.who, "jobs done" );
-	hostLinks.show( 5 );
+	hostLinks.show( 5, ceJobs.lastCEP );
 	ceArrivals.show();
 	//hostLinks.showLocs( 10 );
 	console.log( "\n" );
@@ -232,7 +233,9 @@ async function getNextJob( authData, res ) {
     return res.end();
 }
 
-
+function setLastCEP( cep ) {
+    ceJobs.lastCEP = cep; 
+}
 
 
 // Notifications sent by webhook
@@ -310,9 +313,13 @@ router.post('/:location?', async function (req, res) {
 });
 
 
+
+
 module.exports     = router;
 
 exports.getNextJob = getNextJob; 
 
 exports.purgeQueue = purgeQueue;
 exports.demoteJob  = demoteJob;
+
+exports.setLastCEP = setLastCEP;
