@@ -11,6 +11,8 @@ const ghUtils  = require( rootLoc + 'utils/gh/ghUtils' );
 const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
 const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
 
+const cardHandler = require( './cardHandler' );
+
 // Terminology:
 // ceProject:      a codeequity project that includes 0 or more gh projects that CE knows about
 // newborn card :  a card without an issue.. this can NOT exist in projects v2
@@ -20,30 +22,32 @@ const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
 // PEQ issue:      a situated issue with a PEQ label
 
 // Guarantee: Once populateCEProjects has been run once for a repo:
-//            1) Newborn issues and newborn cards can exist (pre-existing, or post-populate), but with no data in the linkage table.
-//            2) Every situated issue in the repo resides in the linkage table, but without column info
+//            1) Newborn issues can exist (pre-existing, or post-populate), but with no data in the linkage table.
+//            2) Every carded issue in the repo resides in the linkage table, but without column info
 //            3) {label, add card} operation on newborn issues will cause conversion to situated or PEQ issue as needed,
 //               and inclusion in linkage table.
 
-// XXX NOTE deleteCard notification will NOT be sent, but pv2item edit (?) will be?  Revisit
+// When issueHandler:delete is called, GH will remove card as well.  Call deleteCard from here.
 async function deleteIssue( authData, ghLinks, pd ) {
 
     let tstart = Date.now();
-
-    // Either not carded, or delete card already fired successfully.  No-op.
+    
+    // newborn issue?
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
     if( links === -1 ) { return; }
     let link = links[0];
 
-    console.log( "DELETE" );
-    // console.log( pd.reqBody );
-
+    console.log( authData.who, "Delete situated issue.. first manage card" );
+    cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
+    console.log( authData.who, "  .. done with card." );
+    console.log( pd.reqBody );
+    
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
     // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
     // [pd.peqValue, _] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
     // if( pd.peqValue <= 0 ) return;
 
-    // PEQ.  Card is gone, issue is gone.  Delete card will handle all but the one case below, in which case it leaves link intact.
+    // Card is gone, issue is gone.  Delete card handled all but the one case below, in which case it leaves link intact.
     
     // ACCR, not unclaimed, deleted issue.
     if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
@@ -51,31 +55,31 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	// Because of the change in August 2021, the request body no longer has labels.  
 	// Can recreate linkage to peq label, but will lose the others.  This is a bug, out of our immediate control.
 	// Rare.  GQL-only.  Would need to save more state.  Painful.
-	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.  Non-PEQ labels will be lost.", pd.GHIssueNum );
+	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.  Non-PEQ labels will be lost.", pd.issueNum );
 
 	// the entire issue has no longer(!) been given to us here.  Recreate it.
 	// Can only be alloc:false peq label here.
 	let peq  = await awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );
-	const lName = peq.Amount.toString() + " " + config.PEQ_LABEL;
-	const theLabel = await gh.findOrCreateLabel( authData,  pd.GHOwner, pd.GHRepo, false, lName, peq.Amount );
+	const lName = ghV2.makeHumanLabel( peq.Amount, config.PEQ_LABEL );
+	const theLabel = await ghV2.findOrCreateLabel( authData, link.hostRepoId, false, lName, peq.Amount.toString() );
 	pd.reqBody.issue.labels = [ theLabel ];
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 
-	const issueData = await ghSafe.rebuildIssue( authData, pd.GHOwner, pd.GHRepo, pd.reqBody.issue, msg );
+	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, link.hostProjectId, pd.reqBody.issue, msg );
 
 	// Promises
 	console.log( authData.who, "creating card from new issue" );
-	let card = gh.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
+	let card = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
-	ghSafe.updateIssue( authData, pd.GHOwner, pd.GHRepo, issueData[1], "closed" );
+	ghV2.updateIssue( authData, issueData[0], "state", "closed" );
 
 	card = await card;
-	link = ghLinks.rebuildLinkage( authData, link, issueData, card.id );
+	link = ghLinks.rebuildLinkage( authData, link, issueData, card.cardId );
 	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	link.hostProjectName = config.UNCLAIMED;
-	link.hostProjectId   = card.project_url.split('/').pop();
-	link.hostColumnId    = card.column_url.split('/').pop();
+	link.hostProjectId   = card.projId;
+	link.hostColumnId    = card.statusValId;
 	console.log( authData.who, "rebuilt link" );
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
@@ -303,17 +307,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    );
 	}
     case 'deleted':
-	// Delete card of carded issue sends 1 notification.  Delete issue of carded issue sends two: card, issue, in random order.
-	// This must be robust given different notification order of { delIssue, delCard}
-
-	// NOTE!!  As of 6/8/2022 the above is no longer true.  delIssue notification is generated, delCard is.. well.. see deleteIssue comments.
+	// Delete card of carded issue sends itemHandler:deleted.  Delete issue of carded issue sends issueHandler:delete
 	
-	// Get here by: deleting an issue, which first notifies deleted project_card (if carded or situated)
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	// Wait here, since delete issue can createUnclaimed
-	// XXX NYI
-	break;
 	await deleteIssue( authData, ghLinks, pd );
+	break;
     case 'closed':
     case 'reopened':
 	{
@@ -451,7 +450,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'transferred':
-	// (open issue in new repo, delete project card, transfer issue)
+	// (open issue in new repo, item:edit, item:edit, transfer issue)
+	// NOTE.  As of 4/2023, GH is keeping labels/assignees if they exist in new repo.  Card is not removed from old repo.
+	//        Issue is removed from old repo.  Fate of labels/assignees not dependable.  Will need to call delete card.
 	// NOTE.  As of 2/13/2022 GH is keeping labels with transferred issue, although tooltip still contradicts this.
 	//        Currently, this is in flux.  the payload has new_issue, but the labels&assignees element is empty.
 	//        Also, as is, this is violating 1:1 issue:card

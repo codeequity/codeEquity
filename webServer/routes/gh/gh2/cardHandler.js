@@ -92,13 +92,20 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 			   utils.getToday(), reqBody );
 }
 
-// NOTE: after 6/2022, delete notification is not dependably sent by GH upon delete situated issue.
-//       However, it may, eventually, be sent.  Must be able to ignore multiple notices for the same event.
-// UPDATE: End of 6/2022, delete notification is back to normal. 
-async function deleteCard( authData, ghLinks, pd, cardId ) {
-    // Not carded?  no-op.  or maybe delete issue arrived first.
+// This is called from issue:delete, and triggered from card:delete (which may be triggered initially from issue:xfer since xfer leaves card in place)
+// issue:delete - GH removes the card without notification.
+// transfer issue leaves card in place in old repo, so issue:transfer will issue a GH:delete card, which will trigger here eventually.
+// del project?  For now, not getting project notifications.
+// del column triggers a move (to no status), not delete.
+// No matter the source, delete card must manage linkage, peq, pact, etc.
+// No matter the source, card will not exist in GH when this is called.
+async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
+    // issue:del calls here first, if still has linkage.
+    let issueExists = typeof fromIssue === 'undefined' ? true : !fromIssue;  
+    
+    // Cards now only exist with an underlying issue or draftIssue.  If draft issue, no op.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "cardId": cardId });
-    if( links === -1 ) { return; }
+    if( links === -1 ) { console.log( "No action taken for draft issues & their cards." ); return; }
     
     let link    = links[0];
     const accr  = link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR];
@@ -114,10 +121,6 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
     // PEQ.  Card is gone in GH, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
     // Wait later
     let peq = awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );
-    
-    // Is the source a delete issue or transfer? 
-    let issueExists = await gh.checkIssue( authData, pd.GHOwner, pd.GHRepo, link.hostIssueNum );
-    if( issueExists == -1 ) { issueExists = false; };
     
     // Regular peq?  or ACCR already in unclaimed?  remove it no matter what.
     if( !accr || link.hostProjectName == config.UNCLAIMED ) {
@@ -144,11 +147,11 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 	console.log( authData.who, "Moving ACCR", accr, issueExists, link.hostIssueId );
 	// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
 	//           card creation can fail, and results can be uncertain at this point.  
-	let card = await gh.createUnClaimedCard( authData, ghLinks, ceProjects, pd, parseInt( link.hostIssueId ), accr );  
-	link.hostCardId      = card.id.toString();
-	link.hostProjectId   = card.project_url.split('/').pop();
+	let card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.hostIssueId, accr );  
+	link.hostCardId      = card.cardId;
+	link.hostProjectId   = card.projId;
 	link.hostProjectName = config.UNCLAIMED;
-	link.hostColumnId    = card.column_url.split('/').pop();
+	link.hostColumnId    = card.statusValId;
 	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	
 	const psub = [ link.hostProjectName, link.hostColumnName ];
@@ -300,9 +303,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'deleted' :
-	// Source of notification: delete card, delete (carded) issue, delete col, delete proj, xfer
-	// From here, can't tell which source, or which order of arrival, just know GH has already deleted the card, and maybe the issue.
-	// No matter the source, delete card must manage linkage, peq, pact, etc.
+	// Source of notification: delete card (delete col, delete proj, xfer   ???)
 	await deleteCard( authData, ghLinks, pd, pd.reqBody.project_card.id );
 	break;
     case 'edited' :
@@ -325,4 +326,4 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 exports.handler    = handler;
 exports.recordMove = recordMove;
-//exports.deleteCard = deleteCard;
+exports.deleteCard = deleteCard;
