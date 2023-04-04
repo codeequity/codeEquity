@@ -40,7 +40,6 @@ async function deleteIssue( authData, ghLinks, pd ) {
     console.log( authData.who, "Delete situated issue.. first manage card" );
     cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
     console.log( authData.who, "  .. done with card." );
-    console.log( pd.reqBody );
     
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
     // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
@@ -95,7 +94,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 			       utils.getToday(), pd.reqBody );
     }
 
-    console.log( "Delete", Date.now() - tstart );
+    console.log( authData.who, "Delete issue finished, ms:", Date.now() - tstart );
 }
 
 // labelIssue must deal with new wrinkles

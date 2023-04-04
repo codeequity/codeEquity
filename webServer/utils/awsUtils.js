@@ -146,10 +146,12 @@ async function getPeq( authData, ceProjId, issueId, checkActive ) {
 }
 
 async function removePEQ( authData, peqId ) {
-
+    
     let shortName = "UpdatePEQ";
     let query = { "PEQId": peqId, "Active": "false" };
 
+    console.log( authData.who, "remove", query );
+    
     let pd = { "Endpoint": shortName, "pLink": query };
     return await wrappedPostAWS( authData, shortName, pd );
 }
@@ -162,6 +164,8 @@ async function updatePEQPSub( authData, peqId, projSub ) {
     let postData = {};
     postData.PEQId          = peqId.toString();
     postData.HostProjectSub = projSub;
+
+    console.log( authData.who, "psub", postData );
     
     let pd = { "Endpoint": shortName, "pLink": postData }; 
     return await wrappedPostAWS( authData, shortName, pd );
@@ -513,6 +517,8 @@ async function updatePEQVal( authData, peqId, peqVal ) {
     postData.PEQId        = peqId.toString();
     postData.Amount       = peqVal;
     
+    console.log( authData.who, "update pval", postData );
+
     let pd = { "Endpoint": shortName, "pLink": postData }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }

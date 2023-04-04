@@ -81,7 +81,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 	let cardId = reqBody.projects_v2_item.node_id;
 
 	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
-	assert( links  !== -1 && links[0].hostColumnId != -1 );
+	assert( links  !== -1 && links[0].hostColumnId != config.EMPTY );
 
 	subject = [ peq.PEQId, links[0].hostProjectId, links[0].hostColumnId ];
     }
@@ -111,9 +111,11 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
     const accr  = link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR];
     let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card was deleted.";
     comment    += " PEQ issues require a 1:1 mapping between issues and cards.";
+
+    console.log( "del card link", link );
     
     // Carded, untracked (i.e. not peq)?   Just remove linkage, since GH removed card.
-    if( link.hostColumnId == -1 ) {
+    if( link.hostColumnId == config.EMPTY ) {
 	ghLinks.removeLinkage({"authData": authData, "ceProjId": link.ceProjectId, "issueId": link.hostIssueId });
 	return;
     }
@@ -135,10 +137,11 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
 	// no need to wait.
 	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
 	peq = await peq;
+	console.log( authData.who, "Weh ma peq ma", peq );
 	awsUtils.removePEQ( authData, peq.PEQId );
 	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
 	let note   = accr ? "Disconnected issue" : "";
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			       config.PACTVERB_CONF, action, [peq.PEQId], note,
 			       utils.getToday(), pd.reqBody );
     }
@@ -241,9 +244,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
 	    console.log( "Moving", cardId );
 	    
-	    if( links === -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
+	    if( links === -1 || links[0].hostColumnId == config.EMPTY ) {
 		// XXX Decide -1 or config.EMPTY
-		if( links !== -1 && links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
+		if( links !== -1 && links[0].hostColumnId == config.EMPTY ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
 		if( newNameIndex > config.PROJ_PROG ) {
 		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    // No origination data.  use default

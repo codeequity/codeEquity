@@ -100,7 +100,7 @@ class Linkage {
 			blPromise = await blPromise;  // no val here, just ensures linkData is set
 
 			rlinks.forEach( function (link) { link.hostRepo = repo;
-							  this.addLinkage( authData, entry.CEProjectId, link ); 
+							  this.addLinkage( authData, entry.CEProjectId, link, { populate: true } ); 
 							}, this);
 
 			baseLinks = baseLinks.concat( rlinks );
@@ -134,7 +134,7 @@ class Linkage {
 		    // console.log( authData.who, "Populate Linkage", proj.hostProjectId );
 		    rLinks.forEach( function (link) { link.hostRepo   = proj.hostRepoName;
 						      link.hostRepoId = proj.hostRepoId;
-						      this.addLinkage( authData, entry.CEProjectId, link );
+						      this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
 						    }, this);
 		    
 		    // console.log( authData.who, "LINKAGE: Locs",  rLocs );
@@ -156,8 +156,8 @@ class Linkage {
 	awsUtils.refreshLinkageSummary( authData, entry.CEProjectId, locData );  
 
 	
+	// peq add: cardTitle, colId, colName, projName - carded issues do not track this.
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
-	// peq add: cardTitle, colId, colName, projName
 	// XXX this could be smarter, i.e. are peqs >> non-peqs?  zero out instead of fill
 	let badPeq = false;
 	let badSource = false;
@@ -240,14 +240,16 @@ class Linkage {
 		    orig.columnName    = link.hostColumnName;
 		    orig.cardId        = link.hostCardId;
 		    orig.title         = link.hostIssueName;
-		    this.addLinkage( authData, link.ceProjectId, orig, link.flatSource );
+		    this.addLinkage( authData, link.ceProjectId, orig, { source: link.flatSource } );
 		}
 	    }
 	}
     }
 
     // Linkage table only contains situated issues or better.  Card titles point to issue titles for situated issues.
-    addLinkage( authData, ceProjId, orig, source ) {
+    addLinkage( authData, ceProjId, orig, specials ) {
+	let source   = typeof specials !== 'undefined' && specials.hasOwnProperty( "source" )   ? specials.source   : false;
+	let populate = typeof specials !== 'undefined' && specials.hasOwnProperty( "populate" ) ? specials.populate : false;
 	
 	// console.log( authData.who, "add link", ceProjId, orig.issueId, orig.cardId, orig.columnName, orig.columnId, orig.title );
 	
@@ -257,9 +259,6 @@ class Linkage {
 	if( !this.links.hasOwnProperty( ceProjId ) )                            { this.links[ceProjId] = {}; }
 	if( !this.links[ceProjId].hasOwnProperty( orig.issueId ) )              { this.links[ceProjId][orig.issueId] = {}; }
 	if( !this.links[ceProjId][orig.issueId].hasOwnProperty( orig.cardId ) ) { this.links[ceProjId][orig.issueId][orig.cardId] = {}; }
-
-	let haveSource = false;
-	if( typeof source !== 'undefined' ) { haveSource = true; }
 
 	let link = this.links[ceProjId][orig.issueId][orig.cardId];
 
@@ -274,10 +273,18 @@ class Linkage {
 	link.hostColumnName  = typeof orig.columnName   === 'undefined' ? config.EMPTY : orig.columnName;
 	link.hostCardId      = typeof orig.cardId       === 'undefined' ? config.EMPTY : orig.cardId.toString();
 	link.hostIssueName   = typeof orig.title        === 'undefined' ? config.EMPTY : orig.title;   
-	link.flatSource      = haveSource ? source : link.hostColumnId;
+	link.flatSource      = source ? source : link.hostColumnId;
 
+	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOneRepo
+	if( populate ) {
+	    link.hostIssueName   = config.EMPTY;
+	    link.hostColumnId    = config.EMPTY;
+	    link.hostProjectName = config.EMPTY;
+	    link.hostColumnName  = config.EMPTY;
+	}
+	
 	// Do not track source col if is in full layout
-	if( !haveSource && config.PROJ_COLS.includes( link.hostColumnName ) ) { link.flatSource = -1; }
+	if( !source && config.PROJ_COLS.includes( link.hostColumnName ) ) { link.flatSource = -1; }
 
 	return link;
     }
@@ -480,7 +487,7 @@ class Linkage {
 	console.log( authData.who, "Rebuild linkage", oldLink.ceProjectId, oldLink.hostIssueNum, "->", issueData[0] );
 	let newTitle = oldLink.hostIssueName;
 	if( typeof splitTitle !== 'undefined' ) {
-	    newTitle = oldLink.hostColumnId == -1 ? config.EMPTY : splitTitle;
+	    newTitle = oldLink.hostColumnId == config.EMPTY ? config.EMPTY : splitTitle;
 	}
 	let alink = {};
 	alink.hostRepoName = oldLink.hostRepo;
@@ -492,7 +499,7 @@ class Linkage {
 	alink.columnName   = oldLink.hostColumnName;
 	alink.hostCardId   = cardId.toString();
 	alink.title        = newTitle;
-	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, oldLink.flatSource );
+	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, { source: oldLink.flatSource } );
 	
 	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );
 
@@ -630,9 +637,10 @@ class Linkage {
 	// Don't wait, no adds to dynamo
 	rLinks.forEach( function (link) { link.hostRepo   = hostRepoName;
 					  link.hostRepoId = hostRepoId;
-					  this.addLinkage( authData, ceProjId, link );
+					  this.addLinkage( authData, ceProjId, link, { populate: true } );
 					}, this);
 
+	
 	// Wait.. adds to dynamo
 	let promises = [];
 	promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ));
@@ -746,9 +754,9 @@ class Linkage {
 			 link.hostIssueNum,
 			 this.fill( link.hostCardId, 13 ),
 			 this.fill( link.hostIssueName, 25 ),
-			 link.hostColumnId == -1 ? this.fill( "-1", 13 ) : this.fill( link.hostColumnId, 13 ),
+			 link.hostColumnId == config.EMPTY ? this.fill( "-1", 13 ) : this.fill( link.hostColumnId, 13 ),
 			 this.fill( link.hostColumnName, 20 ),
-			 link.hostProjectId == -1 ? this.fill( "-1", 13 ) : this.fill( link.hostProjectId, 13 ),
+			 link.hostProjectId == config.EMPTy ? this.fill( "-1", 13 ) : this.fill( link.hostProjectId, 13 ),
 			 this.fill( link.hostProjectName, 15 ),
 			 link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
 			 // link.hostRepo,
@@ -790,7 +798,7 @@ class Linkage {
 			 this.fill( loc.hostRepositoryId, 12 ),
 			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
 			 this.fill( loc.hostProjectName, 15 ),
-			 loc.hostColumnId == -1 ? this.fill( "-1", 10 ) : this.fill( loc.hostColumnId, 10 ),
+			 loc.hostColumnId == config.EMPTY ? this.fill( "-1", 10 ) : this.fill( loc.hostColumnId, 10 ),
 			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )
 		       );
 	}
