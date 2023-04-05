@@ -31,7 +31,7 @@ async function remIssues( authData, ghLinks, pd ) {
     let allLinks = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName } );
     
     // Could probably do this in one fel swoop, but for now
-    // Note the awaits here wait for GH to complete, not for CE to complete...  promise.all doesn't help
+    // Note the awaits here wait to issue GH remove, not for notice, or for CE to complete...  promise.all doesn't help
 
     if( issues != -1 ) {
 	for( const issue of issues) {
@@ -61,8 +61,6 @@ async function clearRepo( authData, ghLinks, pd ) {
     await remIssues( authData, ghLinks, pd );
     await utils.sleep( 1000 );
 
-    // Start here, else lots left undeleted after issue munging. 
-    let peqsP   = awsUtils.getPeqs( authData,  { "CEProjectId": pd.ceProjectId });
     let pactsP  = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
     let ceProjP = awsUtils.getProjectStatus( authData, pd.ceProjectId ); 
 
@@ -89,12 +87,6 @@ async function clearRepo( authData, ghLinks, pd ) {
     // Clean up dynamo.
     // Note: awaits may not be needed here.  No dependencies... yet...
     // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
-
-    // PEQs
-    let peqs =  await peqsP;
-    let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
-    console.log( "Dynamo PEQ ids", pd.GHFullName, peqIds );
-    let peqP = awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
 
     // PActions raw and otherwise
     // Note: bot, ceServer and actor may have pacts.  Just clean out all.
@@ -151,8 +143,25 @@ async function clearRepo( authData, ghLinks, pd ) {
 	if( links !== -1 ) { console.log( links ); }
 	assert( links === -1 );
     }
+    // PEQs
+    // XXX  still needed?
+    // This is not strictly needed.  But to test proper issue delete, keep it in.
+    // Without, remIssues are issued, but notifications and subsequent aws actions start finishing here.
+    // So the status of peqsP is uncertain at this point, without more give.
+    // await utils.sleep( 3000 );
+    // console.log( "Done waiting for remIssue", pd.GHFullName );
 
-    peqP   = await peqP;
+    // XXX clean, if passing in larger test setups.
+    // This used to be done earlier to minimize waiting.  but was running into remIssue.
+    let peqsP   = awsUtils.getPeqs( authData,  { "CEProjectId": pd.ceProjectId });
+    let peqs =  await peqsP;
+    let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
+    if( peqIds.length > 0 ) {
+	console.log( "Dynamo PEQ ids", pd.GHFullName, peqIds );
+	let peqP = awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
+	peqP   = await peqP;
+    }
+
     pactP  = await pactP;
     pactRP = await pactRP;
 

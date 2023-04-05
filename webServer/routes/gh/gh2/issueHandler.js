@@ -38,7 +38,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
     let link = links[0];
 
     console.log( authData.who, "Delete situated issue.. first manage card" );
-    cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
+    await cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
     console.log( authData.who, "  .. done with card." );
     
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.

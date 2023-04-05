@@ -112,8 +112,6 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
     let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card was deleted.";
     comment    += " PEQ issues require a 1:1 mapping between issues and cards.";
 
-    console.log( "del card link", link );
-    
     // Carded, untracked (i.e. not peq)?   Just remove linkage, since GH removed card.
     if( link.hostColumnId == config.EMPTY ) {
 	ghLinks.removeLinkage({"authData": authData, "ceProjId": link.ceProjectId, "issueId": link.hostIssueId });
@@ -137,7 +135,7 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
 	// no need to wait.
 	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
 	peq = await peq;
-	console.log( authData.who, "Weh ma peq ma", peq );
+	if( peq === -1 ) { console.log( "WARNING.  Race condition detected when deleting peq." ); }
 	awsUtils.removePEQ( authData, peq.PEQId );
 	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
 	let note   = accr ? "Disconnected issue" : "";
