@@ -240,7 +240,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
-	    console.log( "Moving", cardId );
 	    
 	    if( links === -1 || links[0].hostColumnId == config.EMPTY ) {
 		// XXX Decide -1 or config.EMPTY

@@ -1025,7 +1025,7 @@ async function getCard( authData, cardId ) {
 		retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
 		retVal.columnName  = card.fieldValueByName.name;
 	    }
-	    else { console.log( "Card is No Status, could not get column info." ); }
+	    else { console.log( authData.who, "Card is No Status, could not get column info." ); }
 	})
 	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, cardId ));
 

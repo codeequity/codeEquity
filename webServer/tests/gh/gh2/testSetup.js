@@ -50,45 +50,6 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
-    assert( false );
-
-    /*
-    // softCont: dataSecurity, githubOps, unallocated
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
-    let cardId = await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
-
-    // let locsA = await tu.getLocs( authData, ghLinks, { "ceProjId": td.ceProjectId, "projId": ghOpPID, "colName": "Stars" } );
-    // await ghV2.updateColumn( authData, ghOpPID, locs[0].hostColumnId, locs[0].hostUtility, locsA[0].hostColumnId );
-    let locs = await tu.getLocs( authData, ghLinks, { "ceProjId": td.ceProjectId, "projId": ghOpPID, "colName": "Stripes" } );
-    assert( locs.length == 1 );
-    // await ghV2.updateColumn( authData, td.masterPID, cardId, mastCol1.hostUtility, {"text": "gooby"} );
-    await ghV2.updateColumn( authData, td.masterPID, cardId, mastCol1.hostColumnId, {"text": "gooby"} );
-
-    let pid = "PVT_kwDOA8JELs4ALvih";
-    let cid = "PVTI_lADOA8JELs4ALvihzgFb3po";
-    let col  = "f75ad846";
-    let col2 = "8dc16716";
-    let status = "PVTSSF_lADOA8JELs4ALvihzgHfSLo";
-    let val = {"text": "gooby"};
-
-    let huh = "PVTFSV_lQDOA8JELs4ALvihzgFb3prOA7lw7A";
-
-    // value: {singleSelectOptionId: $value }})   this is for moveCard, which is not what I want
-
-    //                                   proj  item  field  value
-    // await ghV2.updateColumn( authData, pid, cid, status, {"text": "gooby"} );  // 'Did not receive a single select option Id to update a field of type single_select'   closest?
-    // await ghV2.updateColumn( authData, pid, cid, col, {"text": "gooby"} ); // Could not resolve to a node with the global id of \'f75ad846\'
-    // await ghV2.updateColumn( authData, pid, status, col, {"text": "gooby"} );  // Could not resolve to ProjectV2Item node with the global id of PVTSSF_lADOA8JELs4ALvihzgHfSLo
-    // await ghV2.updateColumn( authData, pid, col, status, {"text": "gooby"} );  // Could not resolve to a node with the global id of \'f75ad846\'
-    // await ghV2.updateColumn( authData, pid, huh, status, {"text": "gooby"} );     // Could not resolve to ProjectV2Item node with the global id of PVTFSV_lQDOA8JELs4ALvihzgFb..
-
-    let pid = "PVT_kwDOA8JELs4ALvih";
-    // clearProjectV2ItemFieldValue
-    // await ghV2.updateColumn( authData, pid, [ {"color": "BLUE", "description": "green", "name": "goobers"} ] );  
-    // await ghV2.deleteColumn( authData, {fieldId:"PVTSSF_lADOA8JELs4ALvihzgHfSLo"} );    // 'Only custom fields can be deleted.' 
-    assert( false );
-    */
     
     // busOps:  unallocated
     await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2.hostColumnId, td.unallocTitle, "1,000,000" );
@@ -104,25 +65,25 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     // Check DYNAMO PEQ table
     let ghPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
-    subTest = tu.checkEq( ghPeqs.length, 1,                           subTest, "Number of githubOps peq objects" );
-    subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
-    subTest = tu.checkEq( ghPeqs[0].Amount, "1500000",                subTest, "Peq Amount" );  
+    subTest = tu.checkEq( ghPeqs.length, 1,                             subTest, "Number of githubOps peq objects" );
+    subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,      subTest, "PeqType" );
+    subTest = tu.checkEq( ghPeqs[0].Amount, "1500000",                  subTest, "Peq Amount" );  
     subTest = tu.checkAr( ghPeqs[0].HostProjectSub, [td.softContTitle], subTest, "Project sub" );
     subTest = tu.checkEq( ghPeqs[0].HostProjectId, td.masterPID,        subTest, "Project ID" );  
     
     let dsPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.dataSecTitle });
     subTest = tu.checkEq( dsPeqs.length, 1,                           subTest, "Number of datasec peq objects" );
-    subTest = tu.checkEq( dsPeqs[0] !== 'undefined', true,            subTest, "Peq not in place yet" );
-    if( dsPeqs[0] !== 'undefined' ) {
-	subTest = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,    subTest, "PeqType" );
+    subTest = tu.checkEq( typeof dsPeqs[0] !== 'undefined', true,     subTest, "Peq not in place yet" );
+    if( typeof dsPeqs[0] !== 'undefined' ) {
+	subTest = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,      subTest, "PeqType" );
 	subTest = tu.checkAr( dsPeqs[0].HostProjectSub, [td.softContTitle], subTest, "Project sub" );
     }
 	
     let unPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.unallocTitle });
-    subTest = tu.checkEq( unPeqs.length, 2,                           subTest, "Number of unalloc peq objects" );
-    subTest = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,            subTest, "PeqType" );
-    subTest = tu.checkEq( typeof unPeqs[0] !== 'undefined', true,             subTest, "have unpeq 0" );
-    subTest = tu.checkEq( typeof unPeqs[1] !== 'undefined', true,             subTest, "have unpeq 1" );
+    subTest = tu.checkEq( unPeqs.length, 2,                            subTest, "Number of unalloc peq objects" );
+    subTest = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,     subTest, "PeqType" );
+    subTest = tu.checkEq( typeof unPeqs[0] !== 'undefined', true,      subTest, "have unpeq 0" );
+    subTest = tu.checkEq( typeof unPeqs[1] !== 'undefined', true,      subTest, "have unpeq 1" );
 
     if( typeof dsPeqs[0] !== 'undefined' && unPeqs[0] !== 'undefined' && typeof unPeqs[1] !== 'undefined' ) {
 	
@@ -140,7 +101,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 		subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
 		subTest = tu.checkEq( pact.Action, config.PACTACT_ADD,            subTest, "PAct Action" ); 
 		subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" ); 
-		subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,         subTest, "PAct user name" ); 
+		subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,       subTest, "PAct user name" ); 
 		subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
 		subTest = tu.checkEq( pact.Locked, "false",                       subTest, "PAct locked" );
 		foundPActs++;
@@ -240,7 +201,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	let colNames = mastCols.map((col) => col.name );
 	subTest = tu.checkEq( colNames.includes( td.softContTitle ), true,   subTest, "Master col names" );
 	subTest = tu.checkEq( colNames.includes( td.busOpsTitle ), true,     subTest, "Master col names" );
-	subTest = tu.checkEq( colNames.includes( td.unallocTitle ), true,   subTest, "Master col names" );
+	subTest = tu.checkEq( colNames.includes( td.unallocTitle ), true,    subTest, "Master col names" );
 	
 	colNames = dsCols.map((col) => col.name );
 	subTest = tu.checkEq( colNames.includes( config.PROJ_COLS[0] ), true,   subTest, "Data sec col names" );
@@ -290,7 +251,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.githubOpsIss[1],    subTest, "Linkage Issue num" );
 		subTest = tu.checkEq( link.hostColumnName, td.softContTitle,    subTest, "Linkage Col name" );
 		subTest = tu.checkEq( link.hostColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
-		subTest = tu.checkEq( link.issueName, td.githubOpsTitle,    subTest, "Linkage Card Title" );
+		subTest = tu.checkEq( link.issueName, td.githubOpsTitle,        subTest, "Linkage Card Title" );
 		let cardId = gh2tu.findCardForIssue( scCards, link.hostIssueNum );
 		subTest = tu.checkEq( link.hostCardId, cardId,                  subTest, "Linkage Card Id" );
 		found = true;
@@ -299,21 +260,21 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.dataSecIss[1],      subTest, "Linkage Issue num" );
 		subTest = tu.checkEq( link.hostColumnName, td.softContTitle,    subTest, "Linkage Col name" );
 		subTest = tu.checkEq( link.hostColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
-		subTest = tu.checkEq( link.issueName, td.dataSecTitle,      subTest, "Linkage Card Title" );
+		subTest = tu.checkEq( link.issueName, td.dataSecTitle,          subTest, "Linkage Card Title" );
 		let cardId = gh2tu.findCardForIssue( scCards, link.hostIssueNum );
 		subTest = tu.checkEq( link.hostCardId, cardId,                  subTest, "Linkage Card Id" );
 		found = true;
 	    }
 	    else if( link.hostIssueId == td.unallocIss1[0] ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.unallocIss1[1],  subTest, "Linkage Issue num" );
-		subTest = tu.checkEq( link.issueName, td.unallocTitle,   subTest, "Linkage Card Title" );
+		subTest = tu.checkEq( link.issueName, td.unallocTitle,       subTest, "Linkage Card Title" );
 		if( link.hostColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.hostColumnId; }
 		else                                        { unallocBus  = true; lBus  = link.hostColumnId; }
 		found = true;
 	    }
 	    else if( link.hostIssueId == td.unallocIss2[0] ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.unallocIss2[1],  subTest, "Linkage Issue num" );
-		subTest = tu.checkEq( link.issueName, td.unallocTitle,   subTest, "Linkage Card Title" );
+		subTest = tu.checkEq( link.issueName, td.unallocTitle,       subTest, "Linkage Card Title" );
 		if( link.hostColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.hostColumnId; }
 		else                                        { unallocBus  = true; lBus  = link.hostColumnId; }
 		found = true;

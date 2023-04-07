@@ -132,7 +132,6 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
 
-	console.log( "pre-triage, getting card from issue" );
 	// get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
 	let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
 
@@ -142,11 +141,9 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	    link = {};
 	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
 	}
-	else if( ghUtils.validField( card, "cardId" ) && !ghUtils.validField( card, "columnId" ) ) {
+	else if( ghUtils.validField( card, "cardId" ) && !ghUtils.validField( card, "columnId" ) ) {  // label notice beat create notice
 	    console.log( authData.who, "carded issue, no status -> peq issue", link === -1 );
-	    // link = {};
-	    // XXX verify link does exist
-	    assert( link !== -1 );
+	    link = {};
 	    card.columnId   = "No Status";  // XXX formalize
 	    card.columnName = "No Status";  // XXX formalize
 	}

@@ -150,7 +150,7 @@ async function removePEQ( authData, peqId ) {
     let shortName = "UpdatePEQ";
     let query = { "PEQId": peqId, "Active": "false" };
 
-    console.log( authData.who, "remove", query );
+    // console.log( authData.who, "remove", query );
     
     let pd = { "Endpoint": shortName, "pLink": query };
     return await wrappedPostAWS( authData, shortName, pd );
@@ -315,7 +315,7 @@ async function recordPEQAction( authData, ceUID, hostUserName, ceProjId, verb, a
 }
 
 async function checkPopulated( authData, ceProjId ) {
-    console.log( authData.who, "check populated: ", ceProjId );
+    // console.log( authData.who, "check populated: ", ceProjId );
 
     let shortName = "CheckSetHostPop";
     let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "false" };

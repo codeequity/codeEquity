@@ -20,7 +20,7 @@ const gh2Data  = require( '../../../routes/gh/gh2/gh2Data' );
 async function resolve( authData, ghLinks, pd, allocation ) {
     let gotSplit = false;
 
-    console.log( authData.who, "RESOLVE", pd.issueId );
+    // console.log( authData.who, "RESOLVE", pd.issueId );
     if( pd.issueId == -1 ) { console.log(authData.who, "Resolve: early return, no issueId." ); return gotSplit; }
     
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId });
@@ -207,7 +207,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     }
     
     if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
-    console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
+    // console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     // fromLabel link is good, cardDat will be undefined.  fromCard is the reverse.
     let cardDat    = pd.reqBody.projects_v2_item;
@@ -217,7 +217,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let colName    = fromCard ? config.EMPTY            : link.hostColumnName;
     let projName   = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 	
-    console.log( authData.who, "PNP:", origCardId, pd.projectId, colName );
+    console.log( authData.who, "PNP:", origCardId, pd.projectId, colName, pd.peqType );
 
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );

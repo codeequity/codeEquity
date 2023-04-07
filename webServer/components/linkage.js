@@ -513,7 +513,7 @@ class Linkage {
 	if( !ceProjId ) { console.log( authData.who, "missing ceProjId" ); return retVal; }
 	// cardId can be missing
 
-	console.log( authData.who, "Remove link for issueId:", ceProjId, issueId );
+	// console.log( authData.who, "Remove link for issueId:", ceProjId, issueId );
 
 	if( !this.links.hasOwnProperty( ceProjId ))                         { return retVal; }  // may see multiple deletes
 	if( !this.links[ceProjId].hasOwnProperty( issueId ))                { return retVal; }  // may see multiple deletes
@@ -699,12 +699,13 @@ class Linkage {
     // first 4, ..., last 4
     fill( val, num ) {
 	let retVal = "";
-	if( typeof val !== 'undefined' ) {
+	if( typeof val !== 'undefined' ) {  // undef if bad loc, say
 	    if( val.length > num ) {
 		let fromVal = Math.floor( (num-3)/2 );  // number of characters from val in retVal
 		for( var i = 0; i < fromVal; i++ ) { retVal = retVal.concat( val[i] ); }
 		retVal = retVal.concat( "..." );
 		for( var i = val.length - fromVal ; i < val.length; i++ ) { retVal = retVal.concat( val[i] ); }
+		if( val.length % 2 == 0 ) { retVal = retVal.concat( " " ); }
 	    }
 	    else {
 		for( var i = 0; i < num; i++ ) {

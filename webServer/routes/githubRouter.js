@@ -221,7 +221,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 
     let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
-    console.log( authData.who, "switcherGH2..", pd.ceProjectId );
+    // console.log( authData.who, "switcherGH2..", pd.ceProjectId );
 
     if( pd.ceProjectId == config.EMPTY ) {
 	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
@@ -306,7 +306,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	    jd.event == "label" && jd.action == "deleted" ||
 	    jd.event == "label" && jd.action == "created" )
 	{
-	    console.log( "Found PV2.  Switching GH2 for content node" );
+	    // console.log( "Found PV2.  Switching GH2 for content node" );
 	    let repo = jd.org.split('/');
 	    assert( repo.length == 2 );
 	    jd.org = repo[0];  // XXX revisit this.  recasting content notification to pv2 .. revisit getJobSummary here.
