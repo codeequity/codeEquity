@@ -381,7 +381,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
     
     console.log( authData.who, "Create issue, from alloc?", repoNode, projNode, issue.title, issue.allocation );
 
-    assert( !issue.allocation || typeof issue.body === 'undefined', "Error.  createIssue body is about to be overwritten." );
+    assert( !issue.allocation || issue.body == "", "Error.  createIssue body is about to be overwritten." );
     if( issue.allocation ) {
 	issue.body  = "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
 	issue.body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"

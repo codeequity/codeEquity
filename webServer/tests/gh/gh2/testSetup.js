@@ -72,8 +72,8 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
     subTest = tu.checkEq( ghPeqs[0].HostProjectId, td.masterPID,        subTest, "Project ID" );  
     
     let dsPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.dataSecTitle });
-    subTest = tu.checkEq( dsPeqs.length, 1,                           subTest, "Number of datasec peq objects" );
-    subTest = tu.checkEq( typeof dsPeqs[0] !== 'undefined', true,     subTest, "Peq not in place yet" );
+    subTest = tu.checkEq( dsPeqs.length, 1,                             subTest, "Number of datasec peq objects" );
+    subTest = tu.checkEq( typeof dsPeqs[0] !== 'undefined', true,       subTest, "Peq not in place yet" );
     if( typeof dsPeqs[0] !== 'undefined' ) {
 	subTest = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,      subTest, "PeqType" );
 	subTest = tu.checkAr( dsPeqs[0].HostProjectSub, [td.softContTitle], subTest, "Project sub" );
@@ -91,38 +91,29 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	subTest = tu.checkEq( busTest, true,                              subTest, "Project subs for unalloc" );    
 	
 	
-	// Check DYNAMO PAct 
+	// Check DYNAMO PAct
+	// New makeAlloc has add, then relocate.  Order may vary.
 	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
 	subTest = tu.checkGE( pacts.length, 4,         subTest, "Number of PActs" );
 	let foundPActs = 0;
 	for( pact of pacts ) {
-	    if( pact.Subject[0] == ghPeqs[0].PEQId ) {
-		let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-		subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
-		subTest = tu.checkEq( pact.Action, config.PACTACT_ADD,            subTest, "PAct Action" ); 
-		subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" ); 
-		subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,       subTest, "PAct user name" ); 
-		subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
-		subTest = tu.checkEq( pact.Locked, "false",                       subTest, "PAct locked" );
-		foundPActs++;
-	    }
-	    else if( pact.Subject[0] == dsPeqs[0].PEQId ) {
-		let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-		subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
-		subTest = tu.checkEq( pact.Action, config.PACTACT_ADD,            subTest, "PAct Action" ); 
-		subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" ); 
-		subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
-		foundPActs++;
-	    }
-	    else if( pact.Subject[0] == unPeqs[0].PEQId ) {
-		let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
-		subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
-		subTest = tu.checkEq( hasRaw,  true,                              subTest, "PAct Raw match" ); 
-		subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
+	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
+	    subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
+	    subTest = tu.checkEq( pact.Locked, "false",                       subTest, "PAct locked" );
+	    subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" );
+	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
+	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,       subTest, "PAct user name" ); 
+	    
+	    if( pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
+		pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ||
+		pact.Subject[0] == dsPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
+		pact.Subject[0] == dsPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ||
+		pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
+		pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ) {
 		foundPActs++;
 	    }
 	}
-	subTest = tu.checkEq( foundPActs, 3 ,           subTest, "Matched PActs with PEQs" );
+	subTest = tu.checkEq( foundPActs, 6,           subTest, "Matched PActs with PEQs" );
 	
 	// Check DYNAMO RepoStatus
 	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId );
@@ -130,7 +121,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	
 	// Check GITHUB Labels
-	let peqLabels = await gh2tu.getPeqLabels( authData, td );
+	let peqLabels = await gh2tu.getLabels( authData, td );
 	subTest = tu.checkGE( peqLabels.length, 3,   subTest, "Peq Label count" );
 	let foundLabs = 0;
 	for( label of peqLabels ) {
@@ -172,15 +163,15 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	subTest = tu.checkGE( projects.length, 3,     subTest, "Project count" );
 	let foundProj = 0;
 	for( const proj of projects ) {
-	    if( proj.name == config.MAIN_PROJ ) {
+	    if( proj.title == config.MAIN_PROJ ) {
 		td.masterPID = proj.id;
 		foundProj++;
 	    }
-	    if( proj.name == td.dataSecTitle )   {
+	    if( proj.title == td.dataSecTitle )   {
 		td.dataSecPID = proj.id;
 		foundProj++;
 	    }
-	    if( proj.name == td.githubOpsTitle ) {
+	    if( proj.title == td.githubOpsTitle ) {
 		td.githubOpsPID = proj.id;
 		foundProj++;
 	    }  
@@ -200,8 +191,8 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 
 	let colNames = mastCols.map((col) => col.name );
 	subTest = tu.checkEq( colNames.includes( td.softContTitle ), true,   subTest, "Master col names" );
-	subTest = tu.checkEq( colNames.includes( td.busOpsTitle ), true,     subTest, "Master col names" );
-	subTest = tu.checkEq( colNames.includes( td.unallocTitle ), true,    subTest, "Master col names" );
+	subTest = tu.checkEq( colNames.includes( td.busOpsTitle ),   true,   subTest, "Master col names" );
+	subTest = tu.checkEq( colNames.includes( td.unallocTitle ),  true,   subTest, "Master col names" );
 	
 	colNames = dsCols.map((col) => col.name );
 	subTest = tu.checkEq( colNames.includes( config.PROJ_COLS[0] ), true,   subTest, "Data sec col names" );
@@ -220,9 +211,9 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	// Check GITHUB Cards
 	// Don't try checking names - they belong to & were already checked, in issues.
-	let scCards = await gh2tu.getCards( authData, td.scColID );
-	let boCards = await gh2tu.getCards( authData, td.boColID );
-	let noCards = await gh2tu.getCards( authData, td.unColID );
+	let scCards = await gh2tu.getCards( authData, td.masterPID, td.scColID );
+	let boCards = await gh2tu.getCards( authData, td.masterPID, td.boColID );
+	let noCards = await gh2tu.getCards( authData, td.masterPID, td.unColID );
 	
 	subTest = tu.checkEq( scCards.length, 4, subTest, "Soft cont col card count" );
 	subTest = tu.checkEq( boCards.length, 1, subTest, "Bus ops col card count" );
@@ -232,9 +223,10 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	let rn2 = Math.floor(Math.random() * 2); // (0,1)
 	let rn4 = Math.floor(Math.random() * 4);
 	console.log( "rands", rn2, rn4 );
-	let cols = dsCols;
-	if( rn2 == 1 )  { cols = ghCols; }
-	noCards = await gh2tu.getCards( authData, cols[rn4].id );
+	let cols    = dsCols;
+	let randPID = td.dataSecPID;
+	if( rn2 == 1 )  { cols = ghCols; randPID = td.githubOpsPID; }
+	noCards = await gh2tu.getCards( authData, randPID, cols[rn4].id );
 	subTest = tu.checkEq( noCards.length, 0, subTest, "Unalloc col card count" );
 
 	
@@ -251,7 +243,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.githubOpsIss[1],    subTest, "Linkage Issue num" );
 		subTest = tu.checkEq( link.hostColumnName, td.softContTitle,    subTest, "Linkage Col name" );
 		subTest = tu.checkEq( link.hostColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
-		subTest = tu.checkEq( link.issueName, td.githubOpsTitle,        subTest, "Linkage Card Title" );
+		subTest = tu.checkEq( link.hostIssueName, td.githubOpsTitle,    subTest, "Linkage Card Title" );
 		let cardId = gh2tu.findCardForIssue( scCards, link.hostIssueNum );
 		subTest = tu.checkEq( link.hostCardId, cardId,                  subTest, "Linkage Card Id" );
 		found = true;
@@ -260,27 +252,27 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.dataSecIss[1],      subTest, "Linkage Issue num" );
 		subTest = tu.checkEq( link.hostColumnName, td.softContTitle,    subTest, "Linkage Col name" );
 		subTest = tu.checkEq( link.hostColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
-		subTest = tu.checkEq( link.issueName, td.dataSecTitle,          subTest, "Linkage Card Title" );
+		subTest = tu.checkEq( link.hostIssueName, td.dataSecTitle,      subTest, "Linkage Card Title" );
 		let cardId = gh2tu.findCardForIssue( scCards, link.hostIssueNum );
 		subTest = tu.checkEq( link.hostCardId, cardId,                  subTest, "Linkage Card Id" );
 		found = true;
 	    }
 	    else if( link.hostIssueId == td.unallocIss1[0] ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.unallocIss1[1],  subTest, "Linkage Issue num" );
-		subTest = tu.checkEq( link.issueName, td.unallocTitle,       subTest, "Linkage Card Title" );
+		subTest = tu.checkEq( link.hostIssueName, td.unallocTitle,   subTest, "Linkage Card Title" );
 		if( link.hostColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.hostColumnId; }
 		else                                        { unallocBus  = true; lBus  = link.hostColumnId; }
 		found = true;
 	    }
 	    else if( link.hostIssueId == td.unallocIss2[0] ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.unallocIss2[1],  subTest, "Linkage Issue num" );
-		subTest = tu.checkEq( link.issueName, td.unallocTitle,       subTest, "Linkage Card Title" );
+		subTest = tu.checkEq( link.hostIssueName, td.unallocTitle,   subTest, "Linkage Card Title" );
 		if( link.hostColumnName == td.softContTitle ) { unallocSoft = true; lSoft = link.hostColumnId; }
 		else                                        { unallocBus  = true; lBus  = link.hostColumnId; }
 		found = true;
 	    }
 	    
-	    if( link.issueName == td.dataSecTitle ) { foundDS++; }
+	    if( link.hostIssueName == td.dataSecTitle ) { foundDS++; }
 	    
 	    if( found ) {
 		subTest = tu.checkEq( link.hostProjectName, config.MAIN_PROJ, subTest, "Linkage Proj name" );

@@ -174,14 +174,14 @@ async function getLabels( authData, td ) {
     return labels.length == 0 ? -1 : labels;
 }
 
-// Note, this is not returning full issues, just faceplate.  could return, say, labels.length..
+// Note, this is not returning full issues.  could return, say, labels.length..
 async function getIssues( authData, td ) {
     let issues = [];
 
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on Repository {
-            issues(first:100) {edges {node { id title number }}}
+            issues(first:100) {edges {node { id title number body}}}
 
 
     }}}`;
@@ -198,6 +198,7 @@ async function getIssues( authData, td ) {
 		let datum = {};
 		datum.id       = iss.id;
 		datum.number   = iss.number;
+		datum.body     = iss.body;
 		datum.title    = iss.title;
 		issues.push( datum );
 	    }
@@ -262,6 +263,7 @@ async function getProjects( authData, td ) {
 async function getColumns( authData, pNodeId ) {
     let cols = [];
     console.log( "get cols", pNodeId );
+    if( pNodeId == config.EMPTY ) { return cols; }
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -293,8 +295,8 @@ async function getColumns( authData, pNodeId ) {
 		    for( let k = 0; k < afield.options.length; k++ ) {
 			let datum = {};
 			datum.statusId = statusId;
-			datum.id = afield.options[i].id;
-			datum.name = afield.options[i].name;
+			datum.id = afield.options[k].id;
+			datum.name = afield.options[k].name;
 			cols.push( datum );
 		    }
 		    break;
@@ -342,6 +344,7 @@ async function getDraftIssues( authData, pNodeId ) {
 async function getCards( authData, pNodeId, colId ) {
     let cards = [];
 
+    console.log( "get cards", pNodeId, colId );
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -377,7 +380,8 @@ async function getCards( authData, pNodeId, colId ) {
 	})
 	.catch( e => cards = ghUtils.errorHandler( "getCards", e, getCards, authData, pNodeId, colId )); 
 
-    return cards.length == 0 ? -1 : cards;
+    // return cards.length == 0 ? -1 : cards;
+    return cards;
 }
 
 async function getCard( authData, cardId ) {
@@ -682,6 +686,7 @@ async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, col
     let allocIssue = {};
     allocIssue.title = title;
     allocIssue.labels = [label];
+    allocIssue.allocation = true;
 
     // Create labeled issue, create PV2 item in correct project.  This will now be in nostatus.
     // issue:open, issue:label, item:create, maybe (?) item:edit
