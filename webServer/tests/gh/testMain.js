@@ -70,7 +70,6 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     // TESTS
 
     let subTest = "";
-
     await gh2TestDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
@@ -80,12 +79,12 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    assert( false );
-    
     subTest = await gh2TestFlat.runTests( authData, ghLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
+
+    assert( false );
 
     /*
     subTest = await gh2TestBasicFlow.runTests( authData, ghLinks, td );

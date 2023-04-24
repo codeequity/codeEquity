@@ -26,7 +26,7 @@ async function remIssues( authData, ghLinks, pd ) {
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
     console.log( "Removing all issues. " );
     let issues = await gh2tu.getIssues( authData, pd );
-    console.log( "REMISSUE", issues );
+    console.log( "REMISSUE", issues.length );
     
     let allLinks = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName } );
     
@@ -99,6 +99,7 @@ async function clearRepo( authData, ghLinks, pd ) {
     // ceProjects
     // XXX Note: Only removing hostProjectIds for now.  Once ceFlutter handles populate, this will change.
     // Need to wait here, unlink has a check in it.
+    // This will fire if aws:ceProj table has entries but gh no longer does.  Can happen if testing not ending cleanly, or server not being restarted
     let ceProj = await ceProjP;
     for( const pid of ceProj.HostParts.hostProjectIds ) {
 	await awsUtils.unlinkProject( authData, {"ceProjId": pd.ceProjectId, "hostProjectId": pid} );

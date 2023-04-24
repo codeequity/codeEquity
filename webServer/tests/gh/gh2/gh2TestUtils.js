@@ -205,7 +205,7 @@ async function getIssues( authData, td ) {
 	})
 	.catch( e => issues = ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
 
-    return issues.length == 0 ? -1 : issues;
+    return issues;
 }
 
 // ids, names, faceplate for zeroth repo
@@ -262,7 +262,7 @@ async function getProjects( authData, td ) {
 // Note: first view only
 async function getColumns( authData, pNodeId ) {
     let cols = [];
-    console.log( "get cols", pNodeId );
+    // console.log( "get cols", pNodeId );
     if( pNodeId == config.EMPTY ) { return cols; }
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
@@ -341,10 +341,11 @@ async function getDraftIssues( authData, pNodeId ) {
 
 
 // Get all cards for project.  Filter for column.  Could very easily add, say, col info.. useful?
+// Needs to work for draft issues as well, i.e. newborn cards.
 async function getCards( authData, pNodeId, colId ) {
     let cards = [];
 
-    console.log( "get cards", pNodeId, colId );
+    // console.log( "get cards", pNodeId, colId );
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -355,7 +356,9 @@ async function getCards( authData, pNodeId, colId ) {
                    fieldValueByName(name: "Status") {
                    ... on ProjectV2ItemFieldSingleSelectValue { name optionId }}
                    content {
-                   ... on ProjectV2ItemContent { ... on Issue { id title number }}}
+                   ... on ProjectV2ItemContent { ... on Issue { id title number }
+                                                 ... on DraftIssue { id title }
+                           }}
                }}}}
     }}}`;
     let variables = {"nodeId": pNodeId };
@@ -369,11 +372,12 @@ async function getCards( authData, pNodeId, colId ) {
 
 	    for( let i = 0; i < issues.length; i++ ) {
 		const iss = issues[i].node;
-		if( iss.type == "ISSUE" && iss.fieldValueByName.optionId == colId ) {
+		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {
 		    let datum = {};
 		    datum.id     = iss.id;
 		    datum.issNum = iss.content.number;
 		    datum.title  = iss.content.title;
+		    if( typeof datum.issNum === 'undefined' ) { datum.issNum = -1; } // draft issue
 		    cards.push( datum );
 		}
 	    }
@@ -539,12 +543,10 @@ async function makeProject(authData, td, name, body, specials ) {
 async function findOrCreateProject( authData, td, name, body ) {
 
     let [pid,ld] = await ghV2.findOrCreateProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
-    assert( typeof pid !== 'undefined' && pid != -1 );
+    assert( typeof pid !== 'undefined' && !(pid <= -1) );
 
     // force linking in ceServer:ghLinks, not local ghLinks
     if( !ld ) { await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); }
-
-    // XXX assert in ceproj
 
     console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
 
@@ -591,7 +593,7 @@ async function unlinkProject( authData, ceProjId, pNodeId, rNodeId ) {
     if( typeof res.data === 'undefined' ) { console.log( "UnlinkProject failed.", res ); }
     else {
 	// Cards are still valid, just can't find the project from the repo.  Clear repo info
-	tu.unlinkProject( authData, ceProjId, pNodeId, rNodeId );
+	await tu.unlinkProject( authData, ceProjId, pNodeId, rNodeId );
     }
 
     await utils.sleep( tu.MIN_DELAY );
@@ -621,10 +623,11 @@ async function updateProject( authData, projId, name ) {
 async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name ) {
     // First, wait for projId, can lag
     await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
-    let cid = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
+    let loc = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
+    let cid = loc === -1 ? loc : loc.hostColumnId;
     
     if( cid === -1 ) { console.log( "Missing column:", name ); }
-    else            { console.log( "Found column:", name ); }
+    else             { console.log( "Found column:", name, cid ); }
 
     // XXX Can't verify this, since we know col can not be created by apiV2 yet
     // let query = "project_column created " + name + " " + fullName;
@@ -729,11 +732,11 @@ async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, tit
     // First, wait for colId, can lag
     await tu.settleWithVal( "make newbie card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    let pvId = createDraftIssue( authData, pNodeId, title, "" );
+    let pvId = await createDraftIssue( authData, pNodeId, title, "" );
     await ghV2.moveCard( authData, pNodeId, pvId, statusId, colId );
     
     await utils.sleep( tu.MIN_DELAY );
-    return cid;
+    return pvId;
 }
 
 async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId, justId ) {

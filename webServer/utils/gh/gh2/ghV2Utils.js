@@ -628,7 +628,7 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
 
 async function createLabel( authData, repoNode, name, color, desc ) {
 
-    console.log( authData.who, "Create label", repoNode, name, desc, color );
+    // console.log( authData.who, "Create label", repoNode, name, desc, color );
 
     let query     = `mutation( $id:ID!, $color:String!, $name:String!, $desc:String! )
                        { createLabel( input:{ repositoryId: $id, color: $color, description: $desc, name: $name }) {clientMutationId, label {id, name, color, description}}}`;
@@ -642,7 +642,7 @@ async function createLabel( authData, repoNode, name, color, desc ) {
 	    if( ret.status != 200 ) { throw ret; }
 	    if( typeof ret.errors !== 'undefined' ) { console.log( authData.who, "WARNING. Label not created", ret.errors ); }
 	    else {
-		console.log( authData.who, " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
+		// console.log( authData.who, " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
 		label = ret.data.createLabel.label;
 	    }
 	})
@@ -658,6 +658,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     console.log( authData.who, "Get label", repoNode, peqHumanLabelName );
 
     // query below checks both name and description
+    // Oddly, GH returns anything that partially matches the query, without means to limit to precise matches.  i.e. if name is 1M Alloc, multiple are returned
     let query = `query( $repoNode:ID!, $name:String! ) {
                    node( id: $repoNode ) {
                    ... on Repository {
@@ -678,7 +679,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
 	    
 	    for( let i = 0; i < labels.edges.length; i++ ) {
 		const lab = labels.edges[i].node;
-		if( lab.name == peqHumanLabelName ) {
+		if( lab.name == peqHumanLabelName ) {  // finish filtering
 		    labelRes.status = 200;
 		    labelRes.label = lab;
 		}
@@ -738,7 +739,7 @@ function makeHumanLabel( amount, peqTypeLabel ) {
 }
 
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
-    console.log( authData.who, "Creating PEQ label", allocation, peqValue );
+    // console.log( authData.who, "Creating PEQ label", allocation, peqValue );
 
     // GH no longer allows commas in label names.  Convert, say, 1,500 PEQ to 1.5k PEQ
     let pvName = "";
@@ -1196,7 +1197,8 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 	if( colId === -1 ) {
 	    let progCol = await createColumn( authData, ghLinks, ceProjId, projId, progName );
 	    console.log( authData.who, "Creating new column:", progName );
-	    colId = progCol.data.id;
+	    assert( progCol !== -1 );
+	    colId = progCol.hostColumnId;
 	    let nLoc = {};
 	    nLoc.ceProjectId     = ceProjId; 
 	    nLoc.hostRepository  = fullName;
@@ -1375,20 +1377,42 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
 	    .catch( e => loc = ghUtils.errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, ghLinks, ceProjectId, projId, colName));
     }
     else {
-	locs = ghLinks.getLocs( authData, { "ceProjId": ceProjectId, "projId": projId, "colName": colName } );    
+	let locs = ghLinks.getLocs( authData, { "ceProjId": ceProjectId, "projId": projId, "colName": colName } );    
 	    
 	if( locs === -1 ) {
 	    // XXX revisit once (if) GH API supports column creation
 	    console.log( authData.who, "Error.  Please create the column", colName, "by hand, for now." );
-	    loc = -1;
 	}
 	else { loc = locs[0]; }
     }
     return loc;
 }
 
+
+/* 
+  XXX XXX XXX query seems to fail, or at least is mysterious.  Hard to find documentation for it.
+  The two queries below behave differently.  For Modules, with "name:" in query, all are returned.  without name, behaves correctly.
+  Unfortunately, this is the reverse for A Pre-Existing Project.
+  So the code below assumes query is useless, does extra filtering as with label.
+
+{
+  user(login:"ariCETester"){
+    login id projectsV2(query: "name:Modules", first:99 ) {edges{ node{ id title }}}}
+  organization( login:"codeEquity"){
+    login id projectsV2(query: "name:Modules", first:99) {edges{ node{ id title }}}}
+}
+
+{
+  user(login:"ariCETester"){
+    login id projectsV2(query: "A Pre-Existing Project", first:99 ) {edges{ node{ id title }}}}
+  organization( login:"codeEquity"){
+    login id projectsV2(query: "A Pre-Existing Project", first:99) {edges{ node{ id title }}}}
+}
+*/
+
 async function findProjectByName( authData, orgLogin, userLogin, projName ) {
     let pid = -1;
+    let pNameQuery = "name:" + projName;
     // console.log( "Find project", orgLogin, userLogin, projName );
     
     let query = `query($oLogin: String!, $uLogin: String!, $pName: String!) {
@@ -1399,9 +1423,11 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
            login id
            projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
     }`;
-    let variables = {"oLogin": orgLogin, "uLogin": userLogin, "pName": projName };
+    let variables = {"oLogin": orgLogin, "uLogin": userLogin, "pName": pNameQuery };
     query = JSON.stringify({ query, variables });
 
+    // XXX arggh.  if only query worked as expected
+    /*
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
@@ -1413,22 +1439,39 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
 	    else if( projects.length > 1 ) { pid = -1 * projects.length; }
 	})
 	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, orgLogin, userLogin, projName ));
+    */
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = [];
+	    if( ghUtils.validField( raw.data, "user" ))         { projects = raw.data.user.projectsV2.edges; }
+	    if( ghUtils.validField( raw.data, "organization" )) { projects = projects.concat( raw.data.organization.projectsV2.edges ); }
 
+	    for( let i = 0; i < projects.length; i++ ) {
+		const proj = projects[i].node;
+		if( proj.title == projName ) { pid = proj.id; }
+	    }
+	})
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, orgLogin, userLogin, projName ));
+    
     return pid;
 }
 
 async function findProjectByRepo( authData, rNodeId, projName ) {
     let pid = -1;
-
+    let pNameQuery = "name:" + projName;
+    
     let query = `query($rid:ID!, $pName:String!) {
         node( id:$rid ) {
            ... on Repository {
               id nameWithOwner
               projectsV2(first:99, query: $pName ) {edges{ node{ id title }}}}
     }}`;
-    let variables = {"rid": rNodeId, "pName": projName };
+    let variables = {"rid": rNodeId, "pName": pNameQuery };
     query = JSON.stringify({ query, variables });
 
+    // XXX same as findByName
+    /*
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
@@ -1439,7 +1482,20 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 	    else if( projects.length > 1 ) { pid = -1 * projects.length; }
 	})
 	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
+    */
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = [];
+	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
 
+	    for( let i = 0; i < projects.length; i++ ) {
+		const proj = projects[i].node;
+		if( proj.title == projName ) { pid = proj.id; }
+	    }
+	})
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
+    
     return pid;
 }
 

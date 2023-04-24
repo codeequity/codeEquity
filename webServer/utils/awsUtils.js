@@ -456,11 +456,15 @@ async function linkProject( authData, query ) {
 async function unlinkProject( authData, query ) {
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    console.log( "UnlinkProject", postData );
     let retVal = await wrappedPostAWS( authData, shortName, postData );
 
     shortName = "GetEntry";
     postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
     let ceProj = await wrappedPostAWS( authData, shortName, postData );
+
+    // NOTE if this fails during testing, chances are you are not restarting ceServer (good), but also not running testDelete (bad).
+    //      if so, multiple copies of the current project-du-jour are stored in aws:ceProjects.
     assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ), query );
 
     return retVal;

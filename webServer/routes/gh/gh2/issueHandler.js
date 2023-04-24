@@ -287,7 +287,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );	
 	    console.log( "WARNING.  PEQ Issue unlabeled, issue no longer tracked." );
-	    ghLinks.rebaseLinkage( authData, pd.ceProjectId, pd.issueId );   // setting various to -1, as it is now untracked
+	    ghLinks.rebaseLinkage( authData, pd.ceProjectId, pd.issueId );   // setting various to EMPTY, as it is now untracked
 	    awsUtils.removePEQ( authData, peq.PEQId );
 	    awsUtils.recordPEQAction(
 		authData,

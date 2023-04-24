@@ -40,19 +40,19 @@ async function createPreferredCEProjects( authData, ghLinks, td ) {
 
     // TRIGGER
     let nbi1     = await gh2tu.makeIssue( authData, td, "A special populate issue", [] );
-    let card11   = await gh2tu.makeProjectCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1.hostColumnId, nbi1[0], true );
+    let card11   = await gh2tu.makeProjectCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1, nbi1[0], true );
     let popLabel = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, config.POPULATE, -1 );
     let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
     await gh2tu.addLabel( authData, popLabel.id, nbiDat );       // ready.. set... Go!
     await utils.sleep( 1000 );
 
     // softCont: dataSecurity, githubOps, unallocated
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.dataSecTitle, "1,000,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.githubOpsTitle, "1,500,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1.hostColumnId, td.unallocTitle, "3,000,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2.hostColumnId, td.unallocTitle, "1,000,000" );
+    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
 async function testPreferredCEProjects( authData, ghLinks, td ) {

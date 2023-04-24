@@ -454,7 +454,7 @@ class Linkage {
 	let [_, link] = Object.entries( cLinks )[0];
 
 	link.hostProjectName = config.EMPTY;
-	link.hostColumnId    = -1;
+	link.hostColumnId    = config.EMPTY;
 	link.hostColumnName  = config.EMPTY;
 	link.hostIssueName  = config.EMPTY;
 	link.flatSource    = -1;

@@ -14,13 +14,13 @@ const FLAT_PROJ = "A Pre-Existing Project";
 async function createFlatProject( authData, ghLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
-    td.masterPID  = await gh2tu.makeProject( authData, td, FLAT_PROJ, "" );
-    let mastCol1  = await gh2tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Eggs" );
-    let mastCol2  = await gh2tu.makeColumn( authData, ghLinks, td.CEProjectId, td.GHFullName, td.masterPID, "Bacon" );
+    td.masterPID  = await gh2tu.findOrCreateProject( authData, td, FLAT_PROJ, "" );
+    let mastCol1  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Eggs" );
+    let mastCol2  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Bacon" );
 
-    await gh2tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Parsley" );
-    await gh2tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol2, "Rosemary" );
-    await gh2tu.makeNewbornCard( authData, ghLinks, td.CEProjectId, td.GHFullName, mastCol1, "Sage" );
+    await gh2tu.makeNewbornCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1, "Parsley" );
+    await gh2tu.makeNewbornCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol2, "Rosemary" );
+    await gh2tu.makeNewbornCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1, "Sage" );
 }
 
 async function testFlatProject( authData, ghLinks, td ) {
@@ -31,7 +31,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     await gh2tu.refresh( authData, td, FLAT_PROJ );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
-    let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.CEProjectId, "repo": td.GHFullName } );
+    let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
     let foundFlat = false;
     if( links == -1 ) { links = []; }
 
@@ -68,7 +68,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     testStatus = tu.checkGE( projects.length, 1,     testStatus, "Project count" );
     let foundProj = 0;
     for( const proj of projects ) {
-	if( proj.name == FLAT_PROJ ) {
+	if( proj.title == FLAT_PROJ ) {
 	    td.masterPID = proj.id;
 	    foundProj++;
 	}
@@ -93,8 +93,8 @@ async function testFlatProject( authData, ghLinks, td ) {
 
 
     // Check GITHUB Cards
-    let eggCards = await gh2tu.getCards( authData, eggsId );
-    let bacCards = await gh2tu.getCards( authData, baconId );
+    let eggCards = await gh2tu.getCards( authData, td.masterPID, eggsId );
+    let bacCards = await gh2tu.getCards( authData, td.masterPID, baconId );
 
     testStatus = tu.checkEq( eggCards.length, 2, testStatus, "Egg col card count" );
     testStatus = tu.checkEq( bacCards.length, 1, testStatus, "Bacon col card count" );
