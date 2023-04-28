@@ -1390,23 +1390,17 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
 
 
 /* 
-  XXX XXX XXX query seems to fail, or at least is mysterious.  Hard to find documentation for it.
-  The two queries below behave differently.  For Modules, with "name:" in query, all are returned.  without name, behaves correctly.
-  Unfortunately, this is the reverse for A Pre-Existing Project.
+  XXX query inside gql can't seem to deal with whitespace.  It appears to pay attention to the first word, only.
+      Adding "AND" does not help.  Adding \"\" around name does not help.  `` nope.  \\\ nope.
+      The query below works because both words are unique in current tiny world.  adding "A" in front matches everything.
+  
   So the code below assumes query is useless, does extra filtering as with label.
 
 {
   user(login:"ariCETester"){
-    login id projectsV2(query: "name:Modules", first:99 ) {edges{ node{ id title }}}}
+    login id projectsV2(query: "Pre-Existing Project in:title", first:99 ) {edges{ node{ id title }}}}
   organization( login:"codeEquity"){
-    login id projectsV2(query: "name:Modules", first:99) {edges{ node{ id title }}}}
-}
-
-{
-  user(login:"ariCETester"){
-    login id projectsV2(query: "A Pre-Existing Project", first:99 ) {edges{ node{ id title }}}}
-  organization( login:"codeEquity"){
-    login id projectsV2(query: "A Pre-Existing Project", first:99) {edges{ node{ id title }}}}
+    login id projectsV2(query: "Pre-Existing Project in:title", first:99) {edges{ node{ id title }}}}
 }
 */
 

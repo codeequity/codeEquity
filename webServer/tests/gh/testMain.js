@@ -84,8 +84,6 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    assert( false );
-
     /*
     subTest = await gh2TestBasicFlow.runTests( authData, ghLinks, td );
     console.log( "\n\nFlow test complete." );

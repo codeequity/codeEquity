@@ -303,6 +303,8 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	// NOTE: it would be fair at this point to cast everything as PV2, given evident demise of GHC...
 	if( jd.event == "issue" && jd.action == "deleted" ||
 	    jd.event == "issue" && jd.action == "labeled" ||    
+	    jd.event == "issue" && jd.action == "assigned" ||    
+	    jd.event == "issue" && jd.action == "unassigned" ||    
 	    jd.event == "label" && jd.action == "deleted" ||
 	    jd.event == "label" && jd.action == "created" )
 	{

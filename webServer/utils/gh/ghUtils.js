@@ -145,6 +145,7 @@ async function checkForPV2( PAT, nodeId ) {
 }
 
 // XXX Consider promoting this to ceUtils
+// returns -1 if could not find.
 async function validatePEQ( authData, ceProjId, issueId, title, projId ) {
     let peq = -1;
 
@@ -156,9 +157,9 @@ async function validatePEQ( authData, ceProjId, issueId, title, projId ) {
 	// console.log( authData.who, "validatePeq success" );
     }
     else {
-	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, projId );
+	console.log( authData.who, "WARNING.  Peq not valid.", peq, peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, projId );
     }
-    return peq;
+    return peq;  
 }
 
 

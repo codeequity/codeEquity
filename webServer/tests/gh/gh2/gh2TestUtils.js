@@ -425,6 +425,14 @@ async function getComments( authData, issueId ) {
     return comments.length == 0 ? -1 : comments;
 }
 
+async function getAssignee( authData, aName ) {
+    let nodeId = await ghUtils.getOwnerId( authData.pat, aName );
+    let retVal = -1;
+    if( nodeId != -1 ) {  retVal = { id: nodeId, login: aName };  }
+	
+    return retVal;
+}
+
 async function findIssue( authData, issueId ) {
     let retVal = ghV2.getFullIssue( authData, issueId );
     if( Object.keys( retVal ).length <= 0 ) { retVal = -1; }
@@ -840,7 +848,7 @@ async function addAssignee( authData, issDat, assignee ) {
     await ghV2.addAssignee( authData, issDat[0], assignee.id );
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
-    let query = "issue assigned " + issueData[2] + locator;
+    let query = "issue assigned " + issDat[2] + locator;
     await tu.settleWithVal( "assign issue", tu.findNotice, query );
 }
 
@@ -2188,6 +2196,7 @@ exports.getDraftIssues  = getDraftIssues;
 exports.getCards        = getCards;
 exports.getCard         = getCard;
 exports.getComments     = getComments;
+exports.getAssignee     = getAssignee;
 exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
 exports.findProject     = findProject;

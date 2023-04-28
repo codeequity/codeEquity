@@ -187,7 +187,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	
 	subTest = tu.checkEq( mastCols.length, 3,   subTest, "Master proj col count" );
 	subTest = tu.checkEq( dsCols.length, 4,     subTest, "Data security proj col count" );
-	subTest = tu.checkEq( ghCols.length, 6,     subTest, "Github ops proj col count" );
+	subTest = tu.checkGE( ghCols.length, 6,     subTest, "Github ops proj col count" );     // can't confirm exact, since can't create/delete cols
 
 	let colNames = mastCols.map((col) => col.name );
 	subTest = tu.checkEq( colNames.includes( td.softContTitle ), true,   subTest, "Master col names" );
