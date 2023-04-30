@@ -442,7 +442,7 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     authData.who = "<TEST: Incr Resolve>";
 
     let ASSIGNEE1 = gh2tu.getAssignee( authData, "ariCETester" );
-    let ASSIGNEE2 = gh2tu.getAssignee( authData, "codeequity" );
+    let ASSIGNEE2 = gh2tu.getAssignee( authData, "builderCE" );
 
     const ISS_MOON = "IR Moons";
     const ISS_PLAN = "IR Plan";
@@ -607,7 +607,7 @@ async function testSplitAlloc( authData, ghLinks, td ) {
     console.log( "Split Alloc" );
     authData.who = "<TEST: Split Alloc>";
 
-    let ASSIGNEE2 = gh2tu.getAssignee( authData, "codeequity" );
+    let ASSIGNEE2 = gh2tu.getAssignee( authData, "builderCE" );
 
     const ISS_ALLOC = "IR Alloc";
 

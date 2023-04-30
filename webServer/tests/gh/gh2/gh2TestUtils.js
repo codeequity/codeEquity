@@ -774,7 +774,8 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
 // NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function makeIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels} );
-    issue.push( title );
+    assert( issue.length == 3 );
+    issue[2] = title;
     await utils.sleep( tu.MIN_DELAY );
     return issue;
 }
@@ -845,7 +846,8 @@ async function delLabel( authData, label ) {
 }
 
 async function addAssignee( authData, issDat, assignee ) {
-    await ghV2.addAssignee( authData, issDat[0], assignee.id );
+    let ret = await ghV2.addAssignee( authData, issDat[0], assignee.id );
+    assert( ret, "Assignement failed" );
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
     let query = "issue assigned " + issDat[2] + locator;

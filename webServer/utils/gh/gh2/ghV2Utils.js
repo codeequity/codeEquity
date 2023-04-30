@@ -545,7 +545,7 @@ async function addAssignee( authData, issueId, aNodeId ) {
     console.log( authData.who, "Add assignee", issueId, aNodeId );
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "addAssignee" )
-	    .catch( e => ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, issueId, aNodeId )); 
+	    .catch( e => ret = ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, issueId, aNodeId )); 
     }
     else {
 	let query = `mutation( $id:ID!, $adds:[ID!]! )
@@ -554,11 +554,12 @@ async function addAssignee( authData, issueId, aNodeId ) {
 	let variables = {"id": issueId, "adds": [aNodeId] };
 	let queryJ    = JSON.stringify({ query, variables });
 	
-	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	    ret = await ghUtils.errorHandler( "addAssignee", ret, addAssignee, authData, issueId, aNodeId );
-	    return ret;
-	}
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	    .then( raw => {
+		if( typeof raw.errors !== 'undefined' ) { console.log( "WARNING.  Assignment failed", raw.errors[0].message ); }
+		else                                    { ret = true; }
+	    })
+	    .catch( e => ret = ghUtils.errorHandler( "addAssignee", ret, addAssignee, authData, issueId, aNodeId ));
     }
     return ret;
 }
@@ -1104,22 +1105,35 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
     return ret;
 }
 
+
+
+
 // Note this is used to situate an issue, then put into correct column.
 // Note issueId is contentId.  issDat[2] is issueNodeId
-async function createProjectCard( authData, projNodeId, issueId, fieldId, valueId, justId ) {
+// XXX async function createProjectCard( authData, ceProjId, ghLinks, projNodeId, issueId, fieldId, valueId, justId ) {
+async function createProjectCard( authData, ghLinks, ploc, issueId, fieldId, justId ) {
     let issDat = [issueId, -1, -1];
-    console.log( authData.who, "create project card", projNodeId, issueId, fieldId, valueId, justId ) ;
-    issDat = await cardIssue( authData, projNodeId, issDat );
+
+    assert( typeof ploc.ceProjId !== 'undefined' );
+    assert( typeof ploc.pNodeId  !== 'undefined' );
+    assert( typeof ploc.colId    !== 'undefined' );
+    
+    console.log( authData.who, "create project card", ploc.pNodeId, issueId, fieldId, ploc.colId, justId ) ;
+    issDat = await cardIssue( authData, ploc.pNodeId, issDat );
     
     // Move from "No Status".  If good, retVal contains null clientMutationId
-    let retVal = await moveCard( authData, projNodeId, issDat[2], fieldId, valueId );
+    let retVal = await moveCard( authData, ploc.pNodeId, issDat[2], fieldId, ploc.colId );
     
     if( retVal !== -1 ) {
+	let locs = ghLinks.getLocs( authData, { "ceProjId": ploc.ceProjId, "projId": ploc.pNodeId, "colId": ploc.colId } );
+	assert( locs.length == 1 );
+	assert( locs[0].hostColumnId == ploc.colId );
+	
 	retVal = justId ? 
 	    issDat[2] : 
-	    {"projId": projNodeId, "cardId": issDat[2], "statusId": fieldId, "statusValId": valueId };
+	    {"projId": ploc.pNodeId, "cardId": issDat[2], "statusId": fieldId, "columnId": ploc.colId, "columnName": locs[0].hostColumnName };
     }
-
+    
     return retVal;
 }
 
@@ -1212,7 +1226,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
     }
 
     // issue-linked project_card already exists if issue exists, in No Status.  Move it.
-    await createProjectCard( authData, projId, newCardId, statusId, colId, true );
+    await createProjectCard( authData, ghLinks, projId, newCardId, statusId, colId, true );
     assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
     
     // remove orig card
@@ -1603,7 +1617,7 @@ async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, 
 
     // create card in unclaimed:unclaimed
     // console.log( "  .. CUC enter create card" );
-    let card = await createProjectCard( authData, unClaimedProjId, issueId, loc.hostUtility, loc.hostColumnId, false );
+    let card = await createProjectCard( authData, ghLinks, unClaimedProjId, issueId, loc.hostUtility, loc.hostColumnId, false );
     // console.log( "  .. CUC enter return card", card );
     return card;
 }
