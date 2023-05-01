@@ -748,7 +748,8 @@ async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, tit
 }
 
 async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId, justId ) {
-    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
+    let query = { "ceProjId": ceProjId, "projId": pNodeId, "pNodeId": pNodeId, "colId": colId };   // XXX darg.  naming sux
+    const locs = ghLinks.getLocs( authData, query );    
     assert( locs !== -1 );
     let statusId = locs[0].hostUtility;
 
@@ -756,14 +757,14 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
     await tu.settleWithVal( "make Proj card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
     justId = typeof justId === undefined ? false : true;
-    let card = await ghV2.createProjectCard( authData, pNodeId, issueId, statusId, colId, justId );
+    let card = await ghV2.createProjectCard( authData, ghLinks, query, issueId, statusId, justId );
 
     // XXX very weak notice - could be anything.  Verbose ceNotification.  
     // Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fNfog VudsdHVkWc for codeequity 03.17.798
     // gives notice: projects_v2_item edited codeequity/I_kwDOIiH6ss5fNinX GitHub/codeequity/I_kwDOIiH6ss5fNinX
     let path = config.TEST_OWNER + "/" + issueId;
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
-    let query = "projects_v2_item edited " + path + locator;
+    query       = "projects_v2_item edited " + path + locator;
     await tu.settleWithVal( "makeProjCard", tu.findNotice, query );
 
     // XXX either leave this in to allow peq data to record, or set additional post condition.
@@ -892,7 +893,8 @@ async function remCard( authData, ceProjId, cardId ) {
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
 async function closeIssue( authData, td, issDat, loc = -1 ) {
-    await ghV2.updateIssue( authData, issDat[0], "state", "closed" );
+    // await ghV2.updateIssue( authData, issDat[0], "state", "closed" );
+    await ghV2.updateIssue( authData, issDat[0], "state", "CLOSED" );
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
     let query = "issue closed " + issDat[2] + locator;
@@ -903,7 +905,7 @@ async function closeIssue( authData, td, issDat, loc = -1 ) {
 }
 
 async function reopenIssue( authData, td, issueId ) {
-    await ghV2.updateIssue( authData, issueId, "state", "open" );
+    await ghV2.updateIssue( authData, issueId, "state", "OPEN" );
 
     // Can take GH a long time to move card.  
     await utils.sleep( tu.MIN_DELAY + 500 );

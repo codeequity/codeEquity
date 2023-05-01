@@ -124,7 +124,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		    for( let j = 0; j < aview.fields.edges.length; j++ ) {
 			if( j >= 99 ) { console.log( authData.who, "WARNING.  Detected a very large number of columns, ignoring some." ); }
 			const pfc = aview.fields.edges[j].node;
-			if( pfc.name == "Status" ) {
+			if( pfc.name == "Status" ) {                            // XXX formalize.  generalize?
 			    statusId = pfc.id;
 			    for( let k = 0; k < pfc.options.length; k++ ) {
 				let datum   = {};
@@ -1110,7 +1110,6 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
 
 // Note this is used to situate an issue, then put into correct column.
 // Note issueId is contentId.  issDat[2] is issueNodeId
-// XXX async function createProjectCard( authData, ceProjId, ghLinks, projNodeId, issueId, fieldId, valueId, justId ) {
 async function createProjectCard( authData, ghLinks, ploc, issueId, fieldId, justId ) {
     let issDat = [issueId, -1, -1];
 
@@ -1226,7 +1225,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
     }
 
     // issue-linked project_card already exists if issue exists, in No Status.  Move it.
-    await createProjectCard( authData, ghLinks, projId, newCardId, statusId, colId, true );
+    await createProjectCard( authData, ghLinks, {"ceProjId": ceProjId, "pNodeId": projId, "colId": colId}, issueId, statusId, true );
     assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
     
     // remove orig card
@@ -1617,7 +1616,8 @@ async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, 
 
     // create card in unclaimed:unclaimed
     // console.log( "  .. CUC enter create card" );
-    let card = await createProjectCard( authData, ghLinks, unClaimedProjId, issueId, loc.hostUtility, loc.hostColumnId, false );
+    let ploc = {"ceProjId": pd.ceProjectId, "pNodeId": unClaimedProjId, "colId": loc.hostColumnId} ;
+    let card = await createProjectCard( authData, ghLinks, ploc, issueId, loc.hostUtility, false );
     // console.log( "  .. CUC enter return card", card );
     return card;
 }

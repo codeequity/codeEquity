@@ -63,7 +63,7 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    console.log( authData.who, ".... new peqValue:", peqVal );
 
 	    pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; 
-	    let peqHumanLabelName = ghV2.makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
+	    let peqHumanLabelName = ghV2.makeHumanLabel( peqVal, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
 	    newLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, peqVal )
 	    issue.labels[idx] = newLabel;
 	    // update peqData for subsequent recording
@@ -240,13 +240,13 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let orig = {};
     let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
     if( fromCard ) {
-	console.log( authData.who, "PNP: type 3 if not contradicted below" );
 	let card = await ghV2.getCard( authData, origCardId );
 	colName = card.columnName;
 	if( pd.peqValue > 0 ) {
 	    pd.columnId   = card.columnId;
 	    orig.columnId = card.columnId;
 	}
+	console.log( authData.who, "PNP: type 3 if not contradicted below.  ColId", card.columnId, card.columnName );
 	// XXX -1 check is no longer useful?
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
 	assert( colName != config.EMPTY && colName != -1 ); 

@@ -154,7 +154,7 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
 	link.hostCardId      = card.cardId;
 	link.hostProjectId   = card.projId;
 	link.hostProjectName = config.UNCLAIMED;
-	link.hostColumnId    = card.statusValId;
+	link.hostColumnId    = card.columnId;
 	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	
 	const psub = [ link.hostProjectName, link.hostColumnName ];

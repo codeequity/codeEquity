@@ -144,7 +144,10 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	else if( ghUtils.validField( card, "cardId" ) && !ghUtils.validField( card, "columnId" ) ) {  // label notice beat create notice
 	    console.log( authData.who, "carded issue, no status -> peq issue", link === -1 );
 	    link = {};
-	    card.columnName = "No Status";  // XXX formalize
+	    // No link, no loc.
+	    // Card has project.  "No Status" is a special case, it has a null value in gql response from GH.
+	    card.columnName = "No Status";
+	    card.columnId   = "No Status";
 	}
 	else {
 	    console.log( authData.who, "carded issue with status -> peq issue" );
@@ -152,13 +155,6 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	    if( link === -1 ) { link = {}; }
 	}
 
-	/*
-	locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
-	if( locs === -1 ) {
-	    // XXX revisit once (if) GH API supports column creation
-	    console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand, for now." );
-	*/
-	
 	assert( pd.issueNum >= 0 );
 	link.hostIssueNum   = pd.issueNum;
 	link.hostCardId     = card.cardId
