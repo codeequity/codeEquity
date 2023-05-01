@@ -174,14 +174,14 @@ async function getLabels( authData, td ) {
     return labels.length == 0 ? -1 : labels;
 }
 
-// Note, this is not returning full issues, just faceplate.  could return, say, labels.length..
+// Note, this is not returning full issues.  could return, say, labels.length..
 async function getIssues( authData, td ) {
     let issues = [];
 
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on Repository {
-            issues(first:100) {edges {node { id title number }}}
+            issues(first:100) {edges {node { id title number body}}}
 
 
     }}}`;
@@ -198,13 +198,14 @@ async function getIssues( authData, td ) {
 		let datum = {};
 		datum.id       = iss.id;
 		datum.number   = iss.number;
+		datum.body     = iss.body;
 		datum.title    = iss.title;
 		issues.push( datum );
 	    }
 	})
 	.catch( e => issues = ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
 
-    return issues.length == 0 ? -1 : issues;
+    return issues;
 }
 
 // ids, names, faceplate for zeroth repo
@@ -261,7 +262,8 @@ async function getProjects( authData, td ) {
 // Note: first view only
 async function getColumns( authData, pNodeId ) {
     let cols = [];
-    console.log( "get cols", pNodeId );
+    // console.log( "get cols", pNodeId );
+    if( pNodeId == config.EMPTY ) { return cols; }
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -293,8 +295,8 @@ async function getColumns( authData, pNodeId ) {
 		    for( let k = 0; k < afield.options.length; k++ ) {
 			let datum = {};
 			datum.statusId = statusId;
-			datum.id = afield.options[i].id;
-			datum.name = afield.options[i].name;
+			datum.id = afield.options[k].id;
+			datum.name = afield.options[k].name;
 			cols.push( datum );
 		    }
 		    break;
@@ -339,9 +341,11 @@ async function getDraftIssues( authData, pNodeId ) {
 
 
 // Get all cards for project.  Filter for column.  Could very easily add, say, col info.. useful?
+// Needs to work for draft issues as well, i.e. newborn cards.
 async function getCards( authData, pNodeId, colId ) {
     let cards = [];
 
+    // console.log( "get cards", pNodeId, colId );
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -352,7 +356,9 @@ async function getCards( authData, pNodeId, colId ) {
                    fieldValueByName(name: "Status") {
                    ... on ProjectV2ItemFieldSingleSelectValue { name optionId }}
                    content {
-                   ... on ProjectV2ItemContent { ... on Issue { id title number }}}
+                   ... on ProjectV2ItemContent { ... on Issue { id title number }
+                                                 ... on DraftIssue { id title }
+                           }}
                }}}}
     }}}`;
     let variables = {"nodeId": pNodeId };
@@ -366,18 +372,20 @@ async function getCards( authData, pNodeId, colId ) {
 
 	    for( let i = 0; i < issues.length; i++ ) {
 		const iss = issues[i].node;
-		if( iss.type == "ISSUE" && iss.fieldValueByName.optionId == colId ) {
+		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {
 		    let datum = {};
 		    datum.id     = iss.id;
 		    datum.issNum = iss.content.number;
 		    datum.title  = iss.content.title;
+		    if( typeof datum.issNum === 'undefined' ) { datum.issNum = -1; } // draft issue
 		    cards.push( datum );
 		}
 	    }
 	})
 	.catch( e => cards = ghUtils.errorHandler( "getCards", e, getCards, authData, pNodeId, colId )); 
 
-    return cards.length == 0 ? -1 : cards;
+    // return cards.length == 0 ? -1 : cards;
+    return cards;
 }
 
 async function getCard( authData, cardId ) {
@@ -415,6 +423,14 @@ async function getComments( authData, issueId ) {
 	.catch( e => comments = ghUtils.errorHandler( "getComments", e, getComments, authData, issueId )); 
 
     return comments.length == 0 ? -1 : comments;
+}
+
+async function getAssignee( authData, aName ) {
+    let nodeId = await ghUtils.getOwnerId( authData.pat, aName );
+    let retVal = -1;
+    if( nodeId != -1 ) {  retVal = { id: nodeId, login: aName };  }
+	
+    return retVal;
 }
 
 async function findIssue( authData, issueId ) {
@@ -535,12 +551,10 @@ async function makeProject(authData, td, name, body, specials ) {
 async function findOrCreateProject( authData, td, name, body ) {
 
     let [pid,ld] = await ghV2.findOrCreateProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
-    assert( typeof pid !== 'undefined' && pid != -1 );
+    assert( typeof pid !== 'undefined' && !(pid <= -1) );
 
     // force linking in ceServer:ghLinks, not local ghLinks
     if( !ld ) { await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); }
-
-    // XXX assert in ceproj
 
     console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
 
@@ -587,7 +601,7 @@ async function unlinkProject( authData, ceProjId, pNodeId, rNodeId ) {
     if( typeof res.data === 'undefined' ) { console.log( "UnlinkProject failed.", res ); }
     else {
 	// Cards are still valid, just can't find the project from the repo.  Clear repo info
-	tu.unlinkProject( authData, ceProjId, pNodeId, rNodeId );
+	await tu.unlinkProject( authData, ceProjId, pNodeId, rNodeId );
     }
 
     await utils.sleep( tu.MIN_DELAY );
@@ -617,10 +631,11 @@ async function updateProject( authData, projId, name ) {
 async function makeColumn( authData, ghLinks, ceProjId, fullName, projId, name ) {
     // First, wait for projId, can lag
     await tu.settleWithVal( "confirmProj", tu.confirmProject, authData, ghLinks, ceProjId, fullName, projId );
-    let cid = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
+    let loc = await ghV2.createColumn( authData, ghLinks, ceProjId, projId, name );
+    let cid = loc === -1 ? loc : loc.hostColumnId;
     
     if( cid === -1 ) { console.log( "Missing column:", name ); }
-    else            { console.log( "Found column:", name ); }
+    else             { console.log( "Found column:", name, cid ); }
 
     // XXX Can't verify this, since we know col can not be created by apiV2 yet
     // let query = "project_column created " + name + " " + fullName;
@@ -682,6 +697,7 @@ async function makeAllocCard( authData, ghLinks, ceProjId, rNodeId, pNodeId, col
     let allocIssue = {};
     allocIssue.title = title;
     allocIssue.labels = [label];
+    allocIssue.allocation = true;
 
     // Create labeled issue, create PV2 item in correct project.  This will now be in nostatus.
     // issue:open, issue:label, item:create, maybe (?) item:edit
@@ -724,15 +740,16 @@ async function makeNewbornCard( authData, ghLinks, ceProjId, pNodeId, colId, tit
     // First, wait for colId, can lag
     await tu.settleWithVal( "make newbie card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
-    let pvId = createDraftIssue( authData, pNodeId, title, "" );
+    let pvId = await createDraftIssue( authData, pNodeId, title, "" );
     await ghV2.moveCard( authData, pNodeId, pvId, statusId, colId );
     
     await utils.sleep( tu.MIN_DELAY );
-    return cid;
+    return pvId;
 }
 
 async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, issueId, justId ) {
-    const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": pNodeId, "colId": colId } );    
+    let query = { "ceProjId": ceProjId, "projId": pNodeId, "pNodeId": pNodeId, "colId": colId };   // XXX darg.  naming sux
+    const locs = ghLinks.getLocs( authData, query );    
     assert( locs !== -1 );
     let statusId = locs[0].hostUtility;
 
@@ -740,14 +757,14 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
     await tu.settleWithVal( "make Proj card", tu.confirmColumn, authData, ghLinks, ceProjId, pNodeId, colId );
 
     justId = typeof justId === undefined ? false : true;
-    let card = await ghV2.createProjectCard( authData, pNodeId, issueId, statusId, colId, justId );
+    let card = await ghV2.createProjectCard( authData, ghLinks, query, issueId, statusId, justId );
 
     // XXX very weak notice - could be anything.  Verbose ceNotification.  
     // Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fNfog VudsdHVkWc for codeequity 03.17.798
     // gives notice: projects_v2_item edited codeequity/I_kwDOIiH6ss5fNinX GitHub/codeequity/I_kwDOIiH6ss5fNinX
     let path = config.TEST_OWNER + "/" + issueId;
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
-    let query = "projects_v2_item edited " + path + locator;
+    query       = "projects_v2_item edited " + path + locator;
     await tu.settleWithVal( "makeProjCard", tu.findNotice, query );
 
     // XXX either leave this in to allow peq data to record, or set additional post condition.
@@ -758,7 +775,8 @@ async function makeProjectCard( authData, ghLinks, ceProjId, pNodeId, colId, iss
 // NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function makeIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels} );
-    issue.push( title );
+    assert( issue.length == 3 );
+    issue[2] = title;
     await utils.sleep( tu.MIN_DELAY );
     return issue;
 }
@@ -829,10 +847,11 @@ async function delLabel( authData, label ) {
 }
 
 async function addAssignee( authData, issDat, assignee ) {
-    await ghV2.addAssignee( authData, issDat[0], assignee.id );
+    let ret = await ghV2.addAssignee( authData, issDat[0], assignee.id );
+    assert( ret, "Assignement failed" );
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
-    let query = "issue assigned " + issueData[2] + locator;
+    let query = "issue assigned " + issDat[2] + locator;
     await tu.settleWithVal( "assign issue", tu.findNotice, query );
 }
 
@@ -874,7 +893,8 @@ async function remCard( authData, ceProjId, cardId ) {
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
 async function closeIssue( authData, td, issDat, loc = -1 ) {
-    await ghV2.updateIssue( authData, issDat[0], "state", "closed" );
+    // await ghV2.updateIssue( authData, issDat[0], "state", "closed" );
+    await ghV2.updateIssue( authData, issDat[0], "state", "CLOSED" );
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
     let query = "issue closed " + issDat[2] + locator;
@@ -885,7 +905,7 @@ async function closeIssue( authData, td, issDat, loc = -1 ) {
 }
 
 async function reopenIssue( authData, td, issueId ) {
-    await ghV2.updateIssue( authData, issueId, "state", "open" );
+    await ghV2.updateIssue( authData, issueId, "state", "OPEN" );
 
     // Can take GH a long time to move card.  
     await utils.sleep( tu.MIN_DELAY + 500 );
@@ -2180,6 +2200,7 @@ exports.getDraftIssues  = getDraftIssues;
 exports.getCards        = getCards;
 exports.getCard         = getCard;
 exports.getComments     = getComments;
+exports.getAssignee     = getAssignee;
 exports.findIssue       = findIssue;
 exports.findIssueByName = findIssueByName;
 exports.findProject     = findProject;

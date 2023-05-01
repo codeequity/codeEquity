@@ -51,7 +51,7 @@ async function postCE( shortName, postData ) {
 async function getProjectSubs( authData, ghLinks, ceProjId, projName, colName ) {
     let projSub = [ "Unallocated" ];  // Should not occur.
 
-    console.log( authData.who, "Set up proj subs", projName, colName );
+    // console.log( authData.who, "Set up proj subs", projName, colName );
 	
     if( projName == config.MAIN_PROJ ) { projSub = [ colName ]; }
     else {

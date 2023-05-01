@@ -149,6 +149,7 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     // XXX can set ghLinks... and locs..?  more args?  hmmm
     pd.ceProjectId  = ceProjects.find( jd.host, jd.org, jd.reqBody.repository );
     assert( pd.ceProjectId != -1 );
+    ceRouter.setLastCEP( pd.ceProjectId );
 
     // XXX NOTE!  This is wrong for private repos.  Actor would not be builder.
     console.log( "XXX Switcher GHC" );
@@ -220,12 +221,13 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 
     let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
 
-    console.log( authData.who, "switcherGH2..", pd.ceProjectId );
+    // console.log( authData.who, "switcherGH2..", pd.ceProjectId );
 
     if( pd.ceProjectId == config.EMPTY ) {
 	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
     }
     else {
+	ceRouter.setLastCEP( pd.ceProjectId );
 	assert( jd.queueId == authData.job ) ;
 	// await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
 	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, config.CE_ACTOR );
@@ -301,10 +303,12 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	// NOTE: it would be fair at this point to cast everything as PV2, given evident demise of GHC...
 	if( jd.event == "issue" && jd.action == "deleted" ||
 	    jd.event == "issue" && jd.action == "labeled" ||    
+	    jd.event == "issue" && jd.action == "assigned" ||    
+	    jd.event == "issue" && jd.action == "unassigned" ||    
 	    jd.event == "label" && jd.action == "deleted" ||
 	    jd.event == "label" && jd.action == "created" )
 	{
-	    console.log( "Found PV2.  Switching GH2 for content node" );
+	    // console.log( "Found PV2.  Switching GH2 for content node" );
 	    let repo = jd.org.split('/');
 	    assert( repo.length == 2 );
 	    jd.org = repo[0];  // XXX revisit this.  recasting content notification to pv2 .. revisit getJobSummary here.

@@ -124,7 +124,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		    for( let j = 0; j < aview.fields.edges.length; j++ ) {
 			if( j >= 99 ) { console.log( authData.who, "WARNING.  Detected a very large number of columns, ignoring some." ); }
 			const pfc = aview.fields.edges[j].node;
-			if( pfc.name == "Status" ) {
+			if( pfc.name == "Status" ) {                            // XXX formalize.  generalize?
 			    statusId = pfc.id;
 			    for( let k = 0; k < pfc.options.length; k++ ) {
 				let datum   = {};
@@ -381,7 +381,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
     
     console.log( authData.who, "Create issue, from alloc?", repoNode, projNode, issue.title, issue.allocation );
 
-    assert( !issue.allocation || typeof issue.body === 'undefined', "Error.  createIssue body is about to be overwritten." );
+    assert( !issue.allocation || issue.body == "", "Error.  createIssue body is about to be overwritten." );
     if( issue.allocation ) {
 	issue.body  = "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
 	issue.body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"
@@ -545,7 +545,7 @@ async function addAssignee( authData, issueId, aNodeId ) {
     console.log( authData.who, "Add assignee", issueId, aNodeId );
     if( utils.TEST_EH && Math.random() < utils.TEST_EH_PCT ) {
 	await utils.failHere( "addAssignee" )
-	    .catch( e => ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, issueId, aNodeId )); 
+	    .catch( e => ret = ghUtils.errorHandler( "addAssignee", utils.FAKE_ISE, addAssignee, authData, issueId, aNodeId )); 
     }
     else {
 	let query = `mutation( $id:ID!, $adds:[ID!]! )
@@ -554,11 +554,12 @@ async function addAssignee( authData, issueId, aNodeId ) {
 	let variables = {"id": issueId, "adds": [aNodeId] };
 	let queryJ    = JSON.stringify({ query, variables });
 	
-	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {  
-	    ret = await ghUtils.errorHandler( "addAssignee", ret, addAssignee, authData, issueId, aNodeId );
-	    return ret;
-	}
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	    .then( raw => {
+		if( typeof raw.errors !== 'undefined' ) { console.log( "WARNING.  Assignment failed", raw.errors[0].message ); }
+		else                                    { ret = true; }
+	    })
+	    .catch( e => ret = ghUtils.errorHandler( "addAssignee", ret, addAssignee, authData, issueId, aNodeId ));
     }
     return ret;
 }
@@ -628,7 +629,7 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
 
 async function createLabel( authData, repoNode, name, color, desc ) {
 
-    console.log( authData.who, "Create label", repoNode, name, desc, color );
+    // console.log( authData.who, "Create label", repoNode, name, desc, color );
 
     let query     = `mutation( $id:ID!, $color:String!, $name:String!, $desc:String! )
                        { createLabel( input:{ repositoryId: $id, color: $color, description: $desc, name: $name }) {clientMutationId, label {id, name, color, description}}}`;
@@ -642,7 +643,7 @@ async function createLabel( authData, repoNode, name, color, desc ) {
 	    if( ret.status != 200 ) { throw ret; }
 	    if( typeof ret.errors !== 'undefined' ) { console.log( authData.who, "WARNING. Label not created", ret.errors ); }
 	    else {
-		console.log( authData.who, " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
+		// console.log( authData.who, " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
 		label = ret.data.createLabel.label;
 	    }
 	})
@@ -658,6 +659,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     console.log( authData.who, "Get label", repoNode, peqHumanLabelName );
 
     // query below checks both name and description
+    // Oddly, GH returns anything that partially matches the query, without means to limit to precise matches.  i.e. if name is 1M Alloc, multiple are returned
     let query = `query( $repoNode:ID!, $name:String! ) {
                    node( id: $repoNode ) {
                    ... on Repository {
@@ -678,7 +680,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
 	    
 	    for( let i = 0; i < labels.edges.length; i++ ) {
 		const lab = labels.edges[i].node;
-		if( lab.name == peqHumanLabelName ) {
+		if( lab.name == peqHumanLabelName ) {  // finish filtering
 		    labelRes.status = 200;
 		    labelRes.label = lab;
 		}
@@ -738,7 +740,7 @@ function makeHumanLabel( amount, peqTypeLabel ) {
 }
 
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
-    console.log( authData.who, "Creating PEQ label", allocation, peqValue );
+    // console.log( authData.who, "Creating PEQ label", allocation, peqValue );
 
     // GH no longer allows commas in label names.  Convert, say, 1,500 PEQ to 1.5k PEQ
     let pvName = "";
@@ -1025,7 +1027,7 @@ async function getCard( authData, cardId ) {
 		retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
 		retVal.columnName  = card.fieldValueByName.name;
 	    }
-	    else { console.log( "Card is No Status, could not get column info." ); }
+	    else { console.log( authData.who, "Card is No Status, could not get column info." ); }
 	})
 	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, cardId ));
 
@@ -1103,22 +1105,34 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
     return ret;
 }
 
+
+
+
 // Note this is used to situate an issue, then put into correct column.
 // Note issueId is contentId.  issDat[2] is issueNodeId
-async function createProjectCard( authData, projNodeId, issueId, fieldId, valueId, justId ) {
+async function createProjectCard( authData, ghLinks, ploc, issueId, fieldId, justId ) {
     let issDat = [issueId, -1, -1];
-    console.log( authData.who, "create project card", projNodeId, issueId, fieldId, valueId, justId ) ;
-    issDat = await cardIssue( authData, projNodeId, issDat );
+
+    assert( typeof ploc.ceProjId !== 'undefined' );
+    assert( typeof ploc.pNodeId  !== 'undefined' );
+    assert( typeof ploc.colId    !== 'undefined' );
+    
+    console.log( authData.who, "create project card", ploc.pNodeId, issueId, fieldId, ploc.colId, justId ) ;
+    issDat = await cardIssue( authData, ploc.pNodeId, issDat );
     
     // Move from "No Status".  If good, retVal contains null clientMutationId
-    let retVal = await moveCard( authData, projNodeId, issDat[2], fieldId, valueId );
+    let retVal = await moveCard( authData, ploc.pNodeId, issDat[2], fieldId, ploc.colId );
     
     if( retVal !== -1 ) {
+	let locs = ghLinks.getLocs( authData, { "ceProjId": ploc.ceProjId, "projId": ploc.pNodeId, "colId": ploc.colId } );
+	assert( locs.length == 1 );
+	assert( locs[0].hostColumnId == ploc.colId );
+	
 	retVal = justId ? 
 	    issDat[2] : 
-	    {"projId": projNodeId, "cardId": issDat[2], "statusId": fieldId, "statusValId": valueId };
+	    {"projId": ploc.pNodeId, "cardId": issDat[2], "statusId": fieldId, "columnId": ploc.colId, "columnName": locs[0].hostColumnName };
     }
-
+    
     return retVal;
 }
 
@@ -1196,7 +1210,8 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 	if( colId === -1 ) {
 	    let progCol = await createColumn( authData, ghLinks, ceProjId, projId, progName );
 	    console.log( authData.who, "Creating new column:", progName );
-	    colId = progCol.data.id;
+	    assert( progCol !== -1 );
+	    colId = progCol.hostColumnId;
 	    let nLoc = {};
 	    nLoc.ceProjectId     = ceProjId; 
 	    nLoc.hostRepository  = fullName;
@@ -1210,7 +1225,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
     }
 
     // issue-linked project_card already exists if issue exists, in No Status.  Move it.
-    await createProjectCard( authData, projId, newCardId, statusId, colId, true );
+    await createProjectCard( authData, ghLinks, {"ceProjId": ceProjId, "pNodeId": projId, "colId": colId}, issueId, statusId, true );
     assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
     
     // remove orig card
@@ -1344,7 +1359,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     let link = ghLinks.getUniqueLink( authData, pd.ceProjectId, pd.issueId );
     if( link === -1 ) { return; }
 
-    console.log( link );
+    // console.log( link );
     
     // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
     if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName != config.PROJ_ACCR ) { return; }   
@@ -1375,20 +1390,36 @@ async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
 	    .catch( e => loc = ghUtils.errorHandler( "createColumn", utils.FAKE_ISE, createColumn, authData, ghLinks, ceProjectId, projId, colName));
     }
     else {
-	locs = ghLinks.getLocs( authData, { "ceProjId": ceProjectId, "projId": projId, "colName": colName } );    
+	let locs = ghLinks.getLocs( authData, { "ceProjId": ceProjectId, "projId": projId, "colName": colName } );    
 	    
 	if( locs === -1 ) {
 	    // XXX revisit once (if) GH API supports column creation
 	    console.log( authData.who, "Error.  Please create the column", colName, "by hand, for now." );
-	    loc = -1;
 	}
 	else { loc = locs[0]; }
     }
     return loc;
 }
 
+
+/* 
+  XXX query inside gql can't seem to deal with whitespace.  It appears to pay attention to the first word, only.
+      Adding "AND" does not help.  Adding \"\" around name does not help.  `` nope.  \\\ nope.
+      The query below works because both words are unique in current tiny world.  adding "A" in front matches everything.
+  
+  So the code below assumes query is useless, does extra filtering as with label.
+
+{
+  user(login:"ariCETester"){
+    login id projectsV2(query: "Pre-Existing Project in:title", first:99 ) {edges{ node{ id title }}}}
+  organization( login:"codeEquity"){
+    login id projectsV2(query: "Pre-Existing Project in:title", first:99) {edges{ node{ id title }}}}
+}
+*/
+
 async function findProjectByName( authData, orgLogin, userLogin, projName ) {
     let pid = -1;
+    let pNameQuery = "name:" + projName;
     // console.log( "Find project", orgLogin, userLogin, projName );
     
     let query = `query($oLogin: String!, $uLogin: String!, $pName: String!) {
@@ -1399,9 +1430,11 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
            login id
            projectsV2(first: 99, query: $pName ) {edges{ node{ id title }}}}
     }`;
-    let variables = {"oLogin": orgLogin, "uLogin": userLogin, "pName": projName };
+    let variables = {"oLogin": orgLogin, "uLogin": userLogin, "pName": pNameQuery };
     query = JSON.stringify({ query, variables });
 
+    // XXX arggh.  if only query worked as expected
+    /*
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
@@ -1413,22 +1446,39 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
 	    else if( projects.length > 1 ) { pid = -1 * projects.length; }
 	})
 	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, orgLogin, userLogin, projName ));
+    */
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = [];
+	    if( ghUtils.validField( raw.data, "user" ))         { projects = raw.data.user.projectsV2.edges; }
+	    if( ghUtils.validField( raw.data, "organization" )) { projects = projects.concat( raw.data.organization.projectsV2.edges ); }
 
+	    for( let i = 0; i < projects.length; i++ ) {
+		const proj = projects[i].node;
+		if( proj.title == projName ) { pid = proj.id; }
+	    }
+	})
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByName", e, findProjectByName, authData, orgLogin, userLogin, projName ));
+    
     return pid;
 }
 
 async function findProjectByRepo( authData, rNodeId, projName ) {
     let pid = -1;
-
+    let pNameQuery = "name:" + projName;
+    
     let query = `query($rid:ID!, $pName:String!) {
         node( id:$rid ) {
            ... on Repository {
               id nameWithOwner
               projectsV2(first:99, query: $pName ) {edges{ node{ id title }}}}
     }}`;
-    let variables = {"rid": rNodeId, "pName": projName };
+    let variables = {"rid": rNodeId, "pName": pNameQuery };
     query = JSON.stringify({ query, variables });
 
+    // XXX same as findByName
+    /*
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
@@ -1439,7 +1489,20 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 	    else if( projects.length > 1 ) { pid = -1 * projects.length; }
 	})
 	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
+    */
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let projects = [];
+	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
 
+	    for( let i = 0; i < projects.length; i++ ) {
+		const proj = projects[i].node;
+		if( proj.title == projName ) { pid = proj.id; }
+	    }
+	})
+	.catch( e => pid = ghUtils.errorHandler( "findProjectByRepo", e, findProjectByRepo, authData, rNodeId, projName ));
+    
     return pid;
 }
 
@@ -1553,7 +1616,8 @@ async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, 
 
     // create card in unclaimed:unclaimed
     // console.log( "  .. CUC enter create card" );
-    let card = await createProjectCard( authData, unClaimedProjId, issueId, loc.hostUtility, loc.hostColumnId, false );
+    let ploc = {"ceProjId": pd.ceProjectId, "pNodeId": unClaimedProjId, "colId": loc.hostColumnId} ;
+    let card = await createProjectCard( authData, ghLinks, ploc, issueId, loc.hostUtility, false );
     // console.log( "  .. CUC enter return card", card );
     return card;
 }

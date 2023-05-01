@@ -70,7 +70,6 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     // TESTS
 
     let subTest = "";
-
     await gh2TestDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );

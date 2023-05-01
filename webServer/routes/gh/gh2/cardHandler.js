@@ -26,17 +26,19 @@ https://developer.github.com/v3/issues/#create-an-issue
 //                              !Master projects do not recognize <allocation>
 // PeqType:PLAN  most common
 async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) { 
-    let reqBody = pd.reqBody;
-    let fullName = pd.repoName;
+    let reqBody  = pd.reqBody;
+    let fullName = link.hostRepo;
     
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
     // I want peqId for notice PActions, with or without issueId
     if( typeof peq == 'undefined' ) {
-	peq = await ghUtils.validatePEQ( authData, pd.ceProjectId, fullName, link.hostIssueId, link.hostIssueName, link.hostProjectId );
+	// Note.  Spin wait for peq to finish recording from sibling labelIssue notification
+	peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.ceProjectId, link.hostIssueId, link.hostIssueName, link.hostProjectId );
     }
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );
+    console.log( "Recording move for peq:", peq.PEQId );
 
     let verb   = "";
     let action = "";
@@ -77,12 +79,11 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 	subject = [ peq.PEQId, locs[0].hostColumnName ];
     }
     else if( action == config.PACTACT_RELO ) {
-	console.log( reqBody );
+	// console.log( reqBody );
 	let cardId = reqBody.projects_v2_item.node_id;
-	assert( cardId > 0 );
 
 	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
-	assert( links  !== -1 && links[0].hostColumnId != -1 );
+	assert( links  !== -1 && links[0].hostColumnId != config.EMPTY );
 
 	subject = [ peq.PEQId, links[0].hostProjectId, links[0].hostColumnId ];
     }
@@ -93,21 +94,28 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 			   utils.getToday(), reqBody );
 }
 
-// NOTE: after 6/2022, delete notification is not dependably sent by GH upon delete situated issue.
-//       However, it may, eventually, be sent.  Must be able to ignore multiple notices for the same event.
-// UPDATE: End of 6/2022, delete notification is back to normal. 
-async function deleteCard( authData, ghLinks, pd, cardId ) {
-    // Not carded?  no-op.  or maybe delete issue arrived first.
+// This is called from issue:delete, and triggered from card:delete (which may be triggered initially from issue:xfer since xfer leaves card in place)
+// issue:delete - GH removes the card without notification.
+// transfer issue leaves card in place in old repo, so issue:transfer will issue a GH:delete card, which will trigger here eventually.
+// del project?  For now, not getting project notifications.
+// del column triggers a move (to no status), not delete.
+// No matter the source, delete card must manage linkage, peq, pact, etc.
+// No matter the source, card will not exist in GH when this is called.
+async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
+    // issue:del calls here first, if still has linkage.
+    let issueExists = typeof fromIssue === 'undefined' ? true : !fromIssue;  
+    
+    // Cards now only exist with an underlying issue or draftIssue.  If draft issue, no op.
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "cardId": cardId });
-    if( links === -1 ) { return; }
+    if( links === -1 ) { console.log( "No action taken for draft issues & their cards." ); return; }
     
     let link    = links[0];
     const accr  = link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR];
     let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card was deleted.";
     comment    += " PEQ issues require a 1:1 mapping between issues and cards.";
-    
+
     // Carded, untracked (i.e. not peq)?   Just remove linkage, since GH removed card.
-    if( link.hostColumnId == -1 ) {
+    if( link.hostColumnId == config.EMPTY ) {
 	ghLinks.removeLinkage({"authData": authData, "ceProjId": link.ceProjectId, "issueId": link.hostIssueId });
 	return;
     }
@@ -115,10 +123,6 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
     // PEQ.  Card is gone in GH, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
     // Wait later
     let peq = awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );
-    
-    // Is the source a delete issue or transfer? 
-    let issueExists = await gh.checkIssue( authData, pd.GHOwner, pd.GHRepo, link.hostIssueNum );
-    if( issueExists == -1 ) { issueExists = false; };
     
     // Regular peq?  or ACCR already in unclaimed?  remove it no matter what.
     if( !accr || link.hostProjectName == config.UNCLAIMED ) {
@@ -133,10 +137,11 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 	// no need to wait.
 	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
 	peq = await peq;
+	if( peq === -1 ) { console.log( "WARNING.  Race condition detected when deleting peq." ); }
 	awsUtils.removePEQ( authData, peq.PEQId );
 	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
 	let note   = accr ? "Disconnected issue" : "";
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			       config.PACTVERB_CONF, action, [peq.PEQId], note,
 			       utils.getToday(), pd.reqBody );
     }
@@ -145,11 +150,11 @@ async function deleteCard( authData, ghLinks, pd, cardId ) {
 	console.log( authData.who, "Moving ACCR", accr, issueExists, link.hostIssueId );
 	// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
 	//           card creation can fail, and results can be uncertain at this point.  
-	let card = await gh.createUnClaimedCard( authData, ghLinks, ceProjects, pd, parseInt( link.hostIssueId ), accr );  
-	link.hostCardId      = card.id.toString();
-	link.hostProjectId   = card.project_url.split('/').pop();
+	let card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.hostIssueId, accr );  
+	link.hostCardId      = card.cardId;
+	link.hostProjectId   = card.projId;
 	link.hostProjectName = config.UNCLAIMED;
-	link.hostColumnId    = card.column_url.split('/').pop();
+	link.hostColumnId    = card.columnId;
 	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	
 	const psub = [ link.hostProjectName, link.hostColumnName ];
@@ -179,7 +184,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     pd.actor = pd.reqBody.sender.login;
     let card = pd.reqBody.projects_v2_item;
 
-    console.log( authData.who, "Card", action, "Actor:", pd.actor )
+    console.log( authData.who, "Card", action, "Actor:", pd.actor );
     // pd.show();
     
     switch( action ) {
@@ -221,24 +226,24 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // within gh project, move card from 1 col to another.
 	    // Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
 	    
+	    let cardId = card.node_id;
+	    
 	    if( pd.reqBody.changes == null ) {
-		console.log( authData.who, "Move within columns are ignored.", pd.reqBody['project_card']['id'] );
+		console.log( authData.who, "Move within columns are ignored.", cardId );
 		return;
 	    }
-	    
-	    let cardId    = card.node_id;
 
 	    let newCard      = await ghV2.getCard( authData, cardId );
 	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
+	    // get no status col
 	    const locs       = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colName": "No Status" } );  // XXX formalize
 	    assert( locs !== -1 );
 
 	    // Ignore newborn, untracked cards
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
-	    if( links === -1 || links[0].hostColumnId == -1 || links[0].hostColumnId == config.EMPTY ) {
-		// XXX Decide -1 or config.EMPTY
-		if( links !== -1 && links[0].hostColumnId == -1 ) { console.log( "Found colId of -1", newCard ); }  // XXX check, remove
+	    
+	    if( links === -1 || links[0].hostColumnId == config.EMPTY ) {
 		if( newNameIndex > config.PROJ_PROG ) {
 		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    // No origination data.  use default
@@ -298,9 +303,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'deleted' :
-	// Source of notification: delete card, delete (carded) issue, delete col, delete proj, xfer
-	// From here, can't tell which source, or which order of arrival, just know GH has already deleted the card, and maybe the issue.
-	// No matter the source, delete card must manage linkage, peq, pact, etc.
+	// Source of notification: delete card (delete col, delete proj, xfer   ???)
 	await deleteCard( authData, ghLinks, pd, pd.reqBody.project_card.id );
 	break;
     case 'edited' :
@@ -323,4 +326,4 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 exports.handler    = handler;
 exports.recordMove = recordMove;
-//exports.deleteCard = deleteCard;
+exports.deleteCard = deleteCard;

@@ -146,10 +146,12 @@ async function getPeq( authData, ceProjId, issueId, checkActive ) {
 }
 
 async function removePEQ( authData, peqId ) {
-
+    
     let shortName = "UpdatePEQ";
     let query = { "PEQId": peqId, "Active": "false" };
 
+    // console.log( authData.who, "remove", query );
+    
     let pd = { "Endpoint": shortName, "pLink": query };
     return await wrappedPostAWS( authData, shortName, pd );
 }
@@ -162,6 +164,8 @@ async function updatePEQPSub( authData, peqId, projSub ) {
     let postData = {};
     postData.PEQId          = peqId.toString();
     postData.HostProjectSub = projSub;
+
+    console.log( authData.who, "psub", postData );
     
     let pd = { "Endpoint": shortName, "pLink": postData }; 
     return await wrappedPostAWS( authData, shortName, pd );
@@ -291,7 +295,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
 async function recordPEQAction( authData, ceUID, hostUserName, ceProjId, verb, action, subject, note, entryDate, rawBody ) {
-    console.log( authData.who, "Recording PEQAction: ", verb, action, ceUID );
+    console.log( authData.who, "Recording PEQAction: ", verb, action, "ceuid:", ceUID );
 
     let shortName = "RecordPEQAction";
 
@@ -311,7 +315,7 @@ async function recordPEQAction( authData, ceUID, hostUserName, ceProjId, verb, a
 }
 
 async function checkPopulated( authData, ceProjId ) {
-    console.log( authData.who, "check populated: ", ceProjId );
+    // console.log( authData.who, "check populated: ", ceProjId );
 
     let shortName = "CheckSetHostPop";
     let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "false" };
@@ -452,11 +456,15 @@ async function linkProject( authData, query ) {
 async function unlinkProject( authData, query ) {
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
+    console.log( "UnlinkProject", postData );
     let retVal = await wrappedPostAWS( authData, shortName, postData );
 
     shortName = "GetEntry";
     postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
     let ceProj = await wrappedPostAWS( authData, shortName, postData );
+
+    // NOTE if this fails during testing, chances are you are not restarting ceServer (good), but also not running testDelete (bad).
+    //      if so, multiple copies of the current project-du-jour are stored in aws:ceProjects.
     assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ), query );
 
     return retVal;
@@ -513,6 +521,8 @@ async function updatePEQVal( authData, peqId, peqVal ) {
     postData.PEQId        = peqId.toString();
     postData.Amount       = peqVal;
     
+    console.log( authData.who, "update pval", postData );
+
     let pd = { "Endpoint": shortName, "pLink": postData }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }
