@@ -229,8 +229,6 @@ async function rebuildPEQ( authData, link, oldPeq ) {
     return newPEQId; 
 }
 
-// XXX evaluate extent.  ran into this where recordPeq for open issue (with unclaimed) landed after (makeCard -> gho).
-//     messed up psub, but ingest is managing it.
 // There is a rare race condition that can cause recordPeqData to fail.
 //   label issue.  calls PNP, but does not await.  (PNP will create PEQ, eventually)
 //   create card.  calls PNP, which calls recordPeqData, which checks for unclaimed:relocate and existence of PEQ.  
@@ -241,7 +239,9 @@ async function rebuildPEQ( authData, link, oldPeq ) {
 //      creation of AWS PEQ, depending on if assignment occured in host before peq label notification processing completes.
 async function recordPeqData( authData, pd, checkDup, specials ) {
     assert(typeof pd.ceProjectId !== 'undefined' );
-	
+    let relocate  = typeof specials !== 'undefined' && specials.hasOwnProperty( "relocate" ) ? specials.relocate : false;
+    let columnId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "columnId" ) ? specials.columnId : -1;
+    
     let newPEQId = -1;
     let newPEQ = -1
     if( checkDup ) { 
@@ -249,18 +249,11 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 	newPEQ = await getPeq( authData, pd.ceProjectId, pd.issueId, false );
 	if( newPEQ != -1 ) { newPEQId = newPEQ.PEQId; }
     }
-
-    // If relocate, must have existing peq
-    // Make sure aws has dependent PEQ before proceeding.
-    if( specials == "relocate" && newPEQ == -1 ) {
-	newPEQ = await utils.settleWithVal( "recordPeqData", getPeq, authData, pd.ceProjectId, pd.issueId, false );
-	newPEQId = newPEQ.PEQId; 
-    }
     
     let postData = {};
     postData.CEProjectId    = pd.ceProjectId;
     postData.PEQId          = newPEQId;
-    postData.HostHolderId   = specials == "relocate" ? newPEQ.HostHolderId : pd.assignees;   // list of hostUserLogins assigned
+    postData.HostHolderId   = pd.assignees;   // list of hostUserLogins assigned
     postData.PeqType        = pd.peqType;               
     postData.Amount         = pd.peqValue;              
     postData.HostRepo       = pd.repoName;
@@ -270,24 +263,30 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";
 
-    console.log( authData.who, "Recording peq data for", pd.issueName, postData.HostHolderId.toString() );	
+    console.log( authData.who, "Recording peq data for", pd.issueName, postData.HostHolderId.toString());	
 
     // Don't wait if already have Id
     if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
     else                 { recordPEQ( authData, postData ); }
     assert( newPEQId != -1 );
     
-    let action = "add";
+    let action = config.PACTACT_ADD;
     let subject = [ newPEQId ];
-    if( typeof specials !== 'undefined' && specials == "relocate" ) {
-	action = config.PACTACT_RELO;
-	subject = [ newPEQId, pd.projectId, pd.columnId.toString() ];
-    }
-	
+
     // no need to wait
     recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 		     config.PACTVERB_CONF, action, subject, "",
 		     utils.getToday(), pd.reqBody );
+
+    // Some actions require both add/relo.  see gh2.issueHandler
+    if( relocate ) {
+	assert( columnId != -1 );
+	action = config.PACTACT_RELO;
+	subject = [ newPEQId, pd.projectId, columnId ];
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+				  config.PACTVERB_CONF, action, subject, "", 
+				  utils.getToday(), pd.reqBody );
+    }
 
     return newPEQId;
 }

@@ -240,13 +240,14 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let orig = {};
     let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
     if( fromCard ) {
-	let card = await ghV2.getCard( authData, origCardId );
+	let card = await ghV2.getCard( authData, origCardId ); 
 	colName = card.columnName;
 	if( pd.peqValue > 0 ) {
 	    pd.columnId   = card.columnId;
 	    orig.columnId = card.columnId;
 	}
-	console.log( authData.who, "PNP: type 3 if not contradicted below.  ColId", card.columnId, card.columnName );
+	// At this point, if create-edit preceeded label, may be in create when card is built in no-status, meaning no column data.
+	console.log( authData.who, "PNP: type 3 if not contradicted below.  ColId", card.columnId, card.columnName, pd.peqValue );
 	// XXX -1 check is no longer useful?
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
 	assert( colName != config.EMPTY && colName != -1 ); 

@@ -128,7 +128,8 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links === -1 || links.length == 1 );
     let link = links === -1 ? links : links[0];
-
+    let specials = {};
+    
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
 
@@ -164,8 +165,12 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     }
     else {
-	console.log( "issue is already carded" );
-	console.log( link );
+	// Typically get here if, when creating a peq issue, create-edit notices arrive before label notice.
+	// In this case, cardHandler correctly pegs this as non-peq and doesn't track the move to the right column.
+	// But, ingest requires that relo.  So label will send it
+	specials.relocate = true;
+	specials.columnId = link.hostColumnId;
+	console.log( "issue is already carded", specials );
     }
     
     pd.updateFromLink( link );
@@ -181,7 +186,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.labelContent             = pd.reqBody.label.description;
 	
     // Don't wait, no dependence
-    let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link );
+    let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );
     return (retVal != 'early' && retVal != 'removeLabel')
 }
 

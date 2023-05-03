@@ -466,7 +466,6 @@ async function getFullIssue( authData, issueId ) {
 	})
 	.catch( e => issue = ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, issueId ));
 
-
     return issue;
 }
 
