@@ -71,7 +71,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	let card = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
-	ghV2.updateIssue( authData, issueData[0], "state", "closed" );
+	ghV2.updateIssue( authData, issueData[0], "state", "CLOSED" );
 
 	card = await card;
 	link = ghLinks.rebuildLinkage( authData, link, issueData, card.cardId );
@@ -168,7 +168,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	// Typically get here if, when creating a peq issue, create-edit notices arrive before label notice.
 	// In this case, cardHandler correctly pegs this as non-peq and doesn't track the move to the right column.
 	// But, ingest requires that relo.  So label will send it
-	specials.relocate = true;
+	specials.pact = "addRelo";
 	specials.columnId = link.hostColumnId;
 	console.log( "issue is already carded", specials );
     }
@@ -232,7 +232,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
 	    // Will not allow this in ACCR.
-	    if( success && pd.reqBody.issue.state == 'closed' ) {
+	    if( success && pd.reqBody.issue.state == 'CLOSED' ) {
 
 		console.log( "PEQ labeled closed issue." )
 
@@ -247,7 +247,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    if( ceProjectLayout[0] == -1 ) { console.log( "Project does not have recognizable CE column layout.  No action taken." ); }
 		    else {
 			// Must wait.  Move card can fail if, say, no assignees
-			let newColId = await gh.moveIssueCard( authData, ghLinks, pd, 'closed', ceProjectLayout ); 
+			let newColId = await gh.moveIssueCard( authData, ghLinks, pd, 'CLOSED', ceProjectLayout ); 
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.

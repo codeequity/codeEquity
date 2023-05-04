@@ -103,6 +103,8 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	    subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" );
 	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
 	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,       subTest, "PAct user name" ); 
+
+	    console.log( pact.PEQActionId, pact.Verb, pact.Action );
 	    
 	    if( pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
 		pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ||

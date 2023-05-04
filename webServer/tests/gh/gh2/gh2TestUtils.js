@@ -122,12 +122,11 @@ async function checkLoc( authData, td, issDat, loc ) {
 
     let issue = await findIssue( authData, issDat[0] );
     let retVal = true;
-    console.log( "CheckLoc, issue state", issDat, issue ); 
     if( typeof issue === 'undefined' || issue === -1 ) { retVal = false; }
 
     if( retVal ) {
 	if( loc === -1 ) {
-	    retVal = retVal && (issue.state == 'open' || issue.state == 'closed' );
+	    retVal = retVal && (issue.state == 'OPEN' || issue.state == 'CLOSED' );
 	}
 	else {
 	    let cards = await getCards( authData, loc.projId, loc.colId );
@@ -435,7 +434,9 @@ async function getAssignee( authData, aName ) {
 }
 
 async function findIssue( authData, issueId ) {
-    let retVal = ghV2.getFullIssue( authData, issueId );
+    let retVal = await ghV2.getFullIssue( authData, issueId );
+    console.log( "Grak", issueId, retVal, Object.keys( retVal ).length );
+
     if( Object.keys( retVal ).length <= 0 ) { retVal = -1; }
     return retVal; 
 }
@@ -894,7 +895,6 @@ async function remCard( authData, ceProjId, cardId ) {
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
 async function closeIssue( authData, td, issDat, loc = -1 ) {
-    // await ghV2.updateIssue( authData, issDat[0], "state", "closed" );
     await ghV2.updateIssue( authData, issDat[0], "state", "CLOSED" );
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
@@ -1037,7 +1037,7 @@ async function checkAlloc( authData, ghLinks, td, loc, issDat, card, testStatus,
     let labelVal    = typeof specials !== 'undefined' && specials.hasOwnProperty( "val" )       ? specials.val         : 1000000;
     let labelCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )  ? specials.lblCount    : 1;
     let assignCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" ) ? specials.assignees   : false;
-    let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : "open";
+    let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : "OPEN";
     let opVal       = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )     ? specials.opVal       : false;
     
     console.log( "Check Allocation", loc.projName, loc.colName, labelVal );
@@ -1288,7 +1288,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issDat, card, te
     const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
     const lval  = labelVal ? labelVal                     : 1000;
     subTest = tu.checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );        
-    subTest = tu.checkEq( issue.state, "open",                   subTest, "Issue state" ); 
+    subTest = tu.checkEq( issue.state, "OPEN",                   subTest, "Issue state" ); 
 
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
@@ -1364,7 +1364,7 @@ async function checkUnclaimedIssue( authData, ghLinks, td, loc, issDat, card, te
 async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.state ) { specials.state = "closed"; }
+    if( !specials.state ) { specials.state = "CLOSED"; }
 
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issDat, card, testStatus, specials );
     let subTest = [ 0, 0, []];
@@ -1400,7 +1400,7 @@ async function checkNewlyClosedIssue( authData, ghLinks, td, loc, issDat, card, 
 async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.state ) { specials.state = "open"; }
+    if( !specials.state ) { specials.state = "OPEN"; }
 
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issDat, card, testStatus, specials );
 
@@ -1432,7 +1432,7 @@ async function checkNewlyOpenedIssue( authData, ghLinks, td, loc, issDat, card, 
 async function checkNewlySituatedIssue( authData, ghLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.hasOwnProperty( "state" ) ) { specials.state = "open"; }
+    if( !specials.hasOwnProperty( "state" ) ) { specials.state = "OPEN"; }
 
     testStatus = await checkSituatedIssue( authData, ghLinks, td, loc, issDat, card, testStatus, specials );
 

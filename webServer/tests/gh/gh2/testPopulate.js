@@ -37,13 +37,11 @@ async function testIncrementalResolve( authData, ghLinks, td ) {
     const ISS_PEND = "IR Pending";
     const ISS_ACCR = "IR Accrued";
 
-    console.log( "Refresh rec" );
     await gh2tu.refreshRec( authData, td );
-    console.log( "Refresh Flat" );
     await gh2tu.refreshFlat( authData, td );
-    console.log( "make labels" );
 
     // 1. Setup.
+    console.log( "make labels" );
     let label1k  = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "1000 " + config.PEQ_LABEL, 1000 );
     let labelDoc = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "documentation", -1 );
     let labelBug = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );

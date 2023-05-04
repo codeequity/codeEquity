@@ -239,8 +239,10 @@ async function rebuildPEQ( authData, link, oldPeq ) {
 //      creation of AWS PEQ, depending on if assignment occured in host before peq label notification processing completes.
 async function recordPeqData( authData, pd, checkDup, specials ) {
     assert(typeof pd.ceProjectId !== 'undefined' );
-    let relocate  = typeof specials !== 'undefined' && specials.hasOwnProperty( "relocate" ) ? specials.relocate : false;
+    let pact      = typeof specials !== 'undefined' && specials.hasOwnProperty( "pact" )     ? specials.pact     : {};
     let columnId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "columnId" ) ? specials.columnId : -1;
+    let relocate  = pact == "addRelo"; 
+    let change    = pact == config.PACTACT_CHAN;
     
     let newPEQId = -1;
     let newPEQ = -1
@@ -263,14 +265,15 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";
 
-    console.log( authData.who, "Recording peq data for", pd.issueName, postData.HostHolderId.toString());	
-
+    console.log( authData.who, "Recording peq data for", pd.issueName, postData.HostHolderId.toString(), pact, change, relocate, columnId);	
+    console.log( authData.who, postData );
+    
     // Don't wait if already have Id
     if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
     else                 { recordPEQ( authData, postData ); }
     assert( newPEQId != -1 );
     
-    let action = config.PACTACT_ADD;
+    let action = change ? config.PACTACT_CHAN : config.PACTACT_ADD;
     let subject = [ newPEQId ];
 
     // no need to wait
@@ -283,9 +286,9 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 	assert( columnId != -1 );
 	action = config.PACTACT_RELO;
 	subject = [ newPEQId, pd.projectId, columnId ];
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-				  config.PACTVERB_CONF, action, subject, "", 
-				  utils.getToday(), pd.reqBody );
+	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+			 config.PACTVERB_CONF, action, subject, "", 
+			 utils.getToday(), pd.reqBody );
     }
 
     return newPEQId;

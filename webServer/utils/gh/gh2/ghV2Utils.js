@@ -1062,7 +1062,7 @@ async function getCardFromIssue( authData, issueId ) {
 	    cards     = cards.filter((card) => card.node.type == "ISSUE" );
 	    assert( cards.length <= 1, "Error.  Issue has multiple cards." );
 	    
-	    if( cards.length == 0 )     { console.log( "Issue has no cards" ); }
+	    if( cards.length == 0 )     { console.log( authData.who, "Issue has no cards" ); }
 	    else {
 		cards.forEach( card => {
 		    retVal.projId      = card.node.project.id;                    
@@ -1145,7 +1145,7 @@ async function removeCard( authData, projNodeId, issueNodeId ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.catch( e => ghUtils.errorHandler( "removeCard", e, removeCard, authData, projNodeId, issueNodeId ));
 
-    // Successful post looks like the following. Could provide mutationId for traking: { data: { deleteProjectV2Item: { clientMutationId: null } } }
+    // Successful post looks like the following. Could provide mutationId for tracking: { data: { deleteProjectV2Item: { clientMutationId: null } } }
     return true;
 }
 
@@ -1371,7 +1371,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     let success = await removeCard( authData, link.hostProjectId, link.hostCardId ); 
 
     // Remove turds, report.  
-    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjID": pd.ceProjectId, "issueId": pd.issueId, "cardId": link.hostCardId }); }
+    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjId": pd.ceProjectId, "issueId": pd.issueId, "cardId": link.hostCardId }); }
     else { console.log( "WARNING.  cleanUnclaimed failed to remove linkage." ); }
 
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
@@ -1601,7 +1601,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 
 
 // Note. alignment risk
-// Don't care about state:open/closed.  unclaimed need not be visible.
+// Don't care about state:OPEN/CLOSED.  unclaimed need not be visible.
 async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, accr )
 {
     // console.log( "  .. CUC enter create proj" );

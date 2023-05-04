@@ -175,8 +175,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 //  Type?: add 2nd card ??? issue:     fromCard.  (type depends on type of issue, i.e. resolve will treat as type1 or type3 )
 async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
-    let relocate  = typeof specials !== 'undefined' && specials.hasOwnProperty( "relocate" ) ? specials.relocate : false;
-    let fromCard  = typeof specials !== 'undefined' && specials.hasOwnProperty( "relocate" ) ? specials.fromCard : false;
+    let fromCard  = typeof specials !== 'undefined' && specials.hasOwnProperty( "fromCard" ) ? specials.fromCard : false;
     let fromLabel = !fromCard;
     assert( fromLabel || link === -1 );
     assert( fromCard  || link !== -1 );
@@ -282,7 +281,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
 	// Note: assigments are not relevant for allocations
 	// If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
-	if( !relocate && !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
+	if( !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
     }
 
     orig.projectName  = projName;
@@ -313,7 +312,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     //       resolve with an already-populated repo can NOT split an issue based on a labeling, since the only way to add a card to an existing
     //                issue is to create card.  Furthermore populate does not call this function.
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
-    if( !gotSplit && fromLabel ) {
+    if( !gotSplit && pd.peqType != "end" ) {
 	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
 	awsUtils.recordPeqData( authData, pd, true, specials );
     }

@@ -211,7 +211,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    // Don't wait.
 	    // Call PNP to add linkage, resolve, etc.  Make certain to treat as type 1, leaving type 2 for issue
-	    gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, {relocate: true, fromCard: true} );
+	    gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, {pact: config.PACTACT_CHAN, fromCard: true} );
 	}
 	break;
     case 'converted' :
@@ -292,8 +292,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // handle issue.  Don't update issue state if not clear reopen/closed
 	    let newIssueState = "";
-	    if(      oldNameIndex <= config.PROJ_PROG && newNameIndex >= config.PROJ_PEND ) {  newIssueState = "closed"; }
-	    else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
+	    if(      oldNameIndex <= config.PROJ_PROG && newNameIndex >= config.PROJ_PEND ) {  newIssueState = "CLOSED"; }
+	    else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "OPEN";   }
 	    
 	    if( newIssueState != "" ) {
 		// Don't wait 
@@ -310,10 +310,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     case 'edited' :
 	// Only newborn can be edited.   Track issue-free creation above.
 	{
-	    let cardContent = pd.reqBody['project_card']['note'].split('\n');
-	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
+	    let cardContent = pd.reqBody['project_card']['note'].split('\n');  // XXXX
+	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") ); // XXXX
 
 	    // Don't wait
+	    // XXX XXX add pact: change?
 	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1, {fromCard: true} );
 	}
 	break;
