@@ -173,6 +173,52 @@ async function populateCELinkage( authData, ghLinks, pd )
 //  Type2: add 1st peq label to issue: fromLabel. (card will exist in GH already.  expect companion fromCard call in any order)
 //  Type3: add 1st card to peq issue:  fromCard.  (part of above, card:create will fire. expect companion fromLabel call in any order)
 //  Type?: add 2nd card ??? issue:     fromCard.  (type depends on type of issue, i.e. resolve will treat as type1 or type3 )
+//
+// Specials for peq creation
+// Rule:
+//    issue:label is addRelo                     relo not needed for peq, but for ceFlutter summary
+//    card:create is relo iff foundUnclaimed     Only helps to catch move from unclaimed to real loc in pre-triage situations.
+//    card:move   is relo
+//
+// label, create/(move?) later as part of separate call
+// ---------------------------------
+//  * label will create card in unclaimed.
+//      GH will have unclaimed card after issue:label is done.
+//	 
+//	 arrival: label, then later create
+//        ceServer: issue:label addRelo, card:create relo                     relo moves out of unclaimed.  required.
+//	 arrival: label, then later create, move
+//        ceServer: issue:label addRelo, card:create relo, card:move relo     redundant relo
+//
+// label, create/(move?) as part of same call(s)
+// ---------------------------------
+//  GH will have card.  issue:label will detect card was created already, so will not create unclaimed.
+//  
+//    * create-move case (make project card has column info)
+//      in GH, card will be in correct location with correct colId
+//
+//	 arrival order: label, {create, move}  For this batch, addRelo is sufficient, extra move:relo is redundant but hard to avoid
+//        ceServer: issue:label addRelo, card:create ---, card:move relo      
+//	 arrival order: create, label, move
+//        ceServer: card:create --- (ignored, not peq).  issue:label addRelo, card:move relo
+//	 arrival order: move, label, create
+//        ceServer: card:move --- (ignored, not peq). issue:label addRelo, card:create ---
+//	 arrival order: {create, move}, label
+//	   ceServer: problem?  card:move --- , card:create ---,  issue:label addRelo   
+//
+//      aws peq is correct in all cases.  2-3 pacts per gh2tu call.
+//	    -> Can reduce to 1-2 by expanding info carried in add.  not worth it.
+//	    
+//	 
+//    * create-only case (by hand add issue with pre-triaged project)
+//      in GH, card will be in 'no status' for which all col info is null.
+//	 in ceServer, issue:label can't always tell if no card, or card in NoStatus .. unless..
+//
+//      arrival order: label, create
+//        ceServer: issue:label addRelo, card:create relo             unclaimed is created, card relo fires.
+//	 arrival order: create, label
+//        ceServer: card:create --- (ignored), issue:label addRelo    linkage will help identify NoStatus, so unclaimed not created, card relo not needed.
+
 async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
     let fromCard  = typeof specials !== 'undefined' && specials.hasOwnProperty( "fromCard" ) ? specials.fromCard : false;
@@ -183,8 +229,8 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let issDat = [issue.title];
 
     // labelIssue does not call getFullIssue, cardHandler does
-    if( ghUtils.validField( issue, "labelContent" ) ) { issDat.push( issue.labelContent ); }
-    else if( issue.labels.length > 0 )                { for( node of issue.labels ) { issDat.push( node.description ); } }
+    if( utils.validField( issue, "labelContent" ) ) { issDat.push( issue.labelContent ); }
+    else if( issue.labels.length > 0 )              { for( node of issue.labels ) { issDat.push( node.description ); } }
 
     console.log( authData.who, "PNP: issDat", issDat, pd.repoName );
     

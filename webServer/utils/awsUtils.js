@@ -239,10 +239,14 @@ async function rebuildPEQ( authData, link, oldPeq ) {
 //      creation of AWS PEQ, depending on if assignment occured in host before peq label notification processing completes.
 async function recordPeqData( authData, pd, checkDup, specials ) {
     assert(typeof pd.ceProjectId !== 'undefined' );
-    let pact      = typeof specials !== 'undefined' && specials.hasOwnProperty( "pact" )     ? specials.pact     : {};
+    let pact      = typeof specials !== 'undefined' && specials.hasOwnProperty( "pact" )     ? specials.pact     : -1;
     let columnId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "columnId" ) ? specials.columnId : -1;
-    let relocate  = pact == "addRelo"; 
-    let change    = pact == config.PACTACT_CHAN;
+
+    // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
+    
+    assert( pact == -1 || pact == "addRelo" || pact == "justRelo" );
+    let add       = pact == "addRelo";
+    let relocate  = pact == "addRelo" || pact == "justRelo";
     
     let newPEQId = -1;
     let newPEQ = -1
@@ -265,29 +269,27 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";
 
-    console.log( authData.who, "Recording peq data for", pd.issueName, postData.HostHolderId.toString(), pact, change, relocate, columnId);	
-    console.log( authData.who, postData );
+    console.log( authData.who, "Recording peq data for", pd.issueName, postData.HostHolderId.toString(), pact, columnId);	
+    // console.log( authData.who, postData );
     
     // Don't wait if already have Id
     if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
     else                 { recordPEQ( authData, postData ); }
     assert( newPEQId != -1 );
     
-    let action = change ? config.PACTACT_CHAN : config.PACTACT_ADD;
-    let subject = [ newPEQId ];
-
     // no need to wait
-    recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-		     config.PACTVERB_CONF, action, subject, "",
-		     utils.getToday(), pd.reqBody );
+    if( add ) {
+	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+			 config.PACTVERB_CONF, config.PACTACT_ADD, [ newPEQId ], "",
+			 utils.getToday(), pd.reqBody );
+    }
 
     // Some actions require both add/relo.  see gh2.issueHandler
     if( relocate ) {
 	assert( columnId != -1 );
-	action = config.PACTACT_RELO;
-	subject = [ newPEQId, pd.projectId, columnId ];
+	let subject = [ newPEQId, pd.projectId, columnId ];
 	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-			 config.PACTVERB_CONF, action, subject, "", 
+			 config.PACTVERB_CONF, config.PACTACT_RELO, subject, "", 
 			 utils.getToday(), pd.reqBody );
     }
 
@@ -458,7 +460,6 @@ async function linkProject( authData, query ) {
 async function unlinkProject( authData, query ) {
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
-    console.log( "UnlinkProject", postData );
     let retVal = await wrappedPostAWS( authData, shortName, postData );
 
     shortName = "GetEntry";

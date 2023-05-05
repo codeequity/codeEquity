@@ -86,13 +86,20 @@ const PACTVERB_CONF = "confirm";
 const PACTVERB_PROP = "propose";
 const PACTVERB_REJ  = "reject";
 
+// XXX Tie this more formally to ../ceFlutter/lib/models/PEQAction.dart for notes & subjects
 const PACTACT_ADD  = "add";
 const PACTACT_DEL  = "delete";
 const PACTACT_NOTE = "notice";
 const PACTACT_ACCR = "accrue";
-const PACTACT_RELO = "relocate";
-const PACTACT_CHAN = "change";
-
+const PACTACT_RELO = "relocate";   // For moving cards.  Use "Transfer out" if moving out of repo
+const PACTACT_CHAN = "change";     // Notes for change will be one of
+                                   // "Project rename" for changing name of project
+                                   // "Column rename" for the column.
+                                   // "add assignee", "remove assignee"
+                                   // "peq val update"
+                                   // "recreate"  when rebuilding peq in unclaimed after deleting accrued
+                                   // "Change title"
+ 
 
 // server job queue operation
 const MAX_DELAYS = 30;          // how many times can a single job be pushed further back into queue waiting for pre-req job to complete

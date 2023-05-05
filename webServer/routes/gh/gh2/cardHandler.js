@@ -207,11 +207,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // In issues dialog, if add to project, will automatically be placed in "No Status".
 	    // Otherwise, unclaimed was generated, need to clean it.
-	    await ghV2.cleanUnclaimed( authData, ghLinks, pd );
+	    let foundUnclaimed = await ghV2.cleanUnclaimed( authData, ghLinks, pd );
+
+	    let specials = foundUnclaimed ? {pact: "justRelo", fromCard: true} : {fromCard: true};
 
 	    // Don't wait.
 	    // Call PNP to add linkage, resolve, etc.  Make certain to treat as type 1, leaving type 2 for issue
-	    gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, {pact: config.PACTACT_CHAN, fromCard: true} );
+	    // pact will be relocate, since moving card from unclaimed to new loc.
+	    gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, specials );
 	}
 	break;
     case 'converted' :

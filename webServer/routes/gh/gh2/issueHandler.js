@@ -128,7 +128,6 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links === -1 || links.length == 1 );
     let link = links === -1 ? links : links[0];
-    let specials = {};
     
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
@@ -136,13 +135,13 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	// get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
 	let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
 
-	if( !ghUtils.validField( card, "cardId" )) {
+	if( !utils.validField( card, "cardId" )) {
 	    console.log( authData.who, "Newborn peq issue" );
 	    assert( link === -1 );
 	    link = {};
 	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
 	}
-	else if( ghUtils.validField( card, "cardId" ) && !ghUtils.validField( card, "columnId" ) ) {  // label notice beat create notice
+	else if( utils.validField( card, "cardId" ) && !utils.validField( card, "columnId" ) ) {  // label notice beat create notice
 	    console.log( authData.who, "carded issue, no status -> peq issue", link === -1 );
 	    link = {};
 	    // No link, no loc.
@@ -165,13 +164,11 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     }
     else {
-	// Typically get here if, when creating a peq issue, create-edit notices arrive before label notice.
-	// In this case, cardHandler correctly pegs this as non-peq and doesn't track the move to the right column.
-	// But, ingest requires that relo.  So label will send it
-	specials.pact = "addRelo";
-	specials.columnId = link.hostColumnId;
 	console.log( "issue is already carded", specials );
     }
+
+    // ceFlutter ingest summarization needs relo for loc data when there is no subsequent card:move
+    let specials = { pact: "addRelo", columnId: link.hostColumnId };
     
     pd.updateFromLink( link );
     console.log( authData.who, "Ready to update Proj PEQ PAct:", link.hostCardId, link.hostIssueNum );
@@ -223,7 +220,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // XXX need repoId, repoName, ownerId
 	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
-	    assert( ghUtils.validField( pd.reqBody, "repository" ) && ghUtils.validField( pd.reqBody.repository, "node_id" ));
+	    assert( utils.validField( pd.reqBody, "repository" ) && utils.validField( pd.reqBody.repository, "node_id" ));
 	    pd.repoName = pd.reqBody.repository.full_name; 
 	    pd.repoId   = pd.reqBody.repository.node_id; 
 	    // console.log( "Label issue", pd.reqBody );

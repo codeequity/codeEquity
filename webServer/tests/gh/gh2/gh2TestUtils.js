@@ -229,7 +229,7 @@ async function getProjects( authData, td ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
-	    if( ghUtils.validField( raw.data.node.projectsV2, "edges" )) {
+	    if( utils.validField( raw.data.node.projectsV2, "edges" )) {
 		let projs = raw.data.node.projectsV2.edges;
 		assert( projs.length < 99, "Need to paginate getProjects." );
 
@@ -248,7 +248,7 @@ async function getProjects( authData, td ) {
 		}
 	    }})
 	.catch( e => {
-	    if( ghUtils.validField( e, "errors" ) && e.errors.length >= 1 ) {
+	    if( utils.validField( e, "errors" ) && e.errors.length >= 1 ) {
 		let m = e.errors[0].message;
 		if( m == 'Field \'ProjectV2\' doesn\'t exist on type \'Repository\'' ) { projects = []; }
 		else                                                                   { console.log( authData.who, "get projects failed.", e ); }
