@@ -198,20 +198,25 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // XXX after ceFlutter, move this below postpone, remove populate condition.  pop label not yet attached.  
 	    let issue = await ghV2.getFullIssue( authData, pd.issueId);  
 
-	    // item:create could arrive before issue:open/label.
-	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });	
-	    if( links === -1 && !issue.title == "A special populate issue" ) {
+	    // item:create could arrive before issue:open/label.  Can not create card without issue in pv2.
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
+	    if( links === -1 && !( issue.title == "A special populate issue" ) ) {
 		console.log( "issue:label has not yet arrived.  Postponing create card" );
 		return "postpone";
 	    }
 	    
 	    // In issues dialog, if add to project, will automatically be placed in "No Status".
 	    // Otherwise, unclaimed was generated, need to clean it.
-	    await ghV2.cleanUnclaimed( authData, ghLinks, pd );
+	    let foundUnclaimed = await ghV2.cleanUnclaimed( authData, ghLinks, pd );
 
-	    // Don't wait.
-	    // Call PNP to add linkage, resolve, etc.  Make certain to treat as type 1, leaving type 2 for issue
-	    gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, {relocate: true, fromCard: true} );
+	    // PNP adds colId 
+	    let specials = foundUnclaimed ? {pact: "justRelo", fromCard: true} : {fromCard: true};
+	    console.log( "card:create relo?", foundUnclaimed );
+	    
+	    // Wait.  Linkage should not be in progress when subsequent card:move is processed.
+	    // Call PNP to add linkage, resolve, etc.  
+	    // pact is ignore, since 'create' is always accompanied by 'move'.  'move' does relo.
+	    await gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, specials );
 	}
 	break;
     case 'converted' :
@@ -256,8 +261,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let link = links[0]; // cards are 1:1 with issues
 	    let oldColId  = link.hostColumnId;
 	    
-	    console.log( authData.who, "attempting to move card to", newColName, "from", oldColId );
-
+	    // Need to continue here even if new.colId == old.colId, ingest needs the relo pact.
+	    console.log( authData.who, "attempting to move card to", newColName, newCard.columnId, "from", oldColId );
+	    
 	    // Do not allow move out of ACCR
 	    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( authData.who, "WARNING.  Can't move Accrued issue.  Move not processed.", cardId );
@@ -291,8 +297,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // handle issue.  Don't update issue state if not clear reopen/closed
 	    let newIssueState = "";
-	    if(      oldNameIndex <= config.PROJ_PROG && newNameIndex >= config.PROJ_PEND ) {  newIssueState = "closed"; }
-	    else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "open";   }
+	    if(      oldNameIndex <= config.PROJ_PROG && newNameIndex >= config.PROJ_PEND ) {  newIssueState = "CLOSED"; }
+	    else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "OPEN";   }
 	    
 	    if( newIssueState != "" ) {
 		// Don't wait 
@@ -309,10 +315,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     case 'edited' :
 	// Only newborn can be edited.   Track issue-free creation above.
 	{
-	    let cardContent = pd.reqBody['project_card']['note'].split('\n');
-	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") );
+	    let cardContent = pd.reqBody['project_card']['note'].split('\n');  // XXXX
+	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") ); // XXXX
 
 	    // Don't wait
+	    // XXX XXX add pact: change?
 	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1, {fromCard: true} );
 	}
 	break;

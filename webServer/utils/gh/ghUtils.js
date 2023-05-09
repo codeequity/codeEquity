@@ -39,12 +39,6 @@ async function postGH( PAT, url, postData ) {
 }
 
 
-// GQL queries can return null field values that hurt when checking a chain
-function validField( arr, field ) {
-    return arr.hasOwnProperty( field ) && !!arr[field] && typeof arr[field] !== 'undefined';
-}
-
-
 // NOTE.  This is very simplistic.  Consider at least random backoff delay, elay entire chain.
 // Ignore:
 //   422:  validation failed.  e.g. create failed name exists.. chances are, will continue to fail.
@@ -126,7 +120,7 @@ async function checkForPV2( PAT, nodeId ) {
     else {
 	// XXX non-pv2 claim here can be false (e.g. delete populate issue, nodeId is already gone)
 	//     but may fine those cases to handle as classic?
-	if( !validField( ret.data, "node" ) ) { return found; }
+	if( !utils.validField( ret.data, "node" ) ) { return found; }
 	
 	let data = ret.data.node.projectItems;
 	if( typeof data !== 'undefined' && typeof data.edges !== 'undefined' ) {
@@ -154,7 +148,7 @@ async function validatePEQ( authData, ceProjId, issueId, title, projId ) {
     peq = await awsUtils.getPeq( authData, ceProjId, issueId );
 
     if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostProjectId == projId )  {
-	// console.log( authData.who, "validatePeq success" );
+	console.log( authData.who, "validatePeq success" );
     }
     else {
 	console.log( authData.who, "WARNING.  Peq not valid.", peq, peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, projId );
@@ -277,7 +271,7 @@ async function getOwnerId( PAT, owner ) {
     await postGH( PAT, config.GQL_ENDPOINT, query )
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
-	    if ( validField( ret, "data" ) && (validField( ret.data, "user" ) || validField( ret.data, "organization" ))) {
+	    if ( utils.validField( ret, "data" ) && (utils.validField( ret.data, "user" ) || utils.validField( ret.data, "organization" ))) {
 		if( !!ret.data.user ) { retId = ret.data.user.id; }
 		else                  { retId = ret.data.organization.id; }
 	    }
@@ -297,7 +291,7 @@ async function getRepoId( PAT, owner, repo ) {
     await postGH( PAT, config.GQL_ENDPOINT, query )
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
-	    if( validField( ret, "data" ) && validField( ret.data, "repository" )) { retId = ret.data.repository.id; }
+	    if( utils.validField( ret, "data" ) && utils.validField( ret.data, "repository" )) { retId = ret.data.repository.id; }
 	})
 	.catch( e => retId = errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
 
@@ -306,7 +300,6 @@ async function getRepoId( PAT, owner, repo ) {
 
 
 exports.postGH       = postGH;
-exports.validField   = validField;
 exports.errorHandler = errorHandler;
 
 exports.checkForPV2     = checkForPV2;

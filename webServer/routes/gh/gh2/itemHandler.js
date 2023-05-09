@@ -103,9 +103,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // No need to rebuild the map on server startup, since notice comes every time.  Demote content_node job this notice hasn't arrived yet.
 	    console.log( authData.who, "PV2ItemHandler", action );
 
-	    if( ghUtils.validField( reqBody, "changes" )) {
+	    if( utils.validField( reqBody, "changes" )) {
 		let fv = reqBody.changes.field_value;
-		if( ghUtils.validField( fv, "field_type" )) {
+		if( utils.validField( fv, "field_type" )) {
 		    
 		    if( fv.field_type == "single_select" ) {
 			await cardHandler.handler( authData, ceProjects, ghLinks, pd, 'moved', tag );

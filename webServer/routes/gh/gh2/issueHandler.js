@@ -71,7 +71,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	let card = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
-	ghV2.updateIssue( authData, issueData[0], "state", "closed" );
+	ghV2.updateIssue( authData, issueData[0], "state", "CLOSED" );
 
 	card = await card;
 	link = ghLinks.rebuildLinkage( authData, link, issueData, card.cardId );
@@ -128,20 +128,20 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links === -1 || links.length == 1 );
     let link = links === -1 ? links : links[0];
-
+    
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
 
 	// get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
 	let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
 
-	if( !ghUtils.validField( card, "cardId" )) {
+	if( !utils.validField( card, "cardId" )) {
 	    console.log( authData.who, "Newborn peq issue" );
 	    assert( link === -1 );
 	    link = {};
 	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
 	}
-	else if( ghUtils.validField( card, "cardId" ) && !ghUtils.validField( card, "columnId" ) ) {  // label notice beat create notice
+	else if( utils.validField( card, "cardId" ) && !utils.validField( card, "columnId" ) ) {  // label notice beat create notice
 	    console.log( authData.who, "carded issue, no status -> peq issue", link === -1 );
 	    link = {};
 	    // No link, no loc.
@@ -164,9 +164,11 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     }
     else {
-	console.log( "issue is already carded" );
-	console.log( link );
+	console.log( "issue is already carded", specials );
     }
+
+    // ceFlutter ingest summarization needs relo for loc data when there is no subsequent card:move
+    let specials = { pact: "addRelo", columnId: link.hostColumnId };
     
     pd.updateFromLink( link );
     console.log( authData.who, "Ready to update Proj PEQ PAct:", link.hostCardId, link.hostIssueNum );
@@ -181,7 +183,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.labelContent             = pd.reqBody.label.description;
 	
     // Don't wait, no dependence
-    let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link );
+    let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );
     return (retVal != 'early' && retVal != 'removeLabel')
 }
 
@@ -218,7 +220,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // XXX need repoId, repoName, ownerId
 	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
-	    assert( ghUtils.validField( pd.reqBody, "repository" ) && ghUtils.validField( pd.reqBody.repository, "node_id" ));
+	    assert( utils.validField( pd.reqBody, "repository" ) && utils.validField( pd.reqBody.repository, "node_id" ));
 	    pd.repoName = pd.reqBody.repository.full_name; 
 	    pd.repoId   = pd.reqBody.repository.node_id; 
 	    // console.log( "Label issue", pd.reqBody );
@@ -227,7 +229,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // Special case.  Closed issue in flat column just labeled PEQ.  Should now move to PEND.
 	    // Will not allow this in ACCR.
-	    if( success && pd.reqBody.issue.state == 'closed' ) {
+	    if( success && pd.reqBody.issue.state == 'CLOSED' ) {
 
 		console.log( "PEQ labeled closed issue." )
 
@@ -242,7 +244,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    if( ceProjectLayout[0] == -1 ) { console.log( "Project does not have recognizable CE column layout.  No action taken." ); }
 		    else {
 			// Must wait.  Move card can fail if, say, no assignees
-			let newColId = await gh.moveIssueCard( authData, ghLinks, pd, 'closed', ceProjectLayout ); 
+			let newColId = await gh.moveIssueCard( authData, ghLinks, pd, 'CLOSED', ceProjectLayout ); 
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.

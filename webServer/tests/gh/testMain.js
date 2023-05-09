@@ -38,7 +38,7 @@ const gh2TestFlat       = require( './gh2/testFlat' );
 const gh2TestPopulate   = require( './gh2/testPopulate' );
 
 
-async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks ) {
+async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks ) {
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up.  The purpose of wakey is to kick off both aws and each host.
 
@@ -70,46 +70,48 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     // TESTS
 
     let subTest = "";
-    await gh2TestDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
+    await gh2TestDelete.runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
 
-    subTest = await gh2TestSetup.runTests( authData, ghLinks, td );
+    subTest = await gh2TestSetup.runTests( authData, testLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await gh2TestFlat.runTests( authData, ghLinks, td );
+    assert( false );
+
+    subTest = await gh2TestFlat.runTests( authData, testLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     /*
-    subTest = await gh2TestBasicFlow.runTests( authData, ghLinks, td );
+    subTest = await gh2TestBasicFlow.runTests( authData, testLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
     
-    subTest = await gh2TestCross.runTests( flutterTest, authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
+    subTest = await gh2TestCross.runTests( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
     */
     
-    subTest = await gh2TestPopulate.runTests( authData, ghLinks, td );
+    subTest = await gh2TestPopulate.runTests( authData, testLinks, td );
     console.log( "\n\nResolve test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
     /*
-    subTest = await gh2TestComponents.runTests( authData, ghLinks, td );
+    subTest = await gh2TestComponents.runTests( authData, testLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
     */
 }
 
-async function runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks ) {
+async function runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks ) {
     // GH, AWS and smee  can suffer long cold start times (up to 10s tot).
     // If this is first PAct for the day, start it up
     const wakeyPID = await ghctu.makeProject( authData, td, "ceServer wakey XYZZYXXK837598", "" );
@@ -125,7 +127,7 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
     }
 
     // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    let mastCol1  = await ghctu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, wakeyPID, td.softContTitle );
+    let mastCol1  = await ghctu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, wakeyPID, td.softContTitle );
     ghctu.remProject( authData, wakeyPID );
     assert( false );
 
@@ -134,36 +136,36 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
 
     let subTest = "";
 
-    await ghcTestDelete.runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
+    await ghcTestDelete.runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
     
-    subTest = await ghcTestSetup.runTests( authData, ghLinks, td );
+    subTest = await ghcTestSetup.runTests( authData, testLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await ghcTestFlat.runTests( authData, ghLinks, td );
+    subTest = await ghcTestFlat.runTests( authData, testLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await ghcTestBasicFlow.runTests( authData, ghLinks, td );
+    subTest = await ghcTestBasicFlow.runTests( authData, testLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
     
-    subTest = await ghcTestCross.runTests( flutterTest, authData, authDataX, authDataM, ghLinks, td, tdX, tdM );
+    subTest = await ghcTestCross.runTests( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM );
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await ghcTestPopulate.runTests( authData, ghLinks, td );
+    subTest = await ghcTestPopulate.runTests( authData, testLinks, td );
     console.log( "\n\nResolve test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-    subTest = await ghcTestComponents.runTests( authData, ghLinks, td );
+    subTest = await ghcTestComponents.runTests( authData, testLinks, td );
     console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
@@ -177,9 +179,9 @@ async function runTests() {
     const args = process.argv.slice(2);
     let flutterTest = ( args[0] == "ceFlutter" );
 
-    // GH Linkage table
+    // GH Linkage table, i.e. ceServer's ghLinks.
     // Note: this table is a router object - need to rest-get from ceServer.  It ages quickly - best practice is to update just before use.
-    let ghLinks = new links.Linkage();
+    let testLinks = new links.Linkage();
 
     
     // TEST_REPO auth
@@ -250,9 +252,9 @@ async function runTests() {
     let testStatus = [ 0, 0, []];
 
     // XXX Add an arg if these are ever useful again
-    // await runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
+    // await runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks );
 
-    await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, ghLinks );
+    await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks );
 	
     // Save dynamo data if run was successful
     if( testStatus[1] == 0 ) {

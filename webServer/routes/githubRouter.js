@@ -398,7 +398,7 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 	if( jd.action == "edited" || jd.action == "created" || jd.action == "deleted" ) {
 	    // Don't push labeled notices.  Must assume GH2 since may or may not come from carded issue.
 	    let rb = jd.reqBody;
-	    let validField = ghUtils.validField( rb, "changes" ) && ghUtils.validField( rb.changes, "field_value" );
+	    let validField = utils.validField( rb, "changes" ) && utils.validField( rb.changes, "field_value" );
 	    if( !( jd.action == "edited" && validField && rb.changes.field_value.field_type == "labels" )) {
 		pendingNotices.push( makePendingNotice( jd.reqBody, jd.action ) );
 		// console.log( "pending after push", pendingNotices );

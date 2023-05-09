@@ -37,13 +37,13 @@ class Linkage {
     // For each ceProject
     async initOneProject( authData, entry ) {
 
-	let host  = entry.hasOwnProperty( "HostPlatform" )       ? entry.HostPlatform                    : "";
-	let org   = entry.hasOwnProperty( "Organization" )       ? entry.Organization                    : "";
-	let pms   = entry.hasOwnProperty( "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
-	let comp  = entry.hasOwnProperty( "CEProjectComponent" ) ? entry.CEProjectComponent              : "";
-	let isOrg = entry.hasOwnProperty( "OwnerCategory" )      ? entry.OwnerCategory == "Organization" : false;
+	let host  = utils.validField( entry, "HostPlatform" )       ? entry.HostPlatform                    : "";
+	let org   = utils.validField( entry, "Organization" )       ? entry.Organization                    : "";
+	let pms   = utils.validField( entry, "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
+	let comp  = utils.validField( entry, "CEProjectComponent" ) ? entry.CEProjectComponent              : "";
+	let isOrg = utils.validField( entry, "OwnerCategory" )      ? entry.OwnerCategory == "Organization" : false;
 	assert( host != "" && pms != "" && org != "" );
-	assert( entry.hasOwnProperty( "CEProjectId" ) );
+	assert( utils.validField( entry, "CEProjectId" ) );
 	
 	console.log( authData.who, ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
@@ -256,9 +256,9 @@ class Linkage {
 	assert( ceProjId     != config.EMPTY );
 	assert( orig.issueId != config.EMPTY );
 	assert( orig.cardId  != config.EMPTY );
-	if( !this.links.hasOwnProperty( ceProjId ) )                            { this.links[ceProjId] = {}; }
-	if( !this.links[ceProjId].hasOwnProperty( orig.issueId ) )              { this.links[ceProjId][orig.issueId] = {}; }
-	if( !this.links[ceProjId][orig.issueId].hasOwnProperty( orig.cardId ) ) { this.links[ceProjId][orig.issueId][orig.cardId] = {}; }
+	if( !utils.validField( this.links, ceProjId ) )                            { this.links[ceProjId] = {}; }
+	if( !utils.validField( this.links[ceProjId], orig.issueId ) )              { this.links[ceProjId][orig.issueId] = {}; }
+	if( !utils.validField( this.links[ceProjId][orig.issueId], orig.cardId ) ) { this.links[ceProjId][orig.issueId][orig.cardId] = {}; }
 
 	let link = this.links[ceProjId][orig.issueId][orig.cardId];
 
@@ -316,9 +316,9 @@ class Linkage {
 
 	if( typeof ceProjId === 'undefined' ) { console.log( authData.who, "Warning.  Linkage addLoc was called without a CE Project Id." ); }
 	    
-	if( !this.locs.hasOwnProperty( ceProjId ))                                        { this.locs[ceProjId] = {}; }
-	if( !this.locs[ceProjId].hasOwnProperty( locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
-	if( !this.locs[ceProjId][locD.hostProjectId].hasOwnProperty( locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData.LocData(); }
+	if( !utils.validField( this.locs, ceProjId ))                                        { this.locs[ceProjId] = {}; }
+	if( !utils.validField( this.locs[ceProjId], locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
+	if( !utils.validField( this.locs[ceProjId][locD.hostProjectId], locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData.LocData(); }
 											    
 	let loc = this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId];
 	loc.fromLoc( locD ); 
@@ -335,7 +335,7 @@ class Linkage {
 	// console.log( authData.who, "Get unique link", ceProjId, issueId );
 	// this.show(5);
 	let retVal = -1;
-	if( this.links.hasOwnProperty( ceProjId ) && this.links[ceProjId].hasOwnProperty( issueId )) {
+	if( utils.validField( this.links, ceProjId ) && utils.validField( this.links[ceProjId], issueId )) {
 	    let issueLinks = Object.entries( this.links[ceProjId][issueId] );  // [ [cardId, link], [cardId, link] ...]
 	    // console.log( "XXX", issueLinks );
 	    
@@ -356,14 +356,14 @@ class Linkage {
 	}
 
 	const ceProjId   = query.ceProjId;
-	const repo       = query.hasOwnProperty( "repo" )       ? query.repo               : config.EMPTY;
-	const repoId     = query.hasOwnProperty( "repoId" )     ? query.repoId.toString()  : config.EMPTY;
-	const issueId    = query.hasOwnProperty( "issueId" )    ? query.issueId.toString() : -1;
-	const cardId     = query.hasOwnProperty( "cardId" )     ? query.cardId.toString()  : -1;
-	const projId     = query.hasOwnProperty( "projId" )     ? query.projId             : -1;
-	const projName   = query.hasOwnProperty( "projName" )   ? query.projName           : config.EMPTY;
-	const colName    = query.hasOwnProperty( "colName" )    ? query.colName            : config.EMPTY;
-	const issueTitle = query.hasOwnProperty( "issueTitle" ) ? query.issueTitle         : config.EMPTY;
+	const repo       = utils.validField( query, "repo" )       ? query.repo               : config.EMPTY;
+	const repoId     = utils.validField( query, "repoId" )     ? query.repoId.toString()  : config.EMPTY;
+	const issueId    = utils.validField( query, "issueId" )    ? query.issueId.toString() : -1;
+	const cardId     = utils.validField( query, "cardId" )     ? query.cardId.toString()  : -1;
+	const projId     = utils.validField( query, "projId" )     ? query.projId             : -1;
+	const projName   = utils.validField( query, "projName" )   ? query.projName           : config.EMPTY;
+	const colName    = utils.validField( query, "colName" )    ? query.colName            : config.EMPTY;
+	const issueTitle = utils.validField( query, "issueTitle" ) ? query.issueTitle         : config.EMPTY;
 
 	// console.log( authData.who, "get Links", ceProjId, issueId, cardId, projId, projName, colName, issueTitle );
 	
@@ -403,12 +403,12 @@ class Linkage {
 	}
 
 	const ceProjId  = query.ceProjId;
-	const repo      = query.hasOwnProperty( "repo" )     ? query.repo              : config.EMPTY;
-	const repoId    = query.hasOwnProperty( "repoId" )   ? query.repoId            : -1;
-	const projId    = query.hasOwnProperty( "projId" )   ? query.projId.toString() : -1;
-	const colId     = query.hasOwnProperty( "colId" )    ? query.colId.toString()  : -1;
-	const projName  = query.hasOwnProperty( "projName" ) ? query.projName          : config.EMPTY;
-	const colName   = query.hasOwnProperty( "colName" )  ? query.colName           : config.EMPTY;
+	const repo      = utils.validField( query, "repo" )     ? query.repo              : config.EMPTY;
+	const repoId    = utils.validField( query, "repoId" )   ? query.repoId            : -1;
+	const projId    = utils.validField( query, "projId" )   ? query.projId.toString() : -1;
+	const colId     = utils.validField( query, "colId" )    ? query.colId.toString()  : -1;
+	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
+	const colName   = utils.validField( query, "colName" )  ? query.colName           : config.EMPTY;
 
 	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
 	if( !this.locs[ceProjId] ) { return -1; }
@@ -515,8 +515,8 @@ class Linkage {
 
 	// console.log( authData.who, "Remove link for issueId:", ceProjId, issueId );
 
-	if( !this.links.hasOwnProperty( ceProjId ))                         { return retVal; }  // may see multiple deletes
-	if( !this.links[ceProjId].hasOwnProperty( issueId ))                { return retVal; }  // may see multiple deletes
+	if( !utils.validField( this.links, ceProjId ))                      { return retVal; }  // may see multiple deletes
+	if( !utils.validField( this.links[ceProjId], issueId ))             { return retVal; }  // may see multiple deletes
 	if( Object.keys( this.links[ceProjId][issueId] ).length == 0 )      { return retVal; }
 	else if( Object.keys( this.links[ceProjId][issueId] ).length == 1 ) { delete this.links[ceProjId][issueId]; }
 	else                                                                { delete this.links[ceProjId][issueId][cardId]; }
@@ -538,13 +538,13 @@ class Linkage {
 	
 	// Easy cases, already do not exist
 	// No need to check for empty ceProjectIds, since there is nothing to set inactive.
-	if( (!havePID && !haveCID) ||                                                        // nothing specified
-	    (!this.locs.hasOwnProperty( ceProjId )) ||                                       // nothing yet for ceProject
-	    (havePID && !this.locs[ceProjId].hasOwnProperty( projId )) ||                     // have pid, but already not in locs
-	    (havePID && haveCID && !this.locs[ceProjId][projId].hasOwnProperty( colId ))) {   // have pid & cid, but already not in locs
+	if( (!havePID && !haveCID) ||                                                            // nothing specified
+	    (!utils.validField( this.locs, ceProjId )) ||                                        // nothing yet for ceProject
+	    (havePID && !utils.validField( this.locs[ceProjId], projId )) ||                     // have pid, but already not in locs
+	    (havePID && haveCID && !utils.validField( this.locs[ceProjId][projId], colId ))) {   // have pid & cid, but already not in locs
 	}
-	else if( havePID && this.locs[ceProjId].hasOwnProperty( projId )) {
-	    if( haveCID && this.locs[ceProjId][projId].hasOwnProperty( colId ))
+	else if( havePID && utils.validField( this.locs[ceProjId], projId )) {
+	    if( haveCID && utils.validField( this.locs[ceProjId][projId], colId ))
 	    {
 		assert( cpid == "" || cpid == this.locs[ceProjId][projId][colId].ceProjectId );
 		cpid = this.locs[ceProjId][projId][colId].ceProjectId;
@@ -562,7 +562,7 @@ class Linkage {
 	else {  
 	    for( const [ceproj,cplinks] of Object.entries( this.locs )) {
 		for( const [proj,cloc] of Object.entries( cplinks )) {
-		    if( cloc.hasOwnProperty( colId )) {
+		    if( utils.validField( cloc, colId )) {
 			assert( cpid == "" || cpid == this.locs[ceproj][proj][colId].ceProjectId );
 			cpid = this.locs[ceproj][proj][colId].ceProjectId;
 			this.locs[ceproj][proj][colId].active = "false";
@@ -598,7 +598,7 @@ class Linkage {
     // Unlink project from repo.  in this case, remove repo info
     async unlinkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId ) {
 	console.log( "Unlink repo", ceProjId, hostRepoId, hostProjectId );
-
+	
 	if( this.locs[ceProjId] != null && this.locs[ceProjId][hostProjectId] != null ) {
 	    for( const [_, loc] of Object.entries( this.locs[ceProjId][hostProjectId] ) ) {
 		// console.log( "  .. clearing", loc );
@@ -619,6 +619,7 @@ class Linkage {
 	await ceProjects.init( authData );
 	
 	this.removeLocs( { authData: authData, ceProjId: ceProjId, projId: hostProjectId } );
+	
 	return true;
     }
 
@@ -757,7 +758,7 @@ class Linkage {
 			 this.fill( link.hostIssueName, 25 ),
 			 link.hostColumnId == config.EMPTY ? this.fill( "-1", 13 ) : this.fill( link.hostColumnId, 13 ),
 			 this.fill( link.hostColumnName, 20 ),
-			 link.hostProjectId == config.EMPTy ? this.fill( "-1", 13 ) : this.fill( link.hostProjectId, 13 ),
+			 link.hostProjectId == config.EMPTY ? this.fill( "-1", 13 ) : this.fill( link.hostProjectId, 13 ),
 			 this.fill( link.hostProjectName, 15 ),
 			 link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
 			 // link.hostRepo,

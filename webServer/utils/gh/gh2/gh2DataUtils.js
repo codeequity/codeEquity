@@ -173,10 +173,54 @@ async function populateCELinkage( authData, ghLinks, pd )
 //  Type2: add 1st peq label to issue: fromLabel. (card will exist in GH already.  expect companion fromCard call in any order)
 //  Type3: add 1st card to peq issue:  fromCard.  (part of above, card:create will fire. expect companion fromLabel call in any order)
 //  Type?: add 2nd card ??? issue:     fromCard.  (type depends on type of issue, i.e. resolve will treat as type1 or type3 )
+//
+// Specials for peq creation
+// Rule:
+//    issue:label is addRelo                     relo not needed for peq, but for ceFlutter summary
+//    card:create is ignore                      always accompanied by move.  let move do relo, create just handles resolve.
+//    card:move   is relo
+//
+// label, then later create/move as part of separate call
+// ---------------------------------
+//  * label will create card in unclaimed.
+//      GH will have unclaimed card after issue:label is done.
+//	 
+//	 arrival: label, then later create, move
+//        ceServer: issue:label addRelo, card:create ---, card:move relo    redundant relo
+//
+// label, create/move as part of same call(s)
+// ---------------------------------
+//  GH will have card.  issue:label will detect card was created already, so will not create unclaimed.
+//  
+//    * create-move case (make project card has column info)
+//      in GH, card will be in correct location with correct colId
+//
+//	 arrival order: label, {create, move}  For this batch, addRelo is sufficient, extra move:relo is redundant but hard to avoid
+//        ceServer: issue:label addRelo, card:create ---, card:move relo      
+//	 arrival order: create, label, move
+//        ceServer: card:create --- (ignored, not peq).  issue:label addRelo, card:move relo
+//	 arrival order: move, label, create
+//        ceServer: card:move --- (ignored, not peq). issue:label addRelo, card:create ---
+//	 arrival order: {create, move}, label
+//	   ceServer: problem?  card:move --- , card:create ---,  issue:label addRelo   
+//
+//      aws peq is correct in all cases.  2-3 pacts per gh2tu call.
+//	    -> Can reduce to 1-2 by expanding info carried in add.  not worth it.
+//	    
+//	 
+//    * create-only case (by hand add issue with pre-triaged project)
+//      in GH, card will be in 'no status' for which all col info is null.
+//	 in ceServer, issue:label can't always tell if no card, or card in NoStatus .. unless..
+//
+//      arrival order: label, create
+//        ceServer: issue:label addRelo, card:create relo             unclaimed is created, card relo fires.
+//	 arrival order: create, label
+//        ceServer: card:create --- (ignored), issue:label addRelo    linkage will help identify NoStatus, so unclaimed not created, card relo not needed.
+
 async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
-    let relocate  = typeof specials !== 'undefined' && specials.hasOwnProperty( "relocate" ) ? specials.relocate : false;
-    let fromCard  = typeof specials !== 'undefined' && specials.hasOwnProperty( "relocate" ) ? specials.fromCard : false;
+    let pact      = typeof specials !== 'undefined' && specials.hasOwnProperty( "pact" )     ? specials.pact     : -1;
+    let fromCard  = typeof specials !== 'undefined' && specials.hasOwnProperty( "fromCard" ) ? specials.fromCard : false;
     let fromLabel = !fromCard;
     assert( fromLabel || link === -1 );
     assert( fromCard  || link !== -1 );
@@ -184,10 +228,10 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let issDat = [issue.title];
 
     // labelIssue does not call getFullIssue, cardHandler does
-    if( ghUtils.validField( issue, "labelContent" ) ) { issDat.push( issue.labelContent ); }
-    else if( issue.labels.length > 0 )                { for( node of issue.labels ) { issDat.push( node.description ); } }
+    if( utils.validField( issue, "labelContent" ) ) { issDat.push( issue.labelContent ); }
+    else if( issue.labels.length > 0 )              { for( node of issue.labels ) { issDat.push( node.description ); } }
 
-    console.log( authData.who, "PNP: issDat", issDat, pd.repoName );
+    console.log( authData.who, "PNP: issDat", issDat, pd.repoName, pact, fromCard );
     
     pd.issueName = issDat[0];
     pd.issueNum  = issue.number;
@@ -240,13 +284,15 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let orig = {};
     let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
     if( fromCard ) {
-	let card = await ghV2.getCard( authData, origCardId );
+	let card = await ghV2.getCard( authData, origCardId ); 
 	colName = card.columnName;
 	if( pd.peqValue > 0 ) {
-	    pd.columnId   = card.columnId;
-	    orig.columnId = card.columnId;
+	    pd.columnId       = card.columnId;
+	    orig.columnId     = card.columnId;
+	    specials.columnId = card.columnId;
 	}
-	console.log( authData.who, "PNP: type 3 if not contradicted below.  ColId", card.columnId, card.columnName );
+	// At this point, if create-edit preceeded label, may be in create when card is built in no-status, meaning no column data.
+	console.log( authData.who, "PNP: type 3 if not contradicted below.  ColId", card.columnId, card.columnName, pd.peqValue );
 	// XXX -1 check is no longer useful?
 	// Can assert here if new repo, not yet populated, repoStatus not set, locs not updated
 	assert( colName != config.EMPTY && colName != -1 ); 
@@ -281,7 +327,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
 	// Note: assigments are not relevant for allocations
 	// If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
-	if( !relocate && !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
+	if( !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
     }
 
     orig.projectName  = projName;
@@ -312,9 +358,12 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     //       resolve with an already-populated repo can NOT split an issue based on a labeling, since the only way to add a card to an existing
     //                issue is to create card.  Furthermore populate does not call this function.
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
-    if( !gotSplit && fromLabel ) {
+    if( pact != -1 && !gotSplit && pd.peqType != "end" ) {
 	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
 	awsUtils.recordPeqData( authData, pd, true, specials );
+    }
+    else {
+	console.log( authData.who, "No need to update peq" );
     }
 }
 

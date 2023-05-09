@@ -114,7 +114,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		// Plunder the first view to get status (i.e. column) info
 		let views = project.views;
 		if( typeof views === 'undefined' ) {
-		    console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?" );
+		    console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?", pNodeId );
 		    statusId = 0;
 		    locData = [-1];
 		    return;
@@ -465,7 +465,6 @@ async function getFullIssue( authData, issueId ) {
 	    issue.labels    = issue.labels.edges.map( edge => edge.node );
 	})
 	.catch( e => issue = ghUtils.errorHandler( "getFullIssue", e, getFullIssue, authData, issueId ));
-
 
     return issue;
 }
@@ -893,7 +892,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( ret.status != 200 ) { throw ret; }
-	    if( ghUtils.validField( ret, "data" ) && ghUtils.validField( ret.data, "createProjectV2" ) && ghUtils.validField( ret.data.createProjectV2, "projectV2" ))
+	    if( utils.validField( ret, "data" ) && utils.validField( ret.data, "createProjectV2" ) && utils.validField( ret.data.createProjectV2, "projectV2" ))
 	    {
 		pid = ret.data.createProjectV2.projectV2.id;
 	    }
@@ -1022,7 +1021,7 @@ async function getCard( authData, cardId ) {
 	    retVal.projId      = card.project.id;
 	    retVal.issueNum    = card.content.number; 
 	    retVal.issueId     = card.content.id;
-	    if( ghUtils.validField( card, "fieldValueByName" ) ) {
+	    if( utils.validField( card, "fieldValueByName" ) ) {
 		retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
 		retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
 		retVal.columnName  = card.fieldValueByName.name;
@@ -1063,12 +1062,12 @@ async function getCardFromIssue( authData, issueId ) {
 	    cards     = cards.filter((card) => card.node.type == "ISSUE" );
 	    assert( cards.length <= 1, "Error.  Issue has multiple cards." );
 	    
-	    if( cards.length == 0 )     { console.log( "Issue has no cards" ); }
+	    if( cards.length == 0 )     { console.log( authData.who, "Issue has no cards" ); }
 	    else {
 		cards.forEach( card => {
 		    retVal.projId      = card.node.project.id;                    
 		    retVal.cardId      = card.node.id;
-		    if( ghUtils.validField( card.node, "fieldValueByName" ) ) {
+		    if( utils.validField( card.node, "fieldValueByName" ) ) {
 			retVal.statusId    = card.node.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
 			retVal.columnId    = card.node.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
 			retVal.columnName  = card.node.fieldValueByName.name;
@@ -1146,7 +1145,7 @@ async function removeCard( authData, projNodeId, issueNodeId ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.catch( e => ghUtils.errorHandler( "removeCard", e, removeCard, authData, projNodeId, issueNodeId ));
 
-    // Successful post looks like the following. Could provide mutationId for traking: { data: { deleteProjectV2Item: { clientMutationId: null } } }
+    // Successful post looks like the following. Could provide mutationId for tracking: { data: { deleteProjectV2Item: { clientMutationId: null } } }
     return true;
 }
 
@@ -1362,7 +1361,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     // console.log( link );
     
     // e.g. add allocation card to proj: add card -> add issue -> rebuild card    
-    if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName != config.PROJ_ACCR ) { return; }   
+    if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName != config.PROJ_ACCR ) { return false; }   
 	
     assert( link.hostCardId != -1 );
 
@@ -1372,10 +1371,11 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
     let success = await removeCard( authData, link.hostProjectId, link.hostCardId ); 
 
     // Remove turds, report.  
-    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjID": pd.ceProjectId, "issueId": pd.issueId, "cardId": link.hostCardId }); }
+    if( success ) { ghLinks.removeLinkage({ "authData": authData, "ceProjId": pd.ceProjectId, "issueId": pd.issueId, "cardId": link.hostCardId }); }
     else { console.log( "WARNING.  cleanUnclaimed failed to remove linkage." ); }
 
     // No PAct or peq update here.  cardHandler rebuilds peq next via processNewPeq.
+    return true;
 }
 
 
@@ -1439,8 +1439,8 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
 	    let projects = [];
-	    if( ghUtils.validField( raw.data, "user" ))                                 { projects = raw.data.user.projectsV2.edges; }
-	    if( projects.length == 0 && ghUtils.validField( raw.data, "organization" )) { projects = raw.data.organization.projectsV2.edges; }
+	    if( utils.validField( raw.data, "user" ))                                 { projects = raw.data.user.projectsV2.edges; }
+	    if( projects.length == 0 && utils.validField( raw.data, "organization" )) { projects = raw.data.organization.projectsV2.edges; }
 
 	    if( projects.length == 1 )     { pid = projects[0].node.id; }
 	    else if( projects.length > 1 ) { pid = -1 * projects.length; }
@@ -1451,8 +1451,8 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
 	    let projects = [];
-	    if( ghUtils.validField( raw.data, "user" ))         { projects = raw.data.user.projectsV2.edges; }
-	    if( ghUtils.validField( raw.data, "organization" )) { projects = projects.concat( raw.data.organization.projectsV2.edges ); }
+	    if( utils.validField( raw.data, "user" ))         { projects = raw.data.user.projectsV2.edges; }
+	    if( utils.validField( raw.data, "organization" )) { projects = projects.concat( raw.data.organization.projectsV2.edges ); }
 
 	    for( let i = 0; i < projects.length; i++ ) {
 		const proj = projects[i].node;
@@ -1483,7 +1483,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
 	    let projects = [];
-	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
+	    if( utils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
 
 	    if( projects.length == 1 )     { pid = projects[0].node.id; }
 	    else if( projects.length > 1 ) { pid = -1 * projects.length; }
@@ -1494,7 +1494,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 	.then( async (raw) => {
 	    if( raw.status != 200 ) { throw raw; }
 	    let projects = [];
-	    if( ghUtils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
+	    if( utils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
 
 	    for( let i = 0; i < projects.length; i++ ) {
 		const proj = projects[i].node;
@@ -1602,7 +1602,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 
 
 // Note. alignment risk
-// Don't care about state:open/closed.  unclaimed need not be visible.
+// Don't care about state:OPEN/CLOSED.  unclaimed need not be visible.
 async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, accr )
 {
     // console.log( "  .. CUC enter create proj" );

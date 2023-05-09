@@ -128,8 +128,10 @@ function randAlpha(length) {
    return result;
 }
 
-
-
+// GQL queries can return null field values that hurt when checking a chain
+function validField( arr, field ) {
+    return arr.hasOwnProperty( field ) && !!arr[field] && typeof arr[field] !== 'undefined';
+}
 
 
 
@@ -178,6 +180,7 @@ async function ingestPActs( authData, pactIds ) {
 
 
 exports.randAlpha     = randAlpha;
+exports.validField    = validField;
 exports.postCE        = postCE;
 exports.sleep         = sleep;
 exports.getMillis     = getMillis;
