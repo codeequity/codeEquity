@@ -114,7 +114,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		// Plunder the first view to get status (i.e. column) info
 		let views = project.views;
 		if( typeof views === 'undefined' ) {
-		    console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?" );
+		    console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?", pNodeId );
 		    statusId = 0;
 		    locData = [-1];
 		    return;

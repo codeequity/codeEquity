@@ -273,12 +273,12 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     // console.log( authData.who, postData );
     
     // Don't wait if already have Id
-    if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
-    else                 { recordPEQ( authData, postData ); }
-    assert( newPEQId != -1 );
-    
     // no need to wait
     if( add ) {
+	if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
+	else                 { recordPEQ( authData, postData ); }
+	assert( newPEQId != -1 );
+    
 	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			 config.PACTVERB_CONF, config.PACTACT_ADD, [ newPEQId ], "",
 			 utils.getToday(), pd.reqBody );

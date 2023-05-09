@@ -33,19 +33,19 @@ function shuffle(arr) {
 }
 
 // Get everything from ceServer
-async function getLinks( authData, ghLinks, query ) {
+async function getLinks( authData, testLinks, query ) {
     let postData = {"Endpoint": "Testing", "Request": "getLinks" };
     let linkData = await utils.postCE( "testHandler", JSON.stringify( postData ));
-    ghLinks.fromJson( authData, linkData );
-    return ghLinks.getLinks( authData, query );
+    testLinks.fromJson( authData, linkData );
+    return testLinks.getLinks( authData, query );
 }
 
-async function getLocs( authData, ghLinks, query ) {
+async function getLocs( authData, testLinks, query ) {
     let postData = {"Endpoint": "Testing", "Request": "getLocs" };
     let locData = await utils.postCE( "testHandler", JSON.stringify( postData ));
-    ghLinks.fromJsonLocs( locData );
-    // ghLinks.showLocs();
-    return ghLinks.getLocs( authData, query );
+    testLinks.fromJsonLocs( locData );
+    // testLinks.showLocs();
+    return testLinks.getLocs( authData, query );
 }
 
 async function getNotices() {
@@ -62,7 +62,7 @@ async function findNotice( query ) {
 }
 
 // Purge repo's links n locs from ceServer
-async function remLinks( authData, ghLinks, ceProjId, hostProjectId ) {
+async function remLinks( authData, testLinks, ceProjId, hostProjectId ) {
     let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "CEProjectId": ceProjId, "HostProjectId": hostProjectId };
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
@@ -128,16 +128,16 @@ function makeTitleReducer( aStr ) {
 
 // Can't just rely on host for confirmation.  Notification arrival to CE can be much slower, and in some cases we need
 // CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
-async function confirmProject( authData, ghLinks, ceProjId, fullName, projId ) {
+async function confirmProject( authData, testLinks, ceProjId, fullName, projId ) {
     console.log( "Confirm Proj", ceProjId, fullName, projId );
-    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
-    // ghLinks.showLocs();
+    let locs = await getLocs( authData, testLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
+    // testLinks.showLocs();
     // console.log( "query got", locs );
     return locs != -1; 
 }
 
-async function confirmColumn( authData, ghLinks, ceProjId, pNodeId, colId ) {
-    let locs = await getLocs( authData, ghLinks, { ceProjId: ceProjId, projId: pNodeId, colId: colId } );
+async function confirmColumn( authData, testLinks, ceProjId, pNodeId, colId ) {
+    let locs = await getLocs( authData, testLinks, { ceProjId: ceProjId, projId: pNodeId, colId: colId } );
     return locs != -1; 
 }
 

@@ -198,9 +198,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // XXX after ceFlutter, move this below postpone, remove populate condition.  pop label not yet attached.  
 	    let issue = await ghV2.getFullIssue( authData, pd.issueId);  
 
-	    // item:create could arrive before issue:open/label.
-	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });	
-	    if( links === -1 && !issue.title == "A special populate issue" ) {
+	    // item:create could arrive before issue:open/label.  Can not create card without issue in pv2.
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
+	    if( links === -1 && !( issue.title == "A special populate issue" ) ) {
 		console.log( "issue:label has not yet arrived.  Postponing create card" );
 		return "postpone";
 	    }
@@ -209,12 +209,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // Otherwise, unclaimed was generated, need to clean it.
 	    let foundUnclaimed = await ghV2.cleanUnclaimed( authData, ghLinks, pd );
 
+	    // PNP adds colId 
 	    let specials = foundUnclaimed ? {pact: "justRelo", fromCard: true} : {fromCard: true};
-
-	    // Don't wait.
-	    // Call PNP to add linkage, resolve, etc.  Make certain to treat as type 1, leaving type 2 for issue
-	    // pact will be relocate, since moving card from unclaimed to new loc.
-	    gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, specials );
+	    console.log( "card:create relo?", foundUnclaimed );
+	    
+	    // Wait.  Linkage should not be in progress when subsequent card:move is processed.
+	    // Call PNP to add linkage, resolve, etc.  
+	    // pact is ignore, since 'create' is always accompanied by 'move'.  'move' does relo.
+	    await gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, specials );
 	}
 	break;
     case 'converted' :

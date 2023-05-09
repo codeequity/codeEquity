@@ -12,7 +12,7 @@ const tu       = require('../../ceTestUtils');
 const gh2tu    = require( './gh2TestUtils' );
 
 
-async function remDraftIssues( authData, ghLinks, pd ) {
+async function remDraftIssues( authData, testLinks, pd ) {
     console.log( "Removing all draft issues. " );
     let drafts = await gh2tu.getDraftIssues( authData, pd.projectId );
     console.log( "REMDRAFT", pd.projectId, drafts );
@@ -22,29 +22,30 @@ async function remDraftIssues( authData, ghLinks, pd ) {
     }
 }
 
-async function remIssues( authData, ghLinks, pd ) {
+// This has to finish before running rest of delete.  Otherwise, for example, links are killed, then delete is over-simplified.
+async function remIssues( authData, testLinks, pd ) {
     // Get all existing issues for deletion.  GraphQL required node_id (global), rather than id.
-    console.log( "Removing all issues. " );
     let issues = await gh2tu.getIssues( authData, pd );
-    console.log( "REMISSUE", issues.length );
+    console.log( authData.who, pd.GHFullName, "REMISSUE", issues.length );
     
-    let allLinks = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName } );
+    let allLinks = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId, "repo": pd.GHFullName } );
     
     // Could probably do this in one fel swoop, but for now
     // Note the awaits here wait to issue GH remove, not for notice, or for CE to complete...  promise.all doesn't help
-
+    let promises = [];
     if( issues != -1 ) {
 	for( const issue of issues) {
-	    await gh2tu.remIssue( authData, issue.id );
-	    let link = allLinks == -1 ? allLinks : allLinks.find(link => link.hostIssueId == issue.id.toString());
-	    if( link != -1 && typeof link != 'undefined' && link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) { await utils.sleep( 800 ); }
-	    else                                                                                                        { await utils.sleep( 400 ); }
+	    promises.push( gh2tu.remIssue( authData, issue.id ) );
+
+	    // space requests a little to give GH a break
+	    await utils.sleep( 600 );
 	}
     }
+    await Promise.all( promises );
 }
 
 
-async function clearRepo( authData, ghLinks, pd ) {
+async function clearRepo( authData, testLinks, pd ) {
     console.log( "\nClearing", pd.GHFullName );
 
     // Delete all issues, cards, projects, columns, labels.
@@ -56,10 +57,13 @@ async function clearRepo( authData, ghLinks, pd ) {
 
     // Issues.
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
-    await remIssues( authData, ghLinks, pd );
+    await remIssues( authData, testLinks, pd );
     await utils.sleep( 1000 );
-    await remIssues( authData, ghLinks, pd );
+    await remIssues( authData, testLinks, pd );
     await utils.sleep( 1000 );
+
+    let issues = await gh2tu.getIssues( authData, pd );
+    assert( issues.length == 0 );
 
     let pactsP  = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
     let ceProjP = awsUtils.getProjectStatus( authData, pd.ceProjectId ); 
@@ -74,7 +78,7 @@ async function clearRepo( authData, ghLinks, pd ) {
 	
 	for( const projId of projIds ) {
 	    pd.projectId = projId;
-	    await remDraftIssues( authData, ghLinks, pd );
+	    await remDraftIssues( authData, testLinks, pd );
 	    await gh2tu.unlinkProject( authData, pd.ceProjectId, projId, pd.GHRepoId );
 	    await utils.sleep( 1000 );
 	}
@@ -137,10 +141,10 @@ async function clearRepo( authData, ghLinks, pd ) {
     // Note: peq from aws no longer carries repo.
     for( const pid of ceProj.HostParts.hostProjectIds ) {
 	console.log( "Remove links", pd.GHFullName, pid );
-	await tu.remLinks( authData, ghLinks, pd.ceProjectId, pid );
+	await tu.remLinks( authData, testLinks, pd.ceProjectId, pid );
 
 	console.log( "getLinks", pd.GHFullName, pid );
-	let links  = await tu.getLinks( authData, ghLinks, { "ceProjId": pd.ceProjectId, "projId": pid } );
+	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId, "projId": pid } );
 	if( links !== -1 ) { console.log( links ); }
 	assert( links === -1 );
     }
@@ -174,14 +178,14 @@ async function clearRepo( authData, ghLinks, pd ) {
 }
 
 
-async function runTests( authData, authDataX, authDataM, ghLinks, td, tdX, tdM ) {
+async function runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM ) {
 
     console.log( "Clear testing environment" );
 
     let promises = [];
-    promises.push( clearRepo( authData,  ghLinks, td ));
-    promises.push( clearRepo( authDataX, ghLinks, tdX ));
-    promises.push( clearRepo( authDataM, ghLinks, tdM ));
+    promises.push( clearRepo( authData,  testLinks, td ));
+    promises.push( clearRepo( authDataX, testLinks, tdX ));
+    promises.push( clearRepo( authDataM, testLinks, tdM ));
     await Promise.all( promises );
 }
 

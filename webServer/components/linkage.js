@@ -598,7 +598,7 @@ class Linkage {
     // Unlink project from repo.  in this case, remove repo info
     async unlinkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId ) {
 	console.log( "Unlink repo", ceProjId, hostRepoId, hostProjectId );
-
+	
 	if( this.locs[ceProjId] != null && this.locs[ceProjId][hostProjectId] != null ) {
 	    for( const [_, loc] of Object.entries( this.locs[ceProjId][hostProjectId] ) ) {
 		// console.log( "  .. clearing", loc );
@@ -619,6 +619,7 @@ class Linkage {
 	await ceProjects.init( authData );
 	
 	this.removeLocs( { authData: authData, ceProjId: ceProjId, projId: hostProjectId } );
+	
 	return true;
     }
 

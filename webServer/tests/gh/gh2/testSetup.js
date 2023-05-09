@@ -19,43 +19,43 @@ const gh2tu    = require( './gh2TestUtils' );
 // XXXXXXXXXXXXXXXXXXXXXXXXX
 
 // Adding a small sleep in each gh2tu.make* - GH seems to get confused if requests come in too fast
-async function createPreferredCEProjects( authData, ghLinks, td ) {
+async function createPreferredCEProjects( authData, testLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
     
     // Modules: softwareContr, businessOps, unallocated
     td.masterPID  = await gh2tu.findOrCreateProject( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
-    let mastCol1  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.softContTitle );
-    let mastCol2  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.busOpsTitle );
-    let mastCol3  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.unallocTitle );
+    let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.softContTitle );
+    let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.busOpsTitle );
+    let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.unallocTitle );
 
     // dataSec: 4x
     let dataPID  = await gh2tu.findOrCreateProject( authData, td, td.dataSecTitle, "Make PII safe" );
-    let dataCols = await gh2tu.make4xCols( authData, ghLinks, td.ceProjectId, td.GHFullName, dataPID );
+    let dataCols = await gh2tu.make4xCols( authData, testLinks, td.ceProjectId, td.GHFullName, dataPID );
 
     // githubOPs: 4x
     let ghOpPID  = await gh2tu.findOrCreateProject( authData, td, td.githubOpsTitle, "Make it giddy" );
-    let ghOpCols = await gh2tu.make4xCols( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID );
-    await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
-    await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );
+    let ghOpCols = await gh2tu.make4xCols( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID );
+    await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
+    await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );
 
     // TRIGGER
     let nbi1     = await gh2tu.makeIssue( authData, td, "A special populate issue", [] );
-    let card11   = await gh2tu.makeProjectCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1, nbi1[0], true );
+    let card11   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.masterPID, mastCol1, nbi1[0], true );
     let popLabel = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, config.POPULATE, -1 );
     let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
     await gh2tu.addLabel( authData, popLabel.id, nbiDat );       // ready.. set... Go!
     await utils.sleep( 1000 );
 
     // softCont: dataSecurity, githubOps, unallocated
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
+    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
+    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await gh2tu.makeAllocCard( authData, ghLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
+    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
 }
 
-async function testPreferredCEProjects( authData, ghLinks, td ) {
+async function testPreferredCEProjects( authData, testLinks, td ) {
 
     // [pass, fail, msgs]
     let subTest  = [ 0, 0, []];
@@ -104,7 +104,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
 	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,       subTest, "PAct user name" ); 
 
-	    console.log( pact.PEQActionId, pact.Verb, pact.Action );
+	    console.log( pact.Subject[0], pact.Verb, pact.Action );
 	    
 	    if( pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
 		pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ||
@@ -235,7 +235,7 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 
 	
 	// Check DYNAMO Linkage
-	let links = await tu.getLinks( authData, ghLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+	let links = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
 	subTest = tu.checkGE( links.length, 4, subTest, "Linkage count" );
 	let unallocSoft = false;   let lSoft = -1;
 	let unallocBus  = false;   let lBus  = -1;
@@ -289,19 +289,19 @@ async function testPreferredCEProjects( authData, ghLinks, td ) {
 	if( unallocBus )  { subTest = tu.checkEq( lBus,  td.boColID.toString(), subTest, "Linkage Col Id" ); }
     }
 
-    return await tu.settle( subTest, [ 0, 0, []], testPreferredCEProjects, authData, ghLinks, td );
+    return await tu.settle( subTest, [ 0, 0, []], testPreferredCEProjects, authData, testLinks, td );
 }
 
 
-async function runTests( authData, ghLinks, td ) {
+async function runTests( authData, testLinks, td ) {
 
     console.log( "Preferred CE project structure =================" );
 
     let testStatus = [ 0, 0, []];
 
-    await createPreferredCEProjects( authData, ghLinks, td );
+    await createPreferredCEProjects( authData, testLinks, td );
     await utils.sleep( 2000 );
-    let t1 = await testPreferredCEProjects( authData, ghLinks, td );
+    let t1 = await testPreferredCEProjects( authData, testLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );
     tu.testReport( testStatus, "Create preferred CE Projects" );

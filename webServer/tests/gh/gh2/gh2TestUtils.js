@@ -13,8 +13,8 @@ const tu       = require( '../../ceTestUtils' );
 
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
 // Server is fast enough for sub 1s, but GH struggles.
-// Is GQL faster?  Start at 0.
-const GH_DELAY = 0;
+// XXX Is GQL faster?  Try lowering this once all up and running.
+const GH_DELAY = 400;
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
 
@@ -864,6 +864,7 @@ async function remAssignee( authData, iNodeId, assignee ) {
 
 async function moveCard( authData, ghLinks, ceProjId, cardId, columnId, specials ) {
     const links = ghLinks.getLinks( authData, { "ceProjId": ceProjId, "cardId": cardId } );    
+    if( !( links !== -1 && links.length == 1) ) { console.log( "erm", links ); }
     assert( links !== -1 && links.length == 1);
     
     await ghV2.moveCard( authData, links[0].hostProjectId, cardId, links[0].hostUtility, columnId );
