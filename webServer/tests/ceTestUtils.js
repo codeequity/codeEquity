@@ -129,10 +129,8 @@ function makeTitleReducer( aStr ) {
 // Can't just rely on host for confirmation.  Notification arrival to CE can be much slower, and in some cases we need
 // CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
 async function confirmProject( authData, testLinks, ceProjId, fullName, projId ) {
-    console.log( "Confirm Proj", ceProjId, fullName, projId );
+    // console.log( "Confirm Proj", ceProjId, fullName, projId );
     let locs = await getLocs( authData, testLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
-    // testLinks.showLocs();
-    // console.log( "query got", locs );
     return locs != -1; 
 }
 

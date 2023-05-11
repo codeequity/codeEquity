@@ -89,6 +89,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
     }
     
     // Don't wait
+    // Note.  Ingest manages peq.psub (i.e. move relo does not manage peq.psub), excluding this first move from unclaimed to initial residence.    
     awsUtils.recordPEQAction( authData, config.EMPTY, reqBody['sender']['login'], pd.ceProjectId,
 			   verb, action, subject, "", 
 			   utils.getToday(), reqBody );
@@ -198,20 +199,30 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // XXX after ceFlutter, move this below postpone, remove populate condition.  pop label not yet attached.  
 	    let issue = await ghV2.getFullIssue( authData, pd.issueId);  
 
-	    // item:create could arrive before issue:open/label.  Can not create card without issue in pv2.
+	    // item:create could arrive before issue:open/label.
+	    // Can not create card without issue in pv2.   Can create issues without cards .. newborn issues will NOT create links without peq labels.
+	    // postpone if have peq label in GH, but no link in CE
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
-	    if( links === -1 && !( issue.title == "A special populate issue" ) ) {
-		console.log( "issue:label has not yet arrived.  Postponing create card" );
+	    let labelDat = [];
+	    if( issue.labels.length > 0 ) {
+		for( label of issue.labels ) { labelDat.push( label.description ); }
+	    }	    
+	    let peqVal = ghUtils.parseLabelDescr( labelDat );
+	    let postpone = ( links === -1 && peqVal > 0 );
+	    if( postpone > 0 && !( issue.title == "A special populate issue" ) ) {
+		console.log( authData.who, "issue:label has not yet arrived.  Postponing create card", pd.issueId, issue.title );
 		return "postpone";
 	    }
 	    
 	    // In issues dialog, if add to project, will automatically be placed in "No Status".
 	    // Otherwise, unclaimed was generated, need to clean it.
 	    let foundUnclaimed = await ghV2.cleanUnclaimed( authData, ghLinks, pd );
+	    console.log( authData.who, "found unclaimed?", foundUnclaimed );
 
-	    // PNP adds colId 
-	    let specials = foundUnclaimed ? {pact: "justRelo", fromCard: true} : {fromCard: true};
-	    console.log( "card:create relo?", foundUnclaimed );
+	    // PNP adds colId.
+	    // Ingest manages peq.psub (i.e. move relo does not manage peq.psub), excluding this first move from unclaimed to initial residence.
+	    // if remade card, then update peq too, just this once.  This is the only time cross-project moves are allowed.
+	    let specials = foundUnclaimed ? {pact: "addRelo", fromCard: true} : {fromCard: true};
 	    
 	    // Wait.  Linkage should not be in progress when subsequent card:move is processed.
 	    // Call PNP to add linkage, resolve, etc.  

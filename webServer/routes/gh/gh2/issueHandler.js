@@ -117,7 +117,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     
     // Current notification not for peq label?
     if( pd.peqValue <= 0 || curVal <= 0 ) {
-	console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
+	console.log( authData.who, "Not a PEQ issue, or not a PEQ label.  No action taken." );
 	return false;
     }
     

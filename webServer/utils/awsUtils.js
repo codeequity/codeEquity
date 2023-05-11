@@ -243,7 +243,8 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     let columnId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "columnId" ) ? specials.columnId : -1;
 
     // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
-    
+
+    // XXX Verify - no longer have 'justRelo'
     assert( pact == -1 || pact == "addRelo" || pact == "justRelo" );
     let add       = pact == "addRelo";
     let relocate  = pact == "addRelo" || pact == "justRelo";
@@ -269,8 +270,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";
 
-    console.log( authData.who, "Recording peq data for", pd.issueName, postData.HostHolderId.toString(), pact, columnId);	
-    // console.log( authData.who, postData );
+    console.log( authData.who, "Recording peq data for", pd.issueName, pd.projectId, pact, columnId);	
     
     // Don't wait if already have Id
     // no need to wait
@@ -278,7 +278,8 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 	if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
 	else                 { recordPEQ( authData, postData ); }
 	assert( newPEQId != -1 );
-    
+
+	console.log( " .. add.  subject:", [newPEQId] );
 	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			 config.PACTVERB_CONF, config.PACTACT_ADD, [ newPEQId ], "",
 			 utils.getToday(), pd.reqBody );
@@ -288,6 +289,8 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     if( relocate ) {
 	assert( columnId != -1 );
 	let subject = [ newPEQId, pd.projectId, columnId ];
+	console.log( " .. relo.  subject:", subject );
+	
 	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			 config.PACTVERB_CONF, config.PACTACT_RELO, subject, "", 
 			 utils.getToday(), pd.reqBody );

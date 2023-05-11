@@ -436,7 +436,7 @@ async function getIssue( authData, issueId ) {
 
 // More is available.. needed?.  Content id here, not project item id
 async function getFullIssue( authData, issueId ) {
-    console.log( authData.who, "Get Full Issue", issueId );
+    // console.log( authData.who, "Get Full Issue", issueId );
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -1100,7 +1100,7 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
 	.then( r => { ret = r; })
 	.catch( e => ret = ghUtils.errorHandler( "moveCard", e, moveCard, authData, projId, itemId, fieldId, value ));
 
-    console.log( "Move card results", ret );
+    // success looks like: { data: { updateProjectV2ItemFieldValue: { clientMutationId: null } }, status: 200 }
     return ret;
 }
 
