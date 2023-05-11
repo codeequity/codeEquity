@@ -231,7 +231,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     if( utils.validField( issue, "labelContent" ) ) { issDat.push( issue.labelContent ); }
     else if( issue.labels.length > 0 )              { for( node of issue.labels ) { issDat.push( node.description ); } }
 
-    console.log( authData.who, "PNP: issDat", issDat, pd.repoName, pact, fromCard );
+    // console.log( authData.who, "PNP: issDat", issDat, pd.repoName, pact, fromCard );
     
     pd.issueName = issDat[0];
     pd.issueNum  = issue.number;
@@ -261,7 +261,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let colName    = fromCard ? config.EMPTY            : link.hostColumnName;
     let projName   = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 	
-    console.log( authData.who, "PNP:", origCardId, pd.projectId, colName, pd.peqType );
+    console.log( authData.who, "PNP: cardid, projId colName", origCardId, pd.projectId, colName, pd.peqType, pd.peqValue );
 
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );

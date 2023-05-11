@@ -134,7 +134,7 @@ async function getProjectStatus( authData, ceProjId ) {
 
 // XXX inconsistent caps
 async function getPeq( authData, ceProjId, issueId, checkActive ) {
-    console.log( authData.who, "Get PEQ from issueId:", ceProjId, issueId );
+    // console.log( authData.who, "Get PEQ from issueId:", ceProjId, issueId );
     let active = true;
     if( typeof checkActive !== 'undefined' ) { active = checkActive; }
 
@@ -279,7 +279,6 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 	else                 { recordPEQ( authData, postData ); }
 	assert( newPEQId != -1 );
 
-	console.log( " .. add.  subject:", [newPEQId] );
 	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			 config.PACTVERB_CONF, config.PACTACT_ADD, [ newPEQId ], "",
 			 utils.getToday(), pd.reqBody );
@@ -289,7 +288,6 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     if( relocate ) {
 	assert( columnId != -1 );
 	let subject = [ newPEQId, pd.projectId, columnId ];
-	console.log( " .. relo.  subject:", subject );
 	
 	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			 config.PACTVERB_CONF, config.PACTACT_RELO, subject, "", 
@@ -302,7 +300,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
 async function recordPEQAction( authData, ceUID, hostUserName, ceProjId, verb, action, subject, note, entryDate, rawBody ) {
-    console.log( authData.who, "Recording PEQAction: ", verb, action, "ceuid:", ceUID );
+    console.log( authData.who, "Recording PEQAction: ", verb, action, subject, note );
 
     let shortName = "RecordPEQAction";
 

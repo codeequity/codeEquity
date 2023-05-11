@@ -271,8 +271,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
 	    let oldColId  = link.hostColumnId;
-	    
-	    // Need to continue here even if new.colId == old.colId, ingest needs the relo pact.
+
+
+	    if( newCard.columnId == oldColId ) {
+		console.log( authData.who, "Moves within columns are not tracked" );
+		return;
+	    }
 	    console.log( authData.who, "attempting to move card to", newColName, newCard.columnId, "from", oldColId );
 	    
 	    // Do not allow move out of ACCR
