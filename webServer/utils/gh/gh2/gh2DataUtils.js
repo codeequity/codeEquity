@@ -177,16 +177,20 @@ async function populateCELinkage( authData, ghLinks, pd )
 // Specials for peq creation
 // Rule:
 //    issue:label is addRelo                     relo not needed for peq, but for ceFlutter summary
-//    card:create is ignore                      always accompanied by move.  let move do relo, create just handles resolve.
-//    card:move   is relo
+//    card:move   diff col is relo               no x-proj moves are allowed, except unclaimed to first home.
+//    card:move   same col is ignore             label, or card:create will send relo pact if appropriate.
+//    card:create no  unclaimed is ignore        always accompanied by move.  let move do relo, create just handles resolve.
+//    card:create yes unclaimed is addRelo       add manages peq, sends pact.  relo sends pact.
+//    ceServer                                   only updates peq psub once after unclaimed -> home
+//    ---                                        for card:create, if before (peq) label, typically means postpone, then ignore.
 //
 // label, then later create/move as part of separate call
 // ---------------------------------
-//  * label will create card in unclaimed.
-//      GH will have unclaimed card after issue:label is done.
+//  GH will have unclaimed card after issue:label is done.
+//    * label will create card in unclaimed.
 //	 
 //	 arrival: label, then later create, move
-//        ceServer: issue:label addRelo, card:create ---, card:move relo    redundant relo
+//        ceServer: issue:label addRelo, card:create addRelo, card:move ignore   2nd addRelo moves from unclaimed to 1st home
 //
 // label, create/move as part of same call(s)
 // ---------------------------------
@@ -195,27 +199,23 @@ async function populateCELinkage( authData, ghLinks, pd )
 //    * create-move case (make project card has column info)
 //      in GH, card will be in correct location with correct colId
 //
-//	 arrival order: label, {create, move}  For this batch, addRelo is sufficient, extra move:relo is redundant but hard to avoid
-//        ceServer: issue:label addRelo, card:create ---, card:move relo      
+//	 arrival order: label, {create, move}  
+//        ceServer: issue:label addRelo, card:create ---, card: ---
 //	 arrival order: create, label, move
-//        ceServer: card:create --- (ignored, not peq).  issue:label addRelo, card:move relo
+//        ceServer: card:create ---.  issue:label addRelo, card: ---
 //	 arrival order: move, label, create
-//        ceServer: card:move --- (ignored, not peq). issue:label addRelo, card:create ---
+//        ceServer: card:move relo(?) . issue:label addRelo, card:create ---           XXX verify
 //	 arrival order: {create, move}, label
-//	   ceServer: problem?  card:move --- , card:create ---,  issue:label addRelo   
+//	   ceServer: card:move relo(?), card:create ---,  issue:label addRelo          XXX verify
 //
 //      aws peq is correct in all cases.  2-3 pacts per gh2tu call.
 //	    -> Can reduce to 1-2 by expanding info carried in add.  not worth it.
 //	    
 //	 
-//    * create-only case (by hand add issue with pre-triaged project)
-//      in GH, card will be in 'no status' for which all col info is null.
-//	 in ceServer, issue:label can't always tell if no card, or card in NoStatus .. unless..
-//
-//      arrival order: label, create
-//        ceServer: issue:label addRelo, card:create relo             unclaimed is created, card relo fires.
-//	 arrival order: create, label
-//        ceServer: card:create --- (ignored), issue:label addRelo    linkage will help identify NoStatus, so unclaimed not created, card relo not needed.
+//  By-hand add issue to project, before triage.  GH card will be in 'no status' for which all col info is null.
+//    * create-only case
+//      no matter order of arrival.  Create first?  postpone.  Label does addrelo. Label recognizes 'card no status', so does not create unclaimed.
+//                                   then create (redundantly) sets linkage in PNP, stops (i.e. no addrelo).
 
 async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
