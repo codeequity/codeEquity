@@ -102,7 +102,6 @@ async function deleteIssue( authData, ghLinks, pd ) {
 //   1) GH issue dialog can specify project.
 //      So when issue:label is received, card may exist in noStatus.  Or not, then issueLabel must createUnclaimed.
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
-    console.log( authData.who, "LabelIssue" );
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
     
@@ -330,7 +329,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // Get array: [proj_id, col_idx4]
-	    let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
+	    let ceProjectLayout = await ghV2.getCEProjectLayout( authData, ghLinks, pd );
 	    if( ceProjectLayout[0] == -1 ) {
 		console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	    }

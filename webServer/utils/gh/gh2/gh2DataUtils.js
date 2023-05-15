@@ -345,6 +345,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	orig.projectName  = config.EMPTY;
 	orig.columnId     = config.EMPTY;   // do not track non-peq   cardHandler depends on this to avoid peq check
 	orig.columnName   = config.EMPTY;   // do not track non-peq
+	orig.title        = config.EMPTY;   // do not track non-peq
     }	
     ghLinks.addLinkage( authData, pd.ceProjectId, orig );
     

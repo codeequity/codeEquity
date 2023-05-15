@@ -322,7 +322,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 		// If the id's match, then we know the contentNotice is pv2.  No need to match further
 		// console.log( "... looking at", pendingNotices[i], nodeId, jd.event );
 		if( nodeId == pendingNotices[i].id ) {
-		    console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
+		    // console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
 		    // console.log( "pendingNotices, after removal" );
 		    let cpid = ceProjects.find( jd.host, pendingNotices[i].org, pendingNotices[i].hpid );
 

@@ -1066,8 +1066,7 @@ async function getCardFromIssue( authData, issueId ) {
 	    cards     = cards.filter((card) => card.node.type == "ISSUE" );
 	    assert( cards.length <= 1, "Error.  Issue has multiple cards." );
 	    
-	    if( cards.length == 0 )     { console.log( authData.who, "Issue has no cards" ); }
-	    else {
+	    if( cards.length > 0 ) {
 		cards.forEach( card => {
 		    retVal.projId      = card.node.project.id;                    
 		    retVal.cardId      = card.node.id;
@@ -1116,7 +1115,7 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
 // Note. alignment risk if card moves in the middle of this
 async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout )
 {
-    console.log( "Moving issue card", pd.issueId, pd.issueNum );
+    console.log( authData.who, "Moving issue card", pd.issueId, pd.issueNum );
     let success    = false;
     let newColId   = -1;
     let newColName = "";
@@ -1138,7 +1137,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 	
 	// move card to "Pending PEQ Approval"
 	if( cardId != -1 ) {
-	    console.log( "Issuing move card" );
+	    console.log( authData.who, "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
 	    newColName = config.PROJ_COLS[ config.PROJ_PEND ];
 	    
@@ -1161,7 +1160,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {
-	    console.log( "Issuing move card" );
+	    console.log( authData.who, "Issuing move card" );
 	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
 	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "colId": newColId } );
 	    assert( locs.length = 1 );
@@ -1170,7 +1169,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 	}
 	else {
 	    // GH has opened this issue.  Close it back up.
-	    console.log( "WARNING.  Can not reopen an issue that has accrued." );
+	    console.log( authData.who, "WARNING.  Can not reopen an issue that has accrued." );
 	    // Don't wait.
 	    updateIssue( authData, pd.issueId, "state", "CLOSED" ); // re-close issue
 	    return false;
@@ -1689,8 +1688,8 @@ async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, 
     let loc             = await createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, issueId, accr );
 
     assert( unClaimedProjId !== -1 );
-    assert( loc.hostColumnId !== -1  );
     assert( loc !== -1  );
+    assert( loc.hostColumnId !== config.EMPTY  );
 
     // create card in unclaimed:unclaimed
     // console.log( "  .. CUC enter create card" );
@@ -1743,7 +1742,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	curCol = link.flatSource;
     }
 
-    console.log( authData.who, "Found project id: ", projId );
+    console.log( authData.who, "Getting ceProjLayout for", projId );
     let foundReqCol = [projId, -1, -1, -1, -1];
     if( projId == -1 ) { return foundReqCol; }
     const locs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, repo: pd.repoName, projId: projId } );
@@ -1842,7 +1841,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	    await ghLinks.addLoc( authData, nLoc, true );
 	}
     }
-    console.log( "Layout:", foundReqCol );
+    // console.log( "Layout:", foundReqCol );
     return foundReqCol;
 }
 
