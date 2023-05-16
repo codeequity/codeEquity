@@ -284,6 +284,7 @@ exports.confirmColumn    = confirmColumn;
 
 // Core testing 
 exports.checkEq         = checkEq;
+exports.checkNEq        = checkNEq;
 exports.checkGE         = checkGE;
 exports.checkLE         = checkLE;
 exports.checkAr         = checkAr;

@@ -345,7 +345,7 @@ async function getDraftIssues( authData, pNodeId ) {
 async function getCards( authData, pNodeId, colId ) {
     let cards = [];
 
-    // console.log( "get cards", pNodeId, colId );
+    console.log( "get cards", pNodeId, colId );
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -374,7 +374,7 @@ async function getCards( authData, pNodeId, colId ) {
 		const iss = issues[i].node;
 		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {
 		    let datum = {};
-		    datum.id     = iss.id;
+		    datum.id = iss.id;                  // pvti or cardId here
 		    datum.issNum = iss.content.number;
 		    datum.title  = iss.content.title;
 		    if( typeof datum.issNum === 'undefined' ) { datum.issNum = -1; } // draft issue
@@ -521,7 +521,7 @@ async function getFullLoc( authData, masterColName, projId, projName, colName ) 
 
 function findCardForIssue( cards, issueNum ) {
     let card = cards.find( c => c.issNum == issueNum );
-    return typeof card === 'undefined' ? -1 : card.cardId; 
+    return typeof card === 'undefined' ? -1 : card.id; 
 }
 
 
@@ -868,7 +868,11 @@ async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specia
     if( !( links !== -1 && links.length == 1) ) { console.log( "erm", links ); }
     assert( links !== -1 && links.length == 1);
 
-    await ghV2.moveCard( authData, links[0].hostProjectId, cardId, links[0].hostUtility, columnId );
+    // Utility should be set - get locally
+    let locs  = testLinks.getLocs( authData, { ceProjId: ceProjId, colId: links[0].hostColumnId } );    
+    assert( locs != -1 && locs.length == 1 );
+    
+    await ghV2.moveCard( authData, links[0].hostProjectId, cardId, locs[0].hostUtility, columnId );
 
     let issNum  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issNum" )  ? specials.issNum : false;
 
@@ -1132,7 +1136,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     
     // Start promises
     let cardsP = getCards( authData, loc.projId, loc.colId );
-    let cardsU = getCards( authData, loc.unclaimPID, td.unclaimCID );
+    let cardsU = getCards( authData, td.unclaimPID, td.unclaimCID );
     let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
     let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
