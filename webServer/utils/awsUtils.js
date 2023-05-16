@@ -134,7 +134,7 @@ async function getProjectStatus( authData, ceProjId ) {
 
 // XXX inconsistent caps
 async function getPeq( authData, ceProjId, issueId, checkActive ) {
-    console.log( authData.who, "Get PEQ from issueId:", ceProjId, issueId );
+    // console.log( authData.who, "Get PEQ from issueId:", ceProjId, issueId );
     let active = true;
     if( typeof checkActive !== 'undefined' ) { active = checkActive; }
 
@@ -243,7 +243,8 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     let columnId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "columnId" ) ? specials.columnId : -1;
 
     // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
-    
+
+    // XXX Verify - no longer have 'justRelo'
     assert( pact == -1 || pact == "addRelo" || pact == "justRelo" );
     let add       = pact == "addRelo";
     let relocate  = pact == "addRelo" || pact == "justRelo";
@@ -269,8 +270,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";
 
-    console.log( authData.who, "Recording peq data for", pd.issueName, postData.HostHolderId.toString(), pact, columnId);	
-    // console.log( authData.who, postData );
+    console.log( authData.who, "Recording peq data for", pd.issueName, pd.projectId, pact, columnId);	
     
     // Don't wait if already have Id
     // no need to wait
@@ -278,7 +278,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 	if( newPEQId == -1 ) { newPEQId = await recordPEQ( authData, postData ); }
 	else                 { recordPEQ( authData, postData ); }
 	assert( newPEQId != -1 );
-    
+
 	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			 config.PACTVERB_CONF, config.PACTACT_ADD, [ newPEQId ], "",
 			 utils.getToday(), pd.reqBody );
@@ -288,6 +288,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     if( relocate ) {
 	assert( columnId != -1 );
 	let subject = [ newPEQId, pd.projectId, columnId ];
+	
 	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			 config.PACTVERB_CONF, config.PACTACT_RELO, subject, "", 
 			 utils.getToday(), pd.reqBody );
@@ -299,7 +300,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
 async function recordPEQAction( authData, ceUID, hostUserName, ceProjId, verb, action, subject, note, entryDate, rawBody ) {
-    console.log( authData.who, "Recording PEQAction: ", verb, action, "ceuid:", ceUID );
+    console.log( authData.who, "Recording PEQAction: ", verb, action, subject, note );
 
     let shortName = "RecordPEQAction";
 

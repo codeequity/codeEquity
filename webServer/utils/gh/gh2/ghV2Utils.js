@@ -436,7 +436,7 @@ async function getIssue( authData, issueId ) {
 
 // More is available.. needed?.  Content id here, not project item id
 async function getFullIssue( authData, issueId ) {
-    console.log( authData.who, "Get Full Issue", issueId );
+    // console.log( authData.who, "Get Full Issue", issueId );
 
     let query = `query( $id:ID! ) {
                    node( id: $id ) {
@@ -1026,7 +1026,11 @@ async function getCard( authData, cardId ) {
 		retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
 		retVal.columnName  = card.fieldValueByName.name;
 	    }
-	    else { console.log( authData.who, "Card is No Status, could not get column info." ); }
+	    else {
+		console.log( authData.who, "Card is No Status, could not get column info." );
+		retVal.columnId    = "No Status";
+		retVal.columnName  = "No Status";
+	    }
 	})
 	.catch( e => retVal = ghUtils.errorHandler( "getCard", e, getCard, authData, cardId ));
 
@@ -1062,8 +1066,7 @@ async function getCardFromIssue( authData, issueId ) {
 	    cards     = cards.filter((card) => card.node.type == "ISSUE" );
 	    assert( cards.length <= 1, "Error.  Issue has multiple cards." );
 	    
-	    if( cards.length == 0 )     { console.log( authData.who, "Issue has no cards" ); }
-	    else {
+	    if( cards.length > 0 ) {
 		cards.forEach( card => {
 		    retVal.projId      = card.node.project.id;                    
 		    retVal.cardId      = card.node.id;
@@ -1072,7 +1075,11 @@ async function getCardFromIssue( authData, issueId ) {
 			retVal.columnId    = card.node.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
 			retVal.columnName  = card.node.fieldValueByName.name;
 		    }
-		    else { console.log( "Card is No Status, could not get column info." ); }
+		    else {
+			console.log( "Card is No Status, could not get column info." );
+			retVal.columnId    = "No Status";
+			retVal.columnName  = "No Status";
+		    }
 		});
 	    }
 
@@ -1100,11 +1107,81 @@ async function moveCard( authData, projId, itemId, fieldId, value ) {
 	.then( r => { ret = r; })
 	.catch( e => ret = ghUtils.errorHandler( "moveCard", e, moveCard, authData, projId, itemId, fieldId, value ));
 
-    console.log( "Move card results", ret );
+    // success looks like: { data: { updateProjectV2ItemFieldValue: { clientMutationId: null } }, status: 200 }
     return ret;
 }
 
+// XXX check for pd.GH*
+// Note. alignment risk if card moves in the middle of this
+async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout )
+{
+    console.log( authData.who, "Moving issue card", pd.issueId, pd.issueNum );
+    let success    = false;
+    let newColId   = -1;
+    let newColName = "";
+    assert.notEqual( ceProjectLayout[0], -1 );
 
+    const link = ghLinks.getUniqueLink( authData, pd.ceProjectId, pd.issueId );
+    let cardId = link.hostCardId;
+
+    if( action == "closed" ) {
+
+	// Out of order notification is possible.  If already accrued, stop.
+	// There is no symmetric issue - once accr, can't repoen.  if only pend, no subsequent move after reopen.
+	if( link.hostColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
+	    let issue = await getFullIssue( authData, pd.issueId );
+	    if( issue.state == 'CLOSED' ) {
+		return false;
+	    }
+	}
+	
+	// move card to "Pending PEQ Approval"
+	if( cardId != -1 ) {
+	    console.log( authData.who, "Issuing move card" );
+	    newColId   = ceProjectLayout[ config.PROJ_PEND + 1 ];   // +1 is for leading projId
+	    newColName = config.PROJ_COLS[ config.PROJ_PEND ];
+	    
+	    success = await checkReserveSafe( authData, pd.issueId, config.PROJ_PEND );
+	    if( !success ) {
+		// no need to put card back - didn't move it.  Don't wait.
+		updateIssue( authData, pd.issueId, "state", "OPEN" ); // reopen issue
+		return false;
+	    }
+
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "colId": newColId } );
+	    assert( locs.length = 1 );
+	    success = await moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, newColId );
+	}
+    }
+    else if( action == "reopened" ) {
+	
+	// This is a PEQ issue.  Verify card is currently in the right place, i.e. PEND ONLY (can't move out of ACCR)
+	if( link.hostColumnId != ceProjectLayout[ config.PROJ_PEND+1 ].toStirng() ) { cardId = -1; }
+
+	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
+	if( cardId != -1 ) {
+	    console.log( authData.who, "Issuing move card" );
+	    newColId   = ceProjectLayout[ config.PROJ_PROG + 1 ];
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "colId": newColId } );
+	    assert( locs.length = 1 );
+	    newColName = locs[0].hostColumnName;
+	    success = await moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, newColId );
+	}
+	else {
+	    // GH has opened this issue.  Close it back up.
+	    console.log( authData.who, "WARNING.  Can not reopen an issue that has accrued." );
+	    // Don't wait.
+	    updateIssue( authData, pd.issueId, "state", "CLOSED" ); // re-close issue
+	    return false;
+	}
+    }
+
+    // Note. updateLinkage should not occur unless successful.  Everywhere.  
+    // Should not need to wait, for example, for moveCard above.  Instead, be able to roll back if it fails.   Rollback.
+    if( success ) { success = ghLinks.updateLinkage( authData, pd.ceProjectId, pd.issueId, cardId, newColId, newColName ); }
+    
+    return success ? newColId : false;
+}
 
 
 // Note this is used to situate an issue, then put into correct column.
@@ -1381,7 +1458,7 @@ async function cleanUnclaimed( authData, ghLinks, pd ) {
 
 // NOTE: As of 1/2023 GH API does not support management of the status column for projects
 //       For now, verify that a human has created this by hand.... https://github.com/orgs/community/discussions/44265 
-async function createColumn( authData, ghLinks, ceProjectId, projId, colName )
+async function createColumn( authData, ghLinks, ceProjectId, projId, colName, position )
 {
     let loc = -1;
     // XXX Fugly
@@ -1611,8 +1688,8 @@ async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, 
     let loc             = await createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, issueId, accr );
 
     assert( unClaimedProjId !== -1 );
-    assert( loc.hostColumnId !== -1  );
     assert( loc !== -1  );
+    assert( loc.hostColumnId !== config.EMPTY  );
 
     // create card in unclaimed:unclaimed
     // console.log( "  .. CUC enter create card" );
@@ -1643,6 +1720,130 @@ async function checkReserveSafe( authData, issueId, colNameIndex ) {
     return retVal;
 }
 
+//                                   [ projId, colId:PLAN,     colId:PROG,     colId:PEND,      colId:ACCR ]
+// If this is a flat project, return [ projId, colId:current,  colId:current,  colId:NEW-PEND,  colId:NEW-ACCR ]
+// Note. alignment risk
+// XXX NOTE  this is optimistically creating required cols if they are missing.
+//           until PV2 supports this ability, much of this code is useless.
+async function getCEProjectLayout( authData, ghLinks, pd )
+{
+    // if not validLayout, won't worry about auto-card move
+    // XXX will need workerthreads to carry this out efficiently, getting AWS data and GH simultaneously.
+    // Note.  On rebuild, watch for potential hole in create card from isssue
+    let issueId = pd.issueId;
+    let link = ghLinks.getUniqueLink( authData, pd.ceProjectId, issueId );
+
+    let projId = link === -1 ? link : link.hostProjectId;
+    let curCol = link === -1 ? link : link.hostColumnId;
+
+    // PLAN and PROG are used as a home in which to reopen issue back to.
+    // If this is not a pure full project, try to reopen the issue back to where it started.
+    if( link !== -1 && link.hostColumnName == config.PROJ_COLS[ config.PROJ_PEND ] ) {
+	curCol = link.flatSource;
+    }
+
+    console.log( authData.who, "Getting ceProjLayout for", projId );
+    let foundReqCol = [projId, -1, -1, -1, -1];
+    if( projId == -1 ) { return foundReqCol; }
+    const locs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, repo: pd.repoName, projId: projId } );
+    assert( locs != -1 );
+    assert( link.hostProjectName == locs[0].hostProjectName );
+
+    let missing = true;
+    let foundCount = 0;
+    for( loc of locs ) {
+	let colName = loc.hostColumnName;
+	for( let i = 0; i < 4; i++ ) {
+	    if( colName == config.PROJ_COLS[i] ) {
+		if( foundReqCol[i+1] == -1 ) { foundCount++; }
+		else {
+		    console.log( "Validate CE Project Layout found column repeat: ", config.PROJ_COLS[i] );
+		    assert( false );
+		}
+		foundReqCol[i+1] = loc.hostColumnId;
+		break;
+	    }
+	}
+	// no need to check every col when required are found
+	if( foundCount == 4 ) { missing = false; break; }
+    }
+
+    
+    // Make this project viable for PEQ tracking
+    if( missing || curCol != -1 ) {
+	let progCol, pendCol, accrCol = false;
+	const progName = config.PROJ_COLS[ config.PROJ_PROG ]; 
+	const pendName = config.PROJ_COLS[ config.PROJ_PEND ];
+	const accrName = config.PROJ_COLS[ config.PROJ_ACCR ];
+	
+	// first, use curCol if present
+	if( curCol != -1 ) {
+	    foundReqCol[config.PROJ_PLAN + 1] = curCol;
+	    foundReqCol[config.PROJ_PROG + 1] = curCol;
+	}
+	else { // else use PLAN or PROG if present, else make prog and use it
+	    if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] != -1 ) {
+		foundReqCol[config.PROJ_PLAN + 1] = foundReqCol[config.PROJ_PROG + 1];
+	    }
+	    if( foundReqCol[config.PROJ_PLAN + 1] != -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
+		foundReqCol[config.PROJ_PROG + 1] = foundReqCol[config.PROJ_PLAN + 1];
+	    }
+	    if( foundReqCol[config.PROJ_PLAN + 1] == -1 && foundReqCol[config.PROJ_PROG + 1] == -1 ) {
+		console.log( "Creating new column:", progName );
+		// Wait later
+		progCol = createColumn( authData, ghLinks, pd.ceProjectId, projId, progName, "first" );
+	    }
+	}
+
+	// Create PEND if missing
+	if( foundReqCol[config.PROJ_PEND + 1] == -1 ) {
+	    console.log( "Creating new column:", pendName );
+	    // Wait later
+	    pendCol = createColumn( authData, ghLinks, pd.ceProjectId, projId, pendName, "last" );
+	}
+	// Create ACCR if missing
+	if( foundReqCol[config.PROJ_ACCR + 1] == -1 ) {
+	    console.log( "Creating new column:", accrName );
+	    // Wait later
+	    accrCol = createColumn( authData, ghLinks, pd.ceProjectId, projId, accrName, "last" );
+	}
+
+
+	let nLoc = {};
+	nLoc.ceProjectId     = pd.ceProjectId;
+	nLoc.hostRepository  = pd.repoName;
+	nLoc.hostProjectId   = projId; 
+	nLoc.hostProjectName = link.hostProjectName;
+	nLoc.active          = "true";
+	
+	if( progCol ) {
+	    progCol = await progCol;
+	    nLoc.hostColumnName = progName;
+	    nLoc.hostColumnId   = progCol.data.id;
+	    await ghLinks.addLoc( authData, nLoc, true );
+	}
+
+	if( pendCol ) {
+	    pendCol = await pendCol;
+	    nLoc.hostColumnName = pendName;
+	    nLoc.hostColumnId   = pendCol.data.id;
+
+	    foundReqCol[config.PROJ_PEND + 1] = pendCol.data.id;
+	    await ghLinks.addLoc( authData, nLoc, true );
+	}
+
+	if( accrCol ) {
+	    accrCol = await accrCol;
+	    nLoc.hostColumnName = accrName;
+	    nLoc.hostColumnId   = accrCol.data.id;
+	    
+	    foundReqCol[config.PROJ_ACCR + 1] = accrCol.data.id;
+	    await ghLinks.addLoc( authData, nLoc, true );
+	}
+    }
+    // console.log( "Layout:", foundReqCol );
+    return foundReqCol;
+}
 
 
 
@@ -1688,6 +1889,7 @@ exports.getColumnName      = getColumnName;
 exports.getCard            = getCard;
 exports.getCardFromIssue   = getCardFromIssue;
 exports.moveCard           = moveCard;
+exports.moveToStateColumn  = moveToStateColumn;
 exports.createProjectCard  = createProjectCard;
 exports.removeCard         = removeCard; 
 exports.rebuildCard        = rebuildCard;
@@ -1697,6 +1899,8 @@ exports.getLabelIssues     = getLabelIssues;
 exports.getProjectIds      = getProjectIds;
 
 exports.cleanUnclaimed     = cleanUnclaimed;
+
+exports.getCEProjectLayout = getCEProjectLayout;
 
 exports.createColumn           = createColumn;           // XXX NYI
 exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI

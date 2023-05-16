@@ -756,9 +756,9 @@ class Linkage {
 			 link.hostIssueNum,
 			 this.fill( link.hostCardId, 13 ),
 			 this.fill( link.hostIssueName, 25 ),
-			 link.hostColumnId == config.EMPTY ? this.fill( "-1", 13 ) : this.fill( link.hostColumnId, 13 ),
+			 link.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 13 ) : this.fill( link.hostColumnId, 13 ),
 			 this.fill( link.hostColumnName, 20 ),
-			 link.hostProjectId == config.EMPTY ? this.fill( "-1", 13 ) : this.fill( link.hostProjectId, 13 ),
+			 link.hostProjectId == config.EMPTY ? this.fill( config.EMPTY, 13 ) : this.fill( link.hostProjectId, 13 ),
 			 this.fill( link.hostProjectName, 15 ),
 			 link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
 			 // link.hostRepo,
@@ -800,7 +800,7 @@ class Linkage {
 			 this.fill( loc.hostRepositoryId, 12 ),
 			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
 			 this.fill( loc.hostProjectName, 15 ),
-			 loc.hostColumnId == config.EMPTY ? this.fill( "-1", 10 ) : this.fill( loc.hostColumnId, 10 ),
+			 loc.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 10 ) : this.fill( loc.hostColumnId, 10 ),
 			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )
 		       );
 	}

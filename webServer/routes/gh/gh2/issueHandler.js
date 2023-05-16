@@ -102,7 +102,6 @@ async function deleteIssue( authData, ghLinks, pd ) {
 //   1) GH issue dialog can specify project.
 //      So when issue:label is received, card may exist in noStatus.  Or not, then issueLabel must createUnclaimed.
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
-    console.log( authData.who, "LabelIssue" );
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
     
@@ -117,7 +116,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     
     // Current notification not for peq label?
     if( pd.peqValue <= 0 || curVal <= 0 ) {
-	console.log( "Not a PEQ issue, or not a PEQ label.  No action taken." );
+	console.log( authData.who, "Not a PEQ issue, or not a PEQ label.  No action taken." );
 	return false;
     }
     
@@ -240,11 +239,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 		if( !config.PROJ_COLS.includes( link.hostColumnName )) {
 
-		    let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
-		    if( ceProjectLayout[0] == -1 ) { console.log( "Project does not have recognizable CE column layout.  No action taken." ); }
+		    let ceProjectLayout = await ghV2.getCEProjectLayout( authData, ghLinks, pd );
+		    if( ceProjectLayout[0] == -1 ) { console.log( "Could not find projectId for issue.  No action taken." ); }
 		    else {
 			// Must wait.  Move card can fail if, say, no assignees
-			let newColId = await gh.moveIssueCard( authData, ghLinks, pd, 'CLOSED', ceProjectLayout ); 
+			let newColId = await ghV2.moveToStateColumn( authData, ghLinks, pd, 'CLOSED', ceProjectLayout ); 
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
@@ -330,13 +329,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // Get array: [proj_id, col_idx4]
-	    let ceProjectLayout = await gh.getCEProjectLayout( authData, ghLinks, pd );
+	    let ceProjectLayout = await ghV2.getCEProjectLayout( authData, ghLinks, pd );
 	    if( ceProjectLayout[0] == -1 ) {
 		console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	    }
 	    else {
 		// Must wait.  Move card can fail if, say, no assignees
-		let newColId = await gh.moveIssueCard( authData, ghLinks, pd, action, ceProjectLayout ); 
+		let newColId = await ghV2.moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
 		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.ceProjectId, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
@@ -344,9 +343,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }
 		    else {
-			// githubCardHandler:recordMove must handle many more options.  Choices here are limited.
+			// cardHandler:recordMove must handle many more options.  Choices here are limited.
 			// Closed: 
-			let verb = config.PACTVERB_PROP;
+			let verb    = config.PACTVERB_PROP;
 			let paction = config.PACTACT_ACCR;
 			let subject = [ peqId.toString() ];
 

@@ -18,6 +18,7 @@ async function createFlatProject( authData, ghLinks, td ) {
     let mastCol1  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Eggs" );
     let mastCol2  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Bacon" );
 
+    // i.e. draft issues
     await gh2tu.makeNewbornCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1, "Parsley" );
     await gh2tu.makeNewbornCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol2, "Rosemary" );
     await gh2tu.makeNewbornCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1, "Sage" );
