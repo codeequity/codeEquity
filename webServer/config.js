@@ -111,6 +111,7 @@ const MIN_DIFF   = 1000;        // min timestamp diff in millis for new insert l
 const MAX_GH_RETRIES = 5;           // GH internals can be quite slow to update at times. Allow retries in some cases.
 const GH_GHOST       = "ghost";     // GH bot actions are executed by this actor
 const GH_NO_STATUS   = "No Status"; // GH name of column holding issues whose status has not yet been set
+const GH_BOT         = "github-project-automation[bot]" // new GH bot name
 
 // AWS related
 const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
@@ -221,5 +222,6 @@ exports.MIN_DIFF   = MIN_DIFF;
 
 exports.GH_GHOST     = GH_GHOST;
 exports.GH_NO_STATUS = GH_NO_STATUS;
+exports.GH_BOT       = GH_BOT;
 
 exports.NOTICE_BUFFER_SIZE = NOTICE_BUFFER_SIZE;

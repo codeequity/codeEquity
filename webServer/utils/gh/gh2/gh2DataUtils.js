@@ -261,7 +261,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let colName    = fromCard ? config.EMPTY            : link.hostColumnName;
     let projName   = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 	
-    console.log( authData.who, "PNP: cardid, projId colName", origCardId, pd.projectId, colName, pd.peqType, pd.peqValue );
+    console.log( authData.who, "PNP: cardid, projId colName repoid", origCardId, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
 
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );

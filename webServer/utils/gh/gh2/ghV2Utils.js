@@ -1399,7 +1399,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 		let classics = raw.data.repository.projects;
 		if(classics.edges.length >= 100 ) { console.log( authData.who, "WARNING.  Too many classic projects, ignoring some." ); }
 		for( const c of classics.edges ) {
-		    console.log( authData.who, "   - pushing", c.node.name, repoFullName, repoId );
+		    console.log( authData.who, "   - pushing classic", c.node.name, repoFullName, repoId );
 		    let datum = {};
 		    datum.hostProjectId   = c.node.id;
 		    datum.hostProjectName = c.node.name;
@@ -1433,7 +1433,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 async function cleanUnclaimed( authData, ghLinks, pd ) {
     console.log( authData.who, "cleanUnclaimed", pd.issueId );
     let link = ghLinks.getUniqueLink( authData, pd.ceProjectId, pd.issueId );
-    if( link === -1 ) { return; }
+    if( link === -1 ) { return false; }
 
     // console.log( link );
     

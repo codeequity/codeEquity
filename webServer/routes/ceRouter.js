@@ -277,8 +277,8 @@ router.post('/:location?', async function (req, res) {
     if( ret == -1 ) { return res.end(); }
 
     // XXX GQL prefers using CE_ACTOR.  REST prefers CE_BOT.  Can they be reconciled?
-    if( jd.actor == config.CE_ACTOR || jd.actor == config.CE_BOT) {
-	console.log( "\nNotification for", jd.event, jd.action, "Bot-sent, skipping." );
+    if( jd.actor == config.CE_ACTOR || jd.actor == config.CE_BOT || jd.actor == config.GH_BOT) {
+	console.log( "\nNotification for", jd.event, jd.action, jd.actor, "is Bot-sent, skipping." );
 	return res.end();
     }
     console.log( "Notification:", jd.actor, jd.event, jd.action, jd.tag, jd.queueId, "for", jd.org, newStamp );

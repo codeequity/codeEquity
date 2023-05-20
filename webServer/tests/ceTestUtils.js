@@ -219,7 +219,7 @@ function mergeTests( t1, t2 ) {
 
 async function delayTimer( fname ) {
     // Settle for up to 30s (Total) before failing.  First few are quick.
-    if( CETestDelayCounts[fname] > 0 ) { console.log( "XXX GH Settle Time", CETestDelayCounts[fname] ); }
+    if( CETestDelayCounts[fname] > 1 ) { console.log( "XXX GH Settle Time", CETestDelayCounts[fname] ); }
     let waitVal = CETestDelayCounts[fname] < 3 ? (CETestDelayCounts[fname]+1) * 500 : 3000 + CETestDelayCounts[fname] * 1000;
     await utils.sleep( waitVal );
     CETestDelayCounts[fname]++;

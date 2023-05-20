@@ -45,7 +45,8 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
     await gh2tu.addLabel( authData, popLabel.id, nbiDat );       // ready.. set... Go!
     await utils.sleep( 1000 );
-
+    await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId ); 
+    
     // softCont: dataSecurity, githubOps, unallocated
     await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
     await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
