@@ -56,6 +56,9 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	// Rare.  GQL-only.  Would need to save more state.  Painful.
 	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.  Non-PEQ labels will be lost.", pd.issueNum );
 
+	// XXX no hostRepoId?
+	console.log( "link?", link );
+	
 	// the entire issue has no longer(!) been given to us here.  Recreate it.
 	// Can only be alloc:false peq label here.
 	let peq  = await awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );

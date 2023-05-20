@@ -39,6 +39,7 @@ async function testIncrementalResolve( authData, testLinks, td ) {
 
     await gh2tu.refreshRec( authData, td );
     await gh2tu.refreshFlat( authData, td );
+    await gh2tu.refreshUnclaimed( authData, td );
 
     // 1. Setup.
     console.log( "make labels" );

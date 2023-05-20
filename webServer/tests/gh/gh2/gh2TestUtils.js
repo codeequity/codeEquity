@@ -90,11 +90,13 @@ async function refreshFlat( authData, td ) {
 }
 
 // Refresh unclaimed.
+// Note: if unclaimed has not yet been linked, expect config.EMPTY
 async function refreshUnclaimed( authData, td ) {
     let hostProjs = [];
     await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
     for( const proj of hostProjs ) {
+	// console.log( "checking", proj.hostProjectName, proj.hostProjectId );
 	if( proj.hostProjectName == td.unclaimTitle ) {
 	    td.unclaimPID = proj.hostProjectId;
 
@@ -104,7 +106,7 @@ async function refreshUnclaimed( authData, td ) {
 	    }
 	}
     }
-    assert( td.unclaimPID !== -1 );
+    if( td.unclaimCID == config.EMPTY ) { console.log( "refresh unclaimed .. did not find." ); }
 }
 
 // [ cardId, issueNum, issueId, issueTitle]
@@ -868,9 +870,8 @@ async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specia
     if( !( links !== -1 && links.length == 1) ) { console.log( "erm", links ); }
     assert( links !== -1 && links.length == 1);
 
-    // Utility should be set - get locally
-    let locs  = testLinks.getLocs( authData, { ceProjId: ceProjId, colId: links[0].hostColumnId } );    
-    assert( locs != -1 && locs.length == 1 );
+    let locs  = await tu.getLocs( authData, testLinks, { ceProjId: ceProjId, colId: columnId } );    
+    assert( locs !== -1 && locs.length == 1 );
     
     await ghV2.moveCard( authData, links[0].hostProjectId, cardId, locs[0].hostUtility, columnId );
 
@@ -1030,7 +1031,7 @@ async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, te
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( lastPact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	subTest = tu.checkEq( lastPact.Action, config.PACTACT_DEL,     subTest, "PAct Verb"); 
-	subTest = tu.checkEq( lastPact.HostUserName, config.TESTER_BOT,  subTest, "PAct user name" ); 
+	subTest = tu.checkEq( lastPact.HostUserName, config.TEST_ACTOR,  subTest, "PAct user name" ); 
 	subTest = tu.checkEq( lastPact.Ingested, "false",              subTest, "PAct ingested" );
 	subTest = tu.checkEq( lastPact.Locked, "false",                subTest, "PAct locked" );
     }
@@ -1111,7 +1112,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	for( const pact of pacts ) {
 	    let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 	    subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	    subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
 	    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 	    subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	}
@@ -1136,7 +1137,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     
     // Start promises
     let cardsP = getCards( authData, loc.projId, loc.colId );
-    let cardsU = getCards( authData, td.unclaimPID, td.unclaimCID );
+    let cardsU = td.unclaimPID == config.EMPTY ? [] : getCards( authData, td.unclaimPID, td.unclaimCID );
     let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
     let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
@@ -1169,13 +1170,13 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     if( !assignCnt ) {
-	let tCard = [1,2,3]; 
-	if( cards !== -1 ) { tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false ); }
+	let tCard = []; 
+	if( cards.length > 0 ) { tCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false ); }
 	subTest = tu.checkEq( tCard.length, 0,                           subTest, "No unclaimed" );
     }
 
     cards = await cardsP;
-    let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
 
     // Long GH pauses show their fury here, more likely than not.
     if( typeof mCard[0] === 'undefined' ) {
@@ -1257,7 +1258,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		for( const pact of pacts ) {
 		    let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 		    subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-		    subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+		    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
 		    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 		    
 		    if( !muteIngested ) { subTest = tu.checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }
@@ -1298,7 +1299,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
 
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
-    let tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
+    let tCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
     subTest = tu.checkEq( tCard.length, 1,                        subTest, "No unclaimed" );
     subTest = tu.checkEq( tCard[0].id, card.cardId,                   subTest, "Card id" );
     
@@ -1357,7 +1358,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     for( const pact of pacts ) {
 	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
-	subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
     }
@@ -1483,7 +1484,7 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
 	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
@@ -1619,7 +1620,7 @@ async function checkNewbornCard( authData, testLinks, td, loc, cardId, title, te
     let cards  = await getCards( authData, loc.projId, loc.colId );
     let card   = cards.find( card => card.cardId == cardId );
     const cardTitle = card.note.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-    subTest = tu.checkEq( card.hasOwnProperty( "issueNum" ), false, subTest, "Newbie has content" );
+    subTest = tu.checkEq( card.hasOwnProperty( "issNum" ), false, subTest, "Newbie has content" );
     subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
 
     // CHECK linkage
@@ -1693,7 +1694,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     if( cards === -1 ) { cards = []; }
     let splitIss = -1;
     for( const iss of splitIssues ) {
-	mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == iss.number.toString() : false );
+	mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == iss.number.toString() : false );
 	if( typeof mCard !== 'undefined' ) {
 	    splitIss = iss;
 	    break;
@@ -2011,7 +2012,7 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
     for( const pact of meltPacts ) {
 	let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
@@ -2073,7 +2074,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issDat, testStatus ) 
 	let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 
@@ -2129,7 +2130,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
 	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.HostUserName, config.TESTER_BOT,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
