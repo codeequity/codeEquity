@@ -1475,7 +1475,9 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     let allPacts = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );         
-    
+
+    // Verify number of adds == relos.  Don't count on order of arrival.
+    /*
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     let addUncl  = pacts.length >= 2 ? pacts[0] :                 {"Action": config.PACTACT_ADD };
     let relUncl  = pacts.length >= 2 ? pacts[ pacts.length -1 ] : {"Action": config.PACTACT_RELO };
@@ -1499,7 +1501,21 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     subTest = tu.checkEq( addUncl.Action, config.PACTACT_ADD,          subTest, "PAct Action"); 
     subTest = tu.checkEq( relUncl.Action, config.PACTACT_RELO,         subTest, "PAct Action");
     const source = pact.Action == config.PACTACT_ADD || pact.Action == config.PACTACT_RELO;
-    subTest = tu.checkEq( source, true,                                subTest, "PAct Action"); 
+    subTest = tu.checkEq( source, true,                                subTest, "PAct Action");
+    */ 
+    let addUncl  = 0;
+    let relUncl  = 0;
+    for( const pact of pacts ) {
+	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
+	subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
+	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
+	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+	addUncl = addUncl + ( pact.Action == config.PACT_ADD  ? 1 : 0 ); 
+	relUncl = relUncl + ( pact.Action == config.PACT_RELO ? 1 : 0 ); 
+    }
+    subTest = tu.checkEq( addUncl, relUncl,          subTest, "PAct Action counts"); 
 
     return await tu.settle( subTest, testStatus, checkNewlySituatedIssue, authData, testLinks, td, loc, issDat, card, testStatus, specials );
 }

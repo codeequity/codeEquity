@@ -99,7 +99,7 @@ class Linkage {
 			
 			blPromise = await blPromise;  // no val here, just ensures linkData is set
 
-			rlinks.forEach( function (link) { link.hostRepo = repo;
+			rlinks.forEach( function (link) { link.hostRepoName = repo;
 							  this.addLinkage( authData, entry.CEProjectId, link, { populate: true } ); 
 							}, this);
 
@@ -119,8 +119,6 @@ class Linkage {
 		for( const repoName of entry.HostParts.hostRepositories ) {
 		    await ghV2.getProjectIds( authData, repoName, hostProjs, -1 );
 		}
-
-		// console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, hostProjs.length );
 		
 		for( const proj of hostProjs ) {
 		    const projId = proj.hostProjectId;
@@ -132,8 +130,8 @@ class Linkage {
 			.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
 
 		    // console.log( authData.who, "Populate Linkage", proj.hostProjectId );
-		    rLinks.forEach( function (link) { link.hostRepo   = proj.hostRepoName;
-						      link.hostRepoId = proj.hostRepoId;
+		    rLinks.forEach( function (link) { link.hostRepoName = proj.hostRepoName;
+						      link.hostRepoId   = proj.hostRepoId;
 						      this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
 						    }, this);
 		    
@@ -142,7 +140,7 @@ class Linkage {
 		    for( var loc of rLocs ) {
 			loc.ceProjectId = entry.CEProjectId;
 			loc.active = "true";
-			loc.hostRepository = proj.hostRepoName;
+			loc.hostRepository   = proj.hostRepoName;
 			loc.hostRepositoryId = proj.hostRepoId;
 			this.addLoc( authData, loc, false ); 
 		    }
@@ -230,7 +228,7 @@ class Linkage {
 		for( const [col, link] of Object.entries( plinks ) ) {
 		    // XXX grunk.  naming in addLinkage causes this conversion. kinda silly.  but testUtils only, so min impact.
 		    let orig = {};
-		    orig.hostRepoName  = link.hostRepo;
+		    orig.hostRepoName  = link.hostRepoName;
 		    orig.hostRepoId    = link.hostRepoId;
 		    orig.issueId       = link.hostIssueId;
 		    orig.issueNum      = link.hostIssueNum;
@@ -263,7 +261,7 @@ class Linkage {
 	let link = this.links[ceProjId][orig.issueId][orig.cardId];
 
 	link.ceProjectId     = ceProjId;
-	link.hostRepo        = typeof orig.hostRepoName === 'undefined' ? config.EMPTY : orig.hostRepoName;
+	link.hostRepoName    = typeof orig.hostRepoName === 'undefined' ? config.EMPTY : orig.hostRepoName;
 	link.hostRepoId      = typeof orig.hostRepoId   === 'undefined' ? config.EMPTY : orig.hostRepoId;
 	link.hostIssueId     = typeof orig.issueId      === 'undefined' ? config.EMPTY : orig.issueId.toString();
 	link.hostIssueNum    = typeof orig.issueNum     === 'undefined' ? config.EMPTY : orig.issueNum.toString();
@@ -377,7 +375,7 @@ class Linkage {
 		match = issueId == -1              ? match : match && (link.hostIssueId     == issueId);
 		match = cardId == -1               ? match : match && (link.hostCardId      == cardId);
 		match = projId == -1               ? match : match && (link.hostProjectId   == projId);
-		match = repo == config.EMPTY       ? match : match && (link.hostRepo        == repo);
+		match = repo == config.EMPTY       ? match : match && (link.hostRepoName    == repo);
 		match = repoId == config.EMPTY     ? match : match && (link.hostRepoId      == repoId);
 		match = projName == config.EMPTY   ? match : match && (link.hostProjectName == projName );
 		match = colName == config.EMPTY    ? match : match && (link.hostColumnName  == colName );
@@ -482,27 +480,27 @@ class Linkage {
 	return true;
     }
 
-    // primary keys have changed.
-    rebuildLinkage( authData, oldLink, issueData, cardId, splitTitle ) {
+    // issue, card ids have changed.
+    rebuildLinkage( authData, oldLink, issueData, splitTitle ) {
 	console.log( authData.who, "Rebuild linkage", oldLink.ceProjectId, oldLink.hostIssueNum, "->", issueData[0] );
 	let newTitle = oldLink.hostIssueName;
 	if( typeof splitTitle !== 'undefined' ) {
 	    newTitle = oldLink.hostColumnId == config.EMPTY ? config.EMPTY : splitTitle;
 	}
 	let alink = {};
-	alink.hostRepoName = oldLink.hostRepo;
+	alink.hostRepoName = oldLink.hostRepoName;
 	alink.issueId      = issueData[0].toString();
 	alink.issueNum     = issueData[1].toString();
 	alink.projectId    = oldLink.hostProjectId;
 	alink.projectName  = oldLink.hostProjectName;
 	alink.columnId     = oldLink.hostColumnId;
 	alink.columnName   = oldLink.hostColumnName;
-	alink.hostCardId   = cardId.toString();
+	alink.hostCardId   = issueData[2].toString();
 	alink.title        = newTitle;
 	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, { source: oldLink.flatSource } );
 	
 	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );
-
+	    
 	return link;
     }
 
@@ -610,8 +608,10 @@ class Linkage {
 	if( this.links[ceProjId] != null ) {
 	    for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {
 		for( const [_, link] of Object.entries( clinks ) ) {
-		    link.hostRepo   = config.EMPTY;
-		    link.hostRepoId = config.EMPTY;
+		    if( link.hostProjectId == hostProjectId && link.hostRepoId == hostRepoId ) {
+			link.hostRepoName = config.EMPTY;
+			link.hostRepoId   = config.EMPTY;
+		    }
 		}}
 	}
 
@@ -636,8 +636,8 @@ class Linkage {
 	
 	// add (or overwrite matching.. hmm see above)
 	// Don't wait, no adds to dynamo
-	rLinks.forEach( function (link) { link.hostRepo   = hostRepoName;
-					  link.hostRepoId = hostRepoId;
+	rLinks.forEach( function (link) { link.hostRepoName = hostRepoName;
+					  link.hostRepoId   = hostRepoId;
 					  this.addLinkage( authData, ceProjId, link, { populate: true } );
 					}, this);
 
@@ -723,14 +723,16 @@ class Linkage {
 	
 	console.log( this.fill( "ceProjId", 13 ),
 	             this.fill( "IssueId", 13 ),
-		     "IssueNum",
+		     this.fill( "IssueNum",10 ),
 		     this.fill( "CardId", 13),
 		     this.fill( "Title", 25 ),
 		     this.fill( "ColId", 13),
 		     this.fill( "ColName", 20),
 		     this.fill( "ProjId", 13 ), 
 		     this.fill( "ProjName", 15 ),
-		     this.fill( "sourceCol", 10 )
+		     this.fill( "Repo", 10 ),
+		     this.fill( "RepoId", 10 )
+		     // this.fill( "sourceCol", 10 )
 		   );
 
 	// console.log( this.links );
@@ -753,15 +755,16 @@ class Linkage {
 	    let link = printables[i]; 
 	    console.log( this.fill( link.ceProjectId, 13 ),
 			 this.fill( link.hostIssueId, 13 ),
-			 link.hostIssueNum,
+			 this.fill( link.hostIssueNum, 10 ),
 			 this.fill( link.hostCardId, 13 ),
 			 this.fill( link.hostIssueName, 25 ),
 			 link.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 13 ) : this.fill( link.hostColumnId, 13 ),
 			 this.fill( link.hostColumnName, 20 ),
 			 link.hostProjectId == config.EMPTY ? this.fill( config.EMPTY, 13 ) : this.fill( link.hostProjectId, 13 ),
 			 this.fill( link.hostProjectName, 15 ),
-			 link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
-			 // link.hostRepo,
+			 // link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
+			 this.fill( link.hostRepoName, 10 ), 
+			 this.fill( link.hostRepoId, 10 )
 		       );
 	}
     }

@@ -27,7 +27,7 @@ https://developer.github.com/v3/issues/#create-an-issue
 // PeqType:PLAN  most common
 async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) { 
     let reqBody  = pd.reqBody;
-    let fullName = link.hostRepo;
+    let fullName = link.hostRepoName;
     
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 

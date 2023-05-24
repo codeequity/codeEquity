@@ -78,21 +78,31 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     }
 
     // Create a new split issue for each copy, move new card loc if need be, set links
+    let splitIssues = [];
     for( let i = 1; i < links.length; i++ ) {
 	let origCardId = links[i].hostCardId;
 	let splitTag   = utils.randAlpha(8);
 	pd.repoId      = links[i].hostRepoId;
 	pd.projectId   = links[i].hostProjectId;
-	    
-	let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
-	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, links[i].hostColumnId, origCardId, issueData, {projId: pd.projectId} );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colId": links[i].hostColumnId} );
+	assert( locs !== -1 );
 
-	pd.issueId    = issueData[0];
-	pd.issueNum   = issueData[1];
-	pd.issueName  = issue.title;
-	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.issueName );
+	let issueData  = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
+	assert( issueData[2] != -1 );
+
+	let success = await ghV2.moveCard( authData, pd.projectId, issueData[2], locs[0].hostUtility, links[i].hostColumnId );
+	assert( success );
+
+	// New issueId, name, num, cardId.  Location is already correct in links[i] so no need to updateLinkage.
+	ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
+
+	let split = {};
+	split.issueId    = issueData[0];
+	split.issueNum   = issueData[1];
+	split.issueName  = issue.title;
+	splitIssues.push( split );
     }
-
+    
     // On initial populate call, resolve is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
     console.log( authData.who, "Building peq for", links[1].hostIssueName );
@@ -103,7 +113,11 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    let colName    = links[i].hostColumnName;
 	    assert( projName != "" );
 	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
-	    
+
+	    pd.issueId    = splitIssues[i-1].issueId;
+	    pd.issueNum   = splitIssues[i-1].issueNum;
+	    pd.issueName  = splitIssues[i-1].issueName;
+
 	    awsUtils.recordPeqData(authData, pd, false );
 	}
     }

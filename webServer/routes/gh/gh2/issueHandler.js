@@ -28,7 +28,7 @@ const cardHandler = require( './cardHandler' );
 //               and inclusion in linkage table.
 
 // When issueHandler:delete is called, GH will remove card as well.  Call deleteCard from here.
-async function deleteIssue( authData, ghLinks, pd ) {
+async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
     let tstart = Date.now();
     
@@ -36,6 +36,8 @@ async function deleteIssue( authData, ghLinks, pd ) {
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
     if( links === -1 ) { return; }
     let link = links[0];
+
+    console.log( "DELETE FOR", pd.issueId );
 
     console.log( authData.who, "Delete situated issue.. first manage card" );
     await cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
@@ -56,8 +58,8 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	// Rare.  GQL-only.  Would need to save more state.  Painful.
 	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.  Non-PEQ labels will be lost.", pd.issueNum );
 
-	// XXX no hostRepoId?
 	console.log( "link?", link );
+	console.log( "assg?", pd.reqBody );
 	
 	// the entire issue has no longer(!) been given to us here.  Recreate it.
 	// Can only be alloc:false peq label here.
@@ -67,7 +69,7 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	pd.reqBody.issue.labels = [ theLabel ];
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 
-	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, link.hostProjectId, pd.reqBody.issue, msg );
+	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, -1, pd.reqBody.issue, msg ); 
 
 	// Promises
 	console.log( authData.who, "creating card from new issue" );
@@ -77,7 +79,8 @@ async function deleteIssue( authData, ghLinks, pd ) {
 	ghV2.updateIssue( authData, issueData[0], "state", "CLOSED" );
 
 	card = await card;
-	link = ghLinks.rebuildLinkage( authData, link, issueData, card.cardId );
+	issueData[2] = card.cardId; 
+	link = ghLinks.rebuildLinkage( authData, link, issueData );
 	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	link.hostProjectName = config.UNCLAIMED;
 	link.hostProjectId   = card.projId;
@@ -199,6 +202,15 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     console.log( authData.who, "issueHandler start", authData.job );
+
+    // XXX
+    let blinks = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
+    if( action == 'deleted' && blinks.length > 0 ) {
+	let blink = blinks[0];
+	console.log( "DELETE FOR", pd.reqBody.issue.node_id );
+	// XXX no hostRepoId?
+	console.log( "link?", blink );
+    }
     
     // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
     pd.issueId    = pd.reqBody.issue.node_id;         // issue content id
@@ -313,7 +325,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	// Wait here, since delete issue can createUnclaimed
-	await deleteIssue( authData, ghLinks, pd );
+	await deleteIssue( authData, ghLinks, ceProjects, pd );
 	break;
     case 'closed':
     case 'reopened':
