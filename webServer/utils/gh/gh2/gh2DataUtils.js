@@ -80,7 +80,6 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     // Create a new split issue for each copy, move new card loc if need be, set links
     let splitIssues = [];
     for( let i = 1; i < links.length; i++ ) {
-	let origCardId = links[i].hostCardId;
 	let splitTag   = utils.randAlpha(8);
 	pd.repoId      = links[i].hostRepoId;
 	pd.projectId   = links[i].hostProjectId;

@@ -237,7 +237,7 @@ async function getFromIssueNode( authData, nodeId ) {
 	    if( ret.data.node.content.labels.length > 99 ) { console.log( "WARNING.  Detected a very large number of labels, ignoring some." ); }
 	    
 	})
-	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, authData, nodeId ));  // this will probably never catch anything
+	.catch( e => ghUtils.errorHandler( "getProjectFromNode", e, getProjectFromNode, authData, nodeId ));  
     return retVal;
 }
 
@@ -366,6 +366,7 @@ async function cardIssue( authData, projNode, issDat ) {
 
 // createIssue, then addProjectV2ItemById
 // NOTE!  If projNode is not -1, createIssue is being asked to create a carded issue.
+// NOTE!  This takes an issue returned (largely) by gql format, not reqBody format.  e.g. assn.id rather than assn.node_id
 // this can generate Notification: issue:open (content), pv2:create (card)
 // Note: mutation:createIssue with inputObject that includes projIds only works for classic projects, not PV2.
 // Note: mutation:addProjectV2DraftIssue works, but can't seem to find how to convert draft to full issue in gql?!!??
@@ -407,7 +408,6 @@ async function createIssue( authData, repoNode, projNode, issue ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
-	    if( !utils.validField( ret.data, "createIssue" )) { console.log( "Not seeing createIssue data?", ret );  }
 	    issueData[0] = ret.data.createIssue.issue.id;
 	    issueData[1] = ret.data.createIssue.issue.number;
 	})

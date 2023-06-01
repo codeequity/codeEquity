@@ -32,6 +32,7 @@ async function postGH( PAT, url, postData ) {
     // Oddly, some GQl queries/mutations return with a status, some do not.
     ret = await ret.json();
     if( typeof ret !== 'undefined' && typeof ret.status === 'undefined' ) {
+	if( utils.validField( ret, "data" ) && utils.validField( ret.data, "errors" ) ) { ret.status = 422; }
 	if( typeof ret.data !== 'undefined' ) { ret.status = 200; }
     }
     

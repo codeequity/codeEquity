@@ -482,13 +482,15 @@ class Linkage {
 
     // issue, card ids have changed.
     rebuildLinkage( authData, oldLink, issueData, splitTitle ) {
-	console.log( authData.who, "Rebuild linkage", oldLink.ceProjectId, oldLink.hostIssueNum, "->", issueData[0] );
+	console.log( authData.who, "Rebuild linkage", oldLink.ceProjectId, oldLink.hostIssueNum, "->", issueData[0], issueData[2] );
+	console.log( authData.who, "XXXrebuild", oldLink, issueData );
 	let newTitle = oldLink.hostIssueName;
 	if( typeof splitTitle !== 'undefined' ) {
 	    newTitle = oldLink.hostColumnId == config.EMPTY ? config.EMPTY : splitTitle;
 	}
 	let alink = {};
 	alink.hostRepoName = oldLink.hostRepoName;
+	alink.hostRepoId   = oldLink.hostRepoId;
 	alink.issueId      = issueData[0].toString();
 	alink.issueNum     = issueData[1].toString();
 	alink.projectId    = oldLink.hostProjectId;
@@ -497,6 +499,7 @@ class Linkage {
 	alink.columnName   = oldLink.hostColumnName;
 	alink.hostCardId   = issueData[2].toString();
 	alink.title        = newTitle;
+	console.log( authData.who, "XXXrebuilt", alink );
 	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, { source: oldLink.flatSource } );
 	
 	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );

@@ -60,13 +60,23 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	console.log( "link?", link );
 	console.log( "assg?", pd.reqBody );
-	
+
 	// the entire issue has no longer(!) been given to us here.  Recreate it.
 	// Can only be alloc:false peq label here.
 	let peq  = await awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );
 	const lName = ghV2.makeHumanLabel( peq.Amount, config.PEQ_LABEL );
 	const theLabel = await ghV2.findOrCreateLabel( authData, link.hostRepoId, false, lName, peq.Amount.toString() );
 	pd.reqBody.issue.labels = [ theLabel ];
+	
+	// Reformat assignees to gql-style. id only.
+	let assg = [];
+	pd.reqBody.issue.assignees.forEach( a => {
+	    let entry = {};
+	    entry.id = a.node_id;
+	    assg.push( entry );
+	});
+	pd.reqBody.issue.assignees = assg;
+
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 
 	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, -1, pd.reqBody.issue, msg ); 
