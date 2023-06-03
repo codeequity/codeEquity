@@ -58,9 +58,6 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	// Rare.  GQL-only.  Would need to save more state.  Painful.
 	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.  Non-PEQ labels will be lost.", pd.issueNum );
 
-	console.log( "link?", link );
-	console.log( "assg?", pd.reqBody );
-
 	// the entire issue has no longer(!) been given to us here.  Recreate it.
 	// Can only be alloc:false peq label here.
 	let peq  = await awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );
@@ -79,7 +76,11 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 
-	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, -1, pd.reqBody.issue, msg ); 
+	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, -1, pd.reqBody.issue, msg );
+
+	// It can take gql some time for the new issue to be discoverable.  Can't proceed to create card until it is available.
+	// Delete accrued should be very low frequency event.  Spin wait.
+	await utils.settleWithVal( "rebuildIssue", ghUtils.getFullIssue, authData, issueData[0] ); 
 
 	// Promises
 	console.log( authData.who, "creating card from new issue" );
@@ -88,14 +89,19 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	// Don't wait - closing the issue at GH, no dependence
 	ghV2.updateIssue( authData, issueData[0], "state", "CLOSED" );
 
+	// Move to unclaimed:accrued col
 	card = await card;
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "colId": card.columnId } );
+	assert( locs.length = 1 );
+	await ghV2.moveCard( authData, card.projId, card.cardId, locs[0].hostUtility, card.columnId );
+	
 	issueData[2] = card.cardId; 
 	link = ghLinks.rebuildLinkage( authData, link, issueData );
 	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	link.hostProjectName = config.UNCLAIMED;
 	link.hostProjectId   = card.projId;
 	link.hostColumnId    = card.columnId;
-	console.log( authData.who, "rebuilt link" );
+	console.log( authData.who, "rebuilt link", link );
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
 	// peq = await peq;

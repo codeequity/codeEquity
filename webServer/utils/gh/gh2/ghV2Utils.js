@@ -1430,7 +1430,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	})
 	.catch( e => ghUtils.errorHandler( "getProjectIds", e, getProjectIds, authData, repoFullName, data, cursor ));
 
-    console.log( "ghV2:getProjectIds", data );
+    // console.log( "ghV2:getProjectIds", data );
 }
 
 

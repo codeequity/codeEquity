@@ -497,9 +497,9 @@ class Linkage {
 	alink.projectName  = oldLink.hostProjectName;
 	alink.columnId     = oldLink.hostColumnId;
 	alink.columnName   = oldLink.hostColumnName;
-	alink.hostCardId   = issueData[2].toString();
+	alink.cardId       = issueData[2].toString();
 	alink.title        = newTitle;
-	console.log( authData.who, "XXXrebuilt", alink );
+	console.log( authData.who, "XXXrebuilt .. ids change not col, proj data", alink );
 	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, { source: oldLink.flatSource } );
 	
 	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );

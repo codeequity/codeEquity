@@ -243,7 +243,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
 	    
 	    let cardId = card.node_id;
-	    
+
+	    console.log( "XXX OUCH!!", pd.reqBody );
 	    if( pd.reqBody.changes == null ) {
 		console.log( authData.who, "Move within columns are ignored.", cardId );
 		return;

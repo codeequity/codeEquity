@@ -130,7 +130,7 @@ function randAlpha(length) {
 
 // GQL queries can return null field values that hurt when checking a chain
 function validField( arr, field ) {
-    return arr.hasOwnProperty( field ) && !!arr[field] && typeof arr[field] !== 'undefined';
+    return !!arr && arr.hasOwnProperty( field ) && !!arr[field] && typeof arr[field] !== 'undefined';
 }
 
 

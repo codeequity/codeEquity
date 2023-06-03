@@ -211,6 +211,7 @@ async function recordPEQ( authData, postData ) {
 async function rebuildPEQ( authData, link, oldPeq ) {
     let postData = {};
     postData.PEQId          = -1;
+    postData.CEProjectId    = oldPeq.CEProjectId;
     postData.HostHolderId   = oldPeq.HostHolderId;
     postData.PeqType        = oldPeq.PeqType;
     postData.Amount         = oldPeq.Amount;
