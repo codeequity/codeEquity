@@ -1717,6 +1717,8 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	}
     }
     
+    console.log( "Split..", cards, newLoc, splitIssues.length, splitIssues[0].number, splitIss );
+    
     const splitDat = splitIss === -1 ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
 
     subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss trouble" );

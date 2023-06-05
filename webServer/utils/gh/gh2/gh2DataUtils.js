@@ -86,12 +86,14 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colId": links[i].hostColumnId} );
 	assert( locs !== -1 );
 
+	// Remove card user just created.  Create new card, relink it.  
+	ghV2.removeCard( authData, pd.projectId, links[i].hostCardId); 
 	let issueData  = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
 	assert( issueData[2] != -1 );
 
 	let success = await ghV2.moveCard( authData, pd.projectId, issueData[2], locs[0].hostUtility, links[i].hostColumnId );
 	assert( success );
-
+	
 	// New issueId, name, num, cardId.  Location is already correct in links[i] so no need to updateLinkage.
 	ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
 
@@ -117,7 +119,11 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	    pd.issueNum   = splitIssues[i-1].issueNum;
 	    pd.issueName  = splitIssues[i-1].issueName;
 
-	    awsUtils.recordPeqData(authData, pd, false );
+	    let specials = {};
+	    specials.pact     = "addRelo";
+	    specials.columnId = links[i].hostColumnId; 
+	    
+	    awsUtils.recordPeqData(authData, pd, false, specials );
 	}
     }
     console.log( authData.who, "Resolved." );

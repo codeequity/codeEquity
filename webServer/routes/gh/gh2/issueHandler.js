@@ -37,7 +37,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
     if( links === -1 ) { return; }
     let link = links[0];
 
-    console.log( "DELETE FOR", pd.issueId );
+    console.log( "delIss: DELETE FOR", pd.issueId );
 
     console.log( authData.who, "Delete situated issue.. first manage card" );
     await cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
@@ -80,10 +80,10 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	// It can take gql some time for the new issue to be discoverable.  Can't proceed to create card until it is available.
 	// Delete accrued should be very low frequency event.  Spin wait.
-	await utils.settleWithVal( "rebuildIssue", ghUtils.getFullIssue, authData, issueData[0] ); 
+	let XXX = await utils.settleWithVal( "checkIssue", ghV2.getFullIssue, authData, issueData[0] ); 
 
 	// Promises
-	console.log( authData.who, "creating card from new issue" );
+	console.log( authData.who, "creating card from new issue", XXX );
 	let card = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
@@ -219,6 +219,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     // console.log( authData.job, pd.reqBody.issue.updated_at, "issue title:", pd.reqBody['issue']['title'], action );
     console.log( authData.who, "issueHandler start", authData.job );
 
+    // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
+    pd.issueId    = pd.reqBody.issue.node_id;         // issue content id
+    pd.issueNum   = pd.reqBody.issue.number;		
+    pd.actor      = pd.reqBody.sender.login;
+    pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+
     // XXX
     let blinks = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
     if( action == 'deleted' && blinks.length > 0 ) {
@@ -228,12 +234,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	console.log( "link?", blink );
     }
     
-    // title can have bad, invisible control chars that break future matching, esp. w/issues created from GH cards
-    pd.issueId    = pd.reqBody.issue.node_id;         // issue content id
-    pd.issueNum   = pd.reqBody.issue.number;		
-    pd.actor      = pd.reqBody.sender.login;
-    pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-
     switch( action ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise

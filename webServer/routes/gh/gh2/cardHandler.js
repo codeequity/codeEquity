@@ -244,9 +244,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    let cardId = card.node_id;
 
-	    console.log( "XXX OUCH!!", pd.reqBody );
 	    if( pd.reqBody.changes == null ) {
 		console.log( authData.who, "Move within columns are ignored.", cardId );
+		// XXX ran into notification error, empty changes during cross-col xfer.  temporary?
+		console.log( authData.who, "XXX", pd.reqBody );
 		return;
 	    }
 

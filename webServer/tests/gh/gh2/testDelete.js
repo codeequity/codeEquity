@@ -44,6 +44,39 @@ async function remIssues( authData, testLinks, pd ) {
     await Promise.all( promises );
 }
 
+// Note: this may be called multiple times for the same ceProj
+async function clearCEProj( authData, testLinks, pd ) {
+    console.log( "\nClearing ceProj", pd.ceProjectId );
+
+    let ceProjP = awsUtils.getProjectStatus( authData, pd.ceProjectId );
+    
+    // ceProjects
+    // XXX Note: Only removing hostProjectIds for now.  Once ceFlutter handles populate, this will change.
+    // Need to wait here, unlink has a check in it.
+    // This will fire if aws:ceProj table has entries but gh no longer does.  Can happen if testing not ending cleanly, or server not being restarted
+    let ceProj = await ceProjP;
+    for( const pid of ceProj.HostParts.hostProjectIds ) {
+	await awsUtils.unlinkProject( authData, {"ceProjId": pd.ceProjectId, "hostProjectId": pid} );
+    }
+
+    // Linkages
+    // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
+    // Note: peq from aws no longer carries repo.
+    for( const pid of ceProj.HostParts.hostProjectIds ) {
+	console.log( "Remove links", pd.GHFullName, pid );
+	await tu.remLinks( authData, testLinks, pd.ceProjectId, pid );
+
+	console.log( "getLinks", pd.GHFullName, pid );
+	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId, "projId": pid } );
+	if( links !== -1 ) { console.log( links ); }
+	assert( links === -1 );
+    }
+    
+    // set unpopulated
+    // XXX Maybe clear hostRepos at some point?
+    console.log( "Depopulate", pd.GHFullName, pd.ceProjectId );
+    await awsUtils.unpopulate( authData, pd.ceProjectId );
+}
 
 async function clearRepo( authData, testLinks, pd ) {
     console.log( "\nClearing", pd.GHFullName );
@@ -59,6 +92,10 @@ async function clearRepo( authData, testLinks, pd ) {
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
     await remIssues( authData, testLinks, pd );
     await utils.sleep( 1000 );
+
+    // XXX
+    // if( pd.GHFullName == "codeequity/ceTesterAri" ) { assert( false ); }
+    
     await remIssues( authData, testLinks, pd );
     await utils.sleep( 1000 );
 
@@ -66,7 +103,6 @@ async function clearRepo( authData, testLinks, pd ) {
     assert( issues.length == 0 );
 
     let pactsP  = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
-    let ceProjP = awsUtils.getProjectStatus( authData, pd.ceProjectId ); 
 
     // XXX would like to delete.. buuut..
     // Get all existing projects in repo for deletion
@@ -100,14 +136,6 @@ async function clearRepo( authData, testLinks, pd ) {
     let pactP  = awsUtils.cleanDynamo( authData, "CEPEQActions", pactIds );
     let pactRP = awsUtils.cleanDynamo( authData, "CEPEQRaw", pactIds );
 
-    // ceProjects
-    // XXX Note: Only removing hostProjectIds for now.  Once ceFlutter handles populate, this will change.
-    // Need to wait here, unlink has a check in it.
-    // This will fire if aws:ceProj table has entries but gh no longer does.  Can happen if testing not ending cleanly, or server not being restarted
-    let ceProj = await ceProjP;
-    for( const pid of ceProj.HostParts.hostProjectIds ) {
-	await awsUtils.unlinkProject( authData, {"ceProjId": pd.ceProjectId, "hostProjectId": pid} );
-    }
     
     // Get all peq labels in repo for deletion... dependent on peq removal first.
     console.log( "Removing all PEQ Labels.", pd.GHFullName );
@@ -136,18 +164,6 @@ async function clearRepo( authData, testLinks, pd ) {
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
     
 
-    // Linkages
-    // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
-    // Note: peq from aws no longer carries repo.
-    for( const pid of ceProj.HostParts.hostProjectIds ) {
-	console.log( "Remove links", pd.GHFullName, pid );
-	await tu.remLinks( authData, testLinks, pd.ceProjectId, pid );
-
-	console.log( "getLinks", pd.GHFullName, pid );
-	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId, "projId": pid } );
-	if( links !== -1 ) { console.log( links ); }
-	assert( links === -1 );
-    }
     // PEQs
     // XXX  still needed?
     // This is not strictly needed.  But to test proper issue delete, keep it in.
@@ -169,24 +185,28 @@ async function clearRepo( authData, testLinks, pd ) {
 
     pactP  = await pactP;
     pactRP = await pactRP;
-
-
-    // set unpopulated
-    // XXX Maybe clear hostRepos at some point?
-    console.log( "Depopulate", pd.GHFullName, pd.ceProjectId );
-    await awsUtils.unpopulate( authData, pd.ceProjectId );
 }
 
 
+// A ceProject can own several repos.
+// Split delete into clearing repo-specific data, then clearing higher level ceProject-specific data.
+// clearRepo can not clear project-wide data.
 async function runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM ) {
 
     console.log( "Clear testing environment" );
-
+    
     let promises = [];
     promises.push( clearRepo( authData,  testLinks, td ));
     promises.push( clearRepo( authDataX, testLinks, tdX ));
     promises.push( clearRepo( authDataM, testLinks, tdM ));
     await Promise.all( promises );
+
+    promises = [];
+    promises.push( clearCEProj( authData,  testLinks, td ));
+    promises.push( clearCEProj( authDataX, testLinks, tdX ));
+    promises.push( clearCEProj( authDataM, testLinks, tdM ));
+    await Promise.all( promises );
+
 }
 
 

@@ -344,6 +344,7 @@ async function getProjectFromNode( authData, pNodeId ) {
     return retVal;
 }
 
+// Create in No Status.
 async function cardIssue( authData, projNode, issDat ) {
     assert( issDat.length == 3 );
     let issueData = [issDat[0],issDat[1],-1]; // contentId, num, cardId
@@ -507,7 +508,7 @@ async function addComment( authData, issueId, msg ) {
 }
 
 async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, splitTag ) { 
-    console.log( authData.who, "Rebuild issue from", issue.id );
+    console.log( authData.who, "Rebuild issue from", issue.node_id );
     let issueData = [-1,-1,-1];  // issue id, num, cardId
     assert( typeof issue.id !== 'undefined', "Error.  rebuildIssue needs an issue to point back to" );
 
@@ -522,7 +523,7 @@ async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, sp
 	    .catch( e => issueData = ghUtils.errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, repoNodeId, projectNodeId, issue, msg, splitTag ));
     }
     else {
-	// console.log( "Calling create", repoNodeId, projectNodeId, issue );
+	console.log( "Rebuild calling create", repoNodeId, projectNodeId, issue );
 	issueData = await createIssue( authData, repoNodeId, projectNodeId, issue );
 	if( issueData[0] !== -1 && issueData[1] !== -1 && ( projectNodeId == -1 || issueData[2] !== -1 )) { success = true; }
     }
@@ -1020,6 +1021,7 @@ async function getCard( authData, cardId ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( raw => {
 	    if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
+	    if( !utils.validField( raw.data, "node" )) { throw raw; }
 	    let card = raw.data.node;
 	    retVal.cardId      = cardId;                        
 	    retVal.projId      = card.project.id;
@@ -1217,14 +1219,14 @@ async function createProjectCard( authData, ghLinks, ploc, issueId, fieldId, jus
 }
 
 // Deleting the pv2 node has no impact on the underlying issue content, as is expected
-async function removeCard( authData, projNodeId, issueNodeId ) {
-    console.log( authData.who, "RemoveCard", projNodeId, issueNodeId );
+async function removeCard( authData, projNodeId, cardId ) {
+    console.log( authData.who, "RemoveCard", projNodeId, cardId );
     let query     = `mutation( $projId:ID!, $itemId:ID! ) { deleteProjectV2Item( input:{ projectId: $projId, itemId: $itemId })  {clientMutationId}}`;
-    let variables = {"projId": projNodeId, "itemId": issueNodeId };
+    let variables = {"projId": projNodeId, "itemId": cardId };
     let queryJ    = JSON.stringify({ query, variables });
 	
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "removeCard", e, removeCard, authData, projNodeId, issueNodeId ));
+	.catch( e => ghUtils.errorHandler( "removeCard", e, removeCard, authData, projNodeId, cardId ));
 
     // Successful post looks like the following. Could provide mutationId for tracking: { data: { deleteProjectV2Item: { clientMutationId: null } } }
     return true;
