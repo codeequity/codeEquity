@@ -94,38 +94,36 @@ async function resolve( authData, ghLinks, pd, allocation ) {
 	let success = await ghV2.moveCard( authData, pd.projectId, issueData[2], locs[0].hostUtility, links[i].hostColumnId );
 	assert( success );
 	
-	// New issueId, name, num, cardId.  Location is already correct in links[i] so no need to updateLinkage.
-	ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
-
-	let split = {};
-	split.issueId    = issueData[0];
-	split.issueNum   = issueData[1];
-	split.issueName  = issue.title;
-	splitIssues.push( split );
+	// New issueId, name, num, cardId.  Location is already correct in links[i] so no need to update splitLink
+	let splitLink = ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
+	splitIssues.push( splitLink );
     }
-    
+
     // On initial populate call, resolve is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
-    console.log( authData.who, "Building peq for", links[1].hostIssueName );
-    for( let i = 1; i < links.length; i++ ) {    
+    // Can no longer depend on links[i], since rebuildLinkage modded, then destroyed original copy.
+    // XXX Verify works for 3+ cards on initial populate.  splitIssues[i-1] is sloppy.
+    for( split of splitIssues ) {
+	console.log( authData.who, "Building peq for", split.hostIssueName, split.hostColumnName );
 	// Don't record simple multiply-carded issues
 	if( pd.peqType != config.PEQTYPE_END ) {
-	    let projName   = links[i].hostProjectName;
-	    let colName    = links[i].hostColumnName;
+	    let projName   = split.hostProjectName;
+	    let colName    = split.hostColumnName;
 	    assert( projName != "" );
 	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
 
-	    pd.issueId    = splitIssues[i-1].issueId;
-	    pd.issueNum   = splitIssues[i-1].issueNum;
-	    pd.issueName  = splitIssues[i-1].issueName;
+	    pd.issueId    = split.hostIssueId;
+	    pd.issueNum   = split.hostIssueNum;
+	    pd.issueName  = split.hostIssueName;
 
 	    let specials = {};
 	    specials.pact     = "addRelo";
-	    specials.columnId = links[i].hostColumnId; 
+	    specials.columnId = split.hostColumnId; 
 	    
 	    awsUtils.recordPeqData(authData, pd, false, specials );
 	}
     }
+    
     console.log( authData.who, "Resolved." );
     return gotSplit;
 }

@@ -138,8 +138,8 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
 	// no need to wait.
 	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
 	peq = await peq;
-	if( peq === -1 ) { console.log( "WARNING.  Race condition detected when deleting peq." ); }
-	awsUtils.removePEQ( authData, peq.PEQId );
+	if( peq === -1 ) { console.log( "WARNING.  Race condition detected when deleting peq. Error?", peq, link ); }
+	else {             awsUtils.removePEQ( authData, peq.PEQId ); }
 	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
 	let note   = accr ? "Disconnected issue" : "";
 	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
@@ -252,6 +252,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 
 	    let newCard      = await ghV2.getCard( authData, cardId );
+	    if( newCard === -1 ) {
+		console.log( authData.who, "No such card, ignoring move request." );
+		return;
+	    }
+	    
 	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	    // get no status col
@@ -276,7 +281,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 
 	    if( newCard.columnId == oldColId ) {
-		console.log( authData.who, "Moves within columns are not tracked" );
+		console.log( authData.who, "Moves within columns are not tracked", link, newCard, pd.reqBody.changes );
 		return;
 	    }
 	    console.log( authData.who, "attempting to move card to", newColName, newCard.columnId, "from", oldColId );

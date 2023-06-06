@@ -507,8 +507,9 @@ async function addComment( authData, issueId, msg ) {
     return true;
 }
 
+// This works on GQL-formated data, not json response data.  I.e. *.id not *.node_id 
 async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, splitTag ) { 
-    console.log( authData.who, "Rebuild issue from", issue.node_id );
+    console.log( authData.who, "Rebuild issue from", issue.id );
     let issueData = [-1,-1,-1];  // issue id, num, cardId
     assert( typeof issue.id !== 'undefined', "Error.  rebuildIssue needs an issue to point back to" );
 
@@ -1020,8 +1021,14 @@ async function getCard( authData, cardId ) {
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( raw => {
+	    // A moveCard is generated after createProjectCard.  MoveCard getsCard first.
+	    // If CPC caused a split, the move notice is for a card that no longer exists.
+	    // XXX formalize message
+	    if( utils.validField( raw, "errors" ) && raw.errors.length == 1 && raw.errors[0].message.includes( "Could not resolve to a node with the global id" )) {  
+		console.log( authData.who, "Could not find card:", cardId, "possibly result of rebuilding for a split issue?" );
+		return -1;
+	    }
 	    if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
-	    if( !utils.validField( raw.data, "node" )) { throw raw; }
 	    let card = raw.data.node;
 	    retVal.cardId      = cardId;                        
 	    retVal.projId      = card.project.id;

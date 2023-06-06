@@ -37,7 +37,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
     if( links === -1 ) { return; }
     let link = links[0];
 
-    console.log( "delIss: DELETE FOR", pd.issueId );
+    console.log( authData.who, "delIss: DELETE FOR", pd.issueId );
 
     console.log( authData.who, "Delete situated issue.. first manage card" );
     await cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
@@ -59,24 +59,28 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.  Non-PEQ labels will be lost.", pd.issueNum );
 
 	// the entire issue has no longer(!) been given to us here.  Recreate it.
+	// Reformat to gql-style. id only.
+	let issue = pd.reqBody.issue;
+	issue.id = issue.node_id;
+
 	// Can only be alloc:false peq label here.
 	let peq  = await awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );
+	assert( utils.validField( peq, "Amount" ));
 	const lName = ghV2.makeHumanLabel( peq.Amount, config.PEQ_LABEL );
 	const theLabel = await ghV2.findOrCreateLabel( authData, link.hostRepoId, false, lName, peq.Amount.toString() );
-	pd.reqBody.issue.labels = [ theLabel ];
+	issue.labels = [ theLabel ];
 	
-	// Reformat assignees to gql-style. id only.
 	let assg = [];
-	pd.reqBody.issue.assignees.forEach( a => {
+	issue.assignees.forEach( a => {
 	    let entry = {};
 	    entry.id = a.node_id;
 	    assg.push( entry );
 	});
-	pd.reqBody.issue.assignees = assg;
+	issue.assignees = assg;
 
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 
-	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, -1, pd.reqBody.issue, msg );
+	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, -1, issue, msg );
 
 	// It can take gql some time for the new issue to be discoverable.  Can't proceed to create card until it is available.
 	// Delete accrued should be very low frequency event.  Spin wait.
@@ -84,6 +88,9 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	// Promises
 	console.log( authData.who, "creating card from new issue", XXX );
+
+	// XXX XXX  time, or type?
+	// await utils.sleep( 10000 );
 	let card = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence

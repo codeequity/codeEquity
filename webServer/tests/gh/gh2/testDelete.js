@@ -71,6 +71,16 @@ async function clearCEProj( authData, testLinks, pd ) {
 	if( links !== -1 ) { console.log( links ); }
 	assert( links === -1 );
     }
+
+    // PEQs
+    // XXX clean, if passing in larger test setups.
+    // Should be attached to repo, but dynamo does not keep that information.  Can not move to clearRepo unless keep, say, ceTesterAri peqs away from ceTesterConnie peqs
+    let peqs = await awsUtils.getPeqs( authData,  { "CEProjectId": pd.ceProjectId });
+    let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
+    if( peqIds.length > 0 ) {
+	console.log( "Dynamo PEQ ids", pd.GHFullName, peqIds );
+	await awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
+    }
     
     // set unpopulated
     // XXX Maybe clear hostRepos at some point?
@@ -163,26 +173,6 @@ async function clearRepo( authData, testLinks, pd ) {
     labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "newName" );
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
     
-
-    // PEQs
-    // XXX  still needed?
-    // This is not strictly needed.  But to test proper issue delete, keep it in.
-    // Without, remIssues are issued, but notifications and subsequent aws actions start finishing here.
-    // So the status of peqsP is uncertain at this point, without more give.
-    // await utils.sleep( 3000 );
-    // console.log( "Done waiting for remIssue", pd.GHFullName );
-
-    // XXX clean, if passing in larger test setups.
-    // This used to be done earlier to minimize waiting.  but was running into remIssue.
-    let peqsP   = awsUtils.getPeqs( authData,  { "CEProjectId": pd.ceProjectId });
-    let peqs =  await peqsP;
-    let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
-    if( peqIds.length > 0 ) {
-	console.log( "Dynamo PEQ ids", pd.GHFullName, peqIds );
-	let peqP = awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
-	peqP   = await peqP;
-    }
-
     pactP  = await pactP;
     pactRP = await pactRP;
 }
