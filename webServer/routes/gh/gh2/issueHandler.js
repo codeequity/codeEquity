@@ -81,17 +81,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
 
 	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, -1, issue, msg );
-
-	// It can take gql some time for the new issue to be discoverable.  Can't proceed to create card until it is available.
-	// Delete accrued should be very low frequency event.  Spin wait.
-	let XXX = await utils.settleWithVal( "checkIssue", ghV2.getFullIssue, authData, issueData[0] ); 
-
-	// Promises
-	console.log( authData.who, "creating card from new issue", XXX );
-
-	// XXX XXX  time, or type?
-	// await utils.sleep( 10000 );
-	let card = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
+	let card        = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
 	ghV2.updateIssue( authData, issueData[0], "state", "CLOSED" );
@@ -108,7 +98,6 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	link.hostProjectName = config.UNCLAIMED;
 	link.hostProjectId   = card.projId;
 	link.hostColumnId    = card.columnId;
-	console.log( authData.who, "rebuilt link", link );
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
 	// peq = await peq;

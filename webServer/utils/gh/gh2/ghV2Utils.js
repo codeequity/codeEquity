@@ -352,7 +352,8 @@ async function cardIssue( authData, projNode, issDat ) {
     query     = "mutation( $proj:ID!, $contentId:ID! ) { addProjectV2ItemById( input:{ projectId: $proj, contentId: $contentId }) {clientMutationId, item{id}}}";
     variables = {"proj": projNode, "contentId": issDat[0]};
     queryJ    = JSON.stringify({ query, variables });
-    
+
+    console.log( authData.who, "cardIssue", queryJ );
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
@@ -404,7 +405,7 @@ async function createIssue( authData, repoNode, projNode, issue ) {
     let queryJ    = JSON.stringify({ query, variables });
 
 
-    console.log( "QUERY", issue.body, queryJ );
+    console.log( "QUERY", queryJ );
     
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
@@ -1672,7 +1673,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const unClaimed = config.UNCLAIMED;
     const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
-    // console.log( "create unclaimed col", unClaimedProjId, issueId, colName, accr );
+    console.log( "create unclaimed col", unClaimedProjId, issueId, colName, accr );
 
     // Get locs again, to update after uncl. project creation 
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
@@ -1699,20 +1700,20 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 // Don't care about state:OPEN/CLOSED.  unclaimed need not be visible.
 async function createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueId, accr )
 {
-    // console.log( "  .. CUC enter create proj" );
     let unClaimedProjId = await createUnClaimedProject( authData, ghLinks, ceProjects, pd );
-    // console.log( "  .. CUC enter create col" );
-    let loc             = await createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, issueId, accr );
-
     assert( unClaimedProjId !== -1 );
+
+    let loc = await createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, issueId, accr );
     assert( loc !== -1  );
     assert( loc.hostColumnId !== config.EMPTY  );
 
+    // XXX
+    console.log( authData.who, "known projs" );
+    ceProjects.show();
+    
     // create card in unclaimed:unclaimed
-    // console.log( "  .. CUC enter create card" );
     let ploc = {"ceProjId": pd.ceProjectId, "pNodeId": unClaimedProjId, "colId": loc.hostColumnId} ;
     let card = await createProjectCard( authData, ghLinks, ploc, issueId, loc.hostUtility, false );
-    // console.log( "  .. CUC enter return card", card );
     return card;
 }
 

@@ -92,6 +92,31 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     await gh2tu.closeIssue( authData, td, issAccrDat );
     await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.cardId, accrLoc.colId );
 
+/*
+    // 1. Setup.
+    let label1k  = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "1000 " + config.PEQ_LABEL, 1000 );
+    let labelDoc = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "documentation", -1 );
+    let labelBug = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
+
+    const issAccrDat = await gh2tu.makeIssue( authData, td, ISS_ACCR, [ label1k, labelDoc, labelBug ] );
+
+    const planLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const accrLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const toAccrLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    
+    // Need assignees for pend/accr.
+    ASSIGNEE1 = await ASSIGNEE1;
+    await gh2tu.addAssignee( authData, issAccrDat, ASSIGNEE1 );
+
+    const cardAccr = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, planLoc.projId, planLoc.colId, issAccrDat[0] );
+
+    await gh2tu.closeIssue( authData, td, issAccrDat );
+    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.cardId, accrLoc.colId );
+*/
+
+
+    assert( false );
+    
     await utils.sleep( 2000 );	
     testStatus = await gh2tu.checkUntrackedIssue( authData, testLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
     testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, planLoc, issPlanDat, cardPlan, testStatus, {peq: true, lblCount: 3 } );

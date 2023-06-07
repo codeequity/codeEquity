@@ -931,8 +931,8 @@ async function remIssue( authData, issueId ) {
     
     let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
 
-    // console.log( "remIssue query", query );
     if( typeof res.data === 'undefined' ) { console.log( "ERROR.", res ); }
+    console.log( "executed remIssue id", issueId );
     
     await utils.sleep( tu.MIN_DELAY );
 }

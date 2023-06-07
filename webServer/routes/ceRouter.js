@@ -282,6 +282,8 @@ router.post('/:location?', async function (req, res) {
 	return res.end();
     }
     console.log( "Notification:", jd.actor, jd.event, jd.action, jd.tag, jd.queueId, "for", jd.org, newStamp );
+    // XXX remove this
+    if( jd.event == "issue" && jd.action == "deleted" ) { console.log( "  ...", jd.reqBody.issue.node_id ); }
     
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
     notificationCount++;

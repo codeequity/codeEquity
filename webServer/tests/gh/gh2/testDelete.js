@@ -35,6 +35,7 @@ async function remIssues( authData, testLinks, pd ) {
     let promises = [];
     if( issues != -1 ) {
 	for( const issue of issues) {
+	    console.log( "  ..  pushing remIssue", pd.GHFullName, issue.id, issue.title );
 	    promises.push( gh2tu.remIssue( authData, issue.id ) );
 
 	    // space requests a little to give GH a break
@@ -101,11 +102,9 @@ async function clearRepo( authData, testLinks, pd ) {
     // Issues.
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
     await remIssues( authData, testLinks, pd );
-    await utils.sleep( 1000 );
+    // Need longer delay here - small testing groups, this finishes before delete accrued is done
+    await utils.sleep( 3000 );
 
-    // XXX
-    // if( pd.GHFullName == "codeequity/ceTesterAri" ) { assert( false ); }
-    
     await remIssues( authData, testLinks, pd );
     await utils.sleep( 1000 );
 
