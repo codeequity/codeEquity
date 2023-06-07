@@ -102,7 +102,8 @@ async function clearRepo( authData, testLinks, pd ) {
     // Issues.
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
     await remIssues( authData, testLinks, pd );
-    // Need longer delay here - small testing groups, this finishes before delete accrued is done
+    // await above just waits for gh commands to be issued.  No way to wait for ceServer to process.
+    // It is fair, since user could not issue second set of deletes before the cards show up.
     await utils.sleep( 3000 );
 
     await remIssues( authData, testLinks, pd );

@@ -470,7 +470,7 @@ async function unlinkProject( authData, query ) {
 
     // NOTE if this fails during testing, chances are you are not restarting ceServer (good), but also not running testDelete (bad).
     //      if so, multiple copies of the current project-du-jour are stored in aws:ceProjects.
-    assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ), query );
+    assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ), query.toString() );
 
     return retVal;
 }

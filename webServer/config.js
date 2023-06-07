@@ -1,7 +1,7 @@
 // ceServerConfig
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
-const CE_ACTOR    = 'builderCE';
+const CE_ACTOR   = 'builderCE';
 const CE_BOT     = 'codeequity[bot]';
 const TESTER_BOT = 'cetester[bot]';
 

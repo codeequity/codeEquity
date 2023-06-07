@@ -353,7 +353,6 @@ async function cardIssue( authData, projNode, issDat ) {
     variables = {"proj": projNode, "contentId": issDat[0]};
     queryJ    = JSON.stringify({ query, variables });
 
-    console.log( authData.who, "cardIssue", queryJ );
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
@@ -404,9 +403,6 @@ async function createIssue( authData, repoNode, projNode, issue ) {
     let variables = {"repo": repoNode, "title": issue.title, "body": issue.body, "labels": issue.labels, "mile": issue.milestone, "assg": issue.assignees };
     let queryJ    = JSON.stringify({ query, variables });
 
-
-    console.log( "QUERY", queryJ );
-    
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
@@ -525,7 +521,6 @@ async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, sp
 	    .catch( e => issueData = ghUtils.errorHandler( "rebuildIssue", utils.FAKE_ISE, rebuildIssue, authData, repoNodeId, projectNodeId, issue, msg, splitTag ));
     }
     else {
-	console.log( "Rebuild calling create", repoNodeId, projectNodeId, issue );
 	issueData = await createIssue( authData, repoNodeId, projectNodeId, issue );
 	if( issueData[0] !== -1 && issueData[1] !== -1 && ( projectNodeId == -1 || issueData[2] !== -1 )) { success = true; }
     }

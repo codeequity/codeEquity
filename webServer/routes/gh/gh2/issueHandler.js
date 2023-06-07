@@ -220,15 +220,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     pd.issueNum   = pd.reqBody.issue.number;		
     pd.actor      = pd.reqBody.sender.login;
     pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-
-    // XXX
-    let blinks = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
-    if( action == 'deleted' && blinks.length > 0 ) {
-	let blink = blinks[0];
-	console.log( "DELETE FOR", pd.reqBody.issue.node_id );
-	// XXX no hostRepoId?
-	console.log( "link?", blink );
-    }
     
     switch( action ) {
     case 'labeled':

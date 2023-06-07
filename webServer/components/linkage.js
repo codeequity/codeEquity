@@ -67,12 +67,8 @@ class Linkage {
 		// As long as hproj and cproj are linked, there will be at least one link irregardless of ceServer status.
 		// ceFlutter is the main consumer of this information, excluding this call.
 
-		let awsLinks = await awsUtils.getLinkage( authData, { "CEProjectId": entry.CEProjectId } );		
-		assert( awsLinks.length == 1 );
 		let repos = [];
-		
-		for( const awsLoc of awsLinks[0].Locations ) {
-		    let repo = awsLoc.hostRepository;
+		for( const repo of entry.HostParts.hostRepositories ) {
 		    if( !repos.includes( repo )) {
 			repos.push( repo );
 
@@ -483,7 +479,6 @@ class Linkage {
     // issue, card ids have changed.
     rebuildLinkage( authData, oldLink, issueData, splitTitle ) {
 	console.log( authData.who, "Rebuild linkage", oldLink.ceProjectId, oldLink.hostIssueNum, "->", issueData[0], issueData[2] );
-	console.log( authData.who, "XXXrebuild", oldLink, issueData );
 	let newTitle = oldLink.hostIssueName;
 	if( typeof splitTitle !== 'undefined' ) {
 	    newTitle = oldLink.hostColumnId == config.EMPTY ? config.EMPTY : splitTitle;
@@ -499,7 +494,6 @@ class Linkage {
 	alink.columnName   = oldLink.hostColumnName;
 	alink.cardId       = issueData[2].toString();
 	alink.title        = newTitle;
-	console.log( authData.who, "XXXrebuilt .. ids change not col, proj data", alink );
 	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, { source: oldLink.flatSource } );
 	
 	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );
