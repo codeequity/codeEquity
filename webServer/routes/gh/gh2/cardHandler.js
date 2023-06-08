@@ -281,7 +281,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 
 	    if( newCard.columnId == oldColId ) {
-		console.log( authData.who, "Moves within columns are not tracked", link, newCard, pd.reqBody.changes );
+		// console.log( authData.who, "Moves within columns are not tracked", link, newCard, pd.reqBody.changes );
+		console.log( authData.who, "Moves within columns are not tracked" );
 		return;
 	    }
 	    console.log( authData.who, "attempting to move card to", newColName, newCard.columnId, "from", oldColId );

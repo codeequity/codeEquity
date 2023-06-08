@@ -460,9 +460,33 @@ async function linkProject( authData, query ) {
 }
 
 async function unlinkProject( authData, query ) {
+
+    // XXX
+    let xshortName = "GetEntries";
+    let xpostData = { "Endpoint": xshortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
+    let xceProj = await wrappedPostAWS( authData, xshortName, xpostData );
+    console.log( "XXXUnlink", "before", query, xceProj);
+    if( utils.validField( xceProj, "HostParts" ) && utils.validField( xceProj.HostParts, "hostProjectIds" )) {
+	for( const x of xceProj.HostParts.hostProjectIds ) { console.log( x ); }
+    }
+    if( utils.validField( xceProj, "HostParts" ) && utils.validField( xceProj.HostParts, "hostRepositories" )) {
+	for( const x of xceProj.HostParts.hostRepositories ) { console.log( x ); }
+    }
+
+
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
     let retVal = await wrappedPostAWS( authData, shortName, postData );
+
+    // XXX
+    xceProj = await wrappedPostAWS( authData, xshortName, xpostData );
+    console.log( "XXXUnlink", "after");
+    if( utils.validField( xceProj, "HostParts" ) && utils.validField( xceProj.HostParts, "hostProjectIds" )) {
+	for( const x of xceProj.HostParts.hostProjectIds ) { console.log( x ); }
+    }
+    if( utils.validField( xceProj, "HostParts" ) && utils.validField( xceProj.HostParts, "hostRepositories" )) {
+	for( const x of xceProj.HostParts.hostRepositories ) { console.log( x ); }
+    }
 
     shortName = "GetEntry";
     postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
@@ -470,7 +494,7 @@ async function unlinkProject( authData, query ) {
 
     // NOTE if this fails during testing, chances are you are not restarting ceServer (good), but also not running testDelete (bad).
     //      if so, multiple copies of the current project-du-jour are stored in aws:ceProjects.
-    assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ), query.toString() );
+    assert( !utils.validField( ceProj.HostParts, "hostProjectIds") || !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ));
 
     return retVal;
 }

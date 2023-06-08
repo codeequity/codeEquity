@@ -89,7 +89,7 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     // Close & accrue
     await gh2tu.closeIssue( authData, td, issPendDat );
 
-    await gh2tu.closeIssue( authData, td, issAccrDat );
+    await gh2tu.closeIssue( authData, td, issAccrDat, pendLoc );
     await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.cardId, accrLoc.colId );
     
     await utils.sleep( 2000 );	

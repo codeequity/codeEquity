@@ -183,7 +183,7 @@ async function getIssues( authData, td ) {
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on Repository {
-            issues(first:100) {edges {node { id title number body
+            issues(first:100) {edges {node { id title number body state
                assignees(first: 100) {edges {node {id login }}}
                labels(first: 100) {edges {node {id name }}}
               }}}}
@@ -202,6 +202,7 @@ async function getIssues( authData, td ) {
 		datum.id       = iss.id;
 		datum.number   = iss.number;
 		datum.body     = iss.body;
+		datum.state    = iss.state;
 		datum.title    = iss.title;
 		datum.assignees = iss.assignees.edges.map( edge => edge.node );
 		datum.labels    = iss.labels.edges.map( edge => edge.node );
@@ -414,7 +415,8 @@ async function getComments( authData, issueId ) {
 
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
+	    if( raw.status != 200 || utils.validField( raw, "errors" )) { throw raw; }
+	    if( !( utils.validField( raw.data, "node" ) && utils.validField( raw.data.node, "comments" ) )) { throw raw; }
 	    let coms = raw.data.node.comments.edges;
 	    assert( coms.length < 99, "Need to paginate getComments." );
 
@@ -903,6 +905,7 @@ async function remCard( authData, ceProjId, cardId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
+// NOTE Send loc when, say, close followed by accr move.  Otherwise, just check state of issue from GH - if connection is slow, this will help with pacing.
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
 async function closeIssue( authData, td, issDat, loc = -1 ) {
@@ -912,7 +915,6 @@ async function closeIssue( authData, td, issDat, loc = -1 ) {
     let query = "issue closed " + issDat[2] + locator;
     await tu.settleWithVal( "closeIssue", tu.findNotice, query );
 
-    // Send loc for serious checks.  Otherwise, just check state of issue from GH - if connection is slow, this will help with pacing.
     await tu.settleWithVal( "closeIssue finished", checkLoc, authData, td, issDat, loc );
 }
 
@@ -1721,13 +1723,13 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	}
     }
     
-    console.log( "Split..", cards, newLoc, splitIssues.length, splitIssues[0].number, splitIss );
-    
     const splitDat = splitIss === -1 ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
 
     subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss trouble" );
     if( splitDat[0] != -1 ) {
     
+	console.log( "Split..", cards, newLoc, splitIssues.length, splitIssues[0].number, splitIss );
+
 	// Get cards
 	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
 	let issLink   = allLinks.find( l => l.hostIssueId == issDat[0].toString() );
@@ -1759,7 +1761,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    subTest = tu.checkEq( splitIss.assignees.length, assignCnt, subTest, "Issue assignee count" );
 	
 	    // Check comment on splitIss
-	    const comments = await getComments( authData, splitDat[1] );
+	    const comments = await getComments( authData, splitDat[0] );
 	    subTest = tu.checkEq( typeof comments !== 'undefined',                      true,   subTest, "Comment not yet ready" );
 	    subTest = tu.checkEq( typeof comments[0] !== 'undefined',                   true,   subTest, "Comment not yet ready" );
 	    if( typeof comments !== 'undefined' && typeof comments[0] !== 'undefined' ) {
@@ -1816,7 +1818,7 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
 	    subTest = tu.checkEq( splitIss.assignees.length, issAssignCnt, subTest, "Issue assignee count" );
 	    
 	    // Check comment on splitIss
-	    const comments = await getComments( authData, splitDat[1] );
+	    const comments = await getComments( authData, splitDat[0] );
 	    subTest = tu.checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
 	}
 	
