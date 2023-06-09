@@ -89,9 +89,9 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     // Close & accrue
     await gh2tu.closeIssue( authData, td, issPendDat );
 
-    await gh2tu.closeIssue( authData, td, issAccrDat );
+    await gh2tu.closeIssue( authData, td, issAccrDat, pendLoc );
     await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.cardId, accrLoc.colId );
-
+    
     await utils.sleep( 2000 );	
     testStatus = await gh2tu.checkUntrackedIssue( authData, testLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
     testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, planLoc, issPlanDat, cardPlan, testStatus, {peq: true, lblCount: 3 } );

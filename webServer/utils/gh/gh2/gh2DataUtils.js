@@ -78,35 +78,53 @@ async function resolve( authData, ghLinks, pd, allocation ) {
     }
 
     // Create a new split issue for each copy, move new card loc if need be, set links
+    let splitIssues = [];
     for( let i = 1; i < links.length; i++ ) {
-	let origCardId = links[i].hostCardId;
 	let splitTag   = utils.randAlpha(8);
 	pd.repoId      = links[i].hostRepoId;
 	pd.projectId   = links[i].hostProjectId;
-	    
-	let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
-	let newCardId   = await ghV2.rebuildCard( authData, pd.ceProjectId, ghLinks, links[i].hostColumnId, origCardId, issueData, {projId: pd.projectId} );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colId": links[i].hostColumnId} );
+	if( locs === -1 ) { console.log( links, pd, issue ); }
+	assert( locs !== -1 );
 
-	pd.issueId    = issueData[0];
-	pd.issueNum   = issueData[1];
-	pd.issueName  = issue.title;
-	ghLinks.rebuildLinkage( authData, links[i], issueData, newCardId, pd.issueName );
+	// Remove card user just created.  Create new card, relink it.  
+	ghV2.removeCard( authData, pd.projectId, links[i].hostCardId); 
+	let issueData  = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
+	assert( issueData[2] != -1 );
+
+	let success = await ghV2.moveCard( authData, pd.projectId, issueData[2], locs[0].hostUtility, links[i].hostColumnId );
+	assert( success );
+	
+	// New issueId, name, num, cardId.  Location is already correct in links[i] so no need to update splitLink
+	let splitLink = ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
+	splitIssues.push( splitLink );
     }
 
     // On initial populate call, resolve is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
-    console.log( authData.who, "Building peq for", links[1].hostIssueName );
-    for( let i = 1; i < links.length; i++ ) {    
+    // Can no longer depend on links[i], since rebuildLinkage modded, then destroyed original copy.
+    // XXX Verify works for 3+ cards on initial populate.  splitIssues[i-1] is sloppy.
+    for( split of splitIssues ) {
+	console.log( authData.who, "Building peq for", split.hostIssueName, split.hostColumnName );
 	// Don't record simple multiply-carded issues
 	if( pd.peqType != config.PEQTYPE_END ) {
-	    let projName   = links[i].hostProjectName;
-	    let colName    = links[i].hostColumnName;
+	    let projName   = split.hostProjectName;
+	    let colName    = split.hostColumnName;
 	    assert( projName != "" );
 	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
+
+	    pd.issueId    = split.hostIssueId;
+	    pd.issueNum   = split.hostIssueNum;
+	    pd.issueName  = split.hostIssueName;
+
+	    let specials = {};
+	    specials.pact     = "addRelo";
+	    specials.columnId = split.hostColumnId; 
 	    
-	    awsUtils.recordPeqData(authData, pd, false );
+	    awsUtils.recordPeqData(authData, pd, false, specials );
 	}
     }
+    
     console.log( authData.who, "Resolved." );
     return gotSplit;
 }
@@ -269,7 +287,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // Bail, if this create is an add-on to an ACCR 
     if( links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
-	ghV2.removeCard( authData, pd.projectId, origCardId );
+	await ghV2.removeCard( authData, pd.projectId, origCardId );
 	return 'early';
     }
 
@@ -277,7 +295,26 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
 	// remove card, leave issue & label in place.
 	console.log( authData.who, "WARNING.", "Allocations only useful in config:PROJ_PLAN, or flat columns.  Removing card from", colName );
-	ghV2.removeCard( authData, pd.projectId, origCardId );
+	await ghV2.removeCard( authData, pd.projectId, origCardId );
+	return 'early';
+    }
+
+    // Bail if situated non peq in reserved col.
+    const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
+    let futureColName = colName; 
+    // First, check if card moved in GH from no status.  Only concerned about it here, to enable skipping.  Otherwise, respect original create loc, move handles the rest.
+    // Timing: user creates card in reserved.  GH creates in no status, sends notice, moves to reserved, sends notice
+    //         ce starts processing PNP, checks upstream, sees reserved before removing origCard
+    if( colName == config.EMPTY || colName == "No Status" ) {
+	let tmp = await ghV2.getCard( authData, origCardId );
+	futureColName = tmp.columnName;
+	console.log( authData.who, "checking current card loc in GH", futureColName );
+    }
+    if( pd.peqValue <= 0 && reserved.includes( futureColName ) ) {
+	console.log( authData.who, "WARNING.", futureColName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue." );
+	// Wait for this, otherwise followup move notice using this cardId could misbehave.
+	// XXX could possibly avoid need to await safely..?
+	await ghV2.removeCard( authData, pd.projectId, origCardId );
 	return 'early';
     }
 
@@ -299,7 +336,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
 	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
-	    ghV2.removeCard( authData, pd.projectId, origCardId );
+	    await ghV2.removeCard( authData, pd.projectId, origCardId );
 
 	    // If already exists, will be in links.  Do not destroy it
 	    if( pd.peqValue > 0 ) {
@@ -309,7 +346,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 		ghV2.removeLabel( authData, peqLabel.id, pd.issueId );  // remove from issue
 		// chances are, an unclaimed PEQ exists.  deactivate it.
 		if( pd.issueId != -1 ) {
-		    const daPEQ = await awsUtils.getPeq( authData, pd.ceProjectId, pd.hostIssueId );
+		    const daPEQ = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 		    awsUtils.removePEQ( authData, daPEQ.PEQId );
 		}
 	    }
@@ -341,7 +378,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     orig.columnName   = colName;
 
     if( fromCard && pd.peqValue <= 0 ) {
-	console.log( authData.who, "Type 1.  Do not track column data." )
+	console.log( authData.who, "Type 1 non-peq.  Do not track column data." )
 	orig.projectName  = config.EMPTY;
 	orig.columnId     = config.EMPTY;   // do not track non-peq   cardHandler depends on this to avoid peq check
 	orig.columnName   = config.EMPTY;   // do not track non-peq

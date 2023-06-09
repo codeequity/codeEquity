@@ -176,17 +176,18 @@ async function getLabels( authData, td ) {
     return labels.length == 0 ? -1 : labels;
 }
 
-// Note, this is not returning full issues.  could return, say, labels.length..
+// Note, this is not returning full issues. 
 async function getIssues( authData, td ) {
     let issues = [];
 
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
         ... on Repository {
-            issues(first:100) {edges {node { id title number body}}}
-
-
-    }}}`;
+            issues(first:100) {edges {node { id title number body state
+               assignees(first: 100) {edges {node {id login }}}
+               labels(first: 100) {edges {node {id name }}}
+              }}}}
+    }}`;
     let variables = {"nodeId": td.GHRepoId };
     query = JSON.stringify({ query, variables });
 
@@ -201,7 +202,11 @@ async function getIssues( authData, td ) {
 		datum.id       = iss.id;
 		datum.number   = iss.number;
 		datum.body     = iss.body;
+		datum.state    = iss.state;
 		datum.title    = iss.title;
+		datum.assignees = iss.assignees.edges.map( edge => edge.node );
+		datum.labels    = iss.labels.edges.map( edge => edge.node );
+		
 		issues.push( datum );
 	    }
 	})
@@ -410,7 +415,8 @@ async function getComments( authData, issueId ) {
 
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
+	    if( raw.status != 200 || utils.validField( raw, "errors" )) { throw raw; }
+	    if( !( utils.validField( raw.data, "node" ) && utils.validField( raw.data.node, "comments" ) )) { throw raw; }
 	    let coms = raw.data.node.comments.edges;
 	    assert( coms.length < 99, "Need to paginate getComments." );
 
@@ -899,6 +905,7 @@ async function remCard( authData, ceProjId, cardId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
+// NOTE Send loc when, say, close followed by accr move.  Otherwise, just check state of issue from GH - if connection is slow, this will help with pacing.
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but arrive out of order for GH.
 async function closeIssue( authData, td, issDat, loc = -1 ) {
@@ -908,7 +915,6 @@ async function closeIssue( authData, td, issDat, loc = -1 ) {
     let query = "issue closed " + issDat[2] + locator;
     await tu.settleWithVal( "closeIssue", tu.findNotice, query );
 
-    // Send loc for serious checks.  Otherwise, just check state of issue from GH - if connection is slow, this will help with pacing.
     await tu.settleWithVal( "closeIssue finished", checkLoc, authData, td, issDat, loc );
 }
 
@@ -927,8 +933,8 @@ async function remIssue( authData, issueId ) {
     
     let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
 
-    // console.log( "remIssue query", query );
     if( typeof res.data === 'undefined' ) { console.log( "ERROR.", res ); }
+    console.log( "executed remIssue id", issueId );
     
     await utils.sleep( tu.MIN_DELAY );
 }
@@ -1475,7 +1481,9 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     let allPacts = await pactsP;
     let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
     subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );         
-    
+
+    // Verify number of adds == relos.  Don't count on order of arrival.
+    /*
     pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     let addUncl  = pacts.length >= 2 ? pacts[0] :                 {"Action": config.PACTACT_ADD };
     let relUncl  = pacts.length >= 2 ? pacts[ pacts.length -1 ] : {"Action": config.PACTACT_RELO };
@@ -1499,7 +1507,21 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     subTest = tu.checkEq( addUncl.Action, config.PACTACT_ADD,          subTest, "PAct Action"); 
     subTest = tu.checkEq( relUncl.Action, config.PACTACT_RELO,         subTest, "PAct Action");
     const source = pact.Action == config.PACTACT_ADD || pact.Action == config.PACTACT_RELO;
-    subTest = tu.checkEq( source, true,                                subTest, "PAct Action"); 
+    subTest = tu.checkEq( source, true,                                subTest, "PAct Action");
+    */ 
+    let addUncl  = 0;
+    let relUncl  = 0;
+    for( const pact of pacts ) {
+	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
+	subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
+	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
+	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+	addUncl = addUncl + ( pact.Action == config.PACT_ADD  ? 1 : 0 ); 
+	relUncl = relUncl + ( pact.Action == config.PACT_RELO ? 1 : 0 ); 
+    }
+    subTest = tu.checkEq( addUncl, relUncl,          subTest, "PAct Action counts"); 
 
     return await tu.settle( subTest, testStatus, checkNewlySituatedIssue, authData, testLinks, td, loc, issDat, card, testStatus, specials );
 }
@@ -1688,24 +1710,19 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     let issues   = await getIssues( authData, td );
     let issue    = await findIssue( authData, issDat[0] );
 
-    // Some tests will have two split issues here.  Find the right one before proceeding
     let splitIssues = issues.filter( issue => issue.title.includes( issDat[2] + " split" ));
-    let cards = await getCards( authData, newLoc.projId, newLoc.colId );
-    if( cards === -1 ) { cards = []; }
-    let splitIss = -1;
-    for( const iss of splitIssues ) {
-	mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == iss.number.toString() : false );
-	if( typeof mCard !== 'undefined' ) {
-	    splitIss = iss;
-	    break;
-	}
-    }
-    
-    const splitDat = splitIss === -1 ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    subTest = tu.checkGE( splitIssues.length, 1, subTest, "split iss trouble" );
 
-    subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss trouble" );
-    if( splitDat[0] != -1 ) {
+    if( splitIssues.length > 0 ) {
+	let cards = await getCards( authData, newLoc.projId, newLoc.colId );
+	if( cards === -1 ) { cards = []; }
     
+	// Some tests will have two split issues here.  The newly split issue has a larger issNum
+	const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
+	const splitDat = [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    
+	console.log( "Split..", cards, newLoc, splitIssues.length, splitIss );
+
 	// Get cards
 	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
 	let issLink   = allLinks.find( l => l.hostIssueId == issDat[0].toString() );
@@ -1737,7 +1754,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    subTest = tu.checkEq( splitIss.assignees.length, assignCnt, subTest, "Issue assignee count" );
 	
 	    // Check comment on splitIss
-	    const comments = await getComments( authData, splitDat[1] );
+	    const comments = await getComments( authData, splitDat[0] );
 	    subTest = tu.checkEq( typeof comments !== 'undefined',                      true,   subTest, "Comment not yet ready" );
 	    subTest = tu.checkEq( typeof comments[0] !== 'undefined',                   true,   subTest, "Comment not yet ready" );
 	    if( typeof comments !== 'undefined' && typeof comments[0] !== 'undefined' ) {
@@ -1794,7 +1811,7 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
 	    subTest = tu.checkEq( splitIss.assignees.length, issAssignCnt, subTest, "Issue assignee count" );
 	    
 	    // Check comment on splitIss
-	    const comments = await getComments( authData, splitDat[1] );
+	    const comments = await getComments( authData, splitDat[0] );
 	    subTest = tu.checkEq( comments[0].body.includes( "CodeEquity duplicated" ), true,   subTest, "Comment bad" );
 	}
 	
@@ -1860,7 +1877,7 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
     let cards  = await getCards( authData, loc.projId, loc.colId );
     if( cards !== -1 ) { 
 	let card   = cards.find( card => card.cardId == cardId );
-	if( typeof card === "undefined") { console.log( "XXX ERROR.  Card", title, cardId, "was rightfully deleted this time." ); }
+	if( typeof card === "undefined") { console.log( "Card", title, cardId, "was rightfully deleted this time." ); }
 	else                             { console.log( "XXX ERROR.  Card", title, cardId, "was wrongfully NOT deleted this time." ); }
     }
     

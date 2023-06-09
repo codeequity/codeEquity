@@ -29,10 +29,12 @@ async function postGH( PAT, url, postData ) {
     // XXX Still waiting to see this.. 
     if( gotchya ) { let x = await ret.json(); console.log( "Error.  XXXXXXXXXXXXXX got one!", x, ret ); }
 
-    // Oddly, some GQl queries/mutations return with a status, some do not.
     ret = await ret.json();
-    if( typeof ret !== 'undefined' && typeof ret.status === 'undefined' ) {
-	if( typeof ret.data !== 'undefined' ) { ret.status = 200; }
+    // Oddly, some GQl queries/mutations return with a status, some do not.
+    if( typeof ret !== 'undefined' ) {
+	// can not do this, as many valid gql queries will ask for, say, orgId and userId, fully expecting one to fail.
+	// if( utils.validField( ret, "errors" ))                                  { ret.status = 422; }
+	if( typeof ret.data !== 'undefined' && typeof ret.status === 'undefined' ) { ret.status = 200; }
     }
     
     return ret;

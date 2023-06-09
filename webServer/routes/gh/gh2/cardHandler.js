@@ -27,7 +27,7 @@ https://developer.github.com/v3/issues/#create-an-issue
 // PeqType:PLAN  most common
 async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) { 
     let reqBody  = pd.reqBody;
-    let fullName = link.hostRepo;
+    let fullName = link.hostRepoName;
     
     assert( oldCol != config.PROJ_ACCR );  // no take-backs
 
@@ -138,8 +138,8 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
 	// no need to wait.
 	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
 	peq = await peq;
-	if( peq === -1 ) { console.log( "WARNING.  Race condition detected when deleting peq." ); }
-	awsUtils.removePEQ( authData, peq.PEQId );
+	if( peq === -1 ) { console.log( "WARNING.  Race condition detected when deleting peq. Error?", peq, link ); }
+	else {             awsUtils.removePEQ( authData, peq.PEQId ); }
 	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
 	let note   = accr ? "Disconnected issue" : "";
 	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
@@ -243,13 +243,20 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
 	    
 	    let cardId = card.node_id;
-	    
+
 	    if( pd.reqBody.changes == null ) {
 		console.log( authData.who, "Move within columns are ignored.", cardId );
+		// XXX ran into notification error, empty changes during cross-col xfer.  temporary?
+		console.log( authData.who, "XXX", pd.reqBody );
 		return;
 	    }
 
-	    let newCard      = await ghV2.getCard( authData, cardId );
+	    let newCard = await ghV2.getCard( authData, cardId );
+	    if( newCard === -1 ) {
+		console.log( authData.who, "No such card, ignoring move request." );
+		return;
+	    }
+	    
 	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 	    // get no status col
@@ -274,6 +281,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 
 	    if( newCard.columnId == oldColId ) {
+		// console.log( authData.who, "Moves within columns are not tracked", link, newCard, pd.reqBody.changes );
 		console.log( authData.who, "Moves within columns are not tracked" );
 		return;
 	    }

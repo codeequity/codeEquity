@@ -211,6 +211,7 @@ async function recordPEQ( authData, postData ) {
 async function rebuildPEQ( authData, link, oldPeq ) {
     let postData = {};
     postData.PEQId          = -1;
+    postData.CEProjectId    = oldPeq.CEProjectId;
     postData.HostHolderId   = oldPeq.HostHolderId;
     postData.PeqType        = oldPeq.PeqType;
     postData.Amount         = oldPeq.Amount;
@@ -459,6 +460,21 @@ async function linkProject( authData, query ) {
 }
 
 async function unlinkProject( authData, query ) {
+/*
+    let xshortName = "GetEntries";
+    let xpostData = { "Endpoint": xshortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
+    let xceProj = await wrappedPostAWS( authData, xshortName, xpostData );
+    console.log( "XXXUnlink", "before", query, xceProj);
+    if( xceProj.length > 0 ) {
+	if( utils.validField( xceProj[0], "HostParts" ) && utils.validField( xceProj[0].HostParts, "hostProjectIds" )) {
+	    for( const x of xceProj[0].HostParts.hostProjectIds ) { console.log( x ); }
+	}
+	if( utils.validField( xceProj[0], "HostParts" ) && utils.validField( xceProj[0].HostParts, "hostRepositories" )) {
+	    for( const x of xceProj[0].HostParts.hostRepositories ) { console.log( x ); }
+	}
+    }
+*/
+
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
     let retVal = await wrappedPostAWS( authData, shortName, postData );
@@ -469,7 +485,7 @@ async function unlinkProject( authData, query ) {
 
     // NOTE if this fails during testing, chances are you are not restarting ceServer (good), but also not running testDelete (bad).
     //      if so, multiple copies of the current project-du-jour are stored in aws:ceProjects.
-    assert( !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ), query );
+    assert( !utils.validField( ceProj.HostParts, "hostProjectIds") || !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ));
 
     return retVal;
 }
