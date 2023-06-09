@@ -1272,19 +1272,25 @@ async function depopulate( ceProjId ) {
     return promise.then(() => success( true ));
 }
 
-// https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html#Expressions.Modifying.UpdateExpressions.DELETE
+// https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html
 async function link( query ) {
 
-    let params = { TableName: 'CEProjects' };
-    let promise = null;
+    const oldProjWrap = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
+    const oldProjData = JSON.parse( oldProjWrap.body );    
 
-    params.Key                       = { "CEProjectId": query.ceProjId };
-    params.UpdateExpression          = 'set HostParts.hostProjectIds = list_append( HostParts.hostProjectIds, :pid )';
-    params.ExpressionAttributeValues = { ':pid': [query.hostProjectId] };
-
-    console.log( params );
-    promise = bsdb.update( params ).promise();
-    return promise.then(() => success( true ));
+    if( !oldProjData.HostParts.hostProjectIds.includes( query.hostProjectId )) {
+	let params = { TableName: 'CEProjects' };
+	let promise = null;
+	
+	params.Key                       = { "CEProjectId": query.ceProjId };
+	params.UpdateExpression          = 'set HostParts.hostProjectIds = list_append( HostParts.hostProjectIds, :pid )';
+	params.ExpressionAttributeValues = { ':pid': [query.hostProjectId] };
+	
+	console.log( params );
+	promise = bsdb.update( params ).promise();
+	return promise.then(() => success( true ));
+    }
+    return success( true );
 }
 
 async function unlink( query ) {

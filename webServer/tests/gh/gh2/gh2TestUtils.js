@@ -1710,25 +1710,18 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     let issues   = await getIssues( authData, td );
     let issue    = await findIssue( authData, issDat[0] );
 
-    // Some tests will have two split issues here.  Find the right one before proceeding
     let splitIssues = issues.filter( issue => issue.title.includes( issDat[2] + " split" ));
-    let cards = await getCards( authData, newLoc.projId, newLoc.colId );
-    if( cards === -1 ) { cards = []; }
-    let splitIss = -1;
-    for( const iss of splitIssues ) {
-	mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == iss.number.toString() : false );
-	if( typeof mCard !== 'undefined' ) {
-	    splitIss = iss;
-	    break;
-	}
-    }
-    
-    const splitDat = splitIss === -1 ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    subTest = tu.checkGE( splitIssues.length, 1, subTest, "split iss trouble" );
 
-    subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss trouble" );
-    if( splitDat[0] != -1 ) {
+    if( splitIssues.length > 0 ) {
+	let cards = await getCards( authData, newLoc.projId, newLoc.colId );
+	if( cards === -1 ) { cards = []; }
     
-	console.log( "Split..", cards, newLoc, splitIssues.length, splitIssues[0].number, splitIss );
+	// Some tests will have two split issues here.  The newly split issue has a larger issNum
+	const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
+	const splitDat = [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    
+	console.log( "Split..", cards, newLoc, splitIssues.length, splitIss );
 
 	// Get cards
 	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
@@ -1884,7 +1877,7 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
     let cards  = await getCards( authData, loc.projId, loc.colId );
     if( cards !== -1 ) { 
 	let card   = cards.find( card => card.cardId == cardId );
-	if( typeof card === "undefined") { console.log( "XXX ERROR.  Card", title, cardId, "was rightfully deleted this time." ); }
+	if( typeof card === "undefined") { console.log( "Card", title, cardId, "was rightfully deleted this time." ); }
 	else                             { console.log( "XXX ERROR.  Card", title, cardId, "was wrongfully NOT deleted this time." ); }
     }
     

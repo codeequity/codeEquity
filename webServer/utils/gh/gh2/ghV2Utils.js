@@ -1022,6 +1022,7 @@ async function getCard( authData, cardId ) {
 	    // XXX formalize message
 	    if( utils.validField( raw, "errors" ) && raw.errors.length == 1 && raw.errors[0].message.includes( "Could not resolve to a node with the global id" )) {  
 		console.log( authData.who, "Could not find card:", cardId, "possibly result of rebuilding for a split issue?" );
+		retVal = -1;
 		return -1;
 	    }
 	    if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }

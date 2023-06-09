@@ -460,33 +460,24 @@ async function linkProject( authData, query ) {
 }
 
 async function unlinkProject( authData, query ) {
-
-    // XXX
+/*
     let xshortName = "GetEntries";
     let xpostData = { "Endpoint": xshortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
     let xceProj = await wrappedPostAWS( authData, xshortName, xpostData );
     console.log( "XXXUnlink", "before", query, xceProj);
-    if( utils.validField( xceProj, "HostParts" ) && utils.validField( xceProj.HostParts, "hostProjectIds" )) {
-	for( const x of xceProj.HostParts.hostProjectIds ) { console.log( x ); }
+    if( xceProj.length > 0 ) {
+	if( utils.validField( xceProj[0], "HostParts" ) && utils.validField( xceProj[0].HostParts, "hostProjectIds" )) {
+	    for( const x of xceProj[0].HostParts.hostProjectIds ) { console.log( x ); }
+	}
+	if( utils.validField( xceProj[0], "HostParts" ) && utils.validField( xceProj[0].HostParts, "hostRepositories" )) {
+	    for( const x of xceProj[0].HostParts.hostRepositories ) { console.log( x ); }
+	}
     }
-    if( utils.validField( xceProj, "HostParts" ) && utils.validField( xceProj.HostParts, "hostRepositories" )) {
-	for( const x of xceProj.HostParts.hostRepositories ) { console.log( x ); }
-    }
-
+*/
 
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
     let retVal = await wrappedPostAWS( authData, shortName, postData );
-
-    // XXX
-    xceProj = await wrappedPostAWS( authData, xshortName, xpostData );
-    console.log( "XXXUnlink", "after");
-    if( utils.validField( xceProj, "HostParts" ) && utils.validField( xceProj.HostParts, "hostProjectIds" )) {
-	for( const x of xceProj.HostParts.hostProjectIds ) { console.log( x ); }
-    }
-    if( utils.validField( xceProj, "HostParts" ) && utils.validField( xceProj.HostParts, "hostRepositories" )) {
-	for( const x of xceProj.HostParts.hostRepositories ) { console.log( x ); }
-    }
 
     shortName = "GetEntry";
     postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};

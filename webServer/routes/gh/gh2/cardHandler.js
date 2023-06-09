@@ -251,7 +251,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    let newCard      = await ghV2.getCard( authData, cardId );
+	    let newCard = await ghV2.getCard( authData, cardId );
 	    if( newCard === -1 ) {
 		console.log( authData.who, "No such card, ignoring move request." );
 		return;
