@@ -22,7 +22,7 @@ function untrack( authData, ghLinks, ceProjectId, link ) {
 	let intLink = {};
 	intLink.ceProjectId = link.ceProjectId;
 	intLink.hostRepoName = link.hostRepoName;
-	intLink.hostRepoId  = link.hotRepoId;
+	intLink.hostRepoId  = link.hostRepoId;
 	intLink.issueId     = link.hostIssueId;
 	intLink.issueNum    = link.hostIssueNum;
 	intLink.projectId   = link.hostProjectId;
@@ -328,23 +328,26 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
 
-    // Bail, if this create is an add-on to an ACCR 
-    if( links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
-	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
-	await ghV2.removeCard( authData, pd.projectId, origCardId );
-	return 'early';
-    }
-
-    // Bail, if this is alloc in x3
+    // Bail, if this is alloc in x3  This is fromLabel only.  fromCard can't occur first, since unclaimed is bot-created as soon as peq label is attached
     if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
 	// remove card, leave issue & label in place.
 	console.log( authData.who, "WARNING.", "Allocations only useful in config:PROJ_PLAN, or flat columns.  Removing card from", colName );
+	assert( fromLabel );
 	await ghV2.removeCard( authData, pd.projectId, origCardId );
 	return 'early';
     }
 
-    // Bail if situated non peq in reserved col.
+    // Bail, if ACCR peq issue trying to add a card. Links will have ACCR peq issue. There will not be links[1] unless during populate.  Can not modify ACCR.
+    if( fromCard && links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
+	gh.removeCard( authData, pd.projectId, origCardId );
+	return 'early';
+    }
+
+    //  Can't have situated issue in reserved.
     const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
+    assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
+
     let card          = -1;
     let futureColName = colName; 
     let futureColId   = pd.columnId;
@@ -357,6 +360,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	futureColId   = card.columnId;
 	console.log( authData.who, "got current card loc in GH:", futureColName );
     }
+    // Bail.  non-peq card will not generate fromLabel PNP.
     if( pd.peqValue <= 0 && reserved.includes( futureColName ) ) {
 	console.log( authData.who, "WARNING.", futureColName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue." );
 	// Wait for this, otherwise followup move notice using this cardId could misbehave.
@@ -369,20 +373,22 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
     if( fromCard ) {
 	colName = card.columnName;
-	// if( pd.peqValue > 0 ) {
-	    pd.columnId       = card.columnId;
-	    orig.columnId     = card.columnId;
-	    specials.columnId = card.columnId;
-	// }
+	pd.columnId       = card.columnId;
+	orig.columnId     = card.columnId;
+	specials.columnId = card.columnId;
+
 	// At this point, if create-edit preceeded label, may be in create when card is built in no-status, meaning no column data.
 	console.log( authData.who, "PNP: fromCard.  ColId", card.columnId, card.columnName, pd.peqValue );
 	// XXX Can assert here if new repo, not yet populated, repoStatus not set, locs not updated?
 	assert( colName != config.EMPTY );
 
+	// Bail.  This can only happen when splitting a peq issue.  In which case, do NOT destroy original.
 	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
 	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
 	    await ghV2.removeCard( authData, pd.projectId, origCardId );
+	    assert( pd.peqValue > 0 );
 
+	    /*
 	    // If already exists, will be in links.  Do not destroy it
 	    if( pd.peqValue > 0 ) {
 		let peqLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, pd.peqValue );  // this will exist
@@ -396,6 +402,8 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 		}
 	    }
 	    return "removeLabel";
+	    */
+	    return "early";
 	}
 	
     }
