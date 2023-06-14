@@ -100,7 +100,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     testStatus = tu.checkEq( eggCards.length, 2, testStatus, "Egg col card count" );
     testStatus = tu.checkEq( bacCards.length, 1, testStatus, "Bacon col card count" );
 
-    tu.testReport( testStatus, "Create preferred CE Projects" );
+    tu.testReport( testStatus, "Create Flat CE Projects" );
     return testStatus;
 }
 
