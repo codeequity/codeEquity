@@ -1721,14 +1721,14 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
 	const splitDat = [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
     
-	console.log( "Split..", cards, newLoc, splitIssues.length, splitIss );
+	console.log( "Split..", cards, newLoc, splitIssues.length, splitIss, splitDat );
 
 	// Get cards
 	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
 	let issLink   = allLinks.find( l => l.hostIssueId == issDat[0].toString() );
 	let splitLink = allLinks.find( l => l.hostIssueId == splitDat[0].toString() );
 	
-	if( typeof issLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); }
+	if( typeof issLink   === 'undefined' || typeof splitLink === 'undefined' ) { console.log( allLinks ); console.log( issDat ); console.log( splitDat ); }
 	
 	subTest = tu.checkEq( typeof issLink   !== 'undefined', true, subTest, "issLink trouble" );
 	subTest = tu.checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
