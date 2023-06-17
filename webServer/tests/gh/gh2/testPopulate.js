@@ -43,9 +43,9 @@ async function testIncrementalResolve( authData, testLinks, td ) {
 
     // 1. Setup.
     console.log( "make labels" );
-    let label1k  = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "1000 " + config.PEQ_LABEL, 1000 );
-    let labelDoc = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "documentation", -1 );
-    let labelBug = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
+    let label1k  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "", 1000 );
+    let labelDoc = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "documentation", -1 );
+    let labelBug = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
 
     console.log( "make issues" );
     const issMoonDat = await gh2tu.makeIssue( authData, td, ISS_MOON, [ labelBug, labelDoc ] );
@@ -201,8 +201,8 @@ async function testSplitAlloc( authData, testLinks, td ) {
     await gh2tu.refreshFlat( authData, td );
 
     // 1. Setup.
-    let label1m  = await ghV2.findOrCreateLabel( authData, td.GHRepoId, true, "1000000 " + config.ALLOC_LABEL, 1000000 );
-    let labelBug = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
+    let label1m  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, true, "", 1000000 );
+    let labelBug = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
 
     const issAllocDat = await gh2tu.makeIssue( authData, td, ISS_ALLOC, [ labelBug, label1m ] );
 
@@ -269,9 +269,11 @@ async function runTests( authData, testLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
+
     let t1 = await testIncrementalResolve( authData, testLinks, td );
     console.log( "\n\nIncremental resolve complete." );
     await utils.sleep( 5000 );
+
 
     let t2 = await testSplitAlloc( authData, testLinks, td );
     console.log( "\n\nSplit Alloc complete." );

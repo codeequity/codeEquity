@@ -700,8 +700,7 @@ async function makeAllocCard( authData, testLinks, ceProjId, rNodeId, pNodeId, c
     // First, wait for colId, can lag
     await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, testLinks, ceProjId, pNodeId, colId );
 
-    let lname = ghV2.makeHumanLabel( amount, config.ALLOC_LABEL );
-    let label = await ghV2.findOrCreateLabel( authData, rNodeId, true, lname, amount );
+    let label = await findOrCreateLabel( authData, rNodeId, true, "", amount );
 
     let allocIssue = {};
     allocIssue.title = title;
@@ -855,6 +854,16 @@ async function delLabel( authData, label ) {
     await tu.settleWithVal( "del label", tu.findNotice, query );
 }
 
+async function findOrCreateLabel( authData, repoNode, allocation, lname, peqValue ) {
+    let name = lname;
+
+    if( typeof peqValue == "string" ) { peqValue = parseInt( peqValue.replace(/,/g, "" )); }
+    
+    if( peqValue > 0 ) { name = ghV2.makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL )); }
+    let label = await ghV2.findOrCreateLabel( authData, repoNode, allocation, name, peqValue );
+    return label;
+}
+
 async function addAssignee( authData, issDat, assignee ) {
     let ret = await ghV2.addAssignee( authData, issDat[0], assignee.id );
     assert( ret, "Assignement failed" );
@@ -999,11 +1008,11 @@ async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, te
     
      // CHECK github location
     let cards  = await getCards( authData, td.unclaimPID, td.unclaimCID );   
-    let tCard  = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
+    let tCard  = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
     subTest = tu.checkEq( tCard.length, 0,                       subTest, "No unclaimed" );
     
     cards      = await getCards( authData, loc.projId, loc.colId );   
-    let mCard  = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
+    let mCard  = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
 
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
     if( typeof mCard[0] !== 'undefined' ) {
@@ -1063,13 +1072,14 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
     subTest = tu.checkEq( issue.state, state,                    subTest, "Issue state" );
 
-    const lname = labelVal.toString() + " " + config.ALLOC_LABEL;
-    subTest = tu.checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );
+    const lname = ghV2.makeHumanLabel( labelVal, config.ALLOC_LABEL );
+    const theLabel = issue.labels.find( l => l.name == lname ); 
+    subTest = tu.checkEq( typeof theLabel !== "undefined", true, subTest, "Issue label names missing" + lname );
     labelVal = opVal ? opVal : labelVal;
 
     // CHECK github location
     cards = await getCards( authData, loc.projId, loc.colId );
-    let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
 
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
     if( typeof mCard[0] !== 'undefined' ) {
@@ -1155,7 +1165,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 
     if( assignCnt ) { subTest = tu.checkEq( issue.assignees.length, assignCnt, subTest, "Assignee count" ); }
     
-    const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
+    const lname = labelVal ? ghV2.makeHumanLabel( labelVal, config.PEQ_LABEL ) : ghV2.makeHumanLabel( 1000, config.PEQ_LABEL );
     let   lval  = labelVal ? labelVal : 1000;
     lval        = opVal    ? opVal    : lval;    // resolve, original issue peq amount is not updated.  label is.
 
@@ -1165,7 +1175,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 	subTest = tu.checkEq( typeof issue.labels[0] !== 'undefined', true, subTest, "labels not yet ready" );
 	subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
 	if( typeof issue.labels[0] !== 'undefined' ) {
-	    subTest = tu.checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );
+	    subTest = tu.checkEq( typeof issue.labels.find( l => l.name == lname ) !== "undefined", true,  subTest, "Issue label names missing" + lname );
 	}
     }
     if( issueState ) { subTest = tu.checkEq( issue.state, issueState, subTest, "Issue state" );  }
@@ -1298,9 +1308,9 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( issue.number, issDat[1].toString(), subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
     
-    const lname = labelVal ? labelVal.toString() + " " + config.PEQ_LABEL : "1000 " + config.PEQ_LABEL;
+    const lname = labelVal ? ghV2.makeHumanLabel( labelVal, config.PEQ_LABEL ) : ghV2.makeHumanLabel( 1000, config.PEQ_LABEL );
     const lval  = labelVal ? labelVal                     : 1000;
-    subTest = tu.checkNEq( issue.labels.find( l => l.name == lname ), "undefined", subTest, "Issue label names missing" + lname );        
+    subTest = tu.checkEq( typeof issue.labels.find( l => l.name == lname ) !== "undefined", true, subTest, "Issue label names missing" + lname );        
     subTest = tu.checkEq( issue.state, "OPEN",                   subTest, "Issue state" ); 
 
     // CHECK github location
@@ -2208,6 +2218,7 @@ exports.addLabel        = addLabel;
 exports.remLabel        = remLabel;
 exports.updateLabel     = updateLabel;
 exports.delLabel        = delLabel;
+exports.findOrCreateLabel = findOrCreateLabel;
 exports.addAssignee     = addAssignee;
 exports.remAssignee     = remAssignee;
 exports.moveCard        = moveCard;
