@@ -721,6 +721,7 @@ async function getLabels( authData, issueId ) {
     return labels;
 }    
 
+// GH no longer allows commas in label names.  Convert, say, 1,500 PEQ to 1.5k PEQ
 // Turn 1000000 or "1,000,000" into "1M" then plus label type.  Leave properly formed alone.
 function makeHumanLabel( amount, peqTypeLabel ) {
     let retVal = "";
@@ -741,16 +742,8 @@ function makeHumanLabel( amount, peqTypeLabel ) {
 }
 
 async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
-    // console.log( authData.who, "Creating PEQ label", allocation, peqValue );
-
-    // GH no longer allows commas in label names.  Convert, say, 1,500 PEQ to 1.5k PEQ
-    let pvName = "";
-    assert( peqValue < 1000000000, "Error. Peq values can not reach the billions.  Something is wrong with your usage." );
-    if     ( peqValue >= 1000000 ) { pvName = (peqValue / 1000000).toString() + "M"; }
-    else if( peqValue >= 1000 )    { pvName = (peqValue / 1000).toString() + "k"; }
-    else                           { pvName = peqValue.toString(); }
     
-    let peqHumanLabelName = pvName + " " + ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL );
+    let peqHumanLabelName = makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
     
     let desc = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
     let pcolor = allocation ? config.APEQ_COLOR : config.PEQ_COLOR;

@@ -38,6 +38,7 @@ function getJobSummaryGHC( newStamp, jobData, locator ) {
 
     if( !jobData.reqBody.hasOwnProperty('repository') ) {
 	console.log( "Notification for Delete repository.  CodeEquity does not require these.  Skipping." );
+	console.log( jobData.reqBody );
 	return -1;
     }
     
@@ -87,6 +88,7 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
 
     if( !jobData.reqBody.hasOwnProperty('organization') ) {
 	console.log( "Organization not present.  CodeEquity requires organizations for Github's Project Version 2.  Skipping." );
+	console.log( jobData.reqBody );
 	return -1;
     }
 

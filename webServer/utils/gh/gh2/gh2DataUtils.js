@@ -232,8 +232,8 @@ async function populateCELinkage( authData, ghLinks, pd )
 // 
 // Cases:
 //  Type1: add 1st card to non-peq:    fromCard.  (populate is here, carded issues are here.  Only this has partial linkage)
-//  Type2: add 1st peq label to issue: fromLabel. (card will exist in GH already.  expect companion fromCard call in any order)
-//  Type3: add 1st card to peq issue:  fromCard.  (part of above, card:create will fire. expect companion fromLabel call in any order)
+//  Type2: add 1st peq label to issue: fromLabel. (issueHandler will create in unclaimed.  )
+//  Type3: add 1st card to peq issue:  fromCard.  (card:create will fire.  will remove unclaimed, create new card)
 //  Type?: add 2nd card ??? issue:     fromCard.  (type depends on type of issue, i.e. resolve will treat as type1 or type3 )
 //
 // Specials for peq creation
@@ -272,12 +272,25 @@ async function populateCELinkage( authData, ghLinks, pd )
 //
 //      aws peq is correct in all cases.  2-3 pacts per gh2tu call.
 //	    -> Can reduce to 1-2 by expanding info carried in add.  not worth it.
-//	    
 //	 
-//  By-hand add issue to project, before triage.  GH card will be in 'no status' for which all col info is null.
+//  By-hand add issue to project, before triage.
+//  -----------------------------------
+//   GH card will be in 'no status' for which all col info is null.
 //    * create-only case
 //      no matter order of arrival.  Create first?  postpone.  Label does addrelo. Label recognizes 'card no status', so does not create unclaimed.
 //                                   then create (redundantly) sets linkage in PNP, stops (i.e. no addrelo).
+//	    
+// Bail: because cards are created in no status, notice:create can't tell if destination is reserved until notice:move.
+//       Should never call resolve (split) when cards are created in reserved locations.  So, we look into GH to get current card location
+//       which is set before notice arrives at CE.
+//       Need to tread carefully with linkage for split (which creates new cards in GH) and linkage for cardHandler (which needs no tracking info at times)
+//      order of ops during split:
+//        1) tester makeProjectCard( issues create card, move card to GH as user)
+//        2) gh receives create card, makes card in no status, sends created notice
+//        3,4) ce receives created notice.  gh receives move request, sends move notice     
+//        5) ce sends card delete.  gh deletes original card
+//        6) ce creates new split issue, card.
+//        7) ce process move notice, but orig card no longer exists
 
 async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
@@ -328,15 +341,6 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
 
-    // Bail, if this is alloc in x3  This is fromLabel only.  fromCard can't occur first, since unclaimed is bot-created as soon as peq label is attached
-    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
-	// remove card, leave issue & label in place.
-	console.log( authData.who, "WARNING.", "Allocations only useful in config:PROJ_PLAN, or flat columns.  Removing card from", colName );
-	assert( fromLabel );
-	await ghV2.removeCard( authData, pd.projectId, origCardId );
-	return 'early';
-    }
-
     // Bail, if ACCR peq issue trying to add a card. Links will have ACCR peq issue. There will not be links[1] unless during populate.  Can not modify ACCR.
     if( fromCard && links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
@@ -359,6 +363,14 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	futureColName = card.columnName;
 	futureColId   = card.columnId;
 	console.log( authData.who, "got current card loc in GH:", futureColName );
+    }
+
+    // Bail, if this is alloc in x3  fromLabel if 1:1, fromCard if adding second card
+    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( futureColName )) {
+	// remove card, leave issue & label in place.
+	console.log( authData.who, "WARNING.", "Allocations only useful in config:PROJ_PLAN, or flat columns.  Removing card from", colName );
+	await ghV2.removeCard( authData, pd.projectId, origCardId );
+	return 'early';
     }
     // Bail.  non-peq card will not generate fromLabel PNP.
     if( pd.peqValue <= 0 && reserved.includes( futureColName ) ) {

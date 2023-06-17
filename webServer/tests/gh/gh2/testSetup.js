@@ -41,7 +41,7 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     // TRIGGER
     let nbi1     = await gh2tu.makeIssue( authData, td, "A special populate issue", [] );
     let card11   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.masterPID, mastCol1, nbi1[0], true );
-    let popLabel = await ghV2.findOrCreateLabel( authData, td.GHRepoId, false, config.POPULATE, -1 );
+    let popLabel = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, config.POPULATE, -1 );
     let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
     await gh2tu.addLabel( authData, popLabel.id, nbiDat );       // ready.. set... Go!
     await utils.sleep( 1000 );
