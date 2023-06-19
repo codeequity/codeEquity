@@ -25,6 +25,7 @@ const locData  = require( './locData' );
 // loc was { projId: { colId: {} }}
 // loc is  { ceProjId: { projId: { colId: {} }}} where projId is the unique project id within ceProjId.hostPlatform
 // loc IS stored in dynamo, for speed and privacy benefits during ingest (ceFlutter).
+// NOTE: colId is no longer unique across projects for GH2.  Within a project, it is.
 
 class Linkage {
 

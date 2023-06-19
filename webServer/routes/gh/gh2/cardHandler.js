@@ -74,7 +74,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 
     let subject = [peq.PEQId];
     if( verb == config.PACTVERB_REJ && newCol >= 0 ) {
-	let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "colName": config.PROJ_COLS[newCol] } );
+	let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "projId": pd.projectId, "colName": config.PROJ_COLS[newCol] } );
 	assert( locs !== -1 );
 	subject = [ peq.PEQId, locs[0].hostColumnName ];
     }
@@ -217,7 +217,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // In issues dialog, if add to project, will automatically be placed in "No Status".
 	    // Otherwise, unclaimed was generated, need to clean it.
 	    let foundUnclaimed = await ghV2.cleanUnclaimed( authData, ghLinks, pd );
-	    console.log( authData.who, "found unclaimed?", foundUnclaimed );
+	    console.log( authData.who, "found unclaimed?", foundUnclaimed, pd.issueId );
 
 	    // PNP adds colId.
 	    // Ingest manages peq.psub (i.e. move relo does not manage peq.psub), excluding this first move from unclaimed to initial residence.

@@ -269,6 +269,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	console.log( authData.who, "Delaying this job." );
 	await ceRouter.demoteJob( jd );
     }
+    if( isNaN( Date.now() - origStamp )) { console.log( "NaN.  ", Date.now(), origStamp ); }
     console.log( authData.who, "Millis:", Date.now() - origStamp, "Delays: ", jd.delayCount );
     ceRouter.getNextJob( authData, res );	
 }

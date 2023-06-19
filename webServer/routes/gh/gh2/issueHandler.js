@@ -88,7 +88,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	// Move to unclaimed:accrued col
 	card = await card;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "colId": card.columnId } );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": link.hostProjectId, "colId": card.columnId } );
 	assert( locs.length = 1 );
 	await ghV2.moveCard( authData, card.projId, card.cardId, locs[0].hostUtility, card.columnId );
 	

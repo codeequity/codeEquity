@@ -37,7 +37,7 @@ async function refreshRec( authData, td ) {
     let hostProjs = [];
     await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
-    console.log( "Got hprojs", hostProjs );
+    // console.log( "Got hprojs", hostProjs );
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == config.MAIN_PROJ ) {
 	    td.masterPID = proj.hostProjectId;
@@ -756,7 +756,7 @@ async function makeNewbornCard( authData, testLinks, ceProjId, pNodeId, colId, t
 }
 
 async function makeProjectCard( authData, testLinks, ceProjId, pNodeId, colId, issueId, justId ) {
-    let query = { "ceProjId": ceProjId, "projId": pNodeId, "pNodeId": pNodeId, "colId": colId };   // XXX darg.  naming sux
+    let query = { "ceProjId": ceProjId, "projId": pNodeId, pNodeId: pNodeId, "colId": colId };   // XXX darg.  naming sux  cpc needs pNodeId
     const locs = testLinks.getLocs( authData, query );    
     assert( locs !== -1 );
     let statusId = locs[0].hostUtility;
@@ -885,7 +885,7 @@ async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specia
     if( !( links !== -1 && links.length == 1) ) { console.log( "erm", links ); }
     assert( links !== -1 && links.length == 1);
 
-    let locs  = await tu.getLocs( authData, testLinks, { ceProjId: ceProjId, colId: columnId } );    
+    let locs  = await tu.getLocs( authData, testLinks, { ceProjId: ceProjId, projId: links[0].hostProjectId, colId: columnId } );    
     assert( locs !== -1 && locs.length == 1 );
     
     await ghV2.moveCard( authData, links[0].hostProjectId, cardId, locs[0].hostUtility, columnId );
@@ -1730,8 +1730,8 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	// Some tests will have two split issues here.  The newly split issue has a larger issNum
 	const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
 	const splitDat = [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
-    
-	console.log( "Split..", cards, newLoc, splitIssues.length, splitIss, splitDat );
+	
+	// console.log( "Split..", cards, newLoc, splitIssues.length, splitIss, splitDat );
 
 	// Get cards
 	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });

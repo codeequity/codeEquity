@@ -113,11 +113,11 @@ async function checkForPV2( PAT, nodeId ) {
 
     let found = false;
     const ret = await postGH( PAT, config.GQL_ENDPOINT, queryJ )
-	.catch( e => errorHandler( "getProjectFromNode", e, getProjectFromNode, PAT, nodeId ));  // this will probably never catch anything
+	.catch( e => errorHandler( "checkForPV2", e, checkForPV2, PAT, nodeId ));  // this will probably never catch anything
 
     // XXX postGH masks errors, catch here.  eliminate need for this step
     if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
-	await errorHandler( "getProjectFromNode", ret, getProjectFromNode, PAT, nodeId ); 
+	await errorHandler( "checkForPV2", ret, checkForPV2, PAT, nodeId ); 
     }
     else {
 	// XXX non-pv2 claim here can be false (e.g. delete populate issue, nodeId is already gone)
