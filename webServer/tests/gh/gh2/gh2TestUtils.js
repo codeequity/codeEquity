@@ -269,7 +269,7 @@ async function getProjects( authData, td ) {
 // Note: first view only
 async function getColumns( authData, pNodeId ) {
     let cols = [];
-    // console.log( "get cols", pNodeId );
+    console.log( "get cols", pNodeId );
     if( pNodeId == config.EMPTY ) { return cols; }
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
@@ -306,6 +306,15 @@ async function getColumns( authData, pNodeId ) {
 			datum.name = afield.options[k].name;
 			cols.push( datum );
 		    }
+		    /*
+		    // Hmm.. do not.. can not move to, and no need for address to move out of.. 
+		    // Build "No Status" by hand
+		    let datum = {};
+		    datum.statusId = statusId;
+		    datum.id   = config.GH_NO_STATUS;
+		    datum.name = config.GH_NO_STATUS;
+		    cols.push( datum );
+		    */
 		    break;
 		}
 	    }
@@ -495,6 +504,9 @@ async function findRepo( authData, td ) {
 
 async function getFlatLoc( authData, projId, projName, colName ) {
     const cols = await getColumns( authData, projId );
+
+    console.log( cols );
+    
     let col = cols.find(c => c.name == colName );
 
     let ptype = config.PEQTYPE_PLAN;
@@ -887,11 +899,12 @@ async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specia
 
     let locs  = await tu.getLocs( authData, testLinks, { ceProjId: ceProjId, projId: links[0].hostProjectId, colId: columnId } );    
     assert( locs !== -1 && locs.length == 1 );
-    
+
+    assert( columnId != config.GH_NO_STATUS );
     await ghV2.moveCard( authData, links[0].hostProjectId, cardId, locs[0].hostUtility, columnId );
-
+    
     let issNum  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issNum" )  ? specials.issNum : false;
-
+    
     if( issNum ) {
 	let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;	
 	let query = "project_card moved iss" + issNum + " " + td.GHFullName + locator;
@@ -901,15 +914,8 @@ async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specia
     await utils.sleep( tu.MIN_DELAY );
 }
 
-// We can no longer remove a card - just move to no status.
-async function remCard( authData, ceProjId, cardId ) {
-    const links = testLinks.getLinks( authData, { "ceProjId": ceProjId, "cardId": cardId } );
-    assert( links !== -1 && links.length == 1);    
-
-    const locs  = testLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": links[0].hostProjectId, "colName": "No Status" } );
-    assert( locs !== -1 && locs.length == 1 );
-
-    await ghV2.moveCard( authData, links[0].hostProjectId, cardId, links[0].hostUtility, locs[0].hostColumnId );
+async function remCard( authData, ceProjId, pNodeId, cardId ) {
+    await ghV2.removeCard( authData, pNodeId, cardId );
     
     await utils.sleep( tu.MIN_DELAY );
 }

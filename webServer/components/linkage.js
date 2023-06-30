@@ -235,6 +235,7 @@ class Linkage {
 		    orig.columnName    = link.hostColumnName;
 		    orig.cardId        = link.hostCardId;
 		    orig.title         = link.hostIssueName;
+		    orig.hostUtility   = link.hostUtility;    // used during split resolution to maintain 1:1 mapping
 		    this.addLinkage( authData, link.ceProjectId, orig, { source: link.flatSource } );
 		}
 	    }
@@ -268,6 +269,7 @@ class Linkage {
 	link.hostColumnName  = typeof orig.columnName   === 'undefined' ? config.EMPTY : orig.columnName;
 	link.hostCardId      = typeof orig.cardId       === 'undefined' ? config.EMPTY : orig.cardId.toString();
 	link.hostIssueName   = typeof orig.title        === 'undefined' ? config.EMPTY : orig.title;   
+	link.hostUtility     = typeof orig.hostUtility  === 'undefined' ? config.EMPTY : orig.hostUtility;   
 	link.flatSource      = source ? source : link.hostColumnId;
 
 	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOneRepo
@@ -350,15 +352,16 @@ class Linkage {
 	    assert( false );
 	}
 
-	const ceProjId   = query.ceProjId;
-	const repo       = utils.validField( query, "repo" )       ? query.repo               : config.EMPTY;
-	const repoId     = utils.validField( query, "repoId" )     ? query.repoId.toString()  : config.EMPTY;
-	const issueId    = utils.validField( query, "issueId" )    ? query.issueId.toString() : -1;
-	const cardId     = utils.validField( query, "cardId" )     ? query.cardId.toString()  : -1;
-	const projId     = utils.validField( query, "projId" )     ? query.projId             : -1;
-	const projName   = utils.validField( query, "projName" )   ? query.projName           : config.EMPTY;
-	const colName    = utils.validField( query, "colName" )    ? query.colName            : config.EMPTY;
-	const issueTitle = utils.validField( query, "issueTitle" ) ? query.issueTitle         : config.EMPTY;
+	const ceProjId    = query.ceProjId;
+	const repo        = utils.validField( query, "repo" )        ? query.repo               : config.EMPTY;
+	const repoId      = utils.validField( query, "repoId" )      ? query.repoId.toString()  : config.EMPTY;
+	const issueId     = utils.validField( query, "issueId" )     ? query.issueId.toString() : -1;
+	const cardId      = utils.validField( query, "cardId" )      ? query.cardId.toString()  : -1;
+	const projId      = utils.validField( query, "projId" )      ? query.projId             : -1;
+	const projName    = utils.validField( query, "projName" )    ? query.projName           : config.EMPTY;
+	const colName     = utils.validField( query, "colName" )     ? query.colName            : config.EMPTY;
+	const issueTitle  = utils.validField( query, "issueTitle" )  ? query.issueTitle         : config.EMPTY;
+	const hostUtility = utils.validField( query, "hostUtility" ) ? query.hostUtility        : config.EMPTY;
 
 	// console.log( authData.who, "get Links", ceProjId, issueId, cardId, projId, projName, colName, issueTitle );
 	
@@ -369,19 +372,23 @@ class Linkage {
 	    // Note, during initial resolve, this may NOT be 1:1 issue:card
 	    for( const [_, link] of Object.entries( clinks ) ) {
 		let match = true;
-		match = issueId == -1              ? match : match && (link.hostIssueId     == issueId);
-		match = cardId == -1               ? match : match && (link.hostCardId      == cardId);
-		match = projId == -1               ? match : match && (link.hostProjectId   == projId);
-		match = repo == config.EMPTY       ? match : match && (link.hostRepoName    == repo);
-		match = repoId == config.EMPTY     ? match : match && (link.hostRepoId      == repoId);
-		match = projName == config.EMPTY   ? match : match && (link.hostProjectName == projName );
-		match = colName == config.EMPTY    ? match : match && (link.hostColumnName  == colName );
-		match = issueTitle == config.EMPTY ? match : match && (link.hostIssueName   == issueTitle );
-		match = ceProjId == config.EMPTY   ? match : match && (link.ceProjectId     == ceProjId );
+		match = issueId == -1               ? match : match && (link.hostIssueId     == issueId);
+		match = cardId == -1                ? match : match && (link.hostCardId      == cardId);
+		match = projId == -1                ? match : match && (link.hostProjectId   == projId);
+		match = repo == config.EMPTY        ? match : match && (link.hostRepoName    == repo);
+		match = repoId == config.EMPTY      ? match : match && (link.hostRepoId      == repoId);
+		match = projName == config.EMPTY    ? match : match && (link.hostProjectName == projName );
+		match = colName == config.EMPTY     ? match : match && (link.hostColumnName  == colName );
+		match = issueTitle == config.EMPTY  ? match : match && (link.hostIssueName   == issueTitle );
+		match = ceProjId == config.EMPTY    ? match : match && (link.ceProjectId     == ceProjId );
+		match = hostUtility == config.EMPTY ? match : match && (link.hostUtility     == hostUtility );
 		
 		if( match ) { links.push( link ); }
 	    }
 	}
+
+	// XXX
+	if( hostUtility != config.EMPTY ) { console.log( "XXX erem", hostUtility, links ); }
 	
 	if( links.length == 0 ) { links = -1; }
 	return links;
@@ -495,6 +502,7 @@ class Linkage {
 	alink.columnName   = oldLink.hostColumnName;
 	alink.cardId       = issueData[2].toString();
 	alink.title        = newTitle;
+	alink.hostUtility  = oldLink.hostUtility;
 	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, { source: oldLink.flatSource } );
 	
 	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );

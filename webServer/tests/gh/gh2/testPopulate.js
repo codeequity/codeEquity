@@ -68,6 +68,8 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     const toProgLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const toPendLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
     const toAccrLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+
+    const toRejectLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     
     // Need assignees for pend/accr.
     ASSIGNEE1 = await ASSIGNEE1;
@@ -127,13 +129,14 @@ async function testIncrementalResolve( authData, testLinks, td ) {
 	tu.testReport( testStatus, "Incremental resolve B" );
     }
 
-    // Moon += Pend .. Fail not peq.
+    // Moon += Pend .. Fail not peq.  Move to PLAN
     {
 	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toPendLoc.projId, toPendLoc.colId, issMoonDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await gh2tu.checkUntrackedIssue( authData, testLinks, td, moonLoc, issMoonDat, cardMoon, testStatus, {lblCount: 2} );
-	testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issMoonDat, toPendLoc, cardNew.cardId, testStatus );
-
+	// testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issMoonDat, toPendLoc, cardNew.cardId, testStatus );
+	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issMoonDat, moonLoc, toRejectLoc, -1, -1, testStatus, {peq: false, lblCount: 2 } );
+	
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve C" );
     }

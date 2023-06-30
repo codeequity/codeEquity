@@ -147,7 +147,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		datum.hostProjectName  = project.title;
 		datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
 		datum.hostColumnName   = config.GH_NO_STATUS; 
-		datum.hostColumnId     = config.EMPTY;           // no status column does not exist in view options above.  special case.
+		datum.hostColumnId     = config.GH_NO_STATUS;    // no status column does not exist in view options above.  special case.
 		datum.hostUtility      = statusId;
 		locData.push( datum );
 	    }
@@ -160,7 +160,7 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 	    for( let i = 0; i < items.edges.length; i++ ) {
 		const issue    = items.edges[i].node;
 		const status   = issue.fieldValueByName == null  ? config.GH_NO_STATUS : issue.fieldValueByName.name;
-		const optionId = issue.fieldValueByName == null  ? config.EMPTY        : issue.fieldValueByName.optionId; 
+		const optionId = issue.fieldValueByName == null  ? config.GH_NO_STATUS : issue.fieldValueByName.optionId; 
 		
 		if( issue.type == "ISSUE" ) {
 
@@ -850,7 +850,7 @@ async function getCard( authData, cardId ) {
                         fieldValueByName(name: "Status") {
                           ... on ProjectV2ItemFieldSingleSelectValue {optionId name field { ... on ProjectV2SingleSelectField { id }}}}
                         content { 
-                          ... on ProjectV2ItemContent { ... on Issue { number }}}
+                          ... on ProjectV2ItemContent { ... on Issue { id number }}}
                   }}}`;
     let variables = {"id": cardId };
     let queryJ    = JSON.stringify({ query, variables });
@@ -942,8 +942,11 @@ async function getCardFromIssue( authData, issueId ) {
 
 // Currently, just relocates issue to another column (i.e. status).
 async function moveCard( authData, projId, itemId, fieldId, value ) {
-    console.log( authData.who, "Updating column: project item field value", projId, itemId, fieldId, value );
+    console.log( authData.who, "Updating card's column: project item field value", projId, itemId, fieldId, value );
 
+    // can not move directly to no status.  test utils need to handle this case.
+    assert( value != config.GH_NO_STATUS ); 
+    
     let query     = `mutation( $projId:ID!, $itemId:ID!, $fieldId:ID! $value:String! ) 
                       { updateProjectV2ItemFieldValue( input:{ projectId: $projId, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value }})  
                       { clientMutationId }}`;
@@ -1737,6 +1740,7 @@ exports.getCardFromIssue   = getCardFromIssue;
 exports.moveCard           = moveCard;
 exports.moveToStateColumn  = moveToStateColumn;
 exports.createProjectCard  = createProjectCard;
+exports.cardIssue          = cardIssue;
 exports.removeCard         = removeCard; 
 // exports.rebuildCard        = rebuildCard;
 

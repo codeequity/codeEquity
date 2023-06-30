@@ -116,9 +116,9 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 		foundPActs++;
 	    }
 	}
-	// 2 for addRelo (i.e. add, relo)
+	// 2 for addRelo (i.e. add, relo), 1 for move's
 	// unclaimed.  May be valid.
-	subTest = tu.checkEq( foundPActs, 6,           subTest, "Matched PActs with PEQs" );
+	subTest = tu.checkEq( foundPActs, 9,           subTest, "Matched PActs with PEQs" );
 	
 	// Check DYNAMO RepoStatus
 	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId );

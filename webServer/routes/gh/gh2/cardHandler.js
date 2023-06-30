@@ -96,6 +96,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 }
 
 // This is called from issue:delete, and triggered from card:delete (which may be triggered initially from issue:xfer since xfer leaves card in place)
+// This may also be triggered by a programmatic move to No Status, which requires a card delete, followed by card create.  Both peq and non-peq.
 // issue:delete - GH removes the card without notification.
 // transfer issue leaves card in place in old repo, so issue:transfer will issue a GH:delete card, which will trigger here eventually.
 // del project?  For now, not getting project notifications.
@@ -174,6 +175,19 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
     }
 }
 
+// XXX consider creating rejectLoc if this is not MAIN_PROJ
+// Either move card back to rejectLoc, or if delete it.
+async function rejectCard( authData, pNodeId, cardId, rejectLoc, msg ) {
+    console.log( authData.who, msg );
+    if( rejectLoc !== -1 ) {
+	ghV2.moveCard( authData, pNodeId, cardId, rejectLoc.hostUtility, rejectLoc.hostColumnId );
+    }
+    else {
+	console.log( authDta.who, config.PROJ_COLS[config.PROJ_PLAN], "column does not exist .. deleting card." );
+	ghV2.removeCard( authData, pNodeId, cardId );
+    }
+}
+
 
 // Card operations: no PEQ label, not related to CodeEquity.  No action.
 // Card operations: with PEQ label:  Record.  If relevant, create related issue and label. 
@@ -241,7 +255,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	{
 	    // within gh project, move card from 1 col to another.
 	    // Note: significant overlap with issueHandler:open/close.  But more cases to handle here to preserve reserved cols
-	    
+
 	    let cardId = card.node_id;
 
 	    if( pd.reqBody.changes == null ) {
@@ -251,27 +265,60 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId } );  
+	    assert( locs !== -1 );
+	    // Note, config.MAIN_PROJ should not have PLAN
+	    let rejectLoc = -1;
+	    for( const aloc of locs ) {
+		if( aloc.hostColumnName == config.PROJ_COLS[config.PROJ_PLAN] ) {
+		    rejectLoc = aloc;
+		    break;
+		}
+	    }
+
 	    let newCard = await ghV2.getCard( authData, cardId );
 	    if( newCard === -1 ) {
-		console.log( authData.who, "No such card, ignoring move request." );
+
+		// Check to see if this card was removed during split.
+		let newLinks = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "hostUtility": cardId });
+		if( newLinks.length == 1 ) {
+		    // XXX No need to get card here, as long as newLinks is correct.
+		    newCard = await ghV2.getCard( authData, newLinks[0].hostCardId );
+		    assert( newCard !== -1 );
+		    console.log( ".. original card was removed by PNP.  Processing move for replacement card", newCard, newLinks );
+		    newLinks[0].hostUtility = config.EMPTY;
+
+		    // Do not allow move into ACCR if trying to split in.
+		    if( newCard.columnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+			let msg = "WARNING. " + link.hostColumnName + " is reserved, can not create cards here. Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
+			rejectCard( authData, pd.projectId, newCard.cardId, rejectLoc, msg );
+		    }
+
+		    // resolve doNotTrack sets link to empty.  but newCard has current loc
+		    // Do not allow move into PEND if splitting in and non-peq
+		    if( newCard.columnName == config.PROJ_COLS[config.PROJ_PEND] && newLinks[0].hostColumnName == config.EMPTY ) {
+			let msg = "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed. " + newCard.cardId;
+			rejectCard( authData, pd.projectId, newCard.cardId, rejectLoc, msg );
+		    }
+		}
+		else {
+		    console.log( authData.who, "No such card, ignoring move request." );
+		}
 		return;
 	    }
 	    
 	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
-	    // get no status col
-	    const locs       = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colName": "No Status" } );  // XXX formalize
-	    assert( locs !== -1 );
 
-	    // Ignore newborn, untracked cards
+	    // Ignore newborn, untracked cards.   XXX
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
 	    
 	    if( links === -1 || links[0].hostColumnId == config.EMPTY ) {
 		if( newNameIndex > config.PROJ_PROG ) {
-		    console.log( authData.who, "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed.", cardId );
 		    // No origination data.  use default
 		    // Don't wait
-		    ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, locs[0].hostColumnId );
+		    let msg = "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed. " + cardId;
+		    rejectCard( authData, pd.projectId, cardId, rejectLoc, msg );
 		}
 		else { console.log( authData.who, "Non-PEQ cards are not tracked.  Ignoring.", cardId ); }
 		return;
@@ -289,8 +336,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // Do not allow move out of ACCR
 	    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
-		console.log( authData.who, "WARNING.  Can't move Accrued issue.  Move not processed.", cardId );
-		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
+		let msg = "WARNING.  Can't move Accrued issue.  Move not processed. " + cardId;
+		rejectCard( authData, pd.projectId, cardId, { hostUtility: locs[0].hostUtility, hostColumnId: oldColId }, msg );
 		return;
 	    }
 
@@ -301,8 +348,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    const fullIssue = await ghV2.getFullIssue( authData, issueId );   
 	    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
 	    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newColName )) {
-		console.log( authData.who, "WARNING.", "Allocations are only useful in config:PROJ_PLAN, or flat columns.  Moving card back." );
-		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
+		let msg = "WARNING.  Allocations are only useful in config:PROJ_PLAN, or flat columns.  Moving card back.";
+		rejectCard( authData, pd.projectId, cardId, { hostUtility: locs[0].hostUtility, hostColumnId: oldColId }, msg );
 		return;
 	    }
 	    
@@ -312,7 +359,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    let success = await ghV2.checkReserveSafe( authData, link.hostIssueId, newNameIndex );
 	    if( !success ) {
-		ghV2.moveCard( authData, pd.projectId, cardId, locs[0].hostUtility, oldColId );
+		rejectCard( authData, pd.projectId, cardId, { hostUtility: locs[0].hostUtility, hostColumnId: oldColId }, "" );
 		return;
 	    }
 	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.columnId, newColName );
