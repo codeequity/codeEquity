@@ -54,6 +54,10 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     
     // busOps:  unallocated
     await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
+
+    // This should NOT be needed.  But last makeAlloc above can be unfinished by the time test runs (i.e. can get card, but field is not yet available).
+    // This rare sluggishness happened 6/30/23
+    await utils.sleep( 1000 );
 }
 
 async function testPreferredCEProjects( authData, testLinks, td ) {

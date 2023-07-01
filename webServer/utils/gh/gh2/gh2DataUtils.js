@@ -11,6 +11,12 @@ const ghV2     = require( './ghV2Utils' );
 const gh2Data  = require( '../../../routes/gh/gh2/gh2Data' );
 
 function untrack( authData, ghLinks, ceProjectId, link ) {
+
+    let retLink = -1;
+    console.log( "untrack start", link );
+    console.log( "XXX untrack before" );
+    ghLinks.getUniqueLink( authData, link.ceProjectId, link.hostIssueId );
+    
     // XXX OMG fix naming!!
     if( utils.validField( link, "hostProjectName" )) {
 	console.log( authData.who, "Undoing tracking data in linkage, non-peq." );
@@ -20,28 +26,35 @@ function untrack( authData, ghLinks, ceProjectId, link ) {
 	link.hostIssueName    = config.EMPTY;   // do not track non-peq
 
 	let intLink = {};
-	intLink.ceProjectId = link.ceProjectId;
-	intLink.hostRepoName = link.hostRepoName;
-	intLink.hostRepoId  = link.hostRepoId;
-	intLink.issueId     = link.hostIssueId;
-	intLink.issueNum    = link.hostIssueNum;
-	intLink.projectId   = link.hostProjectId;
-	intLink.projectName = link.hostProjectName;
-	intLink.columnId    = link.hostColumnId;
-	intLink.columnName  = link.hostColumnName;
-	intLink.cardId      = link.hostCardId;
-	intLink.title       = link.hostIssueName;
-	intLink.flatSource  = link.flatSource;
-	ghLinks.addLinkage( authData, ceProjectId, intLink );
+	intLink.ceProjectId     = link.ceProjectId;
+	intLink.hostRepoName    = link.hostRepoName;
+	intLink.hostRepoId      = link.hostRepoId;
+	intLink.hostIssueId     = link.hostIssueId;
+	intLink.hostIssueNum    = link.hostIssueNum;
+	intLink.hostProjectId   = link.hostProjectId;
+	intLink.hostProjectName = link.hostProjectName;
+	intLink.hostColumnId    = link.hostColumnId;
+	intLink.hostColumnName  = link.hostColumnName;
+	intLink.hostCardId      = link.hostCardId;
+	intLink.hostIssueName   = link.hostIssueName;
+	intLink.flatSource      = link.flatSource;     // NOTE this gets kabosh'd since it is No Status
+	intLink.hostUtility     = link.hostUtility;
+	retLink = ghLinks.addLinkage( authData, ceProjectId, intLink );
     }
     else {
-	console.log( authData.who, "Undoing tracking data in linkage, non-peq.", link.title, link.issueId );
-	link.projectName  = config.EMPTY;
-	link.columnId     = config.EMPTY;   // do not track non-peq   cardHandler depends on this to avoid peq check
-	link.columnName   = config.EMPTY;   // do not track non-peq
-	link.title        = config.EMPTY;   // do not track non-peq
-	ghLinks.addLinkage( authData, ceProjectId, link );
+	console.log( authData.who, "Undoing tracking data in linkage, non-peq.", link.hostIssueName, link.hostIssueId );
+	link.hostProjectName  = config.EMPTY;
+	link.hostColumnId     = config.EMPTY;   // do not track non-peq   cardHandler depends on this to avoid peq check
+	link.hostColumnName   = config.EMPTY;   // do not track non-peq
+	link.hostIssueName    = config.EMPTY;   // do not track non-peq
+	retLink = ghLinks.addLinkage( authData, ceProjectId, link );
     }
+
+    console.log( "untrack finish", retLink );
+    console.log( "XXX untrack after" );
+    ghLinks.getUniqueLink( authData, link.ceProjectId, link.hostIssueId );
+
+    return retLink;
 }
 
 
@@ -119,7 +132,11 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 	pd.repoId      = links[i].hostRepoId;
 	pd.projectId   = links[i].hostProjectId;
 	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colId": links[i].hostColumnId} );
-	if( locs === -1 ) { console.log( links, pd, issue ); }
+	if( locs === -1 ) {
+	    console.log( links, pd, issue );
+	    let t = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId} );
+	    console.log( "OI", i, links[i].hostColumnId, locs );
+	}
 	assert( locs !== -1 );
 
 	// About to remove user's card.  Before doing so, get the column info, since that does not come in the move notice.
@@ -139,130 +156,12 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 
 	// New issueId, name, num, cardId.  Location is already correct in links[i] so no need to update splitLink
 	// resolve needed col data to rewrite info to GH.  But should not keep it if non-peq.  resolve handles 1-n, pnp handles 0
-	if( doNotTrack ) { untrack( authData, ghLinks, pd.ceProjectId, links[i] ); }
-
 	// Note: above card removal means subsequent card:moved notice fails since card does not exist.  rebuild uses link.hostUtil to record connection
 	links[i].hostUtility = links[i].hostCardId;
 	let splitLink = ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
-	splitIssues.push( splitLink );
-    }
-
-    // On initial populate call, resolve is called first, followed by processNewPeq.
-    // Leave first issue for PNP.  Start from second.
-    // Can no longer depend on links[i], since rebuildLinkage modded, then destroyed original copy.
-    // XXX Verify works for 3+ cards on initial populate.  splitIssues[i-1] is sloppy.
-    for( split of splitIssues ) {
-	// Don't record simple multiply-carded issues
-	if( pd.peqType != config.PEQTYPE_END ) {
-	    console.log( authData.who, "Building peq for", split.hostIssueName, split.hostColumnName );
-	    let projName   = split.hostProjectName;
-	    let colName    = split.hostColumnName;
-	    assert( projName != "" );
-	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
-
-	    pd.issueId    = split.hostIssueId;
-	    pd.issueNum   = split.hostIssueNum;
-	    pd.issueName  = split.hostIssueName;
-
-	    let specials = {};
-	    specials.pact     = "addRelo";
-	    specials.columnId = split.hostColumnId; 
-	    
-	    awsUtils.recordPeqData(authData, pd, false, specials );
-	}
-    }
-    
-    console.log( authData.who, "Resolved." );
-    return gotSplit;
-}
-/*
-async function resolve( authData, ghLinks, pd, allocation, doNotTrack, futureColName, futureColId ) {
-    if( typeof futureColName === 'undefined' ) { futureColName = config.EMPTY; }
-    if( typeof futureColId   === 'undefined' ) { futureColId   = -1; }
-    let gotSplit = false;
-    
-    // console.log( authData.who, "RESOLVE", pd.issueId );
-    if( pd.issueId == -1 ) { console.log(authData.who, "Resolve: early return, no issueId." ); return gotSplit; }
-    
-    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId });
-    // This can happen if an issue in a non-ceProj repo links to a project that is in a ceProj.  The 'visiting' issue should not be managed by ceServer.
-    if( links === -1 ) { console.log(authData.who, "Resolve: early return, visitor is not part of ceProject." ); return gotSplit; }
-    // console.log( links[0] );
-    if( links.length < 2 ) { console.log(authData.who, "Resolve: early return, nothing to resolve." ); return gotSplit; }
-    gotSplit = true;
-    
-    // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
-    // For case b, ensure ordering such that pd element (the current card-link) is acted on below - i.e. is not in position 0
-    //             since the carded issue has already been acted on earlier.
-    if( pd.peqType != config.PEQTYPE_END && links[0].hostColumnId == pd.columnId ) {
-	console.log( "Ping" );
-	[links[0], links[1]] = [links[1], links[0]];
-    }
-    
-    console.log( authData.who, "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.issueId, pd.issueNum );
-
-    // Need all issue data, with mod to title and to comment
-    assert( links[0].hostIssueNum == pd.issueNum );
-    let issue = await ghV2.getFullIssue( authData, pd.issueId );  
-    assert( issue != -1 );
-    pd.repoId    = links[1].hostRepoId;
-    pd.projectId = links[1].hostProjectId;
-    
-    // Can get here with blank slate from Populate, in which case no peq label to split.
-    // Can get here with peq issue that just added new card, so will have peq label to split.
-    // If peq label exists, recast it.  There can only be 0 or 1.
-    let idx = 0;
-    let newLabel = "";
-    for( const label of issue.labels ) {
-	let content = ghUtils.parseLabelName( label.name );
-	let peqVal  = content[0];
-	allocation  = content[1];
-
-	if( peqVal > 0 ) {
-	    console.log( authData.who, "Resolve, original peqValue:", peqVal );
-	    peqVal = Math.floor( peqVal / links.length );
-	    console.log( authData.who, ".... new peqValue:", peqVal );
-
-	    pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; 
-	    let peqHumanLabelName = ghV2.makeHumanLabel( peqVal, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
-	    newLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, peqVal )
-	    issue.labels[idx] = newLabel;
-	    // update peqData for subsequent recording
-	    pd.peqValue = peqVal;
-
-	    await ghV2.rebuildLabel( authData, label.id, newLabel.id, issue.id );
-	    // Don't wait
-	    awsUtils.changeReportPeqVal( authData, pd, peqVal, links[0] );
-	    break;
-	}
-	idx += 1;
-    }
-
-    // Create a new split issue for each copy, move new card loc if need be, set links
-    let splitIssues = [];
-    for( let i = 1; i < links.length; i++ ) {
-	let splitTag   = utils.randAlpha(8);
-	pd.repoId      = links[i].hostRepoId;
-	pd.projectId   = links[i].hostProjectId;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colId": links[i].hostColumnId} );
-	if( locs === -1 ) { console.log( links, pd, issue ); }
-	assert( locs !== -1 );
-
-	// Remove card user just created.  Create new card, relink it.  
-	ghV2.removeCard( authData, pd.projectId, links[i].hostCardId); 
-	let issueData  = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
-	assert( issueData[2] != -1 );
-
-	// Update columnId and name to current loc in GH, since move will fail (orig card is deleted)
-	links[i].hostColumnId   = futureColId   != -1 ? futureColId   : links[i].hostColumnId;
-	links[i].hostColumnName = futureColName != -1 ? futureColName : links[i].hostColumnName;
-	let success = await ghV2.moveCard( authData, pd.projectId, issueData[2], locs[0].hostUtility, links[i].hostColumnId );
-	assert( success );
+	// if( doNotTrack ) { splitLink = untrack( authData, ghLinks, pd.ceProjectId, splitLink ); }
+	if( doNotTrack ) { splitLink = ghLinks.rebaseLinkage( authData, pd.ceProjectId, issueData[0] ); }
 	
-	// New issueId, name, num, cardId.  Location is already correct in links[i] so no need to update splitLink
-	// resolve needed col data to rewrite info to GH.  But should not keep it if non-peq.  resolve handles 1-n, pnp handles 0
-	if( doNotTrack ) { untrack( authData, ghLinks, pd.ceProjectId, links[i] ); }
-	let splitLink = ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
 	splitIssues.push( splitLink );
     }
 
@@ -294,7 +193,6 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack, futureCol
     console.log( authData.who, "Resolved." );
     return gotSplit;
 }
-*/
 
 // Add linkage data for all carded issues in a new project, then resolve to guarantee 1:1
 // 
@@ -327,15 +225,15 @@ async function populateCELinkage( authData, ghLinks, pd )
     for( const link of linkage ) {
 	if( typeof link.duplicate === 'undefined' ) {
 	    if( link.allCards.length > 1 ) {
-		console.log( authData.who, "Found link with multiple cards", link.title, link.issueId );
-		pd.issueId  = link.issueId;
-		pd.issueNum = link.issueNum;
+		console.log( authData.who, "Found link with multiple cards", link.hostIssueName, link.hostIssueId );
+		pd.issueId  = link.hostIssueId;
+		pd.issueNum = link.hostIssueNum;
 		let pdCopy =  gh2Data.GH2Data.from( pd );
 		promises.push( resolve( authData, ghLinks, pdCopy, "???", false ) );
 	    }
 	}
 	// mark duplicates
-	linkage.forEach(l => { if( l.issueId == link.issueId ) { l.duplicate = true; } });
+	linkage.forEach(l => { if( l.issueId == link.hostIssueId ) { l.duplicate = true; } });
     }
     await Promise.all( promises );
 
@@ -492,16 +390,14 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     }
     
     let orig = {};
-    orig.columnId = pd.columnId;
+    orig.hostColumnId = pd.columnId;
     let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
     if( fromCard ) {
 	// Work from no status.
 	if( colName == config.EMPTY ) {
-	    colName    = config.GH_NO_STATUS;
-
-	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId} );
-	    assert( locs !== -1 );
-	    pd.columnId = locs[0].hostUtility;
+	    colName       = config.GH_NO_STATUS;
+	    pd.columnId   = colName;
+	    orig.columnId = colName;
 	}
 	specials.columnId = pd.columnId;
 
@@ -520,22 +416,22 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	if( !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
     }
 
-    orig.projectName  = projName;
-    orig.hostRepoName = pd.repoName;
-    orig.hostRepoId   = pd.repoId;
-    orig.issueId      = pd.issueId;
-    orig.issueNum     = pd.issueNum;
-    orig.title        = pd.issueName;   // XXX inconsistent naming blech
-    orig.projectId    = pd.projectId;
-    orig.cardId       = origCardId;
-    orig.columnName   = colName;
+    orig.hostProjectName  = projName;
+    orig.hostRepoName     = pd.repoName;
+    orig.hostRepoId       = pd.repoId;
+    orig.hostIssueId      = pd.issueId;
+    orig.hostIssueNum     = pd.issueNum;
+    orig.hostIssueName    = pd.issueName;   // XXX inconsistent naming blech
+    orig.hostProjectId    = pd.projectId;
+    orig.hostCardId       = origCardId;
+    orig.hostColumnName   = colName;
 
     // Resolve splits issues to ensure a 1:1 mapping issue:card, record data for all newly created issue:card(s)
     // Update linkage with future GH locations, presuming peq.  Will undo this after resolve as needed.  Split needs locs to create for GH.
     ghLinks.addLinkage( authData, pd.ceProjectId, orig );
     let doNotTrack = fromCard && pd.peqValue <= 0; 
     let gotSplit = await resolve( authData, ghLinks, pd, allocation, doNotTrack );  
-    if( doNotTrack ) { untrack( authData, ghLinks, pd.ceProjectId, orig ); }
+    if( doNotTrack ) { ghLinks.rebaseLinkage( authData, pd.ceProjectId, orig.hostIssueId ); }
 
     // record peq data for the original issue:card
     // NOTE: If peq == end, there is no peq/pact to record, in resolve or here.
@@ -552,182 +448,6 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	console.log( authData.who, "No need to update peq" );
     }
 }
-
-
-/*
-async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
-
-    let pact      = typeof specials !== 'undefined' && specials.hasOwnProperty( "pact" )     ? specials.pact     : -1;
-    let fromCard  = typeof specials !== 'undefined' && specials.hasOwnProperty( "fromCard" ) ? specials.fromCard : false;
-    let fromLabel = !fromCard;
-    assert( fromLabel || link === -1 );
-    assert( fromCard  || link !== -1 );
-    
-    let issDat = [issue.title];
-
-    // labelIssue does not call getFullIssue, cardHandler does
-    if( utils.validField( issue, "labelContent" ) ) { issDat.push( issue.labelContent ); }
-    else if( issue.labels.length > 0 )              { for( node of issue.labels ) { issDat.push( node.description ); } }
-
-    // console.log( authData.who, "PNP: issDat", issDat, pd.repoName, pact, fromCard );
-    
-    pd.issueName = issDat[0];
-    pd.issueNum  = issue.number;
-    pd.repoName  = issue.repository.nameWithOwner;
-    pd.repoId    = issue.repository.id;
-
-    // normal for card -> issue.  odd but legal for issue -> card
-    let allocation = ghUtils.getAllocated( issDat );
-
-    // Note.  If support convert from draft issue with <> shorthand, will need to use parsePEQ( issDat, allocation ) instead
-    pd.peqValue = ghUtils.parseLabelDescr( issDat );
-
-    // Don't wait
-    // XXX remove this after ceFlutter initialization is in place
-    if( pd.issueName != "A special populate issue" ) { 
-	awsUtils.checkPopulated( authData, pd.ceProjectId ).then( res => assert( res != -1 ));
-    }
-    
-    if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
-    // console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
-
-    // fromLabel link is good, cardDat will be undefined.  fromCard is the reverse.
-    let cardDat    = pd.reqBody.projects_v2_item;
-    let origCardId = fromCard ? cardDat.node_id         : link.hostCardId;
-    pd.projectId   = fromCard ? cardDat.project_node_id : link.hostProjectId;
-    pd.columnId    = fromCard ? -1                      : link.hostColumnId;
-    let colName    = fromCard ? config.EMPTY            : link.hostColumnName;
-    let projName   = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
-	
-    console.log( authData.who, "PNP: cardid, projId colName repoid", origCardId, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
-
-    // This will be undef if this is for a new issue
-    const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
-
-    // Bail, if ACCR peq issue trying to add a card. Links will have ACCR peq issue. There will not be links[1] unless during populate.  Can not modify ACCR.
-    if( fromCard && links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
-	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
-	gh.removeCard( authData, pd.projectId, origCardId );
-	return 'early';
-    }
-
-    //  Can't have situated issue in reserved.
-    const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
-    assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
-
-    let card          = -1;
-    let futureColName = colName; 
-    let futureColId   = pd.columnId;
-    // First, check if card moved in GH from no status.  Only concerned about it here, to enable skipping.  Otherwise, respect original create loc, move handles the rest.
-    // Timing: user creates card in reserved.  GH creates in no status, sends notice, moves to reserved, sends notice
-    //         ce starts processing PNP, checks upstream, sees reserved before removing origCard
-    if( colName == config.EMPTY || colName == "No Status" || fromCard ) {
-	card = await ghV2.getCard( authData, origCardId );
-	futureColName = card.columnName;
-	futureColId   = card.columnId;
-	console.log( authData.who, "got current card loc in GH:", futureColName );
-    }
-
-    // Bail, if this is alloc in x3  fromLabel if 1:1, fromCard if adding second card
-    // XXX Should make this, move it out of offending.  So move problem.
-    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( futureColName )) {
-	// remove card, leave issue & label in place.
-	console.log( authData.who, "WARNING.", "Allocations only useful in config:PROJ_PLAN, or flat columns.  Removing card from", colName );
-	await ghV2.removeCard( authData, pd.projectId, origCardId );
-	return 'early';
-    }
-    // Bail.  non-peq card will not generate fromLabel PNP.
-    // XXX create, then have move remove, to avoid reliance on futureCol
-    if( pd.peqValue <= 0 && reserved.includes( futureColName ) ) {
-	console.log( authData.who, "WARNING.", futureColName, "is reserved, can not create non-peq cards here.  Removing card, keeping issue." );
-	// Wait for this, otherwise followup move notice using this cardId could misbehave.
-	// XXX could possibly avoid need to await safely..?
-	await ghV2.removeCard( authData, pd.projectId, origCardId );
-	return 'early';
-    }
-
-    let orig = {};
-    let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
-    if( fromCard ) {
-	colName = card.columnName;
-	pd.columnId       = card.columnId;
-	orig.columnId     = card.columnId;
-	specials.columnId = card.columnId;
-
-	// At this point, if create-edit preceeded label, may be in create when card is built in no-status, meaning no column data.
-	console.log( authData.who, "PNP: fromCard.  ColId", card.columnId, card.columnName, pd.peqValue );
-	// XXX Can assert here if new repo, not yet populated, repoStatus not set, locs not updated?
-	assert( colName != config.EMPTY );
-
-	// Bail.  This can only happen when splitting a peq issue.  In which case, do NOT destroy original.
-	// XXX accept split.  Move it out of accr during move.
-	if( colName == config.PROJ_COLS[ config.PROJ_ACCR ] ) {
-	    console.log( authData.who, "WARNING.", colName, "is reserved, can not create cards here.  Removing card, keeping issue." );
-	    await ghV2.removeCard( authData, pd.projectId, origCardId );
-	    assert( pd.peqValue > 0 );
-	    
-	    // If already exists, will be in links.  Do not destroy it
-	    //if( pd.peqValue > 0 ) {
-//		let peqLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, pd.peqValue );  // this will exist
-//
-//		ghV2.removeLabel( authData, peqLabel.id, pd.issueId );  // remove from issue
-//		if( pd.issueId != -1 ) {
-//		    const daPEQ = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
-//		    awsUtils.removePEQ( authData, daPEQ.PEQId );
-//		}
-//	    }
-//	    return "removeLabel";
-
-	    return "early";
-	}
-	
-    }
-    else {
-	console.log( authData.who, "PNP: fromLabelIssue", peqHumanLabelName, pd.repoName );
-
-	assert( pd.issueNum > -1 );
-	orig.columnId     = pd.columnId;
-	
-	// If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
-	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
-	// Note: assigments are not relevant for allocations
-	// If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
-	if( !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
-    }
-
-    orig.projectName  = projName;
-    orig.hostRepoName = pd.repoName;
-    orig.hostRepoId   = pd.repoId;
-    orig.issueId      = pd.issueId;
-    orig.issueNum     = pd.issueNum;
-    orig.title        = pd.issueName;   // XXX inconsistent naming blech
-    orig.projectId    = pd.projectId;
-    orig.cardId       = origCardId;
-    orig.columnName   = colName;
-
-    // Resolve splits issues to ensure a 1:1 mapping issue:card, record data for all newly created issue:card(s)
-    // Update linkage with future GH locations, presuming peq.  Will undo this after resolve as needed.  Split needs locs to create for GH.
-    ghLinks.addLinkage( authData, pd.ceProjectId, orig );
-    let doNotTrack = fromCard && pd.peqValue <= 0; 
-    let gotSplit = await resolve( authData, ghLinks, pd, allocation, doNotTrack, futureColName, futureColId );  
-    if( doNotTrack ) { untrack( authData, ghLinks, pd.ceProjectId, orig ); }
-
-    // record peq data for the original issue:card
-    // NOTE: If peq == end, there is no peq/pact to record, in resolve or here.
-    //       else, if resolve splits an issue due to create card, that means the base link is already fully in dynamo.
-    //                Resolve will add the new one, which means work is done.
-    //       resolve with an already-populated repo can NOT split an issue based on a labeling, since the only way to add a card to an existing
-    //                issue is to create card.  Furthermore populate does not call this function.
-    //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
-    if( pact != -1 && !gotSplit && pd.peqType != "end" ) {
-	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
-	awsUtils.recordPeqData( authData, pd, true, specials );
-    }
-    else {
-	console.log( authData.who, "No need to update peq" );
-    }
-}
-*/
 
 exports.resolve           = resolve;
 exports.populateCELinkage = populateCELinkage;

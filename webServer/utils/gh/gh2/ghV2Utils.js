@@ -168,15 +168,15 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 		    if( links.length >= 100 ) { console.log( authData.who, "WARNING.  Detected a very large number of cards, ignoring some." ); }
 		    
 		    let datum = {};
-		    datum.issueId     = issue.content.id;              // contentId I_*
-		    datum.issueNum    = issue.content.number;
-		    datum.title       = issue.content.title;
-		    datum.cardId      = issue.id;                      // projectV2Item id PVTI_*
-		    datum.projectName = locData[0].hostProjectName;    
-		    datum.projectId   = locData[0].hostProjectId;    
-		    datum.columnName  = status;
-		    datum.columnId    = optionId;
-		    datum.allCards    = links.map( link => link.node.id );
+		    datum.hostIssueId     = issue.content.id;              // contentId I_*
+		    datum.hostIssueNum    = issue.content.number;
+		    datum.hostIssueName   = issue.content.title;
+		    datum.hostCardId      = issue.id;                      // projectV2Item id PVTI_*
+		    datum.hostProjectName = locData[0].hostProjectName;    
+		    datum.hostProjectId   = locData[0].hostProjectId;    
+		    datum.hostColumnName  = status;
+		    datum.hostColumnId    = optionId;
+		    datum.allCards        = links.map( link => link.node.id );
 		    
 		    linkData.push( datum );
 		}

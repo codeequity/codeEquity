@@ -269,7 +269,7 @@ async function getProjects( authData, td ) {
 // Note: first view only
 async function getColumns( authData, pNodeId ) {
     let cols = [];
-    console.log( "get cols", pNodeId );
+    // console.log( "get cols", pNodeId );
     if( pNodeId == config.EMPTY ) { return cols; }
     let query = `query($nodeId: ID!) {
 	node( id: $nodeId ) {
@@ -505,8 +505,6 @@ async function findRepo( authData, td ) {
 async function getFlatLoc( authData, projId, projName, colName ) {
     const cols = await getColumns( authData, projId );
 
-    console.log( cols );
-    
     let col = cols.find(c => c.name == colName );
 
     let ptype = config.PEQTYPE_PLAN;
@@ -1732,6 +1730,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     if( splitIssues.length > 0 ) {
 	let cards = await getCards( authData, newLoc.projId, newLoc.colId );
 	if( cards === -1 ) { cards = []; }
+	subTest = tu.checkGE( cards.length, 1, subTest, "split has nothing in newLoc" );
     
 	// Some tests will have two split issues here.  The newly split issue has a larger issNum
 	const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
@@ -1753,6 +1752,13 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    const card      = await getCard( authData, issLink.hostCardId );
 	    const splitCard = await getCard( authData, splitLink.hostCardId );
 
+	    let newLocIds = cards.map( c => c.id );
+	    if( !newLocIds.includes( splitCard.cardId ) ) {
+		console.log( "splitDat", splitDat, "splitLInk", splitLink, "splitCard", splitCard, "cards", cards, "cardIds", newLocIds );
+	    }
+	    subTest = tu.checkEq( newLocIds.includes( splitCard.cardId ), true, subTest, "split loc does not have split card" );
+
+	    
 	    // NOTE: orig issue will not adjust initial peq value.  new issue will be set with new value.  label is up to date tho.
 	    if( situated ) {
 		let lval = origVal / 2;

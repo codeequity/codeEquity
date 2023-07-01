@@ -297,7 +297,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    // resolve doNotTrack sets link to empty.  but newCard has current loc
 		    // Do not allow move into PEND if splitting in and non-peq
 		    if( newCard.columnName == config.PROJ_COLS[config.PROJ_PEND] && newLinks[0].hostColumnName == config.EMPTY ) {
-			let msg = "WARNING.  Can't move non-PEQ card into reserved column.  Move not processed. " + newCard.cardId;
+			let msg = "WARNING.  Can't split non-PEQ card into reserved column.  Move not processed. " + newCard.cardId;
 			rejectCard( authData, pd.projectId, newCard.cardId, rejectLoc, msg );
 		    }
 		}

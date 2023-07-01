@@ -149,26 +149,29 @@ async function testIncrementalResolve( authData, testLinks, td ) {
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve D" );
+	// moon to pend above now leaves card in plan.  split should work here, should get a split tag, above card is for different issue..!
     }
 
-    // Prog += Accr  .. Fail no create in accr
+    // Prog += Accr  .. Fail no create in accr.  Move to PLAN
     {
 	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toAccrLoc.projId, toAccrLoc.colId, issProgDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
-	testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issProgDat, toAccrLoc, cardNew.cardId, testStatus );
+	// testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issProgDat, toAccrLoc, cardNew.cardId, testStatus );
+	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issProgDat, progLoc, toRejectLoc, -1, -1, testStatus, {peq: true, lblCount: 2 } );
 	
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve E" );
     }
 
     
-    // Pend += Accr  .. Fail no create in accr
+    // Pend += Accr  .. Fail no create in accr.  Move to PLAN
     {
 	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toAccrLoc.projId, toAccrLoc.colId, issPendDat[0] );
 	await utils.sleep( 2000 );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, pendLoc, issPendDat, cardPend, testStatus, {lblCount: 1 } );
-	testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issPendDat, toAccrLoc, cardNew.cardId, testStatus );
+	// testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issPendDat, toAccrLoc, cardNew.cardId, testStatus );
+	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issPendDat, pendLoc, toRejectLoc, -1, -1, testStatus, {peq: true, lblCount: 1 } );
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve F" );

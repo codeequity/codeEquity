@@ -16,7 +16,7 @@ const ghcCards    = require( './gh/ghc/githubCardHandler' );
 const ghcProjects = require( './gh/ghc/githubProjectHandler' );
 const ghcColumns  = require( './gh/ghc/githubColumnHandler' );
 const ghcLabels   = require( './gh/ghc/githubLabelHandler' );
-const ghcData  = require( './gh/ghc/ghcData' );
+const ghcData     = require( './gh/ghc/ghcData' );
 
 // PMS_GH2
 const gh2Data   = require( './gh/gh2/gh2Data' );
