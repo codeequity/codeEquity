@@ -88,7 +88,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	// Move to unclaimed:accrued col
 	card = await card;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "colId": card.columnId } );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": link.hostProjectId, "colId": card.columnId } );
 	assert( locs.length = 1 );
 	await ghV2.moveCard( authData, card.projId, card.cardId, locs[0].hostUtility, card.columnId );
 	
@@ -137,7 +137,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	console.log( authData.who, "Not a PEQ issue, or not a PEQ label.  No action taken." );
 	return false;
     }
-    
+
     // Was this a carded issue?  Get linkage
     // Note: During initial creation, some item:create notifications are delayed until issue:label, so no linkage (yet)
     // Note: if issue is opened with a project selected, we will receive open, label and create notices.
@@ -181,9 +181,9 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     }
     else {
-	console.log( "issue is already carded", specials );
+	console.log( "issue is already carded", link );
     }
-
+    
     // ceFlutter ingest summarization needs relo for loc data when there is no subsequent card:move
     let specials = { pact: "addRelo", columnId: link.hostColumnId };
     
@@ -198,6 +198,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.repository.id            = pd.repoId;
     content.repository.nameWithOwner = pd.repoName;
     content.labelContent             = pd.reqBody.label.description;
+    content.labelNodeId              = pd.reqBody.label.node_id;
 	
     // Don't wait, no dependence
     let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );

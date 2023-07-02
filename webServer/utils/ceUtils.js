@@ -7,7 +7,7 @@ const config = require( '../config');
 // UNIT TESTING ONLY!!
 // Ugly ugly hack to test error handler.  Turn this off for normal runs.
 const TEST_EH     = true;
-const TEST_EH_PCT = .05;
+const TEST_EH_PCT = .01;
 
 // UNIT TESTING ONLY!!
 // internal server error testing

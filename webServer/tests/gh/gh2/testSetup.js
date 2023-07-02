@@ -54,6 +54,10 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     
     // busOps:  unallocated
     await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
+
+    // This should NOT be needed.  But last makeAlloc above can be unfinished by the time test runs (i.e. can get card, but field is not yet available).
+    // This rare sluggishness happened 6/30/23
+    await utils.sleep( 1000 );
 }
 
 async function testPreferredCEProjects( authData, testLinks, td ) {
@@ -116,9 +120,9 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 		foundPActs++;
 	    }
 	}
-	// 2 for addRelo (i.e. add, relo)
+	// 2 for addRelo (i.e. add, relo), 1 for move's
 	// unclaimed.  May be valid.
-	subTest = tu.checkEq( foundPActs, 6,           subTest, "Matched PActs with PEQs" );
+	subTest = tu.checkEq( foundPActs, 9,           subTest, "Matched PActs with PEQs" );
 	
 	// Check DYNAMO RepoStatus
 	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId );

@@ -17,6 +17,7 @@ async function createFlatProject( authData, ghLinks, td ) {
     td.masterPID  = await gh2tu.findOrCreateProject( authData, td, FLAT_PROJ, "" );
     let mastCol1  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Eggs" );
     let mastCol2  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Bacon" );
+    let mastCol3  = await gh2tu.makeColumn( authData, ghLinks, td.ceProjectId, td.GHFullName, td.masterPID, config.PROJ_COLS[config.PROJ_PLAN] );
 
     // i.e. draft issues
     await gh2tu.makeNewbornCard( authData, ghLinks, td.ceProjectId, td.masterPID, mastCol1, "Parsley" );
@@ -79,7 +80,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     
     // Check GITHUB Columns
     let mastCols   = await gh2tu.getColumns( authData, td.masterPID  );
-    testStatus = tu.checkEq( mastCols.length, 2,   testStatus, "Master proj col count" );
+    testStatus = tu.checkEq( mastCols.length, 3,   testStatus, "Master proj col count" );
 
     let colNames = mastCols.map((col) => col.name );
     testStatus = tu.checkEq( colNames.includes( "Eggs" ), true,    testStatus, "Col names" );
@@ -100,8 +101,7 @@ async function testFlatProject( authData, ghLinks, td ) {
     testStatus = tu.checkEq( eggCards.length, 2, testStatus, "Egg col card count" );
     testStatus = tu.checkEq( bacCards.length, 1, testStatus, "Bacon col card count" );
 
-    tu.testReport( testStatus, "Create Flat CE Projects" );
-    return testStatus;
+    return await tu.settle( testStatus, [0, 0, []], testFlatProject, authData, ghLinks, td ); 
 }
 
 
@@ -116,7 +116,9 @@ async function runTests( authData, ghLinks, td ) {
     let t1 = await testFlatProject( authData, ghLinks, td );
 
     testStatus = tu.mergeTests( testStatus, t1 );
-    return testStatus
+    tu.testReport( testStatus, "Create Flat CE Projects" );
+    
+    return testStatus;
 }
 
 

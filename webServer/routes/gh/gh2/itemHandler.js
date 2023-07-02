@@ -139,9 +139,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'deleted':
+	// generated from remCard
 	{
-	    console.log( "PV2ItemHandler", action );
-	    console.log( reqBody );
+	    return cardHandler.handler( authData, ceProjects, ghLinks, pd, action, tag ); 
 	}
 	break;
     case 'archived':

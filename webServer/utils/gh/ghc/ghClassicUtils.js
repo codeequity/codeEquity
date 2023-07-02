@@ -855,14 +855,14 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
 		}
 		// console.log( card.node.project.name, card.node.column.databaseId );
 		let datum = {};
-		datum.issueId     = issue.databaseId;
-		datum.issueNum    = issue.number;
-		datum.title       = issue.title;
-		datum.cardId      = card.node.databaseId;
-		datum.projectName = card.node.project.name;
-		datum.projectId   = card.node.project.databaseId;
-		datum.columnName  = card.node.column.name;
-		datum.columnId    = card.node.column.databaseId;
+		datum.hostIssueId     = issue.databaseId;
+		datum.hostIssueNum    = issue.number;
+		datum.hostIssueName   = issue.title;
+		datum.hostCardId      = card.node.databaseId;
+		datum.hostProjectName = card.node.project.name;
+		datum.hostProjectId   = card.node.project.databaseId;
+		datum.hostColumnName  = card.node.column.name;
+		datum.hostColumnId    = card.node.column.databaseId;
 		data.push( datum );
 	    }
 	}

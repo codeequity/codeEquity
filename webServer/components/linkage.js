@@ -25,6 +25,7 @@ const locData  = require( './locData' );
 // loc was { projId: { colId: {} }}
 // loc is  { ceProjId: { projId: { colId: {} }}} where projId is the unique project id within ceProjId.hostPlatform
 // loc IS stored in dynamo, for speed and privacy benefits during ingest (ceFlutter).
+// NOTE: colId is no longer unique across projects for GH2.  Within a project, it is.
 
 class Linkage {
 
@@ -171,12 +172,12 @@ class Linkage {
 		continue;
 	    }
 
-	    let card = baseLinks.find( datum => datum.cardId == link.hostCardId );
+	    let card = baseLinks.find( datum => datum.hostCardId == link.hostCardId );
 	    
-	    link.hostIssueName   = card.title;
-	    link.hostColumnId    = card.columnId.toString();
-	    link.hostProjectName = card.projectName;
-	    link.hostColumnName  = card.columnName;
+	    link.hostIssueName   = card.hostIssueName;
+	    link.hostColumnId    = card.hostColumnId.toString();
+	    link.hostProjectName = card.hostProjectName;
+	    link.hostColumnName  = card.hostColumnName;
 
 	    // need a name here
 	    link.flatSource    = peq.HostProjectSub[ peq.HostProjectSub.length - 1 ];
@@ -218,23 +219,12 @@ class Linkage {
     // linkData is ceProject-specific, i.e. a single "cplinks"
     fromJson( authData, linkData ) {
 	this.links = {};
-	// console.log( "Creating ghLinks from json data" );
+	// console.log( "Creating ghLinks from json data", linkData );
 	for( const [_, clinks] of Object.entries( linkData ) ) {
 	    for( const [_, plinks] of Object.entries( clinks ) ) {
 		for( const [col, link] of Object.entries( plinks ) ) {
-		    // XXX grunk.  naming in addLinkage causes this conversion. kinda silly.  but testUtils only, so min impact.
-		    let orig = {};
-		    orig.hostRepoName  = link.hostRepoName;
-		    orig.hostRepoId    = link.hostRepoId;
-		    orig.issueId       = link.hostIssueId;
-		    orig.issueNum      = link.hostIssueNum;
-		    orig.projectId     = link.hostProjectId;
-		    orig.projectName   = link.hostProjectName;
-		    orig.columnId      = link.hostColumnId;
-		    orig.columnName    = link.hostColumnName;
-		    orig.cardId        = link.hostCardId;
-		    orig.title         = link.hostIssueName;
-		    this.addLinkage( authData, link.ceProjectId, orig, { source: link.flatSource } );
+		    // note: hostUtil used during split resolution to maintain 1:1 mapping
+		    this.addLinkage( authData, link.ceProjectId, link, { source: link.flatSource } );
 		}
 	    }
 	}
@@ -245,28 +235,29 @@ class Linkage {
 	let source   = typeof specials !== 'undefined' && specials.hasOwnProperty( "source" )   ? specials.source   : false;
 	let populate = typeof specials !== 'undefined' && specials.hasOwnProperty( "populate" ) ? specials.populate : false;
 	
-	// console.log( authData.who, "add link", ceProjId, orig.issueId, orig.cardId, orig.columnName, orig.columnId, orig.title );
+	// console.log( authData.who, "add link", ceProjId, orig.hostIssueId, orig.hostCardId, orig.hostColumnName, orig.hostColumnId, orig.hostIssueName );
 	
-	assert( ceProjId     != config.EMPTY );
-	assert( orig.issueId != config.EMPTY );
-	assert( orig.cardId  != config.EMPTY );
-	if( !utils.validField( this.links, ceProjId ) )                            { this.links[ceProjId] = {}; }
-	if( !utils.validField( this.links[ceProjId], orig.issueId ) )              { this.links[ceProjId][orig.issueId] = {}; }
-	if( !utils.validField( this.links[ceProjId][orig.issueId], orig.cardId ) ) { this.links[ceProjId][orig.issueId][orig.cardId] = {}; }
+	assert( ceProjId         != config.EMPTY );
+	assert( orig.hostIssueId != config.EMPTY );
+	assert( orig.hostCardId  != config.EMPTY );
+	if( !utils.validField( this.links, ceProjId ) )                                    { this.links[ceProjId] = {}; }
+	if( !utils.validField( this.links[ceProjId], orig.hostIssueId ) )                  { this.links[ceProjId][orig.hostIssueId] = {}; }
+	if( !utils.validField( this.links[ceProjId][orig.hostIssueId], orig.hostCardId ) ) { this.links[ceProjId][orig.hostIssueId][orig.hostCardId] = {}; }
 
-	let link = this.links[ceProjId][orig.issueId][orig.cardId];
+	let link = this.links[ceProjId][orig.hostIssueId][orig.hostCardId];
 
 	link.ceProjectId     = ceProjId;
 	link.hostRepoName    = typeof orig.hostRepoName === 'undefined' ? config.EMPTY : orig.hostRepoName;
 	link.hostRepoId      = typeof orig.hostRepoId   === 'undefined' ? config.EMPTY : orig.hostRepoId;
-	link.hostIssueId     = typeof orig.issueId      === 'undefined' ? config.EMPTY : orig.issueId.toString();
-	link.hostIssueNum    = typeof orig.issueNum     === 'undefined' ? config.EMPTY : orig.issueNum.toString();
-	link.hostProjectId   = typeof orig.projectId    === 'undefined' ? config.EMPTY : orig.projectId.toString();
-	link.hostProjectName = typeof orig.projectName  === 'undefined' ? config.EMPTY : orig.projectName;
-	link.hostColumnId    = typeof orig.columnId     === 'undefined' ? config.EMPTY : orig.columnId.toString();
-	link.hostColumnName  = typeof orig.columnName   === 'undefined' ? config.EMPTY : orig.columnName;
-	link.hostCardId      = typeof orig.cardId       === 'undefined' ? config.EMPTY : orig.cardId.toString();
-	link.hostIssueName   = typeof orig.title        === 'undefined' ? config.EMPTY : orig.title;   
+	link.hostIssueId     = typeof orig.hostIssueId      === 'undefined' ? config.EMPTY : orig.hostIssueId.toString();
+	link.hostIssueNum    = typeof orig.hostIssueNum     === 'undefined' ? config.EMPTY : orig.hostIssueNum.toString();
+	link.hostProjectId   = typeof orig.hostProjectId    === 'undefined' ? config.EMPTY : orig.hostProjectId.toString();
+	link.hostProjectName = typeof orig.hostProjectName  === 'undefined' ? config.EMPTY : orig.hostProjectName;
+	link.hostColumnId    = typeof orig.hostColumnId     === 'undefined' ? config.EMPTY : orig.hostColumnId.toString();
+	link.hostColumnName  = typeof orig.hostColumnName   === 'undefined' ? config.EMPTY : orig.hostColumnName;
+	link.hostCardId      = typeof orig.hostCardId       === 'undefined' ? config.EMPTY : orig.hostCardId.toString();
+	link.hostIssueName   = typeof orig.hostIssueName    === 'undefined' ? config.EMPTY : orig.hostIssueName;   
+	link.hostUtility     = typeof orig.hostUtility  === 'undefined' ? config.EMPTY : orig.hostUtility;   
 	link.flatSource      = source ? source : link.hostColumnId;
 
 	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOneRepo
@@ -326,7 +317,7 @@ class Linkage {
 
     getUniqueLink( authData, ceProjId, issueId ) {
 
-	// console.log( authData.who, "Get unique link", ceProjId, issueId );
+	console.log( authData.who, "XXX Get unique link", ceProjId, issueId );
 	// this.show(5);
 	let retVal = -1;
 	if( utils.validField( this.links, ceProjId ) && utils.validField( this.links[ceProjId], issueId )) {
@@ -336,6 +327,7 @@ class Linkage {
 	    if      ( issueLinks.length < 1 ) { console.log(authData.who, "Link not found.", issueId ); }  // 204
 	    else if ( issueLinks.length > 1 ) { console.log(authData.who, "Semantic error.  More items found than expected.", issueId ); } // 422
 	    else                              { retVal = issueLinks[0][1]; }
+	    if( retVal == -1 ) { console.log( issueLinks ); }
 	}
 	return retVal;
     }
@@ -349,15 +341,16 @@ class Linkage {
 	    assert( false );
 	}
 
-	const ceProjId   = query.ceProjId;
-	const repo       = utils.validField( query, "repo" )       ? query.repo               : config.EMPTY;
-	const repoId     = utils.validField( query, "repoId" )     ? query.repoId.toString()  : config.EMPTY;
-	const issueId    = utils.validField( query, "issueId" )    ? query.issueId.toString() : -1;
-	const cardId     = utils.validField( query, "cardId" )     ? query.cardId.toString()  : -1;
-	const projId     = utils.validField( query, "projId" )     ? query.projId             : -1;
-	const projName   = utils.validField( query, "projName" )   ? query.projName           : config.EMPTY;
-	const colName    = utils.validField( query, "colName" )    ? query.colName            : config.EMPTY;
-	const issueTitle = utils.validField( query, "issueTitle" ) ? query.issueTitle         : config.EMPTY;
+	const ceProjId    = query.ceProjId;
+	const repo        = utils.validField( query, "repo" )        ? query.repo               : config.EMPTY;
+	const repoId      = utils.validField( query, "repoId" )      ? query.repoId.toString()  : config.EMPTY;
+	const issueId     = utils.validField( query, "issueId" )     ? query.issueId.toString() : -1;
+	const cardId      = utils.validField( query, "cardId" )      ? query.cardId.toString()  : -1;
+	const projId      = utils.validField( query, "projId" )      ? query.projId             : -1;
+	const projName    = utils.validField( query, "projName" )    ? query.projName           : config.EMPTY;
+	const colName     = utils.validField( query, "colName" )     ? query.colName            : config.EMPTY;
+	const issueTitle  = utils.validField( query, "issueTitle" )  ? query.issueTitle         : config.EMPTY;
+	const hostUtility = utils.validField( query, "hostUtility" ) ? query.hostUtility        : config.EMPTY;
 
 	// console.log( authData.who, "get Links", ceProjId, issueId, cardId, projId, projName, colName, issueTitle );
 	
@@ -368,19 +361,23 @@ class Linkage {
 	    // Note, during initial resolve, this may NOT be 1:1 issue:card
 	    for( const [_, link] of Object.entries( clinks ) ) {
 		let match = true;
-		match = issueId == -1              ? match : match && (link.hostIssueId     == issueId);
-		match = cardId == -1               ? match : match && (link.hostCardId      == cardId);
-		match = projId == -1               ? match : match && (link.hostProjectId   == projId);
-		match = repo == config.EMPTY       ? match : match && (link.hostRepoName    == repo);
-		match = repoId == config.EMPTY     ? match : match && (link.hostRepoId      == repoId);
-		match = projName == config.EMPTY   ? match : match && (link.hostProjectName == projName );
-		match = colName == config.EMPTY    ? match : match && (link.hostColumnName  == colName );
-		match = issueTitle == config.EMPTY ? match : match && (link.hostIssueName   == issueTitle );
-		match = ceProjId == config.EMPTY   ? match : match && (link.ceProjectId     == ceProjId );
+		match = issueId == -1               ? match : match && (link.hostIssueId     == issueId);
+		match = cardId == -1                ? match : match && (link.hostCardId      == cardId);
+		match = projId == -1                ? match : match && (link.hostProjectId   == projId);
+		match = repo == config.EMPTY        ? match : match && (link.hostRepoName    == repo);
+		match = repoId == config.EMPTY      ? match : match && (link.hostRepoId      == repoId);
+		match = projName == config.EMPTY    ? match : match && (link.hostProjectName == projName );
+		match = colName == config.EMPTY     ? match : match && (link.hostColumnName  == colName );
+		match = issueTitle == config.EMPTY  ? match : match && (link.hostIssueName   == issueTitle );
+		match = ceProjId == config.EMPTY    ? match : match && (link.ceProjectId     == ceProjId );
+		match = hostUtility == config.EMPTY ? match : match && (link.hostUtility     == hostUtility );
 		
 		if( match ) { links.push( link ); }
 	    }
 	}
+
+	// XXX
+	if( hostUtility != config.EMPTY ) { console.log( "XXX erem", hostUtility, links ); }
 	
 	if( links.length == 0 ) { links = -1; }
 	return links;
@@ -430,17 +427,7 @@ class Linkage {
     }
 
     
-    // Use only with known PEQ issues, 1:1
     // Zero out fields in linkage table no longer being tracked
-    // Base linkage is for issue-cards that are not in validated CE project structure.
-    //
-    // [ [projId, cardId, issueNum, issueId], ... ]
-    // Each cardId quad is one of three types:
-    //  1. issue-card linkage is already in place.    Should not overwrite - handled by caller
-    //  2. no linkage in dynamo, but linkage in GH,   Do write.
-    //  3. no linkage in dynamo, only card in GH,     No.  Need a linkage in order to add to linkage table.
-    //
-    // Write repo, projId, cardId, issueNum.    issueId is much more expensive to find, not justified speculatively.
     rebaseLinkage( authData, ceProjId, issueId ) {
 	console.log( authData.who, "Rebasing link for", ceProjId, issueId );
 	let cLinks = this.links[ceProjId][issueId];
@@ -450,8 +437,9 @@ class Linkage {
 	link.hostProjectName = config.EMPTY;
 	link.hostColumnId    = config.EMPTY;
 	link.hostColumnName  = config.EMPTY;
-	link.hostIssueName  = config.EMPTY;
-	link.flatSource    = -1;
+	link.hostIssueName   = config.EMPTY;
+	link.flatSource      = -1;
+	return link;
     }
 
     updateLinkage( authData, ceProjId, issueId, cardId, newColId, newColName ) {
@@ -479,25 +467,31 @@ class Linkage {
     // issue, card ids have changed.
     rebuildLinkage( authData, oldLink, issueData, splitTitle ) {
 	console.log( authData.who, "Rebuild linkage", oldLink.ceProjectId, oldLink.hostIssueNum, "->", issueData[0], issueData[2] );
+	console.log( "XXX before (expect semantic issue)" );
+	this.getUniqueLink( authData, oldLink.ceProjectId, oldLink.hostIssueId );
 	let newTitle = oldLink.hostIssueName;
 	if( typeof splitTitle !== 'undefined' ) {
 	    newTitle = oldLink.hostColumnId == config.EMPTY ? config.EMPTY : splitTitle;
 	}
 	let alink = {};
-	alink.hostRepoName = oldLink.hostRepoName;
-	alink.hostRepoId   = oldLink.hostRepoId;
-	alink.issueId      = issueData[0].toString();
-	alink.issueNum     = issueData[1].toString();
-	alink.projectId    = oldLink.hostProjectId;
-	alink.projectName  = oldLink.hostProjectName;
-	alink.columnId     = oldLink.hostColumnId;
-	alink.columnName   = oldLink.hostColumnName;
-	alink.cardId       = issueData[2].toString();
-	alink.title        = newTitle;
+	alink.hostRepoName     = oldLink.hostRepoName;
+	alink.hostRepoId       = oldLink.hostRepoId;
+	alink.hostIssueId      = issueData[0].toString();
+	alink.hostIssueNum     = issueData[1].toString();
+	alink.hostProjectId    = oldLink.hostProjectId;
+	alink.hostProjectName  = oldLink.hostProjectName;
+	alink.hostColumnId     = oldLink.hostColumnId;
+	alink.hostColumnName   = oldLink.hostColumnName;
+	alink.hostCardId       = issueData[2].toString();
+	alink.hostIssueName    = newTitle;
+	alink.hostUtility      = oldLink.hostUtility;
 	let link = this.addLinkage( authData, oldLink.ceProjectId, alink, { source: oldLink.flatSource } );
 	
 	this.removeLinkage( { "authData": authData, "ceProjId": oldLink.ceProjectId, "issueId": oldLink.hostIssueId, "cardId": oldLink.hostCardId } );
-	    
+
+	console.log( "XXX after" );
+	this.getUniqueLink( authData, oldLink.ceProjectId, oldLink.hostIssueId );
+	
 	return link;
     }
 

@@ -37,7 +37,7 @@ async function refreshRec( authData, td ) {
     let hostProjs = [];
     await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
-    console.log( "Got hprojs", hostProjs );
+    // console.log( "Got hprojs", hostProjs );
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == config.MAIN_PROJ ) {
 	    td.masterPID = proj.hostProjectId;
@@ -306,6 +306,15 @@ async function getColumns( authData, pNodeId ) {
 			datum.name = afield.options[k].name;
 			cols.push( datum );
 		    }
+		    /*
+		    // Hmm.. do not.. can not move to, and no need for address to move out of.. 
+		    // Build "No Status" by hand
+		    let datum = {};
+		    datum.statusId = statusId;
+		    datum.id   = config.GH_NO_STATUS;
+		    datum.name = config.GH_NO_STATUS;
+		    cols.push( datum );
+		    */
 		    break;
 		}
 	    }
@@ -495,6 +504,7 @@ async function findRepo( authData, td ) {
 
 async function getFlatLoc( authData, projId, projName, colName ) {
     const cols = await getColumns( authData, projId );
+
     let col = cols.find(c => c.name == colName );
 
     let ptype = config.PEQTYPE_PLAN;
@@ -756,7 +766,7 @@ async function makeNewbornCard( authData, testLinks, ceProjId, pNodeId, colId, t
 }
 
 async function makeProjectCard( authData, testLinks, ceProjId, pNodeId, colId, issueId, justId ) {
-    let query = { "ceProjId": ceProjId, "projId": pNodeId, "pNodeId": pNodeId, "colId": colId };   // XXX darg.  naming sux
+    let query = { "ceProjId": ceProjId, "projId": pNodeId, pNodeId: pNodeId, "colId": colId };   // XXX darg.  naming sux  cpc needs pNodeId
     const locs = testLinks.getLocs( authData, query );    
     assert( locs !== -1 );
     let statusId = locs[0].hostUtility;
@@ -885,13 +895,14 @@ async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specia
     if( !( links !== -1 && links.length == 1) ) { console.log( "erm", links ); }
     assert( links !== -1 && links.length == 1);
 
-    let locs  = await tu.getLocs( authData, testLinks, { ceProjId: ceProjId, colId: columnId } );    
+    let locs  = await tu.getLocs( authData, testLinks, { ceProjId: ceProjId, projId: links[0].hostProjectId, colId: columnId } );    
     assert( locs !== -1 && locs.length == 1 );
-    
+
+    assert( columnId != config.GH_NO_STATUS );
     await ghV2.moveCard( authData, links[0].hostProjectId, cardId, locs[0].hostUtility, columnId );
-
+    
     let issNum  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issNum" )  ? specials.issNum : false;
-
+    
     if( issNum ) {
 	let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;	
 	let query = "project_card moved iss" + issNum + " " + td.GHFullName + locator;
@@ -901,15 +912,8 @@ async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specia
     await utils.sleep( tu.MIN_DELAY );
 }
 
-// We can no longer remove a card - just move to no status.
-async function remCard( authData, ceProjId, cardId ) {
-    const links = testLinks.getLinks( authData, { "ceProjId": ceProjId, "cardId": cardId } );
-    assert( links !== -1 && links.length == 1);    
-
-    const locs  = testLinks.getLocs( authData, { "ceProjId": ceProjId, "projId": links[0].hostProjectId, "colName": "No Status" } );
-    assert( locs !== -1 && locs.length == 1 );
-
-    await ghV2.moveCard( authData, links[0].hostProjectId, cardId, links[0].hostUtility, locs[0].hostColumnId );
+async function remCard( authData, ceProjId, pNodeId, cardId ) {
+    await ghV2.removeCard( authData, pNodeId, cardId );
     
     await utils.sleep( tu.MIN_DELAY );
 }
@@ -1726,12 +1730,13 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     if( splitIssues.length > 0 ) {
 	let cards = await getCards( authData, newLoc.projId, newLoc.colId );
 	if( cards === -1 ) { cards = []; }
+	subTest = tu.checkGE( cards.length, 1, subTest, "split has nothing in newLoc" );
     
 	// Some tests will have two split issues here.  The newly split issue has a larger issNum
 	const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
 	const splitDat = [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
-    
-	console.log( "Split..", cards, newLoc, splitIssues.length, splitIss, splitDat );
+	
+	// console.log( "Split..", cards, newLoc, splitIssues.length, splitIss, splitDat );
 
 	// Get cards
 	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
@@ -1747,6 +1752,13 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    const card      = await getCard( authData, issLink.hostCardId );
 	    const splitCard = await getCard( authData, splitLink.hostCardId );
 
+	    let newLocIds = cards.map( c => c.id );
+	    if( !newLocIds.includes( splitCard.cardId ) ) {
+		console.log( "splitDat", splitDat, "splitLInk", splitLink, "splitCard", splitCard, "cards", cards, "cardIds", newLocIds );
+	    }
+	    subTest = tu.checkEq( newLocIds.includes( splitCard.cardId ), true, subTest, "split loc does not have split card" );
+
+	    
 	    // NOTE: orig issue will not adjust initial peq value.  new issue will be set with new value.  label is up to date tho.
 	    if( situated ) {
 		let lval = origVal / 2;
@@ -1844,7 +1856,13 @@ async function checkNoSplit( authData, testLinks, td, issDat, newLoc, cardId, te
     let splitIss = issues.find( issue => issue.title.includes( splitName ));
 				
     subTest = tu.checkEq( typeof splitIss === 'undefined', true, subTest, "Split issue should not exist" );
-				
+
+    // Check links
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let flinks = ( links.filter((link) => link.hostIssueId == issDat[0] ));
+    if( flinks.length > 1 ) { console.log( "Flinks", flinks, link, issDat ); }
+    subTest = tu.checkLE( flinks.length, 1, subTest, "Split issue should not exist, too many links" );
+    
     // Check card
     let colCards = await getCards( authData, newLoc.projId, newLoc.colId );
     let noCard = true;
