@@ -367,16 +367,16 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
+    const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
 
     // Bail. ACCR peq issue trying to add a card. Links will have ACCR peq issue. There will not be links[1] unless during populate.  Can not modify ACCR.
-    if( fromCard && links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+    if( fromCard && links !== -1 && reserved.includes( links[0].hostColumnName )) {
 	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );
-	gh.removeCard( authData, pd.projectId, origCardId );
+	ghV2.removeCard( authData, pd.projectId, origCardId );
 	return 'early';
     }
 
     //  Can't have situated issue in reserved.
-    const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
     assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
 
     //  Bail.  situated card exists in PROG+ (really, just PROG).  Add alloc peq label.  Link exists.

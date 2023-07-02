@@ -1856,7 +1856,13 @@ async function checkNoSplit( authData, testLinks, td, issDat, newLoc, cardId, te
     let splitIss = issues.find( issue => issue.title.includes( splitName ));
 				
     subTest = tu.checkEq( typeof splitIss === 'undefined', true, subTest, "Split issue should not exist" );
-				
+
+    // Check links
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let flinks = ( links.filter((link) => link.hostIssueId == issDat[0] ));
+    if( flinks.length > 1 ) { console.log( "Flinks", flinks, link, issDat ); }
+    subTest = tu.checkLE( flinks.length, 1, subTest, "Split issue should not exist, too many links" );
+    
     // Check card
     let colCards = await getCards( authData, newLoc.projId, newLoc.colId );
     let noCard = true;

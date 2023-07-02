@@ -467,7 +467,7 @@ class Linkage {
     // issue, card ids have changed.
     rebuildLinkage( authData, oldLink, issueData, splitTitle ) {
 	console.log( authData.who, "Rebuild linkage", oldLink.ceProjectId, oldLink.hostIssueNum, "->", issueData[0], issueData[2] );
-	console.log( "XXX before (expect semantic error)" );
+	console.log( "XXX before (expect semantic issue)" );
 	this.getUniqueLink( authData, oldLink.ceProjectId, oldLink.hostIssueId );
 	let newTitle = oldLink.hostIssueName;
 	if( typeof splitTitle !== 'undefined' ) {
