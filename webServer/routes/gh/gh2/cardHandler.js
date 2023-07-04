@@ -303,7 +303,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    // XXX No need to get card here, as long as newLinks is correct.
 		    newCard = await ghV2.getCard( authData, newLinks[0].hostCardId );
 		    assert( newCard !== -1 );
-		    console.log( ".. original card was removed by PNP.  Processing move for replacement card", newCard, newLinks );
+		    console.log( ".. original card was removed by PNP.  Processing move for replacement card" );
 		    newLinks[0].hostUtility = config.EMPTY;
 
 		    // move within cols check does not make sense here.  API does not allow adding card to same col.

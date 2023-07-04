@@ -43,7 +43,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     assert( typeof item !== 'undefined' );
 
     if( item.content_type != "Issue" ) {
-	console.log( "Skipping", item.content_type, action );
+	console.log( authData.who, "Skipping", item.content_type, action );
 	return;
     }
 
