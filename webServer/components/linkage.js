@@ -452,7 +452,7 @@ class Linkage {
 
 	// update, need to track specially
 	if( !config.PROJ_COLS.includes( newColName ) ) { link.flatSource = link.hostColumnId; }
-	return true;
+	return link;
     }
 
     updateTitle( authData, linkData, newTitle ) {

@@ -83,6 +83,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 	let cardId = reqBody.projects_v2_item.node_id;
 
 	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
+	if( !( links  !== -1 && links[0].hostColumnId != config.EMPTY )) { console.log( "XXX", links, cardId, reqBody ); }
 	assert( links  !== -1 && links[0].hostColumnId != config.EMPTY );
 
 	subject = [ peq.PEQId, links[0].hostProjectId, links[0].hostColumnId ];
@@ -186,7 +187,14 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
     console.log( authData.who, msg );
     if( rejectLoc !== -1 ) {
 	ghV2.moveCard( authData, pNodeId, cardId, rejectLoc.hostUtility, rejectLoc.hostColumnId );
-	if( track ) { ghLinks.updateLinkage( authData, ceProjId, issueId, cardId, rejectLoc.hostColumnId, rejectLoc.hostColumnName ); }
+	if( track ) {
+	    let link = ghLinks.updateLinkage( authData, ceProjId, issueId, cardId, rejectLoc.hostColumnId, rejectLoc.hostColumnName );
+	    // treat reject as a move from flat
+	    let newNameIndex = config.PROJ_COLS.indexOf( rejectLoc.hostColumnName );
+	    pd.reqBody.projects_v2_item.node_id = cardId;
+	    pd.reqBody.ceComment = "move request was rejected, card relocated and possibly split and removed.  If so, split cardId placed in node_id."; 
+	    recordMove( authData, ghLinks, pd, -1, newNameIndex, link );
+	}
     }
     else {
 	console.log( authDta.who, config.PROJ_COLS[config.PROJ_PLAN], "column does not exist .. deleting card." );
@@ -284,6 +292,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 
 	    let newCard = await ghV2.getCard( authData, cardId );
+
+	    // Move into.  Split results have no 'from' onto a 'to' location.  Changes reject logic slightly.
+	    // --------------
 	    if( newCard === -1 ) {
 
 		// Check to see if this card was removed during split.
@@ -295,6 +306,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    console.log( ".. original card was removed by PNP.  Processing move for replacement card", newCard, newLinks );
 		    newLinks[0].hostUtility = config.EMPTY;
 
+		    // move within cols check does not make sense here.  API does not allow adding card to same col.
+		    
 		    // Do not allow move into ACCR if trying to split in.
 		    if( newCard.columnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			let msg = "WARNING. " + newLinks[0].hostColumnName + " is reserved, can not create cards here. Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
@@ -308,13 +321,22 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			rejectCard( authData, ghLinks, pd, newCard, rejectLoc, msg, false );
 		    }
 
+		    // don't split allocs into x3
+		    const fullIssue = await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );   
+		    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
+		    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newCard.columnName )) {
+			let msg = "WARNING.  Allocations are only useful in planning, or flat columns.  Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
+			rejectCard( authData, ghLinks, pd, newCard, rejectLoc, msg, true );
+		    }
 		}
 		else {
 		    console.log( authData.who, "No such card, ignoring move request." );
 		}
 		return;
 	    }
-	    
+
+	    // Move from a loc to a loc.  Not result of a split resolve.
+	    // --------------
 	    let newColName   = newCard.columnName;
 	    let newNameIndex = config.PROJ_COLS.indexOf( newColName );
 
@@ -337,7 +359,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    let oldColId  = link.hostColumnId;
-
 
 	    if( newCard.columnId == oldColId ) {
 		// console.log( authData.who, "Moves within columns are not tracked", link, newCard, pd.reqBody.changes );
