@@ -1058,28 +1058,28 @@ async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, te
     return await tu.settle( subTest, testStatus, checkDemotedIssue, authData, testLinks, td, loc, issDat, card, testStatus );
 }
 
+// Label reflects current peq values.  awsVal is peq val in dynamo, which was not updated.
 async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
-    let labelVal    = typeof specials !== 'undefined' && specials.hasOwnProperty( "val" )       ? specials.val         : 1000000;
+    let awsVal      = typeof specials !== 'undefined' && specials.hasOwnProperty( "awsVal" )    ? specials.awsVal      : 1000000;
+    let splitVal    = typeof specials !== 'undefined' && specials.hasOwnProperty( "splitVal" )  ? specials.splitVal    : awsVal;
     let labelCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )  ? specials.lblCount    : 1;
     let assignCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" ) ? specials.assignees   : false;
     let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : "OPEN";
-    let opVal       = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )     ? specials.opVal       : false;
-    
-    console.log( "Check Allocation", loc.projName, loc.colName, labelVal );
+
+    console.log( "Check Allocation", loc.projName, loc.colName, awsVal, splitVal );
     let subTest = [ 0, 0, []];
 
     // CHECK github issues
     let issue  = await findIssue( authData, issDat[0] );
     subTest = tu.checkEq( issue.id, issDat[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issDat[1].toString(), subTest, "Github issue troubles" );
-    subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
-    subTest = tu.checkEq( issue.state, state,                    subTest, "Issue state" );
+    subTest = tu.checkEq( issue.labels.length, labelCnt,      subTest, "Issue label count" );
+    subTest = tu.checkEq( issue.state, state,                 subTest, "Issue state" );
 
-    const lname = ghV2.makeHumanLabel( labelVal, config.ALLOC_LABEL );
+    const lname = ghV2.makeHumanLabel( splitVal, config.ALLOC_LABEL );
     const theLabel = issue.labels.find( l => l.name == lname ); 
     subTest = tu.checkEq( typeof theLabel !== "undefined", true, subTest, "Issue label names missing" + lname );
-    labelVal = opVal ? opVal : labelVal;
 
     // CHECK github location
     cards = await getCards( authData, loc.projId, loc.colId );
@@ -1088,19 +1088,19 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
     if( typeof mCard[0] !== 'undefined' ) {
     
-	subTest = tu.checkEq( mCard.length, 1,                           subTest, "Card claimed" );
-	subTest = tu.checkEq( mCard[0].id, card.cardId,                      subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard.length, 1,                        subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard[0].id, card.cardId,               subTest, "Card claimed" );
 	
 	// CHECK linkage
 	let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
 	let link = ( links.filter((link) => link.hostIssueId == issDat[0] ))[0];
 	subTest = tu.checkEq( link.hostIssueNum, issDat[1].toString(), subTest, "Linkage Issue num" );
-	subTest = tu.checkEq( link.hostCardId, card.cardId,                   subTest, "Linkage Card Id" );
-	subTest = tu.checkEq( link.hostColumnName, loc.colName,           subTest, "Linkage Col name" );
+	subTest = tu.checkEq( link.hostCardId, card.cardId,            subTest, "Linkage Card Id" );
+	subTest = tu.checkEq( link.hostColumnName, loc.colName,        subTest, "Linkage Col name" );
 	subTest = tu.checkEq( link.hostIssueName, issDat[2],           subTest, "Linkage Card Title" );
-	subTest = tu.checkEq( link.hostProjectName, loc.projName,         subTest, "Linkage Project Title" );
-	subTest = tu.checkEq( link.hostColumnId, loc.colId,               subTest, "Linkage Col Id" );
-	subTest = tu.checkEq( link.hostProjectId, loc.projId,             subTest, "Linkage project id" );
+	subTest = tu.checkEq( link.hostProjectName, loc.projName,      subTest, "Linkage Project Title" );
+	subTest = tu.checkEq( link.hostColumnId, loc.colId,            subTest, "Linkage Col Id" );
+	subTest = tu.checkEq( link.hostProjectId, loc.projId,          subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
 	let allPeqs  =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
@@ -1110,17 +1110,18 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	
 	assignCnt = assignCnt ? assignCnt : 0;
 	
-	subTest = tu.checkEq( peq.PeqType, config.PEQTYPE_ALLOC,       subTest, "peq type invalid" );        
+	subTest = tu.checkEq( peq.PeqType, config.PEQTYPE_ALLOC,      subTest, "peq type invalid" );        
 	subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
 	subTest = tu.checkEq( peq.HostIssueTitle, issDat[2],          subTest, "peq title is wrong" );
-	subTest = tu.checkEq( peq.HostHolderId.length, assignCnt,        subTest, "peq gh holders wrong" );      
-	subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
-	subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-	subTest = tu.checkEq( peq.Amount, labelVal,                    subTest, "peq amount" );
-	subTest = tu.checkEq( peq.Active, "true",                      subTest, "peq" );
-	subTest = tu.checkEq( peq.HostProjectId, loc.projId,             subTest, "peq project id bad" );
-	for( let i = 0; i < loc.projSub.length; i++ ) {
-	    subTest = tu.checkEq( peq.HostProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" );
+	subTest = tu.checkEq( peq.HostHolderId.length, assignCnt,     subTest, "peq gh holders wrong" );      
+	subTest = tu.checkEq( peq.CEHolderId.length, 0,               subTest, "peq ce holders wrong" );    
+	subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,          subTest, "peq grantor wrong" );      
+	subTest = tu.checkEq( peq.Amount, awsVal,                     subTest, "peq amount" );
+	subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
+	subTest = tu.checkEq( peq.HostProjectId, loc.projId,          subTest, "peq project id bad" );
+	// Can not depend on last element of pSub, since it is not generally updated after 1st move out of unclaimed. Catch last element of projSub from pact, below.
+	for( let i = 0; i < loc.projSub.length - 1; i++ ) {
+	    subTest = tu.checkEq( peq.HostProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" ); 
 	}
 	
 	// CHECK dynamo Pact
@@ -1129,13 +1130,21 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );  
 	
 	// Could have been many operations on this.
+	let foundMove = false;
 	for( const pact of pacts ) {
 	    let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 	    subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,    subTest, "PAct user name" ); 
 	    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 	    subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+	    if( pact.Subject.length >= 3 ) {
+		if( link.hostColumnId == pact.Subject.slice(-1)) {
+		    if( link.hostColumnName == loc.projSub.slice(-1) ) { foundMove = true; }
+		}
+		// console.log( "XXX", link, pact.Subject, loc.projSub, foundMove );
+	    }
 	}
+	subTest = tu.checkEq( foundMove, true,                    subTest, "Did not find psub pact" );
     }
 
     return await tu.settle( subTest, testStatus, checkAlloc, authData, testLinks, td, loc, issDat, card, testStatus, specials );
@@ -1789,8 +1798,11 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 }
 
 
-async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials ) {
+async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc, testStatus, specials ) {
     let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
+    let awsVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "aval" )       ? specials.aval       : 1000000;
+    let splitVal   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lval" )       ? specials.lval       : 1000000;
+
     // One is for dynamo peq, one is for gh issue
     let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 0;
     let issAssignCnt = typeof specials !== 'undefined' && specials.hasOwnProperty( "issAssignees" )  ? specials.issAssignees  : 1;
@@ -1799,11 +1811,14 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
     let subTest = [ 0, 0, []];
 
     // Get new issue
-    let issues   = await getIssues( authData, td );
-    let issue    = await findIssue( authData, issDat[0] );    
-    let splitIss = issues.find( issue => issue.title.includes( issDat[2] + " split" ));
-    const splitDat = typeof splitIss === 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    let issues      = await getIssues( authData, td );
+    let issue       = await findIssue( authData, issDat[0] );    
 
+    // Some tests will have two split issues here.  The newly split issue has a larger issNum
+    let splitIssues = issues.filter( issue => issue.title.includes( issDat[2] + " split" ));
+    const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
+    const splitDat  = typeof splitIss === 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    
     subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss not ready yet" );
     if( splitDat[0] != -1 ) {
 	
@@ -1819,10 +1834,11 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
 	    
 	    const card      = await getCard( authData, issLink.hostCardId );
 	    const splitCard = await getCard( authData, splitLink.hostCardId );
-	    
-	    let lval = origVal / 2;
-	    testStatus = await checkAlloc( authData, testLinks, td, origLoc, issDat, card, testStatus, {opVal: origVal, val: lval, lblCount: labelCnt, assignees: assignCnt } );
-	    testStatus = await checkAlloc( authData, testLinks, td, newLoc,  splitDat, splitCard, testStatus, {val: lval, lblCount: labelCnt, assignees: assignCnt } );
+
+	    let specials = { awsVal: awsVal, splitVal: splitVal, lblCount: labelCnt, assignees: assignCnt };
+	    testStatus = await checkAlloc( authData, testLinks, td, origLoc, issDat, card, testStatus, specials );
+	    specials.awsVal = splitVal;
+	    testStatus = await checkAlloc( authData, testLinks, td, newLoc,  splitDat, splitCard, testStatus, specials );
 	}
 	
 	if( typeof issLink   !== 'undefined' && typeof splitLink !== 'undefined' ) {
@@ -1841,7 +1857,7 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
 	subTest = await tu.checkEq( typeof splitLink !== 'undefined', true, subTest, "splitLink trouble" );
     }
     
-    return await tu.settle( subTest, testStatus, checkAllocSplit, authData, testLinks, td, issDat, origLoc, newLoc, origVal, testStatus, specials );
+    return await tu.settle( subTest, testStatus, checkAllocSplit, authData, testLinks, td, issDat, origLoc, newLoc, testStatus, specials );
 }
 
 async function checkNoSplit( authData, testLinks, td, issDat, newLoc, cardId, testStatus ) {

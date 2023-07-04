@@ -193,7 +193,9 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
 
 async function recordPEQ( authData, postData ) {
     assert( postData.CEProjectId !== 'undefined' );
-    if( !postData.hasOwnProperty( "silent" )) { console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.HostIssueTitle ); }
+    if( !postData.hasOwnProperty( "silent" )) {
+	console.log( authData.who, "Recording PEQ", postData.PeqType, postData.Amount, "PEQs for", postData.HostIssueTitle, postData.HostProjectSub );
+    }
 
     let shortName = "RecordPEQ";
     postData.HostIssueTitle = postData.HostIssueTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, "");   // was keeping invisible linefeeds

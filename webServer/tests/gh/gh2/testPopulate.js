@@ -68,7 +68,6 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     const toProgLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const toPendLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
     const toAccrLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
-
     const toRejectLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     
     // Need assignees for pend/accr.
@@ -214,11 +213,12 @@ async function testSplitAlloc( authData, testLinks, td ) {
 
     // From
     const starLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
-    
+
     // To
-    const toBacnLoc = await gh2tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
-    const toProgLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const toAccrLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const toBacnLoc   = await gh2tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
+    const toProgLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const toAccrLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const toRejectLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
 
     // NOTE: assignee added after makeIssue - will not show up
     ASSIGNEE2 = await ASSIGNEE2;
@@ -227,27 +227,25 @@ async function testSplitAlloc( authData, testLinks, td ) {
     // Set up first card
     const cardAlloc = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, starLoc.projId, starLoc.colId, issAllocDat[0] );
     await utils.sleep( 1000 );
-    testStatus = await gh2tu.checkAlloc( authData, testLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, val: 1000000} );
+    testStatus = await gh2tu.checkAlloc( authData, testLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, awsVal: 1000000} ); 
     
     tu.testReport( testStatus, "Split Alloc setup" );
 
-    // += Prog.  Fail.  No create into x4. 
+    // += Prog.  Fail.  No create into x4.  Move to rejectLoc
     {
 	// At this point, lval is 500k
 	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toProgLoc.projId, toProgLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
-	testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issAllocDat, toProgLoc, cardNew.cardId, testStatus );
-
+	testStatus = await gh2tu.checkAllocSplit( authData, testLinks, td, issAllocDat, starLoc, toRejectLoc, testStatus, {aval: 1000000, lval: 500000, issAssignees: 1, lblCount: 2 } );
+	
 	tu.testReport( testStatus, "Split Alloc A" );
     }
 
-    // += Accr.  Fail.  No create into x4
+    // += Accr.  Fail.  No create into x4.  Move to rejectLoc
     {
 	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toAccrLoc.projId, toAccrLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );
-	testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issAllocDat, toAccrLoc, cardNew.cardId, testStatus );
+	testStatus = await gh2tu.checkAllocSplit( authData, testLinks, td, issAllocDat, starLoc, toRejectLoc, testStatus, {aval: 1000000, lval: 250000, issAssignees: 1, lblCount: 2 } );
 
 	tu.testReport( testStatus, "Split Alloc B" );
     }
@@ -257,7 +255,7 @@ async function testSplitAlloc( authData, testLinks, td ) {
     {
 	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toBacnLoc.projId, toBacnLoc.colId, issAllocDat[0] );
 	await utils.sleep( 2000 );
-	testStatus = await gh2tu.checkAllocSplit( authData, testLinks, td, issAllocDat, starLoc, toBacnLoc, 1000000, testStatus, { issAssignees: 1, lblCount: 2 } );
+	testStatus = await gh2tu.checkAllocSplit( authData, testLinks, td, issAllocDat, starLoc, toBacnLoc, testStatus, { aval: 1000000, lval: 125000, issAssignees: 1, lblCount: 2 } );
 
 	tu.testReport( testStatus, "Split Alloc C" );
     }
@@ -275,6 +273,8 @@ async function runTests( authData, testLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
+    // let t2 = await testSplitAlloc( authData, testLinks, td );
+    // console.log( "\n\nSplit Alloc complete." );
 
     let t1 = await testIncrementalResolve( authData, testLinks, td );
     console.log( "\n\nIncremental resolve complete." );
