@@ -159,8 +159,8 @@ async function getHostLinkLoc( authData, pNodeId, locData, linkData, cursor ) {
 	    let items = raw.data.node.items;
 	    for( let i = 0; i < items.edges.length; i++ ) {
 		const issue    = items.edges[i].node;
-		const status   = issue.fieldValueByName == null  ? config.GH_NO_STATUS : issue.fieldValueByName.name;
-		const optionId = issue.fieldValueByName == null  ? config.GH_NO_STATUS : issue.fieldValueByName.optionId; 
+		const status   = utils.validField( issue, "fieldValueByName" )  ? issue.fieldValueByName.name     : config.GH_NO_STATUS;
+		const optionId = utils.validField( issue, "fieldValueByName" )  ? issue.fieldValueByName.optionId : config.GH_NO_STATUS;
 		
 		if( issue.type == "ISSUE" ) {
 

@@ -195,7 +195,7 @@ function checkAr( lhs, rhs, testStatus, msg ) {
     }
     else {
 	testStatus[1]++;
-	testStatus[2].push( msg + ": " + lhs );
+	testStatus[2].push( msg + ": " + lhs + " " + rhs );
     }
     return testStatus;
 }

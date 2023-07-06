@@ -112,11 +112,11 @@ async function refreshUnclaimed( authData, td ) {
 // [ cardId, issueNum, issueId, issueTitle]
 // Cards can not exist without issues in V2
 function getQuad( card, issueMap ) {
-    if( !card.hasOwnProperty( 'issNum' )) { return [card.cardId, -1, -1, ""]; }  // XXX probably unused
+    if( !card.hasOwnProperty( 'issueNum' )) { return [card.cardId, -1, -1, ""]; }  // XXX probably unused
 
-    let issue = issueMap[card.issNum];
+    let issue = issueMap[card.issueNum];
     
-    return [card.cardId, card.issNum, issue.id, issue.title];
+    return [card.cardId, card.issueNum, issue.id, issue.title];
 }
 
 // If need be, could also add check for issue state
@@ -134,7 +134,7 @@ async function checkLoc( authData, td, issDat, loc ) {
 	    let cards = await getCards( authData, loc.projId, loc.colId );
 	    if( cards === -1 ) { retVal = false; }
 	    else {
-		let mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
+		let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
 		if( typeof mCard[0] === 'undefined' ) { retVal = false; }
 	    }
 	}
@@ -390,10 +390,10 @@ async function getCards( authData, pNodeId, colId ) {
 		const iss = issues[i].node;
 		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {
 		    let datum = {};
-		    datum.id = iss.id;                  // pvti or cardId here
-		    datum.issNum = iss.content.number;
+		    datum.cardId = iss.id;                  // pvti or cardId here
+		    datum.issueNum = iss.content.number;
 		    datum.title  = iss.content.title;
-		    if( typeof datum.issNum === 'undefined' ) { datum.issNum = -1; } // draft issue
+		    if( typeof datum.issueNum === 'undefined' ) { datum.issueNum = -1; } // draft issue
 		    cards.push( datum );
 		}
 	    }
@@ -538,8 +538,8 @@ async function getFullLoc( authData, masterColName, projId, projName, colName ) 
 
 
 function findCardForIssue( cards, issueNum ) {
-    let card = cards.find( c => c.issNum == issueNum );
-    return typeof card === 'undefined' ? -1 : card.id; 
+    let card = cards.find( c => c.issueNum == issueNum );
+    return typeof card === 'undefined' ? -1 : card.cardId; 
 }
 
 
@@ -1012,17 +1012,17 @@ async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, te
     
      // CHECK github location
     let cards  = await getCards( authData, td.unclaimPID, td.unclaimCID );   
-    let tCard  = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
+    let tCard  = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
     subTest = tu.checkEq( tCard.length, 0,                       subTest, "No unclaimed" );
     
     cards      = await getCards( authData, loc.projId, loc.colId );   
-    let mCard  = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
+    let mCard  = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
 
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
     if( typeof mCard[0] !== 'undefined' ) {
 
 	subTest = tu.checkEq( mCard.length, 1,                       subTest, "Card claimed" );
-	subTest = tu.checkEq( mCard[0].id, card.cardId,                  subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard[0].cardId, card.cardId,                  subTest, "Card claimed" );
 
 	// CHECK dynamo Peq.  inactive
 	// Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
@@ -1083,13 +1083,13 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 
     // CHECK github location
     cards = await getCards( authData, loc.projId, loc.colId );
-    let mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
 
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
     if( typeof mCard[0] !== 'undefined' ) {
     
 	subTest = tu.checkEq( mCard.length, 1,                        subTest, "Card claimed" );
-	subTest = tu.checkEq( mCard[0].id, card.cardId,               subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard[0].cardId, card.cardId,               subTest, "Card claimed" );
 	
 	// CHECK linkage
 	let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
@@ -1200,12 +1200,12 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
     if( !assignCnt ) {
 	let tCard = []; 
-	if( cards.length > 0 ) { tCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false ); }
+	if( cards.length > 0 ) { tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false ); }
 	subTest = tu.checkEq( tCard.length, 0,                           subTest, "No unclaimed" );
     }
 
     cards = await cardsP;
-    let mCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
+    let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
 
     // Long GH pauses show their fury here, more likely than not.
     if( typeof mCard[0] === 'undefined' ) {
@@ -1220,7 +1220,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     if( typeof mCard[0] !== 'undefined' && typeof card !== 'undefined' ) {
     
 	subTest = tu.checkEq( mCard.length, 1,                           subTest, "Card claimed" );
-	subTest = tu.checkEq( mCard[0].id, card.cardId,                      subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard[0].cardId, card.cardId,                      subTest, "Card claimed" );
 	
 	// CHECK linkage
 	let links  = await linksP;
@@ -1328,9 +1328,9 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
 
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
-    let tCard = cards.filter((card) => card.hasOwnProperty( "issNum" ) ? card.issNum == issDat[1].toString() : false );
+    let tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
     subTest = tu.checkEq( tCard.length, 1,                        subTest, "No unclaimed" );
-    subTest = tu.checkEq( tCard[0].id, card.cardId,                   subTest, "Card id" );
+    subTest = tu.checkEq( tCard[0].cardId, card.cardId,                   subTest, "Card id" );
     
     // CHECK linkage
     let links  = await linksP;
@@ -1665,7 +1665,7 @@ async function checkNewbornCard( authData, testLinks, td, loc, cardId, title, te
     let cards  = await getCards( authData, loc.projId, loc.colId );
     let card   = cards.find( card => card.cardId == cardId );
     const cardTitle = card.note.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-    subTest = tu.checkEq( card.hasOwnProperty( "issNum" ), false, subTest, "Newbie has content" );
+    subTest = tu.checkEq( card.hasOwnProperty( "issueNum" ), false, subTest, "Newbie has content" );
     subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
 
     // CHECK linkage
@@ -1761,9 +1761,9 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    const card      = await getCard( authData, issLink.hostCardId );
 	    const splitCard = await getCard( authData, splitLink.hostCardId );
 
-	    let newLocIds = cards.map( c => c.id );
+	    let newLocIds = cards.map( c => c.cardId );
 	    if( !newLocIds.includes( splitCard.cardId ) ) {
-		console.log( "splitDat", splitDat, "splitLInk", splitLink, "splitCard", splitCard, "cards", cards, "cardIds", newLocIds );
+		console.log( "splitDat", splitDat, "splitLink", splitLink, "splitCard", splitCard, "cards", cards, "cardIds", newLocIds );
 	    }
 	    subTest = tu.checkEq( newLocIds.includes( splitCard.cardId ), true, subTest, "split loc does not have split card" );
 

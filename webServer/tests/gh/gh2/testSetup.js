@@ -67,29 +67,38 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
     
     await gh2tu.refresh( authData, td, config.MAIN_PROJ );
 
+    let foundGHSub = false;
+    let foundDSSub = false;
+    
     // Check DYNAMO PEQ table
     let ghPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
     subTest = tu.checkEq( ghPeqs.length, 1,                             subTest, "Number of githubOps peq objects" );
     subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,      subTest, "PeqType" );
     subTest = tu.checkEq( ghPeqs[0].Amount, "1500000",                  subTest, "Peq Amount" );  
-    subTest = tu.checkAr( ghPeqs[0].HostProjectSub, [td.softContTitle], subTest, "Project sub" );
-    subTest = tu.checkEq( ghPeqs[0].HostProjectId, td.masterPID,        subTest, "Project ID" );  
+    subTest = tu.checkEq( ghPeqs[0].HostProjectId, td.masterPID,        subTest, "Project ID" );
+
+    // projSub can be NS in some cases.  Valid, if pact exists
+    if( (ghPeqs[0].HostProjectSub)[0] == td.softContTitle ) { foundGHSub = true; }
     
     let dsPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.dataSecTitle });
     subTest = tu.checkEq( dsPeqs.length, 1,                             subTest, "Number of datasec peq objects" );
     subTest = tu.checkEq( typeof dsPeqs[0] !== 'undefined', true,       subTest, "Peq not in place yet" );
     if( typeof dsPeqs[0] !== 'undefined' ) {
 	subTest = tu.checkEq( dsPeqs[0].PeqType, config.PEQTYPE_ALLOC,      subTest, "PeqType" );
-	subTest = tu.checkAr( dsPeqs[0].HostProjectSub, [td.softContTitle], subTest, "Project sub" );
+	if( (dsPeqs[0].HostProjectSub)[0] == td.softContTitle ) { foundDSSub = true; }
     }
-	
+    else { foundDSSub = true; }
+    
     let unPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.unallocTitle });
     subTest = tu.checkEq( unPeqs.length, 2,                            subTest, "Number of unalloc peq objects" );
     subTest = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,     subTest, "PeqType" );
     subTest = tu.checkEq( typeof unPeqs[0] !== 'undefined', true,      subTest, "have unpeq 0" );
     subTest = tu.checkEq( typeof unPeqs[1] !== 'undefined', true,      subTest, "have unpeq 1" );
 
+    const locs = testLinks.getLocs( authData, { "ceProjId": td.ceProjectId, "projId": td.masterPID, "colName": td.softContTitle } );
+    assert( locs.length ==1 );
+    
     if( typeof dsPeqs[0] !== 'undefined' && unPeqs[0] !== 'undefined' && typeof unPeqs[1] !== 'undefined' ) {
 	
 	let busTest = unPeqs[0].HostProjectSub.includes(td.busOpsTitle) || unPeqs[1].HostProjectSub.includes( td.busOpsTitle );
@@ -119,10 +128,16 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 		pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ) {
 		foundPActs++;
 	    }
+	    if( !foundGHSub && pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == locs.hostColumnId ) { foundGHSub = true; }
+	    if( !foundDSSub && pact.Subject[0] == dsPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == locs.hostColumnId ) { foundDSSub = true; }
+		
 	}
 	// 2 for addRelo (i.e. add, relo), 1 for move's
 	// unclaimed.  May be valid.
 	subTest = tu.checkEq( foundPActs, 9,           subTest, "Matched PActs with PEQs" );
+
+	subTest = tu.checkEq( foundGHSub, true,        subTest, "Pact sub gh" );
+	subTest = tu.checkEq( foundDSSub, true,        subTest, "Pact sub ds" );
 	
 	// Check DYNAMO RepoStatus
 	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId );
