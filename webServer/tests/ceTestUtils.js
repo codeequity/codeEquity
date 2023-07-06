@@ -76,17 +76,17 @@ async function purgeJobs( repo ) {
 }
 
 // No notifications from GH for link/unlink project.  Update ceServer internal state as push from testHandler.
-async function linkProject( authData, ceProjId, pNodeId, rNodeId, rName ) {
+async function linkProject( authData, ceProjId, pid, rNodeId, rName ) {
     let auth = {"pat": authData.pat, "who": authData.who, "api": authData.api, "cog": authData.cog };
-    let postData = {"Endpoint": "Testing", "Request": "linkProject", "ceProjId": ceProjId, "pNodeId": pNodeId, "rNodeId": rNodeId, "rName": rName, "auth": auth }; 
+    let postData = {"Endpoint": "Testing", "Request": "linkProject", "ceProjId": ceProjId, "pid": pid, "rNodeId": rNodeId, "rName": rName, "auth": auth }; 
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }
 
 // No notifications from GH for link/unlink project.  Update ceServer internal state as push from testHandler.
-async function unlinkProject( authData, ceProjId, pNodeId, rNodeId ) {
+async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
     let auth = {"pat": authData.pat, "who": authData.who };
-    let postData = {"Endpoint": "Testing", "Request": "unlinkProject", "ceProjId": ceProjId, "pNodeId": pNodeId, "rNodeId": rNodeId, "auth": authData }; 
+    let postData = {"Endpoint": "Testing", "Request": "unlinkProject", "ceProjId": ceProjId, "pid": pid, "rNodeId": rNodeId, "auth": authData }; 
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }
@@ -128,14 +128,14 @@ function makeTitleReducer( aStr ) {
 
 // Can't just rely on host for confirmation.  Notification arrival to CE can be much slower, and in some cases we need
 // CE local state to be updated or the pending operation will fail.  So, MUST expose showLocs, same as showLinks.
-async function confirmProject( authData, testLinks, ceProjId, fullName, projId ) {
-    // console.log( "Confirm Proj", ceProjId, fullName, projId );
-    let locs = await getLocs( authData, testLinks, { ceProjId: ceProjId, repo: fullName, projId: projId } );
+async function confirmProject( authData, testLinks, ceProjId, fullName, pid ) {
+    // console.log( "Confirm Proj", ceProjId, fullName, pid );
+    let locs = await getLocs( authData, testLinks, { ceProjId: ceProjId, repo: fullName, pid: pid } );
     return locs != -1; 
 }
 
-async function confirmColumn( authData, testLinks, ceProjId, pNodeId, colId ) {
-    let locs = await getLocs( authData, testLinks, { ceProjId: ceProjId, projId: pNodeId, colId: colId } );
+async function confirmColumn( authData, testLinks, ceProjId, pid, colId ) {
+    let locs = await getLocs( authData, testLinks, { ceProjId: ceProjId, pid: pid, colId: colId } );
     return locs != -1; 
 }
 

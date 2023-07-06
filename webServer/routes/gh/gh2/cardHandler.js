@@ -74,7 +74,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 
     let subject = [peq.PEQId];
     if( verb == config.PACTVERB_REJ && newCol >= 0 ) {
-	let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "projId": pd.projectId, "colName": config.PROJ_COLS[newCol] } );
+	let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "pid": pd.projectId, "colName": config.PROJ_COLS[newCol] } );
 	assert( locs !== -1 );
 	subject = [ peq.PEQId, locs[0].hostColumnName ];
     }
@@ -155,7 +155,7 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
 	//           card creation can fail, and results can be uncertain at this point.  
 	let card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.hostIssueId, accr );  
 	link.hostCardId      = card.cardId;
-	link.hostProjectId   = card.projId;
+	link.hostProjectId   = card.pid;
 	link.hostProjectName = config.UNCLAIMED;
 	link.hostColumnId    = card.columnId;
 	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
@@ -180,13 +180,13 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
 // Either move card back to rejectLoc, or if delete it.
 async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) {
     let ceProjId = pd.ceProjectId;
-    let pNodeId  = pd.projectId;
+    let pid  = pd.projectId;
     let issueId  = card.issueId;
     let cardId   = card.cardId;
     assert( typeof issueId !== 'undefined' && issueId != -1 );
     console.log( authData.who, msg );
     if( rejectLoc !== -1 ) {
-	ghV2.moveCard( authData, pNodeId, cardId, rejectLoc.hostUtility, rejectLoc.hostColumnId );
+	ghV2.moveCard( authData, pid, cardId, rejectLoc.hostUtility, rejectLoc.hostColumnId );
 	if( track ) {
 	    let link = ghLinks.updateLinkage( authData, ceProjId, issueId, cardId, rejectLoc.hostColumnId, rejectLoc.hostColumnName );
 	    // treat reject as a move from flat
@@ -198,7 +198,7 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
     }
     else {
 	console.log( authDta.who, config.PROJ_COLS[config.PROJ_PLAN], "column does not exist .. deleting card." );
-	ghV2.removeCard( authData, pNodeId, cardId ); 
+	ghV2.removeCard( authData, pid, cardId ); 
 	ghLinks.removeLinkage( { authData: authData, ceProjId: ceProjId, issueId: issueId, cardId: cardId } );
     }
 }
@@ -280,7 +280,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId } );  
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );  
 	    assert( locs !== -1 );
 	    // Note, config.MAIN_PROJ should not have PLAN
 	    let rejectLoc = -1;
@@ -388,7 +388,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    let oldNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );
 	    assert( cardId == link.hostCardId );
-	    assert( newCard.projId == link.hostProjectId );               // not yet supporting moves between projects
+	    assert( newCard.pid == link.hostProjectId );               // not yet supporting moves between projects
 
 	    let success = await ghV2.checkReserveSafe( authData, link.hostIssueId, newNameIndex );
 	    if( !success ) {

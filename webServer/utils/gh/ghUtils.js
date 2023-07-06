@@ -142,18 +142,18 @@ async function checkForPV2( PAT, nodeId ) {
 
 // XXX Consider promoting this to ceUtils
 // returns -1 if could not find.
-async function validatePEQ( authData, ceProjId, issueId, title, projId ) {
+async function validatePEQ( authData, ceProjId, issueId, title, pid ) {
     let peq = -1;
 
     let peqType = "";
     assert( issueId != -1 );
     peq = await awsUtils.getPeq( authData, ceProjId, issueId );
 
-    if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostProjectId == projId )  {
+    if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostProjectId == pid )  {
 	console.log( authData.who, "validatePeq success" );
     }
     else {
-	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, projId );
+	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, pid );
 	peq = -1;
     }
     return peq;  

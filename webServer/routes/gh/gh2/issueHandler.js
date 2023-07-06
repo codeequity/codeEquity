@@ -88,15 +88,15 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	// Move to unclaimed:accrued col
 	card = await card;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": link.hostProjectId, "colId": card.columnId } );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": link.hostProjectId, "colId": card.columnId } );
 	assert( locs.length = 1 );
-	await ghV2.moveCard( authData, card.projId, card.cardId, locs[0].hostUtility, card.columnId );
+	await ghV2.moveCard( authData, card.pid, card.cardId, locs[0].hostUtility, card.columnId );
 	
 	issueData[2] = card.cardId; 
 	link = ghLinks.rebuildLinkage( authData, link, issueData );
 	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
 	link.hostProjectName = config.UNCLAIMED;
-	link.hostProjectId   = card.projId;
+	link.hostProjectId   = card.pid;
 	link.hostColumnId    = card.columnId;
 
 	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
@@ -175,7 +175,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	assert( pd.issueNum >= 0 );
 	link.hostIssueNum   = pd.issueNum;
 	link.hostCardId     = card.cardId
-	link.hostProjectId  = card.projId;
+	link.hostProjectId  = card.pid;
 	link.hostColumnId   = card.columnId;
 	link.hostColumnName = card.columnName;;
 

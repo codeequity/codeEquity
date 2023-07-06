@@ -131,10 +131,10 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 	let splitTag   = utils.randAlpha(8);
 	pd.repoId      = links[i].hostRepoId;
 	pd.projectId   = links[i].hostProjectId;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colId": links[i].hostColumnId} );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId, "colId": links[i].hostColumnId} );
 	if( locs === -1 ) {
 	    console.log( links, pd, issue );
-	    let t = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId} );
+	    let t = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId} );
 	    console.log( "OI", i, links[i].hostColumnId, locs );
 	}
 	assert( locs !== -1 );
@@ -363,7 +363,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let colName    = fromCard ? config.EMPTY            : link.hostColumnName;
     let projName   = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 	
-    console.log( authData.who, "PNP: cardid, projId colName repoid", origCardId, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
+    console.log( authData.who, "PNP: cardid, pid colName repoid", origCardId, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
 
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );

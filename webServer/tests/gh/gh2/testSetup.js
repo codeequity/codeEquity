@@ -96,7 +96,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
     subTest = tu.checkEq( typeof unPeqs[0] !== 'undefined', true,      subTest, "have unpeq 0" );
     subTest = tu.checkEq( typeof unPeqs[1] !== 'undefined', true,      subTest, "have unpeq 1" );
 
-    const locs = testLinks.getLocs( authData, { "ceProjId": td.ceProjectId, "projId": td.masterPID, "colName": td.softContTitle } );
+    const locs = testLinks.getLocs( authData, { "ceProjId": td.ceProjectId, "pid": td.masterPID, "colName": td.softContTitle } );
     assert( locs.length ==1 );
     
     if( typeof dsPeqs[0] !== 'undefined' && unPeqs[0] !== 'undefined' && typeof unPeqs[1] !== 'undefined' ) {

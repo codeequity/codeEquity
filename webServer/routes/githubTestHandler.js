@@ -26,10 +26,10 @@ async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, re
 	ceRouter.purgeQueue( ceJobs );
     }
     else if( reqBody.Request == "linkProject" ) {
-	retVal = ghLinks.linkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId, reqBody.rName );
+	retVal = ghLinks.linkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pid, reqBody.rNodeId, reqBody.rName );
     }
     else if( reqBody.Request == "unlinkProject" ) {
-	retVal = ghLinks.unlinkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pNodeId, reqBody.rNodeId );
+	retVal = ghLinks.unlinkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pid, reqBody.rNodeId );
     }
 	
     return res
