@@ -157,7 +157,7 @@ class Linkage {
 	let badPeq = false;
 	let badSource = false;
 	peqs = await peqs;
-	if( peqs == -1 ) { peqs = []; }
+	if( peqs === -1 ) { peqs = []; }
 	for( const peq of peqs ) {
 	    if( peq.Active == "false" ) {
 		// console.log( authData.who, "Skipping inactive peq", peq.HostIssueTitle );
@@ -165,7 +165,7 @@ class Linkage {
 	    }
 	    const iid = peq.HostIssueId;
 	    let link = this.getUniqueLink( authData, entry.CEProjectId, iid );
-	    if( link == -1 ) {
+	    if( link === -1 ) {
 		console.log( authData.who, "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.HostIssueTitle );
 		// this.show(20);
 		badPeq = true;
@@ -204,7 +204,7 @@ class Linkage {
 	
 	// XXX aws fix name here.  Get ceProj status.
 	let ceProjects = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
-	if( ceProjects == -1 ) { return; }
+	if( ceProjects === -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
 	    promises.push( this.initOneProject( authData, entry )
@@ -247,8 +247,8 @@ class Linkage {
 	let link = this.links[ceProjId][orig.hostIssueId][orig.hostCardId];
 
 	link.ceProjectId     = ceProjId;
-	link.hostRepoName    = typeof orig.hostRepoName === 'undefined' ? config.EMPTY : orig.hostRepoName;
-	link.hostRepoId      = typeof orig.hostRepoId   === 'undefined' ? config.EMPTY : orig.hostRepoId;
+	link.hostRepoName    = typeof orig.hostRepoName     === 'undefined' ? config.EMPTY : orig.hostRepoName;
+	link.hostRepoId      = typeof orig.hostRepoId       === 'undefined' ? config.EMPTY : orig.hostRepoId;
 	link.hostIssueId     = typeof orig.hostIssueId      === 'undefined' ? config.EMPTY : orig.hostIssueId.toString();
 	link.hostIssueNum    = typeof orig.hostIssueNum     === 'undefined' ? config.EMPTY : orig.hostIssueNum.toString();
 	link.hostProjectId   = typeof orig.hostProjectId    === 'undefined' ? config.EMPTY : orig.hostProjectId.toString();
@@ -257,7 +257,7 @@ class Linkage {
 	link.hostColumnName  = typeof orig.hostColumnName   === 'undefined' ? config.EMPTY : orig.hostColumnName;
 	link.hostCardId      = typeof orig.hostCardId       === 'undefined' ? config.EMPTY : orig.hostCardId.toString();
 	link.hostIssueName   = typeof orig.hostIssueName    === 'undefined' ? config.EMPTY : orig.hostIssueName;   
-	link.hostUtility     = typeof orig.hostUtility  === 'undefined' ? config.EMPTY : orig.hostUtility;   
+	link.hostUtility     = typeof orig.hostUtility      === 'undefined' ? config.EMPTY : orig.hostUtility;   
 	link.flatSource      = source ? source : link.hostColumnId;
 
 	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOneRepo
@@ -333,6 +333,7 @@ class Linkage {
 
 
     // issueId:cardId 1:m  cardId:issueId 1:1
+    // note: id = -1 here is simply used to turn on/off match.  does not grow beyond this func. config.empty signals untracked.
     getLinks( authData, query ) {
 
 	if( typeof query.ceProjId === 'undefined' ) {
@@ -362,7 +363,7 @@ class Linkage {
 		let match = true;
 		match = issueId == -1               ? match : match && (link.hostIssueId     == issueId);
 		match = cardId == -1                ? match : match && (link.hostCardId      == cardId);
-		match = pid == -1                ? match : match && (link.hostProjectId   == pid);
+		match = pid == -1                   ? match : match && (link.hostProjectId   == pid);
 		match = repo == config.EMPTY        ? match : match && (link.hostRepoName    == repo);
 		match = repoId == config.EMPTY      ? match : match && (link.hostRepoId      == repoId);
 		match = projName == config.EMPTY    ? match : match && (link.hostProjectName == projName );
@@ -380,6 +381,7 @@ class Linkage {
     }
 
     // No match on utility slot.  yet?
+    // note: ids = -1 here is simply used to turn on/off match.  does not grow beyond this func.
     getLocs( authData, query ) {
 	// console.log( authData.who, "get Locs", query );
 	// this.showLocs();
@@ -392,7 +394,7 @@ class Linkage {
 	const ceProjId  = query.ceProjId;
 	const repo      = utils.validField( query, "repo" )     ? query.repo              : config.EMPTY;
 	const repoId    = utils.validField( query, "repoId" )   ? query.repoId            : -1;
-	const pid    = utils.validField( query, "pid" )   ? query.pid.toString() : -1;
+	const pid       = utils.validField( query, "pid" )      ? query.pid.toString()    : -1;
 	const colId     = utils.validField( query, "colId" )    ? query.colId.toString()  : -1;
 	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
 	const colName   = utils.validField( query, "colName" )  ? query.colName           : config.EMPTY;

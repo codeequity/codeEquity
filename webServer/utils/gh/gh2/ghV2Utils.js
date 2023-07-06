@@ -258,7 +258,7 @@ async function createIssue( authData, repoNode, pid, issue ) {
 	    issueData[0] = ret.data.createIssue.issue.id;
 	    issueData[1] = ret.data.createIssue.issue.number;
 	})
-	.catch( e => ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, pid, issue ));
+	.catch( e => issueData = ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, pid, issue ));
 
     if( pid !== -1 ) { issueData = await cardIssue( authData, pid, issueData ); }
     console.log( authData.who, " .. issue created, issueData:", issueData );
