@@ -22,8 +22,8 @@ const locData  = require( './locData' );
 
 // Loc table contains all proj/col in repo.  linkage table will only have that info where there are PEQs.
 // All adds to loc update aws, except batch related adds present herein.
-// loc was { projId: { colId: {} }}
-// loc is  { ceProjId: { projId: { colId: {} }}} where projId is the unique project id within ceProjId.hostPlatform
+// loc was { pid: { colId: {} }}
+// loc is  { ceProjId: { pid: { colId: {} }}} where pid is the unique project id within ceProjId.hostPlatform
 // loc IS stored in dynamo, for speed and privacy benefits during ingest (ceFlutter).
 // NOTE: colId is no longer unique across projects for GH2.  Within a project, it is.
 
@@ -118,7 +118,7 @@ class Linkage {
 		}
 		
 		for( const proj of hostProjs ) {
-		    const projId = proj.hostProjectId;
+		    const pid = proj.hostProjectId;
 		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, proj.hostProjectId );
 		    let rLinks = [];
 		    let rLocs  = [];
@@ -157,7 +157,7 @@ class Linkage {
 	let badPeq = false;
 	let badSource = false;
 	peqs = await peqs;
-	if( peqs == -1 ) { peqs = []; }
+	if( peqs === -1 ) { peqs = []; }
 	for( const peq of peqs ) {
 	    if( peq.Active == "false" ) {
 		// console.log( authData.who, "Skipping inactive peq", peq.HostIssueTitle );
@@ -165,7 +165,7 @@ class Linkage {
 	    }
 	    const iid = peq.HostIssueId;
 	    let link = this.getUniqueLink( authData, entry.CEProjectId, iid );
-	    if( link == -1 ) {
+	    if( link === -1 ) {
 		console.log( authData.who, "Did you remove an issue without removing the corresponding PEQ?", peq.PEQId, peq.HostIssueTitle );
 		// this.show(20);
 		badPeq = true;
@@ -204,7 +204,7 @@ class Linkage {
 	
 	// XXX aws fix name here.  Get ceProj status.
 	let ceProjects = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
-	if( ceProjects == -1 ) { return; }
+	if( ceProjects === -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
 	    promises.push( this.initOneProject( authData, entry )
@@ -247,8 +247,8 @@ class Linkage {
 	let link = this.links[ceProjId][orig.hostIssueId][orig.hostCardId];
 
 	link.ceProjectId     = ceProjId;
-	link.hostRepoName    = typeof orig.hostRepoName === 'undefined' ? config.EMPTY : orig.hostRepoName;
-	link.hostRepoId      = typeof orig.hostRepoId   === 'undefined' ? config.EMPTY : orig.hostRepoId;
+	link.hostRepoName    = typeof orig.hostRepoName     === 'undefined' ? config.EMPTY : orig.hostRepoName;
+	link.hostRepoId      = typeof orig.hostRepoId       === 'undefined' ? config.EMPTY : orig.hostRepoId;
 	link.hostIssueId     = typeof orig.hostIssueId      === 'undefined' ? config.EMPTY : orig.hostIssueId.toString();
 	link.hostIssueNum    = typeof orig.hostIssueNum     === 'undefined' ? config.EMPTY : orig.hostIssueNum.toString();
 	link.hostProjectId   = typeof orig.hostProjectId    === 'undefined' ? config.EMPTY : orig.hostProjectId.toString();
@@ -257,7 +257,7 @@ class Linkage {
 	link.hostColumnName  = typeof orig.hostColumnName   === 'undefined' ? config.EMPTY : orig.hostColumnName;
 	link.hostCardId      = typeof orig.hostCardId       === 'undefined' ? config.EMPTY : orig.hostCardId.toString();
 	link.hostIssueName   = typeof orig.hostIssueName    === 'undefined' ? config.EMPTY : orig.hostIssueName;   
-	link.hostUtility     = typeof orig.hostUtility  === 'undefined' ? config.EMPTY : orig.hostUtility;   
+	link.hostUtility     = typeof orig.hostUtility      === 'undefined' ? config.EMPTY : orig.hostUtility;   
 	link.flatSource      = source ? source : link.hostColumnId;
 
 	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOneRepo
@@ -333,6 +333,7 @@ class Linkage {
 
 
     // issueId:cardId 1:m  cardId:issueId 1:1
+    // note: id = -1 here is simply used to turn on/off match.  does not grow beyond this func. config.empty signals untracked.
     getLinks( authData, query ) {
 
 	if( typeof query.ceProjId === 'undefined' ) {
@@ -345,13 +346,13 @@ class Linkage {
 	const repoId      = utils.validField( query, "repoId" )      ? query.repoId.toString()  : config.EMPTY;
 	const issueId     = utils.validField( query, "issueId" )     ? query.issueId.toString() : -1;
 	const cardId      = utils.validField( query, "cardId" )      ? query.cardId.toString()  : -1;
-	const projId      = utils.validField( query, "projId" )      ? query.projId             : -1;
+	const pid         = utils.validField( query, "pid" )         ? query.pid                : -1;
 	const projName    = utils.validField( query, "projName" )    ? query.projName           : config.EMPTY;
 	const colName     = utils.validField( query, "colName" )     ? query.colName            : config.EMPTY;
 	const issueTitle  = utils.validField( query, "issueTitle" )  ? query.issueTitle         : config.EMPTY;
 	const hostUtility = utils.validField( query, "hostUtility" ) ? query.hostUtility        : config.EMPTY;
 
-	// console.log( authData.who, "get Links", ceProjId, issueId, cardId, projId, projName, colName, issueTitle );
+	// console.log( authData.who, "get Links", ceProjId, issueId, cardId, pid, projName, colName, issueTitle );
 	
 	let links = [];
 	if( this.links[ceProjId] == null ) { return -1; }  // could be an empty ceproj
@@ -362,7 +363,7 @@ class Linkage {
 		let match = true;
 		match = issueId == -1               ? match : match && (link.hostIssueId     == issueId);
 		match = cardId == -1                ? match : match && (link.hostCardId      == cardId);
-		match = projId == -1                ? match : match && (link.hostProjectId   == projId);
+		match = pid == -1                   ? match : match && (link.hostProjectId   == pid);
 		match = repo == config.EMPTY        ? match : match && (link.hostRepoName    == repo);
 		match = repoId == config.EMPTY      ? match : match && (link.hostRepoId      == repoId);
 		match = projName == config.EMPTY    ? match : match && (link.hostProjectName == projName );
@@ -380,6 +381,7 @@ class Linkage {
     }
 
     // No match on utility slot.  yet?
+    // note: ids = -1 here is simply used to turn on/off match.  does not grow beyond this func.
     getLocs( authData, query ) {
 	// console.log( authData.who, "get Locs", query );
 	// this.showLocs();
@@ -392,7 +394,7 @@ class Linkage {
 	const ceProjId  = query.ceProjId;
 	const repo      = utils.validField( query, "repo" )     ? query.repo              : config.EMPTY;
 	const repoId    = utils.validField( query, "repoId" )   ? query.repoId            : -1;
-	const projId    = utils.validField( query, "projId" )   ? query.projId.toString() : -1;
+	const pid       = utils.validField( query, "pid" )      ? query.pid.toString()    : -1;
 	const colId     = utils.validField( query, "colId" )    ? query.colId.toString()  : -1;
 	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
 	const colName   = utils.validField( query, "colName" )  ? query.colName           : config.EMPTY;
@@ -401,11 +403,11 @@ class Linkage {
 	if( !this.locs[ceProjId] ) { return -1; }
 
 	let locs = [];
-	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) {// one clocs is {projId1: { coldata }, projId2: { coldata }}
+	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) {// one clocs is {pid1: { coldata }, pid2: { coldata }}
 	    for( const [_, loc] of Object.entries( clocs ) ) {            
 		let match = true;
 		
-		match = projId == -1             ? match : match && (loc.hostProjectId    == projId);
+		match = pid == -1             ? match : match && (loc.hostProjectId    == pid);
 		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
 		match = repoId == -1             ? match : match && (loc.hostRepositoryId == repoId);
 		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
@@ -504,15 +506,15 @@ class Linkage {
 	return retVal;
     }
 
-    removeLocs({ authData, ceProjId, projId, colId }) {
+    removeLocs({ authData, ceProjId, pid, colId }) {
 	if( !authData ) { console.log( authData.who, "missing authData" ); return false; }
 
 
 	if( colId )       { console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); }    // one delete
-	else if( projId ) { console.log( authData.who, "Remove locs for projId:", ceProjId, projId ); } // many deletes
+	else if( pid ) { console.log( authData.who, "Remove locs for pid:", ceProjId, pid ); } // many deletes
 
 
-	let havePID = typeof projId !== 'undefined';
+	let havePID = typeof pid !== 'undefined';
 	let haveCID = typeof colId  !== 'undefined';
 	let cpid    = "";
 	
@@ -520,18 +522,18 @@ class Linkage {
 	// No need to check for empty ceProjectIds, since there is nothing to set inactive.
 	if( (!havePID && !haveCID) ||                                                            // nothing specified
 	    (!utils.validField( this.locs, ceProjId )) ||                                        // nothing yet for ceProject
-	    (havePID && !utils.validField( this.locs[ceProjId], projId )) ||                     // have pid, but already not in locs
-	    (havePID && haveCID && !utils.validField( this.locs[ceProjId][projId], colId ))) {   // have pid & cid, but already not in locs
+	    (havePID && !utils.validField( this.locs[ceProjId], pid )) ||                     // have pid, but already not in locs
+	    (havePID && haveCID && !utils.validField( this.locs[ceProjId][pid], colId ))) {   // have pid & cid, but already not in locs
 	}
-	else if( havePID && utils.validField( this.locs[ceProjId], projId )) {
-	    if( haveCID && utils.validField( this.locs[ceProjId][projId], colId ))
+	else if( havePID && utils.validField( this.locs[ceProjId], pid )) {
+	    if( haveCID && utils.validField( this.locs[ceProjId][pid], colId ))
 	    {
-		assert( cpid == "" || cpid == this.locs[ceProjId][projId][colId].ceProjectId );
-		cpid = this.locs[ceProjId][projId][colId].ceProjectId;
-		this.locs[ceProjId][projId][colId].active = "false"; 
+		assert( cpid == "" || cpid == this.locs[ceProjId][pid][colId].ceProjectId );
+		cpid = this.locs[ceProjId][pid][colId].ceProjectId;
+		this.locs[ceProjId][pid][colId].active = "false"; 
 	    }
 	    else if( !haveCID ) {
-		for( var [_, loc] of Object.entries( this.locs[ceProjId][projId] )) {
+		for( var [_, loc] of Object.entries( this.locs[ceProjId][pid] )) {
 		    assert( cpid == "" || cpid == loc.ceProjectId );
 		    cpid = loc.ceProjectId;
 		    loc.active = "false"; 
@@ -600,7 +602,7 @@ class Linkage {
 	await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
 	await ceProjects.init( authData );
 	
-	this.removeLocs( { authData: authData, ceProjId: ceProjId, projId: hostProjectId } );
+	this.removeLocs( { authData: authData, ceProjId: ceProjId, pid: hostProjectId } );
 	
 	return true;
     }
@@ -644,12 +646,12 @@ class Linkage {
     }
     
 
-    purgeLocs( ceProjId, projId ) {
+    purgeLocs( ceProjId, pid ) {
 	let killList = [];	
 	for( const [_,cplinks] of Object.entries( this.locs )) {
 	    for( const [_,cloc] of Object.entries( cplinks )) {
 		for( const [col,loc] of Object.entries( cloc )) {
-		    if( ceProjId == "TESTING-FROMJSONLOCS" || ( loc.ceProjectId == ceProjId && loc.hostProjectId == projId )) {
+		    if( ceProjId == "TESTING-FROMJSONLOCS" || ( loc.ceProjectId == ceProjId && loc.hostProjectId == pid )) {
 			killList.push({ "cpid": loc.ceProjectId, "pid": loc.hostProjectId });
 		    }  
 		}
@@ -659,22 +661,22 @@ class Linkage {
 	return true;
     }
     
-    purge( ceProjId, projId, specials ) {
+    purge( ceProjId, pid, specials ) {
 	let linksOnly  = typeof specials !== 'undefined' && specials.hasOwnProperty( "linksOnly" )  ? specials.linksOnly : false;	
-	console.log( "Removing links, locs for", ceProjId, projId, "links only?", linksOnly );
+	console.log( "Removing links, locs for", ceProjId, pid, "links only?", linksOnly );
 
 	let killList = [];
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {
 		for( const [cid,link] of Object.entries( clink )) {
-		    if( link.ceProjectId == ceProjId && link.hostProjectId == projId ) { killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} ); }
+		    if( link.ceProjectId == ceProjId && link.hostProjectId == pid ) { killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} ); }
 		}
 	    }
 	}
 	for( const id of killList ) { delete this.links[id.cpid][id.iid]; }
 
 	// GH Testing can't purge links until apiV2 allows create col, and make project notifications
-	if( !linksOnly ) {  this.purgeLocs( ceProjId, projId ); }
+	if( !linksOnly ) {  this.purgeLocs( ceProjId, pid ); }
 	
 	return true;
     }

@@ -63,7 +63,7 @@ class TestData {
     // These helper functions are nice for testing
     getDSPlanLoc() { 
 	let loc = {};
-	loc.projId   = this.dataSecPID;
+	loc.pid   = this.dataSecPID;
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsPlanID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PLAN];
@@ -73,7 +73,7 @@ class TestData {
     }
     getDSProgLoc() { 
 	let loc = {};
-	loc.projId   = this.dataSecPID;
+	loc.pid   = this.dataSecPID;
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsProgID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PROG];
@@ -84,7 +84,7 @@ class TestData {
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
     getDSPendLoc() {
 	let loc = {};
-	loc.projId   = this.dataSecPID;
+	loc.pid   = this.dataSecPID;
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsPendID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PEND];
@@ -95,7 +95,7 @@ class TestData {
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
     getDSAccrLoc() {
 	let loc = {};
-	loc.projId   = this.dataSecPID;
+	loc.pid   = this.dataSecPID;
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsAccrID;
 	loc.colName  = config.PROJ_COLS[config.PROJ_ACCR];
@@ -106,7 +106,7 @@ class TestData {
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
     getBaconLoc() {
 	let loc = {};
-	loc.projId   = this.flatPID;
+	loc.pid   = this.flatPID;
 	loc.projName = this.flatTitle;
 	loc.colId    = this.col2ID;
 	loc.colName  = this.col2Title;
@@ -117,7 +117,7 @@ class TestData {
     // NOTE: peq type is not updated by ceServer, only ceFlutter.
     getEggsLoc() {
 	let loc = {};
-	loc.projId   = this.flatPID;
+	loc.pid   = this.flatPID;
 	loc.projName = this.flatTitle;
 	loc.colId    = this.col1ID;
 	loc.colName  = this.col1Title;
@@ -127,7 +127,7 @@ class TestData {
     }
     getUntrackLoc( pid ) {
 	let loc = {};
-	loc.projId   = pid;
+	loc.pid   = pid;
 	loc.projName = config.EMPTY;
 	loc.colId    = -1;
 	loc.colName  = config.EMPTY;

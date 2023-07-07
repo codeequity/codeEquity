@@ -5,7 +5,6 @@ const config   = require( '../../../config' );
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
 const ghUtils  = require( '../../../utils/gh/ghUtils' );
-const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
 
 const tu       = require('../../ceTestUtils');
 
@@ -68,7 +67,7 @@ async function clearCEProj( authData, testLinks, pd ) {
 	await tu.remLinks( authData, testLinks, pd.ceProjectId, pid );
 
 	console.log( "getLinks", pd.GHFullName, pid );
-	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId, "projId": pid } );
+	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId, "pid": pid } );
 	if( links !== -1 ) { console.log( links ); }
 	assert( links === -1 );
     }
@@ -116,16 +115,16 @@ async function clearRepo( authData, testLinks, pd ) {
 
     // XXX would like to delete.. buuut..
     // Get all existing projects in repo for deletion
-    let projIds = await gh2tu.getProjects( authData, pd );
-    console.log( "Unlinking all Projects.", pd.GHRepoId, pd.GHFullName, projIds );
-    if( projIds != -1 ) {
-	projIds = projIds.map( project => project.id );
-	console.log( "ProjIds", pd.GHFullName, projIds );
+    let pids = await gh2tu.getProjects( authData, pd );
+    console.log( "Unlinking all Projects.", pd.GHRepoId, pd.GHFullName, pids );
+    if( pids != -1 ) {
+	pids = pids.map( project => project.id );
+	console.log( "ProjIds", pd.GHFullName, pids );
 	
-	for( const projId of projIds ) {
-	    pd.projectId = projId;
+	for( const pid of pids ) {
+	    pd.projectId = pid;
 	    await remDraftIssues( authData, testLinks, pd );
-	    await gh2tu.unlinkProject( authData, pd.ceProjectId, projId, pd.GHRepoId );
+	    await gh2tu.unlinkProject( authData, pd.ceProjectId, pid, pd.GHRepoId );
 	    await utils.sleep( 1000 );
 	}
     }
@@ -166,11 +165,11 @@ async function clearRepo( authData, testLinks, pd ) {
     }
 
     // Delete special label mod adds
-    let labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "nonPeq1" );
+    let labelRes = await gh2tu.getLabel( authData, pd.GHRepoId, "nonPeq1" );
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
-    labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "nonPeq2" );
+    labelRes = await gh2tu.getLabel( authData, pd.GHRepoId, "nonPeq2" );
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
-    labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "newName" );
+    labelRes = await gh2tu.getLabel( authData, pd.GHRepoId, "newName" );
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
     
     pactP  = await pactP;

@@ -10,54 +10,6 @@ const ghV2     = require( './ghV2Utils' );
 
 const gh2Data  = require( '../../../routes/gh/gh2/gh2Data' );
 
-function untrack( authData, ghLinks, ceProjectId, link ) {
-
-    let retLink = -1;
-    console.log( "untrack start", link );
-    console.log( "XXX untrack before" );
-    ghLinks.getUniqueLink( authData, link.ceProjectId, link.hostIssueId );
-    
-    // XXX OMG fix naming!!
-    if( utils.validField( link, "hostProjectName" )) {
-	console.log( authData.who, "Undoing tracking data in linkage, non-peq." );
-	link.hostProjectName  = config.EMPTY;
-	link.hostColumnId     = config.EMPTY;   // do not track non-peq   cardHandler depends on this to avoid peq check
-	link.hostColumnName   = config.EMPTY;   // do not track non-peq
-	link.hostIssueName    = config.EMPTY;   // do not track non-peq
-
-	let intLink = {};
-	intLink.ceProjectId     = link.ceProjectId;
-	intLink.hostRepoName    = link.hostRepoName;
-	intLink.hostRepoId      = link.hostRepoId;
-	intLink.hostIssueId     = link.hostIssueId;
-	intLink.hostIssueNum    = link.hostIssueNum;
-	intLink.hostProjectId   = link.hostProjectId;
-	intLink.hostProjectName = link.hostProjectName;
-	intLink.hostColumnId    = link.hostColumnId;
-	intLink.hostColumnName  = link.hostColumnName;
-	intLink.hostCardId      = link.hostCardId;
-	intLink.hostIssueName   = link.hostIssueName;
-	intLink.flatSource      = link.flatSource;     // NOTE this gets kabosh'd since it is No Status
-	intLink.hostUtility     = link.hostUtility;
-	retLink = ghLinks.addLinkage( authData, ceProjectId, intLink );
-    }
-    else {
-	console.log( authData.who, "Undoing tracking data in linkage, non-peq.", link.hostIssueName, link.hostIssueId );
-	link.hostProjectName  = config.EMPTY;
-	link.hostColumnId     = config.EMPTY;   // do not track non-peq   cardHandler depends on this to avoid peq check
-	link.hostColumnName   = config.EMPTY;   // do not track non-peq
-	link.hostIssueName    = config.EMPTY;   // do not track non-peq
-	retLink = ghLinks.addLinkage( authData, ceProjectId, link );
-    }
-
-    console.log( "untrack finish", retLink );
-    console.log( "XXX untrack after" );
-    ghLinks.getUniqueLink( authData, link.ceProjectId, link.hostIssueId );
-
-    return retLink;
-}
-
-
 // XXX allocation set per label - don't bother to pass in
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
@@ -131,10 +83,10 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 	let splitTag   = utils.randAlpha(8);
 	pd.repoId      = links[i].hostRepoId;
 	pd.projectId   = links[i].hostProjectId;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId, "colId": links[i].hostColumnId} );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId, "colId": links[i].hostColumnId} );
 	if( locs === -1 ) {
 	    console.log( links, pd, issue );
-	    let t = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projId": pd.projectId} );
+	    let t = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId} );
 	    console.log( "OI", i, links[i].hostColumnId, locs );
 	}
 	assert( locs !== -1 );
@@ -159,7 +111,6 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 	// Note: above card removal means subsequent card:moved notice fails since card does not exist.  rebuild uses link.hostUtil to record connection
 	links[i].hostUtility = links[i].hostCardId;
 	let splitLink = ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
-	// if( doNotTrack ) { splitLink = untrack( authData, ghLinks, pd.ceProjectId, splitLink ); }
 	if( doNotTrack ) { splitLink = ghLinks.rebaseLinkage( authData, pd.ceProjectId, issueData[0] ); }
 	
 	splitIssues.push( splitLink );
@@ -363,7 +314,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let colName    = fromCard ? config.EMPTY            : link.hostColumnName;
     let projName   = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 	
-    console.log( authData.who, "PNP: cardid, projId colName repoid", origCardId, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
+    console.log( authData.who, "PNP: cardid, pid colName repoid", origCardId, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
 
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
