@@ -5,7 +5,6 @@ const config   = require( '../../../config' );
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
 const ghUtils  = require( '../../../utils/gh/ghUtils' );
-const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
 
 const tu       = require('../../ceTestUtils');
 
@@ -166,11 +165,11 @@ async function clearRepo( authData, testLinks, pd ) {
     }
 
     // Delete special label mod adds
-    let labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "nonPeq1" );
+    let labelRes = await gh2tu.getLabel( authData, pd.GHRepoId, "nonPeq1" );
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
-    labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "nonPeq2" );
+    labelRes = await gh2tu.getLabel( authData, pd.GHRepoId, "nonPeq2" );
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
-    labelRes = await ghV2.getLabel( authData, pd.GHRepoId, "newName" );
+    labelRes = await gh2tu.getLabel( authData, pd.GHRepoId, "newName" );
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
     
     pactP  = await pactP;

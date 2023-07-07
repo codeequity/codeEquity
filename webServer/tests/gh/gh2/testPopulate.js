@@ -7,8 +7,6 @@ const awsUtils = require( '../../../utils/awsUtils' );
 
 const tu       = require( '../../ceTestUtils' );
 
-const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
-
 const testData = require( '../testData' );
 const gh2tu    = require( './gh2TestUtils' );
 

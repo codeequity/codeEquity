@@ -10,7 +10,7 @@ const ghUtils   = require( '../ghUtils' );
 
 // NOTE
 // All project, card, repo ids are GQL node ids.  All issue ids are content ids.   
-
+// Focus on communication with GitHub.  Interpretation of results is left to handlers.
 
 
 

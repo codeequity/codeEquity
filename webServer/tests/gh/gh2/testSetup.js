@@ -5,7 +5,6 @@ var config = require( '../../../config' );
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
 const ghUtils  = require( '../../../utils/gh/ghUtils' );
-const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
 
 const tu       = require( '../../ceTestUtils' );
 

@@ -100,7 +100,7 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
     jobData.tag  = fullName; 
 
     if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "Issue" ) {
-	locator.source += "issue:";
+	locator.source += "projects_v2_item:";
     }
     else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "DraftIssue" ) {
 	locator.source += "draftIssue:";
@@ -131,8 +131,8 @@ function getJobSummary( newStamp, jobData, headers, locator ) {
 
     // If contentNotice, PMS is not yet known, however repo info is present, so use GHC.
     // ContentNotice does carry repo information, so stay closer to GHC
-    if(      jobData.event == "projects_v2_item" )            { retVal = getJobSummaryGH2( newStamp, jobData, locator ); }
-    else                                                      { retVal = getJobSummaryGHC( newStamp, jobData, locator ); }
+    if(jobData.event == "projects_v2_item" ) { retVal = getJobSummaryGH2( newStamp, jobData, locator ); }
+    else                                     { retVal = getJobSummaryGHC( newStamp, jobData, locator ); }
 
     return retVal;
 }
@@ -371,6 +371,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     }
 }
 
+// issue:open is ignored.  issue:create is really card create.  issue:labeled.  item.edit.
 function makePendingNotice( rb, action ) {
     // Need to push GH2 info, not GHC.
     assert( typeof rb.projects_v2_item !== 'undefined' );

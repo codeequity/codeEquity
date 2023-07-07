@@ -145,6 +145,10 @@ async function checkLoc( authData, td, issDat, loc ) {
     return retVal;
 }
 
+async function getLabel( authData, repoId, lName ) {
+    await ghV2.getLabel( authData, repoId, lName );
+}
+
 // was getPeqLabels, but never filtered
 async function getLabels( authData, td ) {
     let labels = [];
@@ -2265,6 +2269,7 @@ exports.reopenIssue     = reopenIssue;
 exports.remIssue        = remIssue;
 exports.remDraftIssue   = remDraftIssue;
 
+exports.getLabel        = getLabel;
 exports.getLabels       = getLabels;
 exports.getIssues       = getIssues;
 exports.getProjects     = getProjects;

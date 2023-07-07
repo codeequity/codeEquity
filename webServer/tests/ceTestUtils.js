@@ -75,7 +75,7 @@ async function purgeJobs( repo ) {
     return res;
 }
 
-// No notifications from GH for link/unlink project.  Update ceServer internal state as push from testHandler.
+// Some hosts don't notify link/unlink project.  Update ceServer internal state as push from testHandler.
 async function linkProject( authData, ceProjId, pid, rNodeId, rName ) {
     let auth = {"pat": authData.pat, "who": authData.who, "api": authData.api, "cog": authData.cog };
     let postData = {"Endpoint": "Testing", "Request": "linkProject", "ceProjId": ceProjId, "pid": pid, "rNodeId": rNodeId, "rName": rName, "auth": auth }; 
@@ -83,7 +83,7 @@ async function linkProject( authData, ceProjId, pid, rNodeId, rName ) {
     return res;
 }
 
-// No notifications from GH for link/unlink project.  Update ceServer internal state as push from testHandler.
+// Some hosts don't notify link/unlink project.  Update ceServer internal state as push from testHandler.
 async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
     let auth = {"pat": authData.pat, "who": authData.who };
     let postData = {"Endpoint": "Testing", "Request": "unlinkProject", "ceProjId": ceProjId, "pid": pid, "rNodeId": rNodeId, "auth": authData }; 
@@ -219,14 +219,14 @@ function mergeTests( t1, t2 ) {
 
 async function delayTimer( fname ) {
     // Settle for up to 30s (Total) before failing.  First few are quick.
-    if( CETestDelayCounts[fname] > 1 ) { console.log( "XXX GH Settle Time", CETestDelayCounts[fname] ); }
+    if( CETestDelayCounts[fname] > 1 ) { console.log( "XXX Settle Time", CETestDelayCounts[fname] ); }
     let waitVal = CETestDelayCounts[fname] < 3 ? (CETestDelayCounts[fname]+1) * 500 : 3000 + CETestDelayCounts[fname] * 1000;
     await utils.sleep( waitVal );
     CETestDelayCounts[fname]++;
     return CETestDelayCounts[fname] < CE_DELAY_MAX;
 }
 
-// Let GH and/or ceServer settle , try again
+// Let host, ceServer settle , try again
 async function settle( subTest, testStatus, func, ...params ) {
     if( typeof testStatus === 'undefined' ) { console.log( "testStatus is undefined!" ); }
     if( typeof subTest    === 'undefined' ) { console.log( "subTest is undefined!" ); }
