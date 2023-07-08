@@ -146,7 +146,8 @@ async function checkLoc( authData, td, issDat, loc ) {
 }
 
 async function getLabel( authData, repoId, lName ) {
-    await ghV2.getLabel( authData, repoId, lName );
+    let retVal = await ghV2.getLabel( authData, repoId, lName );
+    return retVal;
 }
 
 // was getPeqLabels, but never filtered

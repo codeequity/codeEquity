@@ -190,7 +190,12 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 	    // Wait.  Data is modified
 	    if( items !== -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pid, locData, linkData, items.pageInfo.endCursor ); }
 	})
-	.catch( e => ghUtils.errorHandler( "getHostLinkLoc", e, getHostLinkLoc, authData, pid, locData, linkData, cursor )); 
+	.catch( e => {
+	    locData  = [];
+	    linkData = [];
+	    cursor = -1;
+	    ghUtils.errorHandler( "getHostLinkLoc", e, getHostLinkLoc, authData, pid, locData, linkData, cursor )
+		     }); 
 }
 
 // Create in No Status.
@@ -523,7 +528,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	.then( ret => {
 	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
-	    let labels = ret.data.node.labels; 
+	    let labels = ret.data.node.labels;
 	    if( typeof labels === 'undefined' ) { return labelRes; }
 	    
 	    if( labels.edges.length > 99 ) { console.log( authData.who, "WARNING. Found too many labels.  Ignoring some." ); }
@@ -537,7 +542,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
 	    }
 	})
 	.catch( e => labelRes = ghUtils.errorHandler( "getLabel", e, getLabel, authData, repoNode, peqHumanLabelName ));
-		
+
     return labelRes;
 }
 
@@ -1045,10 +1050,18 @@ async function createProjectCard( authData, ghLinks, ploc, issueId, fieldId, jus
     let issDat = [issueId, -1, -1];
 
     assert( typeof ploc.ceProjId !== 'undefined' );
-    assert( typeof ploc.pid  !== 'undefined' );
+    assert( typeof ploc.pid      !== 'undefined' );
     assert( typeof ploc.colId    !== 'undefined' );
     
     console.log( authData.who, "create project card", ploc.pid, issueId, fieldId, ploc.colId, justId ) ;
+
+    // If wanted to link for user here, would need repo id, name.
+    let tlocs = ghLinks.getLocs( authData, { "ceProjId": ploc.ceProjId, "pid": ploc.pid } );
+    if ( tlocs.length < 1 ) {
+	console.log( authData.who, "WARNING.  Attempted to create card for unlinked project.  Please link project to your repository first." );
+	return -1;
+    }
+
     issDat = await cardIssue( authData, ploc.pid, issDat );
     
     // Move from "No Status".  If good, retVal contains null clientMutationId
@@ -1215,7 +1228,11 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 		console.log( authData.who, "XXX Error, no issues for label", labelName, res );
 	    }
 	})
-	.catch( e => ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, owner, repo, labelName, data, cursor ));
+	.catch( e => {
+	    cursor = -1;
+	    data = [];
+	    ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, owner, repo, labelName, data, cursor )
+	});
 }
 
 async function getProjectIds( authData, repoFullName, data, cursor ) {
@@ -1279,7 +1296,11 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	    // Wait.  Data is modified
 	    if( projs.pageInfo.hasNextPage ) { await getProjectIds( authData, repoFullName, data, issues.pageInfo.endCursor ); }
 	})
-	.catch( e => ghUtils.errorHandler( "getProjectIds", e, getProjectIds, authData, repoFullName, data, cursor ));
+	.catch( e => {
+	    cursor = -1;
+	    data = [];
+	    ghUtils.errorHandler( "getProjectIds", e, getProjectIds, authData, repoFullName, data, cursor )
+	});
 
     // console.log( "ghV2:getProjectIds", data );
 }

@@ -411,8 +411,8 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
 	}
 	else {
-	    console.log( "githubRouter switcher routing NYI", jd.action );
-	    assert( false );
+	    console.log( "Error.  githubRouter switcher routing NYI", jd.action );
+	    ceRouter.getNextJob( authData, res );	
 	}
     }
     else {
