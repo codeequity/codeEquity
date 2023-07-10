@@ -94,7 +94,9 @@ async function refreshFlat( authData, td ) {
 
 // Refresh unclaimed.
 // Note: if unclaimed has not yet been linked, expect config.EMPTY
-async function refreshUnclaimed( authData, td ) {
+async function refreshUnclaimed( authData, testLinks, td, forceFind ) {
+    forceFind = typeof forceFind === 'undefined' ? false : forceFind;
+    
     let hostProjs = [];
     await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
@@ -109,6 +111,8 @@ async function refreshUnclaimed( authData, td ) {
 	    }
 	}
     }
+    if( forceFind ) { await tu.settleWithVal( "refreshUnclaimed", tu.confirmColumn, authData, testLinks, td.ceProjectId, td.unclaimPID, td.unclaimCID ); }
+    
     if( td.unclaimCID == config.EMPTY ) { console.log( "refresh unclaimed .. did not find." ); }
 }
 
@@ -364,7 +368,7 @@ async function getDraftIssues( authData, pid ) {
 }
 
 
-// Get all cards for project.  Filter for column.  Could very easily add, say, col info.. useful?
+// Get all cards for project.  Filter for column.  
 // Needs to work for draft issues as well, i.e. newborn cards.
 async function getCards( authData, pid, colId ) {
     let cards = [];
@@ -396,11 +400,19 @@ async function getCards( authData, pid, colId ) {
 
 	    for( let i = 0; i < issues.length; i++ ) {
 		const iss = issues[i].node;
+
+		// GH can sometimes take a long time to move a card out of No Status to it's home.  Try throwing a few times..
+		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && !utils.validField( iss, "fieldValueByName" ) ) {
+		    console.log( "Column is No Status.  Toss" );
+		    throw iss;
+		}
+		    
 		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {
 		    let datum = {};
 		    datum.cardId = iss.id;                  // pvti or cardId here
 		    datum.issueNum = iss.content.number;
-		    datum.title  = iss.content.title;
+		    datum.title    = iss.content.title;
+		    datum.columnId = colId;
 		    if( typeof datum.issueNum === 'undefined' ) { datum.issueNum = -1; } // draft issue
 		    cards.push( datum );
 		}
@@ -704,12 +716,13 @@ async function createDraftIssue( authData, pid, title, body ) {
     return pvId;
 }
 
+// This both creates an issue and a card
 // Act like a user.  User will create labeled issue in project, then move issue.
 //      This generates the following notifications:  issue:open, issue:label, item:create, maybe (?) item:edit (label), item:edit (move)
 //      The notifications are identical whether select project in issue create interface or not, with possible exception of item:edit(label), and ordering
 // Historical note: GH projects have changed - you can no longer create a card without a companion draft issue.  
 //      In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
-async function makeAllocCard( authData, testLinks, ceProjId, rNodeId, pid, colId, title, amount ) {
+async function makeAlloc( authData, testLinks, ceProjId, rNodeId, pid, colId, title, amount ) {
     console.log( "MAC", ceProjId, rNodeId, pid, colId, title, amount );
     const locs = testLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );
     assert( locs !== -1 );
@@ -773,6 +786,7 @@ async function makeNewbornCard( authData, testLinks, ceProjId, pid, colId, title
     return pvId;
 }
 
+// Only makes card, no issue.
 async function makeProjectCard( authData, testLinks, ceProjId, pid, colId, issueId, justId ) {
     let query = { ceProjId: ceProjId, pid: pid, colId: colId };  
     const locs = testLinks.getLocs( authData, query );    
@@ -2058,15 +2072,15 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,              subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.hostIssueName, issDat[2],          subTest, "peq title is wrong" );
-    subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,                subTest, "peq holders wrong" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,            subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostIssueTitle, issDat[2],           subTest, "peq title is wrong" );
+    subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );
     subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
     subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle, subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,  subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectId, td.dataSecPID,        subTest, "peq unclaimed PID bad" );
     subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
     
@@ -2248,7 +2262,7 @@ exports.makeColumn      = makeColumn;
 exports.updateColumn    = updateColumn;
 exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
-exports.makeAllocCard   = makeAllocCard;
+exports.makeAlloc       = makeAlloc;
 exports.removeNewbornCard = removeNewbornCard;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;

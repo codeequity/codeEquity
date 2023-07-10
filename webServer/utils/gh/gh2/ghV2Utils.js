@@ -1285,7 +1285,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	    
 	    let projs = raw.data.repository.projectsV2;
 	    for( const p of projs.edges ) {
-		console.log( authData.who, "   - pushing", p.node.title, repoFullName, repoId );
+		console.log( authData.who, "   - pushing", p.node.title, p.node.id, repoFullName, repoId );
 		let datum = {};
 		datum.hostProjectId   = p.node.id;
 		datum.hostProjectName = p.node.title;

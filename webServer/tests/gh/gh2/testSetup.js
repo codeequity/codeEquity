@@ -47,12 +47,12 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId ); 
     
     // softCont: dataSecurity, githubOps, unallocated
-    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
-    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
-    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
 
     // This should NOT be needed.  But last makeAlloc above can be unfinished by the time test runs (i.e. can get card, but field is not yet available).
     // This rare sluggishness happened 6/30/23
