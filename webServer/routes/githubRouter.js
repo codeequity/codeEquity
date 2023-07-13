@@ -313,9 +313,14 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	    jd.event == "label" && jd.action == "created" )
 	{
 	    // console.log( "Found PV2.  Switching GH2 for content node" );
-	    let repo = jd.org.split('/');
-	    assert( repo.length == 2 );
-	    jd.org = repo[0];  // XXX revisit this.  recasting content notification to pv2 .. revisit getJobSummary here.
+
+	    // if job has been delayed, org is already properly set.  Otherwise, build it from getJobSummaryGHC
+	    if( jd.delayCount == 0 ) {
+		let repo = jd.org.split('/');
+		if( repo.length != 2 ) { console.log( repo ); }
+		assert( repo.length == 2 );
+		jd.org = repo[0];  // XXX revisit this.  recasting content notification to pv2 .. revisit getJobSummary here.
+	    }
 	    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
 	}
 	else {

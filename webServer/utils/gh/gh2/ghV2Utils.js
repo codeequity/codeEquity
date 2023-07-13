@@ -191,8 +191,11 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 	    if( items !== -1 && items.pageInfo.hasNextPage ) { await geHostLinkLoc( authData, pid, locData, linkData, items.pageInfo.endCursor ); }
 	})
 	.catch( e => {
-	    locData  = [];
-	    linkData = [];
+	    // NO!  This kills references
+	    // locData  = [];
+	    // linkData = [];
+	    locData.length  = 0;
+	    linkData.length = 0;
 	    cursor = -1;
 	    ghUtils.errorHandler( "getHostLinkLoc", e, getHostLinkLoc, authData, pid, locData, linkData, cursor )
 		     }); 
@@ -1230,7 +1233,7 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 	})
 	.catch( e => {
 	    cursor = -1;
-	    data = [];
+	    data.length = 0;
 	    ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, owner, repo, labelName, data, cursor )
 	});
 }
@@ -1298,7 +1301,7 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	})
 	.catch( e => {
 	    cursor = -1;
-	    data = [];
+	    data.length = 0;
 	    ghUtils.errorHandler( "getProjectIds", e, getProjectIds, authData, repoFullName, data, cursor )
 	});
 

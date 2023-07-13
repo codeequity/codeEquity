@@ -349,7 +349,7 @@ async function testEndpoint( authData, testLinks, td ) {
 
     testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsAccrId, meltCard, testStatus );
 
-    tu.testReport( testStatus, "Test lifecycles" );
+    tu.testReport( testStatus, "Test lifecycle endpoint" );
     return testStatus;
 }
 
@@ -374,15 +374,16 @@ async function testBlast( authData, testLinks, td ) {
     const LABNP1   = "nutty1";
     const LABNP2   = "nutty2";
 
-    const ASSIGNEE1 = "ariCETester";
-    const ASSIGNEE2 = "codeequity";
+    let assignee1   = await gh2tu.getAssignee( authData, ASSIGNEE1 );
+    let assignee2   = await gh2tu.getAssignee( authData, ASSIGNEE2 );
     
     let lab1   = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "",      604 );
     let labNP1 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP1, -1 );	
     let labNP2 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP2, -1 );	
 
+
     // 1. Simple blast
-    let issDat = await gh2tu.blastIssue( authData, td, "Blast 1", [LAB1], [ASSIGNEE1] );               
+    let issDat = await gh2tu.blastIssue( authData, td, "Blast 1", [lab1], [assignee1] );               
 
     await utils.sleep( 1500 );
     await gh2tu.refreshUnclaimed( authData, testLinks, td );    
@@ -391,51 +392,51 @@ async function testBlast( authData, testLinks, td ) {
     let title  = "Blast 1";
     let link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     let card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [ASSIGNEE1]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [assignee1.id]});
 
     tu.testReport( testStatus, "Test Blast A" );    
 
     // 2. blast  
-    issDat = await gh2tu.blastIssue( authData, td, "Blast 2", [LABNP1, LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );
+    issDat = await gh2tu.blastIssue( authData, td, "Blast 2", [labNP1, lab1, labNP2], [assignee1, assignee2] );
     title  = "Blast 2";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );    
     card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [ASSIGNEE1, ASSIGNEE2]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [assignee1.id, assignee2.id]});
 
     tu.testReport( testStatus, "Test Blast B" );    
 
     // 3. blast  
-    issDat = await gh2tu.blastIssue( authData, td, "Blast 3", [LAB1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );               
+    issDat = await gh2tu.blastIssue( authData, td, "Blast 3", [lab1, labNP2], [assignee1, assignee2] );               
     title  = "Blast 3";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [ASSIGNEE1, ASSIGNEE2]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [assignee1.id, assignee2.id]});
 
     tu.testReport( testStatus, "Test Blast C" );    
 
     // 4. blast  
-    issDat = await gh2tu.blastIssue( authData, td, "Blast 4", [LABNP1, LAB1], [ASSIGNEE1, ASSIGNEE2] );
+    issDat = await gh2tu.blastIssue( authData, td, "Blast 4", [labNP1, lab1], [assignee1, assignee2] );
     title  = "Blast 4";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [ASSIGNEE1, ASSIGNEE2]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [assignee1.id, assignee2.id]});
 
     tu.testReport( testStatus, "Test Blast D" );    
 
     // 5. blast  
-    issDat = await gh2tu.blastIssue( authData, td, "Blast 5", [LABNP1, LABNP2, LAB1], [ASSIGNEE2, ASSIGNEE1] );               
+    issDat = await gh2tu.blastIssue( authData, td, "Blast 5", [labNP1, labNP2, lab1], [assignee2, assignee1] );               
     title  = "Blast 5";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [ASSIGNEE2, ASSIGNEE1]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [assignee2.id, assignee1.id]});
 
     tu.testReport( testStatus, "Test Blast E" );    
 
     // 6. blast, undo
-    issDat = await gh2tu.blastIssue( authData, td, "Blast 6", [LAB1, LABNP1, LABNP2], [ASSIGNEE1, ASSIGNEE2] );
+    issDat = await gh2tu.blastIssue( authData, td, "Blast 6", [lab1, labNP1, labNP2], [assignee1, assignee2] );
     await utils.sleep( 1500 );
-    await gh2tu.remAssignee( authData, td, issDat[1], ASSIGNEE2 );
-    await gh2tu.remAssignee( authData, td, issDat[1], ASSIGNEE1 );
+    await gh2tu.remAssignee( authData, td, issDat[1], assignee2 );
+    await gh2tu.remAssignee( authData, td, issDat[1], assignee1 );
     await gh2tu.remLabel( authData, td, issDat, labNP1 );    
     await gh2tu.remLabel( authData, td, issDat, labNP2 );    
     
@@ -443,7 +444,7 @@ async function testBlast( authData, testLinks, td ) {
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
     // Assigns show up still - peq assignees not updated once created until ceFlutter
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [ASSIGNEE1, ASSIGNEE2]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [assignee1.id, assignee2.id]});
 
     tu.testReport( testStatus, "Test Blast F" );    
 
@@ -464,19 +465,19 @@ async function runTests( authData, testLinks, td ) {
     let testStatus = [ 0, 0, []];
 
     // Stop and check each step
-    let t1 = await testStepByStep( authData, testLinks, td );
+    // let t1 = await testStepByStep( authData, testLinks, td );
 
     // Endpoint only, no waiting 
     // let t2 = await testEndpoint( authData, testLinks, td );
 
     // Blast tests
-    // let t3 = await testBlast( authData, testLinks, td );
+    let t3 = await testBlast( authData, testLinks, td );
     
     // Basic flow alloc already done in setup.  Basically, create.  Period.
 
-    testStatus = tu.mergeTests( testStatus, t1 );
+    // testStatus = tu.mergeTests( testStatus, t1 );
     // testStatus = tu.mergeTests( testStatus, t2 );
-    // testStatus = tu.mergeTests( testStatus, t3 );
+    testStatus = tu.mergeTests( testStatus, t3 );
     return testStatus
 }
 

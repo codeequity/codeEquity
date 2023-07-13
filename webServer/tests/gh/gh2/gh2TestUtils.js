@@ -1364,7 +1364,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( link.hostIssueName, issDat[2],              subTest, "Linkage Card Title" );
     subTest = tu.checkEq( link.hostProjectName, loc.projName,         subTest, "Linkage Project Title" );
     subTest = tu.checkEq( link.hostColumnId, loc.colId,               subTest, "Linkage Col Id" );
-    subTest = tu.checkEq( link.hostProjectId, loc.pid,             subTest, "Linkage project id" );
+    subTest = tu.checkEq( link.hostProjectId, loc.pid,                subTest, "Linkage project id" );
 
     // CHECK dynamo Peq
     // If peq holders fail, especially during blast, one possibility is that GH never recorded the second assignment.
@@ -1375,18 +1375,18 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     let allPeqs =  await peqsP;
     let peqs    = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     let peq = peqs[0];
-    subTest  = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
-    subTest  = tu.checkEq( typeof peq !== 'undefined', true,        subTest, "Peq count" );
+    subTest  = tu.checkEq( peqs.length, 1,                        subTest, "Peq count" );
+    subTest  = tu.checkEq( typeof peq !== 'undefined', true,      subTest, "Peq count" );
     if( typeof peq === 'undefined' ) { return await tu.settle( subTest, testStatus, checkUnclaimedIssue, authData, testLinks, td, loc, issDat, card, testStatus, specials ); }
-    subTest = tu.checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
+    subTest = tu.checkEq( peq.PeqType, loc.peqType,               subTest, "peq type invalid" );        
     subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
     subTest = tu.checkEq( peq.HostIssueTitle, issDat[2],          subTest, "peq title is wrong" );
     subTest = tu.checkEq( peq.HostHolderId.length, assignees.length, subTest, "peq holders wrong" );      
-    subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
-    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-    subTest = tu.checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-    subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
-    subTest = tu.checkEq( peq.Active, "true",                      subTest, "peq" );
+    subTest = tu.checkEq( peq.CEHolderId.length, 0,               subTest, "peq ce holders wrong" );    
+    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,          subTest, "peq grantor wrong" );      
+    subTest = tu.checkEq( peq.Amount, lval,                       subTest, "peq amount" );
+    subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],  subTest, "peq project sub 0 invalid" );
+    subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
     subTest = tu.checkEq( peq.HostProjectId, loc.pid,             subTest, "peq project id bad" );
 
     for( const assignee of assignees ) {
