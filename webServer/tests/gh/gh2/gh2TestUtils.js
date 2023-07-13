@@ -47,9 +47,9 @@ async function refreshRec( authData, td ) {
 
 	    let columns = await getColumns( authData, proj.hostProjectId );
 	    for( const col of columns ) {
-		if( col.name == td.softContTitle ) { td.scColID = col.id; }
-		if( col.name == td.busOpsTitle )   { td.boColID = col.id; }
-		if( col.name == td.unallocTitle )  { td.unColID = col.id; }
+		if( col.name == td.softContTitle ) { td.scColId = col.id; }
+		if( col.name == td.busOpsTitle )   { td.boColId = col.id; }
+		if( col.name == td.unallocTitle )  { td.unColId = col.id; }
 	    }
 	}
 	if( proj.hostProjectName == td.dataSecTitle )   { td.dataSecPID = proj.hostProjectId; }
@@ -61,14 +61,14 @@ async function refreshRec( authData, td ) {
 
     let columns = await getColumns( authData, td.dataSecPID );
     for( const col of columns ) {
-	if( col.name == config.PROJ_COLS[ config.PROJ_PLAN ] ) { td.dsPlanID = col.id; }
-	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.dsProgID = col.id; }
-	if( col.name == config.PROJ_COLS[ config.PROJ_PEND ] ) { td.dsPendID = col.id; }
-	if( col.name == config.PROJ_COLS[ config.PROJ_ACCR ] ) { td.dsAccrID = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PLAN ] ) { td.dsPlanId = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.dsProgId = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PEND ] ) { td.dsPendId = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_ACCR ] ) { td.dsAccrId = col.id; }
     }
     columns = await getColumns( authData, td.githubOpsPID );
     for( const col of columns ) {
-	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.ghProgID = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.ghProgId = col.id; }
     }
     
 }
@@ -84,8 +84,8 @@ async function refreshFlat( authData, td ) {
 
 	    let columns = await getColumns( authData, proj.hostProjectId );
 	    for( const col of columns ) {
-		if( col.name == td.col1Title )  { td.col1ID = col.id; }
-		if( col.name == td.col2Title )  { td.col2ID = col.id; }
+		if( col.name == td.col1Title )  { td.col1Id = col.id; }
+		if( col.name == td.col2Title )  { td.col2Id = col.id; }
 	    }
 	}
     }
@@ -404,7 +404,8 @@ async function getCards( authData, pid, colId ) {
 		// GH can sometimes take a long time to move a card out of No Status to it's home.  Try throwing a few times..
 		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && !utils.validField( iss, "fieldValueByName" ) ) {
 		    console.log( "Column is No Status.  Toss" );
-		    throw iss;
+		    raw.status = 500;
+		    throw raw;
 		}
 		    
 		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {

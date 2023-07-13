@@ -152,9 +152,9 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     let subTest = [ 0, 0, []];
     
     subTest = tu.checkEq( meltIssue.assignees.length, 2,                              subTest, "Issue assignee count" );
-    if     ( colId == td.dsPendID ) { subTest = tu.checkEq( meltIssue.state, "closed",     subTest, "Issue status" );  }
-    else if( colId == td.dsAccrID ) { subTest = tu.checkEq( meltIssue.state, "closed",     subTest, "Issue status" );  }
-    else                            { subTest = tu.checkEq( meltIssue.state, "open",       subTest, "Issue status" );  }
+    if     ( colId == td.dsPendId ) { subTest = tu.checkEq( meltIssue.state, "CLOSED",     subTest, "Issue status" );  }
+    else if( colId == td.dsAccrId ) { subTest = tu.checkEq( meltIssue.state, "CLOSED",     subTest, "Issue status" );  }
+    else                            { subTest = tu.checkEq( meltIssue.state, "OPEN",       subTest, "Issue status" );  }
 
     // CHECK github location
     let cards = await gh2tu.getCards( authData, pid, colId );   
@@ -199,15 +199,15 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
 	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,    subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
-	if( colId == td.dsProgID ) {
+	if( colId == td.dsProgId ) {
 	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	    subTest = tu.checkEq( pact.Action, config.PACTACT_RELO,    subTest, "PAct Action");
 	}
-	else if( colId == td.dsPendID ) {
+	else if( colId == td.dsPendId ) {
 	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_PROP,     subTest, "PAct Verb"); 
 	    subTest = tu.checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action");
 	}
-	else if( colId == td.dsAccrID ) {
+	else if( colId == td.dsAccrId ) {
 	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	    subTest = tu.checkEq( pact.Action, config.PACTACT_ACCR,    subTest, "PAct Action");
 	}
@@ -227,11 +227,11 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     subTest = tu.checkEq( meltLink.hostProjectName, td.dataSecTitle,      subTest, "Linkage Project Title" );
     subTest = tu.checkEq( meltLink.hostProjectId, td.dataSecPID,          subTest, "Linkage project id" );
     subTest = tu.checkEq( meltLink.hostColumnId, colId,                   subTest, "Linkage Col Id" );
-    if     ( colId == td.dsProgID ) { subTest = tu.checkEq( meltLink.hostColumnName, prog,  subTest, "Linkage Col name" ); }
-    else if( colId == td.dsPendID ) { subTest = tu.checkEq( meltLink.hostColumnName, pend,  subTest, "Linkage Col name" ); }
-    else if( colId == td.dsAccrID ) { subTest = tu.checkEq( meltLink.hostColumnName, accr,  subTest, "Linkage Col name" ); }
+    if     ( colId == td.dsProgId ) { subTest = tu.checkEq( meltLink.hostColumnName, prog,  subTest, "Linkage Col name" ); }
+    else if( colId == td.dsPendId ) { subTest = tu.checkEq( meltLink.hostColumnName, pend,  subTest, "Linkage Col name" ); }
+    else if( colId == td.dsAccrId ) { subTest = tu.checkEq( meltLink.hostColumnName, accr,  subTest, "Linkage Col name" ); }
 
-    return await tu.settle( subTest, testStatus, checkMove, authData, testLinks, td, issueData, colId, meltCard, testStatus );
+    return await tu.settle( subTest, testStatus, checkMove, authData, testLinks, td, issueData, pid, colId, meltCard, testStatus );
 }
 
 async function testStepByStep( authData, testLinks, td ) {
@@ -264,7 +264,7 @@ async function testStepByStep( authData, testLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
 
     // 3. Add to project
-    let meltCard  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanID, meltData[0] );
+    let meltCard  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanId, meltData[0] );
     await utils.sleep( 1000 );
     testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, flowPlan, meltData, meltCard, testStatus );
 
@@ -282,23 +282,23 @@ async function testStepByStep( authData, testLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "D" ); }
 
     // 5. move to prog
-    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsProgID );
+    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsProgId );
     await utils.sleep( 1000 );
-    testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsProgID, meltCard, testStatus );
+    testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsProgId, meltCard, testStatus );
 	
     if( VERBOSE ) { tu.testReport( testStatus, "E" ); }
 
     // 6. close
     await gh2tu.closeIssue( authData, td, meltData );
     await utils.sleep( 1000 );
-    testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsPendID, meltCard, testStatus );
+    testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsPendId, meltCard, testStatus );
 
     tu.testReport( testStatus, "F" );
 
     // 7. move to accr
-    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsAccrID );
+    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsAccrId );
     await utils.sleep( 1000 );
-    testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsAccrID, meltCard, testStatus );
+    testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsAccrId, meltCard, testStatus );
     
     tu.testReport( testStatus, "Test Basic flow" );
     return testStatus;
@@ -323,7 +323,7 @@ async function testEndpoint( authData, testLinks, td ) {
     await gh2tu.addLabel( authData, newLabel.id, meltData );
     
     // 3. Add to project
-    let meltCard  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanID, meltData[0] );
+    let meltCard  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanId, meltData[0] );
 
     // 4. add assignee
     let assignee1 = await gh2tu.getAssignee( authData, ASSIGNEE1 );
@@ -332,7 +332,7 @@ async function testEndpoint( authData, testLinks, td ) {
     await gh2tu.addAssignee( authData, meltData, assignee2 );
 
     // 5. move to prog
-    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsProgID );
+    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsProgId );
 	
     // 6. close
     await gh2tu.closeIssue( authData, td, meltData );
@@ -343,11 +343,11 @@ async function testEndpoint( authData, testLinks, td ) {
     await utils.sleep( 1000 );
     
     // 7. move to accr
-    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsAccrID );
+    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, meltCard.cardId, td.dsAccrId );
 
     await utils.sleep( 1000 );
 
-    testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsAccrID, meltCard, testStatus );
+    testStatus = await checkMove( authData, testLinks, td, meltData, td.dataSecPID, td.dsAccrId, meltCard, testStatus );
 
     tu.testReport( testStatus, "Test lifecycles" );
     return testStatus;
