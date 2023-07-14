@@ -108,6 +108,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
     */
+    return testStatus;
 }
 
 async function runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks ) {
@@ -253,8 +254,8 @@ async function runTests() {
     // XXX Add an arg if these are ever useful again
     // await runClassicTests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks );
 
-    await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks );
-	
+    testStatus = await runV2Tests( testStatus, flutterTest, authData, authDataX, authDataM, td, tdX, tdM, testLinks );
+
     // Save dynamo data if run was successful
     if( testStatus[1] == 0 ) {
 	subTest = await testSaveDynamo.runTests( flutterTest );   // XXXXXX
