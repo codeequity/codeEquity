@@ -19,9 +19,9 @@ class TestData {
 	this.unallocTitle     = "Unallocated";
 	
 	this.masterPID        = config.EMPTY;
-	this.scColID          = config.EMPTY;
-	this.boColID          = config.EMPTY;
-	this.unColID          = config.EMPTY;
+	this.scColId          = config.EMPTY;
+	this.boColId          = config.EMPTY;
+	this.unColId          = config.EMPTY;
 
 	this.scUnallocCID     = config.EMPTY;
 	this.boUnallocCID     = config.EMPTY;
@@ -29,12 +29,12 @@ class TestData {
 	this.dataSecCID       = config.EMPTY;
 	    
 	this.dataSecPID       = config.EMPTY;
-	this.dsPlanID         = config.EMPTY;
-	this.dsProgID         = config.EMPTY;
-	this.dsPendID         = config.EMPTY;
-	this.dsAccrID         = config.EMPTY;
+	this.dsPlanId         = config.EMPTY;
+	this.dsProgId         = config.EMPTY;
+	this.dsPendId         = config.EMPTY;
+	this.dsAccrId         = config.EMPTY;
 	this.githubOpsPID     = config.EMPTY;
-	this.ghProgID         = config.EMPTY;
+	this.ghProgId         = config.EMPTY;
 
 	this.githubOpsIss     = config.EMPTY;  // [ id, num ] 
 	this.dataSecIss       = config.EMPTY;
@@ -50,8 +50,8 @@ class TestData {
 	this.card3Title       = "Rosemary";
 
 	this.flatPID          = config.EMPTY;
-	this.col1ID           = config.EMPTY;
-	this.col2ID           = config.EMPTY;
+	this.col1Id           = config.EMPTY;
+	this.col2Id           = config.EMPTY;
 
 	// Unclaimed
 	this.unclaimTitle     = config.UNCLAIMED;
@@ -65,7 +65,7 @@ class TestData {
 	let loc = {};
 	loc.pid   = this.dataSecPID;
 	loc.projName = this.dataSecTitle;
-	loc.colId    = this.dsPlanID;
+	loc.colId    = this.dsPlanId;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PLAN];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN]];
 	loc.peqType  = config.PEQTYPE_PLAN;
@@ -75,7 +75,7 @@ class TestData {
 	let loc = {};
 	loc.pid   = this.dataSecPID;
 	loc.projName = this.dataSecTitle;
-	loc.colId    = this.dsProgID;
+	loc.colId    = this.dsProgId;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PROG];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG]];
 	loc.peqType  = config.PEQTYPE_PLAN;
@@ -86,7 +86,7 @@ class TestData {
 	let loc = {};
 	loc.pid   = this.dataSecPID;
 	loc.projName = this.dataSecTitle;
-	loc.colId    = this.dsPendID;
+	loc.colId    = this.dsPendId;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PEND];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND]];
 	loc.peqType  = config.PEQTYPE_PLAN;
@@ -97,7 +97,7 @@ class TestData {
 	let loc = {};
 	loc.pid   = this.dataSecPID;
 	loc.projName = this.dataSecTitle;
-	loc.colId    = this.dsAccrID;
+	loc.colId    = this.dsAccrId;
 	loc.colName  = config.PROJ_COLS[config.PROJ_ACCR];
 	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR]];
 	loc.peqType  = config.PEQTYPE_PLAN;
@@ -108,7 +108,7 @@ class TestData {
 	let loc = {};
 	loc.pid   = this.flatPID;
 	loc.projName = this.flatTitle;
-	loc.colId    = this.col2ID;
+	loc.colId    = this.col2Id;
 	loc.colName  = this.col2Title;
 	loc.projSub  = [this.flatTitle, this.col2Title];
 	loc.peqType  = config.PEQTYPE_PLAN;
@@ -119,7 +119,7 @@ class TestData {
 	let loc = {};
 	loc.pid   = this.flatPID;
 	loc.projName = this.flatTitle;
-	loc.colId    = this.col1ID;
+	loc.colId    = this.col1Id;
 	loc.colName  = this.col1Title;
 	loc.projSub  = [this.flatTitle, this.col1Title];
 	loc.peqType  = config.PEQTYPE_PLAN;
@@ -150,14 +150,14 @@ class TestData {
 	if( this.dataSecPID   != config.EMPTY )   { console.log( "dataSecPID", this.dataSecPID ); }
 	if( this.githubOpsPID != config.EMPTY )   { console.log( "githubOpsPID", this.githubOpsPID ); }
 
-	if( this.scColID  != config.EMPTY )   { console.log( "scColID", this.scColID ); }
-	if( this.boColID  != config.EMPTY )   { console.log( "boColID", this.boColID ); }
-	if( this.unColID  != config.EMPTY )   { console.log( "unColID", this.unColID ); }
-	if( this.dsPlanID != config.EMPTY )   { console.log( "dsPlanID", this.dsPlanID ); }
-	if( this.dsProgID != config.EMPTY )   { console.log( "dsProgID", this.dsProgID ); }
-	if( this.dsPendID != config.EMPTY )   { console.log( "dsPendID", this.dsPendID ); }
-	if( this.dsAccrID != config.EMPTY )   { console.log( "dsAccrID", this.dsAccrID ); }
-	if( this.ghProgID != config.EMPTY )   { console.log( "ghProgID", this.ghProgID ); }
+	if( this.scColId  != config.EMPTY )   { console.log( "scColId", this.scColId ); }
+	if( this.boColId  != config.EMPTY )   { console.log( "boColId", this.boColId ); }
+	if( this.unColId  != config.EMPTY )   { console.log( "unColId", this.unColId ); }
+	if( this.dsPlanId != config.EMPTY )   { console.log( "dsPlanId", this.dsPlanId ); }
+	if( this.dsProgId != config.EMPTY )   { console.log( "dsProgId", this.dsProgId ); }
+	if( this.dsPendId != config.EMPTY )   { console.log( "dsPendId", this.dsPendId ); }
+	if( this.dsAccrId != config.EMPTY )   { console.log( "dsAccrId", this.dsAccrId ); }
+	if( this.ghProgId != config.EMPTY )   { console.log( "ghProgId", this.ghProgId ); }
 
 	if( this.scUnallocCID != config.EMPTY )   { console.log( "scUnallocCID", this.scUnallocCID ); }
 	if( this.boUnallocCID != config.EMPTY )   { console.log( "boUnallocCID", this.boUnallocCID ); }
@@ -171,8 +171,8 @@ class TestData {
 
 	console.log( "TestData object contents.. Flat==============" );	
 	if( this.flatPID     != config.EMPTY ) { console.log( "flatPID", this.flatPID ); }
-	if( this.col1ID      != config.EMPTY ) { console.log( "col1ID", this.col1ID ); }
-	if( this.col2ID      != config.EMPTY ) { console.log( "col2ID", this.col2ID ); }
+	if( this.col1Id      != config.EMPTY ) { console.log( "col1Id", this.col1Id ); }
+	if( this.col2Id      != config.EMPTY ) { console.log( "col2Id", this.col2Id ); }
 
 	console.log( "TestData object contents.. Unclaimed=========" );	
 	if( this.unclaimPID     != config.EMPTY ) { console.log( "unclaimPID", this.unclaimPID ); }

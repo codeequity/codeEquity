@@ -307,15 +307,21 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	// NOTE: it would be fair at this point to cast everything as PV2, given evident demise of GHC...
 	if( jd.event == "issue" && jd.action == "deleted" ||
 	    jd.event == "issue" && jd.action == "labeled" ||    
+	    jd.event == "issue" && jd.action == "unlabeled" ||    
 	    jd.event == "issue" && jd.action == "assigned" ||    
 	    jd.event == "issue" && jd.action == "unassigned" ||    
 	    jd.event == "label" && jd.action == "deleted" ||
 	    jd.event == "label" && jd.action == "created" )
 	{
 	    // console.log( "Found PV2.  Switching GH2 for content node" );
-	    let repo = jd.org.split('/');
-	    assert( repo.length == 2 );
-	    jd.org = repo[0];  // XXX revisit this.  recasting content notification to pv2 .. revisit getJobSummary here.
+
+	    // if job has been delayed, org is already properly set.  Otherwise, build it from getJobSummaryGHC
+	    if( jd.delayCount == 0 ) {
+		let repo = jd.org.split('/');
+		if( repo.length != 2 ) { console.log( repo ); }
+		assert( repo.length == 2 );
+		jd.org = repo[0];  // XXX revisit this.  recasting content notification to pv2 .. revisit getJobSummary here.
+	    }
 	    await switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp );
 	}
 	else {
@@ -411,8 +417,8 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
 	}
 	else {
-	    console.log( "githubRouter switcher routing NYI", jd.action );
-	    assert( false );
+	    console.log( "Error.  githubRouter switcher routing NYI", jd.action );
+	    ceRouter.getNextJob( authData, res );	
 	}
     }
     else {

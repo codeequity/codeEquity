@@ -47,12 +47,12 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId ); 
     
     // softCont: dataSecurity, githubOps, unallocated
-    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
-    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
-    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
 
     // This should NOT be needed.  But last makeAlloc above can be unfinished by the time test runs (i.e. can get card, but field is not yet available).
     // This rare sluggishness happened 6/30/23
@@ -68,6 +68,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 
     let foundGHSub = false;
     let foundDSSub = false;
+    let foundBOSub = false;
     
     // Check DYNAMO PEQ table
     let ghPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.githubOpsTitle });
@@ -99,16 +100,21 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
     assert( locs.length ==1 );
     
     if( typeof dsPeqs[0] !== 'undefined' && unPeqs[0] !== 'undefined' && typeof unPeqs[1] !== 'undefined' ) {
-	
-	let busTest = unPeqs[0].HostProjectSub.includes(td.busOpsTitle) || unPeqs[1].HostProjectSub.includes( td.busOpsTitle );
-	subTest = tu.checkEq( busTest, true,                              subTest, "Project subs for unalloc" );    
-	
+
+	const blocs = testLinks.getLocs( authData, { "ceProjId": td.ceProjectId, "pid": td.masterPID, "colName": td.busOpsTitle } );
+	assert( blocs.length ==1 );
+
+	// No Status may show up when GH communication is slow
+	foundBOSub = unPeqs[0].HostProjectSub.includes(td.busOpsTitle) || unPeqs[1].HostProjectSub.includes( td.busOpsTitle );
+	foundBOSub = foundBOSub || unPeqs[0].HostProjectSub.includes( config.GH_NO_STATUS ) || unPeqs[1].HostProjectSub.includes( config.GH_NO_STATUS );
+	subTest = tu.checkEq( foundBOSub, true,                              subTest, "Project subs for unalloc" );    
 	
 	// Check DYNAMO PAct
 	// New makeAlloc has add, then relocate.  Order may vary.
 	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
 	subTest = tu.checkGE( pacts.length, 4,         subTest, "Number of PActs" );
 	let foundPActs = 0;
+	let foundBusRelo = false;
 	for( pact of pacts ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	    subTest = tu.checkEq( pact.Ingested, "false",                     subTest, "PAct ingested" );
@@ -129,19 +135,21 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    }
 	    if( !foundGHSub && pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == locs.hostColumnId ) { foundGHSub = true; }
 	    if( !foundDSSub && pact.Subject[0] == dsPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == locs.hostColumnId ) { foundDSSub = true; }
-		
+
+	    if( !foundBOSub && pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == blocs.hostColumnId ) { foundBOSub = true; }
+	    if( !foundBOSub && pact.Subject[0] == unPeqs[1].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == blocs.hostColumnId ) { foundBOSub = true; }
 	}
 	// 2 for addRelo (i.e. add, relo), 1 for move's
 	// unclaimed.  May be valid.
 	subTest = tu.checkEq( foundPActs, 9,           subTest, "Matched PActs with PEQs" );
-
 	subTest = tu.checkEq( foundGHSub, true,        subTest, "Pact sub gh" );
 	subTest = tu.checkEq( foundDSSub, true,        subTest, "Pact sub ds" );
-	
+	subTest = tu.checkEq( foundBOSub, true,        subTest, "Pact sub bo" );
+	if( !foundBOSub ) { console.log( unPeqs ); }
+
 	// Check DYNAMO RepoStatus
 	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId );
 	subTest = tu.checkEq( pop, "true", subTest, "Repo status wrt populated" );
-	
 	
 	// Check GITHUB Labels
 	let peqLabels = await gh2tu.getLabels( authData, td );
@@ -226,17 +234,17 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	subTest = tu.checkEq( colNames.includes( config.PROJ_COLS[3] ), true,   subTest, "Github ops  col names" );
 	
 	for( const col of mastCols ) {
-	    if     ( col.name == td.softContTitle ) { td.scColID = col.id; }
-	    else if( col.name == td.busOpsTitle )   { td.boColID = col.id; }
-	    else if( col.name == td.unallocTitle )  { td.unColID = col.id; }
+	    if     ( col.name == td.softContTitle ) { td.scColId = col.id; }
+	    else if( col.name == td.busOpsTitle )   { td.boColId = col.id; }
+	    else if( col.name == td.unallocTitle )  { td.unColId = col.id; }
 	}
 	
 	
 	// Check GITHUB Cards
 	// Don't try checking names - they belong to & were already checked, in issues.
-	let scCards = await gh2tu.getCards( authData, td.masterPID, td.scColID );
-	let boCards = await gh2tu.getCards( authData, td.masterPID, td.boColID );
-	let noCards = await gh2tu.getCards( authData, td.masterPID, td.unColID );
+	let scCards = await gh2tu.getCards( authData, td.masterPID, td.scColId );
+	let boCards = await gh2tu.getCards( authData, td.masterPID, td.boColId );
+	let noCards = await gh2tu.getCards( authData, td.masterPID, td.unColId );
 	
 	subTest = tu.checkEq( scCards.length, 4, subTest, "Soft cont col card count" );
 	subTest = tu.checkEq( boCards.length, 1, subTest, "Bus ops col card count" );
@@ -265,7 +273,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    if( link.hostIssueId == td.githubOpsIss[0] ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.githubOpsIss[1],    subTest, "Linkage Issue num" );
 		subTest = tu.checkEq( link.hostColumnName, td.softContTitle,    subTest, "Linkage Col name" );
-		subTest = tu.checkEq( link.hostColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
+		subTest = tu.checkEq( link.hostColumnId, td.scColId.toString(), subTest, "Linkage Col Id" );
 		subTest = tu.checkEq( link.hostIssueName, td.githubOpsTitle,    subTest, "Linkage Card Title" );
 		let cardId = gh2tu.findCardForIssue( scCards, link.hostIssueNum );
 		subTest = tu.checkEq( link.hostCardId, cardId,                  subTest, "Linkage Card Id" );
@@ -274,7 +282,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    else if( link.hostIssueId == td.dataSecIss[0] ) {
 		subTest = tu.checkEq( link.hostIssueNum, td.dataSecIss[1],      subTest, "Linkage Issue num" );
 		subTest = tu.checkEq( link.hostColumnName, td.softContTitle,    subTest, "Linkage Col name" );
-		subTest = tu.checkEq( link.hostColumnId, td.scColID.toString(), subTest, "Linkage Col Id" );
+		subTest = tu.checkEq( link.hostColumnId, td.scColId.toString(), subTest, "Linkage Col Id" );
 		subTest = tu.checkEq( link.hostIssueName, td.dataSecTitle,      subTest, "Linkage Card Title" );
 		let cardId = gh2tu.findCardForIssue( scCards, link.hostIssueNum );
 		subTest = tu.checkEq( link.hostCardId, cardId,                  subTest, "Linkage Card Id" );
@@ -304,8 +312,8 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	}
 	subTest = tu.checkEq( foundDS, 1, subTest, "Duplicate links" );
 	subTest = tu.checkEq( (unallocSoft && unallocBus), true, subTest, "Linkage unalloc unique count" );
-	if( unallocSoft ) { subTest = tu.checkEq( lSoft, td.scColID.toString(), subTest, "Linkage Col Id" ); }
-	if( unallocBus )  { subTest = tu.checkEq( lBus,  td.boColID.toString(), subTest, "Linkage Col Id" ); }
+	if( unallocSoft ) { subTest = tu.checkEq( lSoft, td.scColId.toString(), subTest, "Linkage Col Id" ); }
+	if( unallocBus )  { subTest = tu.checkEq( lBus,  td.boColId.toString(), subTest, "Linkage Col Id" ); }
     }
 
     return await tu.settle( subTest, [ 0, 0, []], testPreferredCEProjects, authData, testLinks, td );

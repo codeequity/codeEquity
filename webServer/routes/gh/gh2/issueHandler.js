@@ -221,6 +221,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     pd.issueNum   = pd.reqBody.issue.number;		
     pd.actor      = pd.reqBody.sender.login;
     pd.issueName  = (pd.reqBody.issue.title).replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+    pd.repoName   = pd.reqBody.repository.full_name; 
+    pd.repoId     = pd.reqBody.repository.node_id; 
     
     switch( action ) {
     case 'labeled':
@@ -236,11 +238,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    
-	    // XXX need repoId, repoName, ownerId
 	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
 	    assert( utils.validField( pd.reqBody, "repository" ) && utils.validField( pd.reqBody.repository, "node_id" ));
-	    pd.repoName = pd.reqBody.repository.full_name; 
-	    pd.repoId   = pd.reqBody.repository.node_id; 
 	    // console.log( "Label issue", pd.reqBody );
 	    // pd.show();
 	    let success = await labelIssue( authData, ghLinks, ceProjects, pd, pd.reqBody.issue.number, pd.reqBody.issue.labels, pd.reqBody.label );
@@ -280,12 +279,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     case 'unlabeled':
 	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  
 	// Do not move card, would be confusing for user.
-	// XXX NYI
-	break;
 	{
 	    // Unlabel'd label data is not located under issue.. parseLabel looks in arrays
 	    if( typeof pd.reqBody.label !== 'undefined' ) {
-		pd.peqValue = ghUtils.parseLabelDescr( [ pd.reqBody['label']['description'] ] );
+		pd.peqValue = ghUtils.parseLabelDescr( [ pd.reqBody.label.description ] );
 		if( pd.peqValue <= 0 ) {
 		    console.log( "Not a PEQ label, no action taken." );
 		    return;
@@ -296,14 +293,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 		
-	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );	    
 
 	    // GH already removed this.  Put it back.
 	    if( newNameIndex >= config.PROJ_ACCR ) {
 		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
-		ghSafe.addLabel( authData, pd.Owner, pd.Repo, pd.issueNum, pd.reqBody.label );  // XXXXXX
+		ghV2.addLabel( authData, pd.reqBody.label.node_id, pd.issueId ); 
 		return;
 	    }
 	    
@@ -314,7 +311,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    awsUtils.recordPEQAction(
 		authData,
 		config.EMPTY,     // CE UID
-		pd.actor,     // gh user name
+		pd.actor,         // gh user name
 		pd.ceProjectId,
 		config.PACTVERB_CONF,       // verb
 		config.PACTACT_DEL,         // action
@@ -324,6 +321,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		pd.reqBody        // raw
 	    );
 	}
+	break;
     case 'deleted':
 	// Delete card of carded issue sends itemHandler:deleted.  Delete issue of carded issue sends issueHandler:delete
 	
@@ -412,19 +410,21 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return "postpone"; 
 	    }
 	    
-	    let assignee = pd.reqBody.assignee.login;
+	    let assignee   = pd.reqBody.assignee.login;
+	    let assigneeId = pd.reqBody.assignee.node_id;
 	    let verb = config.PACTVERB_CONF;
 	    let paction = config.PACTACT_CHAN;
 	    let note = ( action == "assigned" ? "add" : "remove" ) + " assignee";
 
 	    // Not if ACCR
-	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId });
+	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId });
 	    if( links !== -1 && links[0].hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		console.log( "WARNING.", links[0].hostColumnName, "is reserved, accrued issues should not be modified.  Undoing this assignment." );
 		paction = config.PACTACT_NOTE;
 		note = "Bad assignment attempted";
-		if( action == "assigned" ) { ghSafe.remAssignee( authData, pd.Owner, pd.Repo, pd.issueNum, assignee ); }
-		else                       { ghSafe.addAssignee( authData, pd.Owner, pd.Repo, pd.issueNum, assignee ); }
+		
+		if( action == "assigned" ) { ghV2.remAssignee( authData, pd.issueId, assigneeId ); }
+		else                       { ghV2.addAssignee( authData, pd.issueId, assigneeId ); }
 	    }
 	    
 	    let subject = [peq.PEQId.toString(), assignee];

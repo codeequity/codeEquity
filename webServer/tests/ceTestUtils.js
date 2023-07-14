@@ -253,7 +253,7 @@ async function settleWithVal( fname, func, ...params ) {
 	await delayTimer( func.name );
 	retVal = await func( ...params );
 
-	if( CETestDelayCounts[func.name] > 2 ) { console.log( "SWV:", params.slice(1) ); }  // don't print authData
+	if( CETestDelayCounts[func.name] > 3 ) { console.log( "SWV:", params.slice(1) ); }  // don't print authData
     }
     CETestDelayCounts[func.name] = 0;
     return retVal;

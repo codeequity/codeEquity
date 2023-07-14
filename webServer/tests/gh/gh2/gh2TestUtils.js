@@ -47,9 +47,9 @@ async function refreshRec( authData, td ) {
 
 	    let columns = await getColumns( authData, proj.hostProjectId );
 	    for( const col of columns ) {
-		if( col.name == td.softContTitle ) { td.scColID = col.id; }
-		if( col.name == td.busOpsTitle )   { td.boColID = col.id; }
-		if( col.name == td.unallocTitle )  { td.unColID = col.id; }
+		if( col.name == td.softContTitle ) { td.scColId = col.id; }
+		if( col.name == td.busOpsTitle )   { td.boColId = col.id; }
+		if( col.name == td.unallocTitle )  { td.unColId = col.id; }
 	    }
 	}
 	if( proj.hostProjectName == td.dataSecTitle )   { td.dataSecPID = proj.hostProjectId; }
@@ -61,14 +61,14 @@ async function refreshRec( authData, td ) {
 
     let columns = await getColumns( authData, td.dataSecPID );
     for( const col of columns ) {
-	if( col.name == config.PROJ_COLS[ config.PROJ_PLAN ] ) { td.dsPlanID = col.id; }
-	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.dsProgID = col.id; }
-	if( col.name == config.PROJ_COLS[ config.PROJ_PEND ] ) { td.dsPendID = col.id; }
-	if( col.name == config.PROJ_COLS[ config.PROJ_ACCR ] ) { td.dsAccrID = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PLAN ] ) { td.dsPlanId = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.dsProgId = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PEND ] ) { td.dsPendId = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_ACCR ] ) { td.dsAccrId = col.id; }
     }
     columns = await getColumns( authData, td.githubOpsPID );
     for( const col of columns ) {
-	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.ghProgID = col.id; }
+	if( col.name == config.PROJ_COLS[ config.PROJ_PROG ] ) { td.ghProgId = col.id; }
     }
     
 }
@@ -84,8 +84,8 @@ async function refreshFlat( authData, td ) {
 
 	    let columns = await getColumns( authData, proj.hostProjectId );
 	    for( const col of columns ) {
-		if( col.name == td.col1Title )  { td.col1ID = col.id; }
-		if( col.name == td.col2Title )  { td.col2ID = col.id; }
+		if( col.name == td.col1Title )  { td.col1Id = col.id; }
+		if( col.name == td.col2Title )  { td.col2Id = col.id; }
 	    }
 	}
     }
@@ -94,7 +94,9 @@ async function refreshFlat( authData, td ) {
 
 // Refresh unclaimed.
 // Note: if unclaimed has not yet been linked, expect config.EMPTY
-async function refreshUnclaimed( authData, td ) {
+async function refreshUnclaimed( authData, testLinks, td, forceFind ) {
+    forceFind = typeof forceFind === 'undefined' ? false : forceFind;
+    
     let hostProjs = [];
     await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
@@ -109,6 +111,8 @@ async function refreshUnclaimed( authData, td ) {
 	    }
 	}
     }
+    if( forceFind ) { await tu.settleWithVal( "refreshUnclaimed", tu.confirmColumn, authData, testLinks, td.ceProjectId, td.unclaimPID, td.unclaimCID ); }
+    
     if( td.unclaimCID == config.EMPTY ) { console.log( "refresh unclaimed .. did not find." ); }
 }
 
@@ -146,7 +150,8 @@ async function checkLoc( authData, td, issDat, loc ) {
 }
 
 async function getLabel( authData, repoId, lName ) {
-    await ghV2.getLabel( authData, repoId, lName );
+    let retVal = await ghV2.getLabel( authData, repoId, lName );
+    return retVal;
 }
 
 // was getPeqLabels, but never filtered
@@ -363,7 +368,7 @@ async function getDraftIssues( authData, pid ) {
 }
 
 
-// Get all cards for project.  Filter for column.  Could very easily add, say, col info.. useful?
+// Get all cards for project.  Filter for column.  
 // Needs to work for draft issues as well, i.e. newborn cards.
 async function getCards( authData, pid, colId ) {
     let cards = [];
@@ -395,11 +400,20 @@ async function getCards( authData, pid, colId ) {
 
 	    for( let i = 0; i < issues.length; i++ ) {
 		const iss = issues[i].node;
+
+		// GH can sometimes take a long time to move a card out of No Status to it's home.  Try throwing a few times..
+		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && !utils.validField( iss, "fieldValueByName" ) ) {
+		    console.log( "Column is No Status.  Toss" );
+		    raw.status = 500;
+		    throw raw;
+		}
+		    
 		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {
 		    let datum = {};
 		    datum.cardId = iss.id;                  // pvti or cardId here
 		    datum.issueNum = iss.content.number;
-		    datum.title  = iss.content.title;
+		    datum.title    = iss.content.title;
+		    datum.columnId = colId;
 		    if( typeof datum.issueNum === 'undefined' ) { datum.issueNum = -1; } // draft issue
 		    cards.push( datum );
 		}
@@ -703,12 +717,13 @@ async function createDraftIssue( authData, pid, title, body ) {
     return pvId;
 }
 
+// This both creates an issue and a card
 // Act like a user.  User will create labeled issue in project, then move issue.
 //      This generates the following notifications:  issue:open, issue:label, item:create, maybe (?) item:edit (label), item:edit (move)
 //      The notifications are identical whether select project in issue create interface or not, with possible exception of item:edit(label), and ordering
 // Historical note: GH projects have changed - you can no longer create a card without a companion draft issue.  
 //      In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
-async function makeAllocCard( authData, testLinks, ceProjId, rNodeId, pid, colId, title, amount ) {
+async function makeAlloc( authData, testLinks, ceProjId, rNodeId, pid, colId, title, amount ) {
     console.log( "MAC", ceProjId, rNodeId, pid, colId, title, amount );
     const locs = testLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );
     assert( locs !== -1 );
@@ -772,6 +787,7 @@ async function makeNewbornCard( authData, testLinks, ceProjId, pid, colId, title
     return pvId;
 }
 
+// Only makes card, no issue.
 async function makeProjectCard( authData, testLinks, ceProjId, pid, colId, issueId, justId ) {
     let query = { ceProjId: ceProjId, pid: pid, colId: colId };  
     const locs = testLinks.getLocs( authData, query );    
@@ -1348,7 +1364,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( link.hostIssueName, issDat[2],              subTest, "Linkage Card Title" );
     subTest = tu.checkEq( link.hostProjectName, loc.projName,         subTest, "Linkage Project Title" );
     subTest = tu.checkEq( link.hostColumnId, loc.colId,               subTest, "Linkage Col Id" );
-    subTest = tu.checkEq( link.hostProjectId, loc.pid,             subTest, "Linkage project id" );
+    subTest = tu.checkEq( link.hostProjectId, loc.pid,                subTest, "Linkage project id" );
 
     // CHECK dynamo Peq
     // If peq holders fail, especially during blast, one possibility is that GH never recorded the second assignment.
@@ -1359,18 +1375,18 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     let allPeqs =  await peqsP;
     let peqs    = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     let peq = peqs[0];
-    subTest  = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
-    subTest  = tu.checkEq( typeof peq !== 'undefined', true,        subTest, "Peq count" );
+    subTest  = tu.checkEq( peqs.length, 1,                        subTest, "Peq count" );
+    subTest  = tu.checkEq( typeof peq !== 'undefined', true,      subTest, "Peq count" );
     if( typeof peq === 'undefined' ) { return await tu.settle( subTest, testStatus, checkUnclaimedIssue, authData, testLinks, td, loc, issDat, card, testStatus, specials ); }
-    subTest = tu.checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
+    subTest = tu.checkEq( peq.PeqType, loc.peqType,               subTest, "peq type invalid" );        
     subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
     subTest = tu.checkEq( peq.HostIssueTitle, issDat[2],          subTest, "peq title is wrong" );
     subTest = tu.checkEq( peq.HostHolderId.length, assignees.length, subTest, "peq holders wrong" );      
-    subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq ce holders wrong" );    
-    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-    subTest = tu.checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-    subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
-    subTest = tu.checkEq( peq.Active, "true",                      subTest, "peq" );
+    subTest = tu.checkEq( peq.CEHolderId.length, 0,               subTest, "peq ce holders wrong" );    
+    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,          subTest, "peq grantor wrong" );      
+    subTest = tu.checkEq( peq.Amount, lval,                       subTest, "peq amount" );
+    subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],  subTest, "peq project sub 0 invalid" );
+    subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
     subTest = tu.checkEq( peq.HostProjectId, loc.pid,             subTest, "peq project id bad" );
 
     for( const assignee of assignees ) {
@@ -2057,15 +2073,15 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,              subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.hostIssueName, issDat[2],          subTest, "peq title is wrong" );
-    subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,                subTest, "peq holders wrong" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,            subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostIssueTitle, issDat[2],           subTest, "peq title is wrong" );
+    subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );
     subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
     subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle, subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,  subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectId, td.dataSecPID,        subTest, "peq unclaimed PID bad" );
     subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
     
@@ -2247,7 +2263,7 @@ exports.makeColumn      = makeColumn;
 exports.updateColumn    = updateColumn;
 exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
-exports.makeAllocCard   = makeAllocCard;
+exports.makeAlloc       = makeAlloc;
 exports.removeNewbornCard = removeNewbornCard;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
