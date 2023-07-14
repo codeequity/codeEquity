@@ -437,8 +437,8 @@ async function testBlast( authData, testLinks, td ) {
     await utils.sleep( 1500 );
     await gh2tu.remAssignee( authData, td, issDat[1], assignee2 );
     await gh2tu.remAssignee( authData, td, issDat[1], assignee1 );
-    await gh2tu.remLabel( authData, td, issDat, labNP1 );    
-    await gh2tu.remLabel( authData, td, issDat, labNP2 );    
+    await gh2tu.remLabel( authData, labNP1, issDat );    
+    await gh2tu.remLabel( authData, labNP2, issDat );    
     
     title  = "Blast 6";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
@@ -449,8 +449,8 @@ async function testBlast( authData, testLinks, td ) {
     tu.testReport( testStatus, "Test Blast F" );    
 
     // Clean
-    await gh2tu.delLabel( authData, td, labNP1.name );
-    await gh2tu.delLabel( authData, td, labNP2.name );
+    await gh2tu.delLabel( authData, labNP1 );
+    await gh2tu.delLabel( authData, labNP2 );
     
     tu.testReport( testStatus, "Test Blast" );
     return testStatus;
@@ -465,18 +465,18 @@ async function runTests( authData, testLinks, td ) {
     let testStatus = [ 0, 0, []];
 
     // Stop and check each step
-    // let t1 = await testStepByStep( authData, testLinks, td );
+    let t1 = await testStepByStep( authData, testLinks, td );
 
     // Endpoint only, no waiting 
-    // let t2 = await testEndpoint( authData, testLinks, td );
+    let t2 = await testEndpoint( authData, testLinks, td );
 
     // Blast tests
     let t3 = await testBlast( authData, testLinks, td );
     
     // Basic flow alloc already done in setup.  Basically, create.  Period.
 
-    // testStatus = tu.mergeTests( testStatus, t1 );
-    // testStatus = tu.mergeTests( testStatus, t2 );
+    testStatus = tu.mergeTests( testStatus, t1 );
+    testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );
     return testStatus
 }
