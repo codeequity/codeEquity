@@ -294,7 +294,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
     const proj = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
-    let linkage = await ghLinks.initOneProject( authData, proj );
+    let linkage = await ghLinks.initOneCEProject( authData, proj );
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about

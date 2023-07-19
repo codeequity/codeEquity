@@ -79,7 +79,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-
+    
     subTest = await gh2TestFlat.runTests( authData, testLinks, td );
     console.log( "\n\nFlat test complete." );
     await utils.sleep( 5000 );

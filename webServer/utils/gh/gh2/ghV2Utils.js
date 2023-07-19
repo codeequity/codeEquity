@@ -769,12 +769,57 @@ function getColumnName( authData, ghLinks, ceProjId, colId ) {
     return colName
 }
 
-// XXX create not update
-// create new column
-async function updateColumn( authData, pid, newValue ) {
-    console.log( "UC", pid, newValue );
-    console.log( authData.who, "NYI.  Github does not yet support managing status with the API" );
-    console.log( authData.who, "https://github.com/orgs/community/discussions/38225" );
+
+// Create new field.  May not be a need for this?
+// This works.  Note that "No Status" column becomes "No XYZ", where XYZ is fieldName.
+async function createCustomField( authData, fieldName, pid, sso ) {
+    let query     = `mutation( $name: String!, $pid: ID!, $ssoVal:[ProjectV2SingleSelectFieldOptionInput!] ) 
+                        { createProjectV2Field( input: { dataType: SINGLE_SELECT, name: $name, projectId: $pid, singleSelectOptions: $ssoVal })
+                        { clientMutationId }}`;
+
+    let variables = { name: fieldName, pid: pid, ssoVal: sso  };
+    query         = JSON.stringify({ query, variables });
+
+    let retVal = false;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    console.log( "Result", ret );	    
+	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+	    retVal = ret;
+	})
+	.catch( e => retVal = ghUtils.errorHandler( "createCustomField", e, createCustomField, authData, fieldName, pid, sso ));
+
+    return retVal;
+}
+
+// clone makes project v1??? sigh.  use copy.
+async function cloneFromTemplate( authData, ownerId, sourcePID, title ) {
+    let query     = `mutation( $ownerId:ID!, $sourcePID:ID!, $title:String! ) 
+                        { copyProjectV2( input: { ownerId: $ownerId, projectId: $sourcePID, title: $title })
+                        { clientMutationId, projectV2{id} }}`;
+
+    let variables = { ownerId: ownerId, sourcePID: sourcePID, title: title };
+    query         = JSON.stringify({ query, variables });
+
+    console.log( "QUERY", query );
+    let retVal = false;
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( ret => {
+	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+	    if( !utils.validField( ret.data, "copyProjectV2" )) { console.log( "Not seeing new project?", ret ); }
+	    console.log( "Result", ret, ret.data.copyProjectV2.projectV2.id );
+	    retVal = ret.data.copyProjectV2.projectV2.id;
+	})
+	.catch( e => retVal = ghUtils.errorHandler( "closeFromTemplate", e, cloneFromTemplate, authData, ownerId, sourcePID, title ));
+
+    return retVal;
+}
+
+
+
+
+async function createColumnTest( authData, pid, colId, name ) {
+    console.log( "createColumn", pid, newValue );
 
     let query     = `mutation( $dt:ProjectV2CustomFieldType!, $pid:ID!, $val:[ProjectV2SingleSelectFieldOptionInput!] ) 
                              { createProjectV2Field( input:{ dataType: $dt, name: "Statusus", projectId: $pid, singleSelectOptions: $val }) 
@@ -793,7 +838,7 @@ async function updateColumn( authData, pid, newValue ) {
 	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 	    retVal = true;
 	})
-	.catch( e => retVal = ghUtils.errorHandler( "updateColumn", e, updateColumn, authData, pid, newValue ));
+	.catch( e => retVal = ghUtils.errorHandler( "createColumn", e, createColumn, authData, pid, newValue ));
 
     return retVal;
 }
@@ -1489,6 +1534,7 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, pid, rNodeI
 }
 
 
+
 // XXX Placed here to support createUnclaimedProject..
 //     relocate to gh2TestUtils once column support in the API is resolved.
 async function findOrCreateProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name, body ) {
@@ -1778,11 +1824,13 @@ exports.cleanUnclaimed     = cleanUnclaimed;
 
 exports.getCEProjectLayout = getCEProjectLayout;
 
-exports.createColumn           = createColumn;           // XXX NYI
 exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
 exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
 exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI
-exports.updateColumn           = updateColumn;           // XXX NYI
+
+exports.cloneFromTemplate      = cloneFromTemplate;      // XXX speculative.  useful?
+exports.createCustomField      = createCustomField;      // XXX speculative.  useful?
+exports.createColumn           = createColumn;           
 exports.deleteColumn           = deleteColumn;           // XXX NYI
 exports.clearColumn            = clearColumn;           // XXX NYI
 

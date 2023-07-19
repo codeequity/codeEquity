@@ -36,7 +36,7 @@ class Linkage {
 
 
     // For each ceProject
-    async initOneProject( authData, entry ) {
+    async initOneCEProject( authData, entry ) {
 
 	let host  = utils.validField( entry, "HostPlatform" )       ? entry.HostPlatform                    : "";
 	let org   = utils.validField( entry, "Organization" )       ? entry.Organization                    : "";
@@ -207,7 +207,7 @@ class Linkage {
 	if( ceProjects === -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
-	    promises.push( this.initOneProject( authData, entry )
+	    promises.push( this.initOneCEProject( authData, entry )
 			   .catch( e => console.log( authData.who, "Error.  Init Linkage failed.", e )) );
 	}
 	await Promise.all( promises );
@@ -260,7 +260,7 @@ class Linkage {
 	link.hostUtility     = typeof orig.hostUtility      === 'undefined' ? config.EMPTY : orig.hostUtility;   
 	link.flatSource      = source ? source : link.hostColumnId;
 
-	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOneRepo
+	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOne
 	if( populate ) {
 	    link.hostIssueName   = config.EMPTY;
 	    link.hostColumnId    = config.EMPTY;
