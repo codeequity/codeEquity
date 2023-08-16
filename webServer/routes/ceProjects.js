@@ -30,7 +30,9 @@ class CEProjects {
 
     findByRepo( host, org, repo ) {
 	let retVal = config.EMPTY;
-	let proj = this.cep.find( cep => cep.HostPlatform == host && cep.Organization == org && cep.HostParts.hostRepositories.includes( repo ));
+	let proj = this.cep.find( cep => cep.HostPlatform == host &&
+				  cep.Organization == org &&
+				  cep.HostParts.hostRepositories.reduce( (acc,cur) => acc || cur.repoName == repo, false ));
 	retVal = typeof proj === 'undefined' ? retVal : proj.CEProjectId;
 	return retVal;
     }
@@ -110,7 +112,7 @@ class CEProjects {
 	return retVal
     }
 
-    // XXX does not properly show repositories, nor projectIds.  lists, oi?
+    // XXX does not properly show repositories, nor projectIds (i.e. HostParts.hostRepositories)
     show( count ) {
 	console.log( "CEProjects Map contents" );
 	if( Object.keys( this.hp2cp ).length <= 0 ) { return ""; }

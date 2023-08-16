@@ -29,7 +29,8 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
     // console.log( links[0] );
     if( links.length < 2 ) { console.log(authData.who, "Resolve: early return, nothing to resolve." ); return gotSplit; }
     gotSplit = true;
-    
+
+    // XXX Still in use?
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
     // For case b, ensure ordering such that pd element (the current card-link) is acted on below - i.e. is not in position 0
     //             since the carded issue has already been acted on earlier.
@@ -37,6 +38,7 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 	console.log( "Ping" );
 	[links[0], links[1]] = [links[1], links[0]];
     }
+
     
     console.log( authData.who, "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.issueId, pd.issueNum );
 
@@ -320,6 +322,16 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
     const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
 
+    // XXX  No.  This 'fix' triggers when adding card to peq, then tricks resolve into ping-reordering links, which breaks validatePeq.
+    /*
+    // Occasionally, card.move arrives before card.create.  In this case, link exists and is correct.  Do not overwrite.
+    if( fromCard && links !== -1 && links.length == 1 ) {
+	console.log( authData.who, "PNP: fromCard, but move notice preceeded create notice.  Do not destroy link." );
+	pd.columnId = links[0].hostColumnId;
+	colName     = links[0].hostColumnName;
+    }
+    */
+    
     // Bail. ACCR peq issue trying to add a card. Links will have ACCR peq issue. There will not be links[1] unless during populate.  Can not modify ACCR.
     if( fromCard && links !== -1 && reserved.includes( links[0].hostColumnName )) {
 	console.log( authData.who, "WARNING.", links[0].hostColumnName, "is reserved, can not duplicate cards from here.  Removing excess card." );

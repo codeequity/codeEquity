@@ -150,6 +150,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     if( link === -1 || link.hostCardId == -1) {
 
 	// get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
+	// NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
 	let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
 
 	if( !utils.validField( card, "cardId" )) {

@@ -70,15 +70,15 @@ class Linkage {
 
 		let repos = [];
 		for( const repo of entry.HostParts.hostRepositories ) {
-		    if( !repos.includes( repo )) {
-			repos.push( repo );
+		    if( !repos.includes( repo.repoName )) {
+			repos.push( repo.repoName );
 
 			console.log( authData.who, "Refreshing", entry.CEProjectId, repo );
-			let fnParts = repo.split('/');
+			let fnParts = repo.repoName.split('/');
 			let rlinks = [];
 			
 			if( isOrg ) { await ceAuth.getAuths( authData, host, pms, org,  config.CE_ACTOR ); }
-			else        { await ceAuth.getAuths( authData, host, pms, repo, config.CE_ACTOR ); }
+			else        { await ceAuth.getAuths( authData, host, pms, repo.repoName, config.CE_ACTOR ); }
 			
 			// XXX this should not be here
 			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
@@ -96,7 +96,7 @@ class Linkage {
 			
 			blPromise = await blPromise;  // no val here, just ensures linkData is set
 
-			rlinks.forEach( function (link) { link.hostRepoName = repo;
+			rlinks.forEach( function (link) { link.hostRepoName = repo.repoName;
 							  this.addLinkage( authData, entry.CEProjectId, link, { populate: true } ); 
 							}, this);
 
@@ -113,8 +113,14 @@ class Linkage {
 		// No need to handle entry.HostParts.hostProjectIds.  hostRepositories have linked projects.  If not linked,
 		// ceProj will not interact.  If linked, then it is part of ceProj.
 		let hostProjs = [];
-		for( const repoName of entry.HostParts.hostRepositories ) {
-		    await ghV2.getProjectIds( authData, repoName, hostProjs, -1 );
+		for( const repo of entry.HostParts.hostRepositories ) {
+		    // XXX Right here, instead, get all peqs in repo, then foreach build project list
+		    await ghV2.getProjectIds( authData, repo.repoName, hostProjs, -1 );
+		    /*
+		    // initRepo is very infrequent, else would be better to store id with name in aws.ceProjects
+		    // let repoNodeId = await   XXX to ghUtils.getRepoId, need ownerId.   private repos are ok, so do not have it.
+		    let repoIssues = await ghV2.getIssues( authData, repo.repoId );
+		     */
 		}
 		
 		for( const proj of hostProjs ) {

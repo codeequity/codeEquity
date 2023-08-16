@@ -190,40 +190,7 @@ async function getLabels( authData, td ) {
 
 // Note, this is not returning full issues. 
 async function getIssues( authData, td ) {
-    let issues = [];
-
-    let query = `query($nodeId: ID!) {
-	node( id: $nodeId ) {
-        ... on Repository {
-            issues(first:100) {edges {node { id title number body state
-               assignees(first: 100) {edges {node {id login }}}
-               labels(first: 100) {edges {node {id name }}}
-              }}}}
-    }}`;
-    let variables = {"nodeId": td.GHRepoId };
-    query = JSON.stringify({ query, variables });
-
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
-	    let items = raw.data.node.issues.edges;
-	    assert( items.length <= 99, "Need to paginate getIssues." );
-	    for( let i = 0; i < items.length; i++ ) {
-		let iss = items[i].node;
-		let datum = {};
-		datum.id       = iss.id;
-		datum.number   = iss.number;
-		datum.body     = iss.body;
-		datum.state    = iss.state;
-		datum.title    = iss.title;
-		datum.assignees = iss.assignees.edges.map( edge => edge.node );
-		datum.labels    = iss.labels.edges.map( edge => edge.node );
-		
-		issues.push( datum );
-	    }
-	})
-	.catch( e => issues = ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
-
+    let issues = await ghV2.getIssues( authData, td.GHRepoId );
     return issues;
 }
 
@@ -239,8 +206,6 @@ async function getProjects( authData, td ) {
                  title id 
                  repositories(first:100) {
                     edges{node{ id name owner { login }}}}}}}
-
-
     }}}`;
     let variables = {"nodeId": td.GHRepoId };
     query = JSON.stringify({ query, variables });

@@ -141,7 +141,10 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	}
 	// 2 for addRelo (i.e. add, relo), 1 for move's
 	// unclaimed.  May be valid.
-	subTest = tu.checkEq( foundPActs, 9,           subTest, "Matched PActs with PEQs" );
+	// NOTE if card creation in GH happens too slowly, CE will create an unclaimed card, then handle it, which can cause +3 per (oh boy)
+	console.log( authData.who, "PAct count should be 6 + 3 * {0,1,2,3}.  Found", foundPActs );
+	let goodCount = foundPActs == 6 || foundPActs == 9 || foundPActs == 12 || foundPActs == 15;
+	subTest = tu.checkEq( goodCount,  true,        subTest, "Matched PActs with PEQs" );
 	subTest = tu.checkEq( foundGHSub, true,        subTest, "Pact sub gh" );
 	subTest = tu.checkEq( foundDSSub, true,        subTest, "Pact sub ds" );
 	subTest = tu.checkEq( foundBOSub, true,        subTest, "Pact sub bo" );

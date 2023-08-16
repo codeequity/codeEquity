@@ -294,6 +294,46 @@ async function getIssue( authData, issueId ) {
     
 }
 
+// Note, this is not returning full issues. 
+async function getIssues( authData, repoNodeId ) {
+    let issues = [];
+
+    let query = `query($nodeId: ID!) {
+	node( id: $nodeId ) {
+        ... on Repository {
+            issues(first:100) {edges {node { id title number body state
+               assignees(first: 100) {edges {node {id login }}}
+               labels(first: 100) {edges {node {id name }}}
+              }}}}
+    }}`;
+    let variables = {"nodeId": repoNodeId };
+    query = JSON.stringify({ query, variables });
+
+    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	.then( async (raw) => {
+	    if( raw.status != 200 ) { throw raw; }
+	    let items = raw.data.node.issues.edges;
+	    assert( items.length <= 99, "Need to paginate getIssues." );
+	    for( let i = 0; i < items.length; i++ ) {
+		let iss = items[i].node;
+		let datum = {};
+		datum.id       = iss.id;
+		datum.number   = iss.number;
+		datum.body     = iss.body;
+		datum.state    = iss.state;
+		datum.title    = iss.title;
+		datum.assignees = iss.assignees.edges.map( edge => edge.node );
+		datum.labels    = iss.labels.edges.map( edge => edge.node );
+		
+		issues.push( datum );
+	    }
+	})
+	.catch( e => issues = ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
+
+    return issues;
+}
+
+
 // More is available.. needed?.  Content id here, not project item id
 async function getFullIssue( authData, issueId ) {
     // console.log( authData.who, "Get Full Issue", issueId );
@@ -1775,6 +1815,7 @@ exports.getHostLinkLoc     = getHostLinkLoc;
 
 exports.createIssue        = createIssue;
 exports.getIssue           = getIssue;
+exports.getIssues          = getIssues;
 exports.getFullIssue       = getFullIssue;
 exports.updateIssue        = updateIssue;
 exports.updateTitle        = updateTitle;
