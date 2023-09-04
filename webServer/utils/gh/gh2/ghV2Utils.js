@@ -108,6 +108,22 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 	    let project = raw.data.node;
 	    let statusId = -1;
 	    
+
+	    // XXX This should not stand.
+	    let hostRepo = {};
+	    {
+		let hostItems = raw.data.node.items;
+		for( let i = 0; i < hostItems.edges.length; i++ ) {
+		    const issue   = hostItems.edges[i].node;
+		    if( issue.type == "ISSUE" ) {
+			hostRepo.hostRepoName = issue.content.repository.nameWithOwner;
+			hostRepo.hostRepoId   = issue.content.repository.id;
+			break;
+		    }
+		}
+	    }
+		
+
 	    // Loc data only needs to be built once.  Will be the same for every issue.
 	    // Note: can not build this from issues below, since we may have empty columns in board view.
 	    if( locData.length <= 0 ) {
@@ -130,8 +146,8 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 			    statusId = pfc.id;
 			    for( let k = 0; k < pfc.options.length; k++ ) {
 				let datum   = {};
-				datum.hostRepository   = config.EMPTY;
-				datum.hostRepositoryId = config.EMPTY;
+				datum.hostRepository   = hostRepo.hostRepoName;
+				datum.hostRepositoryId = hostRepo.hostRepoId;
 				datum.hostProjectName  = project.title;
 				datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
 				datum.hostColumnName   = pfc.options[k].name;
@@ -144,8 +160,8 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 		}
 		// Build "No Status" by hand, since it corresponds to a null entry
 		let datum   = {};
-		datum.hostRepository   = config.EMPTY;
-		datum.hostRepositoryId = config.EMPTY;
+		datum.hostRepository   = hostRepo.hostRepoName;
+		datum.hostRepositoryId = hostRepo.hostRepoId;
 		datum.hostProjectName  = project.title;
 		datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
 		datum.hostColumnName   = config.GH_NO_STATUS; 
@@ -178,6 +194,8 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 		    datum.hostProjectId   = locData[0].hostProjectId;    
 		    datum.hostColumnName  = status;
 		    datum.hostColumnId    = optionId;
+		    datum.hostRepoId      = hostRepo.hostRepoId;
+		    datum.hostRepoName    = hostRepo.hostRepoName;
 		    datum.allCards        = links.map( link => link.node.id );
 		    
 		    linkData.push( datum );

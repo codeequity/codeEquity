@@ -420,6 +420,16 @@ async function getPeqs( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function getHostPeqProjects( authData, query ) {
+    // console.log( "Get PEQy projects for ceProject:", query);
+
+    let shortName = "GetHostProjects";
+    let postData  = { "Endpoint": shortName, "query": query };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+    
+}
+
 async function getSummaries( authData, query ) {
     // console.log( "Get Summaries for a given repo:", query);
 
@@ -577,6 +587,7 @@ exports.getRaw       = getRaw;
 exports.getPRaws     = getPRaws;
 exports.getPActs     = getPActs;
 exports.getPeqs      = getPeqs;
+exports.getHostPeqProjects = getHostPeqProjects;
 exports.getSummaries = getSummaries;
 exports.getLinkage   = getLinkage;
 

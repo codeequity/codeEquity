@@ -1,7 +1,12 @@
 // CodeEquity data interface
 
-const AWS = require('aws-sdk');
-const bsdb = new AWS.DynamoDB.DocumentClient();
+// sdk version 2
+// const AWS = require('aws-sdk');
+// const bsdb = new AWS.DynamoDB.DocumentClient();
+// sdk version 3
+import { DynamoDB } from "@aws-sdk/client-dynamodb";
+const bsdb = new DynamoDB.DocumentClient();
+
 var assert = require('assert');
 
 // NOTE, as of 5/20 dynamo supports empty strings.  yay.  Save this for sets & etc.
@@ -87,6 +92,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "Depop")          { resultPromise = depopulate( rb.CEProjectId ); }
+    else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
     else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
     else {
@@ -1270,6 +1276,23 @@ async function depopulate( ceProjId ) {
     console.log( params );
     promise = bsdb.update( params ).promise();
     return promise.then(() => success( true ));
+}
+
+async function getHostProjs( query ) {
+    console.log( "Get host projects from", query.CEProjectId );
+
+    const peqsWrap = await getEntries( "CEPEQs", {"CEProjectId": query.CEProjectId } );
+    const peqs     = JSON.parse( peqsWrap.body );
+
+    if( peqsWrap.statusCode != 201 ) { return peqsWrap; }
+    // console.log( peqsWrap, peqs );
+    
+    let hprojs = [];
+    for( const peq of peqs ) {
+	if( !hprojs.includes( peq.HostProjectId ) ) { hprojs.push( peq.HostProjectId ); }
+    }
+
+    return success( hprojs );
 }
 
 // https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html

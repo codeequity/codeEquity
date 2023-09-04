@@ -110,32 +110,45 @@ class Linkage {
 		// mainly to get pat
 		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
 
+		// XXX no need
 		// No need to handle entry.HostParts.hostProjectIds.  hostRepositories have linked projects.  If not linked,
 		// ceProj will not interact.  If linked, then it is part of ceProj.
+		/*
 		let hostProjs = [];
 		for( const repo of entry.HostParts.hostRepositories ) {
-		    // XXX Right here, instead, get all peqs in repo, then foreach build project list
-		    await ghV2.getProjectIds( authData, repo.repoName, hostProjs, -1 );
-		    /*
+		    // await ghV2.getProjectIds( authData, repo.repoName, hostProjs, -1 );
+
+		    // XXX This will not scale... but is there a better fool-proof way to acquire ce projects than this after server gap, restart?
+		    //     link/unlink is ephemeral view only, but issue in project is meaningful - rate of change should be modest.
+		    //     hmm... aws has ceProj, hostProj for every peq. Better choice - smaller, faster, can be done upstream.
+		    // Get all peqs in repo, then foreach build project list
 		    // initRepo is very infrequent, else would be better to store id with name in aws.ceProjects
-		    // let repoNodeId = await   XXX to ghUtils.getRepoId, need ownerId.   private repos are ok, so do not have it.
-		    let repoIssues = await ghV2.getIssues( authData, repo.repoId );
-		     */
+		    // let repoIssues = await ghV2.getIssues( authData, repo.repoId );
 		}
+		*/
 		
-		for( const proj of hostProjs ) {
-		    const pid = proj.hostProjectId;
-		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, proj.hostProjectId );
+		let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: entry.CEProjectId } );
+		if( hostProjs == -1 ) { hostProjs = []; }
+		console.log( "HOST PROJs", entry.CEProjectId, hostProjs );
+		
+		
+		for( const pid of hostProjs ) {
+		    
+		    // XXX build proj
+		    //     challenge: link is for issue.  proj may contain issues from multiple repos.  Code below is too narrow.
+		    //                does anything in link require repo:project 1:1 besides here?  if not, mod hostLinkLoc?  loc contains mapping...
+		    //                probably not, either way, this would not be the place to enforce.  Would be in addLinkage instead.
+		    
+		    
+		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, pid );
 		    let rLinks = [];
 		    let rLocs  = [];
 		    
-		    await ghV2.getHostLinkLoc( authData, proj.hostProjectId, rLocs, rLinks, -1 )
+		    await ghV2.getHostLinkLoc( authData, pid, rLocs, rLinks, -1 )
 			.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
 
-		    // console.log( authData.who, "Populate Linkage", proj.hostProjectId );
-		    rLinks.forEach( function (link) { link.hostRepoName = proj.hostRepoName;
-						      link.hostRepoId   = proj.hostRepoId;
-						      this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
+		    // console.log( authData.who, "Populate Linkage", pid );
+		    rLinks.forEach( function (link) { this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
 						    }, this);
 		    
 		    // console.log( authData.who, "LINKAGE: Locs",  rLocs );
@@ -143,8 +156,6 @@ class Linkage {
 		    for( var loc of rLocs ) {
 			loc.ceProjectId = entry.CEProjectId;
 			loc.active = "true";
-			loc.hostRepository   = proj.hostRepoName;
-			loc.hostRepositoryId = proj.hostRepoId;
 			this.addLoc( authData, loc, false ); 
 		    }
 		    
@@ -639,8 +650,8 @@ class Linkage {
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
 	    loc.active = "true";
-	    loc.hostRepository = hostRepoName;
-	    loc.hostRepositoryId = hostRepoId;
+	    // loc.hostRepository = hostRepoName;
+	    // loc.hostRepositoryId = hostRepoId;
 	    // console.log( "linkage:addLoc", loc );
 	    promises.push( this.addLoc( authData, loc, true ) );
 	}

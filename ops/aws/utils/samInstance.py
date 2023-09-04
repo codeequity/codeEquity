@@ -11,6 +11,9 @@ from subprocess import call, check_output, Popen, PIPE
 import boto3
 from botocore.exceptions import ClientError
 
+# by hand examples
+# aws cloudformation describe-stack-resource --stack-name codeEquityS3 --logical-resource-id CodeEquityBucket
+
 
 # AWS Serverless Application Model, or SAM
 class samInstance():
