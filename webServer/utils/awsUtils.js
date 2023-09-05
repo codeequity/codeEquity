@@ -92,7 +92,7 @@ async function wrappedPostAWS( authData, shortName, postData ) {
     
     if( response['status'] == 201 ) {
 	let body = await response.json();
-	// console.log("Good status.  Body:", body);
+	console.log("Good status.  Body:", body);
 	return body;
     }
     else if( response['status'] == 204 ) {

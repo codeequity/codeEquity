@@ -5,9 +5,10 @@
 // const bsdb = new AWS.DynamoDB.DocumentClient();
 // sdk version 3
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
-const bsdb = new DynamoDB.DocumentClient();
+const bsdb = new DynamoDB();
 
-var assert = require('assert');
+// var assert = require('assert');
+import {strict as assert} from "node:assert";
 
 // NOTE, as of 5/20 dynamo supports empty strings.  yay.  Save this for sets & etc.
 const EMPTY = "---EMPTY---";  
@@ -45,8 +46,9 @@ const BAD_SEMANTICS = {
 // NOTE.  Dynamo scan limit is PRE-FILTER..!  So basically every .scan needs to be paginated, unless the table is
 //        not expected to carry more than 100 items.  
 
-exports.handler = (event, context, callback) => {
-
+// exports.handler = (event, context, callback) => {
+export function handler( event, context, callback) {
+    
     console.log( 'awsDynamo Handler start' );
     
     if (!event.requestContext.authorizer) {
@@ -108,7 +110,7 @@ exports.handler = (event, context, callback) => {
         callback( null, errorResponse(err.statusCode, err.message, context.awsRequestId));
     });
 
-};
+}
 
 
 function sleep(ms) {

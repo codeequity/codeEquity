@@ -51,8 +51,10 @@ class CEProjects {
     async add( authData, newCEP ) {
 	let cpid = newCEP.CEProjectId;
 	let host = newCEP.HostPlatform;
-	let pms  = newCEP.ProjectManagementSys;
+	let pms  = newCEP.ProjectMgmtSys;
 	let org  = newCEP.Organization;
+
+	console.log( "Working on", newCEP, cpid, host, pms, org );
 
 	let awsLinksP = awsUtils.getLinkage( authData, { "CEProjectId": cpid } );
 	let awsLocsP  = awsUtils.getProjectStatus( authData, cpid );
