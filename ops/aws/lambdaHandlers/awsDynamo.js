@@ -118,6 +118,8 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/*
+// sdk v2
 // Note: .Count and .Items do not show up here, as they do in bsdb.scan
 function paginatedScan( params ) {
 
@@ -141,6 +143,65 @@ function paginatedScan( params ) {
 
 	}
     });
+}
+*/
+
+/*
+// v3 example
+(async () => {
+
+  const getMembers = async (_key: any) => {
+
+    const scanCommand = new ScanCommand({
+      TableName: 'Members',
+      Limit: 10,
+      ExclusiveStartKey: _key,
+    });
+
+    const results = await dynamoClient.send(scanCommand);
+
+    // do stuff
+
+    return results.LastEvaluatedKey;
+  }
+
+  let key;
+  do {
+    key = await getMembers(key);
+  }
+  while (typeof key !== "undefined");
+
+})();
+*/
+
+// Note: .Count and .Items do not show up here, as they do in bsdb.scan
+function paginatedScan( params ) {
+
+    var result = [];
+    
+    // adding 1 extra items due to a corner case bug in DynamoDB
+    params.Limit = params.Limit + 1;
+    
+    let cmd = new ScanCommand( params );
+
+    async function scanit( scanCmd ) {
+	
+	return bsdb.send( scanCmd )
+	    .then((data) => {
+		console.log( "Interim", data );
+		result = result.concat( data.Items );
+		
+		if (typeof data.LastEvaluatedKey === "undefined") {
+		    return result;
+		} else {
+		    params.ExclusiveStartKey = data.LastEvaluatedKey;
+		    cmd = new ScanCommand( params );			
+		    scanit( cmd );
+		}
+	    });
+    }
+    
+    return scanit( cmd );
 }
 
 
