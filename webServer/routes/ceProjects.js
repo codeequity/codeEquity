@@ -54,7 +54,7 @@ class CEProjects {
 	let pms  = newCEP.ProjectMgmtSys;
 	let org  = newCEP.Organization;
 
-	console.log( "Working on", newCEP, cpid, host, pms, org );
+	// console.log( "Working on", newCEP, cpid, host, pms, org );
 
 	let awsLinksP = awsUtils.getLinkage( authData, { "CEProjectId": cpid } );
 	let awsLocsP  = awsUtils.getProjectStatus( authData, cpid );

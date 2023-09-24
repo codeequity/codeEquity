@@ -4,8 +4,19 @@
 // const AWS = require('aws-sdk');
 // const bsdb = new AWS.DynamoDB.DocumentClient();
 // sdk version 3
+/*
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import { ScanCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 const bsdb = new DynamoDB();
+*/
+
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { ScanCommand, PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+
+const client = new DynamoDBClient();
+const bsdb  = DynamoDBDocumentClient.from( client, { marshallOptions: { removeUndefinedValues: true } } );
+
+
 
 // var assert = require('assert');
 import {strict as assert} from "node:assert";
@@ -179,8 +190,7 @@ function paginatedScan( params ) {
 
     var result = [];
     
-    // adding 1 extra items due to a corner case bug in DynamoDB
-    params.Limit = params.Limit + 1;
+    params.Limit = 99;
     
     let cmd = new ScanCommand( params );
 
@@ -188,7 +198,6 @@ function paginatedScan( params ) {
 	
 	return bsdb.send( scanCmd )
 	    .then((data) => {
-		console.log( "Interim", data );
 		result = result.concat( data.Items );
 		
 		if (typeof data.LastEvaluatedKey === "undefined") {
@@ -196,7 +205,7 @@ function paginatedScan( params ) {
 		} else {
 		    params.ExclusiveStartKey = data.LastEvaluatedKey;
 		    cmd = new ScanCommand( params );			
-		    scanit( cmd );
+		    return scanit( cmd );
 		}
 	    });
     }
@@ -532,7 +541,7 @@ async function getCEUID( hostUser ) {
 async function putPerson( newPerson ) {
     // console.log('Put Person!', newPerson.firstName );
 
-    const paramsPP = {
+    const params = {
 	TableName: 'CEPeople',
 	Item: {
 	    "CEUserId": newPerson.id,
@@ -544,9 +553,9 @@ async function putPerson( newPerson ) {
 	    "ImagePng": newPerson.imagePng            
 	}
     };
-    
-    let personPromise = bsdb.put( paramsPP ).promise();
-    return personPromise.then(() => success( true ));
+    const putCmd = new PutCommand( params );
+
+    return bsdb.send( putCmd ).then(() => success( true )); 
 }
 
 async function getLinkage( ceProjectId ) {
@@ -573,9 +582,9 @@ async function writeLinkHelp( summary ) {
         TableName: 'CELinkage',
 	Item:      summary
     };
+    const putCmd = new PutCommand( params );
 
-    let pPromise = bsdb.put( params ).promise();
-    return pPromise.then(() => success( summary.CELinkageId ));
+    return bsdb.send( putCmd ).then(() => success( summary.CELinkageId ));
 }
 
 async function putLinkage( summary ) {
@@ -707,10 +716,10 @@ async function putPeq( newPEQ ) {
 	    "Active":         newPEQ.Active
 	}
     };
+    const putCmd = new PutCommand( params );
 
-    let recPromise = bsdb.put( params ).promise();
-    let retVal = recPromise.then(() => success( newPEQ.PEQId ));
-    retVal = await retVal;
+    let retVal = bsdb.send( putCmd ).then(() => success( newPEQ.PEQId ));
+    retVal     = await retVal;
 
     // No need to wait for unset lock
     setPeqLock( newPEQ.PEQId, false );
@@ -1164,6 +1173,8 @@ async function putPSum( psum ) {
     if( skip ) { return success( true ); }
     // XXX END
 
+    console.log( "PEQSummary put", psum.id.toString());
+
     const paramsP = {
         TableName: 'CEPEQSummary',
 	Item: {
@@ -1175,11 +1186,9 @@ async function putPSum( psum ) {
 	    "Allocations":  psum.allocations
 	}
     };
+    const putCmd = new PutCommand( paramsP );
 
-    console.log( "PEQSummary put", psum.id.toString());
-
-    let promise = bsdb.put( paramsP ).promise();
-    return promise.then(() => success( true ));
+    return bsdb.send( putCmd ).then(() => success( true ));
 }
 
 
@@ -1249,8 +1258,9 @@ async function putHostA( newHostAcct, update, pat ) {
 	};
 	
 	console.log( "HostAcct put repos");
-	let hostaPromise = bsdb.put( params ).promise();
-	await hostaPromise;
+	const putCmd = new PutCommand( params );
+	
+	await bsdb.send( putCmd ); 
     }
 
 
