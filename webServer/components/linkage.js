@@ -400,8 +400,8 @@ class Linkage {
     // No match on utility slot.  yet?
     // note: ids = -1 here is simply used to turn on/off match.  does not grow beyond this func.
     getLocs( authData, query ) {
-	// console.log( authData.who, "get Locs", query );
-	// this.showLocs();
+	console.log( authData.who, "get Locs", query );
+	this.showLocs();
 	    
 	if( typeof query.ceProjId === 'undefined' ) {
 	    console.log( authData.who, "Error.  ceProjectId was not defined in Locs query." );
@@ -424,7 +424,7 @@ class Linkage {
 	    for( const [_, loc] of Object.entries( clocs ) ) {            
 		let match = true;
 		
-		match = pid == -1             ? match : match && (loc.hostProjectId    == pid);
+		match = pid == -1                ? match : match && (loc.hostProjectId    == pid);
 		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
 		match = repoId == -1             ? match : match && (loc.hostRepositoryId == repoId);
 		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
@@ -650,8 +650,12 @@ class Linkage {
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
 	    loc.active = "true";
-	    // loc.hostRepository = hostRepoName;
-	    // loc.hostRepositoryId = hostRepoId;
+	    // first time project link should see this as config.empty.  but after marshalling mods, need to force it
+	    if( typeof loc.hostRepository === 'undefined' || typeof loc.hostRepositoryId === 'undefined' ) {
+		loc.hostRepository   = hostRepoName;
+		loc.hostRepositoryId = hostRepoId;
+	    }
+
 	    // console.log( "linkage:addLoc", loc );
 	    promises.push( this.addLoc( authData, loc, true ) );
 	}
