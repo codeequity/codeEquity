@@ -400,8 +400,8 @@ class Linkage {
     // No match on utility slot.  yet?
     // note: ids = -1 here is simply used to turn on/off match.  does not grow beyond this func.
     getLocs( authData, query ) {
-	console.log( authData.who, "get Locs", query );
-	this.showLocs();
+	// console.log( authData.who, "get Locs", query );
+	// this.showLocs();
 	    
 	if( typeof query.ceProjId === 'undefined' ) {
 	    console.log( authData.who, "Error.  ceProjectId was not defined in Locs query." );
@@ -523,18 +523,19 @@ class Linkage {
 	return retVal;
     }
 
+    // set .active flag to false.  getLocs requires active true, but showLocs may show inactive during debugging.
     removeLocs({ authData, ceProjId, pid, colId }) {
 	if( !authData ) { console.log( authData.who, "missing authData" ); return false; }
 
 
-	if( colId )       { console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); }    // one delete
-	else if( pid ) { console.log( authData.who, "Remove locs for pid:", ceProjId, pid ); } // many deletes
+	if( colId )    { console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); } // one delete
+	else if( pid ) { console.log( authData.who, "Remove locs for pid:", ceProjId, pid ); }    // many deletes
 
 
 	let havePID = typeof pid !== 'undefined';
 	let haveCID = typeof colId  !== 'undefined';
 	let cpid    = "";
-	
+
 	// Easy cases, already do not exist
 	// No need to check for empty ceProjectIds, since there is nothing to set inactive.
 	if( (!havePID && !haveCID) ||                                                            // nothing specified
@@ -574,19 +575,21 @@ class Linkage {
 	// No need to wait.  Pass a list here, so no-one else need care about internals.
 	if( cpid != "" ) {
 	    let locs = [];
-	    for( const [_, cloc] of Object.entries( this.locs ) ) {
-		for( const [_, loc] of Object.entries( cloc )) {
-
-		    if( loc.ceProjectId == cpid ) {
-			let aloc = {};
-			aloc.hostProjectId   = loc.hostProjectId;
-			aloc.hostProjectName = loc.hostProjectName;
-			aloc.hostColumnId    = loc.hostColumnId;
-			aloc.hostColumnName  = loc.hostColumnName;
-			aloc.hostUtility     = loc.hostUtility;
-			aloc.active          = loc.active;
-
-			locs.push( aloc );
+	    for( const [_, cplinks] of Object.entries( this.locs ) ) {   // over ceProjs
+		for( const [_, cloc] of Object.entries( cplinks ) ) {    // over hostProjs
+		    for( const [_, loc] of Object.entries( cloc )) {     // over cols
+			
+			if( loc.ceProjectId == cpid ) {
+			    let aloc = {};
+			    aloc.hostProjectId   = loc.hostProjectId;
+			    aloc.hostProjectName = loc.hostProjectName;
+			    aloc.hostColumnId    = loc.hostColumnId;
+			    aloc.hostColumnName  = loc.hostColumnName;
+			    aloc.hostUtility     = loc.hostUtility;
+			    aloc.active          = loc.active;
+			    
+			    locs.push( aloc );
+			}
 		    }
 		}
 	    }
@@ -618,7 +621,8 @@ class Linkage {
 
 	await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
 	await ceProjects.init( authData );
-	
+
+	// At this point, aws does not associate cPID with unlinked hPID, and internal ceProjects does not register for hPID
 	this.removeLocs( { authData: authData, ceProjId: ceProjId, pid: hostProjectId } );
 	
 	return true;

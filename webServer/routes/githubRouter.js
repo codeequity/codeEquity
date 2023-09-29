@@ -385,6 +385,12 @@ function makePendingNotice( rb, action ) {
 
     let pn = {};
     if( action == "edited" ) {
+ 	// ghost creeps in sometimes, ignore it.  Seen during issue:close, card:move
+	if( rb.sender.login == config.GH_GHOST ) {
+	    console.log( "Boo!  GH ghost notification, do not create notice.", rb.projects_v2_item.project_node_id, rb.projects_v2_item.content_node_id );
+	    return {id: config.EMPTY, hpid: config.EMPTY, org: config.EMPTY, mod: config.EMPTY};
+	}
+
 	assert( typeof rb.changes !== 'undefined' && typeof rb.changes.field_value !== 'undefined' && typeof rb.changes.field_value.field_type !== 'undefined' );
 	assert( typeof rb.organization !== 'undefined' );
 	pn.mod  = rb.changes.field_value.field_type;

@@ -346,7 +346,7 @@ async function getIssues( authData, repoNodeId ) {
 		issues.push( datum );
 	    }
 	})
-	.catch( e => issues = ghUtils.errorHandler( "getIssues", e, getIssues, authData, td )); 
+	.catch( e => issues = ghUtils.errorHandler( "getIssues", e, getIssues, authData, repoNodeId )); 
 
     return issues;
 }
