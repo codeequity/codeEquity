@@ -17,7 +17,7 @@ async function postGH( PAT, url, postData ) {
     if( utils.TEST_EH ) {
 	// Don't bother with testing only queries
 	if( !postData.includes( "mutation" ) && Math.random() < utils.TEST_EH_PCT ) {
-	    console.log( "Error.  Fake internal server error for GQL.", postData );
+	    console.log( "Err.  Fake internal server error for GQL.", postData );
 	    return utils.FAKE_ISE;
 	}
     }
@@ -81,7 +81,7 @@ async function errorHandler( source, e, func, ...params ) {
 	    console.log( "Retrying", source, handlerRetries[source].count );
 	    handlerRetries[source].count++;
 	    handlerRetries[source].stamp = Date.now();
-	    console.log( "Error Handler Status:", handlerRetries );
+	    console.log( "Err Handler Status:", handlerRetries );
 	    return await func( ...params );
 	}
 	else { console.log( "Error.  Retries exhausted, command failed.  Please try again later." ); }

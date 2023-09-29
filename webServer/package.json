@@ -10,7 +10,7 @@
         "cleanFlutter": "node ./tests/cleanLoad.js",
         "cleanLoad": "node ./tests/cleanLoad.js",
         "testSetup": "node ./tests/testSetup.js",
-        "testDelete": "node ./tests/testDelete.js",
+        "testDelete": "node ./tests/gh/gh2/testDelete.js",
 	"testSave": "node ./tests/testSaveDynamo.js" 
     },
     "dependencies": {

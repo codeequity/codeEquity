@@ -18,7 +18,7 @@ const FAKE_ISE = {
 
 // UNIT TESTING ONLY!!
 async function failHere( source ) {
-    console.log( "Error.  Fake internal server error for", source );
+    console.log( "Err.  Fake internal server error for", source );
     assert( false );
 }
 

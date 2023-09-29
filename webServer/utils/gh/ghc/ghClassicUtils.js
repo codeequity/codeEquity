@@ -4,7 +4,6 @@ const config = require( '../../../config' );
 
 const utils     = require( '../../ceUtils' );
 const ghUtils   = require( '../ghUtils' );
-const ghcDUtils = require( './ghcDataUtils' );
 
 /*
 https://docs.github.com/en/free-pro-team@latest/graphql/reference/objects#repository

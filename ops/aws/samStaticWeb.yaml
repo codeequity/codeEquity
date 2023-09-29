@@ -10,7 +10,7 @@ Resources:
     Properties:
       # AWS CloudFormation resource to create an S3 bucket
       BucketName: codeequity.codeequity.net
-      AccessControl: PublicRead
+      # AccessControl: PublicRead
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         IgnorePublicAcls: true

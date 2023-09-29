@@ -36,7 +36,7 @@ class Linkage {
 
 
     // For each ceProject
-    async initOneProject( authData, entry ) {
+    async initOneCEProject( authData, entry ) {
 
 	let host  = utils.validField( entry, "HostPlatform" )       ? entry.HostPlatform                    : "";
 	let org   = utils.validField( entry, "Organization" )       ? entry.Organization                    : "";
@@ -70,15 +70,15 @@ class Linkage {
 
 		let repos = [];
 		for( const repo of entry.HostParts.hostRepositories ) {
-		    if( !repos.includes( repo )) {
-			repos.push( repo );
+		    if( !repos.includes( repo.repoName )) {
+			repos.push( repo.repoName );
 
 			console.log( authData.who, "Refreshing", entry.CEProjectId, repo );
-			let fnParts = repo.split('/');
+			let fnParts = repo.repoName.split('/');
 			let rlinks = [];
 			
 			if( isOrg ) { await ceAuth.getAuths( authData, host, pms, org,  config.CE_ACTOR ); }
-			else        { await ceAuth.getAuths( authData, host, pms, repo, config.CE_ACTOR ); }
+			else        { await ceAuth.getAuths( authData, host, pms, repo.repoName, config.CE_ACTOR ); }
 			
 			// XXX this should not be here
 			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
@@ -96,7 +96,7 @@ class Linkage {
 			
 			blPromise = await blPromise;  // no val here, just ensures linkData is set
 
-			rlinks.forEach( function (link) { link.hostRepoName = repo;
+			rlinks.forEach( function (link) { link.hostRepoName = repo.repoName;
 							  this.addLinkage( authData, entry.CEProjectId, link, { populate: true } ); 
 							}, this);
 
@@ -110,26 +110,45 @@ class Linkage {
 		// mainly to get pat
 		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
 
+		// XXX no need
 		// No need to handle entry.HostParts.hostProjectIds.  hostRepositories have linked projects.  If not linked,
 		// ceProj will not interact.  If linked, then it is part of ceProj.
+		/*
 		let hostProjs = [];
-		for( const repoName of entry.HostParts.hostRepositories ) {
-		    await ghV2.getProjectIds( authData, repoName, hostProjs, -1 );
+		for( const repo of entry.HostParts.hostRepositories ) {
+		    // await ghV2.getProjectIds( authData, repo.repoName, hostProjs, -1 );
+
+		    // XXX This will not scale... but is there a better fool-proof way to acquire ce projects than this after server gap, restart?
+		    //     link/unlink is ephemeral view only, but issue in project is meaningful - rate of change should be modest.
+		    //     hmm... aws has ceProj, hostProj for every peq. Better choice - smaller, faster, can be done upstream.
+		    // Get all peqs in repo, then foreach build project list
+		    // initRepo is very infrequent, else would be better to store id with name in aws.ceProjects
+		    // let repoIssues = await ghV2.getIssues( authData, repo.repoId );
 		}
+		*/
 		
-		for( const proj of hostProjs ) {
-		    const pid = proj.hostProjectId;
-		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, proj.hostProjectId );
+		let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: entry.CEProjectId } );
+		if( hostProjs == -1 ) { hostProjs = []; }
+		console.log( "HOST PROJs", entry.CEProjectId, hostProjs );
+		
+		
+		for( const pid of hostProjs ) {
+		    
+		    // XXX build proj
+		    //     challenge: link is for issue.  proj may contain issues from multiple repos.  Code below is too narrow.
+		    //                does anything in link require repo:project 1:1 besides here?  if not, mod hostLinkLoc?  loc contains mapping...
+		    //                probably not, either way, this would not be the place to enforce.  Would be in addLinkage instead.
+		    
+		    
+		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, pid );
 		    let rLinks = [];
 		    let rLocs  = [];
 		    
-		    await ghV2.getHostLinkLoc( authData, proj.hostProjectId, rLocs, rLinks, -1 )
+		    await ghV2.getHostLinkLoc( authData, pid, rLocs, rLinks, -1 )
 			.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
 
-		    // console.log( authData.who, "Populate Linkage", proj.hostProjectId );
-		    rLinks.forEach( function (link) { link.hostRepoName = proj.hostRepoName;
-						      link.hostRepoId   = proj.hostRepoId;
-						      this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
+		    // console.log( authData.who, "Populate Linkage", pid );
+		    rLinks.forEach( function (link) { this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
 						    }, this);
 		    
 		    // console.log( authData.who, "LINKAGE: Locs",  rLocs );
@@ -137,8 +156,6 @@ class Linkage {
 		    for( var loc of rLocs ) {
 			loc.ceProjectId = entry.CEProjectId;
 			loc.active = "true";
-			loc.hostRepository   = proj.hostRepoName;
-			loc.hostRepositoryId = proj.hostRepoId;
 			this.addLoc( authData, loc, false ); 
 		    }
 		    
@@ -207,7 +224,7 @@ class Linkage {
 	if( ceProjects === -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
-	    promises.push( this.initOneProject( authData, entry )
+	    promises.push( this.initOneCEProject( authData, entry )
 			   .catch( e => console.log( authData.who, "Error.  Init Linkage failed.", e )) );
 	}
 	await Promise.all( promises );
@@ -260,7 +277,7 @@ class Linkage {
 	link.hostUtility     = typeof orig.hostUtility      === 'undefined' ? config.EMPTY : orig.hostUtility;   
 	link.flatSource      = source ? source : link.hostColumnId;
 
-	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOneRepo
+	// Do not track some information during initial populate.  If these are for peqs, they get filled in later during initOne
 	if( populate ) {
 	    link.hostIssueName   = config.EMPTY;
 	    link.hostColumnId    = config.EMPTY;
@@ -383,8 +400,8 @@ class Linkage {
     // No match on utility slot.  yet?
     // note: ids = -1 here is simply used to turn on/off match.  does not grow beyond this func.
     getLocs( authData, query ) {
-	// console.log( authData.who, "get Locs", query );
-	// this.showLocs();
+	console.log( authData.who, "get Locs", query );
+	this.showLocs();
 	    
 	if( typeof query.ceProjId === 'undefined' ) {
 	    console.log( authData.who, "Error.  ceProjectId was not defined in Locs query." );
@@ -407,7 +424,7 @@ class Linkage {
 	    for( const [_, loc] of Object.entries( clocs ) ) {            
 		let match = true;
 		
-		match = pid == -1             ? match : match && (loc.hostProjectId    == pid);
+		match = pid == -1                ? match : match && (loc.hostProjectId    == pid);
 		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
 		match = repoId == -1             ? match : match && (loc.hostRepositoryId == repoId);
 		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
@@ -633,8 +650,12 @@ class Linkage {
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
 	    loc.active = "true";
-	    loc.hostRepository = hostRepoName;
-	    loc.hostRepositoryId = hostRepoId;
+	    // first time project link should see this as config.empty.  but after marshalling mods, need to force it
+	    if( typeof loc.hostRepository === 'undefined' || typeof loc.hostRepositoryId === 'undefined' ) {
+		loc.hostRepository   = hostRepoName;
+		loc.hostRepositoryId = hostRepoId;
+	    }
+
 	    // console.log( "linkage:addLoc", loc );
 	    promises.push( this.addLoc( authData, loc, true ) );
 	}

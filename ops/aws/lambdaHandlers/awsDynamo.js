@@ -1,8 +1,19 @@
 // CodeEquity data interface
 
-const AWS = require('aws-sdk');
-const bsdb = new AWS.DynamoDB.DocumentClient();
-var assert = require('assert');
+// sdk version 2
+// const AWS = require('aws-sdk');
+// const bsdb = new AWS.DynamoDB.DocumentClient();
+
+// sdk version 3
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { TransactWriteCommand, ScanCommand, DeleteCommand, PutCommand, UpdateCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+
+const client = new DynamoDBClient();
+const bsdb  = DynamoDBDocumentClient.from( client, { marshallOptions: { removeUndefinedValues: true } } );
+
+
+// var assert = require('assert');
+import {strict as assert} from "node:assert";
 
 // NOTE, as of 5/20 dynamo supports empty strings.  yay.  Save this for sets & etc.
 const EMPTY = "---EMPTY---";  
@@ -40,8 +51,9 @@ const BAD_SEMANTICS = {
 // NOTE.  Dynamo scan limit is PRE-FILTER..!  So basically every .scan needs to be paginated, unless the table is
 //        not expected to carry more than 100 items.  
 
-exports.handler = (event, context, callback) => {
-
+// exports.handler = (event, context, callback) => {
+export function handler( event, context, callback) {
+    
     console.log( 'awsDynamo Handler start' );
     
     if (!event.requestContext.authorizer) {
@@ -87,6 +99,7 @@ exports.handler = (event, context, callback) => {
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "Depop")          { resultPromise = depopulate( rb.CEProjectId ); }
+    else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
     else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
     else {
@@ -102,7 +115,7 @@ exports.handler = (event, context, callback) => {
         callback( null, errorResponse(err.statusCode, err.message, context.awsRequestId));
     });
 
-};
+}
 
 
 function sleep(ms) {
@@ -110,29 +123,33 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+
 // Note: .Count and .Items do not show up here, as they do in bsdb.scan
 function paginatedScan( params ) {
 
-    return new Promise((resolve, reject) => {
-	var result = [];
+    var result = [];
+    
+    params.Limit = 99;
+    
+    let cmd = new ScanCommand( params );
+
+    async function scanit( scanCmd ) {
 	
-	// adding 1 extra items due to a corner case bug in DynamoDB
-	params.Limit = params.Limit + 1;
-	bsdb.scan( params, onScan );
-
-	function onScan(err, data) {
-	    if (err) { return reject(err); }
-	    result = result.concat(data.Items);
-	    if (typeof data.LastEvaluatedKey === "undefined") {
-		return resolve(result);
-	    } else {
-		params.ExclusiveStartKey = data.LastEvaluatedKey;
-		//console.log( "scan more, last: ", data.LastEvaluatedKey );
-		bsdb.scan( params, onScan );
-	    }
-
-	}
-    });
+	return bsdb.send( scanCmd )
+	    .then((data) => {
+		result = result.concat( data.Items );
+		
+		if (typeof data.LastEvaluatedKey === "undefined") {
+		    return result;
+		} else {
+		    params.ExclusiveStartKey = data.LastEvaluatedKey;
+		    cmd = new ScanCommand( params );			
+		    return scanit( cmd );
+		}
+	    });
+    }
+    
+    return scanit( cmd );
 }
 
 
@@ -180,8 +197,9 @@ async function setPeqLock( peqId, lockId ) {
     params.UpdateExpression           = 'set LockId = :lockVal';
     params.ExpressionAttributeValues  = {":lockVal": lockId };
 
-    let promise = bsdb.update( params ).promise();
-    return promise.then(() => true );
+    const updateCmd = new UpdateCommand( params );
+    return bsdb.send( updateCmd ).then(() => true);
+
 }
 
 // Three phase lock to avoid multiple parties reading 'false', setting 'true' at same time, then both proceeding 
@@ -257,14 +275,14 @@ function buildConjScanParams( obj, props ) {
 async function setLock( pactId, lockVal ) {
     console.log( "Locking", pactId, lockVal );
 
-    const paramsSL = {
+    const params = {
 	TableName: 'CEPEQActions',
 	Key: {"PEQActionId": pactId },
 	UpdateExpression: 'set Locked = :lockVal',
 	ExpressionAttributeValues: { ':lockVal': lockVal }};
-    
-    let lockPromise = bsdb.update( paramsSL ).promise();
-    return lockPromise.then(() => success( true ));
+
+    const updateCmd = new UpdateCommand( params );
+    return bsdb.send( updateCmd ).then(() => success( true ));
 }
 
 
@@ -411,7 +429,8 @@ async function removeEntries( tableName, ids ) {
 	    Key: keyPhrase
 	};
 
-	promises.push( bsdb.delete( params ).promise() );
+	const deleteCmd = new DeleteCommand( params );
+	promises.push( bsdb.send( deleteCmd ));
     }
 
     return await Promise.all( promises )
@@ -463,7 +482,7 @@ async function getCEUID( hostUser ) {
 async function putPerson( newPerson ) {
     // console.log('Put Person!', newPerson.firstName );
 
-    const paramsPP = {
+    const params = {
 	TableName: 'CEPeople',
 	Item: {
 	    "CEUserId": newPerson.id,
@@ -475,9 +494,9 @@ async function putPerson( newPerson ) {
 	    "ImagePng": newPerson.imagePng            
 	}
     };
-    
-    let personPromise = bsdb.put( paramsPP ).promise();
-    return personPromise.then(() => success( true ));
+    const putCmd = new PutCommand( params );
+
+    return bsdb.send( putCmd ).then(() => success( true )); 
 }
 
 async function getLinkage( ceProjectId ) {
@@ -504,9 +523,9 @@ async function writeLinkHelp( summary ) {
         TableName: 'CELinkage',
 	Item:      summary
     };
+    const putCmd = new PutCommand( params );
 
-    let pPromise = bsdb.put( params ).promise();
-    return pPromise.then(() => success( summary.CELinkageId ));
+    return bsdb.send( putCmd ).then(() => success( summary.CELinkageId ));
 }
 
 async function putLinkage( summary ) {
@@ -574,21 +593,20 @@ async function updateLinkage( newLoc ) {
 async function checkSetHostPop( ceProjId, setVal ) {
 
     let params = { TableName: 'CEProjects' };
-    let promise = null;
 
     if( setVal == "true" ) {
 	params.Key                       = { "CEProjectId": ceProjId };
 	params.UpdateExpression          = 'set Populated = :lockVal';
 	params.ExpressionAttributeValues = { ':lockVal': setVal };
 
-	promise = bsdb.update( params ).promise();
-	return promise.then(() => success( true ));
+	const updateCmd = new UpdateCommand( params );
+	return bsdb.send( updateCmd ).then(() => success( true ));
     }
     else {
 	params.FilterExpression          = 'CEProjectId = :pid';
 	params.ExpressionAttributeValues = { ':pid': ceProjId };
 
-	promise = paginatedScan( params );
+	let promise = paginatedScan( params );
 	return promise.then((res) => {
 	    if( res && res.length > 0 ) { return success( res[0].Populated ); }
 	    else                        { return success( false ); }
@@ -638,10 +656,10 @@ async function putPeq( newPEQ ) {
 	    "Active":         newPEQ.Active
 	}
     };
+    const putCmd = new PutCommand( params );
 
-    let recPromise = bsdb.put( params ).promise();
-    let retVal = recPromise.then(() => success( newPEQ.PEQId ));
-    retVal = await retVal;
+    let retVal = bsdb.send( putCmd ).then(() => success( newPEQ.PEQId ));
+    retVal     = await retVal;
 
     // No need to wait for unset lock
     setPeqLock( newPEQ.PEQId, false );
@@ -673,7 +691,6 @@ async function putPAct( newPAction ) {
 	}
     };
 
-    let promise = "";
     const paramsR = {
         TableName: 'CEPEQRaw',
 	Item: {
@@ -682,7 +699,17 @@ async function putPAct( newPAction ) {
 	    "RawBody":     newPAction.RawBody,
 	}
     };
+
+    const twCmd = new TransactWriteCommand({
+	TransactItems: [
+	    { Put: params }, 
+	    { Put: paramsR }, 
+	]}
+    );
+    return bsdb.send( twCmd ).then(() =>success( newId ));
     
+    /*
+    let promise = "";
     promise = bsdb.transactWrite({
 	TransactItems: [
 	    { Put: params }, 
@@ -690,6 +717,8 @@ async function putPAct( newPAction ) {
 	]}).promise();
     
     return promise.then(() =>success( newId ));
+    */
+    
 }
 
 
@@ -791,8 +820,9 @@ async function updatePActions( pactIds ) {
 	    Key: {"PEQActionId": pactId },
 	    UpdateExpression: 'set Locked = :false, Ingested = :true',
 	    ExpressionAttributeValues: { ':false': "false", ':true': "true" }};
-	
-	promises.push( bsdb.update( params ).promise() );
+
+	const updateCmd = new UpdateCommand( params );
+	promises.push( bsdb.send( updateCmd ) );
     });
 
     let res = true;
@@ -839,7 +869,8 @@ async function unIngest( tableName, query ) {
 	    UpdateExpression: 'set Ingested = :false',
 	    ExpressionAttributeValues: { ':false': "false" }};
 	
-	promises.push( bsdb.update( params ).promise() );
+	const updateCmd = new UpdateCommand( params );
+	promises.push( bsdb.send( updateCmd ));
     });
 
 
@@ -861,7 +892,8 @@ async function unIngest( tableName, query ) {
 	    UpdateExpression: 'set Locked = :false',
 	    ExpressionAttributeValues: { ':false': "false" }};
 	
-	promises.push( bsdb.update( params ).promise() );
+	const updateCmd = new UpdateCommand( params );
+	promises.push( bsdb.send( updateCmd ));
     });
 
 
@@ -973,8 +1005,9 @@ async function updatePEQ( pLink ) {
     params.UpdateExpression           = updateVals[0];
     params.ExpressionAttributeValues  = updateVals[1];
 
-    let promise = bsdb.update( params ).promise();
-    let retVal = promise.then(() => success( true ));
+    const updateCmd = new UpdateCommand( params );
+    let retVal = bsdb.send( updateCmd ).then(() => success( true ));
+
     retVal = await retVal;
 
     // No need to wait for unset lock
@@ -993,8 +1026,8 @@ async function updatePActCE( ceUID, pactId ) {
 	UpdateExpression: 'set CEUID = :ceuid',
 	ExpressionAttributeValues: { ':ceuid': ceUID }};
     
-    let promise = bsdb.update( params ).promise();
-    return promise.then(() => success( true ));
+    const updateCmd = new UpdateCommand( params );
+    return bsdb.send( updateCmd ).then(() => success( true ));
 }
 
 
@@ -1056,7 +1089,8 @@ async function updateColProj( update ) {
 	    UpdateExpression: 'set HostProjectSub = :psub',
 	    ExpressionAttributeValues: { ':psub': peq.HostProjectSub }};
 
-	promises.push( bsdb.update( params ).promise() );
+	const updateCmd = new UpdateCommand( params );
+	promises.push( bsdb.send( updateCmd ));
     }
 
     return await Promise.all( promises )
@@ -1095,6 +1129,8 @@ async function putPSum( psum ) {
     if( skip ) { return success( true ); }
     // XXX END
 
+    console.log( "PEQSummary put", psum.id.toString());
+
     const paramsP = {
         TableName: 'CEPEQSummary',
 	Item: {
@@ -1106,11 +1142,9 @@ async function putPSum( psum ) {
 	    "Allocations":  psum.allocations
 	}
     };
+    const putCmd = new PutCommand( paramsP );
 
-    console.log( "PEQSummary put", psum.id.toString());
-
-    let promise = bsdb.put( paramsP ).promise();
-    return promise.then(() => success( true ));
+    return bsdb.send( putCmd ).then(() => success( true ));
 }
 
 
@@ -1134,7 +1168,7 @@ async function getPEQActionsFromHost( hostUserName ) {
 // Is OK without it, since all peqa have already matched the condition.
 async function updatePEQActions( peqa, ceUID ) {
     
-    const paramsU = {
+    const params = {
 	TableName: 'CEPEQActions',
 	Key: { "PEQActionId": peqa.PEQActionId },
 	UpdateExpression: 'set CEUID = :ceuid',
@@ -1145,8 +1179,8 @@ async function updatePEQActions( peqa, ceUID ) {
     console.log( "update peqa where host data is", peqa.HostUserName, peqa.PEQActionId, peqa.CEUID, ceUID);
     assert( peqa.CEUID == "---" || peqa.CEUID == ceUID );
 
-    let uPromise = bsdb.update( paramsU ).promise();
-    return uPromise.then(() => true );
+    const updateCmd = new UpdateCommand( params );
+    return bsdb.send( updateCmd ).then(() => true );
 }
 
 
@@ -1162,8 +1196,8 @@ async function putHostA( newHostAcct, update, pat ) {
 	};
 	
 	console.log( "HostAcct update repos");
-	let hostaPromise = bsdb.update( params ).promise();
-	await hostaPromise;
+	const updateCmd = new UpdateCommand( params );	
+	await bsdb.send( updateCmd ); 
     }
     else {
 	const params = {
@@ -1180,8 +1214,9 @@ async function putHostA( newHostAcct, update, pat ) {
 	};
 	
 	console.log( "HostAcct put repos");
-	let hostaPromise = bsdb.put( params ).promise();
-	await hostaPromise;
+	const putCmd = new PutCommand( params );
+	
+	await bsdb.send( putCmd ); 
     }
 
 
@@ -1261,15 +1296,31 @@ async function getHostA( uid ) {
 async function depopulate( ceProjId ) {
 
     let params = { TableName: 'CEProjects' };
-    let promise = null;
 
     params.Key                       = { "CEProjectId": ceProjId };
     params.UpdateExpression          = 'set Populated = :f';
     params.ExpressionAttributeValues = { ':f': false };
 
     console.log( params );
-    promise = bsdb.update( params ).promise();
-    return promise.then(() => success( true ));
+    const updateCmd = new UpdateCommand( params );    
+    return bsdb.send( updateCmd ).then(() => success( true ));
+}
+
+async function getHostProjs( query ) {
+    console.log( "Get host projects from", query.CEProjectId );
+
+    const peqsWrap = await getEntries( "CEPEQs", {"CEProjectId": query.CEProjectId } );
+    const peqs     = JSON.parse( peqsWrap.body );
+
+    if( peqsWrap.statusCode != 201 ) { return peqsWrap; }
+    // console.log( peqsWrap, peqs );
+    
+    let hprojs = [];
+    for( const peq of peqs ) {
+	if( !hprojs.includes( peq.HostProjectId ) ) { hprojs.push( peq.HostProjectId ); }
+    }
+
+    return success( hprojs );
 }
 
 // https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html
@@ -1280,15 +1331,15 @@ async function link( query ) {
 
     if( !oldProjData.HostParts.hostProjectIds.includes( query.hostProjectId )) {
 	let params = { TableName: 'CEProjects' };
-	let promise = null;
 	
 	params.Key                       = { "CEProjectId": query.ceProjId };
 	params.UpdateExpression          = 'set HostParts.hostProjectIds = list_append( HostParts.hostProjectIds, :pid )';
 	params.ExpressionAttributeValues = { ':pid': [query.hostProjectId] };
 	
 	console.log( params );
-	promise = bsdb.update( params ).promise();
-	return promise.then(() => success( true ));
+
+	const updateCmd = new UpdateCommand( params );
+	return bsdb.send( updateCmd ).then(() => success( true ));
     }
     return success( true );
 }
@@ -1306,7 +1357,6 @@ async function unlink( query ) {
     if( index == -1 ) { return success( true ); }
     else {
 	let params = { TableName: 'CEProjects' };
-	let promise = null;
 
 	// Can't pass parameter in this remove bit.  Build string, pass that.
 	// params.UpdateExpression          = 'REMOVE HostParts.hostProjectIds[:ind]';	
@@ -1315,8 +1365,8 @@ async function unlink( query ) {
 	params.UpdateExpression          = "REMOVE HostParts.hostProjectIds[" + index.toString() + "]";
 	
 	console.log( params );
-	promise = bsdb.update( params ).promise();
-	return promise.then(() => success( true ));
+	const updateCmd = new UpdateCommand( params );
+	return bsdb.send( updateCmd ).then(() => success( true ));
     }
 }
 

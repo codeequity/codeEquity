@@ -30,7 +30,9 @@ class CEProjects {
 
     findByRepo( host, org, repo ) {
 	let retVal = config.EMPTY;
-	let proj = this.cep.find( cep => cep.HostPlatform == host && cep.Organization == org && cep.HostParts.hostRepositories.includes( repo ));
+	let proj = this.cep.find( cep => cep.HostPlatform == host &&
+				  cep.Organization == org &&
+				  cep.HostParts.hostRepositories.reduce( (acc,cur) => acc || cur.repoName == repo, false ));
 	retVal = typeof proj === 'undefined' ? retVal : proj.CEProjectId;
 	return retVal;
     }
@@ -49,8 +51,10 @@ class CEProjects {
     async add( authData, newCEP ) {
 	let cpid = newCEP.CEProjectId;
 	let host = newCEP.HostPlatform;
-	let pms  = newCEP.ProjectManagementSys;
+	let pms  = newCEP.ProjectMgmtSys;
 	let org  = newCEP.Organization;
+
+	// console.log( "Working on", newCEP, cpid, host, pms, org );
 
 	let awsLinksP = awsUtils.getLinkage( authData, { "CEProjectId": cpid } );
 	let awsLocsP  = awsUtils.getProjectStatus( authData, cpid );
@@ -110,7 +114,7 @@ class CEProjects {
 	return retVal
     }
 
-    // XXX does not properly show repositories, nor projectIds.  lists, oi?
+    // XXX does not properly show repositories, nor projectIds (i.e. HostParts.hostRepositories)
     show( count ) {
 	console.log( "CEProjects Map contents" );
 	if( Object.keys( this.hp2cp ).length <= 0 ) { return ""; }

@@ -133,12 +133,14 @@ const UNCLAIMED = 'UnClaimed';                                                  
 const PEQ_COLOR  = 'ffcc80';   // github color for PEQ labels
 const APEQ_COLOR = 'fef2c0';   // github color Alloc PEQ labels
 
+// XXX speculative
+const GH_TEMPLATE = "CodeEquity Project Template";                                   // Contains default view for CodeEquity projects for GitHub
+const GH_VIEW     = "CE View";                                                       // Name of custom CE view for Github projects
+const GH_VIEWCOL  = "CE Cols";                                                       // Name of custom GitHub field CE uses to display columns
 
 
 
-
-
-exports.CE_ACTOR   = CE_ACTOR;
+exports.CE_ACTOR  = CE_ACTOR;
 exports.CE_BOT    = CE_BOT;
 exports.TESTER_BOT = TESTER_BOT;
 exports.PROJ_COLS = PROJ_COLS;
@@ -149,8 +151,11 @@ exports.PROJ_ACCR = PROJ_ACCR;
 
 exports.POPULATE = POPULATE;
 
-exports.PEQ_COLOR = PEQ_COLOR;
-exports.APEQ_COLOR = APEQ_COLOR;
+exports.PEQ_COLOR   = PEQ_COLOR;
+exports.APEQ_COLOR  = APEQ_COLOR;
+exports.GH_TEMPLATE = GH_TEMPLATE;
+exports.GH_VIEW     = GH_VIEW;
+exports.GH_VIEWCOL  = GH_VIEWCOL;
 
 exports.PEQSTART = PEQSTART;
 exports.PEQ      = PEQ;
