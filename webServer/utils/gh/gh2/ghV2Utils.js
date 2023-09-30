@@ -146,8 +146,6 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 			    statusId = pfc.id;
 			    for( let k = 0; k < pfc.options.length; k++ ) {
 				let datum   = {};
-				datum.hostRepository   = hostRepo.hostRepoName;
-				datum.hostRepositoryId = hostRepo.hostRepoId;
 				datum.hostProjectName  = project.title;
 				datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
 				datum.hostColumnName   = pfc.options[k].name;
@@ -160,8 +158,6 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 		}
 		// Build "No Status" by hand, since it corresponds to a null entry
 		let datum   = {};
-		datum.hostRepository   = hostRepo.hostRepoName;
-		datum.hostRepositoryId = hostRepo.hostRepoId;
 		datum.hostProjectName  = project.title;
 		datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
 		datum.hostColumnName   = config.GH_NO_STATUS; 
@@ -1266,7 +1262,6 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 	    colId = progCol.hostColumnId;
 	    let nLoc = {};
 	    nLoc.ceProjectId     = ceProjId; 
-	    nLoc.hostRepository  = fullName;
 	    nLoc.hostProjectId   = pid;
 	    nLoc.hostProjectName = projName;
 	    nLoc.hostColumnId    = progName;
@@ -1794,7 +1789,6 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 	let nLoc = {};
 	nLoc.ceProjectId     = pd.ceProjectId;
-	nLoc.hostRepository  = pd.repoName;
 	nLoc.hostProjectId   = pid; 
 	nLoc.hostProjectName = link.hostProjectName;
 	nLoc.active          = "true";

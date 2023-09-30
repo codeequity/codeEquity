@@ -37,7 +37,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 	    let nLoc = {};
 	    nLoc.ceProjectId     = pd.ceProjectId;
-	    nLoc.hostRepository  = pd.repoName;
 	    nLoc.hostProjectId   = pd.projectId;
 	    nLoc.hostProjectName = loc.hostProjectName;
 	    nLoc.hostColumnId    = pd.columnId;
@@ -77,7 +76,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
 		    let nLoc = {};
 		    nLoc.ceProjectId     = pd.ceProjectId;
-		    nLoc.hostRepository  = pd.repoName;
 		    nLoc.hostProjectId   = pd.projectId;
 		    nLoc.hostProjectName = loc.hostProjectName;
 		    nLoc.hostColumnId    = pd.columnId;

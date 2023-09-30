@@ -76,9 +76,10 @@ async function runTests( flutterTest ) {
     success = execAWS_CLI( "CEHostUser", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save HostUser Table" );
     */
+    
     return testStatus
 }
 
 // Switch to runTests rather than exports if npm run testSave
-//runTests();
+// runTests();
 exports.runTests = runTests;

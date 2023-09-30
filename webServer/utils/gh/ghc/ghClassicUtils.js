@@ -980,7 +980,6 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	    for( const col of cols.edges ) {
 		// console.log( project.name, project.number, project.databaseId, col.node.name, col.node.databaseId );
 		let datum = {};
-		datum.hostRepository  = owner + "/" + repo;
 		datum.hostProjectName = project.name;
 		datum.hostProjectId   = project.databaseId.toString();
 		datum.hostColumnName  = col.node.name;
@@ -991,7 +990,6 @@ async function getRepoColsGQL( PAT, owner, repo, data, cursor ) {
 	    // Add project even if it has no cols
 	    if( cols.edges.length == 0 ) {
 		let datum = {};
-		datum.hostRepository  = owner + "/" + repo;
 		datum.hostProjectName = project.name;
 		datum.hostProjectId   = project.databaseId.toString();
 		datum.hostColumnName  = config.EMPTY;
@@ -1110,7 +1108,6 @@ async function rebuildCard( authData, ceProjId, ghLinks, owner, repo, colId, ori
 	    colId = progCol.data.id;
 	    let nLoc = {};
 	    nLoc.ceProjectId     = ceProjId; 
-	    nLoc.hostRepository  = fullName;
 	    nLoc.hostProjectId   = projId;
 	    nLoc.hostProjectName = projName;
 	    nLoc.hostColumnId    = progName;
@@ -1222,7 +1219,6 @@ async function createUnClaimedProject( authData, ghLinks, pd  )
 
 		let nLoc = {};
 		nLoc.ceProjectId     = pd.ceProjectId;
-		nLoc.hostRepository  = pd.repoName;
 		nLoc.hostProjectId   = unClaimedProjId
 		nLoc.hostProjectName = unClaimed;
 		nLoc.hostColumnId    = config.EMPTY;
@@ -1256,7 +1252,6 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 
 		let nLoc = {};
 		nLoc.ceProjectId     = pd.ceProjectId;
-		nLoc.hostRepository  = pd.repoName;
 		nLoc.hostProjectId   = unClaimedProjId;
 		nLoc.hostProjectName = unClaimed;
 		nLoc.hostColumnId    = colName;
@@ -1432,7 +1427,6 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 	let nLoc = {};
 	nLoc.ceProjectId     = pd.ceProjectId;
-	nLoc.hostRepository  = pd.repoName;
 	nLoc.hostProjectId   = projId; 
 	nLoc.hostProjectName = link.hostProjectName;
 	nLoc.active          = "true";
