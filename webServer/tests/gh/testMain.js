@@ -53,7 +53,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
 	await gh2tu.linkProject( authData, td, wakeyPID );
     }
     */
-    let wakeyPID = await gh2tu.findOrCreateProject( authData, td, wakeyName, "" );
+    let wakeyPID = await gh2tu.createProjectWorkaround( authData, td, wakeyName, "" );
     assert( wakeyPID != -1 );
     console.log( "Found", wakeyName, "with PID:", wakeyPID, "for ceProj:", td.ceProjectId );
     

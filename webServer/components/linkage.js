@@ -577,19 +577,10 @@ class Linkage {
 	}
     }
 
-    // /*
+
     // Unlink project from repo.  in this case, remove repo info
     async unlinkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId ) {
 	console.log( "Unlink project", ceProjId, hostRepoId, hostProjectId );
-
-	// XXX
-	if( this.locs[ceProjId] != null && this.locs[ceProjId][hostProjectId] != null ) {
-	    for( const [_, loc] of Object.entries( this.locs[ceProjId][hostProjectId] ) ) {
-		// console.log( "  .. clearing", loc );
-		// loc.hostRepository   = config.EMPTY;
-		// loc.hostRepositoryId = config.EMPTY;
-	    }
-	}
 
 	if( this.links[ceProjId] != null ) {
 	    for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {
@@ -611,6 +602,10 @@ class Linkage {
     }
 
 
+    // workaround function
+    // user linking existing project?            don't care.
+    // testing creating a project?               empty, no need to get links 
+    // user or testing creating unclaimed card?  according to ceServer strict relation, unclaimedProj belongs to ceProj, is not shared.
     async linkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
 	let rLocs  = [];
 	let rLinks = [];
@@ -619,15 +614,9 @@ class Linkage {
 	await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	    .catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
 
-	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
+	assert( rLinks.length == 0 );
 	
-	// add (or overwrite matching.. hmm see above)
-	// Don't wait, no adds to dynamo
-	rLinks.forEach( function (link) { link.hostRepoName = hostRepoName;
-					  link.hostRepoId   = hostRepoId;
-					  this.addLinkage( authData, ceProjId, link, { populate: true } );
-					}, this);
-
+	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
 	
 	// Wait.. adds to dynamo
 	let promises = [];
@@ -636,13 +625,6 @@ class Linkage {
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
 	    loc.active = "true";
-	    // XXX
-	    // first time project link should see this as config.empty.  but after marshalling mods, need to force it
-	    if( typeof loc.hostRepository === 'undefined' || typeof loc.hostRepositoryId === 'undefined' ) {
-		// loc.hostRepository   = hostRepoName;
-		// loc.hostRepositoryId = hostRepoId;
-	    }
-
 	    // console.log( "linkage:addLoc", loc );
 	    promises.push( this.addLoc( authData, loc, true ) );
 	}
@@ -652,7 +634,7 @@ class Linkage {
 	
 	return true;
     }
-    // */    
+
 
     purgeLocs( ceProjId, pid ) {
 	let killList = [];	
@@ -773,11 +755,9 @@ class Linkage {
 	}
 
 	if( printables.length > 0 ) {
-	    console.log( this.fill( "ceProj", 16 ),
-			 this.fill( "Repo", 20 ),
-			 this.fill( "RepoId", 12 ),
-			 this.fill( "ProjId", 20 ), 
+	    console.log( this.fill( "ceProj", 15 ),
 			 this.fill( "ProjName", 15 ),
+			 this.fill( "ProjId", 20 ), 
 			 this.fill( "ColId", 10),
 			 this.fill( "ColName", 20)
 		       );
@@ -791,8 +771,8 @@ class Linkage {
 	for( let i = start; i < printables.length; i++ ) {
 	    const loc = printables[i];
 	    console.log( this.fill( loc.ceProjectId, 16 ),
-			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
 			 this.fill( loc.hostProjectName, 15 ),
+			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
 			 loc.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 10 ) : this.fill( loc.hostColumnId, 10 ),
 			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )
 		       );

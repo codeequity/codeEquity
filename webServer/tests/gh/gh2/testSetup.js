@@ -22,17 +22,17 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
     
     // Modules: softwareContr, businessOps, unallocated
-    td.masterPID  = await gh2tu.findOrCreateProject( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
+    td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
     let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.softContTitle );
     let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.busOpsTitle );
     let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.unallocTitle );
 
     // dataSec: 4x
-    let dataPID  = await gh2tu.findOrCreateProject( authData, td, td.dataSecTitle, "Make PII safe" );
+    let dataPID  = await gh2tu.createProjectWorkaround( authData, td, td.dataSecTitle, "Make PII safe" );
     let dataCols = await gh2tu.make4xCols( authData, testLinks, td.ceProjectId, td.GHFullName, dataPID );
 
     // githubOPs: 4x
-    let ghOpPID  = await gh2tu.findOrCreateProject( authData, td, td.githubOpsTitle, "Make it giddy" );
+    let ghOpPID  = await gh2tu.createProjectWorkaround( authData, td, td.githubOpsTitle, "Make it giddy" );
     let ghOpCols = await gh2tu.make4xCols( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID );
     await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
     await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );

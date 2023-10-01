@@ -786,6 +786,8 @@ async function updateProject( authData, pid, title, body ) {
 	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, pid, title, body ));
 }
 
+/* Not in use
+// XXX Can only create a shell without columns.
 // Only repository owner can use this to create a project.  
 async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
     console.log( "Create project", ownerNodeId, repoNodeId, title );
@@ -811,7 +813,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
     
     return pid == false ? -1 : pid;
 }
-
+*/
 
 function getColumnName( authData, ghLinks, ceProjId, colId ) {
     if( colId === -1 ) { return -1; }
@@ -1564,50 +1566,38 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
     return pid;
 }
 
-// XXX unit testing required
-async function linkProject( authData, ghLinks, ceProjects, ceProjId, pid, rNodeId, rName ) {
-    let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
-    let variables = {"pid": pid, "rid": rNodeId };
-    query         = JSON.stringify({ query, variables });
 
-    let res = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( ret => {
-	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
-	    res = ret;
-	})
-	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, pid, rNodeId, rName ));
+// XXX in support of link workaround to avoid issue with creating columns.
+//     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
+async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ) {
+    console.log( authData.who, "linkProject", name );
 
-    if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
-    else if( ghLinks !== -1 ) {
-	// testServer needs to do this for itself, since testServer ghLinks is not the same object as ceServer ghLinks
-	// XXX fix when handle link/unlink in projectHandler.  if ever.  notifications missing.
-	await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, rNodeId, rName );
-    }
-}
-
-
-
-// XXX Placed here to support createUnclaimedProject..
-//     relocate to gh2TestUtils once column support in the API is resolved.
-async function findOrCreateProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name, body ) {
-    let linkageDone = false;
-
-    console.log( authData.who, "FindOrCreateProject", name );
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
-    if( pid === -1 ) {
-	pid = await createProject( authData, ownerId, repoId, name, body );
-    }
-    else {
-	let rp = await findProjectByRepo( authData, repoId, name );
-	if( rp === -1 ) {
-	    await linkProject( authData, ghLinks, ceProjects, ceProjId, pid, repoId, repoName );
-	    linkageDone = (ghLinks !== -1);
+    assert( pid !== -1 );
+
+    let rp = await findProjectByRepo( authData, repoId, name );
+    if( rp === -1 ) {
+	let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
+	let variables = {"pid": pid, "rid": repoId };
+	query         = JSON.stringify({ query, variables });
+	
+	let res = -1;
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( ret => {
+		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+		res = ret;
+	    })
+	    .catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ));
+	
+	if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
+	else if( ghLinks !== -1 ) {   // XXX erm... waaa?
+	    // test process needs to do this for itself, since test process ghLinks is not the same object as ceServer ghLinks
+	    await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId, repoName );
 	}
     }
     
-    return [pid, linkageDone];
+    return pid;
 }
 
 
@@ -1616,8 +1606,8 @@ async function findOrCreateProject( authData, ghLinks, ceProjects, ceProjId, org
 // NOTE: if this creates, then create unclaimed column below will fail.
 async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 {
-    let [unClaimedProjId,_] = await findOrCreateProject( authData, ghLinks, ceProjects, pd.ceProjectId, pd.org, pd.actor, pd.actorId, pd.repoId, pd.repoName,
-							 config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
+    let unClaimedProjId = await linkProject( authData, ghLinks, ceProjects, pd.ceProjectId, pd.org, pd.actor, pd.actorId, pd.repoId, pd.repoName,
+					     config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
     
     if( unClaimedProjId === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
@@ -1852,11 +1842,10 @@ exports.rebuildLabel       = rebuildLabel;
 
 exports.getProjectName      = getProjectName;
 exports.updateProject       = updateProject;
-exports.createProject       = createProject;
 exports.linkProject         = linkProject;
 exports.findProjectByName   = findProjectByName;
 exports.findProjectByRepo   = findProjectByRepo;
-exports.findOrCreateProject = findOrCreateProject;
+exports.linkProject         = linkProject;
 
 exports.getColumnName      = getColumnName;
 
@@ -1877,6 +1866,7 @@ exports.cleanUnclaimed     = cleanUnclaimed;
 
 exports.getCEProjectLayout = getCEProjectLayout;
 
+// exports.createProject       = createProject;          // XXX NYI
 exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
 exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
 exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI

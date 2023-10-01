@@ -14,7 +14,7 @@ const FLAT_PROJ = "A Pre-Existing Project";
 async function createFlatProject( authData, testLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
-    td.masterPID  = await gh2tu.findOrCreateProject( authData, td, FLAT_PROJ, "" );
+    td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, FLAT_PROJ, "" );
     let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Eggs" );
     let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Bacon" );
     let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, config.PROJ_COLS[config.PROJ_PLAN] );

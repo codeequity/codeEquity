@@ -538,7 +538,7 @@ async function ingestPActs( authData, issDat ) {
 }
 */
 
-
+/* not in use, not viable 
 async function makeProject(authData, td, name, body, specials ) {
 
     let ownerId = typeof specials !== 'undefined' && specials.hasOwnProperty( "owner" ) ? specials.owner : td.actorId;
@@ -548,18 +548,19 @@ async function makeProject(authData, td, name, body, specials ) {
     await utils.sleep( GH_DELAY );
     return pid;
 }
+*/
 
 // If can't find project by collab login or organization name, make it.
 // If did find it, then see if it is already linked to the repo.  If not, link it.
 // do NOT send ghLinks, ceProjects as that would create in local testServer copy.
 // NOTE: testing projects are created by codeequity
-async function findOrCreateProject( authData, td, name, body ) {
+async function createProjectWorkaround( authData, td, name, body ) {
 
-    let [pid,ld] = await ghV2.findOrCreateProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
+    let pid = await ghV2.linkProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
     assert( typeof pid !== 'undefined' && !(pid <= -1) );
 
     // force linking in ceServer:ghLinks, not local ghLinks
-    if( !ld ) { await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); }
+    await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); 
 
     console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
 
@@ -612,6 +613,7 @@ async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
+/* XXX remove
 async function linkProject( authData, td, pid ) {
 
     await ghV2.linkProject( authData, -1, -1, td.ceProjectId, pid, td.GHRepoId, td.GHFullName);
@@ -621,6 +623,7 @@ async function linkProject( authData, td, pid ) {
 
     await utils.sleep( tu.MIN_DELAY );
 }
+*/
 
 async function cloneFromTemplate( authData, oid, spid, title ) {
     let newPID = await ghV2.cloneFromTemplate( authData, oid, spid, title );
@@ -2229,15 +2232,15 @@ exports.refreshFlat     = refreshFlat;
 exports.refreshUnclaimed = refreshUnclaimed;
 exports.getQuad         = getQuad;
 
-exports.findOrCreateProject = findOrCreateProject;
+exports.createProjectWorkaround = createProjectWorkaround;
 
 exports.cloneFromTemplate = cloneFromTemplate;   // XXX speculative.  useful?
 exports.createCustomField = createCustomField;   // XXX speculative.  useful?
 
-exports.makeProject     = makeProject;
+// exports.makeProject     = makeProject;        // XXX NYI
 exports.remProject      = remProject;
 exports.unlinkProject   = unlinkProject;
-exports.linkProject     = linkProject;
+// exports.linkProject     = linkProject;        // XXX remove
 exports.makeColumn      = makeColumn;
 exports.createColumnTest    = createColumnTest;
 exports.updateProject   = updateProject;
