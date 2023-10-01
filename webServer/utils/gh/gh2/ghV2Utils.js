@@ -35,7 +35,7 @@ function printEdges( base, item, values ) {
 // Note: column names are now unique within GH project.  i.e. name == columnId
 // Note: most pv2 objects implement 'node', which has field 'id', which is the node_id. 
 // Note: a single project:col can have issues from multiple repos.  rather than present a list in locData, set repo to EMPTY.
-// Note: an issue will belong to 1 repo only
+// Note: an issue will belong to 1 repo only, but 1 proj can have issues from multiple repos
 // Note: it seems that "... on Issue" is applying a host-side filter, so no need to more explicitely filter out draft issues and pulls.
 // Note: optionId is sufficient for columnId, given the pid.
 // XXX if optionId changes per view... ? 
@@ -108,8 +108,6 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 	    let project = raw.data.node;
 	    let statusId = -1;
 	    
-
-	    // XXX This should not stand.
 	    let hostRepo = {};
 	    {
 		let hostItems = raw.data.node.items;
@@ -1462,20 +1460,6 @@ async function createColumn( authData, ghLinks, ceProjectId, pid, colName, posit
 }
 
 
-/* 
-  XXX query inside gql can't seem to deal with whitespace.  It appears to pay attention to the first word, only.
-      Adding "AND" does not help.  Adding \"\" around name does not help.  `` nope.  \\\ nope.
-      The query below works because both words are unique in current tiny world.  adding "A" in front matches everything.
-  
-  So the code below assumes query is useless, does extra filtering as with label.
-
-{
-  user(login:"ariCETester"){
-    login id projectsV2(query: "Pre-Existing Project in:title", first:99 ) {edges{ node{ id title }}}}
-  organization( login:"codeEquity"){
-    login id projectsV2(query: "Pre-Existing Project in:title", first:99) {edges{ node{ id title }}}}
-}
-*/
 
 async function findProjectByName( authData, orgLogin, userLogin, projName ) {
     let pid = -1;
@@ -1494,6 +1478,21 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
     query = JSON.stringify({ query, variables });
 
     // XXX arggh.  if only query worked as expected
+    /* 
+       XXX query inside gql can't seem to deal with whitespace.  It appears to pay attention to the first word, only.
+       Adding "AND" does not help.  Adding \"\" around name does not help.  `` nope.  \\\ nope.
+       The query below works because both words are unique in current tiny world.  adding "A" in front matches everything.
+       
+       So the code below assumes query is useless, does extra filtering as with label.
+       
+       {
+       user(login:"ariCETester"){
+       login id projectsV2(query: "Pre-Existing Project in:title", first:99 ) {edges{ node{ id title }}}}
+       organization( login:"codeEquity"){
+       login id projectsV2(query: "Pre-Existing Project in:title", first:99) {edges{ node{ id title }}}}
+       }
+    */
+
     /*
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
@@ -1591,8 +1590,8 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 	    .catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ));
 	
 	if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
-	else if( ghLinks !== -1 ) {   // XXX erm... waaa?
-	    // test process needs to do this for itself, since test process ghLinks is not the same object as ceServer ghLinks
+	else if( ghLinks !== -1 ) {   
+	    // test process can't execute this, does not have server's ghLinks obj, so will do it independently
 	    await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId, repoName );
 	}
     }

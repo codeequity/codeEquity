@@ -538,17 +538,6 @@ async function ingestPActs( authData, issDat ) {
 }
 */
 
-/* not in use, not viable 
-async function makeProject(authData, td, name, body, specials ) {
-
-    let ownerId = typeof specials !== 'undefined' && specials.hasOwnProperty( "owner" ) ? specials.owner : td.actorId;
-    let pid = await ghV2.createProject( authData, ownerId, td.GHRepoId, name );
-    
-    console.log( "MakeProject returned:", pid, name, ownerId );
-    await utils.sleep( GH_DELAY );
-    return pid;
-}
-*/
 
 // If can't find project by collab login or organization name, make it.
 // If did find it, then see if it is already linked to the repo.  If not, link it.
@@ -561,7 +550,7 @@ async function createProjectWorkaround( authData, td, name, body ) {
 
     // force linking in ceServer:ghLinks, not local ghLinks
     await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); 
-
+    
     console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
 
     await utils.sleep( tu.MIN_DELAY );
@@ -613,17 +602,6 @@ async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
-/* XXX remove
-async function linkProject( authData, td, pid ) {
-
-    await ghV2.linkProject( authData, -1, -1, td.ceProjectId, pid, td.GHRepoId, td.GHFullName);
-    
-    // force linking in ceServer:ghLinks, not local ghLinks
-    await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); 
-
-    await utils.sleep( tu.MIN_DELAY );
-}
-*/
 
 async function cloneFromTemplate( authData, oid, spid, title ) {
     let newPID = await ghV2.cloneFromTemplate( authData, oid, spid, title );

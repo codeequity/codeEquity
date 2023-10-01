@@ -707,18 +707,6 @@ async function putPAct( newPAction ) {
 	]}
     );
     return bsdb.send( twCmd ).then(() =>success( newId ));
-    
-    /*
-    let promise = "";
-    promise = bsdb.transactWrite({
-	TransactItems: [
-	    { Put: params }, 
-	    { Put: paramsR }, 
-	]}).promise();
-    
-    return promise.then(() =>success( newId ));
-    */
-    
 }
 
 
