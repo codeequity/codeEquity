@@ -46,14 +46,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     const wakeyName = "ceServer wakey XYZZYXXK837598";
 
     // XXX so far, V2 can't delete pv2, so no point making.  link and unlink instead.
-    /*
-    let wakeyPID = await gh2tu.findProjectByName( authData, config.TEST_OWNER, td.GHOwner, wakeyName );
-    if( wakeyPID == -1 ) { 
-	wakeyPID = await gh2tu.makeProject( authData, td, wakeyName, "", {"owner": td.GHOwnerId} );
-	await gh2tu.linkProject( authData, td, wakeyPID );
-    }
-    */
-    let wakeyPID = await gh2tu.findOrCreateProject( authData, td, wakeyName, "" );
+    let wakeyPID = await gh2tu.createProjectWorkaround( authData, td, wakeyName, "" );
     assert( wakeyPID != -1 );
     console.log( "Found", wakeyName, "with PID:", wakeyPID, "for ceProj:", td.ceProjectId );
     

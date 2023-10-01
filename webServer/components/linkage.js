@@ -110,35 +110,17 @@ class Linkage {
 		// mainly to get pat
 		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
 
-		// XXX no need
-		// No need to handle entry.HostParts.hostProjectIds.  hostRepositories have linked projects.  If not linked,
-		// ceProj will not interact.  If linked, then it is part of ceProj.
-		/*
-		let hostProjs = [];
-		for( const repo of entry.HostParts.hostRepositories ) {
-		    // await ghV2.getProjectIds( authData, repo.repoName, hostProjs, -1 );
-
-		    // XXX This will not scale... but is there a better fool-proof way to acquire ce projects than this after server gap, restart?
-		    //     link/unlink is ephemeral view only, but issue in project is meaningful - rate of change should be modest.
-		    //     hmm... aws has ceProj, hostProj for every peq. Better choice - smaller, faster, can be done upstream.
-		    // Get all peqs in repo, then foreach build project list
-		    // initRepo is very infrequent, else would be better to store id with name in aws.ceProjects
-		    // let repoIssues = await ghV2.getIssues( authData, repo.repoId );
-		}
-		*/
-		
+		// Find all hostProjects that provide a card home for a peq in the cep
 		let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: entry.CEProjectId } );
 		if( hostProjs == -1 ) { hostProjs = []; }
 		console.log( "HOST PROJs", entry.CEProjectId, hostProjs );
 		
-		
+		// Note, for links being built below, the link is a complete ceServer:link that supplied info for the 1:1 mapping issue:card.
+		//       it is not necessarily a complete picture of a host link (which ceServer does not need).
+		//       for example, in GH an issue may be 1:m i.e. in 1 repo with cards in many projects. several links will be created below
+		//       these multiple links will be resolved once that issue becomes peq.
+		// Note, any peq issue will have already been resolved.
 		for( const pid of hostProjs ) {
-		    
-		    // XXX build proj
-		    //     challenge: link is for issue.  proj may contain issues from multiple repos.  Code below is too narrow.
-		    //                does anything in link require repo:project 1:1 besides here?  if not, mod hostLinkLoc?  loc contains mapping...
-		    //                probably not, either way, this would not be the place to enforce.  Would be in addLinkage instead.
-		    
 		    
 		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, pid );
 		    let rLinks = [];
@@ -426,9 +408,7 @@ class Linkage {
 		
 		match = pid == -1                ? match : match && (loc.hostProjectId    == pid);
 		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
-		match = repoId == -1             ? match : match && (loc.hostRepositoryId == repoId);
 		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
-		match = repo == config.EMPTY     ? match : match && (loc.hostRepository   == repo);
 		match = projName == config.EMPTY ? match : match && (loc.hostProjectName  == projName);
 		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName   == colName);
 		match =                                    match && (loc.active           == "true");
@@ -597,17 +577,10 @@ class Linkage {
 	}
     }
 
+
     // Unlink project from repo.  in this case, remove repo info
     async unlinkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId ) {
 	console.log( "Unlink project", ceProjId, hostRepoId, hostProjectId );
-	
-	if( this.locs[ceProjId] != null && this.locs[ceProjId][hostProjectId] != null ) {
-	    for( const [_, loc] of Object.entries( this.locs[ceProjId][hostProjectId] ) ) {
-		// console.log( "  .. clearing", loc );
-		loc.hostRepository   = config.EMPTY;
-		loc.hostRepositoryId = config.EMPTY;
-	    }
-	}
 
 	if( this.links[ceProjId] != null ) {
 	    for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {
@@ -629,6 +602,10 @@ class Linkage {
     }
 
 
+    // workaround function
+    // user linking existing project?            don't care.
+    // testing creating a project?               empty, no need to get links 
+    // user or testing creating unclaimed card?  according to ceServer strict relation, unclaimedProj belongs to ceProj, is not shared.
     async linkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
 	let rLocs  = [];
 	let rLinks = [];
@@ -637,15 +614,9 @@ class Linkage {
 	await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	    .catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
 
-	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
+	assert( rLinks.length == 0 );
 	
-	// add (or overwrite matching.. hmm see above)
-	// Don't wait, no adds to dynamo
-	rLinks.forEach( function (link) { link.hostRepoName = hostRepoName;
-					  link.hostRepoId   = hostRepoId;
-					  this.addLinkage( authData, ceProjId, link, { populate: true } );
-					}, this);
-
+	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
 	
 	// Wait.. adds to dynamo
 	let promises = [];
@@ -654,12 +625,6 @@ class Linkage {
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
 	    loc.active = "true";
-	    // first time project link should see this as config.empty.  but after marshalling mods, need to force it
-	    if( typeof loc.hostRepository === 'undefined' || typeof loc.hostRepositoryId === 'undefined' ) {
-		loc.hostRepository   = hostRepoName;
-		loc.hostRepositoryId = hostRepoId;
-	    }
-
 	    // console.log( "linkage:addLoc", loc );
 	    promises.push( this.addLoc( authData, loc, true ) );
 	}
@@ -669,7 +634,7 @@ class Linkage {
 	
 	return true;
     }
-    
+
 
     purgeLocs( ceProjId, pid ) {
 	let killList = [];	
@@ -790,11 +755,9 @@ class Linkage {
 	}
 
 	if( printables.length > 0 ) {
-	    console.log( this.fill( "ceProj", 16 ),
-			 this.fill( "Repo", 20 ),
-			 this.fill( "RepoId", 12 ),
-			 this.fill( "ProjId", 20 ), 
+	    console.log( this.fill( "ceProj", 15 ),
 			 this.fill( "ProjName", 15 ),
+			 this.fill( "ProjId", 20 ), 
 			 this.fill( "ColId", 10),
 			 this.fill( "ColName", 20)
 		       );
@@ -808,10 +771,8 @@ class Linkage {
 	for( let i = start; i < printables.length; i++ ) {
 	    const loc = printables[i];
 	    console.log( this.fill( loc.ceProjectId, 16 ),
-			 this.fill( loc.hostRepository, 20 ),
-			 this.fill( loc.hostRepositoryId, 12 ),
-			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
 			 this.fill( loc.hostProjectName, 15 ),
+			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
 			 loc.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 10 ) : this.fill( loc.hostColumnId, 10 ),
 			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )
 		       );

@@ -18,7 +18,6 @@ async function handler( authData, ghLinks, pd, action, tag ) {
 
     let nLoc = {};
     nLoc.ceProjectId     = pd.ceProjectId;
-    nLoc.hostRepository  = pd.repoName;
     nLoc.hostProjectId   = pd.projectId;
     nLoc.hostProjectName = pd.projectName;
     nLoc.hostColumnId    = -1;

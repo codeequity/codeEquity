@@ -35,7 +35,7 @@ function printEdges( base, item, values ) {
 // Note: column names are now unique within GH project.  i.e. name == columnId
 // Note: most pv2 objects implement 'node', which has field 'id', which is the node_id. 
 // Note: a single project:col can have issues from multiple repos.  rather than present a list in locData, set repo to EMPTY.
-// Note: an issue will belong to 1 repo only
+// Note: an issue will belong to 1 repo only, but 1 proj can have issues from multiple repos
 // Note: it seems that "... on Issue" is applying a host-side filter, so no need to more explicitely filter out draft issues and pulls.
 // Note: optionId is sufficient for columnId, given the pid.
 // XXX if optionId changes per view... ? 
@@ -108,8 +108,6 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 	    let project = raw.data.node;
 	    let statusId = -1;
 	    
-
-	    // XXX This should not stand.
 	    let hostRepo = {};
 	    {
 		let hostItems = raw.data.node.items;
@@ -146,8 +144,6 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 			    statusId = pfc.id;
 			    for( let k = 0; k < pfc.options.length; k++ ) {
 				let datum   = {};
-				datum.hostRepository   = hostRepo.hostRepoName;
-				datum.hostRepositoryId = hostRepo.hostRepoId;
 				datum.hostProjectName  = project.title;
 				datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
 				datum.hostColumnName   = pfc.options[k].name;
@@ -160,8 +156,6 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 		}
 		// Build "No Status" by hand, since it corresponds to a null entry
 		let datum   = {};
-		datum.hostRepository   = hostRepo.hostRepoName;
-		datum.hostRepositoryId = hostRepo.hostRepoId;
 		datum.hostProjectName  = project.title;
 		datum.hostProjectId    = project.id;             // all ids should be projectV2 or projectV2Item ids
 		datum.hostColumnName   = config.GH_NO_STATUS; 
@@ -790,6 +784,8 @@ async function updateProject( authData, pid, title, body ) {
 	.catch( e => ghUtils.errorHandler( "updateProject", e, updateProject, authData, pid, title, body ));
 }
 
+/* Not in use
+// XXX Can only create a shell without columns.
 // Only repository owner can use this to create a project.  
 async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
     console.log( "Create project", ownerNodeId, repoNodeId, title );
@@ -815,7 +811,7 @@ async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
     
     return pid == false ? -1 : pid;
 }
-
+*/
 
 function getColumnName( authData, ghLinks, ceProjId, colId ) {
     if( colId === -1 ) { return -1; }
@@ -1266,7 +1262,6 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 	    colId = progCol.hostColumnId;
 	    let nLoc = {};
 	    nLoc.ceProjectId     = ceProjId; 
-	    nLoc.hostRepository  = fullName;
 	    nLoc.hostProjectId   = pid;
 	    nLoc.hostProjectName = projName;
 	    nLoc.hostColumnId    = progName;
@@ -1465,20 +1460,6 @@ async function createColumn( authData, ghLinks, ceProjectId, pid, colName, posit
 }
 
 
-/* 
-  XXX query inside gql can't seem to deal with whitespace.  It appears to pay attention to the first word, only.
-      Adding "AND" does not help.  Adding \"\" around name does not help.  `` nope.  \\\ nope.
-      The query below works because both words are unique in current tiny world.  adding "A" in front matches everything.
-  
-  So the code below assumes query is useless, does extra filtering as with label.
-
-{
-  user(login:"ariCETester"){
-    login id projectsV2(query: "Pre-Existing Project in:title", first:99 ) {edges{ node{ id title }}}}
-  organization( login:"codeEquity"){
-    login id projectsV2(query: "Pre-Existing Project in:title", first:99) {edges{ node{ id title }}}}
-}
-*/
 
 async function findProjectByName( authData, orgLogin, userLogin, projName ) {
     let pid = -1;
@@ -1497,6 +1478,21 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
     query = JSON.stringify({ query, variables });
 
     // XXX arggh.  if only query worked as expected
+    /* 
+       XXX query inside gql can't seem to deal with whitespace.  It appears to pay attention to the first word, only.
+       Adding "AND" does not help.  Adding \"\" around name does not help.  `` nope.  \\\ nope.
+       The query below works because both words are unique in current tiny world.  adding "A" in front matches everything.
+       
+       So the code below assumes query is useless, does extra filtering as with label.
+       
+       {
+       user(login:"ariCETester"){
+       login id projectsV2(query: "Pre-Existing Project in:title", first:99 ) {edges{ node{ id title }}}}
+       organization( login:"codeEquity"){
+       login id projectsV2(query: "Pre-Existing Project in:title", first:99) {edges{ node{ id title }}}}
+       }
+    */
+
     /*
     await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
@@ -1569,50 +1565,38 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
     return pid;
 }
 
-// XXX unit testing required
-async function linkProject( authData, ghLinks, ceProjects, ceProjId, pid, rNodeId, rName ) {
-    let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
-    let variables = {"pid": pid, "rid": rNodeId };
-    query         = JSON.stringify({ query, variables });
 
-    let res = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( ret => {
-	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
-	    res = ret;
-	})
-	.catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, pid, rNodeId, rName ));
+// XXX in support of link workaround to avoid issue with creating columns.
+//     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
+async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ) {
+    console.log( authData.who, "linkProject", name );
 
-    if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
-    else if( ghLinks !== -1 ) {
-	// testServer needs to do this for itself, since testServer ghLinks is not the same object as ceServer ghLinks
-	// XXX fix when handle link/unlink in projectHandler.  if ever.  notifications missing.
-	await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, rNodeId, rName );
-    }
-}
-
-
-
-// XXX Placed here to support createUnclaimedProject..
-//     relocate to gh2TestUtils once column support in the API is resolved.
-async function findOrCreateProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name, body ) {
-    let linkageDone = false;
-
-    console.log( authData.who, "FindOrCreateProject", name );
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
-    if( pid === -1 ) {
-	pid = await createProject( authData, ownerId, repoId, name, body );
-    }
-    else {
-	let rp = await findProjectByRepo( authData, repoId, name );
-	if( rp === -1 ) {
-	    await linkProject( authData, ghLinks, ceProjects, ceProjId, pid, repoId, repoName );
-	    linkageDone = (ghLinks !== -1);
+    assert( pid !== -1 );
+
+    let rp = await findProjectByRepo( authData, repoId, name );
+    if( rp === -1 ) {
+	let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
+	let variables = {"pid": pid, "rid": repoId };
+	query         = JSON.stringify({ query, variables });
+	
+	let res = -1;
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( ret => {
+		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+		res = ret;
+	    })
+	    .catch( e => res = ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ));
+	
+	if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
+	else if( ghLinks !== -1 ) {   
+	    // test process can't execute this, does not have server's ghLinks obj, so will do it independently
+	    await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId, repoName );
 	}
     }
     
-    return [pid, linkageDone];
+    return pid;
 }
 
 
@@ -1621,8 +1605,8 @@ async function findOrCreateProject( authData, ghLinks, ceProjects, ceProjId, org
 // NOTE: if this creates, then create unclaimed column below will fail.
 async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 {
-    let [unClaimedProjId,_] = await findOrCreateProject( authData, ghLinks, ceProjects, pd.ceProjectId, pd.org, pd.actor, pd.actorId, pd.repoId, pd.repoName,
-							 config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
+    let unClaimedProjId = await linkProject( authData, ghLinks, ceProjects, pd.ceProjectId, pd.org, pd.actor, pd.actorId, pd.repoId, pd.repoName,
+					     config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
     
     if( unClaimedProjId === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
@@ -1794,7 +1778,6 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 
 	let nLoc = {};
 	nLoc.ceProjectId     = pd.ceProjectId;
-	nLoc.hostRepository  = pd.repoName;
 	nLoc.hostProjectId   = pid; 
 	nLoc.hostProjectName = link.hostProjectName;
 	nLoc.active          = "true";
@@ -1858,11 +1841,10 @@ exports.rebuildLabel       = rebuildLabel;
 
 exports.getProjectName      = getProjectName;
 exports.updateProject       = updateProject;
-exports.createProject       = createProject;
 exports.linkProject         = linkProject;
 exports.findProjectByName   = findProjectByName;
 exports.findProjectByRepo   = findProjectByRepo;
-exports.findOrCreateProject = findOrCreateProject;
+exports.linkProject         = linkProject;
 
 exports.getColumnName      = getColumnName;
 
@@ -1883,6 +1865,7 @@ exports.cleanUnclaimed     = cleanUnclaimed;
 
 exports.getCEProjectLayout = getCEProjectLayout;
 
+// exports.createProject       = createProject;          // XXX NYI
 exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
 exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
 exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI
