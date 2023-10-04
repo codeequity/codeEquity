@@ -1576,6 +1576,7 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
     assert( pid !== -1 );
 
     let rp = await findProjectByRepo( authData, repoId, name );
+    console.log( "GHV2 LP", rp );
     if( rp === -1 ) {
 	let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
 	let variables = {"pid": pid, "rid": repoId };

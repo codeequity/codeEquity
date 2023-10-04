@@ -13,7 +13,7 @@ const ghUtils = require( rootLoc + "utils/gh/ghUtils" );
 class GH2Data extends ceData.CEData{
 
     // Use projectV2 node ids, not databaseIds
-    constructor( jd, ceProjects, ceProjectId ) {
+    constructor( authData, jd, ceProjects, ceProjectId ) {
 	// XXX May need ceFlutter to assign hostProj to ceProj.
 	//     when linking hostProj to repo, could do assignment to ceProj internally.
 
@@ -25,8 +25,9 @@ class GH2Data extends ceData.CEData{
 
 	super( settings );
 
+	// No async in constructors.  Require caller to get CEP directly if needed.
 	if( typeof ceProjectId !== 'undefined' && ceProjectId != config.EMPTY ) { this.ceProjectId = ceProjectId; }
-	else                                                                    { this.ceProjectId = this.getCEProjectId( jd, ceProjects ); }
+	else                                                                    { this.ceProjectId = -1; }
 
 	// Specific to gh2
 	this.issueNum       = -1;
@@ -47,7 +48,7 @@ class GH2Data extends ceData.CEData{
 	return newPD;
     }
     
-    getCEProjectId( jd, ceProjects ) {
+    async setCEProjectId( authData, jd, ceProjects ) {
 	
 	// console.log( "getCEProjectId",  jd.reqBody );
 
@@ -61,21 +62,26 @@ class GH2Data extends ceData.CEData{
 	    retVal = ceProjects.findByRepo( config.HOST_GH, jd.org, jd.reqBody.repository.full_name ); 
 	}
 	else {
-	    // console.log( "Find by pid" );
-	    retVal = ceProjects.find( config.HOST_GH, jd.org, jd.reqBody.projects_v2_item.project_node_id );
+	    if( jd.reqBody.projects_v2_item.content_type != "Issue" ) {
+		console.log( "gh2Data object created for item that is not an issue.  No need to set ceProjectId" );
+		return;
+	    }
+	    let issueId = jd.reqBody.projects_v2_item.content_node_id;
+	    if( !utils.validField( jd.reqBody.projects_v2_item, "content_node_id" ) ) { console.log( jd.reqBody ); }
+	    assert( utils.validField( jd.reqBody.projects_v2_item, "content_node_id" ) );
+	    
+	    retVal = ceProjects.cacheFind( config.HOST_GH, jd.org, issueId );
+	    if( retVal == config.EMPTY ) {
+		console.log( "ceProj gh2D SLOW", issueId, "..." );
+		let issueRepo = await ghUtils.getIssueRepo( authData, issueId );
+		retVal = ceProjects.findByRepo( config.HOST_GH, jd.org, issueRepo.name );
+		ceProjects.updateCache( config.HOST_GH, jd.org, issueId, retVal );
+		console.log( "ceProj gh2D SLOW", issueId, retVal );
+	    }
+	    else { console.log( "ceProj gh2D FAST", issueId, retVal ); }
 	}
 
-	// XXX No point to speculatively add.
-	//     push this step down until we have a peq action.
-	/*
-	// If did not find an entry, then we have discovered a new project.  add it to unclaimed.
-	if( retVal == config.EMPTY ) {
-	    console.log( "Found new Host Project: ", hostProjId );
-	    console.log( "Associating this with the UnClaimed ceProject until claimed in ceFlutter." );
-	    retVal = ceProjects.add(  config.HOST_GH, jd.org, hostProjId );
-	}
-	*/
-	return retVal;
+	this.ceProjectId = retVal;
     }
     
     show() {

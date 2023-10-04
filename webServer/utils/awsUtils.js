@@ -465,28 +465,15 @@ async function clearIngested( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+/*
 async function linkProject( authData, query ) {
     let shortName = "LinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
     return await wrappedPostAWS( authData, shortName, postData );
 }
-
-async function unlinkProject( authData, query ) {
-/*
-    let xshortName = "GetEntries";
-    let xpostData = { "Endpoint": xshortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
-    let xceProj = await wrappedPostAWS( authData, xshortName, xpostData );
-    console.log( "XXXUnlink", "before", query, xceProj);
-    if( xceProj.length > 0 ) {
-	if( utils.validField( xceProj[0], "HostParts" ) && utils.validField( xceProj[0].HostParts, "hostProjectIds" )) {
-	    for( const x of xceProj[0].HostParts.hostProjectIds ) { console.log( x ); }
-	}
-	if( utils.validField( xceProj[0], "HostParts" ) && utils.validField( xceProj[0].HostParts, "hostRepositories" )) {
-	    for( const x of xceProj[0].HostParts.hostRepositories ) { console.log( x ); }
-	}
-    }
 */
 
+async function unlinkProject( authData, query ) {
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
     let retVal = await wrappedPostAWS( authData, shortName, postData );
@@ -594,7 +581,7 @@ exports.getLinkage   = getLinkage;
 exports.cleanDynamo   = cleanDynamo;
 exports.clearIngested = clearIngested;
 
-exports.linkProject   = linkProject;
+// exports.linkProject   = linkProject;
 exports.unlinkProject = unlinkProject;
 
 exports.getStoredLocs = getStoredLocs;    // TESTING ONLY

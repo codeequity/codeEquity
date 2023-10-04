@@ -101,7 +101,7 @@ async function refreshUnclaimed( authData, testLinks, td, forceFind ) {
     await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
 
     for( const proj of hostProjs ) {
-	// console.log( "checking", proj.hostProjectName, proj.hostProjectId );
+	console.log( "checking", proj.hostProjectName, proj.hostProjectId, td.GHFullName, td.unclaimTitle );
 	if( proj.hostProjectName == td.unclaimTitle ) {
 	    td.unclaimPID = proj.hostProjectId;
 

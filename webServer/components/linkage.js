@@ -391,8 +391,6 @@ class Linkage {
 	}
 
 	const ceProjId  = query.ceProjId;
-	const repo      = utils.validField( query, "repo" )     ? query.repo              : config.EMPTY;
-	const repoId    = utils.validField( query, "repoId" )   ? query.repoId            : -1;
 	const pid       = utils.validField( query, "pid" )      ? query.pid.toString()    : -1;
 	const colId     = utils.validField( query, "colId" )    ? query.colId.toString()  : -1;
 	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
@@ -618,9 +616,9 @@ class Linkage {
 	
 	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
 	
-	// Wait.. adds to dynamo
 	let promises = [];
-	promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ));
+	// Wait.. adds to dynamo
+	// promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ));
 	    
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;

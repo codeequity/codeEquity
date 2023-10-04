@@ -5,27 +5,33 @@ const config  = require( '../config' );
 const awsUtils = require( '../utils/awsUtils' );
 
 // A simple fast lookup map to get ceProjectIds from job data
+// hostProjects are views, which may be shared across ceProjects.
+// job data will include hostIssueId, for quick lookup.  Else, caller will need to provide hostRepoId.
 class CEProjects {
 
     constructor( ) {
 	this.cep   = {};  // { <CEProjects> }
-	this.hp2cp = {};  // { host: { org: { hostProjId: ceProjId }}}
+	this.hi2cp = {};  // { host: { org: { hostIssueId: ceProjId }}}
     }  
 
-    find( host, org, hostProjId ) {
+
+    cacheFind( host, org, hostIssueId ) {
 	let retVal = config.EMPTY;
-	if( this.hp2cp.hasOwnProperty( host )) {
-	    if( this.hp2cp[host].hasOwnProperty( org )) {
-		if( this.hp2cp[host][org].hasOwnProperty( hostProjId )) {
-		    retVal = this.hp2cp[host][org][hostProjId];
+	if( this.hi2cp.hasOwnProperty( host )) {
+	    if( this.hi2cp[host].hasOwnProperty( org )) {
+		if( this.hi2cp[host][org].hasOwnProperty( hostIssueId )) {
+		    retVal = this.hi2cp[host][org][hostIssueId];
 		}
 	    }
 	}
-	if( retVal == config.EMPTY ) {
-	    console.log( "CEP find", host, org, hostProjId, "GOT", retVal );
-	    this.show(50);
-	}
 	return retVal;
+    }
+
+    updateCache( host, org, hostIssueId, ceProjectsId ) {
+	if( !this.hi2cp.hasOwnProperty( host ))                  { this.hi2cp[host]      = {}; }
+	if( !this.hi2cp[host].hasOwnProperty( org ))             { this.hi2cp[host][org] = {}; }
+	this.hi2cp[host][org][hostIssueId] = ceProjectsId;
+	return true;
     }
 
     findByRepo( host, org, repo ) {
@@ -39,57 +45,10 @@ class CEProjects {
     
     async init( authData ) {
 	// console.log( "Initializing ceProjects" );
-	this.hp2cp = {};
+	this.hi2cp = {};
 	this.cep = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
-	for( const entry of this.cep ) {
-	    await this.add( authData, entry );
-	}
     }
 
-    // Called during server initialization,
-    // XXX and when once a new hostProject has been identified in ceFlutter
-    async add( authData, newCEP ) {
-	let cpid = newCEP.CEProjectId;
-	let host = newCEP.HostPlatform;
-	let pms  = newCEP.ProjectMgmtSys;
-	let org  = newCEP.Organization;
-
-	// console.log( "Working on", newCEP, cpid, host, pms, org );
-
-	let awsLinksP = awsUtils.getLinkage( authData, { "CEProjectId": cpid } );
-	let awsLocsP  = awsUtils.getProjectStatus( authData, cpid );
-
-	if( !this.hp2cp.hasOwnProperty( host ))                  { this.hp2cp[host]                  = {}; }
-	if( !this.hp2cp[host].hasOwnProperty( org ))             { this.hp2cp[host][org]             = {}; }
-
-	// use CEProj table instead.  More direct.
-	let awsLocs = await awsLocsP;
-	for( const hpid of awsLocs.HostParts.hostProjectIds ) {
-
-	    if( host == config.HOST_GH && pms == config.PMS_GHC ) {
-		// XXX need to work with hostRepositories instead
-		assert( false );
-		org = awsLoc.hostRepository.split('/')[0];          // Take the owner (individual or org) as org
-	    }
-
-	    if( !this.hp2cp[host][org].hasOwnProperty( hpid )) { this.hp2cp[host][org][hpid] = cpid; }
-	}
-	
-	let awsLinks = await awsLinksP;
-	assert( awsLinks.length == 1 );
-	/*
-	for( const awsLoc of awsLinks[0].Locations ) {
-
-	    if( host == config.HOST_GH && pms == config.PMS_GHC ) {
-		org = awsLoc.hostRepository.split('/')[0];          // Take the owner (individual or org) as org
-	    }
-	    let hpid = awsLoc.hostProjectId;
-
-	    if( !this.hp2cp[host][org].hasOwnProperty( hpid )) { this.hp2cp[host][org][hpid] = cpid; }
-	}
-	*/
-	
-    }
 
     // called by ceFlutter to attach a hostProject to a ceProject.
     associate( host, org, hostProjId, ceProjId ) {
@@ -117,20 +76,20 @@ class CEProjects {
     // XXX does not properly show repositories, nor projectIds (i.e. HostParts.hostRepositories)
     show( count ) {
 	console.log( "CEProjects Map contents" );
-	if( Object.keys( this.hp2cp ).length <= 0 ) { return ""; }
+	if( Object.keys( this.hi2cp ).length <= 0 ) { return ""; }
 	
 	console.log( this.fill( "ceProjectId", 20 ),
 		     this.fill( "Host", 15 ),
 		     this.fill( "Organization", 15 ),
-		     this.fill( "HostProjectId", 22 ),
+		     this.fill( "HostIssueId", 22 ),
 		     this.fill( "HostParts", 22 ),
 		   );
 	
 	let printables = [];
-	for( const [host, hceps] of Object.entries( this.hp2cp )) {
+	for( const [host, hceps] of Object.entries( this.hi2cp )) {
 	    for( const [org, oceps] of Object.entries( hceps )) {
-		for( const [hpid, cep] of Object.entries( oceps )) {
-		    printables.push( { h: host, o: org, hp: hpid, cp: cep }  );
+		for( const [hiid, cep] of Object.entries( oceps )) {
+		    printables.push( { h: host, o: org, hi: hiid, cp: cep }  );
 		}}
 	}
 
@@ -144,7 +103,7 @@ class CEProjects {
 	    console.log( this.fill( p.cp,  20 ),
 			 this.fill( p.h,   15 ),
 			 this.fill( p.o,   15 ),
-			 this.fill( p.hp,  22 ),
+			 this.fill( p.hi,  22 ),
 			 this.fill( parts, 22 )
 		       );
 	}
