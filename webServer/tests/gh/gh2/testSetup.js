@@ -123,7 +123,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
 	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,       subTest, "PAct user name" ); 
 
-	    console.log( pact.Subject[0], pact.Verb, pact.Action );
+	    console.log( pact.Subject[0], pact.Verb, pact.Action, pact.Subject.slice(-1) );
 	    
 	    if( pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
 		pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ||
@@ -149,6 +149,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	subTest = tu.checkEq( foundDSSub, true,        subTest, "Pact sub ds" );
 	subTest = tu.checkEq( foundBOSub, true,        subTest, "Pact sub bo" );
 	if( !foundBOSub ) { console.log( unPeqs ); }
+	if( !foundDSSub ) { console.log( dsPeqs, locs.hostColumnId ); }
 
 	// Check DYNAMO RepoStatus
 	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId );

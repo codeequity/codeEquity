@@ -590,7 +590,7 @@ class Linkage {
 		}}
 	}
 
-	await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
+	// await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
 	await ceProjects.init( authData );
 
 	// At this point, aws does not associate cPID with unlinked hPID, and internal ceProjects does not register for hPID
@@ -634,12 +634,13 @@ class Linkage {
     }
 
 
+    // if pid == -1, all hostProjs are purged
     purgeLocs( ceProjId, pid ) {
 	let killList = [];	
 	for( const [_,cplinks] of Object.entries( this.locs )) {
 	    for( const [_,cloc] of Object.entries( cplinks )) {
 		for( const [col,loc] of Object.entries( cloc )) {
-		    if( ceProjId == "TESTING-FROMJSONLOCS" || ( loc.ceProjectId == ceProjId && loc.hostProjectId == pid )) {
+		    if( ceProjId == "TESTING-FROMJSONLOCS" || ( loc.ceProjectId == ceProjId && ( loc.hostProjectId == pid || pid == -1))) {
 			killList.push({ "cpid": loc.ceProjectId, "pid": loc.hostProjectId });
 		    }  
 		}
@@ -648,7 +649,8 @@ class Linkage {
 	for( const id of killList ) { delete this.locs[id.cpid][id.pid]; }
 	return true;
     }
-    
+
+    // if pid == -1, all hostProjs are purged
     purge( ceProjId, pid, specials ) {
 	let linksOnly  = typeof specials !== 'undefined' && specials.hasOwnProperty( "linksOnly" )  ? specials.linksOnly : false;	
 	console.log( "Removing links, locs for", ceProjId, pid, "links only?", linksOnly );
@@ -657,7 +659,9 @@ class Linkage {
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {
 		for( const [cid,link] of Object.entries( clink )) {
-		    if( link.ceProjectId == ceProjId && link.hostProjectId == pid ) { killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} ); }
+		    if( link.ceProjectId == ceProjId && (link.hostProjectId == pid || pid == -1 )) {
+			killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} );
+		    }
 		}
 	    }
 	}

@@ -101,7 +101,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "Depop")          { resultPromise = depopulate( rb.CEProjectId ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     // else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
-    else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
+    // else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -1332,7 +1332,6 @@ async function link( query ) {
     }
     return success( true );
 }
-*/
 
 async function unlink( query ) {
     let oldProjWrap = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
@@ -1359,7 +1358,7 @@ async function unlink( query ) {
 	return bsdb.send( updateCmd ).then(() => success( true ));
     }
 }
-
+*/
 
 
 function errorResponse(status, errorMessage, awsRequestId) {

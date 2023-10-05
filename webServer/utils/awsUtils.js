@@ -466,13 +466,6 @@ async function clearIngested( authData, query ) {
 }
 
 /*
-async function linkProject( authData, query ) {
-    let shortName = "LinkProject";
-    let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
-    return await wrappedPostAWS( authData, shortName, postData );
-}
-*/
-
 async function unlinkProject( authData, query ) {
     let shortName = "UnlinkProject";
     let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
@@ -488,6 +481,7 @@ async function unlinkProject( authData, query ) {
 
     return retVal;
 }
+*/
 
 
 // ******************
@@ -582,7 +576,7 @@ exports.cleanDynamo   = cleanDynamo;
 exports.clearIngested = clearIngested;
 
 // exports.linkProject   = linkProject;
-exports.unlinkProject = unlinkProject;
+// exports.unlinkProject = unlinkProject;
 
 exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
 exports.unpopulate    = unpopulate;       // TESTING ONLY
