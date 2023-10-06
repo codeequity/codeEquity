@@ -108,7 +108,10 @@ class Linkage {
 	    // All ids for GH2 are GQL node_ids.
 	    else if( pms == config.PMS_GH2 ) {
 		// mainly to get pat
-		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
+		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR );
+
+		// Get all hostRepoIds that belong to the ceProject
+		let hostRepoIds = entry.HostParts.hostRepositories.map( repo => repo.repoId );
 
 		// Find all hostProjects that provide a card home for a peq in the cep
 		let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: entry.CEProjectId } );
@@ -128,6 +131,10 @@ class Linkage {
 		    
 		    await ghV2.getHostLinkLoc( authData, pid, rLocs, rLinks, -1 )
 			.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
+
+		    // hostProjs may contain issues from other ceProjects.  Filter these out by requiring hostRepo to match one of the list in ceProjects
+		    // initialization of the other ceProjects will pick up these filtered out links.
+		    rLinks = rLinks.filter( (link) => hostRepoIds.includes( link.hostRepoId ) );
 
 		    // console.log( authData.who, "Populate Linkage", pid );
 		    rLinks.forEach( function (link) { this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
