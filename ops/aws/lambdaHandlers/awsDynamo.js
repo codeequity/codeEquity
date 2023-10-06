@@ -100,8 +100,8 @@ export function handler( event, context, callback) {
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "Depop")          { resultPromise = depopulate( rb.CEProjectId ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
-    else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
-    else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
+    // else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
+    // else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;
@@ -1311,6 +1311,7 @@ async function getHostProjs( query ) {
     return success( hprojs );
 }
 
+/*
 // https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html
 async function link( query ) {
 
@@ -1357,7 +1358,7 @@ async function unlink( query ) {
 	return bsdb.send( updateCmd ).then(() => success( true ));
     }
 }
-
+*/
 
 
 function errorResponse(status, errorMessage, awsRequestId) {

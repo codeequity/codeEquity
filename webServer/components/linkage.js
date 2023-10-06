@@ -108,7 +108,10 @@ class Linkage {
 	    // All ids for GH2 are GQL node_ids.
 	    else if( pms == config.PMS_GH2 ) {
 		// mainly to get pat
-		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR ); 
+		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR );
+
+		// Get all hostRepoIds that belong to the ceProject
+		let hostRepoIds = entry.HostParts.hostRepositories.map( repo => repo.repoId );
 
 		// Find all hostProjects that provide a card home for a peq in the cep
 		let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: entry.CEProjectId } );
@@ -128,6 +131,10 @@ class Linkage {
 		    
 		    await ghV2.getHostLinkLoc( authData, pid, rLocs, rLinks, -1 )
 			.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
+
+		    // hostProjs may contain issues from other ceProjects.  Filter these out by requiring hostRepo to match one of the list in ceProjects
+		    // initialization of the other ceProjects will pick up these filtered out links.
+		    rLinks = rLinks.filter( (link) => hostRepoIds.includes( link.hostRepoId ) );
 
 		    // console.log( authData.who, "Populate Linkage", pid );
 		    rLinks.forEach( function (link) { this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
@@ -391,8 +398,6 @@ class Linkage {
 	}
 
 	const ceProjId  = query.ceProjId;
-	const repo      = utils.validField( query, "repo" )     ? query.repo              : config.EMPTY;
-	const repoId    = utils.validField( query, "repoId" )   ? query.repoId            : -1;
 	const pid       = utils.validField( query, "pid" )      ? query.pid.toString()    : -1;
 	const colId     = utils.validField( query, "colId" )    ? query.colId.toString()  : -1;
 	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
@@ -592,7 +597,7 @@ class Linkage {
 		}}
 	}
 
-	await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
+	// await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
 	await ceProjects.init( authData );
 
 	// At this point, aws does not associate cPID with unlinked hPID, and internal ceProjects does not register for hPID
@@ -618,9 +623,9 @@ class Linkage {
 	
 	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
 	
-	// Wait.. adds to dynamo
 	let promises = [];
-	promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ));
+	// Wait.. adds to dynamo
+	// promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ));
 	    
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProjId;
@@ -636,12 +641,13 @@ class Linkage {
     }
 
 
+    // if pid == -1, all hostProjs are purged
     purgeLocs( ceProjId, pid ) {
 	let killList = [];	
 	for( const [_,cplinks] of Object.entries( this.locs )) {
 	    for( const [_,cloc] of Object.entries( cplinks )) {
 		for( const [col,loc] of Object.entries( cloc )) {
-		    if( ceProjId == "TESTING-FROMJSONLOCS" || ( loc.ceProjectId == ceProjId && loc.hostProjectId == pid )) {
+		    if( ceProjId == "TESTING-FROMJSONLOCS" || ( loc.ceProjectId == ceProjId && ( loc.hostProjectId == pid || pid == -1))) {
 			killList.push({ "cpid": loc.ceProjectId, "pid": loc.hostProjectId });
 		    }  
 		}
@@ -650,7 +656,8 @@ class Linkage {
 	for( const id of killList ) { delete this.locs[id.cpid][id.pid]; }
 	return true;
     }
-    
+
+    // if pid == -1, all hostProjs are purged
     purge( ceProjId, pid, specials ) {
 	let linksOnly  = typeof specials !== 'undefined' && specials.hasOwnProperty( "linksOnly" )  ? specials.linksOnly : false;	
 	console.log( "Removing links, locs for", ceProjId, pid, "links only?", linksOnly );
@@ -659,7 +666,9 @@ class Linkage {
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {
 		for( const [cid,link] of Object.entries( clink )) {
-		    if( link.ceProjectId == ceProjId && link.hostProjectId == pid ) { killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} ); }
+		    if( link.ceProjectId == ceProjId && (link.hostProjectId == pid || pid == -1 )) {
+			killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} );
+		    }
 		}
 	    }
 	}

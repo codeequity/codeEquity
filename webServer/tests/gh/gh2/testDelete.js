@@ -50,28 +50,12 @@ async function clearCEProj( authData, testLinks, pd ) {
 
     let ceProjP = awsUtils.getProjectStatus( authData, pd.ceProjectId );
     
-    // ceProjects
-    // XXX Note: Only removing hostProjectIds for now.  Once ceFlutter handles populate, this will change.
-    // Need to wait here, unlink has a check in it.
-    // This will fire if aws:ceProj table has entries but gh no longer does.  Can happen if testing not ending cleanly, or server not being restarted
-    let ceProj = await ceProjP;
-    for( const pid of ceProj.HostParts.hostProjectIds ) {
-	await awsUtils.unlinkProject( authData, {"ceProjId": pd.ceProjectId, "hostProjectId": pid} );
-    }
-
-    // Linkages
-    // Usually empty, since above deletes remove links as well.  but sometimes, der's turds.
-    // Note: peq from aws no longer carries repo.
-    for( const pid of ceProj.HostParts.hostProjectIds ) {
-	console.log( "Remove links", pd.GHFullName, pid );
-	await tu.remLinks( authData, testLinks, pd.ceProjectId, pid );
-
-	console.log( "getLinks", pd.GHFullName, pid );
-	let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId, "pid": pid } );
-	if( links !== -1 ) { console.log( links ); }
-	assert( links === -1 );
-    }
-
+    console.log( "Remove links", pd.ceProjectId );
+    await tu.remLinks( authData, testLinks, pd.ceProjectId, -1 );
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId } );
+    if( links !== -1 ) { console.log( links ); }
+    assert( links === -1 );
+    
     // PEQs
     // XXX clean, if passing in larger test setups.
     // Should be attached to repo, but dynamo does not keep that information.  Can not move to clearRepo unless keep, say, ceTesterAri peqs away from ceTesterConnie peqs

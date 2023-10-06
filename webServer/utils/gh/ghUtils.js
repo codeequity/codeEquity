@@ -301,6 +301,31 @@ async function getRepoId( PAT, owner, repo ) {
     return retId;
 }
 
+async function getIssueRepo( authData, issueId ) {
+    // console.log( authData.who, "Get Issue's repo", issueId );
+
+    let query = `query( $id:ID! ) {
+                   node( id: $id ) {
+                   ... on Issue {
+                     repository { id nameWithOwner }
+                  }}}`;
+
+    let variables = {"id": issueId};
+    let queryJ    = JSON.stringify({ query, variables });
+
+    let repo = {};
+    await postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	.then( ret => {
+	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+	    let issue = ret.data.node;
+	    repo.id   = issue.repository.id;
+	    repo.name = issue.repository.nameWithOwner;
+	})
+	.catch( e => issue = errorHandler( "getIssueRepo", e, getIssueRepo, authData, issueId ));
+
+    return repo;
+}
+
 
 exports.postGH       = postGH;
 exports.errorHandler = errorHandler;
@@ -317,3 +342,4 @@ exports.theOnePEQ       = theOnePEQ;
 
 exports.getOwnerId      = getOwnerId;
 exports.getRepoId       = getRepoId;
+exports.getIssueRepo    = getIssueRepo;

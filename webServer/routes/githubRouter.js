@@ -149,7 +149,7 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     pd.repoName   = jd.reqBody['repository']['full_name'];
 
     // XXX can set ghLinks... and locs..?  more args?  hmmm
-    pd.ceProjectId  = ceProjects.find( jd.host, jd.org, jd.reqBody.repository );
+    pd.ceProjectId  = ceProjects.findByRepo( jd.host, jd.org, pd.repoName );
     assert( pd.ceProjectId != -1 );
     ceRouter.setLastCEP( pd.ceProjectId );
 
@@ -221,9 +221,8 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 
     let retVal = "";
 
-    let pd = new gh2Data.GH2Data( jd, ceProjects, ceProjectId );
-
-    // console.log( authData.who, "switcherGH2..", pd.ceProjectId );
+    let pd = new gh2Data.GH2Data( authData, jd, ceProjects, ceProjectId );
+    if( pd.ceProjectId == -1 ) { await pd.setCEProjectId( authData, jd, ceProjects ); }
 
     if( pd.ceProjectId == config.EMPTY ) {
 	console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
@@ -334,7 +333,17 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 		if( nodeId == pendingNotices[i].id ) {
 		    // console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
 		    // console.log( "pendingNotices, after removal" );
-		    let cpid = ceProjects.find( jd.host, pendingNotices[i].org, pendingNotices[i].hpid );
+		    
+		    let cpid = ceProjects.cacheFind( jd.host, pendingNotices[i].org, pendingNotices[i].id );
+		    if( cpid == config.EMPTY ) {
+			console.log( "ceProj SLOW", pendingNotices[i].id, "..." );
+			let issueRepo = await ghUtils.getIssueRepo( authData, pendingNotices[i].id );
+			cpid = ceProjects.findByRepo( jd.host, pendingNotices[i].org, issueRepo.name );
+			ceProjects.updateCache( jd.host, pendingNotices[i].org, pendingNotices[i].id, cpid );
+			console.log( "ceProj SLOW", pendingNotices[i].id, cpid );
+		    }
+		    else { console.log( "ceProj FAST", pendingNotices[i].id, cpid ); }
+
 
 		    // Many notifications come in as content (i.e. issue:label), initially identified as GHC.
 		    // Adjust organization to fit GH2
@@ -397,7 +406,6 @@ function makePendingNotice( rb, action ) {
     }
     
     pn.id   = rb.projects_v2_item.content_node_id;
-    pn.hpid = rb.projects_v2_item.project_node_id;
     pn.org  = rb.organization.login;
 	
     return pn;
