@@ -334,16 +334,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 		    // console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
 		    // console.log( "pendingNotices, after removal" );
 		    
-		    let cpid = ceProjects.cacheFind( jd.host, pendingNotices[i].org, pendingNotices[i].id );
-		    if( cpid == config.EMPTY ) {
-			console.log( "ceProj SLOW", pendingNotices[i].id, "..." );
-			let issueRepo = await ghUtils.getIssueRepo( authData, pendingNotices[i].id );
-			cpid = ceProjects.findByRepo( jd.host, pendingNotices[i].org, issueRepo.name );
-			ceProjects.updateCache( jd.host, pendingNotices[i].org, pendingNotices[i].id, cpid );
-			console.log( "ceProj SLOW", pendingNotices[i].id, cpid );
-		    }
-		    else { console.log( "ceProj FAST", pendingNotices[i].id, cpid ); }
-
+		    let cpid = await ceProjects.cacheFind( authData, jd.host, pendingNotices[i].org, pendingNotices[i].id, ghUtils.getIssueRepo );
 
 		    // Many notifications come in as content (i.e. issue:label), initially identified as GHC.
 		    // Adjust organization to fit GH2

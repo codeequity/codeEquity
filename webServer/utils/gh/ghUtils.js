@@ -321,7 +321,7 @@ async function getIssueRepo( authData, issueId ) {
 	    repo.id   = issue.repository.id;
 	    repo.name = issue.repository.nameWithOwner;
 	})
-	.catch( e => issue = errorHandler( "getIssueRepo", e, getIssueRepo, authData, issueId ));
+	.catch( e => repo = errorHandler( "getIssueRepo", e, getIssueRepo, authData, issueId ));
 
     return repo;
 }
