@@ -1363,7 +1363,8 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
     let variables = cursor === -1 ? {"owner": rp[0], "name": rp[1] } : {"owner": rp[0], "name": rp[1], "cursor": cursor };
     query = JSON.stringify({ query, variables });
 
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+    try {
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
 	    if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 
@@ -1396,14 +1397,15 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
 	    }
 	    // Wait.  Data is modified
 	    if( projs.pageInfo.hasNextPage ) { await getProjectIds( authData, repoFullName, data, issues.pageInfo.endCursor ); }
-	})
-	.catch( e => {
+	});
+    }
+    catch( e ) {
 	    cursor = -1;
 	    data.length = 0;
-	    ghUtils.errorHandler( "getProjectIds", e, getProjectIds, authData, repoFullName, data, cursor )
-	});
+	    await ghUtils.errorHandler( "getProjectIds", e, getProjectIds, authData, repoFullName, data, cursor )
+    }
 
-    // console.log( "ghV2:getProjectIds", data );
+    // console.log( "ghV2:getProjectIds d", data );
 }
 
 

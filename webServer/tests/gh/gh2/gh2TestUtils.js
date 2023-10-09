@@ -94,11 +94,11 @@ async function refreshFlat( authData, td ) {
 
 // Refresh unclaimed.
 // Note: if unclaimed has not yet been linked, expect config.EMPTY
-async function refreshUnclaimed( authData, testLinks, td, forceFind ) {
+async function refreshUnclaimed( authData, testLinks, td ) {
     forceFind = typeof forceFind === 'undefined' ? false : forceFind;
     
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1, true );
 
     for( const proj of hostProjs ) {
 	console.log( "checking", proj.hostProjectName, proj.hostProjectId, td.GHFullName, td.unclaimTitle );
@@ -111,9 +111,13 @@ async function refreshUnclaimed( authData, testLinks, td, forceFind ) {
 	    }
 	}
     }
-    if( forceFind ) { await tu.settleWithVal( "refreshUnclaimed", tu.confirmColumn, authData, testLinks, td.ceProjectId, td.unclaimPID, td.unclaimCID ); }
-    
+
     if( td.unclaimCID == config.EMPTY ) { console.log( "refresh unclaimed .. did not find." ); }
+}
+
+async function forcedRefreshUnclaimed( authData, testLinks, td ) {
+    await refreshUnclaimed( authData, testLinks, td );
+    return await tu.confirmColumn( authData, testLinks, td.ceProjectId, td.unclaimPID, td.unclaimCID ); 
 }
 
 // [ cardId, issueNum, issueId, issueTitle]
@@ -2208,6 +2212,7 @@ exports.refresh         = refresh;
 exports.refreshRec      = refreshRec;  
 exports.refreshFlat     = refreshFlat;
 exports.refreshUnclaimed = refreshUnclaimed;
+exports.forcedRefreshUnclaimed = forcedRefreshUnclaimed;
 exports.getQuad         = getQuad;
 
 exports.createProjectWorkaround = createProjectWorkaround;

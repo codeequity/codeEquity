@@ -257,10 +257,9 @@ async function testStepByStep( authData, testLinks, td ) {
     // 2. add peq label
     let newLabel = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "", 1000 );
     await gh2tu.addLabel( authData, newLabel.id, meltData );
-    // gh needs to create unclaimed first time through.  can take time.  1s is usually enough.  if blow past 2sec w/settleval refreshUnclaimed,
-    // change this into wait for col.  better yet, refreshUnclaimed should wait until can see proj
-    await utils.sleep( 2000 );  
-    await gh2tu.refreshUnclaimed( authData, testLinks, td, true );
+
+    // gh needs to create unclaimed first time through.  can take time. 
+    await tu.settleWithVal( "forced refresh unclaimed", gh2tu.forcedRefreshUnclaimed, authData, testLinks, td );
     testStatus = await checkUnclaimedIssue( authData, testLinks, td, meltData, testStatus );
     
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
@@ -354,6 +353,7 @@ async function testEndpoint( authData, testLinks, td ) {
     tu.testReport( testStatus, "Test lifecycle endpoint" );
     return testStatus;
 }
+
 
 async function blastLink( authData, testLinks, title, ceProjId, fullName ) {
     let links  = await tu.getLinks( authData, testLinks, { "ceProjId": ceProjId, "repo": fullName } );
