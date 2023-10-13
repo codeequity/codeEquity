@@ -237,7 +237,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	case 'projects_v2_item' :
 	    {
 		// item created/deleted is ~ cardHandler.  Edited..?
-		retVal = await gh2Item.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
+		retVal = await gh2Item.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag, jd.delayCount )
 		    .catch( e => console.log( "Error.  Item Handler failed.", e ));
 	    }
 	    break;
