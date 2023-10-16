@@ -4,9 +4,8 @@ const config  = require( '../config');
 const ceAuth  = require( '../auth/ceAuth' );
 
 const utils   = require( '../utils/ceUtils' );
+const links   = require( '../utils/linkage' );
 const ghUtils = require( '../utils/gh/ghUtils' );
-
-const links   = require( '../components/linkage' );
 
 const ceRouter = require( './ceRouter' );
 

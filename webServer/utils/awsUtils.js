@@ -465,24 +465,6 @@ async function clearIngested( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-/*
-async function unlinkProject( authData, query ) {
-    let shortName = "UnlinkProject";
-    let postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
-    let retVal = await wrappedPostAWS( authData, shortName, postData );
-
-    shortName = "GetEntry";
-    postData = { "Endpoint": shortName, "tableName": "CEProjects", "query": {"CEProjectId": query.ceProjId }};
-    let ceProj = await wrappedPostAWS( authData, shortName, postData );
-
-    // NOTE if this fails during testing, chances are you are not restarting ceServer (good), but also not running testDelete (bad).
-    //      if so, multiple copies of the current project-du-jour are stored in aws:ceProjects.
-    assert( !utils.validField( ceProj.HostParts, "hostProjectIds") || !ceProj.HostParts.hostProjectIds.includes( query.hostProjectId ));
-
-    return retVal;
-}
-*/
-
 
 // ******************
 // Pure Testing support
@@ -574,9 +556,6 @@ exports.getLinkage   = getLinkage;
 
 exports.cleanDynamo   = cleanDynamo;
 exports.clearIngested = clearIngested;
-
-// exports.linkProject   = linkProject;
-// exports.unlinkProject = unlinkProject;
 
 exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
 exports.unpopulate    = unpopulate;       // TESTING ONLY

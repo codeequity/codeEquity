@@ -3,10 +3,10 @@ var assert = require( 'assert' );
 const awsAuth        = require( '../../auth/aws/awsAuth' );
 const auth           = require( '../../auth/gh/ghAuth' );
 const config         = require( '../../config' );
-const links          = require( '../../components/linkage.js' );
 
 const utils    = require( '../../utils/ceUtils' );
 const awsUtils = require( '../../utils/awsUtils' );
+const links    = require( '../../utils/linkage.js' );
 
 const testData  = require( './testData' );
 const authDataC = require( '../../auth/authData' );

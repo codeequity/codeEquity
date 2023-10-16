@@ -6,12 +6,11 @@ const ceAuth   = require( '../auth/ceAuth' );
 const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
 
-// XXX this should not be here
-const ghClassic = require( '../utils/gh/ghc/ghClassicUtils' );
-const gh        = ghClassic.githubUtils;
-const ghV2      = require( '../utils/gh/gh2/ghV2Utils' );
-
 const locData  = require( './locData' );
+
+// Host-specific implementations
+const gh2LU    = require( './gh/gh2/linkageUtils' );
+const ghcLU    = require( './gh/ghc/linkageUtils' );
 
 
 // Linkage table contains all identifying info related to situated issues or better.
@@ -39,123 +38,28 @@ class Linkage {
     async initOneCEProject( authData, entry ) {
 
 	let host  = utils.validField( entry, "HostPlatform" )       ? entry.HostPlatform                    : "";
-	let org   = utils.validField( entry, "Organization" )       ? entry.Organization                    : "";
 	let pms   = utils.validField( entry, "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
-	let comp  = utils.validField( entry, "CEProjectComponent" ) ? entry.CEProjectComponent              : "";
-	let isOrg = utils.validField( entry, "OwnerCategory" )      ? entry.OwnerCategory == "Organization" : false;
-	assert( host != "" && pms != "" && org != "" );
-	assert( utils.validField( entry, "CEProjectId" ) );
 	
-	console.log( authData.who, ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
-
 	// Wait later
 	let peqs = awsUtils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
 
+	let res       = {};
 	let baseLinks = [];
-	let blPromise = [];
-	let ldPromise = [];
 	let locData   = [];
 
-	// XXX local implementations should not be here.
-	// classic is per repo.
 	// Init repo with CE_ACTOR, which is typically a builder account that needs full access.
 	if( host == config.HOST_GH ) {
-	    if( pms == config.PMS_GHC ) {
-		
-		// HostRepos are stored with linkages, and in ceProj.
-		// If there is not an existing link in aws, no need to iterate through the repo looking for baselinks.
-		// If there is an existing link, use it (them) to populate repos.  It will not be a large list - just proj/col.
-		// As long as hproj and cproj are linked, there will be at least one link irregardless of ceServer status.
-		// ceFlutter is the main consumer of this information, excluding this call.
+	    if(      pms == config.PMS_GHC ) { res = await ghcLU.buildHostLinks( authData, this, entry, baseLinks, locData ); }
+	    else if( pms == config.PMS_GH2 ) { res = await gh2LU.buildHostLinks( authData, this, entry, baseLinks, locData ); }
 
-		let repos = [];
-		for( const repo of entry.HostParts.hostRepositories ) {
-		    if( !repos.includes( repo.repoName )) {
-			repos.push( repo.repoName );
-
-			console.log( authData.who, "Refreshing", entry.CEProjectId, repo );
-			let fnParts = repo.repoName.split('/');
-			let rlinks = [];
-			
-			if( isOrg ) { await ceAuth.getAuths( authData, host, pms, org,  config.CE_ACTOR ); }
-			else        { await ceAuth.getAuths( authData, host, pms, repo.repoName, config.CE_ACTOR ); }
-			
-			// XXX this should not be here
-			blPromise =  gh.getBasicLinkDataGQL( authData.pat, fnParts[0], fnParts[1], rlinks, -1 )
-			    .catch( e => console.log( authData.who, "Error.  GraphQL for basic linkage failed.", e ));
-			
-			ldPromise = gh.getRepoColsGQL( authData.pat, fnParts[0], fnParts[1], locData, -1 )
-			    .catch( e => console.log( authData.who, "Error.  GraphQL for repo cols failed.", e ));
-			
-			ldPromise = await ldPromise;  // no val here, just ensures locData is set
-			for( var loc of locData ) {
-			    loc.ceProjectId = entry.CEProjectId;
-			    loc.active = "true";
-			    this.addLoc( authData, loc, false ); 
-			}
-			
-			blPromise = await blPromise;  // no val here, just ensures linkData is set
-
-			rlinks.forEach( function (link) { link.hostRepoName = repo.repoName;
-							  this.addLinkage( authData, entry.CEProjectId, link, { populate: true } ); 
-							}, this);
-
-			baseLinks = baseLinks.concat( rlinks );
-		    }
-		}
-	    }
-	    // XXX local implementations should not be here.
-	    // All ids for GH2 are GQL node_ids.
-	    else if( pms == config.PMS_GH2 ) {
-		// mainly to get pat
-		await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR );
-
-		// Get all hostRepoIds that belong to the ceProject
-		let hostRepoIds = entry.HostParts.hostRepositories.map( repo => repo.repoId );
-
-		// Find all hostProjects that provide a card home for a peq in the cep
-		let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: entry.CEProjectId } );
-		if( hostProjs == -1 ) { hostProjs = []; }
-		console.log( "HOST PROJs", entry.CEProjectId, hostProjs );
-		
-		// Note, for links being built below, the link is a complete ceServer:link that supplied info for the 1:1 mapping issue:card.
-		//       it is not necessarily a complete picture of a host link (which ceServer does not need).
-		//       for example, in GH an issue may be 1:m i.e. in 1 repo with cards in many projects. several links will be created below
-		//       these multiple links will be resolved once that issue becomes peq.
-		// Note, any peq issue will have already been resolved.
-		for( const pid of hostProjs ) {
-		    
-		    console.log( authData.who, "GET FOR PROJECT", entry.CEProjectId, pid );
-		    let rLinks = [];
-		    let rLocs  = [];
-		    
-		    await ghV2.getHostLinkLoc( authData, pid, rLocs, rLinks, -1 )
-			.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
-
-		    // hostProjs may contain issues from other ceProjects.  Filter these out by requiring hostRepo to match one of the list in ceProjects
-		    // initialization of the other ceProjects will pick up these filtered out links.
-		    rLinks = rLinks.filter( (link) => hostRepoIds.includes( link.hostRepoId ) );
-
-		    // console.log( authData.who, "Populate Linkage", pid );
-		    rLinks.forEach( function (link) { this.addLinkage( authData, entry.CEProjectId, link, { populate: true } );
-						    }, this);
-		    
-		    // console.log( authData.who, "LINKAGE: Locs",  rLocs );
-		    // console.log( authData.who, "LINKAGE: Links", rLinks );
-		    for( var loc of rLocs ) {
-			loc.ceProjectId = entry.CEProjectId;
-			loc.active = "true";
-			this.addLoc( authData, loc, false ); 
-		    }
-		    
-		    baseLinks = baseLinks.concat( rLinks );
-		    locData = locData.concat( rLocs );
-		}
-	    }
+	    baseLinks = res.links;
+	    locData   = res.locs; 
 	}
+	
+	// console.log( authData.who, "LINKAGE: Locs",  locData );
+	// console.log( authData.who, "LINKAGE: Links", baseLinks );
 
-	awsUtils.refreshLinkageSummary( authData, entry.CEProjectId, locData );  
-
+	awsUtils.refreshLinkageSummary( authData, entry.CEProjectId, locData );
 	
 	// peq add: cardTitle, colId, colName, projName - carded issues do not track this.
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
@@ -583,60 +487,15 @@ class Linkage {
     }
 
 
-    // Unlink project from repo.  in this case, remove repo info
-    async unlinkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId ) {
-	console.log( "Unlink project", ceProjId, hostRepoId, hostProjectId );
-
-	if( this.links[ceProjId] != null ) {
-	    for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {
-		for( const [_, link] of Object.entries( clinks ) ) {
-		    if( link.hostProjectId == hostProjectId && link.hostRepoId == hostRepoId ) {
-			link.hostRepoName = config.EMPTY;
-			link.hostRepoId   = config.EMPTY;
-		    }
-		}}
-	}
-
-	// await awsUtils.unlinkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} );
-	await ceProjects.init( authData );
-
-	// At this point, aws does not associate cPID with unlinked hPID, and internal ceProjects does not register for hPID
-	this.removeLocs( { authData: authData, ceProjId: ceProjId, pid: hostProjectId } );
-	
+    // workaround function for GH2
+    async linkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
+	await gh2LU.linkProject( authData, this, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName );
 	return true;
     }
 
-
-    // workaround function
-    // user linking existing project?            don't care.
-    // testing creating a project?               empty, no need to get links 
-    // user or testing creating unclaimed card?  according to ceServer strict relation, unclaimedProj belongs to ceProj, is not shared.
-    async linkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
-	let rLocs  = [];
-	let rLinks = [];
-	console.log( authData.who, "link project", ceProjId, hostProjectId, hostRepoName );
-
-	await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
-	    .catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
-
-	assert( rLinks.length == 0 );
-	
-	// XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
-	
-	let promises = [];
-	// Wait.. adds to dynamo
-	// promises.push( awsUtils.linkProject( authData, {"ceProjId": ceProjId, "hostProjectId": hostProjectId} ));
-	    
-	for( var loc of rLocs ) {
-	    loc.ceProjectId = ceProjId;
-	    loc.active = "true";
-	    // console.log( "linkage:addLoc", loc );
-	    promises.push( this.addLoc( authData, loc, true ) );
-	}
-	await Promise.all( promises );
-	// Could just add/remove... but why?
-	await ceProjects.init( authData );
-	
+    // workaround function for GH2
+    async unlinkProject( authData, ceProjects, ceProjId, hostProjectId, hostRepoId ) {
+	await gh2LU.unlinkProject( authData, this, ceProjects, ceProjId, hostProjectId, hostRepoId );
 	return true;
     }
 

@@ -4,12 +4,12 @@ const assert  = require( 'assert' );
 const awsAuth  = require( '../auth/aws/awsAuth' );
 const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
+const links    = require( '../utils/linkage' );
 const config   = require( '../config' );
 
 const ceAuth   = require( '../auth/ceAuth' );
 
 const fifoQ    = require( '../components/queue' );
-const links    = require( '../components/linkage' );
 const hist     = require( '../components/histogram' );
 const circBuff = require( '../components/circBuff' );
 
