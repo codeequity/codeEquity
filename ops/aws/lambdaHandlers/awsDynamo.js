@@ -77,8 +77,8 @@ export function handler( event, context, callback) {
     if(      endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
     else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
     else if( endPoint == "RemoveEntries")  { resultPromise = removeEntries( rb.tableName, rb.ids ); }
-    else if( endPoint == "GetID")          { resultPromise = getCEUserId( username ); }             // username is local
-    else if( endPoint == "GetCEUID")       { resultPromise = getCEUID( rb.HostUserName ); }           // return varies on no_content
+    else if( endPoint == "GetID")          { resultPromise = getCEUIDFromCE( username ); }             // username is local
+    else if( endPoint == "GetCEUID")       { resultPromise = getCEUIDFromHost( rb.HostUserName ); }           // return varies on no_content
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "CheckSetHostPop")  { resultPromise = checkSetHostPop( rb.CEProjectId, rb.Set ); }
@@ -443,7 +443,7 @@ async function removeEntries( tableName, ids ) {
 
 
 // get from ce table
-async function getCEUserId( username ) {
+async function getCEUIDFromCE( username ) {
     const paramsP = {
         TableName: 'CEPeople',
         FilterExpression: 'CEUserName = :uname',
@@ -459,7 +459,7 @@ async function getCEUserId( username ) {
 }
 
 // get from host table
-async function getCEUID( hostUser ) {
+async function getCEUIDFromHost( hostUser ) {
     const params = {
         TableName: 'CEHostUser',
         FilterExpression: 'HostUserName = :uname',
