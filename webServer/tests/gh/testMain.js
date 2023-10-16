@@ -6,11 +6,11 @@ const config    = require( '../../config' );
 const authDataC = require( '../../auth/authData' );
 const utils     = require( '../../utils/ceUtils' );
 const awsUtils  = require( '../../utils/awsUtils' );
+const links     = require('../../utils/linkage.js');
 
 const ghUtils   = require( '../../utils/gh/ghUtils' );
 const ghV2      = require( '../../utils/gh/gh2/ghV2Utils' );
 
-const links     = require('../../components/linkage.js');
 const circBuff  = require('../../components/circBuff.js');
 
 const tu        = require( '../ceTestUtils' );

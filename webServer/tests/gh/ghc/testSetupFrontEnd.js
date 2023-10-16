@@ -5,10 +5,10 @@ var config    = require( '../../../config' );
 
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
+const links    = require( '../../../utils/linkage.js' );
 
 const tu       = require( '../../ceTestUtils ');
 
-const links    = require( '../../../components/linkage.js' );
 
 const ghctu          = require( './ghcTestUtils' );
 const testSaveDynamo = require( './testSaveDynamo' );

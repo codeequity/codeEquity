@@ -94,11 +94,11 @@ async function refreshFlat( authData, td ) {
 
 // Refresh unclaimed.
 // Note: if unclaimed has not yet been linked, expect config.EMPTY
-async function refreshUnclaimed( authData, testLinks, td, forceFind ) {
+async function refreshUnclaimed( authData, testLinks, td ) {
     forceFind = typeof forceFind === 'undefined' ? false : forceFind;
     
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1, true );
 
     for( const proj of hostProjs ) {
 	console.log( "checking", proj.hostProjectName, proj.hostProjectId, td.GHFullName, td.unclaimTitle );
@@ -111,9 +111,13 @@ async function refreshUnclaimed( authData, testLinks, td, forceFind ) {
 	    }
 	}
     }
-    if( forceFind ) { await tu.settleWithVal( "refreshUnclaimed", tu.confirmColumn, authData, testLinks, td.ceProjectId, td.unclaimPID, td.unclaimCID ); }
-    
+
     if( td.unclaimCID == config.EMPTY ) { console.log( "refresh unclaimed .. did not find." ); }
+}
+
+async function forcedRefreshUnclaimed( authData, testLinks, td ) {
+    await refreshUnclaimed( authData, testLinks, td );
+    return await tu.confirmColumn( authData, testLinks, td.ceProjectId, td.unclaimPID, td.unclaimCID ); 
 }
 
 // [ cardId, issueNum, issueId, issueTitle]
@@ -168,22 +172,24 @@ async function getLabels( authData, td ) {
     let variables = {"nodeId": td.GHRepoId };
     query = JSON.stringify({ query, variables });
 
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
-	    let labs = raw.data.node.labels.edges;
-	    assert( labs.length < 99, "Need to paginate getLabels." );
-
-	    for( let i = 0; i < labs.length; i++ ) {
-		const label = labs[i].node;
-		let datum = {};
-		datum.id          = label.id;
-		datum.name        = label.name;
-		datum.color       = label.color;
-		datum.description = label.description;
-		labels.push( datum );
-	    }})
-	.catch( e => labels = ghUtils.errorHandler( "getLabels", e, getLabels, authData, td )); 
+    try{ 
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( async (raw) => {
+		if( raw.status != 200 ) { throw raw; }
+		let labs = raw.data.node.labels.edges;
+		assert( labs.length < 99, "Need to paginate getLabels." );
+		
+		for( let i = 0; i < labs.length; i++ ) {
+		    const label = labs[i].node;
+		    let datum = {};
+		    datum.id          = label.id;
+		    datum.name        = label.name;
+		    datum.color       = label.color;
+		    datum.description = label.description;
+		    labels.push( datum );
+		}});
+    }
+    catch( e ) { labels = await ghUtils.errorHandler( "getLabels", e, getLabels, authData, td ); }
 
     return labels.length == 0 ? -1 : labels;
 }
@@ -210,35 +216,37 @@ async function getProjects( authData, td ) {
     let variables = {"nodeId": td.GHRepoId };
     query = JSON.stringify({ query, variables });
 
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
-	    if( utils.validField( raw.data.node.projectsV2, "edges" )) {
-		let projs = raw.data.node.projectsV2.edges;
-		assert( projs.length < 99, "Need to paginate getProjects." );
-
-		for( let i = 0; i < projs.length; i++ ) {
-		    const p    = projs[i].node;
-		    const repo = p.repositories.edges[0].node;
+    try{
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( async (raw) => {
+		if( raw.status != 200 ) { throw raw; }
+		if( utils.validField( raw.data.node.projectsV2, "edges" )) {
+		    let projs = raw.data.node.projectsV2.edges;
+		    assert( projs.length < 99, "Need to paginate getProjects." );
 		    
-		    let datum = {};
-		    datum.id        = p.id;
-		    datum.title     = p.title;
-		    datum.repoCount = p.repositories.edges.length;
-		    datum.repoId    = repo.id;
-		    datum.repoOwner = repo.owner.login;
-		    datum.repoName  = repo.name;
-		    projects.push( datum );
-		}
-	    }})
-	.catch( e => {
-	    if( utils.validField( e, "errors" ) && e.errors.length >= 1 ) {
-		let m = e.errors[0].message;
-		if( m == 'Field \'ProjectV2\' doesn\'t exist on type \'Repository\'' ) { projects = []; }
-		else                                                                   { console.log( authData.who, "get projects failed.", e ); }
-	    }
-	    else { projects = ghUtils.errorHandler( "getProjects", e, getProjects, authData, td ); }
-	});
+		    for( let i = 0; i < projs.length; i++ ) {
+			const p    = projs[i].node;
+			const repo = p.repositories.edges[0].node;
+			
+			let datum = {};
+			datum.id        = p.id;
+			datum.title     = p.title;
+			datum.repoCount = p.repositories.edges.length;
+			datum.repoId    = repo.id;
+			datum.repoOwner = repo.owner.login;
+			datum.repoName  = repo.name;
+			projects.push( datum );
+		    }
+		}});
+    }
+    catch ( e ) {
+	if( utils.validField( e, "errors" ) && e.errors.length >= 1 ) {
+	    let m = e.errors[0].message;
+	    if( m == 'Field \'ProjectV2\' doesn\'t exist on type \'Repository\'' ) { projects = []; }
+	    else                                                                   { console.log( authData.who, "get projects failed.", e ); }
+	}
+	else { projects = await ghUtils.errorHandler( "getProjects", e, getProjects, authData, td ); }
+    }
 
     return projects.length == 0 ? -1 : projects; 
 }
@@ -263,40 +271,42 @@ async function getColumns( authData, pid ) {
     let variables = {"nodeId": pid };
     query = JSON.stringify({ query, variables });
 
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
-	    let views = raw.data.node.views.edges;
-	    assert( views.length == 1 );
-
-	    let view = views[0].node;
-	    let statusId = -1;
-	    
-	    for( let i = 0; i < view.fields.edges.length; i++ ) {
-		const afield = view.fields.edges[i].node;
-		if( afield.name == "Status" ) {
-		    statusId = afield.id;  
-		    for( let k = 0; k < afield.options.length; k++ ) {
+    try{ 
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( async (raw) => {
+		if( raw.status != 200 ) { throw raw; }
+		let views = raw.data.node.views.edges;
+		assert( views.length == 1 );
+		
+		let view = views[0].node;
+		let statusId = -1;
+		
+		for( let i = 0; i < view.fields.edges.length; i++ ) {
+		    const afield = view.fields.edges[i].node;
+		    if( afield.name == "Status" ) {
+			statusId = afield.id;  
+			for( let k = 0; k < afield.options.length; k++ ) {
+			    let datum = {};
+			    datum.statusId = statusId;
+			    datum.id = afield.options[k].id;
+			    datum.name = afield.options[k].name;
+			    cols.push( datum );
+			}
+			/*
+			// Hmm.. do not.. can not move to, and no need for address to move out of.. 
+			// Build "No Status" by hand
 			let datum = {};
 			datum.statusId = statusId;
-			datum.id = afield.options[k].id;
-			datum.name = afield.options[k].name;
+			datum.id   = config.GH_NO_STATUS;
+			datum.name = config.GH_NO_STATUS;
 			cols.push( datum );
+			*/
+			break;
 		    }
-		    /*
-		    // Hmm.. do not.. can not move to, and no need for address to move out of.. 
-		    // Build "No Status" by hand
-		    let datum = {};
-		    datum.statusId = statusId;
-		    datum.id   = config.GH_NO_STATUS;
-		    datum.name = config.GH_NO_STATUS;
-		    cols.push( datum );
-		    */
-		    break;
 		}
-	    }
-	})
-	.catch( e => cols = ghUtils.errorHandler( "getColumns", e, getColumns, authData, pid ));
+	    });
+    }
+    catch( e ) { cols = await ghUtils.errorHandler( "getColumns", e, getColumns, authData, pid ); }
 
     return cols.length == 0 ? -1 : cols;
 }
@@ -316,18 +326,20 @@ async function getDraftIssues( authData, pid ) {
     let variables = {"nodeId": pid };
     query = JSON.stringify({ query, variables });
 
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
-	    let drafts = raw.data.node.items.edges;
-	    assert( drafts.length < 99, "Need to paginate getDraftIssues." );
-
-	    for( let i = 0; i < drafts.length; i++ ) {
-		const iss = drafts[i].node;
-		if( iss.type == "DRAFT_ISSUE" ) { diss.push( iss.id ); }
-	    }
-	})
-	.catch( e => diss = ghUtils.errorHandler( "getDraftIssues", e, getDraftIssues, authData, pid )); 
+    try{ 
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( async (raw) => {
+		if( raw.status != 200 ) { throw raw; }
+		let drafts = raw.data.node.items.edges;
+		assert( drafts.length < 99, "Need to paginate getDraftIssues." );
+		
+		for( let i = 0; i < drafts.length; i++ ) {
+		    const iss = drafts[i].node;
+		    if( iss.type == "DRAFT_ISSUE" ) { diss.push( iss.id ); }
+		}
+	    });
+    }
+    catch( e ) { diss = await ghUtils.errorHandler( "getDraftIssues", e, getDraftIssues, authData, pid ); }
 
     return diss.length == 0 ? -1 : diss;
 }
@@ -357,34 +369,36 @@ async function getCards( authData, pid, colId ) {
     let variables = {"nodeId": pid };
     query = JSON.stringify({ query, variables });
 
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 ) { throw raw; }
-	    let issues = raw.data.node.items.edges;
-	    assert( issues.length < 99, "Need to paginate getCards." );
-
-	    for( let i = 0; i < issues.length; i++ ) {
-		const iss = issues[i].node;
-
-		// GH can sometimes take a long time to move a card out of No Status to it's home.  Try throwing a few times..
-		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && !utils.validField( iss, "fieldValueByName" ) ) {
-		    console.log( "Column is No Status.  Toss" );
-		    raw.status = 500;
-		    throw raw;
-		}
+    try{ 
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( async (raw) => {
+		if( raw.status != 200 ) { throw raw; }
+		let issues = raw.data.node.items.edges;
+		assert( issues.length < 99, "Need to paginate getCards." );
+		
+		for( let i = 0; i < issues.length; i++ ) {
+		    const iss = issues[i].node;
 		    
-		if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {
-		    let datum = {};
-		    datum.cardId = iss.id;                  // pvti or cardId here
-		    datum.issueNum = iss.content.number;
-		    datum.title    = iss.content.title;
-		    datum.columnId = colId;
-		    if( typeof datum.issueNum === 'undefined' ) { datum.issueNum = -1; } // draft issue
-		    cards.push( datum );
+		    // GH can sometimes take a long time to move a card out of No Status to it's home.  Try throwing a few times..
+		    if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && !utils.validField( iss, "fieldValueByName" ) ) {
+			console.log( "Column is No Status.  Toss" );
+			raw.status = 500;
+			throw raw;
+		    }
+		    
+		    if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && iss.fieldValueByName.optionId == colId ) {
+			let datum = {};
+			datum.cardId = iss.id;                  // pvti or cardId here
+			datum.issueNum = iss.content.number;
+			datum.title    = iss.content.title;
+			datum.columnId = colId;
+			if( typeof datum.issueNum === 'undefined' ) { datum.issueNum = -1; } // draft issue
+			cards.push( datum );
+		    }
 		}
-	    }
-	})
-	.catch( e => cards = ghUtils.errorHandler( "getCards", e, getCards, authData, pid, colId )); 
+	    });
+    }
+    catch( e ) { cards = await ghUtils.errorHandler( "getCards", e, getCards, authData, pid, colId ); }
 
     // return cards.length == 0 ? -1 : cards;
     return cards;
@@ -408,22 +422,24 @@ async function getComments( authData, issueId ) {
     let variables = {"nodeId": issueId };
     query = JSON.stringify({ query, variables });
 
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( async (raw) => {
-	    if( raw.status != 200 || utils.validField( raw, "errors" )) { throw raw; }
-	    if( !( utils.validField( raw.data, "node" ) && utils.validField( raw.data.node, "comments" ) )) { throw raw; }
-	    let coms = raw.data.node.comments.edges;
-	    assert( coms.length < 99, "Need to paginate getComments." );
-
-	    for( let i = 0; i < coms.length; i++ ) {
-		const com = coms[i].node;
-		let datum = {};
-		datum.id     = com.id;
-		datum.body   = com.body;
-		comments.push( datum );
-	    }
-	})
-	.catch( e => comments = ghUtils.errorHandler( "getComments", e, getComments, authData, issueId )); 
+    try{ 
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( async (raw) => {
+		if( raw.status != 200 || utils.validField( raw, "errors" )) { throw raw; }
+		if( !( utils.validField( raw.data, "node" ) && utils.validField( raw.data.node, "comments" ) )) { throw raw; }
+		let coms = raw.data.node.comments.edges;
+		assert( coms.length < 99, "Need to paginate getComments." );
+		
+		for( let i = 0; i < coms.length; i++ ) {
+		    const com = coms[i].node;
+		    let datum = {};
+		    datum.id     = com.id;
+		    datum.body   = com.body;
+		    comments.push( datum );
+		}
+	    });
+    }
+    catch( e ) { comments = await ghUtils.errorHandler( "getComments", e, getComments, authData, issueId ); }
 
     return comments.length == 0 ? -1 : comments;
 }
@@ -586,12 +602,14 @@ async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
     query         = JSON.stringify({ query, variables });
 
     let res = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    res = ret;
-	})
-	.catch( e => res = ghUtils.errorHandler( "unlinkProject", e, unlinkProject, authData, ceProjId, pid, rNodeId ));
+    try{ 
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	    .then( ret => {
+		if( ret.status != 200 ) { throw ret; }
+		res = ret;
+	    });
+    }
+    catch( e ) { res = await ghUtils.errorHandler( "unlinkProject", e, unlinkProject, authData, ceProjId, pid, rNodeId ); }
     
     if( typeof res.data === 'undefined' ) { console.log( "UnlinkProject failed.", res ); }
     else {
@@ -663,13 +681,15 @@ async function createDraftIssue( authData, pid, title, body ) {
     let queryJ    = JSON.stringify({ query, variables });
 
     let pvId = -1;
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    pvId = ret.data.addProjectV2DraftIssue.projectItem.id;
-	    console.log( authData.who, " .. draft issue created, id:", pvId );
-	})
-	.catch( e => pvId = ghUtils.errorHandler( "createDraftIssue", e, createDraftIssue, authData, pid, title, body ));
+    try{
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	    .then( ret => {
+		if( ret.status != 200 ) { throw ret; }
+		pvId = ret.data.addProjectV2DraftIssue.projectItem.id;
+		console.log( authData.who, " .. draft issue created, id:", pvId );
+	    });
+    }
+    catch( e ) { pvId = await ghUtils.errorHandler( "createDraftIssue", e, createDraftIssue, authData, pid, title, body ); }
     
     return pvId;
 }
@@ -721,11 +741,13 @@ async function removeNewbornCard( authData, pid, dissueNodeId, dissueContentId )
     let variables = { "pid": pid, "did": dissueNodeId };
     let queryJ    = JSON.stringify({ query, variables });
 
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	})
-	.catch( e => ghUtils.errorHandler( "removeNewbornCard", e, removeNewbornCard, authData, pid, dissueNodeId, dissueContentId ));
+    try{
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	    .then( ret => {
+		if( ret.status != 200 ) { throw ret; }
+	    });
+    }
+    catch( e ) { await ghUtils.errorHandler( "removeNewbornCard", e, removeNewbornCard, authData, pid, dissueNodeId, dissueContentId ); }
 }
 
 
@@ -835,9 +857,9 @@ async function delLabel( authData, label ) {
                         { deleteLabel( input:{ id: $labelId })  {clientMutationId}}`;
     let variables = {"labelId": label.id };
     let queryJ    = JSON.stringify({ query, variables });
-    
-    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.catch( e => ghUtils.errorHandler( "delLabel", e, delLabel, authData, label ));
+
+    try{ await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); }
+    catch( e ) { await ghUtils.errorHandler( "delLabel", e, delLabel, authData, label ); }
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
     query = "label deleted " + label.name + locator;
@@ -2208,6 +2230,7 @@ exports.refresh         = refresh;
 exports.refreshRec      = refreshRec;  
 exports.refreshFlat     = refreshFlat;
 exports.refreshUnclaimed = refreshUnclaimed;
+exports.forcedRefreshUnclaimed = forcedRefreshUnclaimed;
 exports.getQuad         = getQuad;
 
 exports.createProjectWorkaround = createProjectWorkaround;

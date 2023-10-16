@@ -25,7 +25,9 @@ const cardHandler = require( './cardHandler' );
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 
-async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
+async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCount ) {
+
+    delayCount = typeof delayCount === 'undefined' ? 0 : delayCount;
 
     console.log( authData.who, "itemHandler start", authData.job );
     
@@ -108,7 +110,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		if( utils.validField( fv, "field_type" )) {
 		    
 		    if( fv.field_type == "single_select" ) {
-			await cardHandler.handler( authData, ceProjects, ghLinks, pd, 'moved', tag );
+			return await cardHandler.handler( authData, ceProjects, ghLinks, pd, 'moved', tag, delayCount );
 		    }
 		    else if( fv.field_type == "labels" ) {
 			console.log( authData.who, "Item handler found edit:labels.. no action taken in favor of issue:labels" );
@@ -135,13 +137,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// generated from cardIssue or adding issue to project in GH
 	{
 	    // add return to catch postpone
-	    return cardHandler.handler( authData, ceProjects, ghLinks, pd, action, tag ); 
+	    return await cardHandler.handler( authData, ceProjects, ghLinks, pd, action, tag ); 
 	}
 	break;
     case 'deleted':
 	// generated from remCard
 	{
-	    return cardHandler.handler( authData, ceProjects, ghLinks, pd, action, tag ); 
+	    return await cardHandler.handler( authData, ceProjects, ghLinks, pd, action, tag ); 
 	}
 	break;
     case 'archived':

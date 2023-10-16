@@ -13,6 +13,8 @@ https://developer.github.com/v3/issues/#create-an-issue
 */
 
 
+// XXX All funcs using .then.catch pattern that call errorHandler need to rewrite using try catch with an await for the error handler.
+
 var handlerRetries;
 
 var githubSafe = {

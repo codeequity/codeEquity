@@ -70,15 +70,7 @@ class GH2Data extends ceData.CEData{
 	    if( !utils.validField( jd.reqBody.projects_v2_item, "content_node_id" ) ) { console.log( jd.reqBody ); }
 	    assert( utils.validField( jd.reqBody.projects_v2_item, "content_node_id" ) );
 	    
-	    retVal = ceProjects.cacheFind( config.HOST_GH, jd.org, issueId );
-	    if( retVal == config.EMPTY ) {
-		console.log( "ceProj gh2D SLOW", issueId, "..." );
-		let issueRepo = await ghUtils.getIssueRepo( authData, issueId );
-		retVal = ceProjects.findByRepo( config.HOST_GH, jd.org, issueRepo.name );
-		ceProjects.updateCache( config.HOST_GH, jd.org, issueId, retVal );
-		console.log( "ceProj gh2D SLOW", issueId, retVal );
-	    }
-	    else { console.log( "ceProj gh2D FAST", issueId, retVal ); }
+	    retVal = await ceProjects.cacheFind( authData, config.HOST_GH, jd.org, issueId, ghUtils.getIssueRepo );
 	}
 
 	this.ceProjectId = retVal;

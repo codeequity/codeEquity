@@ -209,11 +209,13 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
 // Can generate several notifications in one operation - so if creator is <bot>, ignore as pending.
 
 // NOTE this does not receive direct notifications, but is instead called from other handlers 
-async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
+async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCount ) {
 
     pd.actor = pd.reqBody.sender.login;
     let card = pd.reqBody.projects_v2_item;
 
+    delayCount = typeof delayCount === 'undefined' ? 0 : delayCount;
+    
     console.log( authData.who, "Card", action, "Actor:", pd.actor );
     // pd.show();
     
@@ -342,8 +344,16 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
 	    if( links === -1 ) {
-		console.log( authData.who, "Card not found (probably rejected in PNP), ignoring move request." );
-		return;
+		if( delayCount <= 3 ) {  // XXX formalize
+		    // Both events are rare.  One does not require postpone (rejection), the other does.
+		    // in the reject case, GH will finish deleting the card quickly, which causes ghV2:getCard to fail, which triggers 'no such card' above, eliminating further delay.
+		    console.log( authData.who, "Card not found.  Either rejected in PNP during split, or move notification arrived before create notification.  Delay.", delayCount );
+		    return "postpone"; 
+		}
+		else {
+		    console.log( authData.who, "Card not found (probably rejected in PNP), ignoring move request.", delayCount );
+		    return;
+		}
 	    }
 	    let link = links[0]; // cards are 1:1 with issues
 	    

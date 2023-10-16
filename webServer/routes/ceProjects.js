@@ -15,7 +15,7 @@ class CEProjects {
     }  
 
 
-    cacheFind( host, org, hostIssueId ) {
+    async cacheFind( authData, host, org, hostIssueId, getHostRepoFunc ) {
 	let retVal = config.EMPTY;
 	if( this.hi2cp.hasOwnProperty( host )) {
 	    if( this.hi2cp[host].hasOwnProperty( org )) {
@@ -24,6 +24,13 @@ class CEProjects {
 		}
 	    }
 	}
+
+	if( retVal == config.EMPTY ) {
+	    let issueRepo = await getHostRepoFunc( authData, hostIssueId );
+	    retVal = this.findByRepo( config.HOST_GH, org, issueRepo.name );
+	    this.updateCache( config.HOST_GH, org, hostIssueId, retVal );
+	}
+	
 	return retVal;
     }
 

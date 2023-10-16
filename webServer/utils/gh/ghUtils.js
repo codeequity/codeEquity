@@ -112,14 +112,10 @@ async function checkForPV2( PAT, nodeId ) {
     let queryJ = JSON.stringify({ query, variables });
 
     let found = false;
-    const ret = await postGH( PAT, config.GQL_ENDPOINT, queryJ )
-	.catch( e => errorHandler( "checkForPV2", e, checkForPV2, PAT, nodeId ));  // this will probably never catch anything
+    try{
+	// postGH catches it's own errors, but doesn't attempt to retry
+	const ret = await postGH( PAT, config.GQL_ENDPOINT, queryJ );
 
-    // XXX postGH masks errors, catch here.  eliminate need for this step
-    if( typeof ret !== 'undefined' && typeof ret.data === 'undefined' ) {
-	await errorHandler( "checkForPV2", ret, checkForPV2, PAT, nodeId ); 
-    }
-    else {
 	// XXX non-pv2 claim here can be false (e.g. delete populate issue, nodeId is already gone)
 	//     but may fine those cases to handle as classic?
 	if( !utils.validField( ret.data, "node" ) ) { return found; }
@@ -136,7 +132,8 @@ async function checkForPV2( PAT, nodeId ) {
 	    }
 	}
     }
-
+    catch( e ) { found = await errorHandler( "checkForPV2", e, checkForPV2, PAT, nodeId ); }
+    
     return found;
 }
 
@@ -271,15 +268,17 @@ async function getOwnerId( PAT, owner ) {
     // console.log( "GetOwnerId", PAT, owner );
     
     let retId = -1;
-    await postGH( PAT, config.GQL_ENDPOINT, query )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    if ( utils.validField( ret, "data" ) && (utils.validField( ret.data, "user" ) || utils.validField( ret.data, "organization" ))) {
-		if( !!ret.data.user ) { retId = ret.data.user.id; }
-		else                  { retId = ret.data.organization.id; }
-	    }
-	})
-	.catch( e => retId = errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ));
+    try{ 
+	await postGH( PAT, config.GQL_ENDPOINT, query )
+	    .then( ret => {
+		if( ret.status != 200 ) { throw ret; }
+		if ( utils.validField( ret, "data" ) && (utils.validField( ret.data, "user" ) || utils.validField( ret.data, "organization" ))) {
+		    if( !!ret.data.user ) { retId = ret.data.user.id; }
+		    else                  { retId = ret.data.organization.id; }
+		}
+	    })
+    }
+    catch( e ) { retId = await errorHandler( "getOwnerId", e, getOwnerId, PAT, owner ); }
 
     return retId;
 }
@@ -291,12 +290,14 @@ async function getRepoId( PAT, owner, repo ) {
     query = JSON.stringify({ query, variables });
 
     let retId = -1;
-    await postGH( PAT, config.GQL_ENDPOINT, query )
-	.then( ret => {
-	    if( ret.status != 200 ) { throw ret; }
-	    if( utils.validField( ret, "data" ) && utils.validField( ret.data, "repository" )) { retId = ret.data.repository.id; }
-	})
-	.catch( e => retId = errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ));
+    try {
+	await postGH( PAT, config.GQL_ENDPOINT, query )
+	    .then( ret => {
+		if( ret.status != 200 ) { throw ret; }
+		if( utils.validField( ret, "data" ) && utils.validField( ret.data, "repository" )) { retId = ret.data.repository.id; }
+	    })
+    }
+    catch( e ) { retId = await errorHandler( "getRepoId", e, getRepoId, PAT, owner, repo ); }
 
     return retId;
 }
@@ -314,14 +315,16 @@ async function getIssueRepo( authData, issueId ) {
     let queryJ    = JSON.stringify({ query, variables });
 
     let repo = {};
-    await postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	.then( ret => {
-	    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
-	    let issue = ret.data.node;
-	    repo.id   = issue.repository.id;
-	    repo.name = issue.repository.nameWithOwner;
-	})
-	.catch( e => issue = errorHandler( "getIssueRepo", e, getIssueRepo, authData, issueId ));
+    try{ 
+	await postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	    .then( ret => {
+		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+		let issue = ret.data.node;
+		repo.id   = issue.repository.id;
+		repo.name = issue.repository.nameWithOwner;
+	    })
+    }
+    catch( e ) { repo = await errorHandler( "getIssueRepo", e, getIssueRepo, authData, issueId ); }
 
     return repo;
 }

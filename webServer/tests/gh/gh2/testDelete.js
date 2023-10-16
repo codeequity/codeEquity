@@ -44,6 +44,7 @@ async function remIssues( authData, testLinks, pd ) {
     await Promise.all( promises );
 }
 
+// XXX This is ignoring repo, clearing for entire CEP.  No harm, just wasteful.
 // Note: this may be called multiple times for the same ceProj
 async function clearCEProj( authData, testLinks, pd ) {
     console.log( "\nClearing ceProj", pd.ceProjectId );

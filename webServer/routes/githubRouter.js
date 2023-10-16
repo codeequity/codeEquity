@@ -4,9 +4,8 @@ const config  = require( '../config');
 const ceAuth  = require( '../auth/ceAuth' );
 
 const utils   = require( '../utils/ceUtils' );
+const links   = require( '../utils/linkage' );
 const ghUtils = require( '../utils/gh/ghUtils' );
-
-const links   = require( '../components/linkage' );
 
 const ceRouter = require( './ceRouter' );
 
@@ -237,7 +236,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	case 'projects_v2_item' :
 	    {
 		// item created/deleted is ~ cardHandler.  Edited..?
-		retVal = await gh2Item.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
+		retVal = await gh2Item.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag, jd.delayCount )
 		    .catch( e => console.log( "Error.  Item Handler failed.", e ));
 	    }
 	    break;
@@ -334,16 +333,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 		    // console.log( "Found pv2Notice matching contentNotice", pendingNotices[i] );
 		    // console.log( "pendingNotices, after removal" );
 		    
-		    let cpid = ceProjects.cacheFind( jd.host, pendingNotices[i].org, pendingNotices[i].id );
-		    if( cpid == config.EMPTY ) {
-			console.log( "ceProj SLOW", pendingNotices[i].id, "..." );
-			let issueRepo = await ghUtils.getIssueRepo( authData, pendingNotices[i].id );
-			cpid = ceProjects.findByRepo( jd.host, pendingNotices[i].org, issueRepo.name );
-			ceProjects.updateCache( jd.host, pendingNotices[i].org, pendingNotices[i].id, cpid );
-			console.log( "ceProj SLOW", pendingNotices[i].id, cpid );
-		    }
-		    else { console.log( "ceProj FAST", pendingNotices[i].id, cpid ); }
-
+		    let cpid = await ceProjects.cacheFind( authData, jd.host, pendingNotices[i].org, pendingNotices[i].id, ghUtils.getIssueRepo );
 
 		    // Many notifications come in as content (i.e. issue:label), initially identified as GHC.
 		    // Adjust organization to fit GH2
