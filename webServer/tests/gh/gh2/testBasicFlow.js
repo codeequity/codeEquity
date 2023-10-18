@@ -72,7 +72,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, issueData, testStat
     // First time out, createUnclaimed can take a moment.
     subTest = tu.checkEq( cards != -1, true,        subTest, "cards not yet ready", td.unclaimCID );
     if( cards == -1 ) {
-	await gh2tu.refreshUnclaimed( authData, testLinks, td );	
+	await gh2tu.refreshUnclaimed( authData, td );	
 	return await tu.settle( subTest, testStatus, checkUnclaimedIssue, authData, testLinks, td, issueData, testStatus );
     }
 
@@ -314,7 +314,7 @@ async function testEndpoint( authData, testLinks, td ) {
 
     await gh2tu.refreshRec( authData, td );
     await gh2tu.refreshFlat( authData, td );
-    await gh2tu.refreshUnclaimed( authData, testLinks, td );
+    await gh2tu.refreshUnclaimed( authData, td );
 
     // 1. Create issue 
     let meltData = await gh2tu.makeIssue( authData, td, ISS_RACE, [] );               // [id, number, title]  (mix str/int)
@@ -388,7 +388,7 @@ async function testBlast( authData, testLinks, td ) {
     let issDat = await gh2tu.blastIssue( authData, td, "Blast 1", [lab1], [assignee1] );               
 
     await utils.sleep( 1500 );
-    await gh2tu.refreshUnclaimed( authData, testLinks, td );    
+    await gh2tu.refreshUnclaimed( authData, td );    
     const uncLoc = await gh2tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
 
     let title  = "Blast 1";

@@ -94,7 +94,7 @@ async function refreshFlat( authData, td ) {
 
 // Refresh unclaimed.
 // Note: if unclaimed has not yet been linked, expect config.EMPTY
-async function refreshUnclaimed( authData, testLinks, td ) {
+async function refreshUnclaimed( authData, td ) {
     forceFind = typeof forceFind === 'undefined' ? false : forceFind;
     
     let hostProjs = [];
@@ -116,7 +116,7 @@ async function refreshUnclaimed( authData, testLinks, td ) {
 }
 
 async function forcedRefreshUnclaimed( authData, testLinks, td ) {
-    await refreshUnclaimed( authData, testLinks, td );
+    await refreshUnclaimed( authData, td );
     return await tu.confirmColumn( authData, testLinks, td.ceProjectId, td.unclaimPID, td.unclaimCID ); 
 }
 
