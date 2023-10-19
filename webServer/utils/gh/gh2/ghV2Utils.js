@@ -495,7 +495,16 @@ async function remAssignee( authData, issueId, aNodeId ) {
     let variables = {"id": issueId, "adds": [aNodeId] };
     let queryJ    = JSON.stringify({ query, variables });
 
-    try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); }
+    try {
+	let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ );
+
+	// GH is not returning proper status code on failure here as of 10/23
+	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+	    console.log( authData.who, "WARNING. Assignee(s) not removed.", issueId, aNodeId, ret.errors );
+	    ret.status = 422; // Bad semantics.. issue id incorrect?
+	    throw ret; 
+	}
+    }
     catch( e ) { await ghUtils.errorHandler( "remAssignee", e, remAssignee, authData, issueId, aNodeId ); }
 }
 
@@ -1192,12 +1201,12 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 // Note issueId is contentId.  issDat[2] is issueNodeId
 async function createProjectCard( authData, ghLinks, ploc, issueId, fieldId, justId ) {
     let issDat = [issueId, -1, -1];
+    
+    console.log( authData.who, "create project card", ploc.pid, issueId, fieldId, ploc.colId, justId ) ;
 
     assert( typeof ploc.ceProjId !== 'undefined' );
     assert( typeof ploc.pid      !== 'undefined' );
     assert( typeof ploc.colId    !== 'undefined' );
-    
-    console.log( authData.who, "create project card", ploc.pid, issueId, fieldId, ploc.colId, justId ) ;
 
     // If wanted to link for user here, would need repo id, name.
     let tlocs = ghLinks.getLocs( authData, { "ceProjId": ploc.ceProjId, "pid": ploc.pid } );

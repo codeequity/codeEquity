@@ -767,6 +767,7 @@ async function makeNewbornCard( authData, testLinks, ceProjId, pid, colId, title
 }
 
 // Only makes card, no issue.
+// { pid cardId statusId columnId columnName }
 async function makeProjectCard( authData, testLinks, ceProjId, pid, colId, issueId, justId ) {
     let query = { ceProjId: ceProjId, pid: pid, colId: colId };  
     const locs = testLinks.getLocs( authData, query );    
@@ -892,7 +893,9 @@ async function remAssignee( authData, iNodeId, assignee ) {
 
 async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specials ) {
     console.log( authData.who, "Move Card", ceProjId, cardId, columnId );
-
+    assert( typeof cardId   !== 'undefined' );
+    assert( typeof columnId !== 'undefined' );
+    
     let links  = await tu.getLinks( authData, testLinks, { "ceProjId": ceProjId, "cardId": cardId } );    
     if( !( links !== -1 && links.length == 1) ) { console.log( "erm", links ); }
     assert( links !== -1 && links.length == 1);
@@ -903,11 +906,13 @@ async function moveCard( authData, testLinks, ceProjId, cardId, columnId, specia
     assert( columnId != config.GH_NO_STATUS );
     await ghV2.moveCard( authData, links[0].hostProjectId, cardId, locs[0].hostUtility, columnId );
     
-    let issNum  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issNum" )  ? specials.issNum : false;
-    
-    if( issNum ) {
+    let issId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "issId" )  ? specials.issId : false;
+
+    // This check is weak now, without updating internal notices.
+    // Looking for something like: projects_v2_item edited codeequity/I_kwDOIiH6ss50ZsVo GitHub/codeequity/ariCETester
+    if( issId ) {
 	let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;	
-	let query = "project_card moved iss" + issNum + " " + td.GHFullName + locator;
+	let query = "projects_v2_item edited " + config.TEST_OWNER + "/" + issId + locator;
 	await tu.settleWithVal( "moveCard", tu.findNotice, query );
     }
     
