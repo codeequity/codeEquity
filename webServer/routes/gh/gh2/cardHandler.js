@@ -355,9 +355,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    return;
 		}
 	    }
+	    assert( links.length == 1 );
 	    let link = links[0]; // cards are 1:1 with issues
 	    
-	    // if( links === -1 || links[0].hostColumnId == config.EMPTY ) {
 	    if( link.hostColumnId == config.EMPTY ) {
 		if( newNameIndex > config.PROJ_PROG ) {
 		    // No origination data.  use default
@@ -372,7 +372,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    if( newCard.columnId == oldColId ) {
 		// console.log( authData.who, "Moves within columns are not tracked", link, newCard, pd.reqBody.changes );
-		console.log( authData.who, "Moves within columns are not tracked" );
+		console.log( authData.who, "Moves within columns are not tracked", cardId, oldColId );
 		return;
 	    }
 	    console.log( authData.who, "attempting to move card to", newColName, newCard.columnId, "from", oldColId );

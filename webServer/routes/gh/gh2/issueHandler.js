@@ -402,7 +402,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    
-	    // Peq issues only.  PEQ tracks assignees from ceFlutter.  Just send PAct upstream.
+	    // Peq issues only.  PEQ assignees are tracked in ceFlutter.  Just send PAct upstream.
 	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 
 	    // This should only happen during blast-issue creation.

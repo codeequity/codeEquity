@@ -73,6 +73,23 @@ async function clearCEProj( authData, testLinks, pd ) {
     await awsUtils.unpopulate( authData, pd.ceProjectId );
 }
 
+
+async function clearUnclaimed( authData, testLinks, pd ) {
+    console.log( "Clearing Unclaimed" );
+    let projs = await gh2tu.getProjects( authData, pd );
+    
+    if( projs != -1 ) {
+	for( const proj of projs ) {
+	    if( proj.title == config.UNCLAIMED ) {
+		pd.projectId = proj.id;
+		await remDraftIssues( authData, testLinks, pd );
+		await gh2tu.unlinkProject( authData, pd.ceProjectId, proj.id, pd.GHRepoId );
+		await utils.sleep( 1000 );
+	    }
+	}
+    }
+}
+
 async function clearRepo( authData, testLinks, pd ) {
     console.log( "\nClearing", pd.GHFullName );
 
@@ -98,19 +115,26 @@ async function clearRepo( authData, testLinks, pd ) {
 
     let pactsP  = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
 
-    // XXX would like to delete.. buuut..
     // Get all existing projects in repo for deletion
     let pids = await gh2tu.getProjects( authData, pd );
-    console.log( "Unlinking all Projects.", pd.GHRepoId, pd.GHFullName, pids );
+
     if( pids != -1 ) {
-	pids = pids.map( project => project.id );
-	console.log( "ProjIds", pd.GHFullName, pids );
-	
-	for( const pid of pids ) {
-	    pd.projectId = pid;
-	    await remDraftIssues( authData, testLinks, pd );
-	    await gh2tu.unlinkProject( authData, pd.ceProjectId, pid, pd.GHRepoId );
-	    await utils.sleep( 1000 );
+	// Do not unlink unclaimed - causes race conditions when clearing multiple repos, some of which have ACCR issues that need to be recreated
+	let unclIndex = pids.findIndex( project => project.title == config.UNCLAIMED ); 
+	pids.splice( unclIndex, 1 );
+	console.log( "Unlinking all Projects but Unclaimed.", pd.GHRepoId, pd.GHFullName, pids );
+
+	if( pids != -1 ) {
+	    pids = pids.map( project => project.id );
+	    console.log( "ProjIds", pd.GHFullName, pids );
+	    
+	    // XXX would like to delete.. buuut..
+	    for( const pid of pids ) {
+		pd.projectId = pid;
+		await remDraftIssues( authData, testLinks, pd );
+		await gh2tu.unlinkProject( authData, pd.ceProjectId, pid, pd.GHRepoId );
+		await utils.sleep( 1000 );
+	    }
 	}
     }
 
@@ -175,6 +199,11 @@ async function runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM
     promises.push( clearRepo( authDataM, testLinks, tdM ));
     await Promise.all( promises );
 
+    // Now, unlink unclaimed, which was avoided above to remove race condition
+    await clearUnclaimed( authData,  testLinks, td  );
+    await clearUnclaimed( authDataX, testLinks, tdX );
+    await clearUnclaimed( authDataM, testLinks, tdM );
+    
     promises = [];
     promises.push( clearCEProj( authData,  testLinks, td ));
     promises.push( clearCEProj( authDataX, testLinks, tdX ));

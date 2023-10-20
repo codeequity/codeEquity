@@ -248,6 +248,8 @@ async function testAssignment( authData, testLinks, td ) {
     let assCard  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanId, assData[0] );
     testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, assPlan, assData, assCard, testStatus );
 
+    const pendLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
+
     if( VERBOSE ) { tu.testReport( testStatus, "A" ); }
 
     // 2. add assignee
@@ -273,7 +275,7 @@ async function testAssignment( authData, testLinks, td ) {
     await gh2tu.addAssignee( authData, assData, assignee2 );
 
     // 5. move to Prog
-    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, assCard.cardId, td.dsProgId, {issNum: assData[0]} );
+    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, assCard.cardId, td.dsProgId, {issId: assData[0]} );
     testStatus = await gh2tu.checkProgAssignees( authData, td, ASSIGNEE1, ASSIGNEE2, assData, testStatus );
 
     // 6. test ACCR
@@ -282,15 +284,15 @@ async function testAssignment( authData, testLinks, td ) {
     //     Can't check jobq, jobs already gone.  Can't check GH, it's in a good state.  No local state to check.. yet.....
     //     Impact only occurs when rem assignee right before rapid-fire close + accr, then assignee is added back in.  Low risk of occurence, but bad when it happens.
     //     11/22/21 2x
-    await  utils.sleep( 10000 );
+    await  utils.sleep( 5000 );
 
-    await gh2tu.closeIssue( authData, td, assData );
+    await gh2tu.closeIssue( authData, td, assData, pendLoc );
 
     // XXX HARSH.  If move to accrue notification arrives late, addAssignee will pass.  This is not expected to be an uncommon, fast sequence.
     //     3/8/21 fail, move notification is 8 seconds after assignment!
     //     Could settlewait here, but this issue is too important, allows someone to modify an accrued issue. 
-    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, assCard.cardId, td.dsAccrId, {issNum: assData[0]} );
-    await  utils.sleep( 10000 );
+    await gh2tu.moveCard( authData, testLinks, td.ceProjectId, assCard.cardId, td.dsAccrId, {issId: assData[0]} );
+    await  utils.sleep( 5000 );
     // Add, fail
     await gh2tu.addAssignee( authData, assData, assignee2 );
 
@@ -409,7 +411,7 @@ async function testCloseReopen( authData, testLinks, td ) {
 	tu.testReport( testStatus, "E" );
 
 	// 5. move to eggs
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, eggs.colId, {issNum: issueData[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, eggs.colId, {issId: issueData[0]} );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, eggs, issueData, card, testStatus, {"state": "open" } );
 
 	tu.testReport( testStatus, "F" );
@@ -433,7 +435,7 @@ async function testCloseReopen( authData, testLinks, td ) {
 	tu.testReport( testStatus, "I" );
 
 	// 9. move to accr
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, flatAccr.colId, {issNum: issueData[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, flatAccr.colId, {issId: issueData[0]} );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
 
 	tu.testReport( testStatus, "J" );
@@ -490,7 +492,7 @@ async function testCloseReopen( authData, testLinks, td ) {
 	tu.testReport( testStatus, "C" );
 
 	// 4. move to stripes
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, stripes.colId, {issNum: issueData[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, stripes.colId, {issId: issueData[0]} );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, stripes, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "D" );
@@ -514,7 +516,7 @@ async function testCloseReopen( authData, testLinks, td ) {
 	tu.testReport( testStatus, "G" );
 
 	// 8. move to accr
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, ghoAccr.colId, {issNum: issueData[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, ghoAccr.colId, {issId: issueData[0]} );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, ghoAccr, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "H" );
@@ -685,8 +687,8 @@ async function testCreateDelete( authData, testLinks, td ) {
 	await gh2tu.closeIssue( authData, td, issDatAgho2, ghoPend );
 
 	// Accrue
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, aghoCard1.id, ghoAccr.colId, {issNum: issDatAgho1[0]} );
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, aghoCard2.id, ghoAccr.colId, {issNum: issDatAgho2[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, aghoCard1.cardId, ghoAccr.colId, {issId: issDatAgho1[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, aghoCard2.cardId, ghoAccr.colId, {issId: issDatAgho2[0]} );
 
 	await utils.sleep( 1000 );
 	// Often unneeded, but useful if doing this as a one-off test
@@ -700,7 +702,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 	tu.testReport( testStatus, "accrued A" );
 	
 	// 2. remove them 1s with del card, remove 2s with del issue
-	await gh2tu.remCard( authData, aghoCard1.id );
+	await gh2tu.remCard( authData, aghoCard1.cardId );
 	await gh2tu.remIssue( authData, td, issDatAgho2[0] );
 
 	await utils.sleep( 2000 );
@@ -723,21 +725,21 @@ async function testCreateDelete( authData, testLinks, td ) {
 	testStatus = await gh2tu.checkUnclaimedAccr( authData, testLinks, td, uncAccr, issDatAgho2, aghoIss2New, aghoCard2New, testStatus, "issue" );  
 
 	// Old stuff wont be present
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard1.id, ISS_AGHO1, testStatus, {"skipAllPeq": true} );  
+	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard1.cardId, ISS_AGHO1, testStatus, {"skipAllPeq": true} );  
 	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issDatAgho2, testStatus );
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard2.id, ISS_AGHO2, testStatus, {"skipAllPeq": true} );  
+	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard2.cardId, ISS_AGHO2, testStatus, {"skipAllPeq": true} );  
 	tu.testReport( testStatus, "accrued B" );
 
 	// 3. Remove one more time
-	await gh2tu.remCard( authData, aghoCard1New.id );      // newborn
+	await gh2tu.remCard( authData, aghoCard1New.cardId );      // newborn
 	await gh2tu.remIssue( authData, td, aghoIss2New[0]);   // gone
 
 	testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, td, issDatAgho1, testStatus );
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard1New.id, ISS_AGHO1, testStatus, {"peq": true} );
+	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard1New.cardId, ISS_AGHO1, testStatus, {"peq": true} );
 	testStatus = await gh2tu.checkPact( authData, testLinks, td, ISS_AGHO1, config.PACTVERB_CONF, config.PACTACT_NOTE, "Disconnected issue", testStatus );
 
 	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, aghoIss2New, testStatus );
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard2New.id, ISS_AGHO2, testStatus, {"peq": true} );
+	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard2New.cardId, ISS_AGHO2, testStatus, {"peq": true} );
 	tu.testReport( testStatus, "accrued C" );
     }
     
@@ -848,7 +850,7 @@ async function testLabelMods( authData, testLinks, td ) {
 	// Close & accrue
 	await gh2tu.closeIssue( authData, td, issPendDat );
 	await gh2tu.closeIssue( authData, td, issAccrDat, ghoPend, cardAccr );
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.id, ghoAccr.colId, {issNum: issAccrDat[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.cardId, ghoAccr.colId, {issId: issAccrDat[0]} );
 
 	await utils.sleep( 2000 );	
 	testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, td, issNewbDat, testStatus, {lblCount: 1} );
@@ -996,7 +998,7 @@ async function testProjColMods( authData, testLinks, td ) {
 	await gh2tu.closeIssue( authData, td, issAccrDat, pendLoc );
 	// closeIssue returns only after notice seen.  but notice-job can be demoted.  be extra sure.
 	await tu.settleWithVal( "closeIssue", issueClosedHelp, authData, td, issAccrDat[0] );	
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.id, accrLoc.colId, {issNum: issAccrDat[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.cardId, accrLoc.colId, {issId: issAccrDat[0]} );
 
 	await utils.sleep( 2000 );	
 	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
@@ -1087,17 +1089,17 @@ async function testAlloc( authData, testLinks, td ) {
     
     // Move to stripe OK, not prog/accr
     {
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAlloc.id, stripeLoc.colId, {issNum: issAllocDat[0]} );
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAlloc.cardId, stripeLoc.colId, {issId: issAllocDat[0]} );
 
 	// Peq is now out of date.  Change stripeLoc psub to fit.
 	stripeLoc.projSub[2] = "Stars";
 	
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAlloc.id, progLoc.colId );   // FAIL
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAlloc.cardId, progLoc.colId );   // FAIL
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
-	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAlloc.id, accrLoc.colId );   // FAIL
+	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAlloc.cardId, accrLoc.colId );   // FAIL
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 
 	tu.testReport( testStatus, "Alloc A" );
@@ -1177,13 +1179,13 @@ async function testAlloc( authData, testLinks, td ) {
 	testStatus        = await gh2tu.checkAlloc( authData, testLinks, td, starLoc, issStarDat2, starCard2, testStatus, {assignees: 0, lblCount: 1} );
 
 	// Delete 2 ways
-	await gh2tu.remCard( authData, starCard1.id );            // card, then issue
+	await gh2tu.remCard( authData, starCard1.cardId );            // card, then issue
 	await gh2tu.remIssue( authData, td, issStarDat1[0] ); 
 	await gh2tu.remIssue( authData, td, issStarDat2[0] );     // just issue
 
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, starLoc, starCard1.id, "Alloc star 1", testStatus, {"peq": true} );
+	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, starLoc, starCard1.cardId, "Alloc star 1", testStatus, {"peq": true} );
 	// XXX This will exist until GH gets it back together.  See 6/8/2022 notes.
-	// testStatus = await gh2tu.checkNoCard( authData, testLinks, td, starLoc, starCard2.id, "Alloc star 2", testStatus, {"peq": true} );	
+	// testStatus = await gh2tu.checkNoCard( authData, testLinks, td, starLoc, starCard2.cardId, "Alloc star 2", testStatus, {"peq": true} );	
 	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issStarDat1, testStatus );
 	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issStarDat2, testStatus );
 	
