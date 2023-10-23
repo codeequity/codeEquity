@@ -231,7 +231,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	assert( jd.queueId == authData.job ) ;
 	// await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
 	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, config.CE_ACTOR );
-	
+
 	switch( jd.event ) {
 	case 'projects_v2_item' :
 	    {
@@ -248,7 +248,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	    break;
 	case 'label' :
 	    {
-		retVal = await gh2Label.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		retVal = await gh2Label.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
 		    .catch( e => console.log( "Error.  Label Handler failed.", e ));
 	    }
 	    break;
@@ -309,6 +309,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	    jd.event == "issue" && jd.action == "assigned" ||    
 	    jd.event == "issue" && jd.action == "unassigned" ||    
 	    jd.event == "label" && jd.action == "deleted" ||
+	    jd.event == "label" && jd.action == "edited" ||
 	    jd.event == "label" && jd.action == "created" )
 	{
 	    // console.log( "Found PV2.  Switching GH2 for content node" );

@@ -128,7 +128,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     if( pd.peqValue <= 0 && curVal > 0 ) {
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
-	ghV2.removeLabel( authData, label.id, pd.issueId );
+	ghV2.removeLabel( authData, label.node_id, pd.issueId );
 	return false;
     }
     

@@ -1091,8 +1091,9 @@ async function testAlloc( authData, testLinks, td ) {
     {
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAlloc.cardId, stripeLoc.colId, {issId: issAllocDat[0]} );
 
-	// Peq is now out of date.  Change stripeLoc psub to fit.
-	stripeLoc.projSub[2] = "Stars";
+	// Peq is now out of date.  Change stripeLoc psub to fit.   
+	// .... buuuuut checkAlloc checks pact not peq for slice(-1)  aaaaand, would be no status anyway
+	// stripeLoc.projSub[2] = "Stars";
 	
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 1} );
 

@@ -749,7 +749,15 @@ async function removeLabel( authData, labelNodeId, issueId ) {
     let variables = {"labelIds": [labelNodeId], "labelableId": issueId };
     let queryJ    = JSON.stringify({ query, variables });
 
-    try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); }
+    try {
+	let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); 
+	// GH is not returning proper status code on failure here as of 10/23
+	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+	    console.log( authData.who, "WARNING. Label(s) not removed.", issueId, labelNodeId, ret.errors );
+	    ret.status = 422; 
+	    throw ret; 
+	}
+    }
     catch( e ) { await ghUtils.errorHandler( "removeLabel", e, removeLabel, authData, labelNodeId, issueId ); }
     return true;
 }
@@ -1633,6 +1641,23 @@ async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 	//     note, could make do with 'no status' for unclaimed:unclaimed, but would fail for unclaimed:accrued and other required columns.
 	console.log( authData.who, "Error.  Please create the", config.UNCLAIMED, "project by hand, for now." );
     }
+    else {
+	// XXX
+	// Update locs.  During initialization Unclaimed may be linked in GH, but without PEQ, will not go through linkage:init.
+	// This is only a problem for unclaimed, and only until we can create columns, when ACCR is deleted elsewhere to be recreated here.
+	let rLinks = [];
+	let rLocs  = [];
+	
+	await getHostLinkLoc( authData, unClaimedProjId, rLocs, rLinks, -1 )
+	    .catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
+	
+	for( var loc of rLocs ) {
+	    loc.ceProjectId = pd.ceProjectId;
+	    loc.active = "true";
+	    ghLinks.addLoc( authData, loc, false ); 
+	}
+	
+    }
 
     return unClaimedProjId;
 }
@@ -1651,7 +1676,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
     if( locs === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
-	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand, for now." );
+	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand." );
     }
     else {
 	assert( unClaimedProjId == locs[0].hostProjectId );

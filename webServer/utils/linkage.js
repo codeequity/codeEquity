@@ -512,6 +512,17 @@ class Linkage {
 		}
 	    }
 	}
+	/*  
+	// if loc is added incorrectly, use this
+	if( ceProjId == "TESTING-FROMJSONLOCS" ) {
+	    let uhoh = false;
+	    for( const id of killList ) { if( !utils.validField( id, "cpid" ) || !utils.validField( id, "pid" )) { uhoh = true; }}
+	    if( uhoh ) {
+		for( const id of killList ) { console.log( "Bad kill list", id.cpid, id.pid ); }
+		this.showLocs();
+	    }
+	}
+	*/
 	for( const id of killList ) { delete this.locs[id.cpid][id.pid]; }
 	return true;
     }
