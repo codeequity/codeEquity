@@ -566,7 +566,7 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
 
 async function createLabel( authData, repoNode, name, color, desc ) {
 
-    // console.log( authData.who, "Create label", repoNode, name, desc, color );
+    console.log( authData.who, "Create label", repoNode, name, desc, color );
 
     let query     = `mutation( $id:ID!, $color:String!, $name:String!, $desc:String! )
                        { createLabel( input:{ repositoryId: $id, color: $color, description: $desc, name: $name }) {clientMutationId, label {id, name, color, description}}}`;
@@ -717,7 +717,7 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
 
 async function updateLabel( authData, labelNodeId, name, desc, color ) {
 
-    console.log( "Update label to", name, desc, color );
+    console.log( "Update label", labelNodeId, "to", name, desc, color );
 
     let query     = "";
 
@@ -1371,7 +1371,7 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
 		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
-		let label = raw.data.repository.label;
+		let label = utils.validField( raw.data.repository, "label" ) ? raw.data.repository.label : null;
 		if( typeof label !== 'undefined' && label != null ) {
 		    issues = label.issues;
 		    for( const issue of issues.edges ) {
@@ -1385,8 +1385,7 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 		    if( issues !== -1 && issues.pageInfo.hasNextPage ) { await getLabelIssues( authData, owner, repo, labelName, data, issues.pageInfo.endCursor ); }
 		}
 		else {
-		    // XXX may not be an error.. 
-		    console.log( authData.who, "XXX Error, no issues for label", labelName, res );
+		    console.log( authData.who, "No issues for label", labelName );
 		}
 	    });
     }

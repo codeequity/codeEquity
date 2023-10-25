@@ -755,7 +755,8 @@ async function getCardHelp( authData, pid, colId, cardName, testStatus ) {
 }
 
 async function labHelp( authData, td, getName, checkName, descr, testStatus ) {
-    let subTest  = [ 0, 0, []];    
+    let subTest  = [ 0, 0, []];
+
     let labelRes = await gh2tu.getLabel( authData, td.GHRepoId, getName );
     let label    = labelRes.label;
     subTest      = await gh2tu.checkLabel( authData, label, checkName, descr, subTest );
@@ -1135,15 +1136,17 @@ async function testAlloc( authData, testLinks, td ) {
 	testStatus = await labHelp( authData, td, ap100, -1, -1, testStatus );		
 	
 	// Mod label1m, fail and create
+	let ap2kConverted = gh2tu.convertName( ap2k );
+	let ap1mConverted = gh2tu.convertName( ap1m );
 	await gh2tu.updateLabel( authData, label1m, {name: ap2k });
-	testStatus = await labHelp( authData, td, label1m.name, ap1m, "Allocation PEQ value: 1000000", testStatus );
-	testStatus = await labHelp( authData, td, ap2k, ap2k, "Allocation PEQ value: 2000", testStatus );
+	testStatus = await labHelp( authData, td, label1m.name, ap1mConverted, "Allocation PEQ value: 1000000", testStatus );
+	testStatus = await labHelp( authData, td, ap2kConverted, ap2kConverted, "Allocation PEQ value: 2000", testStatus );
 	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label edit attempt", testStatus );
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );	
 
 	// Delete label1m, fail
 	await gh2tu.delLabel( authData, label1m );
-	testStatus = await labHelp( authData, td, ap1m, ap1m, "Allocation PEQ value: 1000000", testStatus );
+	testStatus = await labHelp( authData, td, ap1mConverted, ap1mConverted, "Allocation PEQ value: 1000000", testStatus );
 	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );	
 	
@@ -1154,7 +1157,7 @@ async function testAlloc( authData, testLinks, td ) {
     {
 	// Should stay in stripe, allocs don't move.
 	await gh2tu.closeIssue( authData, td, issAllocDat );
-	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, state: "closed"} );
+	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, state: "CLOSED"} );  // XXX formalize
 
 	await gh2tu.reopenIssue( authData, td, issAllocDat[0] );
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );

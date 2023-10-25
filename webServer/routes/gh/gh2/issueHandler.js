@@ -338,14 +338,16 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let allocation = false;
 	    [pd.peqValue,allocation] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
-		console.log( "Not a PEQ issue, no action taken." );
+		console.log( authData.who, "Not a PEQ issue, no action taken." );
 		return;
 	    }
 	    if( allocation ) {
-		console.log( "Allocation, no action taken." );
+		console.log( authData.who, "Allocation, no action taken." );
 		return;
 	    }
-	    
+
+	    console.log( "YYYYYYYYYYYYYYYYYYY" );
+
 	    // Get array: [proj_id, col_idx4]
 	    let ceProjectLayout = await ghV2.getCEProjectLayout( authData, ghLinks, pd );
 	    if( ceProjectLayout[0] == -1 ) {

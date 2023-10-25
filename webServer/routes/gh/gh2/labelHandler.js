@@ -39,6 +39,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     // Sender is the event generator.
     let sender   = pd.reqBody['sender']['login'];
 
+    if( utils.validField( pd.reqBody, "repository" ) ) {
+	pd.repoName = pd.reqBody.repository.full_name;
+	pd.repoId   = pd.reqBody.repository.node_id;
+    }
+
     // Note: the peq table is the key source here.  We must assume most fields in the peq table are out of date.
     //       happily, the peq label is protected - there is only 1 ever, when unlabled the peq table entry is deactivated
     //       and when the peq label is added, the peq entry is updated.
@@ -46,6 +51,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     case 'edited':
 	// Check if this is in use.  If so, undo edit (preserves current peq issues) and create a new label for the edit.
 	{
+	    assert( pd.repoId != config.EMPTY );
+
 	    // pd.reqBody.label has new label.   pd.reqBody.changes has what changed.
 	    // First, check if changes are to name or description.  else, return.
 	    console.log( pd.reqBody.changes );
@@ -53,7 +60,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    const labelId = pd.reqBOdy.label.node_id;
+	    const labelId = pd.reqBody.label.node_id;
 	    const newName = pd.reqBody.label.name;
 	    let origDesc  = pd.reqBody.label.description;
 	    let origName  = newName;
@@ -128,7 +135,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    // undo current edits, then make new.  Need to wait, else wont create label with same name
 	    console.log( authData.who, "WARNING.  Undoing label edit, back to", origName, origDesc );
-	    await ghV2.updateLabel( authData, labelId, newName, origName, origDesc );
+	    await ghV2.updateLabel( authData, labelId, origName, origDesc );
 
 	    // no need to wait
 	    // make new label, iff the name changed.  If only descr, we are done already.  This need not be peq.
@@ -136,7 +143,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		console.log( "Making new label to contain the edit" );
 		const [peqValue,_] = ghUtils.parseLabelName( newName );
 		const descr = ( allocation ? config.ADESC : config.PDESC ) + peqValue.toString();
-		ghV2.createLabel( authData, pd.repoId, newName, pd.reqBody.label.color, descr );
+		if( peqValue > 0 ) { ghV2.createPeqLabel( authData, pd.repoId, allocation, peqValue );  }
+		else               { ghV2.createLabel( authData, pd.repoId, newName, pd.reqBody.label.color, descr ); }
 	    }
 	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId, 
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label edit attempt",
@@ -144,11 +152,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'deleted':
-	// XXX XXX
-	console.log( "XXX NYI" );
-	break;
 	// The proper way to delete a peq label is to unlabel all issues first, then can remove the unused label.  Otherwise, we put them back.
-	// Check if this is in use.  If so, recreate it, and relabel all.  Potentially very expensive!
+	// Check if label is in use.  If so, recreate it, and relabel all.  Potentially very expensive!
 	// If this was used peq label, by now, unlabels have been issued everywhere, triggering de-peq actions, and the label is gone.
 	{
 	    // All work done here.
@@ -166,28 +171,29 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
+	    console.log( authData.who, "WARNING.  Active Peq labels can not be deleted.  To delete, remove them from issues first. Recreating." );
+
 	    // We have peqs.  Unlabel did not trigger, so no need to fix links or peqs.
 	    // remake label.  inform.
-	    let label = await ghSafe.createPeqLabel( authData, pd.repoId, tVal == config.PEQTYPE_ALLOC, lVal );
+	    let label = await ghV2.createPeqLabel( authData, pd.repoId, tVal == config.PEQTYPE_ALLOC, lVal );
 	    
 	    // add label to all.  recreate card.  peq was not modified.
-	    console.log( "WARNING.  Active Peq labels can not be deleted.  To delete, remove them from issues first. Recreating." );
 	    for( const peq of peqs ) {
-		let links = ghLinks.getLinks( authData, { "repo": pd.repoName, "issueId": peq.GHIssueId });
+		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": peq.HostIssueId });
 		assert( links.length == 1 );
 
 		// PEQ labels are updated during ingest - they can be out of date.  Make sure issue is not already peq-labeled.
 		let pv = 0;
-		let issueLabels = await gh.getLabels( authData, links[0].issueNum );
+		let issueLabels = await ghV2.getLabels( authData, links[0].hostIssueId );
 		if( issueLabels != -1 ) {
-		    [pv,_] = ghUtils.theOnePEQ( issueLabels.data );
+		    [pv,_] = ghUtils.theOnePEQ( issueLabels );
 		}
 		if( issueLabels == -1 ||  pv <= 0 ) {
-		    console.log( "No peq label conflicts, adding label back" );
-		    ghSafe.addLabel( authData, label.node_id, links[0].hostIssueId );
+		    console.log( authData.who, "No peq label conflicts, adding label back", label.id, links[0].hostIssueId );
+		    ghV2.addLabel( authData, label.id, links[0].hostIssueId );
 		}
 		else {
-		    console.log( "Looks like peq label was outdated, will not add a 2nd peq label", links[0].issueNum );
+		    console.log( "Looks like peq label was outdated, will not add a 2nd peq label", links[0].hostIssueId );
 		}
 
 	    }
@@ -197,9 +203,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'created':  // do nothing
-	// XXX XXX
-	console.log( "XXX NYI" );
-	break;
 	// GH doesn't allow labels with same name in repo.
 	// Protect PEQ or Alloc label name format, to avoid confusion.  No need to wait.
 	{

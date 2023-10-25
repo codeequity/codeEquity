@@ -2215,6 +2215,12 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
     return await tu.settle( subTest, testStatus, checkProgAssignees, authData, td, ass1, ass2, issDat, testStatus );
 }
 
+// peq labels convert thousands, millions to k, m for human legibility
+function convertName( name ) {
+    const [peqValue, allocation] = ghUtils.parseLabelName( name );
+    if( peqValue > 0 ) { name = ghV2.makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) ); }
+    return name;
+}
 
 async function checkLabel( authData, label, name, desc, testStatus ) {
 
@@ -2223,6 +2229,8 @@ async function checkLabel( authData, label, name, desc, testStatus ) {
 	return testStatus;
     }
 
+    name = convertName( name );
+    
     testStatus = tu.checkEq( typeof label !== 'undefined', true, testStatus, "Label not here yet" );
     if( typeof label !== 'undefined' ) {
 	testStatus = tu.checkEq( label.name, name,        testStatus, "Label name bad" );
@@ -2318,4 +2326,5 @@ exports.checkNoIssue            = checkNoIssue;
 exports.checkAssignees          = checkAssignees;
 exports.checkNoAssignees        = checkNoAssignees;
 exports.checkProgAssignees      = checkProgAssignees;
+exports.convertName             = convertName;
 exports.checkLabel              = checkLabel;
