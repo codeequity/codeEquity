@@ -1124,7 +1124,14 @@ async function moveCard( authData, pid, itemId, fieldId, value ) {
     let ret = -1;
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	    .then( r => { ret = r; });
+	    .then( r => {
+		ret = r;
+		if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+		    console.log( authData.who, "WARNING. Move card failed.", itemId, fieldId, value, ret.errors );
+		    ret.status = 422; 
+		    throw ret;
+		}
+	    });
     }
     catch( e ) { ret = await ghUtils.errorHandler( "moveCard", e, moveCard, authData, pid, itemId, fieldId, value ); }
 

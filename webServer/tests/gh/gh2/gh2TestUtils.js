@@ -518,7 +518,7 @@ async function getFlatLoc( authData, pid, projName, colName ) {
     // if( config.PROJ_COLS.includes( colName ) ) { psub = [projName]; }
 	
     let loc = {};
-    loc.pid   = pid;
+    loc.pid      = pid;
     loc.projName = projName;
     loc.colId    = col.id;
     loc.colName  = col.name;

@@ -346,14 +346,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    console.log( "YYYYYYYYYYYYYYYYYYY" );
-
 	    // Get array: [proj_id, col_idx4]
 	    let ceProjectLayout = await ghV2.getCEProjectLayout( authData, ghLinks, pd );
 	    if( ceProjectLayout[0] == -1 ) {
 		console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	    }
 	    else {
+		pd.projectId = ceProjectLayout[0];
 		// Must wait.  Move card can fail if, say, no assignees
 		let newColId = await ghV2.moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {

@@ -1168,12 +1168,12 @@ async function testAlloc( authData, testLinks, td ) {
     // Create/delete good column
     {
 	// Create from card .. NOTE!  card is rebuilt to point to issue.  Re-find it.
-	await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHFullName, starLoc.colId, "Alloc star 1", "1,000,000" );     
+	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, starLoc.pid, starLoc.colId, "Alloc star 1", "1,000,000" );     
 	await utils.sleep( 2000 );
 	const links       = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
 	const link        = links.find( link => link.hostIssueName == "Alloc star 1" );
 	const starCard1   = await gh2tu.getCard( authData, link.hostCardId );
-	const issStarDat1 = [link.hostIssueId, link.hostIssueNum, link.hostIssueName];
+	const issStarDat1 = [link.hostIssueId, link.hostIssueNum, starCard1.cardId, link.hostIssueName];
 	testStatus        = await gh2tu.checkAlloc( authData, testLinks, td, starLoc, issStarDat1, starCard1, testStatus, {assignees: 0, lblCount: 1} );
 
 	// Create from issue  ... should be makeAllocIssue to create comment, but not testing that here
@@ -1199,8 +1199,8 @@ async function testAlloc( authData, testLinks, td ) {
     // Create/delete x4 column
     {
 	// Create from card 
-	await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHFullName, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
-	await gh2tu.makeAllocCard( authData, testLinks, td.ceProjectId, td.GHFullName, accrLoc.colId, "Alloc accr", "1,000,000" );
+	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, progLoc.pid, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
+	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, accrLoc.pid, accrLoc.colId, "Alloc accr", "1,000,000" );
 	await utils.sleep( 2000 );
 	const links      = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
 	const linkProg   = links.find( link => link.hostIssueName == "Alloc prog" );
