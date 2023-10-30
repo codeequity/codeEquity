@@ -1919,14 +1919,6 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
     let skipAllPeq = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipAllPeq" ) ? specials.skipAllPeq : false;    
 
     // CHECK github card
-    // XXX XXX XXX 6/8 notes.  This is no longer dependable, ATM
-    /*
-    let cards  = await getCards( authData, loc.pid, loc.colId );
-    if( cards !== -1 ) { 
-	let card   = cards.find( card => card.cardId == cardId );
-	subTest = tu.checkEq( typeof card === "undefined", true,  subTest, "Card should not exist" );
-    }
-    */
     let cards  = await getCards( authData, loc.pid, loc.colId );
     if( cards !== -1 ) { 
 	let card   = cards.find( card => card.cardId == cardId );

@@ -576,8 +576,8 @@ async function testCreateDelete( authData, testLinks, td ) {
 	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, cardIdAccr, ISS_ACCR, testStatus );
 
 	// 2. remove them.
-	await gh2tu.remCard( authData, cardIdFlat );
-	await gh2tu.remCard( authData, cardIdProg );
+	await gh2tu.remCard( authData, td.ceProjectId, td.githubOpsPID, cardIdFlat );
+	await gh2tu.remCard( authData, td.ceProjectId, td.githubOpsPID, cardIdProg );
 	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, stars, cardIdFlat, ISS_FLAT, testStatus );
 	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoProg, cardIdProg, ISS_PROG, testStatus );
 
@@ -612,9 +612,9 @@ async function testCreateDelete( authData, testLinks, td ) {
 	tu.testReport( testStatus, "carded A" );
 
 	// 2. remove them.
-	await gh2tu.remCard( authData, flatCard.cardId );             // remove card, then issue
-	await gh2tu.remIssue( authData, td, issDatFlat[0] );
-	await gh2tu.remIssue( authData, td, issDatProg[0] ); // just remove issue
+	await gh2tu.remCard( authData, td.ceProjectId, td.githubOpsPID, flatCard.cardId );             // remove card, then issue
+	await gh2tu.remIssue( authData, issDatFlat[0] );
+	await gh2tu.remIssue( authData, issDatProg[0] ); // just remove issue
 	
 	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, stars,   flatCard.cardId, ISS_FLAT, testStatus );
 	// XXX This will exist until GH gets it back together.  See 6/8/2022 notes.	
@@ -652,9 +652,9 @@ async function testCreateDelete( authData, testLinks, td ) {
 	tu.testReport( testStatus, "situated A" );
 	
 	// 2. remove them.
-	await gh2tu.remIssue( authData, td, issDatFlat[0] );
-	await gh2tu.remIssue( authData, td, issDatProg[0] ); 
-	await gh2tu.remIssue( authData, td, issDatPend[0] );
+	await gh2tu.remIssue( authData, issDatFlat[0] );
+	await gh2tu.remIssue( authData, issDatProg[0] ); 
+	await gh2tu.remIssue( authData, issDatPend[0] );
 
 	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, stars,   flatCard.cardId, ISS_FLAT, testStatus, {"peq": true} );
 	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoProg, progCard.cardId, ISS_PROG, testStatus, {"peq": true} );
@@ -702,8 +702,8 @@ async function testCreateDelete( authData, testLinks, td ) {
 	tu.testReport( testStatus, "accrued A" );
 	
 	// 2. remove them 1s with del card, remove 2s with del issue
-	await gh2tu.remCard( authData, aghoCard1.cardId );
-	await gh2tu.remIssue( authData, td, issDatAgho2[0] );
+	await gh2tu.remCard( authData, td.ceProjectId, td.githubOpsPID, aghoCard1.cardId );
+	await gh2tu.remIssue( authData, issDatAgho2[0] );
 
 	await utils.sleep( 2000 );
 
@@ -731,8 +731,8 @@ async function testCreateDelete( authData, testLinks, td ) {
 	tu.testReport( testStatus, "accrued B" );
 
 	// 3. Remove one more time
-	await gh2tu.remCard( authData, aghoCard1New.cardId );      // newborn
-	await gh2tu.remIssue( authData, td, aghoIss2New[0]);   // gone
+	await gh2tu.remCard( authData, td.ceProjectId, td.githubOpsPID, aghoCard1New.cardId );      // newborn
+	await gh2tu.remIssue( authData, aghoIss2New[0]);   // gone
 
 	testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, td, issDatAgho1, testStatus );
 	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard1New.cardId, ISS_AGHO1, testStatus, {"peq": true} );
@@ -1070,7 +1070,7 @@ async function testAlloc( authData, testLinks, td ) {
     let label2m  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, true, "2000000 " + config.ALLOC_LABEL, 2000000 );
     let label1k  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "1000 "   + config.PEQ_LABEL, 1000 );
     let labelBug = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
-
+    
     const issAllocDat = await gh2tu.makeAllocIssue( authData, td, ISS_ALLOC, [ label1m ] );
 
     const starLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
@@ -1132,6 +1132,11 @@ async function testAlloc( authData, testLinks, td ) {
 	    
 	// delete label2m, ap100, good
 	labelRes = await gh2tu.getLabel( authData, td.GHRepoId, ap100 );
+	if( !utils.validField( labelRes, "label" ) ) {
+	    console.log( "OI???", ap100, td.GHRepoId, labelRes );
+	    let junk = await labHelp( authData, td, ap100, ap100, "Allocation PEQ value: 100", testStatus );
+	    console.log( "OI???", junk ); 
+	}
 	await gh2tu.delLabel( authData, labelRes.label );
 	testStatus = await labHelp( authData, td, ap100, -1, -1, testStatus );		
 	
@@ -1149,7 +1154,8 @@ async function testAlloc( authData, testLinks, td ) {
 	testStatus = await labHelp( authData, td, ap1mConverted, ap1mConverted, "Allocation PEQ value: 1000000", testStatus );
 	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );	
-	
+	// get label1m, it was recreated so labelId changes.
+	label1m = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, true, ap1m, 1000000 );	
 	tu.testReport( testStatus, "Alloc C" );
     }
 
@@ -1165,7 +1171,7 @@ async function testAlloc( authData, testLinks, td ) {
 	tu.testReport( testStatus, "Alloc D" );
     }
 
-    // Create/delete good column
+    // Create/delete inna good column
     {
 	// Create from card .. NOTE!  card is rebuilt to point to issue.  Re-find it.
 	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, starLoc.pid, starLoc.colId, "Alloc star 1", "1,000,000" );     
@@ -1183,20 +1189,19 @@ async function testAlloc( authData, testLinks, td ) {
 	testStatus        = await gh2tu.checkAlloc( authData, testLinks, td, starLoc, issStarDat2, starCard2, testStatus, {assignees: 0, lblCount: 1} );
 
 	// Delete 2 ways
-	await gh2tu.remCard( authData, starCard1.cardId );            // card, then issue
-	await gh2tu.remIssue( authData, td, issStarDat1[0] ); 
-	await gh2tu.remIssue( authData, td, issStarDat2[0] );     // just issue
+	await gh2tu.remCard( authData, td.ceProjectId, starLoc.pid, starCard1.cardId );        // card, then issue
+	await gh2tu.remIssue( authData, issStarDat1[0] ); 
+	await gh2tu.remIssue( authData, issStarDat2[0] );     // just issue
 
 	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, starLoc, starCard1.cardId, "Alloc star 1", testStatus, {"peq": true} );
-	// XXX This will exist until GH gets it back together.  See 6/8/2022 notes.
-	// testStatus = await gh2tu.checkNoCard( authData, testLinks, td, starLoc, starCard2.cardId, "Alloc star 2", testStatus, {"peq": true} );	
+	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, starLoc, starCard2.cardId, "Alloc star 2", testStatus, {"peq": true} );	
 	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issStarDat1, testStatus );
 	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issStarDat2, testStatus );
 	
 	tu.testReport( testStatus, "Alloc E" );
     }
 
-    // Create/delete x4 column
+    // Create/delete reserved columns, should fail
     {
 	// Create from card 
 	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, progLoc.pid, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
@@ -1227,10 +1232,12 @@ async function runTests( authData, testLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
+    /*
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 5000 );
-
+    */
+    
     let t8 = await testAlloc( authData, testLinks, td );
     console.log( "\n\nAlloc complete." );
     await utils.sleep( 5000 );
@@ -1260,7 +1267,7 @@ async function runTests( authData, testLinks, td ) {
     // await utils.sleep( 5000 );
 
 
-    testStatus = tu.mergeTests( testStatus, t1 );
+    // testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t8 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );

@@ -228,7 +228,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    // Get from GH.. will not postpone if populate
 	    // XXX after ceFlutter, move this below postpone, remove populate condition.  pop label not yet attached.  
-	    let issue = await ghV2.getFullIssue( authData, pd.issueId);  
+	    let issue = await ghV2.getFullIssue( authData, pd.issueId);
+	    assert( Object.keys( issue ).length > 0 );	    
 
 	    // item:create could arrive before issue:open/label.
 	    // Can not create card without issue in pv2.   Can create issues without cards .. newborn issues will NOT create links without peq labels.
@@ -324,7 +325,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    }
 
 		    // don't split allocs into x3
-		    const fullIssue = await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );   
+		    const fullIssue = await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );
+		    assert( Object.keys( fullIssue ).length > 0 );
+		    
 		    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
 		    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newCard.columnName )) {
 			let msg = "WARNING.  Allocations are only useful in planning, or flat columns.  Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
@@ -392,7 +395,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    let issueId = link.hostIssueId;
 	    assert( issueId != -1 );
 
-	    const fullIssue = await ghV2.getFullIssue( authData, issueId );   
+	    const fullIssue = await ghV2.getFullIssue( authData, issueId );
+	    assert( Object.keys( fullIssue ).length > 0 );	    
 	    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
 	    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newColName )) {
 		let msg = "WARNING.  Allocations are only useful in config:PROJ_PLAN, or flat columns.  Moving card back.";
@@ -427,7 +431,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	break;
     case 'deleted' :
 	// Source of notification: delete card (delete col, delete proj, xfer   ???)
-	await deleteCard( authData, ghLinks, pd, pd.reqBody.project_card.id );
+	await deleteCard( authData, ghLinks, pd, pd.reqBody.projects_v2_item.node_id );
 	break;
     case 'edited' :
 	// Only newborn can be edited.   Track issue-free creation above.

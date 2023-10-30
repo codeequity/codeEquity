@@ -280,6 +280,11 @@ async function createIssue( authData, repoNode, pid, issue ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
 		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+		if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+		    console.log( authData.who, "WARNING. Issue not created.", issue, ret.errors );
+		    ret.status = 422; 
+		    throw ret; 
+		}
 		issueData[0] = ret.data.createIssue.issue.id;
 		issueData[1] = ret.data.createIssue.issue.number;
 	    });
@@ -299,6 +304,7 @@ async function getIssue( authData, issueId ) {
     if( issueId === -1 ) { return retVal; }
     
     let issue = await getFullIssue( authData, issueId );
+    if( Object.keys( issue ).length <= 0 ) { return retVal; }
     let retIssue = [];
     
     retIssue.push( issue.id );
@@ -379,6 +385,7 @@ async function getFullIssue( authData, issueId ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
 		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+		if( !utils.validField( ret.data, "node" ))                    { return issue; }  // no such issue, can be checking existence, not an error.
 		issue = ret.data.node;
 		if( issue.assignees.edges.length > 99 ) { console.log( authData.who, "WARNING.  Large number of assignees.  Ignoring some." ); }
 		if( issue.labels.edges.length > 99 )    { console.log( authData.who, "WARNING.  Large number of labels.  Ignoring some." ); }
@@ -1158,6 +1165,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 	// There is no symmetric issue - once accr, can't repoen.  if only pend, no subsequent move after reopen.
 	if( link.hostColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
 	    let issue = await getFullIssue( authData, pd.issueId );
+	    assert( Object.keys( issue ).length > 0 );	    
 	    if( issue.state == 'CLOSED' ) {
 		return false;
 	    }

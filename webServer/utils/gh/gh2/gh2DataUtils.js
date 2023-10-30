@@ -45,7 +45,7 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
     // Need all issue data, with mod to title and to comment
     assert( links[0].hostIssueNum == pd.issueNum );
     let issue = await ghV2.getFullIssue( authData, pd.issueId );  
-    assert( issue != -1 );
+    assert( Object.keys( issue ).length > 0 );
     pd.repoId    = links[1].hostRepoId;
     pd.projectId = links[1].hostProjectId;
     
@@ -339,9 +339,6 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	return 'early';
     }
 
-    //  Can't have situated issue in reserved.
-    assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
-
     //  Bail.  situated card exists in PROG+ (really, just PROG).  Add alloc peq label.  Link exists.
     //         other cases will be caught in card:moved
     if( fromLabel && allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
@@ -351,7 +348,10 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	await ghV2.removeLabel( authData, lNodeId, pd.issueId );
 	return 'early';
     }
-    
+
+    //  Can't have situated issue in reserved.
+    assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
+
     let orig = {};
     orig.hostColumnId = pd.columnId;
     let peqHumanLabelName = ghV2.makeHumanLabel( pd.peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
