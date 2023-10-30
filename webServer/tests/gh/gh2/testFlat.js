@@ -79,8 +79,9 @@ async function testFlatProject( authData, testLinks, td ) {
 
     
     // Check GITHUB Columns
+    // Unfortunately, now need to pre-create PEND, ACCR.
     let mastCols   = await gh2tu.getColumns( authData, td.masterPID  );
-    testStatus = tu.checkEq( mastCols.length, 3,   testStatus, "Master proj col count" );
+    testStatus = tu.checkEq( mastCols.length, 5,   testStatus, "Master proj col count" );
 
     let colNames = mastCols.map((col) => col.name );
     testStatus = tu.checkEq( colNames.includes( "Eggs" ), true,    testStatus, "Col names" );

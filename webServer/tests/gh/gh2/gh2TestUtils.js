@@ -1495,16 +1495,18 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     let peq = peqs[0];
     subTest = tu.checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );       
     subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
-    subTest = tu.checkEq( peq.HostHolderId.length, 0,                subTest, "peq holders wrong" );
+    subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],           subTest, "peq title is wrong" );
+    subTest = tu.checkEq( peq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
     subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
-    subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],   subTest, "peq project sub invalid" );
     if( loc.projSub.length > 1 ) {
-	subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub invalid" );
+	// NS is valid, allow for it here
+	let foundPsub = ( peq.HostProjectSub[1] == loc.projSub[1] ) || ( peq.HostProjectSub[1] == config.GH_NO_STATUS ); 
+	subTest = tu.checkEq( foundPsub, true,                    subTest, "peq project sub invalid" );
     }
     subTest = tu.checkEq( peq.HostProjectId, loc.pid,             subTest, "peq PID bad" );
-    subTest = tu.checkEq( peq.Active, "true",                      subTest, "peq" );
+    subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
 
     // CHECK dynamo Pact
     // label carded issue?  1 pact.  attach labeled issue to proj col?  2 pact.
@@ -1515,32 +1517,6 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );         
 
     // Verify number of adds == relos.  Don't count on order of arrival.
-    /*
-    pacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
-    let addUncl  = pacts.length >= 2 ? pacts[0] :                 {"Action": config.PACTACT_ADD };
-    let relUncl  = pacts.length >= 2 ? pacts[ pacts.length -1 ] : {"Action": config.PACTACT_RELO };
-    let pact     = pacts.length >= 2 ? pacts[ pacts.length -1 ] : pacts[0];
-    for( const pact of pacts ) {
-	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
-	subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
-	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
-	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
-	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
-    }
-
-    // reorder, in case arrival got messed up
-    if( addUncl.Action == config.PACTACT_RELO && relUncl.Action == config.PACTACT_ADD ) {
-	let t   = addUncl;
-	addUncl = relUncl;
-	relUncl = t;
-    }
-    
-    subTest = tu.checkEq( addUncl.Action, config.PACTACT_ADD,          subTest, "PAct Action"); 
-    subTest = tu.checkEq( relUncl.Action, config.PACTACT_RELO,         subTest, "PAct Action");
-    const source = pact.Action == config.PACTACT_ADD || pact.Action == config.PACTACT_RELO;
-    subTest = tu.checkEq( source, true,                                subTest, "PAct Action");
-    */ 
     let addUncl  = 0;
     let relUncl  = 0;
     for( const pact of pacts ) {

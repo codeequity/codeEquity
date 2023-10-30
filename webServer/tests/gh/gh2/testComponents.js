@@ -22,15 +22,16 @@ async function checkDubLabel( authData, testLinks, td, loc, issueData, card, tes
     let subTest = [ 0, 0, []];
 
     // CHECK github issues
-    let kp = "1000 " + config.PEQ_LABEL;    
+    let kp = "1000 " + config.PEQ_LABEL;
+    let kpConv = gh2tu.convertName( kp );
     let issue = await gh2tu.findIssue( authData, issueData[0] );
 
     if( issue.labels.length >= 2 ) {
 	subTest = tu.checkEq( issue.id, issueData[0].toString(),     subTest, "Github issue troubles" );
 	subTest = tu.checkEq( issue.number, issueData[1].toString(), subTest, "Github issue troubles" );
 	subTest = tu.checkEq( issue.labels.length, 2,                subTest, "Issue label" );
-	const labels0 = issue.labels[0].name == kp && issue.labels[1].name == "documentation";
-	const labels1 = issue.labels[1].name == kp && issue.labels[0].name == "documentation";
+	const labels0 = issue.labels[0].name == kpConv && issue.labels[1].name == "documentation";
+	const labels1 = issue.labels[1].name == kpConv && issue.labels[0].name == "documentation";
 	subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
 	
 	// CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
@@ -41,7 +42,7 @@ async function checkDubLabel( authData, testLinks, td, loc, issueData, card, tes
 	
 	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
 	pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-	subTest = tu.checkEq( pacts.length, 2,                         subTest, "PAct count" );     
+	subTest = tu.checkEq( pacts.length, 5,                         subTest, "PAct count" );      // add/relo (unclaimed) add/relo/relo (bacon)
     }
     
     return await tu.settle( subTest, testStatus, checkDubLabel, authData, testLinks, td, loc, issueData, card, testStatus );
@@ -70,19 +71,25 @@ async function testLabel( authData, testLinks, td ) {
     const halfKP = "500 " + config.PEQ_LABEL;
 
     const assignee1 = await gh2tu.getAssignee( authData, ASSIGNEE1 );
+
+    await gh2tu.refreshRec( authData, td );
+    await gh2tu.refreshFlat( authData, td );
     
     {    
 	console.log( "Test label/unlabel in full CE structure" );
 
 	// 1. create peq issue in dsplan
 	console.log( "Make newly situated issue in dsplan" );
-	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB, [] );     // [id, number, title]  
+	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB, [] );     // [id, number, cardId, title]  
 	let label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
 	await gh2tu.addLabel( authData, label.id, issueData );
-	
+
 	let card  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanId, issueData[0] );
 	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, dsPlan, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label 1" );
+
+	// First creation can take time for GH to register
+	await tu.settleWithVal( "forced refresh unclaimed", gh2tu.forcedRefreshUnclaimed, authData, testLinks, td );
 	
 	// 2. unlabel
 	await gh2tu.remLabel( authData, label, issueData );
@@ -1232,11 +1239,9 @@ async function runTests( authData, testLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
-    /*
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 5000 );
-    */
     
     let t8 = await testAlloc( authData, testLinks, td );
     console.log( "\n\nAlloc complete." );
@@ -1267,7 +1272,7 @@ async function runTests( authData, testLinks, td ) {
     // await utils.sleep( 5000 );
 
 
-    // testStatus = tu.mergeTests( testStatus, t1 );
+    testStatus = tu.mergeTests( testStatus, t1 );
     testStatus = tu.mergeTests( testStatus, t8 );
     testStatus = tu.mergeTests( testStatus, t2 );
     testStatus = tu.mergeTests( testStatus, t3 );

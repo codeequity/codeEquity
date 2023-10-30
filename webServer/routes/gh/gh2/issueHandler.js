@@ -145,13 +145,13 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links === -1 || links.length == 1 );
     let link = links === -1 ? links : links[0];
+
+    // get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
+    // NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
+    let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
     
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
-
-	// get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
-	// NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
-	let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
 
 	if( !utils.validField( card, "cardId" )) {
 	    console.log( authData.who, "Newborn peq issue" );
@@ -182,6 +182,9 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     }
     else {
+	// Issue is carded, but may be untracked.  update col data.  projectName?  utility?
+	link.hostColumnId   = card.columnId;
+	link.hostColumnName = card.columnName;;
 	console.log( "issue is already carded", link );
     }
     
