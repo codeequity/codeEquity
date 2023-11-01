@@ -1286,7 +1286,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		
 		// This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
 		if( pacts.length <= 3 && loc.projSub.length > 1 ) {
-		    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
+		    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
 		    if( !pip.includes( loc.projSub[1] )) { 
 			subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
 		    }
@@ -1386,7 +1386,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
 
     // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
     if( pacts.length <= 3 && loc.projSub.length > 1 ) {
-	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
+	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
 	if( !pip.includes( loc.projSub[1] )) { 
 	    subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
 	}
@@ -1728,7 +1728,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     
 	// Some tests will have two split issues here.  The newly split issue has a larger issNum
 	const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
-	const splitDat = [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+	const splitDat = [ splitIss.id.toString(), splitIss.number.toString(), -1, splitIss.title ];
 	
 	// console.log( "Split..", cards, newLoc, splitIssues.length, splitIss, splitDat );
 
@@ -1745,6 +1745,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	if( typeof issLink !== 'undefined' && typeof splitLink !== 'undefined' ) {
 	    const card      = await getCard( authData, issLink.hostCardId );
 	    const splitCard = await getCard( authData, splitLink.hostCardId );
+	    splitDat[2]     = splitCard.cardId;
 
 	    let newLocIds = cards.map( c => c.cardId );
 	    if( !newLocIds.includes( splitCard.cardId ) ) {
@@ -1802,7 +1803,7 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
     // Some tests will have two split issues here.  The newly split issue has a larger issNum
     let splitIssues = issues.filter( issue => issue.title.includes( issDat[3] + " split" ));
     const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
-    const splitDat  = typeof splitIss === 'undefined' ? [-1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), splitIss.title ];
+    const splitDat  = typeof splitIss === 'undefined' ? [-1, -1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), -1, splitIss.title ];
     
     subTest = tu.checkEq( splitDat[0] != -1, true, subTest, "split iss not ready yet" );
     if( splitDat[0] != -1 ) {
@@ -1819,6 +1820,7 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
 	    
 	    const card      = await getCard( authData, issLink.hostCardId );
 	    const splitCard = await getCard( authData, splitLink.hostCardId );
+	    splitDat[2]     = splitCard.cardId;
 
 	    let specials = { awsVal: awsVal, splitVal: splitVal, lblCount: labelCnt, assignees: assignCnt };
 	    testStatus = await checkAlloc( authData, testLinks, td, origLoc, issDat, card, testStatus, specials );

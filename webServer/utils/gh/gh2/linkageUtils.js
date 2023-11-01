@@ -10,7 +10,7 @@ const awsUtils  = require( rootLoc + 'utils/awsUtils' );
 
 const ghV2      = require( './ghV2Utils' );
 
-// XXXX is know host, i know pms.  
+// XXX is known host, and pms.  
 
 async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData ) {
 
@@ -34,6 +34,11 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
     // Find all hostProjects that provide a card home for a peq in the cep
     let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: ceProject.CEProjectId } );
     if( hostProjs == -1 ) { hostProjs = []; }
+
+    // Add organization's unclaimed to each hostRepo that holds PEQ, since aws:peq table will not record delete movements to UNCL
+    let unclPID = await ghV2.findProjectByName( authData, org, "", config.UNCLAIMED ); 
+    if( unclPID != -1 ) { hostProjs.push( unclPID ); }
+    
     console.log( "HOST PROJs", ceProject.CEProjectId, hostProjs );
     
     // Note, for links being built below, the link is a complete ceServer:link that supplied info for the 1:1 mapping issue:card.
@@ -83,11 +88,14 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProject
     
     await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	.catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
-    
-    assert( rLinks.length == 0 );
-    
+
     // XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
-    
+    //     during testing, if peq link exists, should project should be linked via peq.
+    if( rLinks.length != 0 ) {
+	console.log( rLinks );
+	assert( rLinks.length == 0 );
+    }
+        
     let promises = [];
     
     for( var loc of rLocs ) {

@@ -100,6 +100,9 @@ async function clearRepo( authData, testLinks, pd ) {
     // Start promises
     let jobsP  = tu.purgeJobs( pd.GHRepo );
 
+    // Ensure unclaimed exists, to hold deleted accr issues.  Sometimes yesterday's crash can occur before unc is linked.
+    // await gh2tu.createProjectWorkaround( authData, pd, config.UNCLAIMED, "" );
+    
     // Issues.
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
     await remIssues( authData, testLinks, pd );
