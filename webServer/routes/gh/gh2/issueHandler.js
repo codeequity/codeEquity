@@ -128,7 +128,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     if( pd.peqValue <= 0 && curVal > 0 ) {
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
-	ghV2.removeLabel( authData, label.id, pd.issueId );
+	ghV2.removeLabel( authData, label.node_id, pd.issueId );
 	return false;
     }
     
@@ -145,13 +145,13 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
     assert( links === -1 || links.length == 1 );
     let link = links === -1 ? links : links[0];
+
+    // get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
+    // NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
+    let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
     
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
-
-	// get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
-	// NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
-	let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
 
 	if( !utils.validField( card, "cardId" )) {
 	    console.log( authData.who, "Newborn peq issue" );
@@ -182,6 +182,9 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     }
     else {
+	// Issue is carded, but may be untracked.  update col data.  projectName?  utility?
+	link.hostColumnId   = card.columnId;
+	link.hostColumnName = card.columnName;;
 	console.log( "issue is already carded", link );
     }
     
@@ -338,20 +341,21 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let allocation = false;
 	    [pd.peqValue,allocation] = ghUtils.theOnePEQ( pd.reqBody['issue']['labels'] );
 	    if( pd.peqValue <= 0 ) {
-		console.log( "Not a PEQ issue, no action taken." );
+		console.log( authData.who, "Not a PEQ issue, no action taken." );
 		return;
 	    }
 	    if( allocation ) {
-		console.log( "Allocation, no action taken." );
+		console.log( authData.who, "Allocation, no action taken." );
 		return;
 	    }
-	    
+
 	    // Get array: [proj_id, col_idx4]
 	    let ceProjectLayout = await ghV2.getCEProjectLayout( authData, ghLinks, pd );
 	    if( ceProjectLayout[0] == -1 ) {
 		console.log( "Project does not have recognizable CE column layout.  No action taken." );
 	    }
 	    else {
+		pd.projectId = ceProjectLayout[0];
 		// Must wait.  Move card can fail if, say, no assignees
 		let newColId = await ghV2.moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
@@ -402,7 +406,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    
-	    // Peq issues only.  PEQ tracks assignees from ceFlutter.  Just send PAct upstream.
+	    // Peq issues only.  PEQ assignees are tracked in ceFlutter.  Just send PAct upstream.
 	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
 
 	    // This should only happen during blast-issue creation.

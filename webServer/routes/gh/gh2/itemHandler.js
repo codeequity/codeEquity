@@ -117,7 +117,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    }
 		}
 	    }
-	    else { console.log( "Unrecognized, skipping.", item.changes ); }
+	    else { console.log( "Unrecognized, skipping.  Ghost nearby?" ); }
 
 	}
 	break;

@@ -41,7 +41,7 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     let nbi1     = await gh2tu.makeIssue( authData, td, "A special populate issue", [] );
     let card11   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.masterPID, mastCol1, nbi1[0], true );
     let popLabel = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, config.POPULATE, -1 );
-    let nbiDat   = [nbi1[0], nbi1[1], "A special populate issue"];
+    let nbiDat   = [nbi1[0], nbi1[1], card11.cardId, "A special populate issue"];
     await gh2tu.addLabel( authData, popLabel.id, nbiDat );       // ready.. set... Go!
     await utils.sleep( 1000 );
     await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId ); 
@@ -113,7 +113,10 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	// New makeAlloc has add, then relocate.  Order may vary.
 	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
 	subTest = tu.checkGE( pacts.length, 4,         subTest, "Number of PActs" );
-	let foundPActs = 0;
+	let foundGHPActs = 0;
+	let foundDSPActs = 0;
+	let foundUNPActs = 0;
+	console.log( "Checking for peqids, locs", ghPeqs[0].PEQId, dsPeqs[0].PEQId, unPeqs[0].PEQId, locs[0].hostColumnId, blocs[0].hostColumnId );
 	let foundBusRelo = false;
 	for( pact of pacts ) {
 	    let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
@@ -124,26 +127,23 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,       subTest, "PAct user name" ); 
 
 	    console.log( pact.Subject[0], pact.Verb, pact.Action, pact.Subject.slice(-1) );
-	    
-	    if( pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
-		pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ||
-		pact.Subject[0] == dsPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
-		pact.Subject[0] == dsPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ||
-		pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_ADD   ||
-		pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_RELO  ) {
-		foundPActs++;
-	    }
-	    if( !foundGHSub && pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == locs.hostColumnId ) { foundGHSub = true; }
-	    if( !foundDSSub && pact.Subject[0] == dsPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == locs.hostColumnId ) { foundDSSub = true; }
 
-	    if( !foundBOSub && pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == blocs.hostColumnId ) { foundBOSub = true; }
-	    if( !foundBOSub && pact.Subject[0] == unPeqs[1].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == blocs.hostColumnId ) { foundBOSub = true; }
+	    if( pact.Action == config.PACTACT_ADD || pact.Action == config.PACTACT_RELO ) {
+		if     ( pact.Subject[0] == ghPeqs[0].PEQId ) { foundGHPActs++; }
+		else if( pact.Subject[0] == dsPeqs[0].PEQId ) { foundDSPActs++; }
+		else if( pact.Subject[0] == unPeqs[0].PEQId ) { foundUNPActs++; }
+	    }
+	    if( !foundGHSub && pact.Subject[0] == ghPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == locs[0].hostColumnId ) { foundGHSub = true; }
+	    if( !foundDSSub && pact.Subject[0] == dsPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == locs[0].hostColumnId ) { foundDSSub = true; }
+	    if( !foundBOSub && pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == blocs[0].hostColumnId ) { foundBOSub = true; }
+	    if( !foundBOSub && pact.Subject[0] == unPeqs[1].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == blocs[0].hostColumnId ) { foundBOSub = true; }
 	}
-	// 2 for addRelo (i.e. add, relo), 1 for move's
-	// unclaimed.  May be valid.
-	// NOTE if card creation in GH happens too slowly, CE will create an unclaimed card, then handle it, which can cause +3 per (oh boy)
-	console.log( authData.who, "PAct count should be 6 + 3 * {0,1,2,3}.  Found", foundPActs );
-	let goodCount = foundPActs == 6 || foundPActs == 9 || foundPActs == 12 || foundPActs == 15;
+	// 2 for addRelo (i.e. add, relo), 1 for move's.  If move arrived before create, then add/relo to unclaimed, then add/relo/relo to noStatus then final home.  3 or 5.
+	console.log( authData.who, "PAct count should be 3 or 5 per type.  Found", foundGHPActs, foundDSPActs, foundUNPActs );
+	let goodCount = foundGHPActs == 3 || foundGHPActs == 5;
+	goodCount     = goodCount && ( foundDSPActs == 3 || foundDSPActs == 5 );
+	goodCount     = goodCount && ( foundUNPActs == 3 || foundUNPActs == 5 );
+	
 	subTest = tu.checkEq( goodCount,  true,        subTest, "Matched PActs with PEQs" );
 	subTest = tu.checkEq( foundGHSub, true,        subTest, "Pact sub gh" );
 	subTest = tu.checkEq( foundDSSub, true,        subTest, "Pact sub ds" );

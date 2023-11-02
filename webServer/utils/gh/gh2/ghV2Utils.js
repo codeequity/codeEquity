@@ -280,6 +280,11 @@ async function createIssue( authData, repoNode, pid, issue ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
 		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+		if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+		    console.log( authData.who, "WARNING. Issue not created.", issue, ret.errors );
+		    ret.status = 422; 
+		    throw ret; 
+		}
 		issueData[0] = ret.data.createIssue.issue.id;
 		issueData[1] = ret.data.createIssue.issue.number;
 	    });
@@ -299,6 +304,7 @@ async function getIssue( authData, issueId ) {
     if( issueId === -1 ) { return retVal; }
     
     let issue = await getFullIssue( authData, issueId );
+    if( Object.keys( issue ).length <= 0 ) { return retVal; }
     let retIssue = [];
     
     retIssue.push( issue.id );
@@ -379,6 +385,7 @@ async function getFullIssue( authData, issueId ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
 		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+		if( !utils.validField( ret.data, "node" ))                    { return issue; }  // no such issue, can be checking existence, not an error.
 		issue = ret.data.node;
 		if( issue.assignees.edges.length > 99 ) { console.log( authData.who, "WARNING.  Large number of assignees.  Ignoring some." ); }
 		if( issue.labels.edges.length > 99 )    { console.log( authData.who, "WARNING.  Large number of labels.  Ignoring some." ); }
@@ -495,7 +502,16 @@ async function remAssignee( authData, issueId, aNodeId ) {
     let variables = {"id": issueId, "adds": [aNodeId] };
     let queryJ    = JSON.stringify({ query, variables });
 
-    try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); }
+    try {
+	let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ );
+
+	// GH is not returning proper status code on failure here as of 10/23
+	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+	    console.log( authData.who, "WARNING. Assignee(s) not removed.", issueId, aNodeId, ret.errors );
+	    ret.status = 422; // Bad semantics.. issue id incorrect?
+	    throw ret; 
+	}
+    }
     catch( e ) { await ghUtils.errorHandler( "remAssignee", e, remAssignee, authData, issueId, aNodeId ); }
 }
 
@@ -557,7 +573,7 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
 
 async function createLabel( authData, repoNode, name, color, desc ) {
 
-    // console.log( authData.who, "Create label", repoNode, name, desc, color );
+    console.log( authData.who, "Create label", repoNode, name, desc, color );
 
     let query     = `mutation( $id:ID!, $color:String!, $name:String!, $desc:String! )
                        { createLabel( input:{ repositoryId: $id, color: $color, description: $desc, name: $name }) {clientMutationId, label {id, name, color, description}}}`;
@@ -708,7 +724,7 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
 
 async function updateLabel( authData, labelNodeId, name, desc, color ) {
 
-    console.log( "Update label to", name, desc, color );
+    console.log( "Update label", labelNodeId, "to", name, desc, color );
 
     let query     = "";
 
@@ -740,7 +756,15 @@ async function removeLabel( authData, labelNodeId, issueId ) {
     let variables = {"labelIds": [labelNodeId], "labelableId": issueId };
     let queryJ    = JSON.stringify({ query, variables });
 
-    try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); }
+    try {
+	let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); 
+	// GH is not returning proper status code on failure here as of 10/23
+	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+	    console.log( authData.who, "WARNING. Label(s) not removed.", issueId, labelNodeId, ret.errors );
+	    ret.status = 422; 
+	    throw ret; 
+	}
+    }
     catch( e ) { await ghUtils.errorHandler( "removeLabel", e, removeLabel, authData, labelNodeId, issueId ); }
     return true;
 }
@@ -1107,7 +1131,14 @@ async function moveCard( authData, pid, itemId, fieldId, value ) {
     let ret = -1;
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	    .then( r => { ret = r; });
+	    .then( r => {
+		ret = r;
+		if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+		    console.log( authData.who, "WARNING. Move card failed.", itemId, fieldId, value, ret.errors );
+		    ret.status = 422; 
+		    throw ret;
+		}
+	    });
     }
     catch( e ) { ret = await ghUtils.errorHandler( "moveCard", e, moveCard, authData, pid, itemId, fieldId, value ); }
 
@@ -1134,6 +1165,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 	// There is no symmetric issue - once accr, can't repoen.  if only pend, no subsequent move after reopen.
 	if( link.hostColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
 	    let issue = await getFullIssue( authData, pd.issueId );
+	    assert( Object.keys( issue ).length > 0 );	    
 	    if( issue.state == 'CLOSED' ) {
 		return false;
 	    }
@@ -1160,7 +1192,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
     else if( action == "reopened" ) {
 	
 	// This is a PEQ issue.  Verify card is currently in the right place, i.e. PEND ONLY (can't move out of ACCR)
-	if( link.hostColumnId != ceProjectLayout[ config.PROJ_PEND+1 ].toStirng() ) { cardId = -1; }
+	if( link.hostColumnId != ceProjectLayout[ config.PROJ_PEND+1 ].toString() ) { cardId = -1; }
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {
@@ -1192,12 +1224,12 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 // Note issueId is contentId.  issDat[2] is issueNodeId
 async function createProjectCard( authData, ghLinks, ploc, issueId, fieldId, justId ) {
     let issDat = [issueId, -1, -1];
+    
+    console.log( authData.who, "create project card", ploc.pid, issueId, fieldId, ploc.colId, justId ) ;
 
     assert( typeof ploc.ceProjId !== 'undefined' );
     assert( typeof ploc.pid      !== 'undefined' );
     assert( typeof ploc.colId    !== 'undefined' );
-    
-    console.log( authData.who, "create project card", ploc.pid, issueId, fieldId, ploc.colId, justId ) ;
 
     // If wanted to link for user here, would need repo id, name.
     let tlocs = ghLinks.getLocs( authData, { "ceProjId": ploc.ceProjId, "pid": ploc.pid } );
@@ -1354,7 +1386,7 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
 		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
-		let label = raw.data.repository.label;
+		let label = utils.validField( raw.data.repository, "label" ) ? raw.data.repository.label : null;
 		if( typeof label !== 'undefined' && label != null ) {
 		    issues = label.issues;
 		    for( const issue of issues.edges ) {
@@ -1368,8 +1400,7 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
 		    if( issues !== -1 && issues.pageInfo.hasNextPage ) { await getLabelIssues( authData, owner, repo, labelName, data, issues.pageInfo.endCursor ); }
 		}
 		else {
-		    // XXX may not be an error.. 
-		    console.log( authData.who, "XXX Error, no issues for label", labelName, res );
+		    console.log( authData.who, "No issues for label", labelName );
 		}
 	    });
     }
@@ -1624,6 +1655,23 @@ async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 	//     note, could make do with 'no status' for unclaimed:unclaimed, but would fail for unclaimed:accrued and other required columns.
 	console.log( authData.who, "Error.  Please create the", config.UNCLAIMED, "project by hand, for now." );
     }
+    else {
+	// XXX
+	// Update locs.  During initialization Unclaimed may be linked in GH, but without PEQ, will not go through linkage:init.
+	// This is only a problem for unclaimed, and only until we can create columns, when ACCR is deleted elsewhere to be recreated here.
+	let rLinks = [];
+	let rLocs  = [];
+	
+	await getHostLinkLoc( authData, unClaimedProjId, rLocs, rLinks, -1 )
+	    .catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
+	
+	for( var loc of rLocs ) {
+	    loc.ceProjectId = pd.ceProjectId;
+	    loc.active = "true";
+	    ghLinks.addLoc( authData, loc, false ); 
+	}
+	
+    }
 
     return unClaimedProjId;
 }
@@ -1642,7 +1690,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
     if( locs === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
-	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand, for now." );
+	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand." );
     }
     else {
 	assert( unClaimedProjId == locs[0].hostProjectId );

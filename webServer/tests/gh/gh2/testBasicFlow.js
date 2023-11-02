@@ -72,7 +72,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, issueData, testStat
     // First time out, createUnclaimed can take a moment.
     subTest = tu.checkEq( cards != -1, true,        subTest, "cards not yet ready", td.unclaimCID );
     if( cards == -1 ) {
-	await gh2tu.refreshUnclaimed( authData, testLinks, td );	
+	await gh2tu.refreshUnclaimed( authData, td );	
 	return await tu.settle( subTest, testStatus, checkUnclaimedIssue, authData, testLinks, td, issueData, testStatus );
     }
 
@@ -174,7 +174,7 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     if( meltPeq !== 'undefined' ) {
 	subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
 	subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,            subTest, "peq project sub invalid" );
-	subTest = tu.checkEq( meltPeq.HostIssueTitle, issueData[2],        subTest, "peq title is wrong" );
+	subTest = tu.checkEq( meltPeq.HostIssueTitle, issueData[3],        subTest, "peq title is wrong" );
 	subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
 	subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
 	subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
@@ -223,7 +223,7 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     let meltLink = ( links.filter((link) => link.hostIssueId == meltIssue.id ))[0];
     subTest = tu.checkEq( meltLink.hostIssueNum, meltIssue.number,        subTest, "Linkage Issue num" );
     subTest = tu.checkEq( meltLink.hostCardId, meltCard.cardId,               subTest, "Linkage Card Id" );
-    subTest = tu.checkEq( meltLink.hostIssueName, issueData[2],           subTest, "Linkage Card Title" );
+    subTest = tu.checkEq( meltLink.hostIssueName, issueData[3],           subTest, "Linkage Card Title" );
     subTest = tu.checkEq( meltLink.hostProjectName, td.dataSecTitle,      subTest, "Linkage Project Title" );
     subTest = tu.checkEq( meltLink.hostProjectId, td.dataSecPID,          subTest, "Linkage project id" );
     subTest = tu.checkEq( meltLink.hostColumnId, colId,                   subTest, "Linkage Col Id" );
@@ -248,7 +248,7 @@ async function testStepByStep( authData, testLinks, td ) {
     const flowPlan = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     
     // 1. Create issue 
-    let meltData = await gh2tu.makeIssue( authData, td, ISS_FLOW, [] );               // [id, number, title]  (mix str/int)
+    let meltData = await gh2tu.makeIssue( authData, td, ISS_FLOW, [] );               // [id, number, cardId, title] 
     // NOTE this check is local, not testUtils.  1-time overkill check
     testStatus = await checkNewbornIssue( authData, testLinks, td, meltData, testStatus );
 
@@ -314,7 +314,7 @@ async function testEndpoint( authData, testLinks, td ) {
 
     await gh2tu.refreshRec( authData, td );
     await gh2tu.refreshFlat( authData, td );
-    await gh2tu.refreshUnclaimed( authData, testLinks, td );
+    await gh2tu.refreshUnclaimed( authData, td );
 
     // 1. Create issue 
     let meltData = await gh2tu.makeIssue( authData, td, ISS_RACE, [] );               // [id, number, title]  (mix str/int)
@@ -388,7 +388,7 @@ async function testBlast( authData, testLinks, td ) {
     let issDat = await gh2tu.blastIssue( authData, td, "Blast 1", [lab1], [assignee1] );               
 
     await utils.sleep( 1500 );
-    await gh2tu.refreshUnclaimed( authData, testLinks, td );    
+    await gh2tu.refreshUnclaimed( authData, td );    
     const uncLoc = await gh2tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
 
     let title  = "Blast 1";

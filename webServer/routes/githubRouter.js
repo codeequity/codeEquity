@@ -231,7 +231,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	assert( jd.queueId == authData.job ) ;
 	// await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
 	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, config.CE_ACTOR );
-	
+
 	switch( jd.event ) {
 	case 'projects_v2_item' :
 	    {
@@ -248,7 +248,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	    break;
 	case 'label' :
 	    {
-		retVal = await gh2Label.handler( authData, ghLinks, pd, jd.action, jd.tag )
+		retVal = await gh2Label.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
 		    .catch( e => console.log( "Error.  Label Handler failed.", e ));
 	    }
 	    break;
@@ -300,17 +300,18 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
     if( !resolved ) {
 
 	// Some notices can be for pv2 projects, but will never see a pv2 notice
-	// Note: createIssue with label will generate issue:labeled.  May, or may not also generate pv2Notice, if carded issue.
 	// Basically, any core content.  These become PV2.
+	// Note: createIssue with label will generate issue:labeled.  May, or may not also generate pv2Notice, if carded issue.
+	// Note: reopen/closed will generate pv notice with ghost pv2 edit (no changes).  Treat this here to avoid dependence on Ghost.
+	//       ghost is unspecified, or incorrectly specified for github as of 10/23.  
 	// NOTE: it would be fair at this point to cast everything as PV2, given evident demise of GHC...
-	if( jd.event == "issue" && jd.action == "deleted" ||
-	    jd.event == "issue" && jd.action == "labeled" ||    
-	    jd.event == "issue" && jd.action == "unlabeled" ||    
-	    jd.event == "issue" && jd.action == "assigned" ||    
-	    jd.event == "issue" && jd.action == "unassigned" ||    
-	    jd.event == "label" && jd.action == "deleted" ||
-	    jd.event == "label" && jd.action == "created" )
-	{
+	let   usePV2    = false;
+	const pv2IssAct = ["deleted", "labeled", "unlabeled", "assigned", "unassigned", "reopened" , "closed"];
+	const pv2LabAct = ["deleted", "edited", "created"];
+	if( jd.event == "issue" && pv2IssAct.includes( jd.action ) ) { usePV2 = true; }
+	if( jd.event == "label" && pv2LabAct.includes( jd.action ) ) { usePV2 = true; }
+	
+	if( usePV2 ) {
 	    // console.log( "Found PV2.  Switching GH2 for content node" );
 
 	    // if job has been delayed, org is already properly set.  Otherwise, build it from getJobSummaryGHC
@@ -387,6 +388,7 @@ function makePendingNotice( rb, action ) {
  	// ghost creeps in sometimes, ignore it.  Seen during issue:close, card:move
 	if( rb.sender.login == config.GH_GHOST ) {
 	    console.log( "Boo!  GH ghost notification, do not create notice.", rb.projects_v2_item.project_node_id, rb.projects_v2_item.content_node_id );
+	    // console.log( rb );
 	    return {id: config.EMPTY, hpid: config.EMPTY, org: config.EMPTY, mod: config.EMPTY};
 	}
 

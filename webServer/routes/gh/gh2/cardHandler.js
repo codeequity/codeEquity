@@ -180,7 +180,7 @@ async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
 // Either move card back to rejectLoc, or if delete it.
 async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) {
     let ceProjId = pd.ceProjectId;
-    let pid  = pd.projectId;
+    let pid      = pd.projectId;
     let issueId  = card.issueId;
     let cardId   = card.cardId;
     assert( typeof issueId !== 'undefined' && issueId != -1 );
@@ -197,7 +197,7 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
 	}
     }
     else {
-	console.log( authDta.who, config.PROJ_COLS[config.PROJ_PLAN], "column does not exist .. deleting card." );
+	console.log( authData.who, config.PROJ_COLS[config.PROJ_PLAN], "column does not exist .. deleting card." );
 	ghV2.removeCard( authData, pid, cardId ); 
 	ghLinks.removeLinkage( { authData: authData, ceProjId: ceProjId, issueId: issueId, cardId: cardId } );
     }
@@ -228,7 +228,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    // Get from GH.. will not postpone if populate
 	    // XXX after ceFlutter, move this below postpone, remove populate condition.  pop label not yet attached.  
-	    let issue = await ghV2.getFullIssue( authData, pd.issueId);  
+	    let issue = await ghV2.getFullIssue( authData, pd.issueId);
+	    assert( Object.keys( issue ).length > 0 );	    
 
 	    // item:create could arrive before issue:open/label.
 	    // Can not create card without issue in pv2.   Can create issues without cards .. newborn issues will NOT create links without peq labels.
@@ -288,7 +289,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    let rejectLoc = -1;
 	    for( const aloc of locs ) {
 		if( aloc.hostColumnName == config.PROJ_COLS[config.PROJ_PLAN] ) {
-		    rejectLoc = aloc;
+		    rejectLoc = { ...aloc };  // will modify rejectLoc below, so make it a shallow copy
 		    break;
 		}
 	    }
@@ -324,7 +325,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    }
 
 		    // don't split allocs into x3
-		    const fullIssue = await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );   
+		    const fullIssue = await ghV2.getFullIssue( authData, newLinks[0].hostIssueId );
+		    assert( Object.keys( fullIssue ).length > 0 );
+		    
 		    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
 		    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newCard.columnName )) {
 			let msg = "WARNING.  Allocations are only useful in planning, or flat columns.  Leaving card in " + config.PROJ_COLS[config.PROJ_PLAN];
@@ -355,9 +358,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    return;
 		}
 	    }
+	    assert( links.length == 1 );
 	    let link = links[0]; // cards are 1:1 with issues
 	    
-	    // if( links === -1 || links[0].hostColumnId == config.EMPTY ) {
 	    if( link.hostColumnId == config.EMPTY ) {
 		if( newNameIndex > config.PROJ_PROG ) {
 		    // No origination data.  use default
@@ -372,15 +375,19 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    if( newCard.columnId == oldColId ) {
 		// console.log( authData.who, "Moves within columns are not tracked", link, newCard, pd.reqBody.changes );
-		console.log( authData.who, "Moves within columns are not tracked" );
+		console.log( authData.who, "Moves within columns are not tracked", cardId, oldColId );
 		return;
 	    }
 	    console.log( authData.who, "attempting to move card to", newColName, newCard.columnId, "from", oldColId );
+
+	    // reform rejectLoc to old location
+	    rejectLoc.hostColumnId   = oldColId;
+	    rejectLoc.hostColumnName = link.hostColumnName;
 	    
 	    // Do not allow move out of ACCR
 	    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		let msg = "WARNING.  Can't move Accrued issue.  Move not processed. " + cardId;
-		rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, { hostUtility: locs[0].hostUtility, hostColumnId: oldColId }, msg, true );
+		rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
 		return;
 	    }
 
@@ -388,11 +395,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    let issueId = link.hostIssueId;
 	    assert( issueId != -1 );
 
-	    const fullIssue = await ghV2.getFullIssue( authData, issueId );   
+	    const fullIssue = await ghV2.getFullIssue( authData, issueId );
+	    assert( Object.keys( fullIssue ).length > 0 );	    
 	    let [_, allocation] = ghUtils.theOnePEQ( fullIssue.labels );
 	    if( allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( newColName )) {
 		let msg = "WARNING.  Allocations are only useful in config:PROJ_PLAN, or flat columns.  Moving card back.";
-		rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, { hostUtility: locs[0].hostUtility, hostColumnId: oldColId }, msg, true );
+		rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
 		return;
 	    }
 	    
@@ -402,7 +410,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    let success = await ghV2.checkReserveSafe( authData, link.hostIssueId, newNameIndex );
 	    if( !success ) {
-		rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, { hostUtility: locs[0].hostUtility, hostColumnId: oldColId }, "", true );
+		rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, "", true );
 		return;
 	    }
 	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.columnId, newColName );
@@ -423,7 +431,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	break;
     case 'deleted' :
 	// Source of notification: delete card (delete col, delete proj, xfer   ???)
-	await deleteCard( authData, ghLinks, pd, pd.reqBody.project_card.id );
+	await deleteCard( authData, ghLinks, pd, pd.reqBody.projects_v2_item.node_id );
 	break;
     case 'edited' :
 	// Only newborn can be edited.   Track issue-free creation above.
