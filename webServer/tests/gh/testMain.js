@@ -79,12 +79,15 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 
-/*
+    subTest = await gh2TestComponents.runTests( authData, testLinks, td );
+    console.log( "\n\nComponents test complete." );
+    await utils.sleep( 5000 );
+    testStatus = tu.mergeTests( testStatus, subTest );
+
     subTest = await gh2TestBasicFlow.runTests( authData, testLinks, td );
     console.log( "\n\nFlow test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-*/    
     
     /*
     subTest = await gh2TestCross.runTests( flutterTest, authData, authDataX, authDataM, testLinks, td, tdX, tdM );
@@ -93,14 +96,8 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     testStatus = tu.mergeTests( testStatus, subTest );
     */
 
-
     subTest = await gh2TestPopulate.runTests( authData, testLinks, td );
     console.log( "\n\nResolve test complete." );
-    await utils.sleep( 5000 );
-    testStatus = tu.mergeTests( testStatus, subTest );
-
-    subTest = await gh2TestComponents.runTests( authData, testLinks, td );
-    console.log( "\n\nComponents test complete." );
     await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
 

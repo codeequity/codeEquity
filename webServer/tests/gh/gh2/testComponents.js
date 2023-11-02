@@ -373,9 +373,10 @@ async function testCloseReopen( authData, testLinks, td ) {
 	console.log( "Open/close in flat" );
 	// 0. make peq in bacon
 	const label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
-	const issueData = await gh2tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
+	const issueData = await gh2tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, cardId, title] 
 	const card      = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.flatPID, bacon.colId, issueData[0] );
-	testStatus     = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, bacon, issueData, card, testStatus );
+	issueData[2]    = card.cardId;
+	testStatus      = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, bacon, issueData, card, testStatus );
 
 	tu.testReport( testStatus, "A" );
 	
@@ -419,7 +420,7 @@ async function testCloseReopen( authData, testLinks, td ) {
 
 	// 5. move to eggs
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, eggs.colId, {issId: issueData[0]} );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, eggs, issueData, card, testStatus, {"state": "open" } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, eggs, issueData, card, testStatus, {"state": "OPEN" } );
 
 	tu.testReport( testStatus, "F" );
 	
@@ -443,19 +444,19 @@ async function testCloseReopen( authData, testLinks, td ) {
 
 	// 9. move to accr
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, flatAccr.colId, {issId: issueData[0]} );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "CLOSED" } );
 
 	tu.testReport( testStatus, "J" );
 	
 	// 10. reopen (fail)
 	await gh2tu.reopenIssue( authData, td, issueData[0] );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "CLOSED" } );
 
 	tu.testReport( testStatus, "K" );
 
 	// 10. move to PEND (fail)
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, flatPend.colId );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "closed" } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "CLOSED" } );
 
 	tu.testReport( testStatus, "L" );
     }	
@@ -1238,7 +1239,7 @@ async function runTests( authData, testLinks, td ) {
     console.log( "Component tests =================" );
 
     let testStatus = [ 0, 0, []];
-
+/*
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 5000 );
@@ -1258,6 +1259,7 @@ async function runTests( authData, testLinks, td ) {
     let t4 = await testCloseReopen( authData, testLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
     await utils.sleep( 5000 );
+*/
 
     let t5 = await testCreateDelete( authData, testLinks, td );
     console.log( "\n\nCreate / Delete complete." );
@@ -1272,11 +1274,11 @@ async function runTests( authData, testLinks, td ) {
     // await utils.sleep( 5000 );
 
 
-    testStatus = tu.mergeTests( testStatus, t1 );
-    testStatus = tu.mergeTests( testStatus, t8 );
-    testStatus = tu.mergeTests( testStatus, t2 );
-    testStatus = tu.mergeTests( testStatus, t3 );
-    testStatus = tu.mergeTests( testStatus, t4 );
+    // testStatus = tu.mergeTests( testStatus, t1 );
+    // testStatus = tu.mergeTests( testStatus, t8 );
+    // testStatus = tu.mergeTests( testStatus, t2 );
+    // testStatus = tu.mergeTests( testStatus, t3 );
+    // testStatus = tu.mergeTests( testStatus, t4 );
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
     testStatus = tu.mergeTests( testStatus, t7 );

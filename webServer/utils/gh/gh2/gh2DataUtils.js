@@ -349,8 +349,10 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	return 'early';
     }
 
-    //  Can't have situated issue in reserved.
-    assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
+    // Can't typically have situated issue in reserved.
+    // However, we are allowing some negotiation, e.g. peq issue in PEND, owner sez 2k instead of 1k, unlabels and relabels.
+    //          It is a narrow entry point to this case, but currently valid.
+    // assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
 
     let orig = {};
     orig.hostColumnId = pd.columnId;

@@ -1192,7 +1192,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
     else if( action == "reopened" ) {
 	
 	// This is a PEQ issue.  Verify card is currently in the right place, i.e. PEND ONLY (can't move out of ACCR)
-	if( link.hostColumnId != ceProjectLayout[ config.PROJ_PEND+1 ].toStirng() ) { cardId = -1; }
+	if( link.hostColumnId != ceProjectLayout[ config.PROJ_PEND+1 ].toString() ) { cardId = -1; }
 
 	// move card to "In Progress".  planned is possible if issue originally closed with something like 'wont fix' or invalid.
 	if( cardId != -1 ) {
