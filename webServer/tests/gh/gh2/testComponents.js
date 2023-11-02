@@ -553,6 +553,7 @@ async function testCreateDelete( authData, testLinks, td ) {
     await gh2tu.refreshFlat( authData, td );
     await gh2tu.refreshUnclaimed( authData, td );
 
+    const ghoPlan = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     const ghoProg = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const ghoPend = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
     const ghoAccr = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
@@ -574,7 +575,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	// XXX Danger.  see gh2tu.removeNewborn
 	// 0. make newborns
-	const cardIdFlat  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stars.colId, ISS_FLAT );
+	const cardIdFlat  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stars.colId,   ISS_FLAT );
 	const cardIdProg  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoProg.colId, ISS_PROG );
 	const cardIdPend  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, ISS_PEND );
 	const cardIdAccr  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoAccr.colId, ISS_ACCR );
@@ -614,8 +615,10 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	testStatus     = await gh2tu.checkUntrackedIssue( authData, testLinks, td, stars,   issDatFlat, flatCard, testStatus );
 	testStatus     = await gh2tu.checkUntrackedIssue( authData, testLinks, td, ghoProg, issDatProg, progCard, testStatus );
-	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoPend, pendCard.cardId, ISS_PEND, testStatus );
-	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, accrCard.cardId, ISS_ACCR, testStatus );
+
+	// These two are created, and moved out of reserved into PLAN.
+	testStatus     = await gh2tu.checkUntrackedIssue( authData, testLinks, td, ghoPlan, issDatPend, pendCard, testStatus );
+	testStatus     = await gh2tu.checkUntrackedIssue( authData, testLinks, td, ghoPlan, issDatAccr, accrCard, testStatus );
 
 	tu.testReport( testStatus, "carded A" );
 
@@ -625,14 +628,12 @@ async function testCreateDelete( authData, testLinks, td ) {
 	await gh2tu.remIssue( authData, issDatProg[0] ); // just remove issue
 	
 	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, stars,   flatCard.cardId, ISS_FLAT, testStatus );
-	// XXX This will exist until GH gets it back together.  See 6/8/2022 notes.	
-	// testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoProg, progCard.cardId, ISS_PROG, testStatus );
+	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoProg, progCard.cardId, ISS_PROG, testStatus );
 
 	tu.testReport( testStatus, "carded B" );
     }
     
     {
-	// note: pend never closes here (not assigned).  But, there is no PEND delete logic in the handlers.
 	console.log( "Situated testing" );
 
 	const ISS_FLAT = ISS_SITU + " Flat";
@@ -649,13 +650,18 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	const flatCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stars.colId,   issDatFlat[0] );
 	const progCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoProg.colId, issDatProg[0] );
+
+	// note: pend never closes here (not assigned).
 	const pendCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, issDatPend[0] );
 	const accrCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoAccr.colId, issDatAccr[0] );
 
 	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, stars,   issDatFlat, flatCard, testStatus );
 	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, ghoProg, issDatProg, progCard, testStatus );
-	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, ghoPend, issDatPend, pendCard, testStatus );
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, accrCard.cardId, ISS_ACCR, testStatus, {"peq": true} );
+
+	// Can't move to pend or accr without assignee
+	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, ghoPlan, issDatPend, pendCard, testStatus );
+	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, ghoPlan, issDatAccr, accrCard, testStatus );
+	// testStatus = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, accrCard.cardId, ISS_ACCR, testStatus, {"peq": true} );
 
 	tu.testReport( testStatus, "situated A" );
 	
@@ -690,9 +696,9 @@ async function testCreateDelete( authData, testLinks, td ) {
 	const aghoCard1   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, issDatAgho1[0] );
 	const aghoCard2   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, issDatAgho2[0] );
 
-	// Close
-	await gh2tu.closeIssue( authData, td, issDatAgho1, ghoPend );
-	await gh2tu.closeIssue( authData, td, issDatAgho2, ghoPend );
+	// Close.. no need given ghey were created in PEND
+	// await gh2tu.closeIssue( authData, td, issDatAgho1, ghoPend );
+	// await gh2tu.closeIssue( authData, td, issDatAgho2, ghoPend );
 
 	// Accrue
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, aghoCard1.cardId, ghoAccr.colId, {issId: issDatAgho1[0]} );

@@ -380,10 +380,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    }
 	    console.log( authData.who, "attempting to move card to", newColName, newCard.columnId, "from", oldColId );
 
-	    // reform rejectLoc to old location
-	    rejectLoc.hostColumnId   = oldColId;
-	    rejectLoc.hostColumnName = link.hostColumnName;
-	    
+	    // XXX Must ensure either PROJ_PLAN or oldColId exists.
+	    // reform rejectLoc to old location, iff old loc is not No Status.
+	    if( oldColId != -1 ) {
+		rejectLoc.hostColumnId   = oldColId;
+		rejectLoc.hostColumnName = link.hostColumnName;
+	    }
+		
 	    // Do not allow move out of ACCR
 	    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		let msg = "WARNING.  Can't move Accrued issue.  Move not processed. " + cardId;
@@ -410,7 +413,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    let success = await ghV2.checkReserveSafe( authData, link.hostIssueId, newNameIndex );
 	    if( !success ) {
-		rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, "", true );
+		let msg = "WARNING.  Need assignees before moving card to config.PROJ_PEND or config.PROJ_ACCR columns.  Moving card back.";
+		rejectCard( authData, ghLinks, pd, { issueId: link.hostIssueId, cardId: cardId }, rejectLoc, msg, true );
 		return;
 	    }
 	    ghLinks.updateLinkage( authData, pd.ceProjectId, issueId, cardId, newCard.columnId, newColName );

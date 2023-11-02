@@ -1649,8 +1649,9 @@ async function checkNewbornCard( authData, testLinks, td, loc, cardId, title, te
     // CHECK github card
     let cards  = await getCards( authData, loc.pid, loc.colId );
     let card   = cards.find( card => card.cardId == cardId );
-    const cardTitle = card.note.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-    subTest = tu.checkEq( card.hasOwnProperty( "issueNum" ), false, subTest, "Newbie has content" );
+    const cardTitle = card.title.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+    let goodCard = utils.validField( card, "issueNum" ) && card.issueNum != -1;
+    subTest = tu.checkEq( goodCard, false,                             subTest, "Newbie has content" );
     subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
 
     // CHECK linkage
@@ -1900,14 +1901,14 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
     let cards  = await getCards( authData, loc.pid, loc.colId );
     if( cards !== -1 ) { 
 	let card   = cards.find( card => card.cardId == cardId );
-	if( typeof card === "undefined") { console.log( "Card", title, cardId, "was rightfully deleted this time." ); }
+	if( typeof card === "undefined") { console.log( "Card", title, cardId, "was rightfully deleted or moved this time." ); }
 	else                             { console.log( "XXX ERROR.  Card", title, cardId, "was wrongfully NOT deleted this time." ); }
     }
     
     // CHECK linkage
     let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
     let link   = links.find( l => l.hostCardId == cardId.toString() );
-    subTest = tu.checkEq( typeof link === "undefined", true, subTest, "Link should not exist" );
+    subTest = tu.checkEq( typeof link === "undefined", true,            subTest, "Link should not exist" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     if( !skipAllPeq ) {
@@ -1917,7 +1918,7 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
 	if( checkPeq ) {
 	    let peq = peqs[0];
 	    subTest = tu.checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
-	    subTest = tu.checkEq( peq.HostIssueTitle, title,              subTest, "peq title is wrong" );
+	    subTest = tu.checkEq( peq.HostIssueTitle, title,            subTest, "peq title is wrong" );
 	    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,        subTest, "peq grantor wrong" );
 	}
 	else {
