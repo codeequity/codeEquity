@@ -40,7 +40,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
     console.log( authData.who, "delIss: DELETE FOR", pd.issueId );
 
     console.log( authData.who, "Delete situated issue.. first manage card" );
-    await cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
+    await cardHandler.deleteCard( authData, ghLinks, ceProjects, pd, link.hostCardId, true );
     console.log( authData.who, "  .. done with card." );
     
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
@@ -170,6 +170,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	else {
 	    console.log( authData.who, "carded issue with status -> peq issue" );
 	    // link can still be -1 if issue was created on GH with project, then moved, before label or create notices arrive
+	    // link can also be -1 if issue created on GH with project, then carded.  notification sequence can be label move create
 	    if( link === -1 ) { link = {}; }
 	}
 
@@ -192,7 +193,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     let specials = { pact: "addRelo", columnId: link.hostColumnId };
     
     pd.updateFromLink( link );
-    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.hostCardId, link.hostIssueNum );
+    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.hostCardId, link.hostIssueNum, link.hostColumnName );
 
     // Could getFullIssue, but we already have all required info
     let content                      = {};
@@ -204,7 +205,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.labelContent             = pd.reqBody.label.description;
     content.labelNodeId              = pd.reqBody.label.node_id;
 	
-    // Don't wait, no dependence
+    // Don't wait, no dependence.  Be aware link may be incomplete until this first PNP finishes
     let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );
     return (retVal != 'early' && retVal != 'removeLabel')
 }

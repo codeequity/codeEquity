@@ -104,7 +104,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 // del column triggers a move (to no status), not delete.
 // No matter the source, delete card must manage linkage, peq, pact, etc.
 // No matter the source, card will not exist in GH when this is called.
-async function deleteCard( authData, ghLinks, pd, cardId, fromIssue ) {
+async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue ) {
     // issue:del calls here first, if still has linkage.
     let issueExists = typeof fromIssue === 'undefined' ? true : !fromIssue;  
     
@@ -216,7 +216,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
     delayCount = typeof delayCount === 'undefined' ? 0 : delayCount;
     
-    console.log( authData.who, "Card", action, "Actor:", pd.actor );
+    console.log( authData.who, "Card", action, "Actor:", pd.actor, card.node_id );
     // pd.show();
     
     switch( action ) {
@@ -256,10 +256,15 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    // if remade card, then update peq too, just this once.  This is the only time cross-project moves are allowed.
 	    let specials = foundUnclaimed ? {pact: "addRelo", fromCard: true} : {fromCard: true};
 	    
-	    // Wait.  Linkage should not be in progress when subsequent card:move is processed.
 	    // Call PNP to add linkage, resolve, etc.  
 	    // pact is ignore, since 'create' is always accompanied by 'move'.  'move' does relo.
-	    await gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, specials );
+	    // Buut.. skip pnp if columnId in link is already meaningful.  Means GH finished processing before label notice arrived for ceServer
+	    let skipPNP =            !foundUnclaimed;                                                               // skip if don't need to rebuild after remove unclaimed
+	    skipPNP     = skipPNP && links.length == 1 && utils.validField( links[0], "hostColumnId" );             // skip if existing link could be meaningful
+	    skipPNP     = skipPNP && links[0].hostColumnId != -1 && links[0].hostColumnId != config.GH_NO_STATUS;   // skip if existing link is meaningful
+	    skipPNP     = skipPNP && links[0].hostCardId == card.node_id;                                           // skip if don't need to resolve 2nd card
+	    // Wait.  Linkage should not be in progress when subsequent card:move is processed.
+	    if( !skipPNP ) { await gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, specials ); }
 	}
 	break;
     case 'converted' :
@@ -435,7 +440,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	break;
     case 'deleted' :
 	// Source of notification: delete card (delete col, delete proj, xfer   ???)
-	await deleteCard( authData, ghLinks, pd, pd.reqBody.projects_v2_item.node_id );
+	await deleteCard( authData, ghLinks, ceProjects, pd, pd.reqBody.projects_v2_item.node_id );
 	break;
     case 'edited' :
 	// Only newborn can be edited.   Track issue-free creation above.

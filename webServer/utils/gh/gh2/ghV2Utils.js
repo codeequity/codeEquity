@@ -1684,7 +1684,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const unClaimed = config.UNCLAIMED;
     const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
-    console.log( "create unclaimed col", unClaimedProjId, issueId, colName, accr );
+    console.log( authData.who, "create unclaimed col", unClaimedProjId, issueId, colName, accr );
 
     // Get locs again, to update after uncl. project creation 
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );

@@ -797,8 +797,8 @@ async function makeProjectCard( authData, testLinks, ceProjId, pid, colId, issue
 // NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function makeIssue( authData, td, title, labels ) {
     let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels} );
-    assert( issue.length == 3 );
     issue.push( title );
+    assert( issue.length == 4 );
     await utils.sleep( tu.MIN_DELAY );
     return issue;
 }
@@ -1219,7 +1219,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     // Long GH pauses show their fury here, more likely than not.
     if( typeof mCard[0] === 'undefined' ) {
 	console.log( "mCard failure. issDat: ", issDat.toString() );
-	console.log( "               card: ", card.content_url );
+	console.log( "               card: ", card.title );
 	console.log( "               loc: ", loc );
 	console.log( "               loc: ", loc.projSub.toString() );
     }
@@ -1871,7 +1871,7 @@ async function checkNoSplit( authData, testLinks, td, issDat, newLoc, cardId, te
     let colCards = await getCards( authData, newLoc.pid, newLoc.colId );
     let noCard = true;
     if( colCards !== -1 ) {
-	const card = colCards.find( c => c.note && c.note.includes( splitName ));
+	const card = colCards.find( c => c.title && c.title.includes( splitName ));
 	if( typeof card !== 'undefined' ) { noCard = false; }
     }
     subTest = tu.checkEq( noCard, true,                  subTest, "Split card should not exist" );

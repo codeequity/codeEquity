@@ -723,15 +723,12 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	// get newly created issue, cards.   card only for remCard, issue and card for remIssue
 	const uncAccr = await gh2tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.PROJ_COLS[config.PROJ_ACCR] );
-	const newIss = await gh2tu.findIssueByName( authData, td, issDatAgho2[2] );
-	const aghoIss2New = [newIss.id, newIss.number, newIss.title];
+	const newIss = await gh2tu.findIssueByName( authData, td, issDatAgho2[3] );
+	const aghoIss2New = [newIss.id, newIss.number, -1, newIss.title];
 
-	// XXX Sometimes this checks too quickly, then checkUnc can not pick up the new card.  better..
-	// let uCards = await gh2tu.getCards( authData, uncAccr.pid, uncAccr.colId );
-	// aghoCard1New = uCards.find( card => card.content_url.split('/').pop() == issDatAgho1[1].toString() );
-	// aghoCard2New = uCards.find( card => card.content_url.split('/').pop() == aghoIss2New[1].toString() );
-	aghoCard1New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, issDatAgho1[1].toString(), testStatus );
-	aghoCard2New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, aghoIss2New[1].toString(), testStatus );
+	aghoCard1New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, issDatAgho1[3].toString(), testStatus );
+	aghoCard2New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, aghoIss2New[3].toString(), testStatus );
+	aghoIss2New[2] = aghoCard2New.cardId;
 	
 	// card: old issue, new card.  issue: new issue, new card
 	// peq for remCard is active for old issue.  peq for remIssue is active for new issue.
@@ -764,7 +761,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 async function getCardHelp( authData, pid, colId, cardName, testStatus ) {
     let uCards = await gh2tu.getCards( authData, pid, colId );
-    const card = uCards.find( card => card.content_url.split('/').pop() == cardName );
+    const card = uCards.find( card => card.title == cardName );
     return card;
 }
 
