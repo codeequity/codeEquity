@@ -81,10 +81,10 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
 // user linking existing project?            don't care.
 // testing creating a project?               empty, no need to get links 
 // user or testing creating unclaimed card?  according to ceServer strict relation, unclaimedProj belongs to ceProj, is not shared.
-async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProjectId, hostRepoId, hostRepoName ) {
+async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProjectId ) {
     let rLocs  = [];
     let rLinks = [];
-    console.log( authData.who, "link project", ceProjId, hostProjectId, hostRepoName );
+    console.log( authData.who, "link project", ceProjId, hostProjectId );
     
     await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	.catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));

@@ -26,7 +26,7 @@ async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, re
 	ceRouter.purgeQueue( ceJobs );
     }
     else if( reqBody.Request == "linkProject" ) {
-	retVal = await ghLinks.linkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pid, reqBody.rNodeId, reqBody.rName );
+	retVal = await ghLinks.linkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pid );
     }
     else if( reqBody.Request == "unlinkProject" ) {
 	retVal = await ghLinks.unlinkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pid, reqBody.rNodeId );

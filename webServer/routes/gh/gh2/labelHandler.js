@@ -67,12 +67,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    if( typeof pd.reqBody.changes.description !== 'undefined' ) { origDesc = pd.reqBody.changes.description.from; }
 	    if( typeof pd.reqBody.changes.name !== 'undefined' )        { origName = pd.reqBody.changes.name.from; }
 	    
-	    const lVal     = ghUtils.parseLabelDescr( [ origDesc ] );
+	    const origVal  = ghUtils.parseLabelDescr( [ origDesc ] );
 	    let allocation = ghUtils.getAllocated( [ origDesc ] );
 	    tVal = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
-	    // Allow, if no active peqs for current label
-	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: lVal, PeqType: tVal };
+	    // Only disallow if orig label being edited has active peqs.
+	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: origVal, PeqType: tVal };
 	    const peqs  = await awsUtils.getPeqs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs to handle with this edited label" );
@@ -89,15 +89,15 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    
 		    if( origName != newName ) {
 			console.log(" ... getting labels from orig.. may be empty" );
-			await ghV2.getLabelIssues( authData, pd.org, pd.repoName, origName, labelIssuesOld, -1 );
+			await ghV2.getLabelIssues( authData, pd.repoId, origName, labelIssuesOld, -1 );
 			console.log(" ... now getting labels from new label.. may be empty" );
 		    }
-		    await ghV2.getLabelIssues( authData, pd.org, pd.repoName, newName, labelIssues, -1 );
+		    await ghV2.getLabelIssues( authData, pd.repoId, newName, labelIssues, -1 );
 
 		    console.log( labelIssuesOld );
 		    console.log( labelIssues );
+
 		    let labelIssuesId = labelIssues.map( iss => iss.issueId );
-		    console.log( "LID", labelIssuesId );
 		    for( const oldIss of labelIssuesOld ) {
 			if( !labelIssuesId.includes( oldIss.issueId)) { labelIssues.push( oldIss ); }
 		    }
@@ -112,19 +112,31 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			if( issueLabels.length > 99 ) { console.log( "Error.  Too many labels for issue", issue.num );} 			
 			assert( issueLabels != -1 );
 
-			let newLabel = issueLabels.data.find( label => label.name == newName );
-			issueLabels = issueLabels.data;
-			// issueLabels  = issueLabels.data.filter( label => label.name != newName );
+			let newLabel = issueLabels.find( label => label.name == newName );
 			assert( typeof newLabel !== 'undefined' );
 			// console.log( "Labels for", issue.title, issue.num, newLabel, issueLabels );
 
-			// modify, fill pd.  Only labeling, so shallow copy works fine
-			let newPD       = { ...pd };
+			// modify, fill pd. labelIssue does pd.updateFromLink, which requires deep copy.
+			// let newPD = Object.assign( pd );               // just provides a reference
+			// let newPD = { ...pd };                         // no functions, no reqBody
+			// let newPD = JSON.parse( JSON.stringify( pd )); // no functions
+			let newPD = gh2Data.GH2Data.from( pd );           // sheesh
+
+			// Bring more over
+			newPD.ceProjectId   = pd.ceProjectId;
+			newPD.org           = pd.org;
+			newPD.repoName      = pd.repoName;
+			newPD.reqBody       = {};
+			newPD.reqBody.label = {};
+			newPD.reqBody.label.description = pd.reqBody.label.description;
+			newPD.reqBody.label.node_id     = pd.reqBody.label.node_id;
+
+			// new stuff
 			newPD.issueNum  = issue.num;
 			newPD.issueName = issue.title;
 			newPD.issueId   = issue.issueId;
 			newPD.actor     = pd.reqBody.sender.login;
-
+			
 			promises.push( issueHandler.labelIssue( authData, ghLinks, ceProjects, newPD, issue.num, issueLabels, newLabel ) );
 		    }
 		    await Promise.all( promises );
@@ -132,7 +144,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		
 		return;
 	    }
-
+	    
 	    // undo current edits, then make new.  Need to wait, else wont create label with same name
 	    console.log( authData.who, "WARNING.  Undoing label edit, back to", origName, origDesc );
 	    await ghV2.updateLabel( authData, labelId, origName, origDesc );

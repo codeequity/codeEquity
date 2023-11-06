@@ -445,6 +445,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     case 'edited' :
 	// Only newborn can be edited.   Track issue-free creation above.
 	{
+	    assert( false );
 	    let cardContent = pd.reqBody['project_card']['note'].split('\n');  // XXXX
 	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") ); // XXXX
 

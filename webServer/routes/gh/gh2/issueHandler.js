@@ -37,7 +37,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
     if( links === -1 ) { return; }
     let link = links[0];
 
-    console.log( authData.who, "delIss: DELETE FOR", pd.issueId );
+    console.log( authData.who, "delIss: DELETE FOR", pd.issueId, link.hostProjectId );
 
     console.log( authData.who, "Delete situated issue.. first manage card" );
     await cardHandler.deleteCard( authData, ghLinks, ceProjects, pd, link.hostCardId, true );
@@ -88,7 +88,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	// Move to unclaimed:accrued col
 	card = await card;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": link.hostProjectId, "colId": card.columnId } );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": config.UNCLAIMED, "colId": card.columnId } );
 	assert( locs.length = 1 );
 	await ghV2.moveCard( authData, card.pid, card.cardId, locs[0].hostUtility, card.columnId );
 	
@@ -122,13 +122,16 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
+
+    // label may be from json payload, or from internal call.  Convert id format.
+    if( utils.validField( label, "node_id" ) && !utils.validField( label, "id" ) ) { label.id = label.node_id; }
     
     // more than 1 peq?  remove it.
     let curVal  = ghUtils.parseLabelDescr( [ label.description ] );
     if( pd.peqValue <= 0 && curVal > 0 ) {
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
-	ghV2.removeLabel( authData, label.node_id, pd.issueId );
+	ghV2.removeLabel( authData, label.id, pd.issueId );
 	return false;
     }
     
@@ -554,3 +557,4 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 }
 
 exports.handler    = handler;
+exports.labelIssue = labelIssue;

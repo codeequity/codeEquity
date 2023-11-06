@@ -742,7 +742,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 	tu.testReport( testStatus, "accrued B" );
 
 	// 3. Remove one more time
-	await gh2tu.remCard( authData, td.ceProjectId, td.githubOpsPID, aghoCard1New.cardId );      // newborn
+	await gh2tu.remCard( authData, td.ceProjectId, uncAccr.pid, aghoCard1New.cardId );      // newborn
 	await gh2tu.remIssue( authData, aghoIss2New[0]);   // gone
 
 	testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, td, issDatAgho1, testStatus );
@@ -841,10 +841,10 @@ async function testLabelMods( authData, testLinks, td ) {
 	let labNP1 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP1, -1 );	
 	let labNP2 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP2, -1 );	
 
-	const issNewbDat = await gh2tu.makeIssue( authData, td, ISS_NEWB, [labNP1] );                // [id, number, title] 
-	const issPlanDat = await gh2tu.makeIssue( authData, td, ISS_PLAN, [LAB1, labNP1, labNP2] );  
-	const issPendDat = await gh2tu.makeIssue( authData, td, ISS_PEND, [LAB1, labNP1, labNP2] );     
-	const issAccrDat = await gh2tu.makeIssue( authData, td, ISS_ACCR, [LAB1, labNP1, labNP2] );     
+	const issNewbDat = await gh2tu.makeIssue( authData, td, ISS_NEWB, [labNP1] );                // [id, number, cardId, title] 
+	const issPlanDat = await gh2tu.makeIssue( authData, td, ISS_PLAN, [lab1, labNP1, labNP2] );  
+	const issPendDat = await gh2tu.makeIssue( authData, td, ISS_PEND, [lab1, labNP1, labNP2] );     
+	const issAccrDat = await gh2tu.makeIssue( authData, td, ISS_ACCR, [lab1, labNP1, labNP2] );     
 
 	// First unclaimed creation takes a sec
 	await utils.sleep( 1000 );
@@ -861,7 +861,7 @@ async function testLabelMods( authData, testLinks, td ) {
 
 	// Close & accrue
 	await gh2tu.closeIssue( authData, td, issPendDat );
-	await gh2tu.closeIssue( authData, td, issAccrDat, ghoPend, cardAccr );
+	await gh2tu.closeIssue( authData, td, issAccrDat, ghoPend );
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.cardId, ghoAccr.colId, {issId: issAccrDat[0]} );
 
 	await utils.sleep( 2000 );	
@@ -924,11 +924,6 @@ async function testLabelMods( authData, testLinks, td ) {
 	testStatus = await gh2tu.checkNewlyAccruedIssue( authData, testLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
 	tu.testReport( testStatus, "Label mods G" );
 
-
-	// XXX NOTE ISSUES for below
-	// 1. updateLabel does not create, yes?
-	// 2. delLabel takes label, not name
-	
 	// 8. Make partial peq label.  Three will be unlabeled (can't have 2 peq labels), one will remain.
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
@@ -944,7 +939,9 @@ async function testLabelMods( authData, testLinks, td ) {
 	// NOTE: if delete before update-driven LM Accrued remove label is complete, will see server error 404.
 	//       update label above drives a bunch of asynch unwaited-for labelings.  So, wait until can't see issue's label any longer (i.e. remove is done)
 	await tu.settleWithVal( "LabelMods remove from lmAccr", labNotInIssueHelp, authData, td, pl105, issAccrDat[0] );
-	await gh2tu.delLabel( authData, pl105 );
+	// updateLabel has changed values - get new stuff
+	labNP1 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, pl105, -1 );		
+	await gh2tu.delLabel( authData, labNP1 );
 	
     }
     
@@ -1262,11 +1259,11 @@ async function runTests( authData, testLinks, td ) {
     let t4 = await testCloseReopen( authData, testLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
     await utils.sleep( 5000 );
-*/
 
     let t5 = await testCreateDelete( authData, testLinks, td );
     console.log( "\n\nCreate / Delete complete." );
     await utils.sleep( 5000 );
+*/
 
     let t6 = await testLabelMods( authData, testLinks, td );
     console.log( "\n\nLabel mods complete." );
