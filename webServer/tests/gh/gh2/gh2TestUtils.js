@@ -2227,7 +2227,6 @@ exports.createCustomField = createCustomField;   // XXX speculative.  useful?
 // exports.makeProject     = makeProject;        // XXX NYI
 exports.remProject      = remProject;
 exports.unlinkProject   = unlinkProject;
-// exports.linkProject     = linkProject;        // XXX remove
 exports.makeColumn      = makeColumn;
 exports.createColumnTest    = createColumnTest;
 exports.updateProject   = updateProject;

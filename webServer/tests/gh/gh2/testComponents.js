@@ -1239,7 +1239,7 @@ async function runTests( authData, testLinks, td ) {
     console.log( "Component tests =================" );
 
     let testStatus = [ 0, 0, []];
-/*
+
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 5000 );
@@ -1263,25 +1263,27 @@ async function runTests( authData, testLinks, td ) {
     let t5 = await testCreateDelete( authData, testLinks, td );
     console.log( "\n\nCreate / Delete complete." );
     await utils.sleep( 5000 );
-*/
 
     let t6 = await testLabelMods( authData, testLinks, td );
     console.log( "\n\nLabel mods complete." );
     await utils.sleep( 5000 );
 
+    /*
+    // XXX As of 10/2023 still can't create or edit status field values, i.e. columns
+    //     these tests are largely worthless until then. 
     let t7 = await testProjColMods( authData, testLinks, td );
     console.log( "\n\nProjCol mods complete." );
     // await utils.sleep( 5000 );
+    */
 
-
-    // testStatus = tu.mergeTests( testStatus, t1 );
-    // testStatus = tu.mergeTests( testStatus, t8 );
-    // testStatus = tu.mergeTests( testStatus, t2 );
-    // testStatus = tu.mergeTests( testStatus, t3 );
-    // testStatus = tu.mergeTests( testStatus, t4 );
+    testStatus = tu.mergeTests( testStatus, t1 );
+    testStatus = tu.mergeTests( testStatus, t8 );
+    testStatus = tu.mergeTests( testStatus, t2 );
+    testStatus = tu.mergeTests( testStatus, t3 );
+    testStatus = tu.mergeTests( testStatus, t4 );
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
-    testStatus = tu.mergeTests( testStatus, t7 );
+    // testStatus = tu.mergeTests( testStatus, t7 );
     
     return testStatus
 }
