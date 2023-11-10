@@ -90,6 +90,14 @@ async function clearUnclaimed( authData, testLinks, pd ) {
     }
 }
 
+async function remIssueHelp( authData, testLinks, pd ) {
+    let retVal = false;
+    let issues = await gh2tu.getIssues( authData, pd );
+    if( issues.length != 0 ) { await remIssues( authData, testLinks, pd ); }
+    else                     { retVal = true; }
+    return retVal;
+}
+
 async function clearRepo( authData, testLinks, pd ) {
     console.log( "\nClearing", pd.GHFullName );
 
@@ -106,15 +114,10 @@ async function clearRepo( authData, testLinks, pd ) {
     // Issues.
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
     await remIssues( authData, testLinks, pd );
-    // await above just waits for gh commands to be issued.  No way to wait for ceServer to process.
-    // It is fair, since user could not issue second set of deletes before the cards show up.
-    await utils.sleep( 3000 );
 
-    await remIssues( authData, testLinks, pd );
-    await utils.sleep( 1000 );
-
-    let issues = await gh2tu.getIssues( authData, pd );
-    assert( issues.length == 0 );
+    // await remIssues awaits issuance, but can't await completion either at GH or by subsequent notification-driven ceServer.
+    // So keep plugging away until things are done.
+    await tu.settleWithVal( "remIssue helper", remIssueHelp, authData, testLinks, pd);	    
 
     let pactsP  = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
 

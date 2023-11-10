@@ -373,6 +373,11 @@ async function getCards( authData, pid, colId ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
 		if( raw.status != 200 ) { throw raw; }
+		if( raw.status == 200 && typeof raw.errors !== 'undefined' ) {
+		    console.log( authData.who, "WARNING. Get cards failed.", pid, colId, raw.errors );
+		    raw.status = 422; 
+		    throw raw;
+		}
 		let issues = raw.data.node.items.edges;
 		assert( issues.length < 99, "Need to paginate getCards." );
 		
@@ -390,6 +395,7 @@ async function getCards( authData, pid, colId ) {
 			let datum = {};
 			datum.cardId = iss.id;                  // pvti or cardId here
 			datum.issueNum = iss.content.number;
+			datum.issueId  = iss.content.id;
 			datum.title    = iss.content.title;
 			datum.columnId = colId;
 			if( typeof datum.issueNum === 'undefined' ) { datum.issueNum = -1; } // draft issue
@@ -499,7 +505,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 }
 
 async function findRepo( authData, td ) {
-    let repoId = ghUtils.getRepoId( authData, td.GHOwner, td.GHRepo ); 
+    let repoId = ghUtils.getRepoId( authData.pat, td.GHOwner, td.GHRepo ); 
     if( repoId != -1 ) { repoId = {id:repoId}; }
     return repoId;
 }
@@ -821,6 +827,12 @@ async function blastIssue( authData, td, title, labels, assignees, specials ) {
     issDat.push( title );
     if( wait ) { await utils.sleep( tu.MIN_DELAY ); }
     return issDat;
+}
+
+async function transferIssue( authData, issueId, toRepoId ) {
+    await ghV2.transferIssue( authData, issueId, toRepoId );
+    await utils.sleep( tu.MIN_DELAY );
+    return true;
 }
 
 
@@ -2238,6 +2250,7 @@ exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;
 exports.makeAllocIssue  = makeAllocIssue;
 exports.blastIssue      = blastIssue;
+exports.transferIssue   = transferIssue;
 
 exports.addLabel        = addLabel;
 exports.remLabel        = remLabel;

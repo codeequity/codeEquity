@@ -192,7 +192,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // add label to all.  recreate card.  peq was not modified.
 	    for( const peq of peqs ) {
 		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": peq.HostIssueId });
-		assert( links.length == 1 );
+		if( links.length != 1 ) {
+		    // XXX hmm.. if init error mismatching peq, this will fire.  not an issue during test construction (i.e. frequent mismatches), just production.
+		    console.log( "uh oh", peq, links );  // need await somewhere for aws?
+		    assert( links.length == 1 );
+		}
 
 		// PEQ labels are updated during ingest - they can be out of date.  Make sure issue is not already peq-labeled.
 		let pv = 0;

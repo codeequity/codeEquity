@@ -113,6 +113,7 @@ async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue 
     if( links === -1 ) { console.log( "No action taken for draft issues & their cards." ); return; }
     
     let link    = links[0];
+    pd.repoId   = links[0].hostRepoId
     const accr  = link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR];
     let comment = "CodeEquity removed the PEQ label from this issue when the attached project_card was deleted.";
     comment    += " PEQ issues require a 1:1 mapping between issues and cards.";
@@ -150,7 +151,7 @@ async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue 
     }
     // ACCR, not in unclaimed.  
     else if( issueExists ) {
-	console.log( authData.who, "Moving ACCR", accr, issueExists, link.hostIssueId );
+	console.log( authData.who, "Moving ACCR", pd.repoId, accr, issueExists, link.hostIssueId );
 	// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
 	//           card creation can fail, and results can be uncertain at this point.  
 	let card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.hostIssueId, accr );  

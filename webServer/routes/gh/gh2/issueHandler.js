@@ -124,7 +124,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
 
     // label may be from json payload, or from internal call.  Convert id format.
-    if( utils.validField( label, "node_id" ) && !utils.validField( label, "id" ) ) { label.id = label.node_id; }
+    if( utils.validField( label, "node_id" ) ) { label.id = label.node_id; }
     
     // more than 1 peq?  remove it.
     let curVal  = ghUtils.parseLabelDescr( [ label.description ] );
@@ -494,6 +494,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// only xfer between repos 1) owned by same person/org; 2) where you have write access to both
 	
 	{
+	    console.log( pd.reqBody );
 	    if( pd.reqBody.changes.new_repository.full_name != pd.Repo ) {
 		console.log( authData.who, "Transfer out.  Cleanup." );
 		const fullRepoName = pd.reqBody.changes.new_repository.full_name;

@@ -554,7 +554,6 @@ async function getAssignees( authData, issueId ) {
     return retVal;
 }
 
-// XXX untested
 async function transferIssue( authData, issueId, newRepoNodeId) {
 
     let query = `mutation ($issueId: ID!, $repoId: ID!) 
@@ -563,7 +562,14 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
     query = JSON.stringify({ query, variables });
 
     let ret = -1;
-    try        { ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query ); }
+    try {
+	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
+	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+	    console.log( authData.who, "WARNING. Issue not transferred.", issueId, ret.errors );
+	    ret.status = 422; 
+	    throw ret;
+	}
+    }
     catch( e ) { ret = await ghUtils.errorHandler( "transferIssue", e, transferIssue, authData, issueId, newRepoNodeId ); }
     return ret;
 }
@@ -1622,6 +1628,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
 		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
+		// console.log( "FindProjectByRepo in createUnclaimed", raw );
 		let projects = [];
 		if( utils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
 		
@@ -1640,7 +1647,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 // XXX in support of link workaround to avoid issue with creating columns.
 //     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
 async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ) {
-    console.log( authData.who, "linkProject", name );
+    console.log( authData.who, "linkProject", name, repoId );
 
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
@@ -1957,7 +1964,7 @@ exports.getCEProjectLayout = getCEProjectLayout;
 // exports.createProject       = createProject;          // XXX NYI
 exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
 exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
-exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI
+exports.createUnClaimedCard    = createUnClaimedCard;    
 
 exports.cloneFromTemplate      = cloneFromTemplate;      // XXX speculative.  useful?
 exports.createCustomField      = createCustomField;      // XXX speculative.  useful?

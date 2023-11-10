@@ -14,9 +14,9 @@ async function cardPresentHelp( authData, pid, colId, issId ) {
     let retVal = false;
 
     let allCards  = await gh2tu.getCards( authData, pid, colId );
-    
+
     let c = allCards.find( card => card.issueId == issId ); 
-    if( typeof c !== 'undefined' ) { console.log( "CROSS XXX RV: " ); retVal = true; }
+    if( typeof c !== 'undefined' ) { retVal = true; }
 
     return retVal;
 }
@@ -43,7 +43,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // Setup.
     // Add populate label to testProject2, to invoke repostatus
     let crossPid = await gh2tu.createProjectWorkaround( authDataX, tdX, "Cross Proj", "For testing transfers to other repos" );
-    let crossCid = await gh2tu.makeColumn( authDataX, testLinks, tdX.CEProjectId, tdX.GHFullName, crossPid, "Cross Col" );
+    let crossCid = await gh2tu.makeColumn( authDataX, testLinks, tdX.ceProjectId, tdX.GHFullName, crossPid, "Cross Col" );
     
     let issPopDat = await gh2tu.makeIssue( authDataX, tdX, "A special populate issue", [] );
     let cardPop   = await gh2tu.makeProjectCard( authDataX, testLinks, tdX.ceProjectId, crossPid, crossCid, issPopDat[0] );
@@ -58,22 +58,28 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 
     const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "builderCE";
-        
+
+    let assignee1   = await gh2tu.getAssignee( authData,  ASSIGNEE1 );
+    let assignee2   = await gh2tu.getAssignee( authData,  ASSIGNEE2 );
+    let assignee1X  = await gh2tu.getAssignee( authDataX, ASSIGNEE1 );
+    let assignee2X  = await gh2tu.getAssignee( authDataX, ASSIGNEE2 );
+    
     const stripeLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
     const crossLoc  = await gh2tu.getFlatLoc( authDataX, crossPid, "Cross Proj", "Cross Col" );
 
 
     // 1. Create in test Project
-    let issDat = await gh2tu.blastIssue( authData, td, "CT Blast", [LAB], [ASSIGNEE1, ASSIGNEE2] );               
+    let issDat = await gh2tu.blastIssue( authData, td, "CT Blast", [lab], [assignee1, assignee2] );               
     await utils.sleep( 2000 );
 
-    const card  = await gh2tu.makeProjectCard( authData, testLinks, td.CEProjectId, td.githubOpsPID, stripeLoc.colId, issDat[0] );
+    const card  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stripeLoc.colId, issDat[0] );
     await utils.sleep( 1000 );
+
+    // Adding makeProjectCard creates second add/relo which clears assignees found in pnp:fromLabelIssue.  It's ok, PACt has it.
+    testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1});
     
-    testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1, assign: 2});
-    
-    let allPeqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.CEProjectId });
-    let peq     = allPeqs.find(p => p.hostIssueId == issDat[0].toString() );
+    let allPeqs = await awsUtils.getPeqs( authData, { "ceProjectId": td.ceProjectId });
+    let peq     = allPeqs.find(p => p.HostIssueId == issDat[0].toString() );
     let sub     = [peq.PEQId, td.githubOpsPID.toString(), stripeLoc.colId.toString() ];
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, issDat[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
     
@@ -81,16 +87,16 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     
 
     // 2. Create in cross project
-    let issDatX = await gh2tu.blastIssue( authDataX, tdX, "CT Blast X", [LAB], [ASSIGNEE1, ASSIGNEE2] );               
+    let issDatX = await gh2tu.blastIssue( authDataX, tdX, "CT Blast X", [labX], [assignee1X, assignee2X] );               
     await utils.sleep( 2000 );
 
-    const cardX  = await gh2tu.makeProjectCard( authDataX, testLinks, tdX.CEProjectId, crossPid, crossLoc.colId, issDatX[0] );
-    await tu.settleWithVal( "Cross test make cross card", cardPresentHelp, authData, crossPid, crossLoc.colId, issDatX[0] );
+    const cardX  = await gh2tu.makeProjectCard( authDataX, testLinks, tdX.ceProjectId, crossPid, crossLoc.colId, issDatX[0] );
+    await tu.settleWithVal( "Cross test make cross card", cardPresentHelp, authDataX, crossPid, crossLoc.colId, issDatX[0] );
     
-    testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1, assign: 2});
+    testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1});
     
-    allPeqs  = await awsUtils.getPeqs( authDataX, { "CEProjectId": tdX.CEProjectId });
-    let peqX = allPeqs.find(p => p.hostIssueId == issDatX[0].toString() );
+    allPeqs  = await awsUtils.getPeqs( authDataX, { "ceProjectId": tdX.ceProjectId });
+    let peqX = allPeqs.find(p => p.HostIssueId == issDatX[0].toString() );
     sub      = [peqX.PEQId, crossPid.toString(), crossCid.toString() ];
     testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, issDatX[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
 
@@ -104,10 +110,10 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 
     
     console.log( "TRANSFER BEGINNING" );
-    console.log( "base : ", issue.node_id, repoX.node_id );
-    console.log( "baseX: ", issueX.node_id, repo.node_id );
-    await gh2tu.transferIssueGQL( authData, issue.node_id, repoX.node_id );
-    await gh2tu.transferIssueGQL( authDataX, issueX.node_id, repo.node_id );
+    console.log( "base : ", issue.id, repoX.id );
+    console.log( "baseX: ", issueX.id, repo.id );
+    await gh2tu.transferIssue( authData, issue.id, repoX.id );
+    await gh2tu.transferIssue( authDataX, issueX.id, repo.id );
     await utils.sleep( 2000 );
 
     const newGHIssue = await gh2tu.findIssueByName( authData, td, issDatX[3] );
@@ -149,7 +155,7 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
 
     // Add populate label to testProject2, to invoke repostatus. 
     let multiPid = await gh2tu.createProjectWorkaround( authDataM, tdM, "Multi Proj", "For testing request interleaving" );
-    let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.CEProjectId, tdM.GHFullName, multiPid, "Multi Col" );
+    let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.GHFullName, multiPid, "Multi Col" );
     let issPopDat = await gh2tu.makeIssue( authDataM, tdM, "A special populate issue", [] );
     let cardPop   = await gh2tu.makeProjectCard( authDataM, testLinks, tdM.ceProjectId, multiPid, multiCid, issPopDat[0] );
     let popLabel  = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, config.POPULATE, -1 );
@@ -171,7 +177,14 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "builderCE";
     const ASSIGNEE3 = "connieCE";
-        
+    let assignee1   = await gh2tu.getAssignee( authData,  ASSIGNEE1 );
+    let assignee2   = await gh2tu.getAssignee( authData,  ASSIGNEE2 );
+    let assignee3   = await gh2tu.getAssignee( authData,  ASSIGNEE3 );
+    let assignee1M  = await gh2tu.getAssignee( authDataM, ASSIGNEE1 );
+    let assignee2M  = await gh2tu.getAssignee( authDataM, ASSIGNEE2 );
+    let assignee3M  = await gh2tu.getAssignee( authDataM, ASSIGNEE3 );
+
+    
     // There are 5 blast issues of each repo, randomized, sent with a small random gap between 200-500ms.
 
     let issDatPromises = [0,1,2,3,4,5,6,7,8,9];
@@ -183,16 +196,16 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
 	console.log( "Fire", index );
 	let dat = [];
 	switch( index ) {
-	case 0: dat = gh2tu.blastIssue( authData,  td,  "Interleave 0",  [LAB],                 [ASSIGNEE1], {wait: false});                       break;
-	case 1: dat = gh2tu.blastIssue( authData,  td,  "Interleave 1",  [LAB, LABNP2],         [ASSIGNEE1, ASSIGNEE2], {wait: false});            break;
-	case 2: dat = gh2tu.blastIssue( authData,  td,  "Interleave 2",  [LAB, LABNP1],         [ASSIGNEE3, ASSIGNEE2], {wait: false});            break;
-	case 3: dat = gh2tu.blastIssue( authData,  td,  "Interleave 3",  [LAB, LABNP1, LABNP2], [ASSIGNEE1, ASSIGNEE2, ASSIGNEE3], {wait: false}); break;
-	case 4: dat = gh2tu.blastIssue( authData,  td,  "Interleave 4",  [LABNP1],              [ASSIGNEE1, ASSIGNEE3], {wait: false});            break;
-	case 5: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 0", [LABNP2],              [ASSIGNEE1], {wait: false});                       break;
-	case 6: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 1", [LAB],                 [ASSIGNEE3, ASSIGNEE2], {wait: false});            break;
-	case 7: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 2", [LAB, LABNP1],         [ASSIGNEE3, ASSIGNEE1, ASSIGNEE2], {wait: false}); break;
-	case 8: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 3", [LAB, LABNP1, LABNP2], [ASSIGNEE1, ASSIGNEE2], {wait: false});            break;
-	case 9: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 4", [LAB, LABNP2],         [ASSIGNEE2, ASSIGNEE1], {wait: false});            break;
+	case 0: dat = gh2tu.blastIssue( authData,  td,  "Interleave 0",  [lab],                 [assignee1], {wait: false});                       break;
+	case 1: dat = gh2tu.blastIssue( authData,  td,  "Interleave 1",  [lab, labNP2],         [assignee1, assignee2], {wait: false});            break;
+	case 2: dat = gh2tu.blastIssue( authData,  td,  "Interleave 2",  [lab, labNP1],         [assignee3, assignee2], {wait: false});            break;
+	case 3: dat = gh2tu.blastIssue( authData,  td,  "Interleave 3",  [lab, labNP1, labNP2], [assignee1, assignee2, assignee3], {wait: false}); break;
+	case 4: dat = gh2tu.blastIssue( authData,  td,  "Interleave 4",  [labNP1],              [assignee1, assignee3], {wait: false});            break;
+	case 5: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 0", [labNP2],              [assignee1M], {wait: false});                       break;
+	case 6: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 1", [lab],                 [assignee3M, assignee2M], {wait: false});            break;
+	case 7: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 2", [lab, labNP1],         [assignee3M, assignee1M, assignee2M], {wait: false}); break;
+	case 8: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 3", [lab, labNP1, labNP2], [assignee1M, assignee2M], {wait: false});            break;
+	case 9: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 4", [lab, labNP2],         [assignee2M, assignee1M], {wait: false});            break;
 	default: assert( false );  break;
 	}
 	issDatPromises[index] =  dat;
