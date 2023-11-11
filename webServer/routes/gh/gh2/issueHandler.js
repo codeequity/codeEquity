@@ -443,7 +443,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'edited':
-	// Only need to catch title edits, and only for situated.  
+	// XXXXXXXXXXXXXXXXX  undone..!  untested.
+	// Only need to catch title edits, and only for situated.
+	// Will get this notice for a transfer, safe to ignore.
 	{
 	    if( pd.reqBody.changes.hasOwnProperty( 'title' ) && 
 		pd.reqBody.changes.title.hasOwnProperty( 'from' )) {
@@ -477,67 +479,65 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'transferred':
-	// (open issue in new repo, item:edit, item:edit, transfer issue)
-	// NOTE.  As of 4/2023, GH is keeping labels/assignees if they exist in new repo.  Card is not removed from old repo.
-	//        Issue is removed from old repo.  Fate of labels/assignees not dependable.  Will need to call delete card.
-	// NOTE.  As of 2/13/2022 GH is keeping labels with transferred issue, although tooltip still contradicts this.
-	//        Currently, this is in flux.  the payload has new_issue, but the labels&assignees element is empty.
-	//        Also, as is, this is violating 1:1 issue:card
-	// Transfer IN:  Not getting these any longer.
-	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.  GH will send delete card.
-	//
+	// 1: issue:open       has full change field, with old_issue, old_repo (!)  (ignored)
+	// 2: issue:edit       has a change, has new repo in normal repo field      (ignored)
+	// 3: pv2Item edit     has change with type:repo and PVTF for field         (ignored)
+	// 4: identical to #3                                                       (ignored)
+	// 5: issue:transfer   has full change field, with new_issue, new_repo      (process)
+
+	// GH transfers issue to new repo.  It does not remove or otherwise relocate the card.  Why should it?  Projects are views across repos,
+	// so it is expected that card will remain in previous location.
+	
 	// Transfer from non-CE to ceProj: issue arrives as newborn.
 	// Transfer out of ceProj: as above xfer out.
 
-	// Transfer from ceProj to ceProj: issue arrives with peq labels, assignees.  Receiving transferOut notification with .changes
+	// Transfer from ceProj to ceProj: issue arrives with peq labels, assignees.  
 	// https://docs.github.com/en/issues/tracking-your-work-with-issues/transferring-an-issue-to-another-repository
 	// only xfer between repos 1) owned by same person/org; 2) where you have write access to both
 	
 	{
-	    console.log( pd.reqBody );
-	    if( pd.reqBody.changes.new_repository.full_name != pd.Repo ) {
-		console.log( authData.who, "Transfer out.  Cleanup." );
-		const fullRepoName = pd.reqBody.changes.new_repository.full_name;
-		const newRepoName = pd.reqBody.changes.new_repository.name;
-		const newIssNum   = pd.reqBody.changes.new_issue.number;
+	    let issueTitle  = pd.reqBody.issue.title;
 
-		/* XXX REVISIT
-		// Check for xfer to another ceProject (i.e. ceServer-enabled repo).
-		const status = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
-		const ceProj = status != -1 && status.Populated == "true" ? true : false;
+	    let oldIssueId  = pd.reqBody.issue.node_id;
+	    let oldIssueNum = pd.reqBody.issue.number;
+	    let oldRepo     = pd.reqBody.repository.full_name;
+	    let oldRepoId   = pd.reqBody.repository.full_name;
+	    
+	    let newRepo     = pd.reqBody.changes.new_repository.full_name;
+	    let newRepoId   = pd.reqBody.changes.new_repository.node_id;
+	    let newIssueId  = pd.reqBody.changes.new_issue.node_id;
+	    let newIssueNum = pd.reqBody.changes.new_issue.number;
 
-		if( ceProj ) {
-		    // Switch auths
-		    let baseAuth = authData.ic;
-		    authData.ic = authData.icXfer;
-		    assert( authData.ic != -1 );
-		    console.log( authData.who, newIssNum.toString(), "Landed in ceProject", newRepoName );
-		    let newLabs = await gh.getLabels( authData, pd.Owner, newRepoName, newIssNum );
-		    console.log( "New labels:", newLabs.data );
+	    assert( issueTitle == pd.issueName );
+	    
+	    console.log( authData.who, "Transfer", issueTitle, "from:", oldIssueId, oldIssueNum, oldRepo, oldRepoId );
+	    console.log( authData.who, "                          to:", newIssueId, newIssueNum, newRepo, newRepoId );
+	    console.log( authData.who, "PD                     holds:", pd.issueId, pd.issueNum, pd.repoName, pd.repoId );
+/*
+    --> do not create CEP, or link r2 to CEP.
+    --> do not move peq out of, or into non-cep repo.
+    * Bail if newborn issue.
+    * will have some variant of update link (issue data, repo data).  then: 
 
-		    // Owner must be the same according to GH
-		    let newAssigns = await gh.getAssignees( authData, pd.Owner, newRepoName, newIssNum );
-		    console.log( "New Assignees:", newAssigns.data );
-		    // XXX Will need to move this to unclaimed:unclaimed
+    link project?  new loc?  resolve?
 
-		    // Switch back auths
-		    authData.ic = baseAuth; 
-		}
-		*/
-		
-		// Only record PAct for peq.  PEQ may be removed, so don't require Active
-		let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
-		if( peq !== -1 ) {
-		    const subject = [ peq.PEQId, fullRepoName ];
-		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
-					   utils.getToday(), pd.reqBody );
-		}
-	    }
-	    else {
-		// XXX 
-		console.log( "WARNING.  Seeing transfer in notification for first time. GH project mgmt has changed, revisit." );
-	    }
+       * p1_r1_cep1 to p1_r2_cep1:     done.
+       * p1_r1_cep1 to p1_r2_cep2:     link (CEP data).  link p1_r2 (adds all links/locs.  no need to resolve, as p1_r1 active).
+       * p1_r1_cep1 to p1_r2_---:      carded? remove link. PEQ?  Move it back, link update is issDat only.  TODO: create split issue in p1_r2, non-peq (later)
+       * p1_r1_---  to p1_r2_cep1:     any peq labels are removed before being activated.  resolve.  add link(s).  locs are good.
+
+    * finally, if peq, issue transfer pact, with [peqId, oldIssId, oldRepo, oldCEP, newIssId, newRepo, newCEP].  
+*/
+
+	    /*
+	    // Only record PAct for peq.  PEQ may be removed, so don't require Active
+	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
+	    if( peq !== -1 ) {
+		const subject = [ peq.PEQId, fullRepoName ];
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
+					  utils.getToday(), pd.reqBody );
+	    */
 	}
 	break;
 

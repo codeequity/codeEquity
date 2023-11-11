@@ -306,7 +306,7 @@ async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 	//       ghost is unspecified, or incorrectly specified for github as of 10/23.  
 	// NOTE: it would be fair at this point to cast everything as PV2, given evident demise of GHC...
 	let   usePV2    = false;
-	const pv2IssAct = ["deleted", "labeled", "unlabeled", "assigned", "unassigned", "reopened" , "closed"];
+	const pv2IssAct = ["deleted", "labeled", "unlabeled", "assigned", "unassigned", "reopened" , "closed", "edited"];
 	const pv2LabAct = ["deleted", "edited", "created"];
 	if( jd.event == "issue" && pv2IssAct.includes( jd.action ) ) { usePV2 = true; }
 	if( jd.event == "label" && pv2LabAct.includes( jd.action ) ) { usePV2 = true; }

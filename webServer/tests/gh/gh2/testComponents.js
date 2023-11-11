@@ -33,16 +33,20 @@ async function checkDubLabel( authData, testLinks, td, loc, issueData, card, tes
 	const labels0 = issue.labels[0].name == kpConv && issue.labels[1].name == "documentation";
 	const labels1 = issue.labels[1].name == kpConv && issue.labels[0].name == "documentation";
 	subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
-	
-	// CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
+
 	let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
 	peqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
 	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
 	
+	// CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
+	// But.. when testing does makeIssue, addLabel, makeProjCard in succession (awaits don't matter - just control issue not reception of command or ce notice)
+	//       makeProjCard can begin at GH before labelIssue in CE runs.  This means it is valid to either create card in project:nostatus then relo, or
+	//       first create in unclaimed, then continue.  i.e. add/relo/relo or add/relo add/relo/relo (relo/relo is typically to noStatus, then to col).
 	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
 	pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-	subTest = tu.checkEq( pacts.length, 5,                         subTest, "PAct count" );      // add/relo (unclaimed) add/relo/relo (bacon)
+	let goodCount = pacts.length == 3 || pacts.length == 5;
+	subTest = tu.checkEq( goodCount, true,                         subTest, "PAct count" );      // add/relo (unclaimed) add/relo/relo (bacon)
     }
     
     return await tu.settle( subTest, testStatus, checkDubLabel, authData, testLinks, td, loc, issueData, card, testStatus );
@@ -142,7 +146,7 @@ async function testLabel( authData, testLinks, td ) {
 
 	// 1. create 1k peq issue in bacon
 	console.log( "Make newly situated issue in bacon" );
-	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, title] 
+	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, cardId, title] 
 	let label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
 	await gh2tu.addLabel( authData, label.id, issueData );
 	let card  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.flatPID, bacon.colId, issueData[0] );

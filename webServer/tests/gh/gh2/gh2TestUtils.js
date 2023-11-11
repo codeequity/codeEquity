@@ -505,7 +505,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 }
 
 async function findRepo( authData, td ) {
-    let repoId = ghUtils.getRepoId( authData.pat, td.GHOwner, td.GHRepo ); 
+    let repoId = await ghUtils.getRepoId( authData.pat, td.GHOwner, td.GHRepo ); 
     if( repoId != -1 ) { repoId = {id:repoId}; }
     return repoId;
 }
@@ -1298,8 +1298,8 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		
 		// This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
 		if( pacts.length <= 3 && loc.projSub.length > 1 ) {
-		    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
-		    if( !pip.includes( loc.projSub[1] )) { 
+		    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
+		    if( !pip.includes( loc.projSub[1] && loc.projSub[1] != config.GH_NO_STATUS )) { 
 			subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
 		    }
 		}
