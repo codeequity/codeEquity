@@ -466,6 +466,7 @@ async function testCloseReopen( authData, testLinks, td ) {
     }	
 
     {
+	// NOTE!  Same issue name (Close Open Test), different projects.  GH allows it, we test.
 	console.log( "\n\nOpen/close in full++" );
 
 	const stars      = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );

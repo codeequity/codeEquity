@@ -488,8 +488,8 @@ class Linkage {
 
 
     // workaround function for GH2
-    async linkProject( authData, ceProjects, ceProjId, hostProjectId ) {
-	await gh2LU.linkProject( authData, this, ceProjects, ceProjId, hostProjectId );
+    async linkProject( authData, ceProjects, ceProjId, hostProjectId, repoId ) {
+	await gh2LU.linkProject( authData, this, ceProjects, ceProjId, hostProjectId, repoId );
 	return true;
     }
 

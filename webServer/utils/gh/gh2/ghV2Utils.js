@@ -557,7 +557,7 @@ async function getAssignees( authData, issueId ) {
 async function transferIssue( authData, issueId, newRepoNodeId) {
 
     let query = `mutation ($issueId: ID!, $repoId: ID!) 
-                    { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId, createLabelsIfMissing: true }) {clientMutationId}}`;
+                    { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId, createLabelsIfMissing: true }) {clientMutationId, issue{id,number}}}`;
     let variables = {"issueId": issueId, "repoId": newRepoNodeId };
     query = JSON.stringify({ query, variables });
 
@@ -569,6 +569,9 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
 	    ret.status = 422; 
 	    throw ret;
 	}
+	assert( utils.validField( ret.data.transferIssue, "issue" ) );
+	ret = ret.data.transferIssue.issue;
+	// console.log( issueId, newRepoNodeId, ret, ret.data.transferIssue.issue );
     }
     catch( e ) { ret = await ghUtils.errorHandler( "transferIssue", e, transferIssue, authData, issueId, newRepoNodeId ); }
     return ret;
@@ -1445,7 +1448,7 @@ async function getLabelIssues( authData, repoId, labelName, data, cursor ) {
     catch( e ) {
 	cursor = -1;
 	data.length = 0;
-	await ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, owner, repo, labelName, data, cursor );
+	await ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, repoId, labelName, data, cursor );
     }
 }
 
@@ -1672,7 +1675,7 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 	if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
 	else if( ghLinks !== -1 ) {   
 	    // test process can't execute this, does not have server's ghLinks obj, so will do it independently
-	    await ghLinks.linkProject( authData, ceProjects, ceProjId, pid );
+	    await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId );
 	}
     }
     

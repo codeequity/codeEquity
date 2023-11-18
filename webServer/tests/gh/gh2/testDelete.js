@@ -92,6 +92,9 @@ async function clearUnclaimed( authData, testLinks, pd ) {
 
 async function remIssueHelp( authData, testLinks, pd ) {
     let retVal = false;
+
+    // Allow a brief moment for accrued deletions to complete.  
+    await utils.sleep( 3000 );
     let issues = await gh2tu.getIssues( authData, pd );
     if( issues.length != 0 ) { await remIssues( authData, testLinks, pd ); }
     else                     { retVal = true; }

@@ -109,7 +109,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     const repoX  = await gh2tu.findRepo( authDataX, tdX );
 
     
-    console.log( "TRANSFER BEGINNING" );
+    console.log( "TRANSFER BEGINNING" );  
     console.log( "base : ", issue.id, repoX.id );
     console.log( "baseX: ", issueX.id, repo.id );
     await gh2tu.transferIssue( authData, issue.id, repoX.id );
@@ -118,17 +118,28 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 
     const newGHIssue = await gh2tu.findIssueByName( authData, td, issDatX[3] );
     const newXIssue  = await gh2tu.findIssueByName( authDataX, tdX, issDat[3] );
-    
-    testStatus = await gh2tu.checkNewbornIssue( authDataX, testLinks, td, [newGHIssue.id, newGHIssue.number, -1, issDatX[3]], testStatus, {lblCount: 1} );    
-    testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, tdX, [newXIssue.id, newXIssue.number, -1, issDat[3]], testStatus, {lblCount: 1} );    
+
+    // Id, number, repo has changed. Card, Card location, peqiness has not
+    let oldId  = issDat[0];
+    issDat[0]  = newXIssue.id;
+    issDat[1]  = newXIssue.number;
+
+    let oldIdX = issDatX[0];
+    issDatX[0] = newGHIssue.id;
+    issDatX[1] = newGHIssue.number;
+
+    // issDatX now has new id, same card, and belongs to td's ceProject and repo.  To check peq successfully, need old issueId (until ingest), and CEP
+    testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1, peqIID: oldIdX, peqCEP: tdX.ceProjectId} );    
+    testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1, peqIID: oldId, peqCEP: td.ceProjectId} );    
 
     let testRepo = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
-	
-    // Careful.. peq is gone at this point.   Delete may come after relocate, hence depth
-    sub         = [peqX.PEQId, config.TEST_ACTOR + "/" + testRepo];
-    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer out", testStatus, {sub: sub, depth: 2} );
-    sub         = [peq.PEQId, config.TEST_ACTOR + "/" + config.CROSS_TEST_REPO];
-    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer out", testStatus, {sub: sub, depth: 2} );
+
+    // PAct is found from oldCEP
+    sub         = [peqX.PEQId, oldIdX, tdX.GHRepoId, tdX.ceProjectId, issDatX[0], td.GHRepoId, td.ceProjectId ];
+    testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer", testStatus, {sub: sub, depth: 2} );
+
+    sub         = [peq.PEQId, oldId, td.GHRepoId, td.ceProjectId, issDat[0], tdX.GHRepoId, tdX.ceProjectId ];
+    testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer", testStatus, {sub: sub, depth: 2} );
 
     
     tu.testReport( testStatus, "Test " + testName );

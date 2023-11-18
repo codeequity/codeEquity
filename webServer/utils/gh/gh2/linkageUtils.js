@@ -81,7 +81,9 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
 // user linking existing project?            don't care.
 // testing creating a project?               empty, no need to get links 
 // user or testing creating unclaimed card?  according to ceServer strict relation, unclaimedProj belongs to ceProj, is not shared.
-async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProjectId ) {
+async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProjectId, repoId ) {
+    repoId = typeof repoId !== 'undefined' ? repoId : -1;
+    
     let rLocs  = [];
     let rLinks = [];
     console.log( authData.who, "link project", ceProjId, hostProjectId );
@@ -89,22 +91,26 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProject
     await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	.catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
 
-    // XXX Should be no this.links for ceProjId, hostProjectId.  Verify and/or Purge.
-    //     during testing, if peq link exists, should project should be linked via peq.
-    if( rLinks.length != 0 ) {
-	console.log( rLinks );
-	assert( rLinks.length == 0 );
+    // Should be no this.links for repoId, hostProjectId. 
+    // There may be links for ceProjId, hostProjId, for example unclaimed may be linked to repo1 not repo2, and now are linking to repo2.
+    let badLinks = rLinks.filter( bl => bl.hostRepoId == repoId && repoId != -1 );
+    if( badLinks.length != 0 ) {
+	console.log( badLinks );
+	assert( badLinks.length == 0 );
     }
-        
+
     let promises = [];
     
+    // Overwrites any existing locations, creates new ones as needed
     for( var loc of rLocs ) {
 	loc.ceProjectId = ceProjId;
 	loc.active = "true";
 	promises.push( ghLinks.addLoc( authData, loc, true ) );
     }
     await Promise.all( promises );
-    // Could just add/remove... but why?
+
+    // Could just add/remove... but why?  ooohhh...
+    // XXX OUCH!  Blowing cache away, no need to
     await ceProjects.init( authData );
     
     return true;

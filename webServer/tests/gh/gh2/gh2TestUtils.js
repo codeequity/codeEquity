@@ -1177,6 +1177,8 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     let issueState   = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )        ? specials.state        : false;
     let labelVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
     let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
+    let peqIID       = typeof specials !== 'undefined' && specials.hasOwnProperty( "peqIID" )       ? specials.peqIID       : issDat[0];
+    let peqCEP       = typeof specials !== 'undefined' && specials.hasOwnProperty( "peqCEP" )       ? specials.peqCEP       : td.ceProjectId;
     let skipPeqPID   = typeof specials !== 'undefined' && specials.hasOwnProperty( "skipPeqPID" )   ? specials.skipPeqPID   : false;
     let assignCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assign" )       ? specials.assign       : false;
     let opVal        = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )        ? specials.opVal        : false;
@@ -1189,8 +1191,8 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     let cardsP = getCards( authData, loc.pid, loc.colId );
     let cardsU = td.unclaimPID == config.EMPTY ? [] : getCards( authData, td.unclaimPID, td.unclaimCID );
     let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
-    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
+    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": peqCEP });
+    let pactsP = awsUtils.getPActs( authData, { "CEProjectId": peqCEP });
     
     // CHECK github issues
     let issue  = await findIssue( authData, issDat[0] );
@@ -1209,7 +1211,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 	subTest = tu.checkEq( typeof issue.labels[0] !== 'undefined', true, subTest, "labels not yet ready" );
 	subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
 	if( typeof issue.labels[0] !== 'undefined' ) {
-	    subTest = tu.checkEq( typeof issue.labels.find( l => l.name == lname ) !== "undefined", true,  subTest, "Issue label names missing" + lname );
+	    subTest = tu.checkEq( typeof issue.labels.find( l => l.name == lname ) !== "undefined", true,  subTest, "Issue label names missing " + lname );
 	}
     }
     if( issueState ) { subTest = tu.checkEq( issue.state, issueState, subTest, "Issue state" );  }
@@ -1259,7 +1261,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 	
 	// CHECK dynamo Peq
 	let allPeqs = await peqsP;
-	let peqs    = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
+	let peqs    = allPeqs.filter((peq) => peq.HostIssueId == peqIID.toString() );
 	subTest     = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq     = peqs[0];
 	subTest     = tu.checkEq( typeof peq !== 'undefined', true,        subTest, "peq not ready yet" );
@@ -1294,12 +1296,13 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 	    if( allPacts !== -1 ) {
 		
 		let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-		subTest   = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );  
+		subTest   = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );
+		if( pacts.length != 1 ) { console.log( "uh oh", peq.PEQId ); }
 		
 		// This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
 		if( pacts.length <= 3 && loc.projSub.length > 1 ) {
-		    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR] ];
-		    if( !pip.includes( loc.projSub[1] && loc.projSub[1] != config.GH_NO_STATUS )) { 
+		    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
+		    if( !pip.includes( loc.projSub[1] ) && peq.HostProjectSub[1] != config.GH_NO_STATUS ) { 
 			subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
 		    }
 		}
@@ -1399,7 +1402,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
     if( pacts.length <= 3 && loc.projSub.length > 1 ) {
 	const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
-	if( !pip.includes( loc.projSub[1] )) { 
+	if( !pip.includes( loc.projSub[1] ) && peq.HostProjectSub[1] != config.GH_NO_STATUS ) { 
 	    subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
 	}
     }
@@ -1975,9 +1978,11 @@ async function checkPact( authData, testLinks, td, title, verb, action, note, te
 	    foundPAct = foundPAct && pact.Verb == verb;
 	    foundPAct = foundPAct && pact.Action == action;
 	    foundPAct = foundPAct && pact.Note == note;
-	    
+
 	    if( subject != -1 ) {
 		foundPAct = foundPAct && pact.Subject.length == subject.length;
+		// console.log( pact.Subject );
+		// console.log( subject );
 		for( let i = 0; i < subject.length; i++ ) {
 		    foundPAct = foundPAct && pact.Subject[i] == subject[i];
 		}

@@ -491,53 +491,94 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// Transfer from non-CE to ceProj: issue arrives as newborn.
 	// Transfer out of ceProj: as above xfer out.
 
+	// do not allow peq transfer into or out of non-CEP repo.
+	// p1_r1_cep1 to p1_r2_cep1:     link (CEP data).  link p1_r2 (adds all links/locs.  no need to resolve, as p1_r1 active).
+	// p1_r1_cep1 to p1_r2_cep2:     link (CEP data).  link p1_r2 (adds all links/locs.  no need to resolve, as p1_r1 active).
+	// p1_r1_cep1 to p1_r2_---:      carded? remove link. PEQ?  Move it back, link update is issDat only.  TODO: create split issue in p1_r2, non-peq (later)
+	// p1_r1_---  to p1_r2_cep1:     any peq labels are removed before being activated.  resolve.  add link(s).  locs are good.
+	
 	// Transfer from ceProj to ceProj: issue arrives with peq labels, assignees.  
 	// https://docs.github.com/en/issues/tracking-your-work-with-issues/transferring-an-issue-to-another-repository
 	// only xfer between repos 1) owned by same person/org; 2) where you have write access to both
 	
 	{
 	    let issueTitle  = pd.reqBody.issue.title;
-
+	    
 	    let oldIssueId  = pd.reqBody.issue.node_id;
 	    let oldIssueNum = pd.reqBody.issue.number;
 	    let oldRepo     = pd.reqBody.repository.full_name;
-	    let oldRepoId   = pd.reqBody.repository.full_name;
+	    let oldRepoId   = pd.reqBody.repository.node_id;
+	    let oldCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, oldRepo );
 	    
 	    let newRepo     = pd.reqBody.changes.new_repository.full_name;
 	    let newRepoId   = pd.reqBody.changes.new_repository.node_id;
 	    let newIssueId  = pd.reqBody.changes.new_issue.node_id;
 	    let newIssueNum = pd.reqBody.changes.new_issue.number;
+	    let newCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, newRepo );
 
 	    assert( issueTitle == pd.issueName );
 	    
-	    console.log( authData.who, "Transfer", issueTitle, "from:", oldIssueId, oldIssueNum, oldRepo, oldRepoId );
-	    console.log( authData.who, "                          to:", newIssueId, newIssueNum, newRepo, newRepoId );
-	    console.log( authData.who, "PD                     holds:", pd.issueId, pd.issueNum, pd.repoName, pd.repoId );
-/*
-    --> do not create CEP, or link r2 to CEP.
-    --> do not move peq out of, or into non-cep repo.
-    * Bail if newborn issue.
-    * will have some variant of update link (issue data, repo data).  then: 
+	    console.log( authData.who, "Transfer", issueTitle, "from:", oldCEP, oldIssueId, oldIssueNum, oldRepo, oldRepoId );
+	    console.log( authData.who, "                          to:", newCEP, newIssueId, newIssueNum, newRepo, newRepoId );
+	    console.log( authData.who, "PD                     holds:", pd.ceProjectId, pd.issueId, pd.issueNum, pd.repoName, pd.repoId );
 
-    link project?  new loc?  resolve?
+	    // Bail if newborn card.
+	    let links = ghLinks.getLinks( authData, { "ceProjId": oldCEP, "repo": oldRepo, "issueId": oldIssueId } );
+	    if( links.length <= 0 ) {
+		console.log( "Transferred issue is newborn, ignoring." );
+		return;
+	    }
+	    assert( links.length == 1 );
 
-       * p1_r1_cep1 to p1_r2_cep1:     done.
-       * p1_r1_cep1 to p1_r2_cep2:     link (CEP data).  link p1_r2 (adds all links/locs.  no need to resolve, as p1_r1 active).
-       * p1_r1_cep1 to p1_r2_---:      carded? remove link. PEQ?  Move it back, link update is issDat only.  TODO: create split issue in p1_r2, non-peq (later)
-       * p1_r1_---  to p1_r2_cep1:     any peq labels are removed before being activated.  resolve.  add link(s).  locs are good.
+	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, oldIssueId, false );
 
-    * finally, if peq, issue transfer pact, with [peqId, oldIssId, oldRepo, oldCEP, newIssId, newRepo, newCEP].  
-*/
+	    // Undo if trying to move peq into repo that is not CEP.  ceServer should not create new ceProject without owner input.
+	    if( newCEP == config.EMPTY && peq !== -1 ) {
+		let xferIssue = await ghV2.transferIssue( authData, newIssueId, oldRepoId );
+		// link issueId and issueNum will change.
+		let newLink = { ...links[0] };
+		newLink.hostIssueId  = xferIssue.id;
+		newLink.hostIssueNum = xferIssue.number;
+		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
+		ghLinks.addLinkage( authData, oldCEP, newLink );
 
-	    /*
-	    // Only record PAct for peq.  PEQ may be removed, so don't require Active
-	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
-	    if( peq !== -1 ) {
-		const subject = [ peq.PEQId, fullRepoName ];
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
+		// XXX notice pact
+		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, xferIssue.id, oldRepoId, oldCEP ];
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, newCEP,
+					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, "Bad transfer attempted",
 					  utils.getToday(), pd.reqBody );
-	    */
+		return;
+	    }
+
+	    // XXX Reject carded with peq label from oldRepo not in CEP to newRepo in CEP. Else, could sneak accr in?
+	    // XXX need resolve as well in this case.  Need new ghUtils:utility to check for peq label amongst labels
+	    if( oldCEP == config.EMPTY ) { assert( false ); }
+
+	    // To get here, either peq in cep cep world, carded in cep - ??? world.  Handle carded
+	    if( newCEP == config.EMPTY ) {
+		// Can only be carded from CEP.  remove link.
+		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
+		return;
+	    }
+	    
+	    // To get here, cep cep world, either peq or carded.  both need to update link (remove/add)
+	    let newLink = { ...links[0] };
+	    newLink.hostIssueId  = newIssueId;
+	    newLink.hostIssueNum = newIssueNum;
+	    newLink.hostRepoName = newRepo;
+	    newLink.hostRepoId   = newRepoId;
+	    ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
+	    ghLinks.addLinkage( authData, newCEP, newLink );
+	    
+	    if( peq !== -1 ) {
+		
+		// Only record PAct for peq.  PEQ may be removed, so don't require Active
+		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, newIssueId, newRepoId, newCEP ];
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, oldCEP,
+					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer",
+					  utils.getToday(), pd.reqBody );
+	    }
+	    
 	}
 	break;
 
