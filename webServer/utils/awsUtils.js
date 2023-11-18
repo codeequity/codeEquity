@@ -273,7 +273,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";
 
-    console.log( authData.who, "Recording peq data for", pd.issueName, pd.projectId, pact, columnId);	
+    console.log( authData.who, "Recording peq data for", pd.issueName, pd.projectId, pact, columnId, pd.assignees);	
     
     // Don't wait if already have Id
     // no need to wait

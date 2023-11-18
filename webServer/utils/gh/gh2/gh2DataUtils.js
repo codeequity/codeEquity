@@ -370,7 +370,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	console.log( authData.who, "PNP: fromCard.  ColId", pd.columnId, colName, pd.peqValue );
     }
     else {
-	console.log( authData.who, "PNP: fromLabelIssue", peqHumanLabelName, pd.repoName );
+	console.log( authData.who, "PNP: fromLabelIssue", pd.issueName, colName, peqHumanLabelName, pd.repoName );
 
 	assert( pd.issueNum > -1 );
 	

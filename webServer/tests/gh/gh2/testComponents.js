@@ -33,16 +33,20 @@ async function checkDubLabel( authData, testLinks, td, loc, issueData, card, tes
 	const labels0 = issue.labels[0].name == kpConv && issue.labels[1].name == "documentation";
 	const labels1 = issue.labels[1].name == kpConv && issue.labels[0].name == "documentation";
 	subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
-	
-	// CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
+
 	let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
 	peqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
 	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
 	
+	// CHECK dynamo PAct only has 3 entries (add uncl, del uncl, add bacon)  - should not get notices/adds/etc for non-initial peq labeling
+	// But.. when testing does makeIssue, addLabel, makeProjCard in succession (awaits don't matter - just control issue not reception of command or ce notice)
+	//       makeProjCard can begin at GH before labelIssue in CE runs.  This means it is valid to either create card in project:nostatus then relo, or
+	//       first create in unclaimed, then continue.  i.e. add/relo/relo or add/relo add/relo/relo (relo/relo is typically to noStatus, then to col).
 	let pacts = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
 	pacts = pacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-	subTest = tu.checkEq( pacts.length, 5,                         subTest, "PAct count" );      // add/relo (unclaimed) add/relo/relo (bacon)
+	let goodCount = pacts.length == 3 || pacts.length == 5;
+	subTest = tu.checkEq( goodCount, true,                         subTest, "PAct count" );      // add/relo (unclaimed) add/relo/relo (bacon)
     }
     
     return await tu.settle( subTest, testStatus, checkDubLabel, authData, testLinks, td, loc, issueData, card, testStatus );
@@ -142,7 +146,7 @@ async function testLabel( authData, testLinks, td ) {
 
 	// 1. create 1k peq issue in bacon
 	console.log( "Make newly situated issue in bacon" );
-	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, title] 
+	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, cardId, title] 
 	let label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
 	await gh2tu.addLabel( authData, label.id, issueData );
 	let card  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.flatPID, bacon.colId, issueData[0] );
@@ -462,6 +466,7 @@ async function testCloseReopen( authData, testLinks, td ) {
     }	
 
     {
+	// NOTE!  Same issue name (Close Open Test), different projects.  GH allows it, we test.
 	console.log( "\n\nOpen/close in full++" );
 
 	const stars      = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
@@ -553,6 +558,7 @@ async function testCreateDelete( authData, testLinks, td ) {
     await gh2tu.refreshFlat( authData, td );
     await gh2tu.refreshUnclaimed( authData, td );
 
+    const ghoPlan = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     const ghoProg = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
     const ghoPend = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
     const ghoAccr = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
@@ -574,7 +580,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	// XXX Danger.  see gh2tu.removeNewborn
 	// 0. make newborns
-	const cardIdFlat  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stars.colId, ISS_FLAT );
+	const cardIdFlat  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stars.colId,   ISS_FLAT );
 	const cardIdProg  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoProg.colId, ISS_PROG );
 	const cardIdPend  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, ISS_PEND );
 	const cardIdAccr  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoAccr.colId, ISS_ACCR );
@@ -614,8 +620,10 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	testStatus     = await gh2tu.checkUntrackedIssue( authData, testLinks, td, stars,   issDatFlat, flatCard, testStatus );
 	testStatus     = await gh2tu.checkUntrackedIssue( authData, testLinks, td, ghoProg, issDatProg, progCard, testStatus );
-	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoPend, pendCard.cardId, ISS_PEND, testStatus );
-	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, accrCard.cardId, ISS_ACCR, testStatus );
+
+	// These two are created, and moved out of reserved into PLAN.
+	testStatus     = await gh2tu.checkUntrackedIssue( authData, testLinks, td, ghoPlan, issDatPend, pendCard, testStatus );
+	testStatus     = await gh2tu.checkUntrackedIssue( authData, testLinks, td, ghoPlan, issDatAccr, accrCard, testStatus );
 
 	tu.testReport( testStatus, "carded A" );
 
@@ -625,14 +633,12 @@ async function testCreateDelete( authData, testLinks, td ) {
 	await gh2tu.remIssue( authData, issDatProg[0] ); // just remove issue
 	
 	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, stars,   flatCard.cardId, ISS_FLAT, testStatus );
-	// XXX This will exist until GH gets it back together.  See 6/8/2022 notes.	
-	// testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoProg, progCard.cardId, ISS_PROG, testStatus );
+	testStatus     = await gh2tu.checkNoCard( authData, testLinks, td, ghoProg, progCard.cardId, ISS_PROG, testStatus );
 
 	tu.testReport( testStatus, "carded B" );
     }
     
     {
-	// note: pend never closes here (not assigned).  But, there is no PEND delete logic in the handlers.
 	console.log( "Situated testing" );
 
 	const ISS_FLAT = ISS_SITU + " Flat";
@@ -649,13 +655,18 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	const flatCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stars.colId,   issDatFlat[0] );
 	const progCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoProg.colId, issDatProg[0] );
+
+	// note: pend never closes here (not assigned).
 	const pendCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, issDatPend[0] );
 	const accrCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoAccr.colId, issDatAccr[0] );
 
 	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, stars,   issDatFlat, flatCard, testStatus );
 	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, ghoProg, issDatProg, progCard, testStatus );
-	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, ghoPend, issDatPend, pendCard, testStatus );
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, accrCard.cardId, ISS_ACCR, testStatus, {"peq": true} );
+
+	// Can't move to pend or accr without assignee
+	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, ghoPlan, issDatPend, pendCard, testStatus );
+	testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, ghoPlan, issDatAccr, accrCard, testStatus );
+	// testStatus = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, accrCard.cardId, ISS_ACCR, testStatus, {"peq": true} );
 
 	tu.testReport( testStatus, "situated A" );
 	
@@ -690,9 +701,9 @@ async function testCreateDelete( authData, testLinks, td ) {
 	const aghoCard1   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, issDatAgho1[0] );
 	const aghoCard2   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, issDatAgho2[0] );
 
-	// Close
-	await gh2tu.closeIssue( authData, td, issDatAgho1, ghoPend );
-	await gh2tu.closeIssue( authData, td, issDatAgho2, ghoPend );
+	// Close.. no need given ghey were created in PEND
+	// await gh2tu.closeIssue( authData, td, issDatAgho1, ghoPend );
+	// await gh2tu.closeIssue( authData, td, issDatAgho2, ghoPend );
 
 	// Accrue
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, aghoCard1.cardId, ghoAccr.colId, {issId: issDatAgho1[0]} );
@@ -717,15 +728,12 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	// get newly created issue, cards.   card only for remCard, issue and card for remIssue
 	const uncAccr = await gh2tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.PROJ_COLS[config.PROJ_ACCR] );
-	const newIss = await gh2tu.findIssueByName( authData, td, issDatAgho2[2] );
-	const aghoIss2New = [newIss.id, newIss.number, newIss.title];
+	const newIss = await gh2tu.findIssueByName( authData, td, issDatAgho2[3] );
+	const aghoIss2New = [newIss.id, newIss.number, -1, newIss.title];
 
-	// XXX Sometimes this checks too quickly, then checkUnc can not pick up the new card.  better..
-	// let uCards = await gh2tu.getCards( authData, uncAccr.pid, uncAccr.colId );
-	// aghoCard1New = uCards.find( card => card.content_url.split('/').pop() == issDatAgho1[1].toString() );
-	// aghoCard2New = uCards.find( card => card.content_url.split('/').pop() == aghoIss2New[1].toString() );
-	aghoCard1New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, issDatAgho1[1].toString(), testStatus );
-	aghoCard2New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, aghoIss2New[1].toString(), testStatus );
+	aghoCard1New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, issDatAgho1[3].toString(), testStatus );
+	aghoCard2New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, aghoIss2New[3].toString(), testStatus );
+	aghoIss2New[2] = aghoCard2New.cardId;
 	
 	// card: old issue, new card.  issue: new issue, new card
 	// peq for remCard is active for old issue.  peq for remIssue is active for new issue.
@@ -739,7 +747,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 	tu.testReport( testStatus, "accrued B" );
 
 	// 3. Remove one more time
-	await gh2tu.remCard( authData, td.ceProjectId, td.githubOpsPID, aghoCard1New.cardId );      // newborn
+	await gh2tu.remCard( authData, td.ceProjectId, uncAccr.pid, aghoCard1New.cardId );      // newborn
 	await gh2tu.remIssue( authData, aghoIss2New[0]);   // gone
 
 	testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, td, issDatAgho1, testStatus );
@@ -758,7 +766,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 async function getCardHelp( authData, pid, colId, cardName, testStatus ) {
     let uCards = await gh2tu.getCards( authData, pid, colId );
-    const card = uCards.find( card => card.content_url.split('/').pop() == cardName );
+    const card = uCards.find( card => card.title == cardName );
     return card;
 }
 
@@ -838,10 +846,10 @@ async function testLabelMods( authData, testLinks, td ) {
 	let labNP1 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP1, -1 );	
 	let labNP2 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP2, -1 );	
 
-	const issNewbDat = await gh2tu.makeIssue( authData, td, ISS_NEWB, [labNP1] );                // [id, number, title] 
-	const issPlanDat = await gh2tu.makeIssue( authData, td, ISS_PLAN, [LAB1, labNP1, labNP2] );  
-	const issPendDat = await gh2tu.makeIssue( authData, td, ISS_PEND, [LAB1, labNP1, labNP2] );     
-	const issAccrDat = await gh2tu.makeIssue( authData, td, ISS_ACCR, [LAB1, labNP1, labNP2] );     
+	const issNewbDat = await gh2tu.makeIssue( authData, td, ISS_NEWB, [labNP1] );                // [id, number, cardId, title] 
+	const issPlanDat = await gh2tu.makeIssue( authData, td, ISS_PLAN, [lab1, labNP1, labNP2] );  
+	const issPendDat = await gh2tu.makeIssue( authData, td, ISS_PEND, [lab1, labNP1, labNP2] );     
+	const issAccrDat = await gh2tu.makeIssue( authData, td, ISS_ACCR, [lab1, labNP1, labNP2] );     
 
 	// First unclaimed creation takes a sec
 	await utils.sleep( 1000 );
@@ -858,7 +866,7 @@ async function testLabelMods( authData, testLinks, td ) {
 
 	// Close & accrue
 	await gh2tu.closeIssue( authData, td, issPendDat );
-	await gh2tu.closeIssue( authData, td, issAccrDat, ghoPend, cardAccr );
+	await gh2tu.closeIssue( authData, td, issAccrDat, ghoPend );
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, cardAccr.cardId, ghoAccr.colId, {issId: issAccrDat[0]} );
 
 	await utils.sleep( 2000 );	
@@ -921,11 +929,6 @@ async function testLabelMods( authData, testLinks, td ) {
 	testStatus = await gh2tu.checkNewlyAccruedIssue( authData, testLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
 	tu.testReport( testStatus, "Label mods G" );
 
-
-	// XXX NOTE ISSUES for below
-	// 1. updateLabel does not create, yes?
-	// 2. delLabel takes label, not name
-	
 	// 8. Make partial peq label.  Three will be unlabeled (can't have 2 peq labels), one will remain.
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
@@ -941,7 +944,9 @@ async function testLabelMods( authData, testLinks, td ) {
 	// NOTE: if delete before update-driven LM Accrued remove label is complete, will see server error 404.
 	//       update label above drives a bunch of asynch unwaited-for labelings.  So, wait until can't see issue's label any longer (i.e. remove is done)
 	await tu.settleWithVal( "LabelMods remove from lmAccr", labNotInIssueHelp, authData, td, pl105, issAccrDat[0] );
-	await gh2tu.delLabel( authData, pl105 );
+	// updateLabel has changed values - get new stuff
+	labNP1 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, pl105, -1 );		
+	await gh2tu.delLabel( authData, labNP1 );
 	
     }
     
@@ -1239,7 +1244,7 @@ async function runTests( authData, testLinks, td ) {
     console.log( "Component tests =================" );
 
     let testStatus = [ 0, 0, []];
-/*
+
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
     await utils.sleep( 5000 );
@@ -1259,7 +1264,6 @@ async function runTests( authData, testLinks, td ) {
     let t4 = await testCloseReopen( authData, testLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
     await utils.sleep( 5000 );
-*/
 
     let t5 = await testCreateDelete( authData, testLinks, td );
     console.log( "\n\nCreate / Delete complete." );
@@ -1269,19 +1273,22 @@ async function runTests( authData, testLinks, td ) {
     console.log( "\n\nLabel mods complete." );
     await utils.sleep( 5000 );
 
+    /*
+    // XXX As of 10/2023 still can't create or edit status field values, i.e. columns
+    //     these tests are largely worthless until then. 
     let t7 = await testProjColMods( authData, testLinks, td );
     console.log( "\n\nProjCol mods complete." );
     // await utils.sleep( 5000 );
+    */
 
-
-    // testStatus = tu.mergeTests( testStatus, t1 );
-    // testStatus = tu.mergeTests( testStatus, t8 );
-    // testStatus = tu.mergeTests( testStatus, t2 );
-    // testStatus = tu.mergeTests( testStatus, t3 );
-    // testStatus = tu.mergeTests( testStatus, t4 );
+    testStatus = tu.mergeTests( testStatus, t1 );
+    testStatus = tu.mergeTests( testStatus, t8 );
+    testStatus = tu.mergeTests( testStatus, t2 );
+    testStatus = tu.mergeTests( testStatus, t3 );
+    testStatus = tu.mergeTests( testStatus, t4 );
     testStatus = tu.mergeTests( testStatus, t5 );
     testStatus = tu.mergeTests( testStatus, t6 );
-    testStatus = tu.mergeTests( testStatus, t7 );
+    // testStatus = tu.mergeTests( testStatus, t7 );
     
     return testStatus
 }

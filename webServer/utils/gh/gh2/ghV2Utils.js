@@ -554,16 +554,25 @@ async function getAssignees( authData, issueId ) {
     return retVal;
 }
 
-// XXX untested
 async function transferIssue( authData, issueId, newRepoNodeId) {
 
     let query = `mutation ($issueId: ID!, $repoId: ID!) 
-                    { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId, createLabelsIfMissing: true }) {clientMutationId}}`;
+                    { transferIssue( input:{ issueId: $issueId, repositoryId: $repoId, createLabelsIfMissing: true }) {clientMutationId, issue{id,number}}}`;
     let variables = {"issueId": issueId, "repoId": newRepoNodeId };
     query = JSON.stringify({ query, variables });
 
     let ret = -1;
-    try        { ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query ); }
+    try {
+	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
+	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
+	    console.log( authData.who, "WARNING. Issue not transferred.", issueId, ret.errors );
+	    ret.status = 422; 
+	    throw ret;
+	}
+	assert( utils.validField( ret.data.transferIssue, "issue" ) );
+	ret = ret.data.transferIssue.issue;
+	// console.log( issueId, newRepoNodeId, ret, ret.data.transferIssue.issue );
+    }
     catch( e ) { ret = await ghUtils.errorHandler( "transferIssue", e, transferIssue, authData, issueId, newRepoNodeId ); }
     return ret;
 }
@@ -1263,7 +1272,15 @@ async function removeCard( authData, pid, cardId ) {
     let variables = {"pid": pid, "itemId": cardId };
     let queryJ    = JSON.stringify({ query, variables });
 
-    try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); }
+    try { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	  .then( r => {
+	      if( r.status == 200 && typeof r.errors !== 'undefined' ) {
+		  console.log( authData.who, "WARNING. Remove card failed.", pid, cardId, r.errors );
+		  r.status = 422; 
+		  throw r;
+	      }
+	  });
+	}
     catch( e ) { await ghUtils.errorHandler( "removeCard", e, removeCard, authData, pid, cardId ); }
 
     // Successful post looks like the following. Could provide mutationId for tracking: { data: { deleteProjectV2Item: { clientMutationId: null } } }
@@ -1360,6 +1377,7 @@ async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issu
 
 // Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
 // Returning issueId, not issueNodeId
+/*
 async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) {
     const query1 = `query($owner: String!, $repo: String!, $labelName: String! ) {
 	repository(owner: $owner, name: $repo) {
@@ -1380,13 +1398,36 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
     let query     = cursor === -1 ? query1 : queryN;
     let variables = cursor === -1 ? {"owner": owner, "repo": repo, "labelName": labelName } : {"owner": owner, "repo": repo, "labelName": labelName, "cursor": cursor};
     query = JSON.stringify({ query, variables });
+    */
+async function getLabelIssues( authData, repoId, labelName, data, cursor ) {
+    const query1 = `query( $rid: ID!, $labelName: String! ) {
+          node( id:$rid ) {
+             ... on Repository {
+                label(name: $labelName) {
+	            issues(first: 100) {
+	               pageInfo { hasNextPage, endCursor },
+		       edges { node { id title number }}
+		}}}}}`;
+    
+    const queryN = `query( $rid: ID!, $labelName: String!, $cursor: String!) {
+          node( id:$rid ) {
+             ... on Repository {
+                label(name: $labelName) {
+                   issues(first: 100 after: $cursor ) {
+	              pageInfo { hasNextPage, endCursor },
+		      edges { node { id title number }}
+		}}}}}`;
 
+    let query     = cursor === -1 ? query1 : queryN;
+    let variables = cursor === -1 ? {"rid": repoId, "labelName": labelName } : {"rid": repoId, "labelName": labelName, "cursor": cursor};
+    query = JSON.stringify({ query, variables });
+    
     let issues = -1;
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
 		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
-		let label = utils.validField( raw.data.repository, "label" ) ? raw.data.repository.label : null;
+		let label = utils.validField( raw.data.node, "label" ) ? raw.data.node.label : null;
 		if( typeof label !== 'undefined' && label != null ) {
 		    issues = label.issues;
 		    for( const issue of issues.edges ) {
@@ -1407,7 +1448,7 @@ async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) 
     catch( e ) {
 	cursor = -1;
 	data.length = 0;
-	await ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, owner, repo, labelName, data, cursor );
+	await ghUtils.errorHandler( "getLabelIssues", e, getLabelIssues, authData, repoId, labelName, data, cursor );
     }
 }
 
@@ -1590,6 +1631,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
 		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
+		// console.log( "FindProjectByRepo in createUnclaimed", raw );
 		let projects = [];
 		if( utils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
 		
@@ -1608,7 +1650,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 // XXX in support of link workaround to avoid issue with creating columns.
 //     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
 async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ) {
-    console.log( authData.who, "linkProject", name );
+    console.log( authData.who, "linkProject", name, repoId );
 
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
@@ -1633,7 +1675,7 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 	if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
 	else if( ghLinks !== -1 ) {   
 	    // test process can't execute this, does not have server's ghLinks obj, so will do it independently
-	    await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId, repoName );
+	    await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId );
 	}
     }
     
@@ -1684,7 +1726,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     const unClaimed = config.UNCLAIMED;
     const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
-    console.log( "create unclaimed col", unClaimedProjId, issueId, colName, accr );
+    console.log( authData.who, "create unclaimed col", unClaimedProjId, issueId, colName, accr );
 
     // Get locs again, to update after uncl. project creation 
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
@@ -1694,7 +1736,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     }
     else {
 	assert( unClaimedProjId == locs[0].hostProjectId );
-	
+
 	loc = locs.find( loc => loc.hostColumnName == colName );
 	
 	if( typeof loc === 'undefined' ) {
@@ -1902,7 +1944,6 @@ exports.updateProject       = updateProject;
 exports.linkProject         = linkProject;
 exports.findProjectByName   = findProjectByName;
 exports.findProjectByRepo   = findProjectByRepo;
-exports.linkProject         = linkProject;
 
 exports.getColumnName      = getColumnName;
 
@@ -1926,7 +1967,7 @@ exports.getCEProjectLayout = getCEProjectLayout;
 // exports.createProject       = createProject;          // XXX NYI
 exports.createUnClaimedProject = createUnClaimedProject; // XXX NYI
 exports.createUnClaimedColumn  = createUnClaimedColumn;  // XXX NYI
-exports.createUnClaimedCard    = createUnClaimedCard;    // XXX NYI
+exports.createUnClaimedCard    = createUnClaimedCard;    
 
 exports.cloneFromTemplate      = cloneFromTemplate;      // XXX speculative.  useful?
 exports.createCustomField      = createCustomField;      // XXX speculative.  useful?

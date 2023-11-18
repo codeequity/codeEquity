@@ -37,10 +37,10 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
     if( links === -1 ) { return; }
     let link = links[0];
 
-    console.log( authData.who, "delIss: DELETE FOR", pd.issueId );
+    console.log( authData.who, "delIss: DELETE FOR", pd.issueId, link.hostProjectId );
 
     console.log( authData.who, "Delete situated issue.. first manage card" );
-    await cardHandler.deleteCard( authData, ghLinks, pd, link.hostCardId, true );
+    await cardHandler.deleteCard( authData, ghLinks, ceProjects, pd, link.hostCardId, true );
     console.log( authData.who, "  .. done with card." );
     
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
@@ -88,7 +88,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
 	// Move to unclaimed:accrued col
 	card = await card;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": link.hostProjectId, "colId": card.columnId } );
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": config.UNCLAIMED, "colId": card.columnId } );
 	assert( locs.length = 1 );
 	await ghV2.moveCard( authData, card.pid, card.cardId, locs[0].hostUtility, card.columnId );
 	
@@ -122,13 +122,16 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
     // Zero's peqval if 2 found
     [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
+
+    // label may be from json payload, or from internal call.  Convert id format.
+    if( utils.validField( label, "node_id" ) ) { label.id = label.node_id; }
     
     // more than 1 peq?  remove it.
     let curVal  = ghUtils.parseLabelDescr( [ label.description ] );
     if( pd.peqValue <= 0 && curVal > 0 ) {
 	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
 	// Don't wait, no dependence
-	ghV2.removeLabel( authData, label.node_id, pd.issueId );
+	ghV2.removeLabel( authData, label.id, pd.issueId );
 	return false;
     }
     
@@ -170,6 +173,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	else {
 	    console.log( authData.who, "carded issue with status -> peq issue" );
 	    // link can still be -1 if issue was created on GH with project, then moved, before label or create notices arrive
+	    // link can also be -1 if issue created on GH with project, then carded.  notification sequence can be label move create
 	    if( link === -1 ) { link = {}; }
 	}
 
@@ -192,7 +196,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     let specials = { pact: "addRelo", columnId: link.hostColumnId };
     
     pd.updateFromLink( link );
-    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.hostCardId, link.hostIssueNum );
+    console.log( authData.who, "Ready to update Proj PEQ PAct:", link.hostCardId, link.hostIssueNum, link.hostColumnName );
 
     // Could getFullIssue, but we already have all required info
     let content                      = {};
@@ -204,7 +208,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.labelContent             = pd.reqBody.label.description;
     content.labelNodeId              = pd.reqBody.label.node_id;
 	
-    // Don't wait, no dependence
+    // Don't wait, no dependence.  Be aware link may be incomplete until this first PNP finishes
     let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );
     return (retVal != 'early' && retVal != 'removeLabel')
 }
@@ -439,7 +443,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'edited':
-	// Only need to catch title edits, and only for situated.  
+	// XXXXXXXXXXXXXXXXX  undone..!  untested.
+	// Only need to catch title edits, and only for situated.
+	// Will get this notice for a transfer, safe to ignore.
 	{
 	    if( pd.reqBody.changes.hasOwnProperty( 'title' ) && 
 		pd.reqBody.changes.title.hasOwnProperty( 'from' )) {
@@ -473,66 +479,106 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'transferred':
-	// (open issue in new repo, item:edit, item:edit, transfer issue)
-	// NOTE.  As of 4/2023, GH is keeping labels/assignees if they exist in new repo.  Card is not removed from old repo.
-	//        Issue is removed from old repo.  Fate of labels/assignees not dependable.  Will need to call delete card.
-	// NOTE.  As of 2/13/2022 GH is keeping labels with transferred issue, although tooltip still contradicts this.
-	//        Currently, this is in flux.  the payload has new_issue, but the labels&assignees element is empty.
-	//        Also, as is, this is violating 1:1 issue:card
-	// Transfer IN:  Not getting these any longer.
-	// Transfer OUT: Peq?  RecordPAct.  Do not delete issue, no point acting beyond GH here.  GH will send delete card.
-	//
+	// 1: issue:open       has full change field, with old_issue, old_repo (!)  (ignored)
+	// 2: issue:edit       has a change, has new repo in normal repo field      (ignored)
+	// 3: pv2Item edit     has change with type:repo and PVTF for field         (ignored)
+	// 4: identical to #3                                                       (ignored)
+	// 5: issue:transfer   has full change field, with new_issue, new_repo      (process)
+
+	// GH transfers issue to new repo.  It does not remove or otherwise relocate the card.  Why should it?  Projects are views across repos,
+	// so it is expected that card will remain in previous location.
+	
 	// Transfer from non-CE to ceProj: issue arrives as newborn.
 	// Transfer out of ceProj: as above xfer out.
 
-	// Transfer from ceProj to ceProj: issue arrives with peq labels, assignees.  Receiving transferOut notification with .changes
+	// do not allow peq transfer into or out of non-CEP repo.
+	// p1_r1_cep1 to p1_r2_cep1:     link (CEP data).  link p1_r2 (adds all links/locs.  no need to resolve, as p1_r1 active).
+	// p1_r1_cep1 to p1_r2_cep2:     link (CEP data).  link p1_r2 (adds all links/locs.  no need to resolve, as p1_r1 active).
+	// p1_r1_cep1 to p1_r2_---:      carded? remove link. PEQ?  Move it back, link update is issDat only.  TODO: create split issue in p1_r2, non-peq (later)
+	// p1_r1_---  to p1_r2_cep1:     any peq labels are removed before being activated.  resolve.  add link(s).  locs are good.
+	
+	// Transfer from ceProj to ceProj: issue arrives with peq labels, assignees.  
 	// https://docs.github.com/en/issues/tracking-your-work-with-issues/transferring-an-issue-to-another-repository
 	// only xfer between repos 1) owned by same person/org; 2) where you have write access to both
 	
 	{
-	    if( pd.reqBody.changes.new_repository.full_name != pd.Repo ) {
-		console.log( authData.who, "Transfer out.  Cleanup." );
-		const fullRepoName = pd.reqBody.changes.new_repository.full_name;
-		const newRepoName = pd.reqBody.changes.new_repository.name;
-		const newIssNum   = pd.reqBody.changes.new_issue.number;
+	    let issueTitle  = pd.reqBody.issue.title;
+	    
+	    let oldIssueId  = pd.reqBody.issue.node_id;
+	    let oldIssueNum = pd.reqBody.issue.number;
+	    let oldRepo     = pd.reqBody.repository.full_name;
+	    let oldRepoId   = pd.reqBody.repository.node_id;
+	    let oldCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, oldRepo );
+	    
+	    let newRepo     = pd.reqBody.changes.new_repository.full_name;
+	    let newRepoId   = pd.reqBody.changes.new_repository.node_id;
+	    let newIssueId  = pd.reqBody.changes.new_issue.node_id;
+	    let newIssueNum = pd.reqBody.changes.new_issue.number;
+	    let newCEP      = await ceProjects.findByRepo( config.HOST_GH, pd.org, newRepo );
 
-		/* XXX REVISIT
-		// Check for xfer to another ceProject (i.e. ceServer-enabled repo).
-		const status = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
-		const ceProj = status != -1 && status.Populated == "true" ? true : false;
+	    assert( issueTitle == pd.issueName );
+	    
+	    console.log( authData.who, "Transfer", issueTitle, "from:", oldCEP, oldIssueId, oldIssueNum, oldRepo, oldRepoId );
+	    console.log( authData.who, "                          to:", newCEP, newIssueId, newIssueNum, newRepo, newRepoId );
+	    console.log( authData.who, "PD                     holds:", pd.ceProjectId, pd.issueId, pd.issueNum, pd.repoName, pd.repoId );
 
-		if( ceProj ) {
-		    // Switch auths
-		    let baseAuth = authData.ic;
-		    authData.ic = authData.icXfer;
-		    assert( authData.ic != -1 );
-		    console.log( authData.who, newIssNum.toString(), "Landed in ceProject", newRepoName );
-		    let newLabs = await gh.getLabels( authData, pd.Owner, newRepoName, newIssNum );
-		    console.log( "New labels:", newLabs.data );
+	    // Bail if newborn card.
+	    let links = ghLinks.getLinks( authData, { "ceProjId": oldCEP, "repo": oldRepo, "issueId": oldIssueId } );
+	    if( links.length <= 0 ) {
+		console.log( "Transferred issue is newborn, ignoring." );
+		return;
+	    }
+	    assert( links.length == 1 );
 
-		    // Owner must be the same according to GH
-		    let newAssigns = await gh.getAssignees( authData, pd.Owner, newRepoName, newIssNum );
-		    console.log( "New Assignees:", newAssigns.data );
-		    // XXX Will need to move this to unclaimed:unclaimed
+	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, oldIssueId, false );
 
-		    // Switch back auths
-		    authData.ic = baseAuth; 
-		}
-		*/
+	    // Undo if trying to move peq into repo that is not CEP.  ceServer should not create new ceProject without owner input.
+	    if( newCEP == config.EMPTY && peq !== -1 ) {
+		let xferIssue = await ghV2.transferIssue( authData, newIssueId, oldRepoId );
+		// link issueId and issueNum will change.
+		let newLink = { ...links[0] };
+		newLink.hostIssueId  = xferIssue.id;
+		newLink.hostIssueNum = xferIssue.number;
+		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
+		ghLinks.addLinkage( authData, oldCEP, newLink );
+
+		// XXX notice pact
+		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, xferIssue.id, oldRepoId, oldCEP ];
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, newCEP,
+					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, "Bad transfer attempted",
+					  utils.getToday(), pd.reqBody );
+		return;
+	    }
+
+	    // XXX Reject carded with peq label from oldRepo not in CEP to newRepo in CEP. Else, could sneak accr in?
+	    // XXX need resolve as well in this case.  Need new ghUtils:utility to check for peq label amongst labels
+	    if( oldCEP == config.EMPTY ) { assert( false ); }
+
+	    // To get here, either peq in cep cep world, carded in cep - ??? world.  Handle carded
+	    if( newCEP == config.EMPTY ) {
+		// Can only be carded from CEP.  remove link.
+		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
+		return;
+	    }
+	    
+	    // To get here, cep cep world, either peq or carded.  both need to update link (remove/add)
+	    let newLink = { ...links[0] };
+	    newLink.hostIssueId  = newIssueId;
+	    newLink.hostIssueNum = newIssueNum;
+	    newLink.hostRepoName = newRepo;
+	    newLink.hostRepoId   = newRepoId;
+	    ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
+	    ghLinks.addLinkage( authData, newCEP, newLink );
+	    
+	    if( peq !== -1 ) {
 		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
-		let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId, false );
-		if( peq !== -1 ) {
-		    const subject = [ peq.PEQId, fullRepoName ];
-		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-					   config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer out",
-					   utils.getToday(), pd.reqBody );
-		}
+		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, newIssueId, newRepoId, newCEP ];
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, oldCEP,
+					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer",
+					  utils.getToday(), pd.reqBody );
 	    }
-	    else {
-		// XXX 
-		console.log( "WARNING.  Seeing transfer in notification for first time. GH project mgmt has changed, revisit." );
-	    }
+	    
 	}
 	break;
 
@@ -553,3 +599,4 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 }
 
 exports.handler    = handler;
+exports.labelIssue = labelIssue;

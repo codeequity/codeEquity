@@ -138,11 +138,15 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    if( !foundBOSub && pact.Subject[0] == unPeqs[0].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == blocs[0].hostColumnId ) { foundBOSub = true; }
 	    if( !foundBOSub && pact.Subject[0] == unPeqs[1].PEQId && pact.Action == config.PACTACT_RELO && pact.Subject.slice(-1) == blocs[0].hostColumnId ) { foundBOSub = true; }
 	}
-	// 2 for addRelo (i.e. add, relo), 1 for move's.  If move arrived before create, then add/relo to unclaimed, then add/relo/relo to noStatus then final home.  3 or 5.
+	// 2 for addRelo (i.e. add, relo)
+	/*
 	console.log( authData.who, "PAct count should be 3 or 5 per type.  Found", foundGHPActs, foundDSPActs, foundUNPActs );
-	let goodCount = foundGHPActs == 3 || foundGHPActs == 5;
-	goodCount     = goodCount && ( foundDSPActs == 3 || foundDSPActs == 5 );
-	goodCount     = goodCount && ( foundUNPActs == 3 || foundUNPActs == 5 );
+	let goodCount =                foundGHPActs == 2 || foundGHPActs == 3 || foundGHPActs == 5;
+	goodCount     = goodCount && ( foundDSPActs == 2 || foundDSPActs == 3 || foundDSPActs == 5 );
+	goodCount     = goodCount && ( foundUNPActs == 2 || foundUNPActs == 3 || foundUNPActs == 5 );
+	*/
+	console.log( authData.who, "PAct count should be 2 type.  Found", foundGHPActs, foundDSPActs, foundUNPActs );
+	let goodCount =  foundGHPActs == 2 && foundDSPActs == 2 && foundUNPActs == 2;
 	
 	subTest = tu.checkEq( goodCount,  true,        subTest, "Matched PActs with PEQs" );
 	subTest = tu.checkEq( foundGHSub, true,        subTest, "Pact sub gh" );
