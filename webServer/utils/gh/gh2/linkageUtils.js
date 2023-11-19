@@ -37,9 +37,9 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
 
     // Add organization's unclaimed to each hostRepo that holds PEQ, since aws:peq table will not record delete movements to UNCL
     let unclPID = await ghV2.findProjectByName( authData, org, "", config.UNCLAIMED ); 
-    if( unclPID != -1 ) { hostProjs.push( unclPID ); }
+    if( unclPID != -1 && !hostProjs.includes( unclPID ) ) { hostProjs.push( unclPID ); }
     
-    console.log( "HOST PROJs", ceProject.CEProjectId, hostProjs );
+    console.log( "HOST PROJs POST", ceProject.CEProjectId, hostProjs );
     
     // Note, for links being built below, the link is a complete ceServer:link that supplied info for the 1:1 mapping issue:card.
     //       it is not necessarily a complete picture of a host link (which ceServer does not need).
@@ -57,7 +57,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
 	
 	// hostProjs may contain issues from other ceProjects.  Filter these out by requiring hostRepo to match one of the list in ceProjects
 	// initialization of the other ceProjects will pick up these filtered out links.
-	rLinks = rLinks.filter( (link) => hostRepoIds.includes( link.hostRepoId ) );
+	rLinks = rLinks.filter( (link) => hostRepoIds.includes( link.hostRepoId ));
 	
 	// console.log( authData.who, "Populate Linkage", pid );
 	rLinks.forEach( function (link) { ghLinks.addLinkage( authData, ceProject.CEProjectId, link, { populate: true } );

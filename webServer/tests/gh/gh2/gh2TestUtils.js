@@ -1297,7 +1297,6 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		
 		let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
 		subTest   = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );
-		if( pacts.length != 1 ) { console.log( "uh oh", peq.PEQId ); }
 		
 		// This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
 		if( pacts.length <= 3 && loc.projSub.length > 1 ) {
@@ -1311,7 +1310,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		for( const pact of pacts ) {
 		    let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 		    subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-		    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+		    subTest = tu.checkEq( pact.HostUserName, td.actor,             subTest, "PAct user name" ); 
 		    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 		    
 		    if( !muteIngested ) { subTest = tu.checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }

@@ -196,6 +196,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    // XXX hmm.. if init error mismatching peq, this will fire.  not an issue during test construction (i.e. frequent mismatches), just production.
 		    console.log( authData.who, "WARNING.  Links exist on deleted label.  Mismatching peq during server init?", peq, links );  // need await somewhere for aws?
 		    // assert( links.length == 1 );
+		    return;
 		}
 
 		// PEQ labels are updated during ingest - they can be out of date.  Make sure issue is not already peq-labeled.
