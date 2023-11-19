@@ -146,6 +146,15 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     return testStatus;
 }
 
+// NOTE, this is sensitive.  Add more interleave cards in unclaimed before testCross runs, and this will fail.
+async function getCardsHelp( authData, pid, cid, desiredCount ) {
+    allCards = await gh2tu.getCards( authData, pid, cid );
+    let ret = false;
+    let interleaveCards = allCards.filter( card => card.title.includes( "Interleave" ));
+    if( interleaveCards.length == desiredCount ) { ret = allCards; }
+
+    return ret;
+}
 
 // Simulate a simple multithread test here, by randomly ordering a set of blast issues
 // for two different users/repos, and fire them all off nearly-simultaneously.  With the rest delay to and from GH,
@@ -167,12 +176,14 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     // Add populate label to testProject2, to invoke repostatus. 
     let multiPid = await gh2tu.createProjectWorkaround( authDataM, tdM, "Multi Proj", "For testing request interleaving" );
     let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.GHFullName, multiPid, "Multi Col" );
-    let issPopDat = await gh2tu.makeIssue( authDataM, tdM, "A special populate issue", [] );
-    let cardPop   = await gh2tu.makeProjectCard( authDataM, testLinks, tdM.ceProjectId, multiPid, multiCid, issPopDat[0] );
-    let popLabel  = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, config.POPULATE, -1 );
-    let ipDat     = [issPopDat[0], issPopDat[1], cardPop.cardId, "A special populate issue" ];
-    await gh2tu.addLabel( authDataM, popLabel.id, ipDat );       
-    await utils.sleep( 1000 );
+
+    // Do NOT create special populate.  populateCE is now done ceProject-wide, not repo-wide.  ceTesterConnie, together with ceTesterAri are both in same CEP, has already populated.
+    // let issPopDat = await gh2tu.makeIssue( authDataM, tdM, "A special populate issue", [] );
+    // let cardPop   = await gh2tu.makeProjectCard( authDataM, testLinks, tdM.ceProjectId, multiPid, multiCid, issPopDat[0] );
+    // let popLabel  = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, config.POPULATE, -1 );
+    // let ipDat     = [issPopDat[0], issPopDat[1], cardPop.cardId, "A special populate issue" ];
+    // await gh2tu.addLabel( authDataM, popLabel.id, ipDat );       
+    // await utils.sleep( 1000 );
 
     // Labels, Assignees & Locs
     const LAB    = "903 " + config.PEQ_LABEL;
@@ -235,39 +246,44 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     await utils.sleep( 9000 );  
 
     // No moving, all cards appear in unclaimed.  This must be after promises, Unclaimed may not get created for a while.
+    // Note, unclaimed is the same here for td, tdM
     await gh2tu.refreshUnclaimed( authData, td );
+    await gh2tu.refreshUnclaimed( authDataM, tdM );  
     const projects = await gh2tu.getProjects( authDataM, tdM );
-    const uncProj  = projects.find( proj => proj.name == config.UNCLAIMED );
+    const uncProj  = projects.find( proj => proj.title == config.UNCLAIMED );
+
+    console.log( projects, uncProj );
 
     const uncLoc  = await gh2tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
     const uncLocM = await gh2tu.getFlatLoc( authDataM, uncProj.id, config.UNCLAIMED, config.UNCLAIMED );
 
-    // Let CE completely finish before testing... mainly finishing cards.
-    await utils.sleep( 3000 );  
-    let allCards  = await gh2tu.getCards( authData,  uncLoc.colId );
-    let allCardsM = await gh2tu.getCards( authDataM, uncLocM.colId );
+    // NOTE uncLoc and uncLocM are identical now that unclaimed is same project (view) used for both repos.
+    //      Leave this in place - down the road may test multithread over multiple ceProjects.
+    let allCards  = await tu.settleWithVal( "Get cards from unclaimed", getCardsHelp, authData, uncLoc.pid, uncLoc.colId, 8 ); 
+    let allCardsM = await tu.settleWithVal( "Get cards from unclaimedM", getCardsHelp, authDataM, uncLocM.pid, uncLocM.colId, 8 ); 
 
-    let c, cM = {};
-    for( const i of callIndex ) {
-
-	if( i <= 4 ) { c  = allCards.find( card => card.content_url.split('/').pop() == issDat[i][1].toString() ); }
-	else         { cM = allCardsM.find( card => card.content_url.split('/').pop() == issDat[i][1].toString() ); }
-	
-	console.log( "Check", i );
-	switch( i ) {
-	case 0: testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, uncLoc, issDat[i], c, testStatus, {label: 903, lblCount: 1, assign: 1});  break;
-	case 1: testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, uncLoc, issDat[i], c, testStatus, {label: 903, lblCount: 2, assign: 2});  break;
-	case 2: testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, uncLoc, issDat[i], c, testStatus, {label: 903, lblCount: 2, assign: 2});  break;
-	case 3: testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, uncLoc, issDat[i], c, testStatus, {label: 903, lblCount: 3, assign: 3});  break;
-	case 4: testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, td, issDat[i], testStatus, {lblCount: 1});  break;
-	case 5: testStatus = await gh2tu.checkNewbornIssue( authDataM, testLinks, tdM, issDat[i], testStatus, {lblCount: 1});  break;
-	case 6: testStatus = await gh2tu.checkSituatedIssue( authDataM, testLinks, tdM, uncLocM, issDat[i], cM, testStatus, {label: 903, lblCount: 1, assign: 2});  break;
-	case 7: testStatus = await gh2tu.checkSituatedIssue( authDataM, testLinks, tdM, uncLocM, issDat[i], cM, testStatus, {label: 903, lblCount: 2, assign: 3});  break;
-	case 8: testStatus = await gh2tu.checkSituatedIssue( authDataM, testLinks, tdM, uncLocM, issDat[i], cM, testStatus, {label: 903, lblCount: 3, assign: 2});  break;
-	case 9: testStatus = await gh2tu.checkSituatedIssue( authDataM, testLinks, tdM, uncLocM, issDat[i], cM, testStatus, {label: 903, lblCount: 2, assign: 2});  break;
-	default:  assert( false );  break;
+    if( allCards && allCardsM ) {
+	let c, cM = {};
+	for( const i of callIndex ) {
+	    
+	    if( i <= 4 ) { c  = allCards.find( card => card.issueNum == issDat[i][1].toString() ); }
+	    else         { cM = allCardsM.find( card => card.issueNum == issDat[i][1].toString() ); }
+	    
+	    console.log( "Check", i );
+	    switch( i ) {
+	    case 0: testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, uncLoc, issDat[i], c, testStatus, {label: 903, lblCount: 1, assign: 1});  break;
+	    case 1: testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, uncLoc, issDat[i], c, testStatus, {label: 903, lblCount: 2, assign: 2});  break;
+	    case 2: testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, uncLoc, issDat[i], c, testStatus, {label: 903, lblCount: 2, assign: 2});  break;
+	    case 3: testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, uncLoc, issDat[i], c, testStatus, {label: 903, lblCount: 3, assign: 3});  break;
+	    case 4: testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, td, issDat[i], testStatus, {lblCount: 1});  break;
+	    case 5: testStatus = await gh2tu.checkNewbornIssue( authDataM, testLinks, tdM, issDat[i], testStatus, {lblCount: 1});  break;
+	    case 6: testStatus = await gh2tu.checkSituatedIssue( authDataM, testLinks, tdM, uncLocM, issDat[i], cM, testStatus, {label: 903, lblCount: 1, assign: 2});  break;
+	    case 7: testStatus = await gh2tu.checkSituatedIssue( authDataM, testLinks, tdM, uncLocM, issDat[i], cM, testStatus, {label: 903, lblCount: 2, assign: 3});  break;
+	    case 8: testStatus = await gh2tu.checkSituatedIssue( authDataM, testLinks, tdM, uncLocM, issDat[i], cM, testStatus, {label: 903, lblCount: 3, assign: 2});  break;
+	    case 9: testStatus = await gh2tu.checkSituatedIssue( authDataM, testLinks, tdM, uncLocM, issDat[i], cM, testStatus, {label: 903, lblCount: 2, assign: 2});  break;
+	    default:  assert( false );  break;
+	    }
 	}
-
     }
 
     tu.testReport( testStatus, "Test", testName );

@@ -108,21 +108,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		let project = raw.data.node;
 		let statusId = -1;
-		
-		let hostRepo = {};
-		{
-		    let hostItems = raw.data.node.items;
-		    for( let i = 0; i < hostItems.edges.length; i++ ) {
-			const issue   = hostItems.edges[i].node;
-			if( issue.type == "ISSUE" ) {
-			    hostRepo.hostRepoName = issue.content.repository.nameWithOwner;
-			    hostRepo.hostRepoId   = issue.content.repository.id;
-			    break;
-			}
-		    }
-		}
-		
-		
+
 		// Loc data only needs to be built once.  Will be the same for every issue.
 		// Note: can not build this from issues below, since we may have empty columns in board view.
 		if( locData.length <= 0 ) {
@@ -181,16 +167,16 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 			if( links.length >= 100 ) { console.log( authData.who, "WARNING.  Detected a very large number of cards, ignoring some." ); }
 			
 			let datum = {};
-			datum.hostIssueId     = issue.content.id;              // contentId I_*
+			datum.hostIssueId     = issue.content.id;                          // contentId I_*
 			datum.hostIssueNum    = issue.content.number;
 			datum.hostIssueName   = issue.content.title;
-			datum.hostCardId      = issue.id;                      // projectV2Item id PVTI_*
+			datum.hostRepoId      = issue.content.repository.id                // R_*
+			datum.hostRepoName    = issue.content.repository.nameWithOwner;
+			datum.hostCardId      = issue.id;                                  // projectV2Item id PVTI_*
 			datum.hostProjectName = locData[0].hostProjectName;    
 			datum.hostProjectId   = locData[0].hostProjectId;    
 			datum.hostColumnName  = status;
 			datum.hostColumnId    = optionId;
-			datum.hostRepoId      = hostRepo.hostRepoId;
-			datum.hostRepoName    = hostRepo.hostRepoName;
 			datum.allCards        = links.map( link => link.node.id );
 			
 			linkData.push( datum );
@@ -665,8 +651,8 @@ async function getLabels( authData, issueId ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
 		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
+		if( !utils.validField( ret.data, "node" ) || !utils.validField( ret.data.node, "labels" )) { return labels; }
 		let raw    = ret.data.node.labels;
-		if( typeof raw === 'undefined' ) { return labels; }
 		
 		for( let i = 0; i < raw.edges.length; i++ ) {
 		    let label = raw.edges[i].node;
