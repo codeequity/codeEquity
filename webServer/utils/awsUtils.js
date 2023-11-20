@@ -247,10 +247,9 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 
     // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
 
-    // XXX Verify - no longer have 'justRelo'
-    assert( pact == -1 || pact == "addRelo" || pact == "justRelo" );
-    let add       = pact == "addRelo";
-    let relocate  = pact == "addRelo" || pact == "justRelo";
+    assert( pact == -1 || pact == "addRelo" || pact == "justAdd" );  // XXX formalize
+    let add       = pact == "addRelo" || pact == "justAdd";
+    let relocate  = pact != "justAdd" && pact == "addRelo" ;
     
     let newPEQId = -1;
     let newPEQ = -1

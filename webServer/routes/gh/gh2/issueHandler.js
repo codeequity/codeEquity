@@ -577,6 +577,30 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, oldCEP,
 					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer",
 					  utils.getToday(), pd.reqBody );
+
+		// Deactivate old peq, can't do much with old ID.
+		awsUtils.removePEQ( authData, peq.PEQId );
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, oldCEP,
+					  config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], "",
+					  utils.getToday(), pd.reqBody );
+		
+		// add new peq so we can operate on it normally in case of server restart before ingest
+		// link is all set, including card info.
+		// use PNP, not fromCard.  Need to form link, overwrite some pd data, and provide issue.
+		// NOTE. nearly all work in PNP is duplicated or wasted, but if build out transfer case, will want
+		//       this template.
+
+		let content                      = {};           // don't getIssue here, would have to wait a long time for it for fully form in GH
+		content.title                    = newLink.hostIssueName;
+		content.number                   = newIssueNum;
+		content.repository               = {};
+		content.repository.id            = newRepoId;
+		content.repository.nameWithOwner = newRepo;
+		pd.peqValue                      = peq.Amount;
+		pd.peqType                       = peq.PeqType;
+		pd.ceProjectId                   = newCEP;
+		pd.issueId                       = newIssueId;
+		gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, newLink, { havePeq: true, pact: "justAdd" } );
 	    }
 	    
 	}

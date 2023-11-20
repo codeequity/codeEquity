@@ -1184,7 +1184,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     let opVal        = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )        ? specials.opVal        : false;
     let peqHolder    = typeof specials !== 'undefined' && specials.hasOwnProperty( "peqHolder" )    ? specials.peqHolder    : false;
     
-    console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal, assignCnt );
+    console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal, assignCnt, peqIID, peqCEP );
     let subTest = [ 0, 0, []];
     
     // Start promises
@@ -1944,7 +1944,7 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
 }
 
 async function checkPact( authData, testLinks, td, title, verb, action, note, testStatus, specials ) {
-    console.log( "Check PAct" );
+    console.log( "Check PAct", td.ceProjectId, verb, action );
     let subTest = [ 0, 0, []];
     
     let subject = typeof specials !== 'undefined' && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
@@ -1973,8 +1973,8 @@ async function checkPact( authData, testLinks, td, title, verb, action, note, te
 	// console.log( i, pact );
 	if( pact.Action == action ) {
 	    foundPAct = true;
-	    foundPAct = foundPAct && pacts.length >= 1; 
-	    foundPAct = foundPAct && pact.Verb == verb;
+	    foundPAct = foundPAct && pacts.length >= 1;
+	    foundPAct = foundPAct && pact.Verb == verb;    
 	    foundPAct = foundPAct && pact.Action == action;
 	    foundPAct = foundPAct && pact.Note == note;
 
