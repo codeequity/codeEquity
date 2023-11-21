@@ -39,9 +39,8 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
     console.log( authData.who, "delIss: DELETE FOR", pd.issueId, link.hostProjectId );
 
-    console.log( authData.who, "Delete situated issue.. first manage card" );
     await cardHandler.deleteCard( authData, ghLinks, ceProjects, pd, link.hostCardId, true );
-    console.log( authData.who, "  .. done with card." );
+    // console.log( authData.who, "  .. done with card." );
     
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
     // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
@@ -529,6 +528,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    assert( links.length == 1 );
+	    console.log( authData.who, "old link", links[0] );
 
 	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, oldIssueId, false );
 
@@ -568,7 +568,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    newLink.hostRepoName = newRepo;
 	    newLink.hostRepoId   = newRepoId;
 	    ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
+	    console.log( authData.who, "Adding newLink", newLink );
 	    ghLinks.addLinkage( authData, newCEP, newLink );
+	    console.log( authData.who, "Harmed?", newLink );
 	    
 	    if( peq !== -1 ) {
 		

@@ -199,7 +199,7 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
     }
     else {
 	console.log( authData.who, config.PROJ_COLS[config.PROJ_PLAN], "column does not exist .. deleting card." );
-	ghV2.removeCard( authData, pid, cardId ); 
+	ghV2.removeCard( authData, pid, cardId );
 	ghLinks.removeLinkage( { authData: authData, ceProjId: ceProjId, issueId: issueId, cardId: cardId } );
     }
 }
@@ -289,6 +289,18 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		return;
 	    }
 
+	    let newCard = await ghV2.getCard( authData, cardId );
+
+	    // This is the only op ceServer carries out on draft issues.  Protect reserved cols.
+	    if( card.content_type == "DraftIssue" ) {  // XXX formalize
+		// Do not allow move into PEND if splitting in and non-peq
+		if( newCard.columnName == config.PROJ_COLS[config.PROJ_PEND] || newCard.columnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
+		    console.log( authData.who, "WARNING. " + newCard.columnName + " is reserved, can not create Draft Issues here.  Removing." );
+		    ghV2.removeCard( authData, pd.projectId, cardId );
+		}
+		return;
+	    }
+
 	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );  
 	    assert( locs !== -1 );
 	    // Note, config.MAIN_PROJ should not have PLAN
@@ -299,8 +311,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    break;
 		}
 	    }
-
-	    let newCard = await ghV2.getCard( authData, cardId );
 
 	    // Move into.  Split results have no 'from' onto a 'to' location.  Changes reject logic slightly.
 	    // --------------

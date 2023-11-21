@@ -39,7 +39,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
     let unclPID = await ghV2.findProjectByName( authData, org, "", config.UNCLAIMED ); 
     if( unclPID != -1 && !hostProjs.includes( unclPID ) ) { hostProjs.push( unclPID ); }
     
-    console.log( "HOST PROJs POST", ceProject.CEProjectId, hostProjs );
+    // console.log( "HOST PROJs POST", ceProject.CEProjectId, hostProjs );
     
     // Note, for links being built below, the link is a complete ceServer:link that supplied info for the 1:1 mapping issue:card.
     //       it is not necessarily a complete picture of a host link (which ceServer does not need).

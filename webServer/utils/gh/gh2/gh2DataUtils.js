@@ -320,7 +320,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let colName    = fromCard ? config.EMPTY            : link.hostColumnName;
     let projName   = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 	
-    console.log( authData.who, "PNP: cardid, pid colName repoid", origCardId, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
+    console.log( authData.who, "PNP: cardid, pid colName repoid", origCardId, pd.ceProjectId, projName, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
 
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
@@ -371,10 +371,10 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	specials.columnId = pd.columnId;
 
 	// At this point, if create-edit preceeded label, may be in create when card is built in no-status, meaning no column data.
-	console.log( authData.who, "PNP: fromCard.  ColId", pd.columnId, colName, pd.peqValue );
+	// console.log( authData.who, "PNP: fromCard.  ColId", pd.columnId, colName, pd.peqValue );
     }
     else {
-	console.log( authData.who, "PNP: fromLabelIssue", pd.issueName, colName, peqHumanLabelName, pd.repoName );
+	// console.log( authData.who, "PNP: fromLabelIssue", pd.issueName, colName, peqHumanLabelName, pd.repoName );
 
 	assert( pd.issueNum > -1 );
 	

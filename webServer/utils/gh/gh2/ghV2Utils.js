@@ -1033,9 +1033,9 @@ async function getCard( authData, cardId ) {
 		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		let card = raw.data.node;
 		retVal.cardId      = cardId;                        
-		retVal.pid      = card.project.id;
-		retVal.issueNum    = card.content.number; 
-		retVal.issueId     = card.content.id;
+		retVal.pid         = card.project.id;
+		retVal.issueNum    = utils.validField( card, "content" ) ? card.content.number : -1;
+		retVal.issueId     = utils.validField( card, "content" ) ? card.content.id     : -1;
 		if( utils.validField( card, "fieldValueByName" ) ) {
 		    retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
 		    retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*

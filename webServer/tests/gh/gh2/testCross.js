@@ -276,8 +276,6 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     const projects = await gh2tu.getProjects( authDataM, tdM );
     const uncProj  = projects.find( proj => proj.title == config.UNCLAIMED );
 
-    console.log( projects, uncProj );
-
     const uncLoc  = await gh2tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
     const uncLocM = await gh2tu.getFlatLoc( authDataM, uncProj.id, config.UNCLAIMED, config.UNCLAIMED );
 

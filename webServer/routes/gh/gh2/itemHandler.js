@@ -44,7 +44,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     let item = pd.reqBody.projects_v2_item;
     assert( typeof item !== 'undefined' );
 
-    if( item.content_type != "Issue" ) {
+    // Allow draftIssue:edit to pass through to protect movement into reserved columns
+    let diEdit = item.content_type == "DraftIssue" && action == "edited";
+    if( item.content_type != "Issue" && !diEdit ) {
 	console.log( authData.who, "Skipping", item.content_type, action );
 	return;
     }
@@ -55,38 +57,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
     // XXX need to pass in and return res from ceRouter
 
-
-    //                       -> event           :action      content_type
-
     // Create issue notifications: (can ignore)
-    // * create draft issue  -> projects_v2_item:created     draft issue
     // * convert draft issue -> projects_v2_item:reorder     draft issue     (sometimes)
     // * (pick a repo)       -> projects_v2_item:converted   issue
     //                       -> issues          :opened      XXX confirm event
 
-    // Create issue, by hand from within repo
-    //                       -> issues          :opened      
-
     // Create label : have to open issue in new tab (!!)
     // * create new label    -> label          :created
     
-
-    
-    // Assign issue: 
-    //                       -> issues          :assigned
-    //                       -> projects_v2_item:edited     issue
-
-    // Change issue status:
-    //                       -> projects_v2_item:edited     issue
-
-    // Close issue:
-    // Shucks.  github auto process, actor:ghost moves card to 'done'.  But does not change status back to open.
-    //                       -> issues          :closed
-    // (ghost moves to done) -> projects_v2_item:edited     issue
-
-    // Reopen issue: 
-    //                       -> issues          :reopen
-
     
     // Create new status, new project:   nothing.  why.
     // Peq label draft issue: can't perform this action
@@ -103,7 +81,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    // Need to then process the content-specific notice for details.
 	    // Example:  { field_value: { field_node_id: 'PVTF_<*>', field_type: 'labels' }}
 	    // No need to rebuild the map on server startup, since notice comes every time.  Demote content_node job this notice hasn't arrived yet.
-	    console.log( authData.who, "PV2ItemHandler", action );
+	    // console.log( authData.who, "PV2ItemHandler", action );
 
 	    if( utils.validField( reqBody, "changes" )) {
 		let fv = reqBody.changes.field_value;

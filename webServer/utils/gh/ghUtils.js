@@ -17,7 +17,8 @@ async function postGH( PAT, url, postData ) {
     if( utils.TEST_EH ) {
 	// Don't bother with testing only queries
 	if( !postData.includes( "mutation" ) && Math.random() < utils.TEST_EH_PCT ) {
-	    console.log( "Err.  Fake internal server error for GQL.", postData );
+	    // console.log( "Err.  Fake internal server error for GQL.", postData );
+	    console.log( "Err.  Fake internal server err for GQL." );
 	    return utils.FAKE_ISE;
 	}
     }

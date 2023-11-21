@@ -348,7 +348,8 @@ async function rewritePAct( authData, postData ) {
 
 // locData can be from GQL, or linkage
 async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) {
-    console.log( "Refreshing linkage summary", authData.api, ceProjId, locData.length );
+    // console.log( authData.who, "Refreshing linkage summary", authData.api, ceProjId, locData.length );
+    console.log( authData.who, "Refreshing linkage summary", ceProjId, locData.length );
 
     if( gql ) {
 	for( var loc of locData ) {
