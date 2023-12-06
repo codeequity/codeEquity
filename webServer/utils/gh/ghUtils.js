@@ -16,30 +16,28 @@ async function postGH( PAT, url, postData, check422 ) {
 	body: postData 
     };
 
-    if( utils.TEST_EH ) {
-	// Don't bother with testing only queries
-	if( !postData.includes( "mutation" ) && Math.random() < utils.TEST_EH_PCT ) {
-	    // console.log( "Err.  Fake internal server error for GQL.", postData );
-	    console.log( "Err.  Fake internal server err for GQL." );
-	    return utils.FAKE_ISE;
-	}
+    let ret = "";
+    
+    // Don't bother with testing only queries    
+    if( utils.TEST_EH && !postData.includes( "mutation" ) && Math.random() < utils.TEST_EH_PCT ) {
+	console.log( "Err.  Fake internal server err for GQL." );
+	ret = utils.FAKE_ISE;
+    }
+    else {
+	ret = await fetch( url, params )
+	    .catch( e => { console.log("Fetch failed.", e); throw e; });
+	
+	ret = await ret.json();
     }
 
-    let gotchya = false;
-    let ret = await fetch( url, params )
-	.catch( e => { gotchya = true; console.log(e); return e; });
-
-    // XXX Still waiting to see this.. 
-    if( gotchya ) { let x = await ret.json(); console.log( "Error.  XXXXXXXXXXXXXX got one!", x, ret ); }
-
-    ret = await ret.json();
+    
     // Oddly, some GQl queries/mutations return with a status, some do not.
     if( typeof ret !== 'undefined' ) {
 	// can not do this, as many valid gql queries will ask for, say, orgId and userId, fully expecting one to fail.
 	// if( utils.validField( ret, "errors" ))                                  { ret.status = 422; }
 	if( typeof ret.data !== 'undefined' && typeof ret.status === 'undefined' ) { ret.status = 200; }
     }
-
+    
     // Throw?
     let throwMe = false;
     throwMe     = throwMe || !utils.validField( ret, "status" );                                       // don't have valid status
@@ -49,7 +47,7 @@ async function postGH( PAT, url, postData, check422 ) {
     
     if( have422 ) { ret.status = 422; }
     if( throwMe ) { throw ret; }
-    
+
     return ret;
 }
 

@@ -437,8 +437,8 @@ async function testBlast( authData, testLinks, td ) {
     // 6. blast, undo
     issDat = await gh2tu.blastIssue( authData, td, "Blast 6", [lab1, labNP1, labNP2], [assignee1, assignee2] );
     await utils.sleep( 1500 );
-    await gh2tu.remAssignee( authData, issDat[1], assignee2 );
-    await gh2tu.remAssignee( authData, issDat[1], assignee1 );
+    await gh2tu.remAssignee( authData, issDat[0], assignee2 );
+    await gh2tu.remAssignee( authData, issDat[0], assignee1 );
     await gh2tu.remLabel( authData, labNP1, issDat );    
     await gh2tu.remLabel( authData, labNP2, issDat );    
     

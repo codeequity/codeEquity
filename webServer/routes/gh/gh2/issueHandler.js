@@ -528,7 +528,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    assert( links.length == 1 );
-	    console.log( authData.who, "old link", links[0] );
+	    // console.log( authData.who, "old link", links[0] );
 
 	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, oldIssueId, false );
 
@@ -563,14 +563,27 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // To get here, cep cep world, either peq or carded.  both need to update link (remove/add)
 	    let newLink = { ...links[0] };
+	    newLink.ceProjectId  = newCEP; 
 	    newLink.hostIssueId  = newIssueId;
 	    newLink.hostIssueNum = newIssueNum;
 	    newLink.hostRepoName = newRepo;
 	    newLink.hostRepoId   = newRepoId;
 	    ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
-	    console.log( authData.who, "Adding newLink", newLink );
+	    // console.log( authData.who, "Adding newLink", newLink );
 	    ghLinks.addLinkage( authData, newCEP, newLink );
-	    console.log( authData.who, "Harmed?", newLink );
+
+	    // New ceProject, hostProject connection, possibly new loc.
+	    // If it is new, this is sufficient.  If it is not, this is redundant.
+	    let newLoc = {};
+	    newLoc.ceProjectId     = newCEP; 
+	    newLoc.hostProjectId   = newLink.hostProjectId;
+	    newLoc.hostProjectName = newLink.hostProjectName;
+	    newLoc.hostColumnId    = newLink.hostColumnId;
+	    newLoc.hostColumnName  = newLink.hostColumnName;
+	    newLoc.hostUtility     = newLink.hostUtility;
+	    newLoc.active          = "true";
+	    
+	    ghLinks.addLoc( authData, newLoc, true );
 	    
 	    if( peq !== -1 ) {
 		
