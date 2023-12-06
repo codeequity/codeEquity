@@ -7,7 +7,9 @@ const utils    = require( '../ceUtils' );
 const awsUtils = require( '../awsUtils' );
 
 // XXX Accept header is for label preview.  Check back to delete.
-async function postGH( PAT, url, postData ) {
+async function postGH( PAT, url, postData, check422 ) {
+    if( typeof check422 === 'undefined' ) { check422 = false; }
+    
     const params = {
 	method: "POST",
         headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json" },
@@ -37,6 +39,16 @@ async function postGH( PAT, url, postData ) {
 	// if( utils.validField( ret, "errors" ))                                  { ret.status = 422; }
 	if( typeof ret.data !== 'undefined' && typeof ret.status === 'undefined' ) { ret.status = 200; }
     }
+
+    // Throw?
+    let throwMe = false;
+    throwMe     = throwMe || !utils.validField( ret, "status" );                                       // don't have valid status
+    throwMe     = throwMe || ret.status != 200;                                                        // bad status
+    let have422 = !throwMe && check422 && typeof ret.errors !== 'undefined';                           
+    throwMe     = throwMe || have422;                                                                  // have 422
+    
+    if( have422 ) { ret.status = 422; }
+    if( throwMe ) { throw ret; }
     
     return ret;
 }
@@ -87,8 +99,11 @@ async function errorHandler( source, e, func, ...params ) {
 	}
 	else { console.log( "Error.  Retries exhausted, command failed.  Please try again later." ); }
     }
+    else if( e.status == 422 ) {
+	console.log( "Semantic error, unlikely to repair upon retry.", source, e );
+    }
     else {
-	console.log( "Error in errorHandler, unknown status code.", source, e );
+	console.log( "Error in errorHandler, unknown status code. Bad GQL argument construction?", source, e );
 	console.log( arguments[0], arguments[1] );
     }
     return false;

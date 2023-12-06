@@ -442,7 +442,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'edited':
-	// XXXXXXXXXXXXXXXXX  undone..!  untested.
 	// Only need to catch title edits, and only for situated.
 	// Will get this notice for a transfer, safe to ignore.
 	{
@@ -456,9 +455,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		if( link !== -1 && link.hostIssueName != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
+		    // XXX record reject change notice?  rules for confirm reject?  check consistency.
 		    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
-			ghSafe.updateTitle( authData, pd.Owner, pd.Repo, pd.issueNum, link.hostIssueName );
+			ghV2.updateTitle( authData, pd.issueId, link.hostIssueName );
 		    }
 		    else {
 			assert( pd.reqBody.changes.title.from == link.hostIssueName );
