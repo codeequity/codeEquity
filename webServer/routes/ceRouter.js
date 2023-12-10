@@ -274,7 +274,10 @@ router.post('/:location?', async function (req, res) {
 
     // Host platform get job data summary info
     let ret = hostGetJobData( newStamp, jd, req.headers, locator );
-    if( ret == -1 ) { return res.end(); }
+    if( ret == -1 ) {
+	console.log( "Ignoring notification" );
+	return res.end();
+    }
 
     // XXX GQL prefers using CE_ACTOR.  REST prefers CE_BOT.  Can they be reconciled?
     if( jd.actor == config.CE_ACTOR || jd.actor == config.CE_BOT || jd.actor == config.GH_BOT) {

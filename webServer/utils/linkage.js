@@ -499,7 +499,49 @@ class Linkage {
 	return true;
     }
 
+    // To attach major components to ceProject
+    async linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails ) {
+	console.log( "Link repo", ceProjId, repoId, repoName );
+	if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
+	    console.log( authData.who, "WARNING.  Attempting to link a repo to a ceProject, one of which is empty.", ceProjId, repoId, repoName );
+	    return false;
+	}
+	
+	let cep = ceProjects.findById( ceProjId );
+	if( typeof cep === 'undefined' ) {
+	    assert( typeof cepDetails !== 'undefined' );
+	    cep = ceProjects.initBlank( ceProjId, cepDetails );
+	}
+	let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );
 
+	cep.HostParts.hostRepositories = hostRepos;
+	return await awsUtils.updateCEPHostParts( authData, cep );
+    }
+
+    // To unattach major components to ceProject
+    async unlinkRepo( authData, ceProjects, ceProjId, repoId ) {
+	console.log( "unLink repo", ceProjId, repoId );
+	if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
+	    console.log( authData.who, "WARNING.  Attempting to unlink a repo from a ceProject, one of which is empty.", ceProjId, repoId );
+	    return false;
+	}
+	
+	let cep = ceProjects.findById( ceProjId );
+	if( typeof cep === 'undefined' ) { return true; }
+	let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, config.EMPTY, { operation: "remove" } );
+
+	// XXX remove locs/links as well
+	if( hostRepos.length < 1 ) {
+	    delete cep.HostParts;
+	    cep.Populated = false;
+	    ceProjects.remove( ceProjId );
+	}
+	else { cep.HostParts.hostRepositories = hostRepos; }
+
+	return await awsUtils.updateCEPHostParts( authData, cep );
+    }
+
+    
     // if pid == -1, all hostProjs are purged
     purgeLocs( ceProjId, pid ) {
 	let killList = [];	
@@ -544,7 +586,6 @@ class Linkage {
 	}
 	for( const id of killList ) { delete this.links[id.cpid][id.iid]; }
 
-	// GH Testing can't purge links until apiV2 allows create col, and make project notifications
 	if( !linksOnly ) {  this.purgeLocs( ceProjId, pid ); }
 	
 	return true;

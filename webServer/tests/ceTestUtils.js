@@ -85,11 +85,27 @@ async function linkProject( authData, ceProjId, pid, rNodeId, rName ) {
 
 // Some hosts don't notify link/unlink project.  Update ceServer internal state as push from testHandler.
 async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
-    let auth = {"pat": authData.pat, "who": authData.who };
-    let postData = {"Endpoint": "Testing", "Request": "unlinkProject", "ceProjId": ceProjId, "pid": pid, "rNodeId": rNodeId, "auth": authData }; 
+    let auth = {"pat": authData.pat, "who": authData.who, "api": authData.api, "cog": authData.cog };
+    let postData = {"Endpoint": "Testing", "Request": "unlinkProject", "ceProjId": ceProjId, "pid": pid, "rNodeId": rNodeId, "auth": auth }; 
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }
+
+async function linkRepo( authData, ceProjId, rNodeId, rName, cepDetails ) {
+    let auth = {"pat": authData.pat, "who": authData.who, "api": authData.api, "cog": authData.cog };
+    let postData = {"Endpoint": "Testing", "Request": "linkRepo", "ceProjId": ceProjId, "rNodeId": rNodeId, "rName": rName, "auth": auth, "cepDetails": cepDetails }; 
+    let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
+    return res;
+}
+
+async function unlinkRepo( authData, ceProjId, rNodeId ) {
+    let auth = {"pat": authData.pat, "who": authData.who, "api": authData.api, "cog": authData.cog };
+    let postData = {"Endpoint": "Testing", "Request": "unlinkRepo", "ceProjId": ceProjId, "rNodeId": rNodeId, "auth": auth }; 
+    let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
+    return res;
+}
+
+
 
 // XXX XXX
 async function setUnpopulated( authData, td ) {
@@ -276,6 +292,8 @@ exports.remLinks         = remLinks;
 exports.purgeJobs        = purgeJobs;
 exports.linkProject      = linkProject;
 exports.unlinkProject    = unlinkProject;
+exports.linkRepo         = linkRepo;
+exports.unlinkRepo       = unlinkRepo;
 exports.setUnpopulated   = setUnpopulated;
 
 // minor testing utils

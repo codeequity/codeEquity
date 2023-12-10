@@ -38,7 +38,7 @@ async function postCE( shortName, postData ) {
     let ret = await fetch( ceServerTestingURL, params )
 	.catch( err => console.log( err ));
 
-    if( ret['status'] == 201 ) { 
+    if( ret['status'] == 201 ) {
 	let body = await ret.json();
 	return body;
     }

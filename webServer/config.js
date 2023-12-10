@@ -40,15 +40,18 @@ const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT";
 const TEST_OWNER        = "codeequity";
 const TEST_ACTOR        = "ariCETester";
 const TEST_REPO         = "ceTesterAri";
+const TEST_CEPID        = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
 const FLUTTER_TEST_REPO = "ceFlutterTester";
 
 const CROSS_TEST_OWNER  = "codeequity";          
 const CROSS_TEST_ACTOR  = "ariCETester";          
 const CROSS_TEST_REPO   = "ceTesterAriAlt";
+const CROSS_TEST_CEPID  = "CE_AltTest_hakeld80a2";     // XXX Remove once ceFlutter is back up
 
 const MULTI_TEST_OWNER  = "codeequity";
 const MULTI_TEST_ACTOR  = "connieCE";
 const MULTI_TEST_REPO   = "ceTesterConnie";
+const MULTI_TEST_CEPID  = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
 
 
 // Required project columns.  Can rename, not reorder, and retain CE functionality
@@ -190,15 +193,18 @@ exports.TEST_PAT_PATH    = TEST_PAT_PATH
 exports.CROSS_PAT_PATH   = CROSS_PAT_PATH
 exports.MULTI_PAT_PATH   = MULTI_PAT_PATH
 exports.TEST_OWNER       = TEST_OWNER;
-exports.TEST_ACTOR        = TEST_ACTOR;
+exports.TEST_ACTOR       = TEST_ACTOR;
 exports.TEST_REPO        = TEST_REPO;
+exports.TEST_CEPID       = TEST_CEPID;
 exports.FLUTTER_TEST_REPO = FLUTTER_TEST_REPO;
 exports.CROSS_TEST_OWNER = CROSS_TEST_OWNER;
 exports.CROSS_TEST_ACTOR  = CROSS_TEST_ACTOR;
 exports.CROSS_TEST_REPO  = CROSS_TEST_REPO;
+exports.CROSS_TEST_CEPID = CROSS_TEST_CEPID;
 exports.MULTI_TEST_OWNER = MULTI_TEST_OWNER;
 exports.MULTI_TEST_ACTOR  = MULTI_TEST_ACTOR;
 exports.MULTI_TEST_REPO  = MULTI_TEST_REPO;
+exports.MULTI_TEST_CEPID = MULTI_TEST_CEPID;
 
 exports.PEQ_LABEL   = PEQ_LABEL;
 exports.ALLOC_LABEL = ALLOC_LABEL;

@@ -2,6 +2,7 @@ const assert = require( 'assert' );
 
 const config  = require( '../config' );
 
+const utils    = require( '../utils/ceUtils' );
 const awsUtils = require( '../utils/awsUtils' );
 
 // A simple fast lookup map to get ceProjectIds from job data
@@ -10,10 +11,18 @@ const awsUtils = require( '../utils/awsUtils' );
 class CEProjects {
 
     constructor( ) {
-	this.cep   = {};  // { <CEProjects> }
+	this.cep   = [];  // [ <CEProjects> ]
 	this.hi2cp = {};  // { host: { org: { hostIssueId: ceProjId }}}
-    }  
+    }
 
+    remove( ceProjId ) {
+	let idx = this.cep.findIndex( c => c.CEProjectId == ceProjId );
+	assert( idx >= 0 );
+	this.cep.splice( idx, 1 );
+
+	// XXX No need to blow the entire cache here
+	this.hi2cp = {};
+    }
 
     async cacheFind( authData, host, org, hostIssueId, getHostRepoFunc ) {
 	let retVal = config.EMPTY;
@@ -41,10 +50,15 @@ class CEProjects {
 	return true;
     }
 
+    findById( ceProjId ) {
+	return this.cep.find( cep => cep.CEProjectId == ceProjId ); 
+    }
+    
     findByRepo( host, org, repo ) {
 	let retVal = config.EMPTY;
 	let proj = this.cep.find( cep => cep.HostPlatform == host &&
 				  cep.Organization == org &&
+				  utils.validField( cep.HostParts, "hostRepositories" ) &&
 				  cep.HostParts.hostRepositories.reduce( (acc,cur) => acc || cur.repoName == repo, false ));
 	retVal = typeof proj === 'undefined' ? retVal : proj.CEProjectId;
 	return retVal;
@@ -56,7 +70,64 @@ class CEProjects {
 	this.cep = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
     }
 
+    initBlank( ceProjId, cepDetails ) {
 
+	assert( typeof cepDetails.projComponent !== 'undefined' );
+	assert( typeof cepDetails.description   !== 'undefined' );
+	assert( typeof cepDetails.platform      !== 'undefined' );
+	assert( typeof cepDetails.org           !== 'undefined' );
+	assert( typeof cepDetails.ownerCategory !== 'undefined' );
+	assert( typeof cepDetails.pms           !== 'undefined' );
+	
+	let blank = {};
+
+	// Ignore hostParts, set later in linkage
+	blank.CEProjectId        = ceProjId;
+	blank.CEProjectComponent = cepDetails.projComponent;
+	blank.Description        = cepDetails.description;
+	blank.HostPlatform       = cepDetails.platform;
+	blank.Organization       = cepDetails.org;
+	blank.OwnerCategory      = cepDetails.ownerCategory;
+	blank.Populated          = false;
+	blank.ProjectMgmtSys     = cepDetails.pms;
+
+	this.cep.push( blank );
+	return blank;
+    }
+
+
+    getHostRepos( authData, ceProjId, repoId, repoName, specials ) {
+	let op = typeof specials !== 'undefined' && specials.hasOwnProperty( "operation" )   ? specials.operation   : config.EMPTY;
+
+	let cep    = this.cep.find( cep => cep.CEProjectId == ceProjId );
+
+	if( typeof cep === 'undefined' ) {
+	    console.log( authData.who, "WARNING.  ceProject was not found:", ceProjId );
+	    return [];
+	}
+
+	let hRepos = [];
+	
+	if( op == "add" ) {
+
+	    if( !utils.validField( cep, "HostParts" ))                  { cep.HostParts = {}; }
+	    if( !utils.validField( cep.HostParts, "hostRepositories" )) { cep.HostParts.hostRepositories = []; }
+	    
+	    hRepos  = cep.HostParts.hostRepositories;
+	    let idx = hRepos.findIndex( r => r.repoId == repoId );
+	    if( idx == -1 ) { hRepos.push( { repoId: repoId, repoName: repoName } ); }
+	}
+	else if( op == "remove" ) {
+	    if( utils.validField( cep, "HostParts" ) && utils.validField( cep.HostParts, "hostRepositories" )) {
+		hRepos  = cep.HostParts.hostRepositories;
+		let idx = hRepos.findIndex( r => r.repoId == repoId );
+		if( idx != -1 ) { hRepos.splice( idx, 1 ); }
+	    }
+	}
+
+	return hRepos;
+    }
+    
     // called by ceFlutter to attach a hostProject to a ceProject.
     associate( host, org, hostProjId, ceProjId ) {
 	// XXX NYI

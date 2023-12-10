@@ -192,6 +192,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 
     origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
+    
     // Don't wait.
     awsUtils.setPopulated( authData, pd.ceProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );
@@ -272,6 +273,8 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 
     let pact      = typeof specials !== 'undefined' && specials.hasOwnProperty( "pact" )     ? specials.pact     : -1;
     let fromCard  = typeof specials !== 'undefined' && specials.hasOwnProperty( "fromCard" ) ? specials.fromCard : false;
+    let havePeq   = typeof specials !== 'undefined' && specials.hasOwnProperty( "havePeq" )  ? specials.havePeq  : false;
+    
     let fromLabel = !fromCard;
     assert( fromLabel || link === -1 );
     assert( fromCard  || link !== -1 );
@@ -280,12 +283,14 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let lNodeId = -1;
     
     // labelIssue does not call getFullIssue, cardHandler does
-    if( utils.validField( issue, "labelContent" ) ) {
-	issDat.push( issue.labelContent );
-	lNodeId = issue.labelNodeId; 
+    if( !havePeq ) {
+	if( utils.validField( issue, "labelContent" ) ) {
+	    issDat.push( issue.labelContent );
+	    lNodeId = issue.labelNodeId; 
+	}
+	else if( issue.labels.length > 0 )              { for( node of issue.labels ) { issDat.push( node.description ); } }
     }
-    else if( issue.labels.length > 0 )              { for( node of issue.labels ) { issDat.push( node.description ); } }
-
+	
     // console.log( authData.who, "PNP: issDat", issDat, pd.repoName, pact, fromCard );
     
     pd.issueName = issDat[0];
@@ -297,7 +302,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let allocation = ghUtils.getAllocated( issDat );
 
     // Note.  If support convert from draft issue with <> shorthand, will need to use parsePEQ( issDat, allocation ) instead
-    pd.peqValue = ghUtils.parseLabelDescr( issDat );
+    if( !havePeq ) { pd.peqValue = ghUtils.parseLabelDescr( issDat ); }
 
     // Don't wait
     // XXX remove this after ceFlutter initialization is in place
@@ -305,7 +310,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	awsUtils.checkPopulated( authData, pd.ceProjectId ).then( res => assert( res != -1 ));
     }
     
-    if( pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
+    if( !havePeq && pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
     // console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
     // fromLabel link is good, cardDat will be undefined.  fromCard is the reverse.
@@ -316,7 +321,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     let colName    = fromCard ? config.EMPTY            : link.hostColumnName;
     let projName   = ghV2.getProjectName( authData, ghLinks, pd.ceProjectId, pd.projectId );
 	
-    console.log( authData.who, "PNP: cardid, pid colName repoid", origCardId, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
+    console.log( authData.who, "PNP: cardid, pid colName repoid", origCardId, pd.ceProjectId, projName, pd.projectId, colName, pd.repoId, pd.peqType, pd.peqValue );
 
     // This will be undef if this is for a new issue
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
@@ -367,10 +372,10 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	specials.columnId = pd.columnId;
 
 	// At this point, if create-edit preceeded label, may be in create when card is built in no-status, meaning no column data.
-	console.log( authData.who, "PNP: fromCard.  ColId", pd.columnId, colName, pd.peqValue );
+	// console.log( authData.who, "PNP: fromCard.  ColId", pd.columnId, colName, pd.peqValue );
     }
     else {
-	console.log( authData.who, "PNP: fromLabelIssue", pd.issueName, colName, peqHumanLabelName, pd.repoName );
+	// console.log( authData.who, "PNP: fromLabelIssue", pd.issueName, colName, peqHumanLabelName, pd.repoName );
 
 	assert( pd.issueNum > -1 );
 	

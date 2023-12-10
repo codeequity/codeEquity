@@ -7,29 +7,30 @@ const utils    = require( '../ceUtils' );
 const awsUtils = require( '../awsUtils' );
 
 // XXX Accept header is for label preview.  Check back to delete.
-async function postGH( PAT, url, postData ) {
+async function postGH( PAT, url, postData, check422 ) {
+    if( typeof check422 === 'undefined' ) { check422 = false; }
+    
     const params = {
 	method: "POST",
         headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json" },
 	body: postData 
     };
 
-    if( utils.TEST_EH ) {
-	// Don't bother with testing only queries
-	if( !postData.includes( "mutation" ) && Math.random() < utils.TEST_EH_PCT ) {
-	    console.log( "Err.  Fake internal server error for GQL.", postData );
-	    return utils.FAKE_ISE;
-	}
+    let ret = "";
+    
+    // Don't bother with testing only queries    
+    if( utils.TEST_EH && !postData.includes( "mutation" ) && Math.random() < utils.TEST_EH_PCT ) {
+	console.log( "Err.  Fake internal server err for GQL." );
+	ret = utils.FAKE_ISE;
+    }
+    else {
+	ret = await fetch( url, params )
+	    .catch( e => { console.log("Fetch failed.", e); throw e; });
+	
+	ret = await ret.json();
     }
 
-    let gotchya = false;
-    let ret = await fetch( url, params )
-	.catch( e => { gotchya = true; console.log(e); return e; });
-
-    // XXX Still waiting to see this.. 
-    if( gotchya ) { let x = await ret.json(); console.log( "Error.  XXXXXXXXXXXXXX got one!", x, ret ); }
-
-    ret = await ret.json();
+    
     // Oddly, some GQl queries/mutations return with a status, some do not.
     if( typeof ret !== 'undefined' ) {
 	// can not do this, as many valid gql queries will ask for, say, orgId and userId, fully expecting one to fail.
@@ -37,6 +38,16 @@ async function postGH( PAT, url, postData ) {
 	if( typeof ret.data !== 'undefined' && typeof ret.status === 'undefined' ) { ret.status = 200; }
     }
     
+    // Throw?
+    let throwMe = false;
+    throwMe     = throwMe || !utils.validField( ret, "status" );                                       // don't have valid status
+    throwMe     = throwMe || ret.status != 200;                                                        // bad status
+    let have422 = !throwMe && check422 && typeof ret.errors !== 'undefined';                           
+    throwMe     = throwMe || have422;                                                                  // have 422
+    
+    if( have422 ) { ret.status = 422; }
+    if( throwMe ) { throw ret; }
+
     return ret;
 }
 
@@ -86,8 +97,11 @@ async function errorHandler( source, e, func, ...params ) {
 	}
 	else { console.log( "Error.  Retries exhausted, command failed.  Please try again later." ); }
     }
+    else if( e.status == 422 ) {
+	console.log( "Semantic error, unlikely to repair upon retry.", source, e );
+    }
     else {
-	console.log( "Error in errorHandler, unknown status code.", source, e );
+	console.log( "Error in errorHandler, unknown status code. Bad GQL argument construction?", source, e );
 	console.log( arguments[0], arguments[1] );
     }
     return false;

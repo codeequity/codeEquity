@@ -197,19 +197,12 @@ async function runTests() {
     td.actorId       = await ghUtils.getOwnerId( authData.pat, td.actor );
     td.GHRepoId      = await ghUtils.getRepoId( authData.pat, td.GHOwner, td.GHRepo );
 
-    // First ceProj init requires authData, which needs .cog, .api and .who
-    let ceProjects = new ceProjData.CEProjects();
-    await ceProjects.init( authData );
-    td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.GHFullName );
-    assert( td.ceProjectId != config.EMPTY );
-    
     // CROSS_TEST_REPO auth
     let tdX        = new testData.TestData();
     tdX.GHOwner    = config.CROSS_TEST_OWNER;
     tdX.actor      = config.CROSS_TEST_ACTOR;
     tdX.GHRepo     = config.CROSS_TEST_REPO;
     tdX.GHFullName = tdX.GHOwner + "/" + tdX.GHRepo;
-    tdX.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.GHFullName );
     
     let authDataX     = new authDataC.AuthData();
     authDataX.ic      = await ghAuth.getInstallationClient( tdX.GHOwner, tdX.GHRepo, tdX.GHOwner );
@@ -228,7 +221,6 @@ async function runTests() {
     tdM.actor      = config.MULTI_TEST_ACTOR;
     tdM.GHRepo     = config.MULTI_TEST_REPO;
     tdM.GHFullName = tdM.GHOwner + "/" + tdM.GHRepo;
-    tdM.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.GHFullName );
     
     let authDataM     = new authDataC.AuthData();
     authDataM.ic      = await ghAuth.getInstallationClient( tdM.GHOwner, tdM.GHRepo, tdM.GHOwner );
@@ -241,6 +233,37 @@ async function runTests() {
     tdM.actorId       = await ghUtils.getOwnerId( authDataM.pat, tdM.actor );
     tdM.GHRepoId      = await ghUtils.getRepoId( authDataM.pat, tdM.GHOwner, tdM.GHRepo );
 
+
+    // XXX ceFlutter fix
+    // This is yucky.  ceFlutter is responsible to initiate cep, and id (link) initial repo(s).
+    // linkRepo assumes cep exists.  it helps during testing to have fixed repo and cep ids, makes debugging much simpler.
+    // testDelete may have already removed ceProjects.HostParts.
+    // Use testing-only map here to set initial ceProjectIds.
+    // let ceProjects = new ceProjData.CEProjects();
+    // await ceProjects.init( authData );
+    // td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.GHFullName );
+    // tdX.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.GHFullName );
+    // tdM.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.GHFullName );
+    td.ceProjectId  = config.TEST_CEPID;
+    tdX.ceProjectId = config.CROSS_TEST_CEPID;
+    tdM.ceProjectId = config.MULTI_TEST_CEPID;
+
+    // cepDetails, typically set from ceFlutter
+    let tdBlank = {};
+    tdBlank.projComponent = "ceServer Testing";   // XXX config?
+    tdBlank.description   = "testing only";       // XXX config?
+    tdBlank.platform      = config.HOST_GH;
+    tdBlank.org           = config.TEST_OWNER;
+    tdBlank.ownerCategory = "Organization";       // XXX config?
+    tdBlank.pms           = config.PMS_GH2;
+
+    let tdXBlank = { ...tdBlank }; 
+    tdXBlank.CEProjectComponent = "ceServer Alt Testing";
+
+    td.cepDetails  = tdBlank;  // same CEP
+    tdM.cepDetails = tdBlank;  // same CEP
+    tdX.cepDetails = tdXBlank;
+    
     let testStatus = [ 0, 0, []];
 
     // XXX Add an arg if these are ever useful again

@@ -247,10 +247,9 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 
     // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
 
-    // XXX Verify - no longer have 'justRelo'
-    assert( pact == -1 || pact == "addRelo" || pact == "justRelo" );
-    let add       = pact == "addRelo";
-    let relocate  = pact == "addRelo" || pact == "justRelo";
+    assert( pact == -1 || pact == "addRelo" || pact == "justAdd" );  // XXX formalize
+    let add       = pact == "addRelo" || pact == "justAdd";
+    let relocate  = pact != "justAdd" && pact == "addRelo" ;
     
     let newPEQId = -1;
     let newPEQ = -1
@@ -349,8 +348,9 @@ async function rewritePAct( authData, postData ) {
 
 // locData can be from GQL, or linkage
 async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) {
-    console.log( "Refreshing linkage summary", authData.api, ceProjId, locData.length );
-
+    console.log( authData.who, "Refreshing linkage summary", ceProjId, locData.length );
+    if( locData.length < 1 ) { return; }
+    
     if( gql ) {
 	for( var loc of locData ) {
             loc.active = "true";
@@ -379,6 +379,15 @@ async function updateLinkageSummary( authData, ceProjId, loc ) {
     let shortName = "UpdateLinkage"; 
 
     let pd = { "Endpoint": shortName, "newLoc": newLoc }; 
+    return await wrappedPostAWS( authData, shortName, pd );
+}
+
+async function updateCEPHostParts( authData, ceProject ) {
+    console.log( authData.who, "Updating hostparts" );
+
+    let shortName = "UpdateCEP"; 
+
+    let pd = { Endpoint: shortName, ceProject: ceProject }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
@@ -545,6 +554,7 @@ exports.rewritePAct     = rewritePAct;
 
 exports.refreshLinkageSummary = refreshLinkageSummary;
 exports.updateLinkageSummary  = updateLinkageSummary;
+exports.updateCEPHostParts    = updateCEPHostParts;
 
 exports.getRaw       = getRaw; 
 exports.getPRaws     = getPRaws;

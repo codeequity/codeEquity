@@ -105,7 +105,6 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
-		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		let project = raw.data.node;
 		let statusId = -1;
 
@@ -213,7 +212,6 @@ async function cardIssue( authData, pid, issDat ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		if( !utils.validField( ret.data, "addProjectV2ItemById" )) { console.log( "Not seeing card data?", ret );  }	    
 		issueData[2] = ret.data.addProjectV2ItemById.item.id;
 		console.log( authData.who, " .. issue added to project, pv2ItemId:", issueData[2] );
@@ -263,20 +261,17 @@ async function createIssue( authData, repoNode, pid, issue ) {
     let queryJ    = JSON.stringify({ query, variables });
 
     try {
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, true )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
-		if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
-		    console.log( authData.who, "WARNING. Issue not created.", issue, ret.errors );
-		    ret.status = 422; 
-		    throw ret; 
-		}
 		issueData[0] = ret.data.createIssue.issue.id;
 		issueData[1] = ret.data.createIssue.issue.number;
 	    });
     }
-    catch( e ) {issueData = await ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, pid, issue ); }
-
+    catch( e ) {
+	if( e.status == 422 ) { console.log( authData.who, "WARNING. Issue not created.", issue, e.errors ); }
+	issueData = await ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, pid, issue );
+    }
+    
     if( pid !== -1 ) { issueData = await cardIssue( authData, pid, issueData ); }
     console.log( authData.who, " .. issue created, issueData:", issueData );
     
@@ -322,7 +317,6 @@ async function getIssues( authData, repoNodeId ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
-		if( raw.status != 200 ) { throw raw; }
 		let items = raw.data.node.issues.edges;
 		assert( items.length <= 99, "Need to paginate getIssues." );
 		for( let i = 0; i < items.length; i++ ) {
@@ -370,7 +364,6 @@ async function getFullIssue( authData, issueId ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		if( !utils.validField( ret.data, "node" ))                    { return issue; }  // no such issue, can be checking existence, not an error.
 		issue = ret.data.node;
 		if( issue.assignees.edges.length > 99 ) { console.log( authData.who, "WARNING.  Large number of assignees.  Ignoring some." ); }
@@ -396,7 +389,6 @@ async function updateIssue( authData, issueId, field, newValue ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		console.log( authData.who, "updateIssue done" );
 	    });
     }
@@ -487,18 +479,12 @@ async function remAssignee( authData, issueId, aNodeId ) {
     
     let variables = {"id": issueId, "adds": [aNodeId] };
     let queryJ    = JSON.stringify({ query, variables });
-
-    try {
-	let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ );
-
-	// GH is not returning proper status code on failure here as of 10/23
-	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
-	    console.log( authData.who, "WARNING. Assignee(s) not removed.", issueId, aNodeId, ret.errors );
-	    ret.status = 422; // Bad semantics.. issue id incorrect?
-	    throw ret; 
-	}
+    
+    try { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, true );  }
+    catch( e ) {
+	if( e.status == 422 ) { console.log( authData.who, "WARNING. Assignee(s) not removed.", issueId, aNodeId, e.errors ); }
+	await ghUtils.errorHandler( "remAssignee", e, remAssignee, authData, issueId, aNodeId );
     }
-    catch( e ) { await ghUtils.errorHandler( "remAssignee", e, remAssignee, authData, issueId, aNodeId ); }
 }
 
 // Note.. unassigned is normal for plan, abnormal for inProgress, not allowed for accrued.
@@ -526,7 +512,6 @@ async function getAssignees( authData, issueId ) {
 	try {
 	    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 		.then( raw => {
-		    if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		    let assigns = raw.data.node.assignees;
 		    for( let i = 0; i < assigns.edges.length; i++ ) {
 			let a = assigns.edges[i].node;
@@ -549,17 +534,15 @@ async function transferIssue( authData, issueId, newRepoNodeId) {
 
     let ret = -1;
     try {
-	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
-	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
-	    console.log( authData.who, "WARNING. Issue not transferred.", issueId, ret.errors );
-	    ret.status = 422; 
-	    throw ret;
-	}
+	ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, true );
 	assert( utils.validField( ret.data.transferIssue, "issue" ) );
 	ret = ret.data.transferIssue.issue;
 	// console.log( issueId, newRepoNodeId, ret, ret.data.transferIssue.issue );
     }
-    catch( e ) { ret = await ghUtils.errorHandler( "transferIssue", e, transferIssue, authData, issueId, newRepoNodeId ); }
+    catch( e ) {
+	if( e.status == 422 ) { console.log( authData.who, "WARNING. Issue not transferred.", issueId, e.errors ); }
+	ret = await ghUtils.errorHandler( "transferIssue", e, transferIssue, authData, issueId, newRepoNodeId );
+    }
     return ret;
 }
 
@@ -580,7 +563,6 @@ async function createLabel( authData, repoNode, name, color, desc ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		if( typeof ret.errors !== 'undefined' ) { console.log( authData.who, "WARNING. Label not created", ret.errors ); }
 		else {
 		    // console.log( authData.who, " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
@@ -614,7 +596,6 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		let labels = ret.data.node.labels;
 		if( typeof labels === 'undefined' ) { return labelRes; }
 		
@@ -650,7 +631,6 @@ async function getLabels( authData, issueId ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		if( !utils.validField( ret.data, "node" ) || !utils.validField( ret.data.node, "labels" )) { return labels; }
 		let raw    = ret.data.node.labels;
 		
@@ -751,16 +731,11 @@ async function removeLabel( authData, labelNodeId, issueId ) {
     let variables = {"labelIds": [labelNodeId], "labelableId": issueId };
     let queryJ    = JSON.stringify({ query, variables });
 
-    try {
-	let ret = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); 
-	// GH is not returning proper status code on failure here as of 10/23
-	if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
-	    console.log( authData.who, "WARNING. Label(s) not removed.", issueId, labelNodeId, ret.errors );
-	    ret.status = 422; 
-	    throw ret; 
-	}
+    try { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, true );  }
+    catch( e ) {
+	if( e.status == 422 ) { console.log( authData.who, "WARNING. Label(s) not removed.", issueId, labelNodeId, e.errors ); }
+	await ghUtils.errorHandler( "removeLabel", e, removeLabel, authData, labelNodeId, issueId );
     }
-    catch( e ) { await ghUtils.errorHandler( "removeLabel", e, removeLabel, authData, labelNodeId, issueId ); }
     return true;
 }
     
@@ -841,7 +816,6 @@ async function createProject( authData, ownerNodeId, repoNodeId, title, body ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		if( utils.validField( ret, "data" ) && utils.validField( ret.data, "createProjectV2" ) && utils.validField( ret.data.createProjectV2, "projectV2" ))
 		{
 		    pid = ret.data.createProjectV2.projectV2.id;
@@ -884,7 +858,6 @@ async function createCustomField( authData, fieldName, pid, sso ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( ret => {
 		console.log( "Result", ret );	    
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		retVal = ret;
 	    });
     }
@@ -907,7 +880,6 @@ async function cloneFromTemplate( authData, ownerId, sourcePID, title ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( ret => {
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		if( !utils.validField( ret.data, "copyProjectV2" )) { console.log( "Not seeing new project?", ret ); }
 		console.log( "Result", ret, ret.data.copyProjectV2.projectV2.id );
 		retVal = ret.data.copyProjectV2.projectV2.id;
@@ -939,7 +911,6 @@ async function createColumnTest( authData, pid, colId, name ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
 		console.log( "Result", ret );
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		retVal = true;
 	    });
     }
@@ -964,7 +935,6 @@ async function deleteColumn( authData, newValue ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
 		console.log( "Result", ret );
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		retVal = true;
 	    });
     }
@@ -990,7 +960,6 @@ async function clearColumn( authData, newValue ) {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( ret => {
 		console.log( "Result", ret );
-		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		retVal = true;
 	    });
     }
@@ -1030,12 +999,11 @@ async function getCard( authData, cardId ) {
 		    retVal = -1;
 		    return -1;
 		}
-		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		let card = raw.data.node;
 		retVal.cardId      = cardId;                        
-		retVal.pid      = card.project.id;
-		retVal.issueNum    = card.content.number; 
-		retVal.issueId     = card.content.id;
+		retVal.pid         = card.project.id;
+		retVal.issueNum    = utils.validField( card, "content" ) ? card.content.number : -1;
+		retVal.issueId     = utils.validField( card, "content" ) ? card.content.id     : -1;
 		if( utils.validField( card, "fieldValueByName" ) ) {
 		    retVal.statusId    = card.fieldValueByName.field.id;     // status field node id,          i.e. PVTSSF_*
 		    retVal.columnId    = card.fieldValueByName.optionId;     // single select value option id, i.e. 8dc*
@@ -1074,7 +1042,6 @@ async function getCardFromIssue( authData, issueId ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
 	    .then( raw => {
-		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		let issue = raw.data.node;
 		retVal.issueId     = issue.id;
 		retVal.issueNum    = issue.number;
@@ -1125,17 +1092,13 @@ async function moveCard( authData, pid, itemId, fieldId, value ) {
 
     let ret = -1;
     try {
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	    .then( r => {
-		ret = r;
-		if( ret.status == 200 && typeof ret.errors !== 'undefined' ) {
-		    console.log( authData.who, "WARNING. Move card failed.", itemId, fieldId, value, ret.errors );
-		    ret.status = 422; 
-		    throw ret;
-		}
-	    });
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, true )
+	    .then( r => { ret = r; });
     }
-    catch( e ) { ret = await ghUtils.errorHandler( "moveCard", e, moveCard, authData, pid, itemId, fieldId, value ); }
+    catch( e ) {
+	if( e.status == 422 ) { console.log( authData.who, "WARNING. Move card failed.", itemId, fieldId, value, e.errors ); }
+	ret = await ghUtils.errorHandler( "moveCard", e, moveCard, authData, pid, itemId, fieldId, value );
+    }
 
     // success looks like: { data: { updateProjectV2ItemFieldValue: { clientMutationId: null } }, status: 200 }
     return ret;
@@ -1258,16 +1221,11 @@ async function removeCard( authData, pid, cardId ) {
     let variables = {"pid": pid, "itemId": cardId };
     let queryJ    = JSON.stringify({ query, variables });
 
-    try { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
-	  .then( r => {
-	      if( r.status == 200 && typeof r.errors !== 'undefined' ) {
-		  console.log( authData.who, "WARNING. Remove card failed.", pid, cardId, r.errors );
-		  r.status = 422; 
-		  throw r;
-	      }
-	  });
-	}
-    catch( e ) { await ghUtils.errorHandler( "removeCard", e, removeCard, authData, pid, cardId ); }
+    try { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, true ); }
+    catch( e ) {
+	if( e.status == 422 ) { console.log( authData.who, "WARNING. Remove card failed.", pid, cardId, e.errors ); }
+	await ghUtils.errorHandler( "removeCard", e, removeCard, authData, pid, cardId );
+    }
 
     // Successful post looks like the following. Could provide mutationId for tracking: { data: { deleteProjectV2Item: { clientMutationId: null } } }
     return true;
@@ -1412,7 +1370,6 @@ async function getLabelIssues( authData, repoId, labelName, data, cursor ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
-		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		let label = utils.validField( raw.data.node, "label" ) ? raw.data.node.label : null;
 		if( typeof label !== 'undefined' && label != null ) {
 		    issues = label.issues;
@@ -1468,7 +1425,6 @@ async function getProjectIds( authData, repoFullName, data, cursor ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	.then( async (raw) => {
-	    if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 
 	    let repoId = raw.data.repository.id; 
 	    // Run this once only
@@ -1584,7 +1540,6 @@ async function findProjectByName( authData, orgLogin, userLogin, projName ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
-		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		let projects = [];
 		if( utils.validField( raw.data, "user" ))         { projects = raw.data.user.projectsV2.edges; }
 		if( utils.validField( raw.data, "organization" )) { projects = projects.concat( raw.data.organization.projectsV2.edges ); }
@@ -1616,7 +1571,6 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 	    .then( async (raw) => {
-		if( !utils.validField( raw, "status" ) || raw.status != 200 ) { throw raw; }
 		// console.log( "FindProjectByRepo in createUnclaimed", raw );
 		let projects = [];
 		if( utils.validField( raw.data.node, "projectsV2" )) { projects = raw.data.node.projectsV2.edges; }
@@ -1652,7 +1606,6 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 	try {
 	    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
 		.then( ret => {
-		    if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		    res = ret;
 		});
 	}

@@ -123,6 +123,10 @@ function getJobSummary( newStamp, jobData, headers, locator ) {
     jobData.actor  = jobData.reqBody.sender.login;
 
     jobData.event  = headers['x-github-event'];
+
+    // Nothing to do for pull requests
+    if( jobData.event == "pull_request" ) { console.log( "Pull request" ); return retVal; }
+
     if( jobData.event == "issues" ) { jobData.event = "issue"; }
 
     // pv2Notice.  If not this, we have a content notice, which could be GH2 or GHC.
@@ -423,7 +427,7 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 	    await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp );
 	}
 	else {
-	    console.log( "Error.  githubRouter switcher routing NYI", jd.action );
+	    console.log( "Note.  githubRouter switcher routing NYI", jd.action );
 	    ceRouter.getNextJob( authData, res );	
 	}
     }

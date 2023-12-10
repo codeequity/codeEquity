@@ -39,9 +39,8 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 
     console.log( authData.who, "delIss: DELETE FOR", pd.issueId, link.hostProjectId );
 
-    console.log( authData.who, "Delete situated issue.. first manage card" );
     await cardHandler.deleteCard( authData, ghLinks, ceProjects, pd, link.hostCardId, true );
-    console.log( authData.who, "  .. done with card." );
+    // console.log( authData.who, "  .. done with card." );
     
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
     // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
@@ -443,7 +442,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'edited':
-	// XXXXXXXXXXXXXXXXX  undone..!  untested.
 	// Only need to catch title edits, and only for situated.
 	// Will get this notice for a transfer, safe to ignore.
 	{
@@ -457,9 +455,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		if( link !== -1 && link.hostIssueName != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
+		    // XXX record reject change notice?  rules for confirm reject?  check consistency.
 		    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
-			ghSafe.updateTitle( authData, pd.Owner, pd.Repo, pd.issueNum, link.hostIssueName );
+			ghV2.updateTitle( authData, pd.issueId, link.hostIssueName );
 		    }
 		    else {
 			assert( pd.reqBody.changes.title.from == link.hostIssueName );
@@ -529,6 +528,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    assert( links.length == 1 );
+	    // console.log( authData.who, "old link", links[0] );
 
 	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, oldIssueId, false );
 
@@ -563,13 +563,25 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // To get here, cep cep world, either peq or carded.  both need to update link (remove/add)
 	    let newLink = { ...links[0] };
+	    newLink.ceProjectId  = newCEP; 
 	    newLink.hostIssueId  = newIssueId;
 	    newLink.hostIssueNum = newIssueNum;
 	    newLink.hostRepoName = newRepo;
 	    newLink.hostRepoId   = newRepoId;
+	    // XXX this link happens in every case above?
 	    ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
-	    ghLinks.addLinkage( authData, newCEP, newLink );
+
+	    // wait for this, since linkProject rebuilds internal ceProjects from aws
+	    // CEP to CEP, no need to provide cepDetails
+	    await ghLinks.linkRepo( authData, ceProjects, newCEP, newRepoId, newRepo );
 	    
+	    // wait for this, PNP needs locs.
+	    // (e.g. from testing, issue: CT Blast in cep:serv repo:ari proj:ghOps  goes to  cep:hak repo:ariAlt proj:ghOps with new issue_id)
+	    await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId, newRepoId );
+
+	    // Do this after linking project, so good link doesn't interfere with badlinks check during linkProject.
+	    ghLinks.addLinkage( authData, newCEP, newLink );
+
 	    if( peq !== -1 ) {
 		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active
@@ -577,6 +589,30 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, oldCEP,
 					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer",
 					  utils.getToday(), pd.reqBody );
+
+		// Deactivate old peq, can't do much with old ID.
+		awsUtils.removePEQ( authData, peq.PEQId );
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, oldCEP,
+					  config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], "",
+					  utils.getToday(), pd.reqBody );
+		
+		// add new peq so we can operate on it normally in case of server restart before ingest
+		// link is all set, including card info.
+		// use PNP, not fromCard.  Need to form link, overwrite some pd data, and provide issue.
+		// NOTE. nearly all work in PNP is duplicated or wasted, but if build out transfer case, will want
+		//       this template.
+
+		let content                      = {};           // don't getIssue here, would have to wait a long time for it for fully form in GH
+		content.title                    = newLink.hostIssueName;
+		content.number                   = newIssueNum;
+		content.repository               = {};
+		content.repository.id            = newRepoId;
+		content.repository.nameWithOwner = newRepo;
+		pd.peqValue                      = peq.Amount;
+		pd.peqType                       = peq.PeqType;
+		pd.ceProjectId                   = newCEP;
+		pd.issueId                       = newIssueId;
+		gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, newLink, { havePeq: true, pact: "justAdd" } );
 	    }
 	    
 	}
