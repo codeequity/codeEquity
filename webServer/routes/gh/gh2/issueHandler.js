@@ -568,23 +568,20 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    newLink.hostIssueNum = newIssueNum;
 	    newLink.hostRepoName = newRepo;
 	    newLink.hostRepoId   = newRepoId;
+	    // XXX this link happens in every case above?
 	    ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
-	    // console.log( authData.who, "Adding newLink", newLink );
+
+	    // wait for this, since linkProject rebuilds internal ceProjects from aws
+	    // CEP to CEP, no need to provide cepDetails
+	    await ghLinks.linkRepo( authData, ceProjects, newCEP, newRepoId, newRepo );
+	    
+	    // wait for this, PNP needs locs.
+	    // (e.g. from testing, issue: CT Blast in cep:serv repo:ari proj:ghOps  goes to  cep:hak repo:ariAlt proj:ghOps with new issue_id)
+	    await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId, newRepoId );
+
+	    // Do this after linking project, so good link doesn't interfere with badlinks check during linkProject.
 	    ghLinks.addLinkage( authData, newCEP, newLink );
 
-	    // New ceProject, hostProject connection, possibly new loc.
-	    // If it is new, this is sufficient.  If it is not, this is redundant.
-	    let newLoc = {};
-	    newLoc.ceProjectId     = newCEP; 
-	    newLoc.hostProjectId   = newLink.hostProjectId;
-	    newLoc.hostProjectName = newLink.hostProjectName;
-	    newLoc.hostColumnId    = newLink.hostColumnId;
-	    newLoc.hostColumnName  = newLink.hostColumnName;
-	    newLoc.hostUtility     = newLink.hostUtility;
-	    newLoc.active          = "true";
-	    
-	    ghLinks.addLoc( authData, newLoc, true );
-	    
 	    if( peq !== -1 ) {
 		
 		// Only record PAct for peq.  PEQ may be removed, so don't require Active

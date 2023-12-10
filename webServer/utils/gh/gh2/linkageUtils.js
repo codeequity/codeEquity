@@ -29,6 +29,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
     await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR );
     
     // Get all hostRepoIds that belong to the ceProject
+    if( !utils.validField( ceProject, "HostParts" ) || !utils.validField( ceProject.HostParts, "hostRepositories" ) ) { return { links: [], locs: [] }; }
     let hostRepoIds = ceProject.HostParts.hostRepositories.map( repo => repo.repoId );
     
     // Find all hostProjects that provide a card home for a peq in the cep
@@ -91,13 +92,9 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProject
     await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	.catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
 
-    // Should be no this.links for repoId, hostProjectId. 
+    // Should be no this.links for repoId, hostProjectId.   Hmmm.  False.
     // There may be links for ceProjId, hostProjId, for example unclaimed may be linked to repo1 not repo2, and now are linking to repo2.
-    let badLinks = rLinks.filter( bl => bl.hostRepoId == repoId && repoId != -1 );
-    if( badLinks.length != 0 ) {
-	console.log( badLinks );
-	assert( badLinks.length == 0 );
-    }
+    // Can't test rLinks for the new repoId.  If this is a transfer result, GH may have already placed the new issue.
 
     let promises = [];
     

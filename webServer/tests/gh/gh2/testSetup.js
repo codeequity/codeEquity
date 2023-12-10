@@ -20,6 +20,9 @@ const gh2tu    = require( './gh2TestUtils' );
 // Adding a small sleep in each gh2tu.make* - GH seems to get confused if requests come in too fast
 async function createPreferredCEProjects( authData, testLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
+
+    // First build up aws CEProjects hostRepositories for repo: ceTesterAri
+    await gh2tu.linkRepo( authData, td.ceProjectId, td.GHRepoId, td.GHFullName, td.cepDetails );
     
     // Modules: softwareContr, businessOps, unallocated
     td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );

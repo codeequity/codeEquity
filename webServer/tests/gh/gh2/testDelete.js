@@ -54,8 +54,11 @@ async function clearCEProj( authData, testLinks, pd ) {
     console.log( "Remove links", pd.ceProjectId );
     await tu.remLinks( authData, testLinks, pd.ceProjectId, -1 );
     let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId } );
+    let locs   = await tu.getLocs ( authData, testLinks, { "ceProjId": pd.ceProjectId } );
     if( links !== -1 ) { console.log( links ); }
     assert( links === -1 );
+    if( locs !== -1 ) { console.log( locs ); }
+    assert( locs === -1 );
     
     // PEQs
     // XXX clean, if passing in larger test setups.
@@ -88,6 +91,10 @@ async function clearUnclaimed( authData, testLinks, pd ) {
 	    }
 	}
     }
+
+    // CEProjects
+    gh2tu.unlinkRepo( authData, pd.ceProjectId, pd.GHRepoId );
+    
 }
 
 async function remIssueHelp( authData, testLinks, pd ) {
@@ -155,6 +162,9 @@ async function clearRepo( authData, testLinks, pd ) {
     // Note: awaits may not be needed here.  No dependencies... yet...
     // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
 
+    // CEProjects
+    gh2tu.unlinkRepo( authData, pd.ceProjectId, pd.GHRepoId );
+    
     // PActions raw and otherwise
     // Note: bot, ceServer and actor may have pacts.  Just clean out all.
     let pacts = await pactsP;
@@ -162,7 +172,7 @@ async function clearRepo( authData, testLinks, pd ) {
     console.log( "Dynamo bot PActIds", pd.GHFullName, pactIds );
     let pactP  = awsUtils.cleanDynamo( authData, "CEPEQActions", pactIds );
     let pactRP = awsUtils.cleanDynamo( authData, "CEPEQRaw", pactIds );
-
+    
     
     // Get all peq labels in repo for deletion... dependent on peq removal first.
     console.log( "Removing all PEQ Labels.", pd.GHFullName );

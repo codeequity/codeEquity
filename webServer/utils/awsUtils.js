@@ -348,9 +348,9 @@ async function rewritePAct( authData, postData ) {
 
 // locData can be from GQL, or linkage
 async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) {
-    // console.log( authData.who, "Refreshing linkage summary", authData.api, ceProjId, locData.length );
     console.log( authData.who, "Refreshing linkage summary", ceProjId, locData.length );
-
+    if( locData.length < 1 ) { return; }
+    
     if( gql ) {
 	for( var loc of locData ) {
             loc.active = "true";
@@ -379,6 +379,15 @@ async function updateLinkageSummary( authData, ceProjId, loc ) {
     let shortName = "UpdateLinkage"; 
 
     let pd = { "Endpoint": shortName, "newLoc": newLoc }; 
+    return await wrappedPostAWS( authData, shortName, pd );
+}
+
+async function updateCEPHostParts( authData, ceProject ) {
+    console.log( authData.who, "Updating hostparts" );
+
+    let shortName = "UpdateCEP"; 
+
+    let pd = { Endpoint: shortName, ceProject: ceProject }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
@@ -545,6 +554,7 @@ exports.rewritePAct     = rewritePAct;
 
 exports.refreshLinkageSummary = refreshLinkageSummary;
 exports.updateLinkageSummary  = updateLinkageSummary;
+exports.updateCEPHostParts    = updateCEPHostParts;
 
 exports.getRaw       = getRaw; 
 exports.getPRaws     = getPRaws;

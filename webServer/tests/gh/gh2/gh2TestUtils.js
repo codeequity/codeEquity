@@ -626,6 +626,17 @@ async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
+async function linkRepo( authData, ceProjId, rNodeId, rName, cepDetails ) {
+    // force linking in ceServer:ghLinks, not local ghLinks
+    console.log( "gh2tu:Linking repo", ceProjId, rNodeId, rName );
+    await tu.linkRepo( authData, ceProjId, rNodeId, rName, cepDetails );
+}
+
+async function unlinkRepo( authData, ceProjId, rNodeId ) {
+    // force linking in ceServer:ghLinks, not local ghLinks
+    console.log( "gh2tu:unlinking repo", ceProjId, rNodeId );
+    await tu.unlinkRepo( authData, ceProjId, rNodeId );
+}
 
 async function cloneFromTemplate( authData, oid, spid, title ) {
     let newPID = await ghV2.cloneFromTemplate( authData, oid, spid, title );
@@ -2243,6 +2254,8 @@ exports.createCustomField = createCustomField;   // XXX speculative.  useful?
 // exports.makeProject     = makeProject;        // XXX NYI
 exports.remProject      = remProject;
 exports.unlinkProject   = unlinkProject;
+exports.linkRepo        = linkRepo;
+exports.unlinkRepo      = unlinkRepo;
 exports.makeColumn      = makeColumn;
 exports.createColumnTest    = createColumnTest;
 exports.updateProject   = updateProject;

@@ -116,6 +116,9 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     await gh2tu.transferIssue( authDataX, issueX.id, repo.id );
     await utils.sleep( 2000 );
 
+    // Note: at this point, locs for both CEProjects will contain Cross Proj and ghOps.  This is because
+    //       projects are still linked.
+    
     const newGHIssue = await gh2tu.findIssueByName( authData, td, issDatX[3] );
     const newXIssue  = await gh2tu.findIssueByName( authDataX, tdX, issDat[3] );
 
@@ -322,6 +325,10 @@ async function runTests( flutterTest, authData, authDataX, authDataM, testLinks,
 
     let testStatus = [ 0, 0, []];
 
+    // First build up aws CEProjects hostRepositories for repo: ceTesterAriAlt, ceTesterConnie
+    await gh2tu.linkRepo( authDataM, tdM.ceProjectId, tdM.GHRepoId, tdM.GHFullName, tdM.cepDetails );
+    await gh2tu.linkRepo( authDataX, tdX.ceProjectId, tdX.GHRepoId, tdX.GHFullName, tdX.cepDetails );
+    
     let t1 = await testCrossRepo( flutterTest, authData, authDataX, testLinks, td, tdX );
     console.log( "\n\nCross Repo test complete." );
     await utils.sleep( 5000 );

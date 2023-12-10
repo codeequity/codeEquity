@@ -19,7 +19,7 @@ async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, re
 	retVal = ceNotification;
     }
     else if( reqBody.Request == "purgeLinks" ) {
-	retVal = ghLinks.purge( reqBody.CEProjectId, reqBody.HostProjectId, {"linksOnly": true} );
+	retVal = ghLinks.purge( reqBody.CEProjectId, reqBody.HostProjectId );
     }
     else if( reqBody.Request == "purgeJobs" ) {
 	// NOTE, this removes ALL pending jobs for FullName, including user, server and tester jobs.
@@ -30,6 +30,12 @@ async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, re
     }
     else if( reqBody.Request == "unlinkProject" ) {
 	retVal = await ghLinks.unlinkProject( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.pid, reqBody.rNodeId );
+    }
+    else if( reqBody.Request == "linkRepo" ) {
+	retVal = await ghLinks.linkRepo( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.rNodeId, reqBody.rName, reqBody.cepDetails );
+    }
+    else if( reqBody.Request == "unlinkRepo" ) {
+	retVal = await ghLinks.unlinkRepo( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.rNodeId );
     }
 	
     return res

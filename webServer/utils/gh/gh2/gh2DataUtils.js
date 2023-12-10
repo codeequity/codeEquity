@@ -192,6 +192,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 
     origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
+    
     // Don't wait.
     awsUtils.setPopulated( authData, pd.ceProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );
