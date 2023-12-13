@@ -17,6 +17,7 @@ async function createFlatProject( authData, testLinks, td ) {
     td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, FLAT_PROJ, "" );
     let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Eggs" );
     let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Bacon" );
+    // Note: this col is used for testing in testComponents:testProjColMods
     let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, config.PROJ_COLS[config.PROJ_PLAN] );
 
     // i.e. draft issues
@@ -41,7 +42,6 @@ async function testFlatProject( authData, testLinks, td ) {
 	if( link.hostProjectName == FLAT_PROJ    ||
 	    link.hostProjectID   == td.masterPID ||
 	    link.hostColumnName  == "Eggs"       ||
-	    link.hostColumnName  == "Bacon"      ||
 	    link.hostColumnName  == "Bacon"      ||
 	    link.hostCardName    == "Parsley"    ||
 	    link.hostCardName    == "Sage"       ||

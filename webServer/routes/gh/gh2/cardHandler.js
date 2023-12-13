@@ -242,7 +242,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    }	    
 	    let peqVal = ghUtils.parseLabelDescr( labelDat );
 	    let postpone = ( links === -1 && peqVal > 0 );
-	    if( postpone > 0 && !( issue.title == "A special populate issue" ) ) {
+	    if( postpone > 0 ) {
 		console.log( authData.who, "issue:label has not yet arrived.  Postponing create card", pd.issueId, issue.title );
 		return "postpone";
 	    }

@@ -12,6 +12,8 @@ const locData  = require( './locData' );
 const gh2LU    = require( './gh/gh2/linkageUtils' );
 const ghcLU    = require( './gh/ghc/linkageUtils' );
 
+// For populate.
+const gh2DUtils = require('./gh/gh2/gh2DataUtils' );
 
 // Linkage table contains all identifying info related to situated issues or better.
 // linkage is { issueId: { cardId: {} }}
@@ -35,8 +37,10 @@ class Linkage {
 
 
     // For each ceProject
-    async initOneCEProject( authData, entry ) {
+    async initOneCEProject( authData, entry, preferredRepoId ) {
 
+	preferredRepoId = typeof preferredRepoId === 'undefined' ? -1 : preferredRepoId;
+	
 	let host  = utils.validField( entry, "HostPlatform" )       ? entry.HostPlatform                    : "";
 	let pms   = utils.validField( entry, "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
 	
@@ -50,7 +54,7 @@ class Linkage {
 	// Init repo with CE_ACTOR, which is typically a builder account that needs full access.
 	if( host == config.HOST_GH ) {
 	    if(      pms == config.PMS_GHC ) { res = await ghcLU.buildHostLinks( authData, this, entry, baseLinks, locData ); }
-	    else if( pms == config.PMS_GH2 ) { res = await gh2LU.buildHostLinks( authData, this, entry, baseLinks, locData ); }
+	    else if( pms == config.PMS_GH2 ) { res = await gh2LU.buildHostLinks( authData, this, entry, preferredRepoId, baseLinks, locData ); }
 
 	    baseLinks = res.links;
 	    locData   = res.locs; 
@@ -499,7 +503,8 @@ class Linkage {
 	return true;
     }
 
-    // To attach major components to ceProject
+    // To attach major components to ceProject in aws.  Also, manage links, locs, resolve as needed
+    // XXX Because of gh2DUtils, should move this to gh2lu
     async linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails ) {
 	console.log( "Link repo", ceProjId, repoId, repoName );
 	if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
@@ -508,12 +513,22 @@ class Linkage {
 	}
 	
 	let cep = ceProjects.findById( ceProjId );
+	
+	// TESTING ONLY!  Outside testing, ceFlutter controls all access to this, will never need initBlank.
 	if( typeof cep === 'undefined' ) {
+	    let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO];
+	    let repoShort    = repoName.split('/');
+	    repoShort        = repoShort[ repoShort.length - 1 ]; 
+	    assert( testingRepos.includes( repoShort ));
 	    assert( typeof cepDetails !== 'undefined' );
 	    cep = ceProjects.initBlank( ceProjId, cepDetails );
 	}
-	let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );
 
+	// Expensive.  Handle resolve, links, locs.
+	await gh2DUtils.populateCELinkage( authData, this, { ceProjectId: ceProjId, repoId: repoId } );
+
+	// Update AWS, ceProjects (via cep)
+	let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );
 	cep.HostParts.hostRepositories = hostRepos;
 	return await awsUtils.updateCEPHostParts( authData, cep );
     }
@@ -525,19 +540,38 @@ class Linkage {
 	    console.log( authData.who, "WARNING.  Attempting to unlink a repo from a ceProject, one of which is empty.", ceProjId, repoId );
 	    return false;
 	}
-	
+
 	let cep = ceProjects.findById( ceProjId );
 	if( typeof cep === 'undefined' ) { return true; }
+
+	// XXX hmm.  Expensive.
+	// TESTING ONLY!  This will be executed by ceFlutter before issueing unlink.
+	// We do not allow unlink repo if it contains active peqs.
+	const query = { CEProjectId: ceProjId, Active: "true" };
+	let peqs  = await awsUtils.getPeqs( authData, query );
+	peqs = peqs == -1 ? [] : peqs;
+	for( const peq of peqs ) {
+	    let link = await this.getLinks( authData, { "ceProjId": ceProjId, "issueId": peq.HostIssueId } );
+	    if( link != -1 ) { console.log( link ); }
+	    assert( link == -1 );
+	}
+	
+	// remove links.  Locs can stay in place, no harm.  Locs only removed with unlinkProject.
+	let links = await this.getLinks( authData, { "ceProjId": ceProjId, "repoId": repoId } );
+	links = -1 ? [] : links;
+	for( const link of links ) {
+	    this.removeLinkage( { authData: authData, ceProjId: ceProjId, issueId: link.hostIssueId } );
+	}
+	
 	let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, config.EMPTY, { operation: "remove" } );
 
-	// XXX remove locs/links as well
 	if( hostRepos.length < 1 ) {
 	    delete cep.HostParts;
-	    cep.Populated = false;
 	    ceProjects.remove( ceProjId );
 	}
-	else { cep.HostParts.hostRepositories = hostRepos; }
+	else { cep.HostParts.hostRepositories = hostRepos; }  // updates ceProjects
 
+	// Update AWS
 	return await awsUtils.updateCEPHostParts( authData, cep );
     }
 

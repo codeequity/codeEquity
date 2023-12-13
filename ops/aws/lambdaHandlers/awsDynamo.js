@@ -81,7 +81,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "GetCEUID")       { resultPromise = getCEUIDFromHost( rb.HostUserName ); }           // return varies on no_content
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
-    else if( endPoint == "CheckSetHostPop")  { resultPromise = checkSetHostPop( rb.CEProjectId, rb.Set ); }
+    else if( endPoint == "CheckHostPop")   { resultPromise = checkHostPop( rb.CEProjectId, rb.RepoId ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.HostUserName, rb.CEProjectId, rb.isAlloc ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.HostUserName, rb.CEProjectId ); }
@@ -99,7 +99,6 @@ export function handler( event, context, callback) {
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "UpdateCEP")      { resultPromise = putCEP( rb.ceProject ); }
-    else if( endPoint == "Depop")          { resultPromise = depopulate( rb.CEProjectId ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
     // else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
     // else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
@@ -602,28 +601,27 @@ async function putCEP( ceProject ) {
     return bsdb.send( putCmd ).then(() => success( true ));
 }
 
-async function checkSetHostPop( ceProjId, setVal ) {
+
+async function checkHostPop( ceProjId, repoId ) {
 
     let params = { TableName: 'CEProjects' };
-
-    if( setVal == "true" ) {
-	params.Key                       = { "CEProjectId": ceProjId };
-	params.UpdateExpression          = 'set Populated = :lockVal';
-	params.ExpressionAttributeValues = { ':lockVal': setVal };
-
-	const updateCmd = new UpdateCommand( params );
-	return bsdb.send( updateCmd ).then(() => success( true ));
-    }
-    else {
-	params.FilterExpression          = 'CEProjectId = :pid';
-	params.ExpressionAttributeValues = { ':pid': ceProjId };
-
-	let promise = paginatedScan( params );
-	return promise.then((res) => {
-	    if( res && res.length > 0 ) { return success( res[0].Populated ); }
-	    else                        { return success( false ); }
-	});
-    }
+    
+    params.FilterExpression          = 'CEProjectId = :pid';
+    params.ExpressionAttributeValues = { ':pid': ceProjId };
+    
+    let promise = paginatedScan( params );
+    return promise.then((res) => {
+	if( res && res.length > 0 ) {
+	    assert( res.length == 1 );
+	    let found = false;
+	    if( typeof res.HostParts !== 'undefined' && typeof res.HostParts.hostRepositories !== 'undefined' ) {
+		let repo = res.HostParts.hostRepositories.find( r => r.repoId == repoId );
+		if( typeof repo !== 'undefined' ) { found = true; }
+	    }
+	    return success( found );
+	}
+	else { return success( false ); }
+    });
 }
 
 
@@ -1288,22 +1286,9 @@ async function getHostA( uid ) {
 	let ceps = await getProjectStatus( hostAcc.CEProjectIds.concat( hostAcc.FutureCEProjects ) );  
 	console.log( "...working with ", ceps );
 	
-	hostAcc.ceProjs = ceps.map( cep => (cep == -1 || cep.Populated == "false") ? "false" : "true" );
+	hostAcc.ceProjs = ceps.map( cep => cep == -1 ? "false" : "true" );
     }
     return success( hostAccs );
-}
-
-async function depopulate( ceProjId ) {
-
-    let params = { TableName: 'CEProjects' };
-
-    params.Key                       = { "CEProjectId": ceProjId };
-    params.UpdateExpression          = 'set Populated = :f';
-    params.ExpressionAttributeValues = { ':f': false };
-
-    console.log( params );
-    const updateCmd = new UpdateCommand( params );    
-    return bsdb.send( updateCmd ).then(() => success( true ));
 }
 
 async function getHostProjs( query ) {

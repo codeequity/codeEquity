@@ -122,7 +122,7 @@ const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
 // server notification buffer size for testing
 const NOTICE_BUFFER_SIZE = 20;
 
-// XXX TEMP will go away
+// XXX TEMP will go away   GHC only.
 const POPULATE = "populate";
 
 

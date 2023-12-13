@@ -12,8 +12,11 @@ const ghV2      = require( './ghV2Utils' );
 
 // XXX is known host, and pms.  
 
-async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData ) {
 
+// If project has peq in CEP, then get all links, locs, then filter links out for those that are from repos associated with cep.
+// if repoId is provided, filter to pass only from that repo.  Locs will overwrite in this latter case.
+async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, baseLinks, locData ) {
+    
     let host  = utils.validField( ceProject, "HostPlatform" )       ? ceProject.HostPlatform                    : "";
     let org   = utils.validField( ceProject, "Organization" )       ? ceProject.Organization                    : "";
     let pms   = utils.validField( ceProject, "ProjectMgmtSys" )     ? ceProject.ProjectMgmtSys                  : "";
@@ -30,7 +33,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
     
     // Get all hostRepoIds that belong to the ceProject
     if( !utils.validField( ceProject, "HostParts" ) || !utils.validField( ceProject.HostParts, "hostRepositories" ) ) { return { links: [], locs: [] }; }
-    let hostRepoIds = ceProject.HostParts.hostRepositories.map( repo => repo.repoId );
+    let hostRepoIds = preferredRepoId == -1 ? ceProject.HostParts.hostRepositories.map( repo => repo.repoId ) : [preferredRepoId]; 
     
     // Find all hostProjects that provide a card home for a peq in the cep
     let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: ceProject.CEProjectId } );

@@ -40,14 +40,7 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
     await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );
 
-    // TRIGGER
-    let nbi1     = await gh2tu.makeIssue( authData, td, "A special populate issue", [] );
-    let card11   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.masterPID, mastCol1, nbi1[0], true );
-    let popLabel = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, config.POPULATE, -1 );
-    let nbiDat   = [nbi1[0], nbi1[1], card11.cardId, "A special populate issue"];
-    await gh2tu.addLabel( authData, popLabel.id, nbiDat );       // ready.. set... Go!
-    await utils.sleep( 1000 );
-    await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId ); 
+    await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId, td.GHRepoId ); 
     
     // softCont: dataSecurity, githubOps, unallocated
     await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
@@ -153,8 +146,8 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	if( !foundDSSub ) { console.log( dsPeqs, locs.hostColumnId ); }
 
 	// Check DYNAMO RepoStatus
-	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId );
-	subTest = tu.checkEq( pop, "true", subTest, "Repo status wrt populated" );
+	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId, td.GHRepoId );
+	subTest = tu.checkEq( pop, true, subTest, "Repo status wrt populated" );
 	
 	// Check GITHUB Labels
 	let peqLabels = await gh2tu.getLabels( authData, td );

@@ -157,11 +157,11 @@ async function populateCELinkage( authData, ghLinks, pd )
 {
     console.log( authData.who, "Populate CE Linkage start" );
     // Wait later
-    let origPop = awsUtils.checkPopulated( authData, pd.ceProjectId );
+    let origPop = awsUtils.checkPopulated( authData, pd.ceProjectId, pd.repoId );
 
     // XXX this does more work than is needed - checks for peqs which only exist during testing.
     const proj = await awsUtils.getProjectStatus( authData, pd.ceProjectId );
-    let linkage = await ghLinks.initOneCEProject( authData, proj );
+    let linkage = await ghLinks.initOneCEProject( authData, proj, pd.repoId );  // only init one repo
 
     // At this point, we have happily added 1:m issue:card relations to linkage table (no other table)
     // Resolve here to split those up.  Normally, would then worry about first time users being confused about
@@ -193,8 +193,6 @@ async function populateCELinkage( authData, ghLinks, pd )
     origPop = await origPop;  // any reason to back out of this sooner?
     assert( !origPop );
     
-    // Don't wait.
-    awsUtils.setPopulated( authData, pd.ceProjectId );
     console.log( authData.who, "Populate CE Linkage Done" );
     return true;
 }
@@ -307,7 +305,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // Don't wait
     // XXX remove this after ceFlutter initialization is in place
     if( pd.issueName != "A special populate issue" ) { 
-	awsUtils.checkPopulated( authData, pd.ceProjectId ).then( res => assert( res != -1 ));
+	awsUtils.checkPopulated( authData, pd.ceProjectId, pd.repoId ).then( res => assert( res != -1 ));
     }
     
     if( !havePeq && pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 

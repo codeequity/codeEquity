@@ -45,13 +45,6 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     let crossPid = await gh2tu.createProjectWorkaround( authDataX, tdX, "Cross Proj", "For testing transfers to other repos" );
     let crossCid = await gh2tu.makeColumn( authDataX, testLinks, tdX.ceProjectId, tdX.GHFullName, crossPid, "Cross Col" );
     
-    let issPopDat = await gh2tu.makeIssue( authDataX, tdX, "A special populate issue", [] );
-    let cardPop   = await gh2tu.makeProjectCard( authDataX, testLinks, tdX.ceProjectId, crossPid, crossCid, issPopDat[0] );
-    let popLabel  = await gh2tu.findOrCreateLabel( authDataX, tdX.GHRepoId, false, config.POPULATE, -1 );
-    let ipDat     = [issPopDat[0], issPopDat[1], cardPop.cardId, "A special populate issue" ];
-    await gh2tu.addLabel( authDataX, popLabel.id, ipDat );       
-    await utils.sleep( 1000 );
-
     const LAB = "704 " + config.PEQ_LABEL;
     let lab   = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LAB, 704 );
     let labX  = await gh2tu.findOrCreateLabel( authDataX, tdX.GHRepoId, false, LAB, 704 );
@@ -132,7 +125,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     issDatX[1] = newGHIssue.number;
 
     // issDatX now has new id, same card, and belongs to td's ceProject and repo.  Peqs have been deleted, and re-added.
-    // issDat still resides in githubOps, but now is part of tdx.ceProjectId.  This CEP does not have MASTER project, so projsub will not (should not) pick that up.
+    // issDat still resides in githubOps, but now is part of tdx.ceProjectId.  This CEP does not have MAIN_PROJECT, so projsub will not (should not) pick that up.
     //        i.e. pre-transfer, peq proj sub is SoftCont:githubOps:NS, post transfer it is githubOps:stripes.
     stripeLoc.projSub = ["Github Operations", "Stripes" ];
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, stripeLoc, issDat, card, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: tdX.ceProjectId} );    
@@ -203,14 +196,6 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     // Add populate label to testProject2, to invoke repostatus. 
     let multiPid = await gh2tu.createProjectWorkaround( authDataM, tdM, "Multi Proj", "For testing request interleaving" );
     let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.GHFullName, multiPid, "Multi Col" );
-
-    // Do NOT create special populate.  populateCE is now done ceProject-wide, not repo-wide.  ceTesterConnie, together with ceTesterAri are both in same CEP, has already populated.
-    // let issPopDat = await gh2tu.makeIssue( authDataM, tdM, "A special populate issue", [] );
-    // let cardPop   = await gh2tu.makeProjectCard( authDataM, testLinks, tdM.ceProjectId, multiPid, multiCid, issPopDat[0] );
-    // let popLabel  = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, config.POPULATE, -1 );
-    // let ipDat     = [issPopDat[0], issPopDat[1], cardPop.cardId, "A special populate issue" ];
-    // await gh2tu.addLabel( authDataM, popLabel.id, ipDat );       
-    // await utils.sleep( 1000 );
 
     // Labels, Assignees & Locs
     const LAB    = "903 " + config.PEQ_LABEL;

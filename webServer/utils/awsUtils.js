@@ -321,22 +321,18 @@ async function recordPEQAction( authData, ceUID, hostUserName, ceProjId, verb, a
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
-async function checkPopulated( authData, ceProjId ) {
-    // console.log( authData.who, "check populated: ", ceProjId );
+async function checkPopulated( authData, ceProjId, repoId ) {
+    // console.log( authData.who, "check populated: ", ceProjId, repoId );
 
-    let shortName = "CheckSetHostPop";
-    let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "false" };
+    let shortName = "CheckHostPop";
+    let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "RepoId": repoId };
     
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
 async function setPopulated( authData, ceProjId ) {
-    console.log( authData.who, "Set populated: ", ceProjId );
-
-    let shortName = "CheckSetHostPop";
-    let postData = { "Endpoint": shortName, "CEProjectId": ceProjId, "Set": "true" };
-    
-    return await wrappedPostAWS( authData, shortName, postData );
+    console.log( authData.who, "Set populated is GHC only.  Disabled.: ", ceProjId );
+    assert( false );
 }
 
 async function rewritePAct( authData, postData ) {
@@ -491,15 +487,6 @@ async function getStoredLocs( authData, ceProjId ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-// UNIT TESTING ONLY!!
-async function unpopulate( authData, ceProjId ) {
-    console.log( authData.who, "unpopulate TESTING ONLY", ceProjId )
-
-    let shortName = "Depop";
-    let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "CEProjectId": ceProjId };
-
-    return await wrappedPostAWS( authData, shortName, postData );
-}
 
 /* Not in use
 async function clearLinkage( authData, pd ) {
@@ -568,4 +555,3 @@ exports.cleanDynamo   = cleanDynamo;
 exports.clearIngested = clearIngested;
 
 exports.getStoredLocs = getStoredLocs;    // TESTING ONLY
-exports.unpopulate    = unpopulate;       // TESTING ONLY
