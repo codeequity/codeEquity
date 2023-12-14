@@ -87,20 +87,25 @@ class Linkage {
 	    }
 
 	    let card = baseLinks.find( datum => datum.hostCardId == link.hostCardId );
-	    
-	    link.hostIssueName   = card.hostIssueName;
-	    link.hostColumnId    = card.hostColumnId.toString();
-	    link.hostProjectName = card.hostProjectName;
-	    link.hostColumnName  = card.hostColumnName;
 
-	    // need a name here
-	    link.flatSource    = peq.HostProjectSub[ peq.HostProjectSub.length - 1 ];
-	    if( config.PROJ_COLS.includes( link.flatSource )) { link.flatSource = -1; }
-	    // XXX could make this faster if cols use gets broader.
-	    if( link.flatSource != -1 ) {
-		const loc = locData.find( loc => loc.hostProjectId == link.hostProjectId && loc.hostColumnName == link.flatSource );
-		if( typeof loc !== 'undefined' ) { link.flatSource = loc.hostColumnId; }
-		else { link.flatSource = -1; }   // e.g. projSub is (master)[softCont, dataSec]
+	    // Peqs can only be queried by ceProject.  If the peq does not come from the preferred repo, it is not relevant.
+	    // Does link repo match preferred, if it exists?  
+	    if( preferredRepoId == -1 || link.hostRepoId == preferredRepoId ) {
+	    
+		link.hostIssueName   = card.hostIssueName;
+		link.hostColumnId    = card.hostColumnId.toString();
+		link.hostProjectName = card.hostProjectName;
+		link.hostColumnName  = card.hostColumnName;
+		
+		// need a name here
+		link.flatSource    = peq.HostProjectSub[ peq.HostProjectSub.length - 1 ];
+		if( config.PROJ_COLS.includes( link.flatSource )) { link.flatSource = -1; }
+		// XXX could make this faster if cols use gets broader.
+		if( link.flatSource != -1 ) {
+		    const loc = locData.find( loc => loc.hostProjectId == link.hostProjectId && loc.hostColumnName == link.flatSource );
+		    if( typeof loc !== 'undefined' ) { link.flatSource = loc.hostColumnId; }
+		    else { link.flatSource = -1; }   // e.g. projSub is (master)[softCont, dataSec]
+		}
 	    }
 	}
 
@@ -524,11 +529,22 @@ class Linkage {
 	    cep = ceProjects.initBlank( ceProjId, cepDetails );
 	}
 
+	// CEP may already be linked.  For example, transfering issues will issue linkRepo for new connection.
+	// If already linked, we are done.
+	if( utils.validField( cep, "HostParts" ) && utils.validField( cep.HostParts, "hostRepositories" ) ) {
+	    let repo = cep.HostParts.hostRepositories.find( c => c.repoId == repoId );
+	    if( typeof repo !== 'undefined' ) {
+		console.log( authData.who, "Repo is already linked", ceProjId, repoName );
+		return cep;
+	    }
+	}
+	
 	// Expensive.  Handle resolve, links, locs.
 	await gh2DUtils.populateCELinkage( authData, this, { ceProjectId: ceProjId, repoId: repoId } );
 
 	// Update AWS, ceProjects (via cep)
 	let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );
+	if( !utils.validField( cep, "HostParts" )) { cep.HostParts = {}; }
 	cep.HostParts.hostRepositories = hostRepos;
 	return await awsUtils.updateCEPHostParts( authData, cep );
     }

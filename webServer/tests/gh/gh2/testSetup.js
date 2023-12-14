@@ -244,7 +244,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	let boCards = await gh2tu.getCards( authData, td.masterPID, td.boColId );
 	let noCards = await gh2tu.getCards( authData, td.masterPID, td.unColId );
 	
-	subTest = tu.checkEq( scCards.length, 4, subTest, "Soft cont col card count" );
+	subTest = tu.checkEq( scCards.length, 3, subTest, "Soft cont col card count" ); 
 	subTest = tu.checkEq( boCards.length, 1, subTest, "Bus ops col card count" );
 	subTest = tu.checkEq( noCards.length, 0, subTest, "Unalloc col card count" );
 	
