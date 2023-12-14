@@ -69,11 +69,6 @@ async function clearCEProj( authData, testLinks, pd ) {
 	console.log( "Dynamo PEQ ids", pd.GHFullName, peqIds );
 	await awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
     }
-    
-    // set unpopulated
-    // XXX Maybe clear hostRepos at some point?
-    console.log( "Depopulate", pd.GHFullName, pd.ceProjectId );
-    await awsUtils.unpopulate( authData, pd.ceProjectId );
 }
 
 
@@ -85,6 +80,7 @@ async function clearUnclaimed( authData, testLinks, pd ) {
 	for( const proj of projs ) {
 	    if( proj.title == config.UNCLAIMED ) {
 		pd.projectId = proj.id;
+		await remIssues( authData, testLinks, pd );
 		await remDraftIssues( authData, testLinks, pd );
 		await gh2tu.unlinkProject( authData, pd.ceProjectId, proj.id, pd.GHRepoId );
 		await utils.sleep( 1000 );
@@ -162,9 +158,6 @@ async function clearRepo( authData, testLinks, pd ) {
     // Note: awaits may not be needed here.  No dependencies... yet...
     // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
 
-    // CEProjects
-    gh2tu.unlinkRepo( authData, pd.ceProjectId, pd.GHRepoId );
-    
     // PActions raw and otherwise
     // Note: bot, ceServer and actor may have pacts.  Just clean out all.
     let pacts = await pactsP;
@@ -181,7 +174,6 @@ async function clearRepo( authData, testLinks, pd ) {
 
     for( const label of labels ) {
 	if( ghUtils.parseLabelName( label.name )[0] > 0 ) { pLabels.push( label ); }
-	else if( label.name == config.POPULATE )          { pLabels.push( label ); }
     }
 
     if( pLabels.length > 0 ) {
@@ -218,6 +210,12 @@ async function runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM
     promises.push( clearRepo( authDataM, testLinks, tdM ));
     await Promise.all( promises );
 
+    // clearRepo should unlinkRepo.  Running clearRepos in parallel saves a lot of time, but can cause
+    // a race condition in linkage:unlinkRepo.  Serialize
+    await gh2tu.unlinkRepo( authData,  td.ceProjectId,  td.GHRepoId );
+    await gh2tu.unlinkRepo( authDataX, tdX.ceProjectId, tdX.GHRepoId );
+    await gh2tu.unlinkRepo( authDataM, tdM.ceProjectId, tdM.GHRepoId );
+    
     // Now, unlink unclaimed, which was avoided above to remove race condition
     await clearUnclaimed( authData,  testLinks, td  );
     await clearUnclaimed( authDataX, testLinks, tdX );

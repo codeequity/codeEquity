@@ -239,11 +239,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// Note: a 1:1 mapping issue:card is maintained here, via resolve.  So, this labeling is relevant to 1 card only
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
+	    /*
 	    // XXXX XXXXX This will go away with ceFlutter
 	    if( ghUtils.populateRequest( pd.reqBody.issue.labels )) {
 		await gh2DUtils.populateCELinkage( authData, ghLinks, pd );
 		return;
 	    }
+	    */
 	    
 	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
 	    assert( utils.validField( pd.reqBody, "repository" ) && utils.validField( pd.reqBody.repository, "node_id" ));

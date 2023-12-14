@@ -6,6 +6,8 @@ const config = require( '../../config' );
 const utils    = require( '../ceUtils' );
 const awsUtils = require( '../awsUtils' );
 
+var handlerRetries = {}; // XXX hmmm.   will this reset constantly?
+
 // XXX Accept header is for label preview.  Check back to delete.
 async function postGH( PAT, url, postData, check422 ) {
     if( typeof check422 === 'undefined' ) { check422 = false; }
@@ -168,20 +170,6 @@ async function validatePEQ( authData, ceProjId, issueId, title, pid ) {
 	peq = -1;
     }
     return peq;  
-}
-
-
-function populateRequest( labels ) {
-    let retVal = false;
-
-    for( label of labels ) {
-	if( label.name == config.POPULATE ) {
-	    retVal = true;
-	    break;
-	}
-    }
-
-    return retVal;
 }
 
 
@@ -349,8 +337,6 @@ exports.errorHandler = errorHandler;
 
 exports.checkForPV2     = checkForPV2;
 exports.validatePEQ     = validatePEQ;
-
-exports.populateRequest   = populateRequest;
 
 exports.parseLabelDescr = parseLabelDescr;
 exports.parseLabelName  = parseLabelName;

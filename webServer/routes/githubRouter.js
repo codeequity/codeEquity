@@ -208,18 +208,6 @@ async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) 
 }
 
 
-
-/*
-Notification: ariCETester issue deleted A special populate issue gPLIYUWIGp for codeequity/ceTesterAri 52.35.457
-Notification: ariCETester label deleted populate uKmqbWrhjY for codeequity/ceTesterAri 52.42.83
-
-Notification: ariCETester issue opened A special populate issue mTFRjQcztF for codeequity/ceTesterAri 52.54.709
-Notification: ariCETester projects_v2_item created codeequity/I_kwDOIiH6ss5fOBwx dJZeEOtxIw for codeequity 52.56.726
-Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fOBwx oQrlTGCJFx for codeequity 52.57.28
-Notification: ariCETester label created populate fzUNPcBCYG for codeequity/ceTesterAri 53.00.292
-Notification: ariCETester issue labeled A special populate issue EbJIwsnxNa for codeequity/ceTesterAri 53.01.92
-Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fOBwx mxFNGsryyH for codeequity 53.01.197
-*/
 async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, ceProjectId ) {
 
     let retVal = "";
