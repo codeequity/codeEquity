@@ -1339,6 +1339,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     let labelVal     = typeof specials !== 'undefined' && specials.hasOwnProperty( "label" )        ? specials.label        : false;
     let labelCnt     = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )     ? specials.lblCount     : 1;
     let assignees    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assigns" )      ? specials.assigns      : [];
+    let soft         = typeof specials !== 'undefined' && specials.hasOwnProperty( "soft" )         ? specials.soft         : false;
     
     console.log( "Check unclaimed issue", loc.projName, loc.colName, labelVal );
     let subTest = [ 0, 0, []];
@@ -1380,7 +1381,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     // CHECK dynamo Peq
     // If peq holders fail, especially during blast, one possibility is that GH never recorded the second assignment.
     // This happened 6/29/22, 7/5  To be fair, blast is punishing - requests on same issue arrive inhumanly fast, like 10x.
-    // It is also possible that the test is too stringent even if GH succeeds.  From utils:recordpeqdata:
+    // It is also possible 12/15/23 that the test is too stringent even if GH succeeds.  From utils:recordpeqdata:
     //     PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
     //     creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
     let allPeqs =  await peqsP;
@@ -1392,7 +1393,6 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( peq.PeqType, loc.peqType,               subTest, "peq type invalid" );        
     subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
     subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
-    subTest = tu.checkEq( peq.HostHolderId.length, assignees.length, subTest, "peq holders wrong" );      
     subTest = tu.checkEq( peq.CEHolderId.length, 0,               subTest, "peq ce holders wrong" );    
     subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,          subTest, "peq grantor wrong" );      
     subTest = tu.checkEq( peq.Amount, lval,                       subTest, "peq amount" );
@@ -1400,7 +1400,14 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
     subTest = tu.checkEq( peq.HostProjectId, loc.pid,             subTest, "peq project id bad" );
 
+    let holderMatch = peq.HostHolderId.length == assignees.length;
+    // soft allows 1 missing assignee
+    if( soft && !holderMatch ) { hoderMatch = peq.HostHolderId.length == assignees.length - 1; }
+    
+    subTest = tu.checkEq( holderMatch, true, subTest, "peq holders wrong" );      
+
     for( const assignee of assignees ) {
+	if( !peq.HostHolderId.includes( assignee ) ) { console.log( peq.HostHolderId, assignee ); }
 	subTest = tu.checkEq( peq.HostHolderId.includes( assignee ), true, subTest, "peq holder bad" );
     }
     

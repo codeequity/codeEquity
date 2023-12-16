@@ -82,7 +82,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
 }
 
 // workaround function
-// user linking existing project?            don't care.
+// user linking existing project?            can't care - no notification.  
 // testing creating a project?               empty, no need to get links 
 // user or testing creating unclaimed card?  according to ceServer strict relation, unclaimedProj belongs to ceProj, is not shared.
 async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProjectId, repoId ) {

@@ -245,7 +245,7 @@ function theOnePEQ( labels ) {
 
 	if( tval > 0 ) {
 	    if( peqValue > 0 ) {
-		console.log( "Two PEQ labels detected for this issue!!" );
+		console.log( "Two PEQ labels detected for this issue.  Negotiation?" );
 		peqValue = 0;
 		alloc = false;
 		break;

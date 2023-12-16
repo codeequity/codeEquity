@@ -614,8 +614,8 @@ async function checkHostPop( ceProjId, repoId ) {
 	if( res && res.length > 0 ) {
 	    assert( res.length == 1 );
 	    let found = false;
-	    if( typeof res.HostParts !== 'undefined' && typeof res.HostParts.hostRepositories !== 'undefined' ) {
-		let repo = res.HostParts.hostRepositories.find( r => r.repoId == repoId );
+	    if( typeof res[0].HostParts !== 'undefined' && typeof res[0].HostParts.hostRepositories !== 'undefined' ) {
+		let repo = res[0].HostParts.hostRepositories.find( r => r.repoId == repoId );
 		if( typeof repo !== 'undefined' ) { found = true; }
 	    }
 	    return success( found );

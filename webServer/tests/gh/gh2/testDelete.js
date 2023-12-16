@@ -63,10 +63,11 @@ async function clearCEProj( authData, testLinks, pd ) {
     // PEQs
     // XXX clean, if passing in larger test setups.
     // Should be attached to repo, but dynamo does not keep that information.  Can not move to clearRepo unless keep, say, ceTesterAri peqs away from ceTesterConnie peqs
+    // NOTE this will run twice for ServTest.  td and tdM are same proj.  Runs in parallel, soooo....  inefficient, but not broken
     let peqs = await awsUtils.getPeqs( authData,  { "CEProjectId": pd.ceProjectId });
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
     if( peqIds.length > 0 ) {
-	console.log( "Dynamo PEQ ids", pd.GHFullName, peqIds );
+	console.log( "Dynamo PEQ ids", pd.ceProjectId, peqIds );
 	await awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
     }
 }

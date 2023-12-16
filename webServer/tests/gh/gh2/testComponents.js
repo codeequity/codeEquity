@@ -204,9 +204,10 @@ async function testLabel( authData, testLinks, td ) {
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatPend, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label flat 4" );
 	
-	// 5. unlabel (OK here, negotiating)
+	// 5. unlabel (NO LONGER ok here, negotiating.  label will be re-added)
 	await gh2tu.remLabel( authData, label, issueData );    
-	testStatus = await gh2tu.checkDemotedIssue( authData, testLinks, td, flatPend, issueData, card, testStatus );
+	// testStatus = await gh2tu.checkDemotedIssue( authData, testLinks, td, flatPend, issueData, card, testStatus );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatPend, issueData, card, testStatus, {label: 1000 } );	
 	tu.testReport( testStatus, "Label flat 5" );
 
 	// PEQ is rebuilt below, when it is re-activated.
