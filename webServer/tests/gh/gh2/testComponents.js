@@ -216,13 +216,13 @@ async function testLabel( authData, testLinks, td ) {
 
 	// 5. relabel (OK here, negotiating)
 	await gh2tu.addLabel( authData, label500.id, issueData );
-	// re-created peq, i.e. re-peq-labeled.  Gets assignees again.
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatPend, issueData, card, testStatus, {label: 500, assign: 1 } );
+	// peq is NO LONGER re-created, i.e. re-peq-labeled.  Assignees are no longer re-established with aws.
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatPend, issueData, card, testStatus, {opVal: 1000, label: 500 } );
 	tu.testReport( testStatus, "Label flat 6" );
 	
 	// 6. move to accr
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, flatAccr.colId, {issId: issueData[0]} );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {label: 500, assign: 1 } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {opVal: 1000, label: 500 } );
 	tu.testReport( testStatus, "Label flat 7" );
     }
 

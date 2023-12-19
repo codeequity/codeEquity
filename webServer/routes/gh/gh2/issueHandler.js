@@ -331,7 +331,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    if( newNameIndex >= config.PROJ_PEND ) {
-		console.log( "WARNING.  Can't remove the peq label from an proposed PEQ.  Add second PEQ label instead to replace original." );
+		console.log( "WARNING.  Can't remove the peq label from an proposed PEQ." );
 		ghV2.addLabel( authData, pd.reqBody.label.node_id, pd.issueId ); 
 		return;
 	    }
