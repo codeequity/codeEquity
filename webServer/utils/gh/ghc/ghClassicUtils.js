@@ -828,8 +828,6 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
-    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query )
-	.catch( e => ghUtils.errorHandler( "getBasicLinkDataGQL", e, getBasicLinkDataGQL, PAT, owner, repo, data, cursor ));  // probably never seen
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {

@@ -172,10 +172,13 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	return false;
     }
 
-
     // get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
     // NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
     let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
+
+    // We have a peq.  Make sure project is linked in ceProj, PNP is dependent on locs existing.
+    let projLinks = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: card.pid } );
+    if( projLinks === -1 ) { await ghLinks.linkProject( authData, ceProjects, pd.ceProjectId, card.pid ); }
     
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
@@ -602,7 +605,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // wait for this, PNP needs locs.
 	    // (e.g. from testing, issue: CT Blast in cep:serv repo:ari proj:ghOps  goes to  cep:hak repo:ariAlt proj:ghOps with new issue_id)
-	    await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId, newRepoId );
+	    await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId );
 
 	    // Do this after linking project, so good link doesn't interfere with badlinks check during linkProject.
 	    ghLinks.addLinkage( authData, newCEP, newLink );
