@@ -1591,6 +1591,15 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 //     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
 async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ) {
 
+    // Already linked?  Using links here may be overly conservative
+    if( ghLinks !== -1 ) {
+	let links  = await ghLinks.getLinks( authData, { ceProjId: ceProjId, repoId: repoId, projName: name } );    
+	if( links !== -1 ) {
+	    console.log( authData.who, "Shortcircuit linkProject, already linked" );
+	    return links[0].hostProjectId;
+	}
+    }
+    
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
     assert( pid !== -1 );
