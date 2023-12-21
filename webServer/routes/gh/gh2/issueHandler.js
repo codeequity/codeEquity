@@ -124,22 +124,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     // label may be from json payload, or from internal call.  Convert id format.
     if( utils.validField( label, "node_id" ) ) { label.id = label.node_id; }
-    
-    // more than 1 peq?  remove it.
-    let curVal  = ghUtils.parseLabelDescr( [ label.description ] );
-    if( pd.peqValue <= 0 && curVal > 0 ) {
-	console.log( "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
-	// Don't wait, no dependence
-	ghV2.removeLabel( authData, label.id, pd.issueId );
-	return false;
-    }
-    
-    // Current notification not for peq label?
-    if( pd.peqValue <= 0 || curVal <= 0 ) {
-	console.log( authData.who, "Not a PEQ issue, or not a PEQ label.  No action taken." );
-	return false;
-    }
-
+        
     // Was this a carded issue?  Get linkage
     // Note: During initial creation, some item:create notifications are delayed until issue:label, so no linkage (yet)
     // Note: if issue is opened with a project selected, we will receive open, label and create notices.
@@ -148,9 +133,52 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     assert( links === -1 || links.length == 1 );
     let link = links === -1 ? links : links[0];
 
+    let curVal  = ghUtils.parseLabelDescr( [ label.description ] );
+
+    // more than 1 peq?  remove it.
+    if( pd.peqValue <= 0 && curVal > 0 ) {
+
+	// Check for negotiation potential - if in PEND, owner (XXX) can add new peq label, then approve.
+	assert( link != -1 );
+	if( link.hostColumnName == config.PROJ_COLS[config.PROJ_PEND] ) {
+	    console.log( authData.who, "Negotiated PEQ label detected.  Remove original, keep new" );
+
+	    let origLabel = -1;
+	    for( const alab of issueLabels ) {
+		let tval = ghUtils.parseLabelDescr( [ alab.description ] );
+		if( tval > 0 && tval != curVal ) {
+		    origLabel = utils.validField( alab, "node_id" ) ? alab.node_id : alab.id;
+		    break;
+		}
+	    }
+	    assert( origLabel != -1 );
+	    ghV2.removeLabel( authData, origLabel, pd.issueId );
+	    
+	    // Don't wait.  this doesn't push to aws
+	    awsUtils.changeReportPeqVal( authData, pd, curVal, link );  // XXX new note for PACT would make sense.
+	    return false;
+	}
+	else{
+	    console.log( authData.who, "WARNING.  Only one PEQ label allowed per issue.  Removing most recent label." );
+	    // Don't wait, no dependence
+	    ghV2.removeLabel( authData, label.id, pd.issueId );
+	    return false;
+	}
+    }
+
+    // Current notification not for peq label?
+    if( pd.peqValue <= 0 || curVal <= 0 ) {
+	console.log( authData.who, "Not a PEQ issue, or not a PEQ label.  No action taken." );
+	return false;
+    }
+
     // get card from GH.  Can only be 0 or 1 cards (i.e. new nostatus), since otherwise link would have existed after populate
     // NOTE: occasionally card creation happens a little slowly, so this triggers instead of 'carded issue with status'
     let card = await ghV2.getCardFromIssue( authData, pd.issueId ); 
+
+    // We have a peq.  Make sure project is linked in ceProj, PNP is dependent on locs existing.
+    let projLinks = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: card.pid } );
+    if( projLinks === -1 ) { await ghLinks.linkProject( authData, ceProjects, pd.ceProjectId, card.pid ); }
     
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
@@ -239,13 +267,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// Note: a 1:1 mapping issue:card is maintained here, via resolve.  So, this labeling is relevant to 1 card only
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
-	    /*
-	    // XXXX XXXXX This will go away with ceFlutter
-	    if( ghUtils.populateRequest( pd.reqBody.issue.labels )) {
-		await gh2DUtils.populateCELinkage( authData, ghLinks, pd );
-		return;
-	    }
-	    */
 	    
 	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
 	    assert( utils.validField( pd.reqBody, "repository" ) && utils.validField( pd.reqBody.repository, "node_id" ));
@@ -286,7 +307,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'unlabeled':
-	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_ACCR.  
+	// Can unlabel issue that may or may not have a card, as long as not >= PROJ_PEND.
 	// Do not move card, would be confusing for user.
 	{
 	    // Unlabel'd label data is not located under issue.. parseLabel looks in arrays
@@ -309,6 +330,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // GH already removed this.  Put it back.
 	    if( newNameIndex >= config.PROJ_ACCR ) {
 		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
+		ghV2.addLabel( authData, pd.reqBody.label.node_id, pd.issueId ); 
+		return;
+	    }
+	    if( newNameIndex >= config.PROJ_PEND ) {
+		console.log( "WARNING.  Can't remove the peq label from an proposed PEQ." );
 		ghV2.addLabel( authData, pd.reqBody.label.node_id, pd.issueId ); 
 		return;
 	    }
@@ -579,7 +605,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // wait for this, PNP needs locs.
 	    // (e.g. from testing, issue: CT Blast in cep:serv repo:ari proj:ghOps  goes to  cep:hak repo:ariAlt proj:ghOps with new issue_id)
-	    await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId, newRepoId );
+	    await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId );
 
 	    // Do this after linking project, so good link doesn't interfere with badlinks check during linkProject.
 	    ghLinks.addLinkage( authData, newCEP, newLink );

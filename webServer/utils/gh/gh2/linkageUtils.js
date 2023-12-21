@@ -81,12 +81,14 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     return { links: baseLinks, locs: locData };
 }
 
-// workaround function
-// user linking existing project?            don't care.
-// testing creating a project?               empty, no need to get links 
+// This method does not line up with GH linkProject.  It builds required links and locs for ceServer when peqs are created
+// So, user linking existing project?  Not relevant.
+//  1) We do not get linkProject notifications, so it could not be driven by notification
+//  2) Not symmetric with what ce needs.  For example, issue in repo can exist in a project that is not GH-linked to repo.  GH linkRepo is purely a view relation.
+// Other cases:
+// testing creating a project?               proj is empty, no need to get links 
 // user or testing creating unclaimed card?  according to ceServer strict relation, unclaimedProj belongs to ceProj, is not shared.
-async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProjectId, repoId ) {
-    repoId = typeof repoId !== 'undefined' ? repoId : -1;
+async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProjectId ) {
     
     let rLocs  = [];
     let rLinks = [];
@@ -95,9 +97,8 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProject
     await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	.catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
 
-    // Should be no this.links for repoId, hostProjectId.   Hmmm.  False.
-    // There may be links for ceProjId, hostProjId, for example unclaimed may be linked to repo1 not repo2, and now are linking to repo2.
     // Can't test rLinks for the new repoId.  If this is a transfer result, GH may have already placed the new issue.
+    // There may be links for ceProjId, hostProjId, for example unclaimed may be linked to repo1 not repo2, and now are linking to repo2.
 
     let promises = [];
     
@@ -109,9 +110,7 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProject
     }
     await Promise.all( promises );
 
-    // Could just add/remove... but why?  ooohhh...
-    // XXX OUCH!  Blowing cache away, no need to
-    await ceProjects.init( authData );
+    // hostProjects are no longer recorded in connection with ceProjects, just ceLinkage.  No need to re-init ceProjects.
     
     return true;
 }

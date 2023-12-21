@@ -403,7 +403,8 @@ async function testBlast( authData, testLinks, td ) {
     title  = "Blast 2";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );    
     card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [assignee1.id, assignee2.id]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
+						  {soft: true, label: 604, lblCount: 3, assigns: [assignee1.id, assignee2.id]});
 
     tu.testReport( testStatus, "Test Blast B" );    
 
@@ -412,7 +413,8 @@ async function testBlast( authData, testLinks, td ) {
     title  = "Blast 3";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [assignee1.id, assignee2.id]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
+						  {soft: true, label: 604, lblCount: 2, assigns: [assignee1.id, assignee2.id]});
 
     tu.testReport( testStatus, "Test Blast C" );    
 
@@ -421,7 +423,8 @@ async function testBlast( authData, testLinks, td ) {
     title  = "Blast 4";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 2, assigns: [assignee1.id, assignee2.id]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
+						  {soft: true, label: 604, lblCount: 2, assigns: [assignee1.id, assignee2.id]});
 
     tu.testReport( testStatus, "Test Blast D" );    
 
@@ -430,23 +433,25 @@ async function testBlast( authData, testLinks, td ) {
     title  = "Blast 5";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 3, assigns: [assignee2.id, assignee1.id]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
+						  {soft: true, label: 604, lblCount: 3, assigns: [assignee2.id, assignee1.id]});
 
     tu.testReport( testStatus, "Test Blast E" );    
 
     // 6. blast, undo
-    issDat = await gh2tu.blastIssue( authData, td, "Blast 6", [lab1, labNP1, labNP2], [assignee1, assignee2] );
+    title  = "Blast 6";
+    issDat = await gh2tu.blastIssue( authData, td, title, [lab1, labNP1, labNP2], [assignee1, assignee2] );
     await utils.sleep( 1500 );
     await gh2tu.remAssignee( authData, issDat[0], assignee2 );
     await gh2tu.remAssignee( authData, issDat[0], assignee1 );
     await gh2tu.remLabel( authData, labNP1, issDat );    
     await gh2tu.remLabel( authData, labNP2, issDat );    
     
-    title  = "Blast 6";
     link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
     // Assigns show up still - peq assignees not updated once created until ceFlutter
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [assignee1.id, assignee2.id]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
+						  {soft: true, label: 604, lblCount: 1, assigns: [assignee1.id, assignee2.id]});
 
     tu.testReport( testStatus, "Test Blast F" );    
 

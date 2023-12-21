@@ -269,6 +269,7 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
 
     // NOTE uncLoc and uncLocM are identical now that unclaimed is same project (view) used for both repos.
     //      Leave this in place - down the road may test multithread over multiple ceProjects.
+    // This waits until interleave creations above has finished, which currently takes ~15s.  Each peq label is costing ~2s
     let allCards  = await tu.settleWithVal( "Get cards from unclaimed", getCardsHelp, authData, uncLoc.pid, uncLoc.colId, 8 ); 
     let allCardsM = await tu.settleWithVal( "Get cards from unclaimedM", getCardsHelp, authDataM, uncLocM.pid, uncLocM.colId, 8 ); 
 

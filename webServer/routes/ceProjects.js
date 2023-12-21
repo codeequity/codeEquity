@@ -17,13 +17,8 @@ class CEProjects {
 
     remove( ceProjId ) {
 	let idx = this.cep.findIndex( c => c.CEProjectId == ceProjId );
-	if( idx < 0 ) {
-	    console.log( "ERROR.  Failed to remove", ceProjId, this.cep ); 
-	}
-	else {
-	    assert( idx >= 0 );
-	    this.cep.splice( idx, 1 );
-	}
+	assert( idx >= 0 );
+	this.cep.splice( idx, 1 );
 
 	// XXX No need to blow the entire cache here
 	this.hi2cp = {};

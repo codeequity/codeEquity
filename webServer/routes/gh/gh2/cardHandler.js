@@ -186,6 +186,7 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
     let cardId   = card.cardId;
     assert( typeof issueId !== 'undefined' && issueId != -1 );
     console.log( authData.who, msg );
+
     if( rejectLoc !== -1 ) {
 	ghV2.moveCard( authData, pid, cardId, rejectLoc.hostUtility, rejectLoc.hostColumnId );
 	if( track ) {
@@ -198,6 +199,9 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
 	}
     }
     else {
+	// This is a failure case, until we are able to create columns.
+	// Choice here is to move to a random column in project, or delete card.  Move to no status would be better, this is not possible (null field)
+	// Card deletion is annoying, but no information is lost.
 	console.log( authData.who, config.PROJ_COLS[config.PROJ_PLAN], "column does not exist .. deleting card." );
 	ghV2.removeCard( authData, pid, cardId );
 	ghLinks.removeLinkage( { authData: authData, ceProjId: ceProjId, issueId: issueId, cardId: cardId } );
