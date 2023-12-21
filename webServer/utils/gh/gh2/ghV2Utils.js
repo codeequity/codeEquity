@@ -1590,7 +1590,6 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 // XXX in support of link workaround to avoid issue with creating columns.
 //     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
 async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ) {
-    console.log( authData.who, "linkProject", name, repoId );
 
     // project can exist, but be unlinked.  Need 1 call to see if it exists, a second if it is linked.    
     let pid = await findProjectByName( authData, orgLogin, ownerLogin, name );
@@ -1598,24 +1597,17 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 
     let rp = await findProjectByRepo( authData, repoId, name );
     if( rp === -1 ) {
+	console.log( authData.who, "GH-linkProject", name, repoId );
+	
 	let query     = "mutation( $pid:ID!, $rid:ID! ) { linkProjectV2ToRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
 	let variables = {"pid": pid, "rid": repoId };
 	query         = JSON.stringify({ query, variables });
 	
-	let res = -1;
-	try {
-	    await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
-		.then( ret => {
-		    res = ret;
-		});
-	}
-	catch( e ) { res = await ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ); }
+	try        { ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query ) }
+	catch( e ) { return await ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ); }
 	
-	if( typeof res.data === 'undefined' ) { console.log( "LinkProject failed.", res ); }
-	else if( ghLinks !== -1 ) {   
-	    // test process can't execute this, does not have server's ghLinks obj, so will do it independently
-	    await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId );
-	}
+	// test process can't execute this, does not have server's ghLinks obj, so will do it independently
+	if( ghLinks !== -1 ) { await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId ); }
     }
     
     return pid;
@@ -1640,16 +1632,21 @@ async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 	// XXX
 	// Update locs.  During initialization Unclaimed may be linked in GH, but without PEQ, will not go through linkage:init.
 	// This is only a problem for unclaimed, and only until we can create columns, when ACCR is deleted elsewhere to be recreated here.
-	let rLinks = [];
-	let rLocs  = [];
-	
-	await getHostLinkLoc( authData, unClaimedProjId, rLocs, rLinks, -1 )
-	    .catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
-	
-	for( var loc of rLocs ) {
-	    loc.ceProjectId = pd.ceProjectId;
-	    loc.active = "true";
-	    ghLinks.addLoc( authData, loc, false ); 
+	let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: unClaimedProjId } );
+	if( projLocs === -1 ) {
+
+	    let rLinks = [];
+	    let rLocs  = [];
+	    
+	    console.log( authData.who, "Initializing unclaimed locs" );
+	    await getHostLinkLoc( authData, unClaimedProjId, rLocs, rLinks, -1 )
+		.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
+	    
+	    for( var loc of rLocs ) {
+		loc.ceProjectId = pd.ceProjectId;
+		loc.active = "true";
+		ghLinks.addLoc( authData, loc, false ); 
+	    }
 	}
 	
     }

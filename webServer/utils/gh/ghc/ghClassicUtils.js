@@ -828,6 +828,7 @@ async function getBasicLinkDataGQL( PAT, owner, repo, data, cursor ) {
     query = JSON.stringify({ query, variables });
 
     let issues = -1;
+    let res = await ghUtils.postGH( PAT, config.GQL_ENDPOINT, query );
 
     // postGH masks errors, catch here.
     if( typeof res !== 'undefined' && typeof res.data === 'undefined' ) {

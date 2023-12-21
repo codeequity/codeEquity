@@ -111,8 +111,6 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProject
     await Promise.all( promises );
 
     // hostProjects are no longer recorded in connection with ceProjects, just ceLinkage.  No need to re-init ceProjects.
-    // XXX OUCH!  Blowing cache away, no need to
-    // await ceProjects.init( authData );
     
     return true;
 }
