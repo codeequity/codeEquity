@@ -91,8 +91,8 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
 	return -1;
     }
 
-    // XXX Very little descriptive information known at this point, very hard to debug/track.  To get, say, an issue name,
-    //     we'd have to wait for a roundtrip query back to GH right now.  ouch!
+    // NOTE Very little descriptive information known at this point, very hard to debug/track.  To get, say, an issue name,
+    //      we'd have to wait for a roundtrip query back to GH right now.  ouch!
     // XXX fullName not known for pv2item.  replace with content_node_id (often issue?)  Repo is (?) no longer relevant
     let fullName = jobData.reqBody.organization.login + "/" + jobData.reqBody.projects_v2_item.content_node_id;
     jobData.org  = jobData.reqBody.organization.login;
