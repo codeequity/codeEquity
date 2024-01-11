@@ -48,7 +48,7 @@ For the potential contributor to CodeEquity software itself, well, yes, we are a
 so consider joining the team!
 
 :arrow_right: **Please see the [CodeEquity manual](docs/ceManual.md)
-for a more in-depth description.** :arrow_left:
+for full details.** :arrow_left:
 
 ## CodeEquity Key Concepts
 
@@ -190,7 +190,9 @@ All communication with the AWS Backend is encoded as JSON REST data.
 
 
 :arrow_right: **Please see the [CodeEquity manual](docs/ceManual.md)
-for a more in-depth description.** :arrow_left:
+for full details.** :arrow_left:
+:arrow_right: **The [CodeEquity manual] for Classic Projects (docs/ceManual-Classic.md)
+has been deprecated.** :arrow_left:
 
 
 # CodeEquity QuickStart
