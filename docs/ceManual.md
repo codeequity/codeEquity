@@ -133,24 +133,35 @@ changed down the road.
 CodeEquity works with GitHub through
 [project boards](https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards),
 which is a Kanban-style project management
-tool.  GitHub's project boards are a great way to track the lifecycle of all the issues related to a
+tool.  GitHub projects are a great way to track the lifecycle of all the issues related to a
 project throughout the duration of the project.
 They are quick to learn, and functional enough to easily support small to medium-sized projects and
-teams.  GitHub has integrated their project boards with all core elements of its repository
+teams (for example, explore some [active projects at Google](https://github.com/orgs/google/projects?query=is%3Aopen)).
+GitHub has integrated their project boards with all core elements of its repository
 management toolkit, and provides a push-based notification system for external
 application integration.  CodeEquity utilizes this notification system along with GitHub's Octokit
-REST and GraphQL APIs to build a wrapper around any Github project board, converting it into a CodeEquity
+REST and GraphQL APIs to build a wrapper around any Github repository, converting it and it's elements into a part of a CodeEquity
 Project.
 
-The image below shows a typical GitHub project.  This project is for "LUCI", and is composed of three
-columns and a handful of cards that are linked to issues.  One issue can be linked to multiple cards
-in GitHub.  Cards and issues can exist independently of one another, however, when they are linked,
-all related information is stored with the issue.  GitHub uses labels with issues to help manage the
-attention of the project's collaborators.  For example, common labels deal with feature requests,
-bugs, severity, and so on.  Issues contain a history of comments, can be assigned to collaborators,
-they can be opened, closed, transfered and edited.  A GitHub repository can have any number of
-projects associated with it.
+GitHub repositories are owned by individuals or organizations.  A GitHub organization can own many GitHub repositories, each of which contains a collection of
+GitHub issues.  Each issue may be a member of one or more GitHub projects.  An issue may participate in many projects, but only belongs to one repository.
+A GitHub project serves as a view over a collection of issues, no matter which repositories the issues belong to.  Organizations typically use 
+projects to indicate a meaningful, distinct body of work, and important categorizations within that body of work, such as progress.
 
+A CodeEquity Venture corresponds directly to a GitHub organization.  Each CodeEquity Venture may contain one or more CodeEquity Projects.
+Each CodeEquity Project may contain many GitHub repositories, but each repository may only belong to one CodeEquity Project.  CE Flutter provides a drill-down
+summarization of the provisional equity in a CodeEquity Project, in part by using GitHub project names and columns.
+Finally, a PEQ issue corresponds directly to a special case of a GitHub issue.
+
+The image below shows a typical GitHub project.  This project is for "LUCI", and is being shown in a Kanban
+board style view.  GitHub projects also support a few spreadsheet-oriented views.  View choice does not impact
+any underlying functionality in GitHub, or in CodeEquity.  For simplicity of presentation, however, *this
+manual only uses Kanban project board views and terminology*.  For example, "LUCI" is composed of three columns and a
+handful of issues that belong to the project.  Each issue is represented as a card in a column of
+the project board.  All information related to an issue is stored in the issue.  GitHub uses labels with issues to help manage the
+attention of the project's collaborators.  For example, common labels deal with feature requests, bugs,
+severity, and so on.  Issues contain a history of comments, can be assigned to collaborators, they can be
+opened, closed, transfered and edited. 
 
 <p float="left">
   <img src="images/githubProject.png" height="480"  />
@@ -189,12 +200,11 @@ the two assignees on the issue.
 The final significant difference between a normal GitHub project, and a CodeEquity project, is that
 CE Server enforces a 1:1 mapping from issues to cards in a CodeEquity project.  Otherwise, if
 one issue has multiple cards, there is no clean way to determine how and when the
-associated PEQs should accrue.  CE Server enforces this mapping by force-duplicating the issue
+associated PEQs should accrue.  CE Server enforces this mapping by force-duplicating and renaming the issue
 every time a user attempts to add an issue to a second project column.
 
 There are other differences as well, mainly to ensure that a CodeEquity project stays in a valid state.
 These differences are smaller in scope, and are introduced below.  
-
 
 <br>
 <br>
@@ -227,9 +237,9 @@ time to convert PEQs into equity in a legal entity.  That percentage will develo
 So, your early choices here **are useful to start communications with contributors**, but beyond that,
 they are **neither major nor permanent**.
 
-The default equity structure authorizes 7 - 10 million shares of provisional equity (stock) up front for
+The default equity structure authorizes 7 - 10 million shares of provisional equity (provisional stock) up front for
 software development, which is 30-50% of the overall provisional equity in the venture.  The default
-plan assumes three person-years of work for a typical software venture to get the code in place to
+plan assumes three person-years of work for a typical small software venture to get the code in place to
 make a run for it.  This works out to be, roughly:
    * 1,000 PEQs for tiny tasks, of maybe an hour or so,
    * 10,000 PEQs for one person-day of work,
@@ -237,12 +247,12 @@ make a run for it.  This works out to be, roughly:
 
 ### Creating a CodeEquity Project Structure from Scratch
 
-A CodeEquity project can be converted from an existing GitHub project board, or created from
+A CodeEquity project can be converted from an existing GitHub repository, or created from
 scratch.  This first example follows Connie creating a CodeEquity Project as a completely new
-project.  Connie is already a contributor to several repositories owned by other people, and is the
+project.  Connie is already a contributor to several repositories owned by other people and organizations, and is the
 owner of several others.  Connie is planning to start exploring a brewery
-simulation game as a CodeEquity Project.  Connie has already created the GarlicBeer public
-repository, and has a few files there but has not yet started a project board.
+simulation game as a CodeEquity Project, and Venture.  Connie has already created the GarlicBeer public
+repository, the GarlicBeer organization that owns it, and has a few files therein.  Connie has not yet started a GitHub project board.
 
 Connie starts by [signing up](#common-lifecycle-examples) for CodeEquity, following the default
 installation for public repositories.  Connie also sticks with the default equity structure proposed
@@ -253,14 +263,14 @@ GarlicBeer.  (XXX REVISIT XXX) should I need to select empty projects as codeequ
 
 #### GarlicBeer Project Structure
 
-A CodeEquity project supports any type of flat project board setup that can be made in GitHub.  Once
+A CodeEquity project can work with any collection of user-specified columns in GitHub projects.  Once
 you start creating and manipulating PEQ issues in your project board, CE Server will create the two
 reserved columns **Pending PEQ Approval** and **Accrued** as needed.  CodeEquity projects also
 support a hierarchical project structure, which can make organization and reporting more cohesive.
 
-The GarlicBeer repo so far has no issues, and no project boards.  Connie decides to adopt 
+The GarlicBeer repo so far has no issues, and no linked project boards.  Connie decides to adopt 
 CodeEquity's recommended hierarchical layout as a starting point.  In this approach, a user creates
-several CodeEquity projects within the repo, all of which are linked together.  The top level
+several GitHub projects to help organize tasks in the GarlicBeer CodeEquity project.  The top level
 project is named `Master` (see [config.js](webServer/config.js) to modify names) by default.  The
 child projects are named after the cards in the columns of the `Master` project.  In CE Flutter,
 PEQs for contributors and the overall venture can be 
@@ -276,18 +286,25 @@ columns.
 </p>
 
 In the **Software Contributions** column for `Master`, Connie decides to start with very broad
-categories, each of which will be a project in its own right: *FrontEnd*, *BackEnd* and another
+categories, each of which will be a project in its own right: *Front End*, *Back End* and another
 *Unallocated* card that serves as a placeholder for provisional equity for other work down
 the road.  Unallocated cards in `Master` should not be matched with a related project.
+Each of these cards actually represent issues that are members of the `Master` project.
 
-Connie takes advantage of a shorthand built into CodeEquity projects.  When creating cards, CE
-Server looks for any line of the form `<allocation, PEQ: 1,000,000>`, or `<PEQ: 1000>` (any number
-works).  When found at the beginning of a line, CE Server will create a PEQ or AllocPEQ label, create an issue for that card
-with the new label, rebuild the card to point at
-the new issue, and send the PEQ data to the AWS Backend.  This is a very quick way to build a set of
-allocations and issues for your new project.
+Connie starts by creating an allocation label in GitHub's label interface.  Connie gives the new label
+the name "2,000,000 AllocPEQ" XXX CONFIRM XXX and creates the label.  When creating labels, CE Server looks for
+any label name matching a digit followed by "AllocPEQ" or "PEQ", then reworks the label into a proper CodeEquity
+label for future use.  Connie then creates a new *Back End* issue, assignes the new label, and adds the issue to
+the **Software Contributions** column of the `Master` project.
 
-In this case, Connie types: 
+When building the label, Connie types: 
+
+<p float="left">
+  <img src="images/garlicBeer1Pre.png" />
+</p>
+
+
+Then Connie creates the new issue: 
 
 <p float="left">
   <img src="images/garlicBeer1Pre.png" />
@@ -300,8 +317,8 @@ which results in:
 </p>
 
 If you are familar with GitHub, you will notice that the result is a card linked to an open issue with
-the name `Back End`, and a label of `2000000 AllocPEQ`.  Using CodeEquity's default suggestion of
-`50,000 PEQ` for one person-day of work, this means Connie has made a rough allocation of 10
+the name `Back End`, and a label of `2M AllocPEQ`.  Using CodeEquity's default suggestion of
+`10,000 PEQ` for one person-day of work, this means Connie has made a rough allocation of 10
 person-months of work for the back end.  If this turns out to be wrong later (which is almost a
 certainty), that allocation can be adjusted in either direction with no bad consequences.
 
@@ -338,8 +355,7 @@ and the following column layout in each child project:
 #### Basic Issue Lifecycle
 
 Connie wants a hands-on understanding of what happens with a PEQ issue as it works its way through
-the project.  Connie starts with entering the following PEQ issue using the shortcut identifier
-`<PEQ: 1000>`: 
+the project.  Connie starts with creating a new PEQ label, and using it to create the following PEQ issue:
 
 <p float="left">
   <img src="images/garlicBeerLC0.png" />
@@ -351,8 +367,7 @@ resulting in:
   <img src="images/garlicBeerLC1.png" />
 </p>
 
-Looking at the current issues tab, you can see that all the PEQ-related cards have had corresponding
-issues created:
+By clicking into the issues tab, Connie can see the current set of PEQ issues that have been created:
 
 <p float="left">
   <img src="images/garlicBeerLC2.png" />
@@ -411,41 +426,52 @@ Done with GitHub for the moment, Connie opens the CE Flutter app to see what has
 <br>
 
 
-### Converting a Project into a CodeEquity Project
+### Converting an Existing Project into a CodeEquity Project
 
 This second example follows Jessie converting an existing GitHub project board into a CodeEquity
 project.  Jessie is already a contributor to several repositories owned by other people, and is the
-owner of several others.  Jessie is exited by the possibility of attracting more developers, and has
-decided to convert the BookShare FrontEnd (or BookShareFE) 
-project into a CodeEquity project.  The BookShareFE project is part of the BookShare repository in
-GitHub, and both the repo and the project are already in active use.
+owner of several others.  Jessie has been exploring the idea of a community book sharing app,
+and has started working on it.  Excited by the possibility of attracting more developers, Jessie
+decides to convert the BookShare repository 
+into a CodeEquity Project.  The BookShare repository, and several participating GitHub projects are already in active use.
 
 Jessie starts by [signing up](#common-lifecycle-examples) for CodeEquity, following the default
 installation for public repositories.  Jessie also sticks with the default equity structure proposed
 by the CodeEquity website, comfortable that as the project evolves, so can the equity structure for
 BookShare. 
 
-While at CodeEquity.net, Jessie selects the `Convert BookShareFE` option.  At this point, the
-CodeEquity website instructs the server to convert the BookShareFE project into a CodeEquity
-Project. CE Server will initialize internal state (see [Linkages](#linkages)), and enforce the 1:1 mapping rule between issues and cards in the new
+While at CodeEquity.net, Jessie selects the `Convert BookShare` option, which is the BookShare repository.
+The CodeEquity website passes this instruction to CE Server, where most of the internal conversion work occurs.
+CE Server will initialize internal state (see [Linkages](#linkages)), and enforce the 1:1 mapping rule between issues and cards in the new
 CodeEquity project by duplicating and renaming any issue that is pointed at by more than one card.
 The new issue names are identical to the original name, but with a random alpha-numeric string
 appended to the end of it.
 
-BookShareFE is now a valid CodeEquity project.  All pre-existing columns are preserved, as
+Could Jessie have started by converting a related BookShare project, for example BookShare Front End, instead of the entire repository?
+The simple answer is "no".  
+
+In GitHub, every issue resides in exactly one repository.  GitHub Projects, however, are unrestricted views over issues from any number of
+repositories within an organization.  In other words, repos and projects are independent organizational entities ... one is for content (repo),
+one is for views (projects).  The CodeEquity mandate is to manage the provenance of provisional equity, which is primarily a content-level task.  Views
+are solely used for summarization (both in CodeEquity and GitHub).  If CodeEquity Projects were tied directly to GitHub Projects, several points
+of friction would immediately pop up.  For example, during conversion, CE Server enforces the 1:1 mapping rule by force-duplicating and reassinging
+all issues with multiple cards.  Since a GitHub Project can contain issues across multiple repositories, CE Server would be remapping issues and
+cards in repositories that otherwise have no connection to the CodeEquity Project at hand.  
+
+After conversion, BookShare is now a valid CodeEquity project.  All pre-existing columns are preserved, as
 well as all pre-existing cards, issues and labels.  The reserved columns **Pending PEQ Approval**
 and **Accrued** will be added as soon as a PEQ issue is closed.  The reserved PEQ and AllocPeq
 labels will be added as soon as a PEQ issue, or an allocation are added to the project.  From
-this point on, all changes to BookShareFE maintain it's valid status as a CodeEquity Project.
+this point on, all changes to BookShare maintain it's valid status as a CodeEquity Project.
 
-Jessie's BookShareFE project looks identical to how it looked before being converted
-into a CodeEquity project:
+Jessie's BookShare CodeEquityFE GitHub Project looks identical to how it looked before becoming 
+part of a CodeEquity project:
 
 <p float="left">
   <img src="images/bookShareFE.png" />
 </p>
 
-While BookShareFE is a valid CodeEquity project, it does not have a single PEQ issue, nor is there 
+While BookShare is a valid CodeEquity project, it does not have a single PEQ issue, nor is there 
 any provisional equity, and as such it is a CodeEquity project in name only.  Jessie wants 
 to make substantive use of CodeEquity, and so carries out the next several steps:
    * *Columns:*  Adds the column **Planning** (*optional*).  Renames the default **In Progress**
@@ -456,14 +482,14 @@ column to **Underway** in the CodeEquity website (*optional*).
 Server will rebuild this into a valid PEQ label, although you may need to refresh your screen in
 order to see any change.  (XXX Revisit XXX) See the CE Flutter manual for PEQ label options.
 
-   * *Allocations:* Adds several large allocation.  Allocations are a way to indicate
+   * *Allocations:* Adds several large allocations.  Allocations are a way to indicate
 an estimated value of a large chunk of work that is currently not scoped out.  For example, the
 *Expand Flutter Testing* card with **AllocPEQ 500,000** label indicates a large chunk of untasked work
 under the general category of expanded flutter testing.  See
 [GarlicBeer](#garlicbeer-project-structure) for more allocation examples.
 
    * *Update issues:* Adds assignees and PEQ labels to the existing issues.  Adds a few extra labels
-to help identify which page of the front end the issue belongs to.  In order to help keep the
+to help identify which part of the front end the issue belongs to.  In order to help keep the
 initial conversion as simple as possible, no cards will move with the addition of a PEQ label.  So if an issue had been closed earlier, and there are
 assignees, and a PEQ label is added, CE Server will NOT move that related card into the **Pending PEQ
 Approval** column.  Contributors should move these by hand.
@@ -479,7 +505,7 @@ At the end of this, the project looks like this:
 
 <br>
 
-#### BookShareFE in CE Flutter
+#### BookShare in CE Flutter
 
 Done with GitHub for the moment, Jessie opens the CE Flutter app to see what has happened: (XXX REVISIT XXX).
 
@@ -507,10 +533,10 @@ CodeEquity is composed of the following major components:
 ### Overview: CodeEquity App for GitHub
 
 The CodeEquity App for GitHub is (XXX or will be) available in the GitHub Marketplace.  The CodeEquity
-App connects a user's GitHub repository to CE Server, by means of the GitHub notification system.
+App connects an organization's GitHub repositories to CE Server, by means of the GitHub notification system.
 Once installed, any 
-[project](https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards)
-in that repository can be transformed into a CodeEquity project.
+[repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/about-repositories)
+can be transformed or added into a CodeEquity project.
 
 The CodeEquity App is actually just a cohesive set of notification requests and permissions that allow
 GitHub and CE Server to begin communicating.  As such, the app has no logic or state specific to it.
@@ -549,7 +575,7 @@ All communication with the AWS Backend is encoded as JSON REST data.
 
 The CodeEquity App for GitHub can either be found in the GitHub Marketplace, or by browsing directly
 to https://github.com/apps/codeEquity.  Installing the app will allow the GitHub repository owner to
-convert any GitHub project board into a CodeEquity Project, or to start a new CodeEquity Project
+convert any GitHub repository into a CodeEquity Project, or to start a new CodeEquity Project
 from scratch.
 
 The CodeEquity App for GitHub should be installed by the GitHub repository owner, only.
@@ -1338,6 +1364,15 @@ query result would be an empty set.
 
 
 # CodeEquity FAQ
+
+#### if I'm not an org, can I not do CE?
+
+correct, GH withdrew push notification support for individuals when converted to pv2.  make an org (link).
+    
+#### can an established company use CE? equity question
+
+#### What is the relationship between a CodeEquity project and GitHub projects, repos and issues?
+
 
 #### Why the `Unclaimed` column and project?
 

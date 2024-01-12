@@ -1816,6 +1816,11 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     return await tu.settle( subTest, testStatus, checkSplit, authData, testLinks, td, issDat, origLoc, newLoc, origVal, opVal, testStatus, specials );
 }
 
+function splitHelper( issues, title ) {
+    let splitIssues = issues.filter( issue => issue.title.includes( title + " split" ));
+    let retVal = typeof splitIssues === 'undefined' ? false : splitIssues;
+    return retVal;
+}
 
 async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc, testStatus, specials ) {
     let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
@@ -1834,7 +1839,10 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
     let issue       = await findIssue( authData, issDat[0] );    
 
     // Some tests will have two split issues here.  The newly split issue has a larger issNum
-    let splitIssues = issues.filter( issue => issue.title.includes( issDat[3] + " split" ));
+    // Somehow, notice here is now consistently delayed 10s.. rate limit??
+    // let splitIssues = issues.filter( issue => issue.title.includes( issDat[3] + " split" ));
+    let splitIssues = await tu.settleWithVal( "filter resolved iss", splitHelper, issues, issDat[3] ); 
+    
     const splitIss = splitIssues.reduce( ( a, b ) => { return a.number > b.number  ? a : b } );
     const splitDat  = typeof splitIss === 'undefined' ? [-1, -1, -1, -1] : [ splitIss.id.toString(), splitIss.number.toString(), -1, splitIss.title ];
     

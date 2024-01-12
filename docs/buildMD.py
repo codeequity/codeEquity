@@ -54,7 +54,7 @@ def main():
     compose( "raw-ceManual.md", "ceManual.md", False )
     # compose( "raw-README.md", "../README.md", True )
     compose( "raw-README.md", "README.md", True )
-    compose( "raw-ghc-ceManual.md", "ceManual_Classic.md", False )
+    compose( "raw-ghc-ceManual.md", "ceManual-Classic.md", False )
         
 
 if __name__ == "__main__":
