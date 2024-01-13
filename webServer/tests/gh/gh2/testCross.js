@@ -3,6 +3,7 @@ const config = require( '../../../config' );
 
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
+const ghUtils  = require( '../../../utils/gh/ghUtils' );
 
 const tu       = require( '../../ceTestUtils' );
 
@@ -317,10 +318,12 @@ async function runTests( flutterTest, authData, authDataX, authDataM, testLinks,
     
     let t1 = await testCrossRepo( flutterTest, authData, authDataX, testLinks, td, tdX );
     console.log( "\n\nCross Repo test complete." );
+    ghUtils.show( true );
     await utils.sleep( 5000 );
 
     let t2 = await testMultithread( authData, authDataM, testLinks, td, tdM );
     console.log( "\n\nMultithread test complete." );
+    ghUtils.show( true );
     await utils.sleep( 5000 );
 
     testStatus = tu.mergeTests( testStatus, t1 );

@@ -25,7 +25,7 @@ const gh2Label  = require( './gh/gh2/labelHandler' );
 
 // When switching between GHC and GH2, look for pv2Notices that match contentNotices.
 var pendingNotices = [];
-
+var noticeCount = 0;
 
 // CE_ACTOR used for app-wide jwt
 // owner, repo needed for octokit installation client.
@@ -397,6 +397,9 @@ function makePendingNotice( rb, action ) {
 
 async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 
+    noticeCount = noticeCount + 1;
+    if( noticeCount % 25 == 0 ) { ghUtils.show( true ); }  // XXX formalize or remove
+	
     if( jd.action == "synchronize" || jd.reqBody.hasOwnProperty( "pull_request" )) {
 	console.log( "Notification for Pull Request.  CodeEquity does not require these.  Skipping." );
 	return res.end();

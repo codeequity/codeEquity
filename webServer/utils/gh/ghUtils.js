@@ -7,10 +7,36 @@ const utils    = require( '../ceUtils' );
 const awsUtils = require( '../awsUtils' );
 
 var handlerRetries = {}; // XXX hmmm.   will this reset constantly?
+var postRecord = {}; 
+
+
+function show( full ) {
+    full =  typeof full === 'undefined' ? false : full;
+
+    let arr = [];
+    for( const [name, count] of Object.entries( postRecord )) {
+	arr.push( [name, count] );
+    }
+
+    arr.sort( (a,b) => b[1] - a[1] );
+
+    let tot = 0;
+    for( let i = 0; i < arr.length; i++ ) {
+	if( full || i < 4 ) { console.log( arr[i][0], arr[i][1] ); }
+	tot = tot + arr[i][1]
+    }
+    console.log( "Total postGH calls:", tot );
+}
 
 // XXX Accept header is for label preview.  Check back to delete.
-async function postGH( PAT, url, postData, check422 ) {
+async function postGH( PAT, url, postData, name, check422 ) {
     if( typeof check422 === 'undefined' ) { check422 = false; }
+
+    // if( typeof name === 'undefined' ) { console.log( "uh oh", postData ); }
+    // assert( typeof name !== 'undefined' );
+
+    if( typeof postRecord[name] === 'undefined' ) { postRecord[name] = 0; }
+    postRecord[name] = postRecord[name] + 1;
     
     const params = {
 	method: "POST",
@@ -129,7 +155,7 @@ async function checkForPV2( PAT, nodeId ) {
     let found = false;
     try{
 	// postGH catches it's own errors, but doesn't attempt to retry
-	const ret = await postGH( PAT, config.GQL_ENDPOINT, queryJ );
+	const ret = await postGH( PAT, config.GQL_ENDPOINT, queryJ, "checkForPV2" );
 
 	// XXX non-pv2 claim here can be false (e.g. delete populate issue, nodeId is already gone)
 	//     but may fine those cases to handle as classic?
@@ -270,7 +296,7 @@ async function getOwnerId( PAT, owner ) {
     
     let retId = -1;
     try{ 
-	await postGH( PAT, config.GQL_ENDPOINT, query )
+	await postGH( PAT, config.GQL_ENDPOINT, query, "getOwnerId" )
 	    .then( ret => {
 		if( ret.status != 200 ) { throw ret; }
 		if ( utils.validField( ret, "data" ) && (utils.validField( ret.data, "user" ) || utils.validField( ret.data, "organization" ))) {
@@ -292,7 +318,7 @@ async function getRepoId( PAT, owner, repo ) {
 
     let retId = -1;
     try {
-	await postGH( PAT, config.GQL_ENDPOINT, query )
+	await postGH( PAT, config.GQL_ENDPOINT, query, "getRepoId" )
 	    .then( ret => {
 		if( ret.status != 200 ) { throw ret; }
 		if( utils.validField( ret, "data" ) && utils.validField( ret.data, "repository" )) { retId = ret.data.repository.id; }
@@ -317,7 +343,7 @@ async function getIssueRepo( authData, issueId ) {
 
     let repo = {};
     try{ 
-	await postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	await postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "getIssueRepo" )
 	    .then( ret => {
 		if( !utils.validField( ret, "status" ) || ret.status != 200 ) { throw ret; }
 		let issue = ret.data.node;
@@ -345,3 +371,5 @@ exports.theOnePEQ       = theOnePEQ;
 exports.getOwnerId      = getOwnerId;
 exports.getRepoId       = getRepoId;
 exports.getIssueRepo    = getIssueRepo;
+
+exports.show            = show;

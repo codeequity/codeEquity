@@ -173,7 +173,7 @@ async function getLabels( authData, td ) {
     query = JSON.stringify({ query, variables });
 
     try{ 
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_getLabels" )
 	    .then( async (raw) => {
 		if( raw.status != 200 ) { throw raw; }
 		let labs = raw.data.node.labels.edges;
@@ -217,7 +217,7 @@ async function getProjects( authData, td ) {
     query = JSON.stringify({ query, variables });
 
     try{
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_getProjects" )
 	    .then( async (raw) => {
 		if( raw.status != 200 ) { throw raw; }
 		if( utils.validField( raw.data.node.projectsV2, "edges" )) {
@@ -272,7 +272,7 @@ async function getColumns( authData, pid ) {
     query = JSON.stringify({ query, variables });
 
     try{ 
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_getColumns" )
 	    .then( async (raw) => {
 		if( raw.status != 200 ) { throw raw; }
 		let views = raw.data.node.views.edges;
@@ -327,7 +327,7 @@ async function getDraftIssues( authData, pid ) {
     query = JSON.stringify({ query, variables });
 
     try{ 
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_getDraftIssues" )
 	    .then( async (raw) => {
 		if( raw.status != 200 ) { throw raw; }
 		let drafts = raw.data.node.items.edges;
@@ -370,7 +370,7 @@ async function getCards( authData, pid, colId ) {
     query = JSON.stringify({ query, variables });
 
     try{ 
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_getCards" )
 	    .then( async (raw) => {
 		if( raw.status != 200 ) { throw raw; }
 		if( raw.status == 200 && typeof raw.errors !== 'undefined' ) {
@@ -429,7 +429,7 @@ async function getComments( authData, issueId ) {
     query = JSON.stringify({ query, variables });
 
     try{ 
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_getComments" )
 	    .then( async (raw) => {
 		if( raw.status != 200 || utils.validField( raw, "errors" )) { throw raw; }
 		if( !( utils.validField( raw.data, "node" ) && utils.validField( raw.data.node, "comments" ) )) { throw raw; }
@@ -609,7 +609,7 @@ async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
 
     let res = -1;
     try{ 
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_unlinkProject" )
 	    .then( ret => {
 		if( ret.status != 200 ) { throw ret; }
 		res = ret;
@@ -699,7 +699,7 @@ async function createDraftIssue( authData, pid, title, body ) {
 
     let pvId = -1;
     try{
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "TU_createDraftIssue" )
 	    .then( ret => {
 		if( ret.status != 200 ) { throw ret; }
 		pvId = ret.data.addProjectV2DraftIssue.projectItem.id;
@@ -759,7 +759,7 @@ async function removeNewbornCard( authData, pid, dissueNodeId, dissueContentId )
     let queryJ    = JSON.stringify({ query, variables });
 
     try{
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ )
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "TU_removeNewbornCard" )
 	    .then( ret => {
 		if( ret.status != 200 ) { throw ret; }
 	    });
@@ -884,7 +884,7 @@ async function delLabel( authData, label ) {
     let variables = {"labelId": label.id };
     let queryJ    = JSON.stringify({ query, variables });
 
-    try{ await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ ); }
+    try{ await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "TU_delLabel" ); }
     catch( e ) { await ghUtils.errorHandler( "delLabel", e, delLabel, authData, label ); }
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
@@ -976,7 +976,7 @@ async function remIssue( authData, issueId ) {
     let variables = {"id": issueId };
     query         = JSON.stringify({ query, variables });
     
-    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query );
+    let res = await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "TU_remIssue" );
 
     if( typeof res.data === 'undefined' ) { console.log( "ERROR.", res ); }
     console.log( "executed remIssue id", issueId, res );
