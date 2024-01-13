@@ -3,6 +3,7 @@ const config = require( '../../../config' );
 
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
+const ghUtils  = require( '../../../utils/gh/ghUtils' );
 
 const tu       = require( '../../ceTestUtils' );
 
@@ -473,12 +474,15 @@ async function runTests( authData, testLinks, td ) {
 
     // Stop and check each step
     let t1 = await testStepByStep( authData, testLinks, td );
-
+    // ghUtils.show( true );
+    
     // Endpoint only, no waiting 
     let t2 = await testEndpoint( authData, testLinks, td );
-
+    // ghUtils.show( true );
+    
     // Blast tests
     let t3 = await testBlast( authData, testLinks, td );
+    // ghUtils.show( true );
     
     // Basic flow alloc already done in setup.  Basically, create.  Period.
 

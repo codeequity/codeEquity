@@ -6,6 +6,9 @@ const config = require( '../config' );
 
 const utils    = require( './ceUtils' );
 
+var postRecord = {};
+// var recordCount = 0;
+
 // aws lambda interface, stay sync
 function getAPIPath() {
     let fname = config.APIPATH_CONFIG_LOC;
@@ -74,6 +77,27 @@ async function postAWS( authData, shortName, postData ) {
 	.catch(err => console.log(err));
 };
 
+// XXX duplicate of ghUtils.show  ... pass in postRecord and move up if this survives
+function show( full ) {
+    full =  typeof full === 'undefined' ? false : full;
+
+    let arr = [];
+    for( const [name, count] of Object.entries( postRecord )) {
+	arr.push( [name, count] );
+    }
+
+    arr.sort( (a,b) => b[1] - a[1] );
+
+    console.log( "-------------" );
+    let tot = 0;
+    for( let i = 0; i < arr.length; i++ ) {
+	if( full || i < 4 ) { console.log( arr[i][0], arr[i][1] ); }
+	tot = tot + arr[i][1]
+    }
+    console.log( "Total postAWS calls:", tot );
+    console.log( "-------------" );
+}
+
 async function wrappedPostAWS( authData, shortName, postData ) {
     let response = await postAWS( authData, shortName, JSON.stringify( postData ))
     if( typeof response === 'undefined' ) return null;
@@ -89,6 +113,12 @@ async function wrappedPostAWS( authData, shortName, postData ) {
     
     let tableName = "";
     if( shortName == "GetEntry" || shortName == "GetEntries" ) { tableName = postData.tableName; }
+
+    let pName = shortName + "." + ( typeof postData.tableName === 'undefined' ? "" : postData.tableName );
+    if( typeof postRecord[pName] === 'undefined' ) { postRecord[pName] = 0; }
+    postRecord[pName] = postRecord[pName] + 1;
+    // recordCount = recordCount + 1;
+    // if( recordCount % 25 == 0 ) { show( true ); }  // XXX formalize or remove    
     
     if( response['status'] == 201 ) {
 	let body = await response.json();
@@ -524,6 +554,7 @@ exports.getAPIPath   = getAPIPath;
 exports.getCognito   = getCognito;
 exports.getCEServer  = getCEServer;
 exports.getStoredPAT = getStoredPAT;
+exports.show         = show;
 
 exports.getProjectStatus   = getProjectStatus;
 exports.getPeq             = getPeq;

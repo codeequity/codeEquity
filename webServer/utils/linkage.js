@@ -560,7 +560,7 @@ class Linkage {
 	if( typeof cep === 'undefined' ) { return true; }
 
 	// XXX hmm.  Expensive.
-	// TESTING ONLY!  This will be executed by ceFlutter before issueing unlink.
+	// TESTING ONLY!  This will be executed by ceFlutter before issuing unlink.
 	// We do not allow unlink repo if it contains active peqs.
 	const query = { CEProjectId: ceProjId, Active: "true" };
 	let peqs  = await awsUtils.getPeqs( authData, query );
@@ -568,6 +568,7 @@ class Linkage {
 	for( const peq of peqs ) {
 	    let link = await this.getLinks( authData, { "ceProjId": ceProjId, "issueId": peq.HostIssueId } );
 	    if( link != -1 ) { console.log( link ); }
+	    // NOTE: this can trigger if there was a failure in previous test while splitting in resolve
 	    assert( link == -1 );
 	}
 	

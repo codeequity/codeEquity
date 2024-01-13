@@ -1,6 +1,9 @@
 const assert   = require( 'assert' );
 const ceRouter = require( './ceRouter' );
 
+const awsUtils  = require( '../utils/awsUtils' );
+const ghUtils   = require( '../utils/gh/ghUtils' );
+
 async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, res ) {
 
     assert( reqBody.hasOwnProperty( "Request" ) );
@@ -36,6 +39,11 @@ async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, re
     }
     else if( reqBody.Request == "unlinkRepo" ) {
 	retVal = await ghLinks.unlinkRepo( reqBody.auth, ceProjects, reqBody.ceProjId, reqBody.rNodeId );
+    }
+    else if( reqBody.Request == "showCallCounts" ) {
+	retVal = true;
+	ghUtils.show( reqBody.full );
+	awsUtils.show( reqBody.full );
     }
 	
     return res

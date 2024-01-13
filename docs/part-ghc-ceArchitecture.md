@@ -19,10 +19,10 @@ CodeEquity is composed of the following major components:
 ### Overview: CodeEquity App for GitHub
 
 The CodeEquity App for GitHub is (XXX or will be) available in the GitHub Marketplace.  The CodeEquity
-App connects an organization's GitHub repositories to CE Server, by means of the GitHub notification system.
+App connects a user's GitHub repository to CE Server, by means of the GitHub notification system.
 Once installed, any 
-[repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/about-repositories)
-can be transformed or added into a CodeEquity project.
+[project](https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards)
+in that repository can be transformed into a CodeEquity project.
 
 The CodeEquity App is actually just a cohesive set of notification requests and permissions that allow
 GitHub and CE Server to begin communicating.  As such, the app has no logic or state specific to it.

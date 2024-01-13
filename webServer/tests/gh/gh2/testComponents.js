@@ -3,6 +3,7 @@ const config = require( '../../../config' );
 
 const utils    = require( '../../../utils/ceUtils' );
 const awsUtils = require( '../../../utils/awsUtils' );
+const ghUtils  = require( '../../../utils/gh/ghUtils' );
 
 const tu       = require( '../../ceTestUtils' );
 
@@ -1248,30 +1249,37 @@ async function runTests( authData, testLinks, td ) {
 
     let t1 = await testAssignment( authData, testLinks, td );
     console.log( "\n\nAssignment test complete." );
+    // ghUtils.show( true );    
     await utils.sleep( 5000 );
     
     let t8 = await testAlloc( authData, testLinks, td );
     console.log( "\n\nAlloc complete." );
+    // ghUtils.show( true );
     await utils.sleep( 5000 );
     
     let t2 = await testLabel( authData, testLinks, td ); 
     console.log( "\n\nLabel test complete." );
+    // ghUtils.show( true );
     await utils.sleep( 5000 );
 
     let t3 = await testLabelCarded( authData, testLinks, td );
     console.log( "\n\nLabel Carded complete." );
+    // ghUtils.show( true );
     await utils.sleep( 5000 );
     
     let t4 = await testCloseReopen( authData, testLinks, td ); 
     console.log( "\n\nClose / Reopen complete." );
+    // ghUtils.show( true );
     await utils.sleep( 5000 );
 
     let t5 = await testCreateDelete( authData, testLinks, td );
     console.log( "\n\nCreate / Delete complete." );
+    // ghUtils.show( true );
     await utils.sleep( 5000 );
 
     let t6 = await testLabelMods( authData, testLinks, td );
     console.log( "\n\nLabel mods complete." );
+    // ghUtils.show( true );
     await utils.sleep( 5000 );
 
     /*

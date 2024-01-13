@@ -400,7 +400,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    }
 	    console.log( authData.who, "attempting to move card to", newColName, newCard.columnId, "from", oldColId );
 
-	    // XXX Must ensure either PROJ_PLAN or oldColId exists.
 	    // reform rejectLoc to old location, iff old loc is not No Status.
 	    if( oldColId != -1 ) {
 		rejectLoc.hostColumnId   = oldColId;

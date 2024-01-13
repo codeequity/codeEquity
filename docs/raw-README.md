@@ -11,6 +11,8 @@ for full details.** :arrow_left:
 
 :arrow_right: **Please see the [CodeEquity manual](docs/ceManual.md)
 for full details.** :arrow_left:
+:arrow_right: **The [CodeEquity manual] for Classic Projects (docs/ceManual-Classic.md)
+has been deprecated.** :arrow_left:
 
 
 # CodeEquity QuickStart

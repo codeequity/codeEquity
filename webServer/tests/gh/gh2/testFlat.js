@@ -1,6 +1,7 @@
 const config = require( '../../../config' );
 
-const utils  = require( '../../../utils/ceUtils' );
+const utils   = require( '../../../utils/ceUtils' );
+const ghUtils = require( '../../../utils/gh/ghUtils' );    
 
 const tu     = require( '../../ceTestUtils' );
 
@@ -118,7 +119,7 @@ async function runTests( authData, testLinks, td ) {
 
     testStatus = tu.mergeTests( testStatus, t1 );
     tu.testReport( testStatus, "Create Flat CE Projects" );
-    
+    // ghUtils.show( true );
     return testStatus;
 }
 
