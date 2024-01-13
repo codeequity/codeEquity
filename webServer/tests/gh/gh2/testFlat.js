@@ -119,7 +119,7 @@ async function runTests( authData, testLinks, td ) {
 
     testStatus = tu.mergeTests( testStatus, t1 );
     tu.testReport( testStatus, "Create Flat CE Projects" );
-    ghUtils.show( true );
+    // ghUtils.show( true );
     return testStatus;
 }
 

@@ -32,6 +32,13 @@ function shuffle(arr) {
     return arr;
 }
 
+async function showCallCounts( full ) {
+    let postData = {"Endpoint": "Testing", "Request": "showCallCounts", "full": full };
+    // not need to await
+    utils.postCE( "testHandler", JSON.stringify( postData ));
+    return true;
+}
+
 // Get everything from ceServer
 async function getLinks( authData, testLinks, query ) {
     let postData = {"Endpoint": "Testing", "Request": "getLinks" };
@@ -285,6 +292,7 @@ exports.MIN_DELAY        = MIN_DELAY;
 exports.shuffle          = shuffle;    
 
 // Communicate with ceServer, aws
+exports.showCallCounts   = showCallCounts;
 exports.getLinks         = getLinks;
 exports.getLocs          = getLocs;
 exports.findNotice       = findNotice;

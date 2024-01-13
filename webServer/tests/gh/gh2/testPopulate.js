@@ -277,13 +277,13 @@ async function runTests( authData, testLinks, td ) {
 
     let t1 = await testIncrementalResolve( authData, testLinks, td );
     console.log( "\n\nIncremental resolve complete." );
-    ghUtils.show( true );
+    // ghUtils.show( true );
     await utils.sleep( 5000 );
 
 
     let t2 = await testSplitAlloc( authData, testLinks, td );
     console.log( "\n\nSplit Alloc complete." );
-    ghUtils.show( true );
+    // ghUtils.show( true );
     // await utils.sleep( 5000 );
 
     testStatus = tu.mergeTests( testStatus, t1 );
