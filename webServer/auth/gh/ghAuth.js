@@ -159,7 +159,7 @@ async function getAuths( authData, pms, org, actor ) {
 	if( !octokitClients[host][org].hasOwnProperty( actor )) {
 	    console.log( authData.who, "get octo", host, org, actor );  
 	    // Wait later
-	    let repoParts = org.split('/');        // XXX rp[1] is undefined for orgs
+	    let repoParts = org.split('/');        // only called for GHC, so repo exists
 	    octokitClients[host][org][actor] = {};
 	    octokitClients[host][org][actor].auth = getInstallationClient( repoParts[0], repoParts[1], config.CE_ACTOR ); 
 	    octokitClients[host][org][actor].last = Date.now();

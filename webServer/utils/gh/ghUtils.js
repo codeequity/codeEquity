@@ -137,48 +137,6 @@ async function errorHandler( source, e, func, ...params ) {
 }
 
 
-// githubRouter needs to know how to switch a content notice.
-// This helper function looks to see if the nodeId (of an issue) is part of a PV2 project.
-async function checkForPV2( PAT, nodeId ) {
-    const query = `query detail($nodeId: ID!) {
-	node( id: $nodeId ) {
-        ... on ProjectV2ItemContent { 
-          ... on Issue {
-            projectItems(first: 100) {
-              edges{ node{ 
-                ... on ProjectV2Item {
-                  project { id }
-            }}}}
-    }}}}`;
-
-    let variables = {"nodeId": nodeId };
-    let queryJ = JSON.stringify({ query, variables });
-
-    let found = false;
-    try{
-	// postGH catches it's own errors, but doesn't attempt to retry
-	const ret = await postGH( PAT, config.GQL_ENDPOINT, queryJ, "checkForPV2" );
-
-	// XXX non-pv2 claim here can be false (e.g. delete populate issue, nodeId is already gone)
-	//     but may fine those cases to handle as classic?
-	if( !utils.validField( ret.data, "node" ) ) { return found; }
-	
-	let data = ret.data.node.projectItems;
-	if( typeof data !== 'undefined' && typeof data.edges !== 'undefined' ) {
-	    if( data.edges.length > 99 ) { console.log( "WARNING.  Detected a very large number of projectItems.  Ignoring some." ); }
-	    for( let i = 0; i < data.edges.length; i++ ) {
-		let project = data.edges[i];
-		if( typeof project.id !== 'undefined' ) {
-		    found = true;
-		    break;
-		}
-	    }
-	}
-    }
-    catch( e ) { found = await errorHandler( "checkForPV2", e, checkForPV2, PAT, nodeId ); }
-    
-    return found;
-}
 
 // XXX Consider promoting this to ceUtils
 // returns -1 if could not find.
@@ -362,7 +320,6 @@ async function getIssueRepo( authData, issueId ) {
 exports.postGH       = postGH;
 exports.errorHandler = errorHandler;
 
-exports.checkForPV2     = checkForPV2;
 exports.validatePEQ     = validatePEQ;
 
 exports.parseLabelDescr = parseLabelDescr;
