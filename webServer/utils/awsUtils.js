@@ -159,7 +159,16 @@ async function getProjectStatus( authData, ceProjId ) {
     let query     = ceProjId == -1 ? { "empty": config.EMPTY } : { "CEProjectId": ceProjId};
     let postData  = { "Endpoint": shortName, "tableName": "CEProjects", "query": query };
 
-    return await wrappedPostAWS( authData, shortName, postData );
+    let ceps = await wrappedPostAWS( authData, shortName, postData );
+
+    // XXX Filtering deprecated GHC projects.  When ready, should remake these projects as PV2, then remove filtering.
+    if( ceProjId == -1 ) {
+	let cut = ceps.filter((cep) => cep.ProjectMgmtSys == config.PMS_GHC );
+	for( const c of cut ) { console.log( "DEPRECATED ceProject", c.CEProjectId, "is being ignored." ); }
+	ceps = ceps.filter((cep) => cep.ProjectMgmtSys != config.PMS_GHC );
+    }
+    
+    return ceps;
 }
 
 // XXX inconsistent caps

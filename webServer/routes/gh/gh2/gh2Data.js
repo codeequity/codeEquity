@@ -58,7 +58,7 @@ class GH2Data extends ceData.CEData{
 	// If this is content notice, get from repo
 	if( !utils.validField( jd.reqBody, "projects_v2_item" ) || !utils.validField( jd.reqBody.projects_v2_item, "project_node_id" ) ) {
 	    assert( utils.validField( jd.reqBody, "repository" ));
-	    // console.log( "Find by repo" );
+	    console.log( "Find by repo", jd.org, jd.reqBody.repository.full_name );
 	    retVal = ceProjects.findByRepo( config.HOST_GH, jd.org, jd.reqBody.repository.full_name ); 
 	}
 	else {
