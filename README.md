@@ -47,8 +47,10 @@ of being worth something down the road if you can get good help early on.
 For the potential contributor to CodeEquity software itself, well, yes, we are a CodeEquity project,
 so consider joining the team!
 
-:arrow_right: **Please see the [CodeEquity manual](docs/ceManual.md)
-for full details.** :arrow_left:
+
+:arrow_right: **Please see the [CodeEquity manual](docs/ceManual.md) for a more in-depth description.** :arrow_left:
+
+:arrow_right: **The [CodeEquity manual for Classic GitHub](docs/ceManual-ghc.md) for Classic projects has been deprecated.** :arrow_left:
 
 ## CodeEquity Key Concepts
 
