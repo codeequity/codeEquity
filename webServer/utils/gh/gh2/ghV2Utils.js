@@ -43,7 +43,7 @@ function printEdges( base, item, values ) {
 // XXX Getting several values per issue here that are unused.  remove.
 async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 
-    const query1 = `query linkLoc($nodeId: ID!) {
+    const query1 = `query linkLoc($nodeId: ID!, $fName: String!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
             number title id
@@ -51,7 +51,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
               pageInfo { hasNextPage, endCursor }
               edges { node {
                   ... on ProjectV2Item { type id
-                    fieldValueByName(name: "Status") {
+                    fieldValueByName(name: $fName ) {
                      ... on ProjectV2ItemFieldSingleSelectValue { name optionId field { ... on ProjectV2SingleSelectField { id }}}}
                     content {
                      ... on ProjectV2ItemContent {
@@ -70,7 +70,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
                               }}}}}}}}}
     }}}`;
 
-    const queryN = `query linkLoc($nodeId: ID!, $cursor: String!) {
+    const queryN = `query linkLoc($nodeId: ID!, $cursor: String!, $fName: String!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
             number title id
@@ -78,7 +78,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
               pageInfo { hasNextPage, endCursor }
               edges { node {
                   ... on ProjectV2Item { type id
-                    fieldValueByName(name: "Status") {
+                    fieldValueByName(name: $fName) {
                      ... on ProjectV2ItemFieldSingleSelectValue { name optionId field { ... on ProjectV2SingleSelectField { id }}}}
                     content {
                      ... on ProjectV2ItemContent {
@@ -99,7 +99,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 
 
     let query     = cursor === -1 ? query1 : queryN;
-    let variables = cursor === -1 ? {"nodeId": pid } : {"nodeId": pid, "cursor": cursor };
+    let variables = cursor === -1 ? {"nodeId": pid, "fName": config.GH_COL_FIELD } : {"nodeId": pid, "cursor": cursor, "fName": config.GH_COL_FIELD };
     query = JSON.stringify({ query, variables });
 
     try {
@@ -126,7 +126,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 			for( let j = 0; j < aview.fields.edges.length; j++ ) {
 			    if( j >= 99 ) { console.log( authData.who, "WARNING.  Detected a very large number of columns, ignoring some." ); }
 			    const pfc = aview.fields.edges[j].node;
-			    if( pfc.name == "Status" ) {                            // XXX formalize.  generalize?
+			    if( pfc.name == config.GH_COL_FIELD ) { 
 				statusId = pfc.id;
 				for( let k = 0; k < pfc.options.length; k++ ) {
 				    let datum   = {};
@@ -976,16 +976,16 @@ async function getCard( authData, cardId ) {
     let retVal = {};
     if( cardId === -1 ) { console.log( authData.who, "getCard didn't provide id", cardId ); return retVal; }
 
-    let query = `query( $id:ID! ) {
+    let query = `query( $id:ID!, $fName: String! ) {
                    node( id: $id ) {
                      ... on ProjectV2Item {
                         project { id }
-                        fieldValueByName(name: "Status") {
+                        fieldValueByName(name: $fName ) {
                           ... on ProjectV2ItemFieldSingleSelectValue {optionId name field { ... on ProjectV2SingleSelectField { id }}}}
                         content { 
                           ... on ProjectV2ItemContent { ... on Issue { id number }}}
                   }}}`;
-    let variables = {"id": cardId };
+    let variables = {"id": cardId, "fName": config.GH_COL_FIELD };
     let queryJ    = JSON.stringify({ query, variables });
 
     try {
@@ -993,7 +993,6 @@ async function getCard( authData, cardId ) {
 	    .then( raw => {
 		// A moveCard is generated after createProjectCard.  MoveCard getsCard first.
 		// If CPC caused a split, the move notice is for a card that no longer exists.
-		// XXX formalize message
 		if( utils.validField( raw, "errors" ) && raw.errors.length == 1 && raw.errors[0].message.includes( "Could not resolve to a node with the global id" )) {  
 		    console.log( authData.who, "Could not find card:", cardId, "possibly result of rebuilding for a split issue?" );
 		    retVal = -1;
@@ -1025,18 +1024,18 @@ async function getCardFromIssue( authData, issueId ) {
     let retVal = {};
     if( issueId === -1 ) { console.log( authData.who, "getCardFromIssue bad issueId", issueId ); return retVal; }
 
-    let query = `query( $id:ID! ) {
+    let query = `query( $id:ID!, $fName: String! ) {
                    node( id: $id ) {
                    ... on Issue { 
                         id title number
                         projectItems (first:2) { edges { node {
                           id type
                           project { id }
-                          fieldValueByName(name: "Status") {
+                          fieldValueByName(name: $fName ) {
                            ... on ProjectV2ItemFieldSingleSelectValue {optionId name field { ... on ProjectV2SingleSelectField { id }}}}
                         }}}
                  }}}`;
-    let variables = {"id": issueId };
+    let variables = {"id": issueId, "fName": config.GH_COL_FIELD };
     let queryJ    = JSON.stringify({ query, variables });
 
     try {
@@ -1124,7 +1123,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 	if( link.hostColumnId == ceProjectLayout[ config.PROJ_ACCR + 1 ].toString() ) {
 	    let issue = await getFullIssue( authData, pd.issueId );
 	    assert( Object.keys( issue ).length > 0 );	    
-	    if( issue.state == 'CLOSED' ) {
+	    if( issue.state == config.GH_ISSUE_CLOSED ) {
 		return false;
 	    }
 	}
@@ -1138,7 +1137,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 	    success = await checkReserveSafe( authData, pd.issueId, config.PROJ_PEND );
 	    if( !success ) {
 		// no need to put card back - didn't move it.  Don't wait.
-		updateIssue( authData, pd.issueId, "state", "OPEN" ); // reopen issue
+		updateIssue( authData, pd.issueId, "state", config.GH_ISSUE_OPEN ); // reopen issue
 		return false;
 	    }
 
@@ -1165,7 +1164,7 @@ async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout
 	    // GH has opened this issue.  Close it back up.
 	    console.log( authData.who, "WARNING.  Can not reopen an issue that has accrued." );
 	    // Don't wait.
-	    updateIssue( authData, pd.issueId, "state", "CLOSED" ); // re-close issue
+	    updateIssue( authData, pd.issueId, "state", config.GH_ISSUE_CLOSED ); // re-close issue
 	    return false;
 	}
     }

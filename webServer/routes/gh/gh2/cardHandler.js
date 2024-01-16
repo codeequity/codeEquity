@@ -228,7 +228,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     case 'created' :
 	{
 	    // May or may not be PEQ.
-	    assert( card.content_type == "Issue" );
+	    assert( card.content_type == config.GH_ISSUE );
 	    pd.issueId = card.content_node_id;
 
 	    // Get from GH.. will not postpone if populate
@@ -296,7 +296,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    let newCard = await ghV2.getCard( authData, cardId );
 
 	    // This is the only op ceServer carries out on draft issues.  Protect reserved cols.
-	    if( card.content_type == "DraftIssue" ) {  // XXX formalize
+	    if( card.content_type == config.GH_ISSUE_DRAFT ) { 
 		// Do not allow move into PEND if splitting in and non-peq
 		if( newCard.columnName == config.PROJ_COLS[config.PROJ_PEND] || newCard.columnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 		    console.log( authData.who, "WARNING. " + newCard.columnName + " is reserved, can not create Draft Issues here.  Removing." );
@@ -367,7 +367,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
 	    if( links === -1 ) {
-		if( delayCount <= 3 ) {  // XXX formalize
+		if( delayCount <= config.MAX_GH_RETRIES ) {
 		    // Both events are rare.  One does not require postpone (rejection), the other does.
 		    // in the reject case, GH will finish deleting the card quickly, which causes ghV2:getCard to fail, which triggers 'no such card' above, eliminating further delay.
 		    console.log( authData.who, "Card not found.  Either rejected in PNP during split, or move notification arrived before create notification.  Delay.", delayCount );
@@ -441,8 +441,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    
 	    // handle issue.  Don't update issue state if not clear reopen/closed
 	    let newIssueState = "";
-	    if(      oldNameIndex <= config.PROJ_PROG && newNameIndex >= config.PROJ_PEND ) {  newIssueState = "CLOSED"; }
-	    else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = "OPEN";   }
+	    if(      oldNameIndex <= config.PROJ_PROG && newNameIndex >= config.PROJ_PEND ) {  newIssueState = config.GH_ISSUE_CLOSED; }
+	    else if( oldNameIndex >= config.PROJ_PEND && newNameIndex <= config.PROJ_PROG ) {  newIssueState = config.GH_ISSUE_OPEN;   }
 	    
 	    if( newIssueState != "" ) {
 		// Don't wait 

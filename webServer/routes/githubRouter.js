@@ -71,10 +71,10 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
 	jobData.org  = jobData.reqBody.organization.login;
 	jobData.tag  = fullName; 
 	
-	if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "Issue" ) {
+	if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == config.GH_ISSUE ) {
 	    locator.source += "projects_v2_item:";
 	}
-	else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "DraftIssue" ) {
+	else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == config.GH_ISSUE_DRAFT ) {
 	    locator.source += "draftIssue:";
 	}
 	else {

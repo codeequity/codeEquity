@@ -117,8 +117,9 @@ async function wrappedPostAWS( authData, shortName, postData ) {
     let pName = shortName + "." + ( typeof postData.tableName === 'undefined' ? "" : postData.tableName );
     if( typeof postRecord[pName] === 'undefined' ) { postRecord[pName] = 0; }
     postRecord[pName] = postRecord[pName] + 1;
+    // XXX formalize or remove ... if use this again, move count to config, with opt out
     // recordCount = recordCount + 1;
-    // if( recordCount % 25 == 0 ) { show( true ); }  // XXX formalize or remove    
+    // if( recordCount % 25 == 0 ) { show( true ); }  
     
     if( response['status'] == 201 ) {
 	let body = await response.json();
@@ -226,7 +227,7 @@ async function changeReportPeqVal( authData, pd, peqVal, link ) {
     // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
     recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-		     config.PACTVERB_CONF, "change", [newPEQ.PEQId, peqVal.toString()], "peq val update",   // XXX formalize
+		     config.PACTVERB_CONF, config.PACTACT_CHAN, [newPEQ.PEQId, peqVal.toString()], config.PACTNOTE_PVU,
 		     utils.getToday(), pd.reqBody );
 }
 
@@ -286,7 +287,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
 
     // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
 
-    assert( pact == -1 || pact == "addRelo" || pact == "justAdd" );  // XXX formalize
+    assert( pact == -1 || pact == "addRelo" || pact == "justAdd" ); 
     let add       = pact == "addRelo" || pact == "justAdd";
     let relocate  = pact != "justAdd" && pact == "addRelo" ;
     

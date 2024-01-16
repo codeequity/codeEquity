@@ -45,8 +45,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     assert( typeof item !== 'undefined' );
 
     // Allow draftIssue:edit to pass through to protect movement into reserved columns
-    let diEdit = item.content_type == "DraftIssue" && action == "edited";
-    if( item.content_type != "Issue" && !diEdit ) {
+    let diEdit = item.content_type == config.GH_ISSUE_DRAFT && action == "edited";
+    if( item.content_type != config.GH_ISSUE && !diEdit ) {
 	console.log( authData.who, "Skipping", item.content_type, action );
 	return;
     }

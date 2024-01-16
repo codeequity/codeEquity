@@ -104,7 +104,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	
 	awsUtils.removePEQ( authData, peq.PEQId );	
 	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-			       config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], "recreate",
+			       config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], config.PACTNOTE_RECR,
 			       utils.getToday(), pd.reqBody );
 	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
@@ -498,7 +498,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			assert( peq !== -1 );  
 			const subject = [ peq.PEQId, newTitle ]; 
 			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
+					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, config.PACTNOTE_CTIT,
 					       utils.getToday(), pd.reqBody );
 		    }
 		}

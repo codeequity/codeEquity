@@ -270,7 +270,7 @@ async function testAssignment( authData, testLinks, td ) {
     await gh2tu.addAssignee( authData, assData, assignee1 );
     await gh2tu.addAssignee( authData, assData, assignee2 );
     testStatus = await gh2tu.checkAssignees( authData, td, [ASSIGNEE1, ASSIGNEE2], assData, testStatus );
-    testStatus = await gh2tu.checkPact( authData, testLinks, td, ISS_ASS, config.PACTVERB_CONF, config.PACTACT_CHAN, "add assignee", testStatus );
+    testStatus = await gh2tu.checkPact( authData, testLinks, td, ISS_ASS, config.PACTVERB_CONF, config.PACTACT_CHAN, config.PACTNOTE_ADDA, testStatus );
 
     if( VERBOSE ) { tu.testReport( testStatus, "B" ); }
 
@@ -426,7 +426,7 @@ async function testCloseReopen( authData, testLinks, td ) {
 
 	// 5. move to eggs
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, eggs.colId, {issId: issueData[0]} );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, eggs, issueData, card, testStatus, {"state": "OPEN" } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, eggs, issueData, card, testStatus, {"state": config.GH_ISSUE_OPEN } );
 
 	tu.testReport( testStatus, "F" );
 	
@@ -450,19 +450,19 @@ async function testCloseReopen( authData, testLinks, td ) {
 
 	// 9. move to accr
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, flatAccr.colId, {issId: issueData[0]} );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "CLOSED" } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": config.GH_ISSUE_CLOSED } );
 
 	tu.testReport( testStatus, "J" );
 	
 	// 10. reopen (fail)
 	await gh2tu.reopenIssue( authData, td, issueData[0] );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "CLOSED" } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": config.GH_ISSUE_CLOSED } );
 
 	tu.testReport( testStatus, "K" );
 
 	// 10. move to PEND (fail)
 	await gh2tu.moveCard( authData, testLinks, td.ceProjectId, card.cardId, flatPend.colId );
-	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": "CLOSED" } );
+	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, flatAccr, issueData, card, testStatus, {"state": config.GH_ISSUE_CLOSED } );
 
 	tu.testReport( testStatus, "L" );
     }	
@@ -1029,7 +1029,7 @@ async function testProjColMods( authData, testLinks, td ) {
 	await gh2tu.updateColumn( authData, planLoc.colId, "New plan name" );
 	planLoc.colName = "New plan name";
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
-	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, "Column rename", testStatus, {sub:[planLoc.colId.toString(), planName, "New plan name" ]} );
+	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, config.PACTNOTE_CREN, testStatus, {sub:[planLoc.colId.toString(), planName, "New plan name" ]} );
 
 	tu.testReport( testStatus, "ProjCol mods B" );
 
@@ -1040,7 +1040,7 @@ async function testProjColMods( authData, testLinks, td ) {
 	// do not update locs, nothing should have changed.
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, pendLoc, issPendDat, cardPend, testStatus );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
-	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "Column rename attempted", testStatus, {sub:[accrName]} );	
+	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, config.PACTNOTE_CREN + " attempted", testStatus, {sub:[accrName]} );	
 	
 	tu.testReport( testStatus, "ProjCol mods C" );
 
@@ -1054,7 +1054,7 @@ async function testProjColMods( authData, testLinks, td ) {
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, planLoc, issPlanDat, cardPlan, testStatus );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, pendLoc, issPendDat, cardPend, testStatus );
 	testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, accrLoc, issAccrDat, cardAccr, testStatus );
-	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, "Project rename", testStatus, {sub:[projId.toString(), PROJ_NAME, newProjName]} );	
+	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_CHAN, config.PACTNOTE_PREN, testStatus, {sub:[projId.toString(), PROJ_NAME, newProjName]} );	
     }
     
     
@@ -1178,7 +1178,7 @@ async function testAlloc( authData, testLinks, td ) {
     {
 	// Should stay in stripe, allocs don't move.
 	await gh2tu.closeIssue( authData, td, issAllocDat );
-	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, state: "CLOSED"} );  // XXX formalize
+	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, state: config.GH_ISSUE_CLOSED} );
 
 	await gh2tu.reopenIssue( authData, td, issAllocDat[0] );
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );

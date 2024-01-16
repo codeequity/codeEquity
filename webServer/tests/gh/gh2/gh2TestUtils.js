@@ -139,7 +139,7 @@ async function checkLoc( authData, td, issDat, loc ) {
 
     if( retVal ) {
 	if( loc === -1 ) {
-	    retVal = retVal && (issue.state == 'OPEN' || issue.state == 'CLOSED' );
+	    retVal = retVal && (issue.state == config.GH_ISSUE_OPEN || issue.state == config.GH_ISSUE_CLOSED );
 	}
 	else {
 	    let cards = await getCards( authData, loc.pid, loc.colId );
@@ -283,7 +283,7 @@ async function getColumns( authData, pid ) {
 		
 		for( let i = 0; i < view.fields.edges.length; i++ ) {
 		    const afield = view.fields.edges[i].node;
-		    if( afield.name == "Status" ) {
+		    if( afield.name == config.GH_COL_FIELD ) {
 			statusId = afield.id;  
 			for( let k = 0; k < afield.options.length; k++ ) {
 			    let datum = {};
@@ -351,14 +351,14 @@ async function getCards( authData, pid, colId ) {
     let cards = [];
 
     console.log( "get cards", pid, colId );
-    let query = `query($nodeId: ID!) {
+    let query = `query($nodeId: ID!, $fName: String!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
             items(first: 100) {
                edges { node {
                ... on ProjectV2Item {
                    type id
-                   fieldValueByName(name: "Status") {
+                   fieldValueByName(name: $fName) {
                    ... on ProjectV2ItemFieldSingleSelectValue { name optionId }}
                    content {
                    ... on ProjectV2ItemContent { ... on Issue { id title number }
@@ -366,7 +366,7 @@ async function getCards( authData, pid, colId ) {
                            }}
                }}}}
     }}}`;
-    let variables = {"nodeId": pid };
+    let variables = {"nodeId": pid, "fName": config.GH_COL_FIELD };
     query = JSON.stringify({ query, variables });
 
     try{ 
@@ -954,7 +954,7 @@ async function remCard( authData, ceProjId, pid, cardId ) {
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but may arrive out of order for GH.
 async function closeIssue( authData, td, issDat, loc = -1 ) {
-    await ghV2.updateIssue( authData, issDat[0], "state", "CLOSED" );
+    await ghV2.updateIssue( authData, issDat[0], "state", config.GH_ISSUE_CLOSED );
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
     let query = "issue closed " + issDat[3] + locator;
@@ -964,7 +964,7 @@ async function closeIssue( authData, td, issDat, loc = -1 ) {
 }
 
 async function reopenIssue( authData, td, issueId ) {
-    await ghV2.updateIssue( authData, issueId, "state", "OPEN" );
+    await ghV2.updateIssue( authData, issueId, "state", config.GH_ISSUE_OPEN );
 
     // Can take GH a long time to move card.  
     await utils.sleep( tu.MIN_DELAY + 500 );
@@ -1097,7 +1097,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     let splitVal    = typeof specials !== 'undefined' && specials.hasOwnProperty( "splitVal" )  ? specials.splitVal    : awsVal;
     let labelCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )  ? specials.lblCount    : 1;
     let assignCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" ) ? specials.assignees   : false;
-    let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : "OPEN";
+    let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : config.GH_ISSUE_OPEN;
 
     console.log( "Check Allocation", loc.projName, loc.colName, awsVal, splitVal );
     let subTest = [ 0, 0, []];
@@ -1359,7 +1359,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     const lname = labelVal ? ghV2.makeHumanLabel( labelVal, config.PEQ_LABEL ) : ghV2.makeHumanLabel( 1000, config.PEQ_LABEL );
     const lval  = labelVal ? labelVal                     : 1000;
     subTest = tu.checkEq( typeof issue.labels.find( l => l.name == lname ) !== "undefined", true, subTest, "Issue label names missing" + lname );        
-    subTest = tu.checkEq( issue.state, "OPEN",                   subTest, "Issue state" ); 
+    subTest = tu.checkEq( issue.state, config.GH_ISSUE_OPEN,                   subTest, "Issue state" ); 
 
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
@@ -1441,7 +1441,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
 async function checkNewlyClosedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.state ) { specials.state = "CLOSED"; }
+    if( !specials.state ) { specials.state = config.GH_ISSUE_CLOSED; }
 
     testStatus = await checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials );
     let subTest = [ 0, 0, []];
@@ -1477,7 +1477,7 @@ async function checkNewlyClosedIssue( authData, testLinks, td, loc, issDat, card
 async function checkNewlyOpenedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.state ) { specials.state = "OPEN"; }
+    if( !specials.state ) { specials.state = config.GH_ISSUE_OPEN; }
 
     testStatus = await checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials );
 
@@ -1509,7 +1509,7 @@ async function checkNewlyOpenedIssue( authData, testLinks, td, loc, issDat, card
 async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.hasOwnProperty( "state" ) ) { specials.state = "OPEN"; }
+    if( !specials.hasOwnProperty( "state" ) ) { specials.state = config.GH_ISSUE_OPEN; }
 
     testStatus = await checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials );
 
@@ -1604,7 +1604,7 @@ async function checkNewlyAccruedIssue( authData, testLinks, td, loc, issDat, car
 	    const pact = pacts[i];
 	    if( pact.Action == config.PACTACT_CHAN &&
 		pact.Verb   == config.PACTVERB_CONF &&
-		pact.Note   == "add assignee" ) {
+		pact.Note   == config.PACTNOTE_ADDA ) {
 		foundAssignment = true;
 		break;
 	    }
@@ -1663,7 +1663,7 @@ async function checkUnclaimedAccr( authData, testLinks, td, loc, issDatOld, issD
 	let pact = pacts[ pacts.length - 1];
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	subTest = tu.checkEq( pact.Action, config.PACTACT_CHAN,    subTest, "PAct Action"); 
-	subTest = tu.checkEq( pact.Note, "recreate",               subTest, "PAct Note"); 
+	subTest = tu.checkEq( pact.Note, config.PACTNOTE_RECR,               subTest, "PAct Note"); 
     }
 
     return await tu.settle( subTest, testStatus, checkUnclaimedAccr, authData, testLinks, td, loc, issDatOld, issDatNew, cardNew, testStatus, source );
@@ -2222,8 +2222,8 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
     subTest = tu.checkEq( addA1.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
     subTest = tu.checkEq( addA2.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
     subTest = tu.checkEq( foundAssigns, true,                          subTest, "PAct sub"); 
-    subTest = tu.checkEq( addA1.Note, "add assignee",                  subTest, "PAct note"); 
-    subTest = tu.checkEq( addA2.Note, "add assignee",                  subTest, "PAct note"); 
+    subTest = tu.checkEq( addA1.Note, config.PACTNOTE_ADDA,            subTest, "PAct note"); 
+    subTest = tu.checkEq( addA2.Note, config.PACTNOTE_ADDA,            subTest, "PAct note"); 
 
     return await tu.settle( subTest, testStatus, checkProgAssignees, authData, td, ass1, ass2, issDat, testStatus );
 }

@@ -62,7 +62,7 @@ class GH2Data extends ceData.CEData{
 	    retVal = ceProjects.findByRepo( config.HOST_GH, jd.org, jd.reqBody.repository.full_name ); 
 	}
 	else {
-	    if( jd.reqBody.projects_v2_item.content_type != "Issue" ) {
+	    if( jd.reqBody.projects_v2_item.content_type != config.GH_ISSUE ) {
 		console.log( "gh2Data object created for item that is not an issue.  No need to set ceProjectId" );
 		return;
 	    }

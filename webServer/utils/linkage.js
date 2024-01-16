@@ -641,42 +641,21 @@ class Linkage {
 	return true;
     }
 
-    // first 4, ..., last 4
-    fill( val, num ) {
-	let retVal = "";
-	if( typeof val !== 'undefined' ) {  // undef if bad loc, say
-	    if( val.length > num ) {
-		let fromVal = Math.floor( (num-3)/2 );  // number of characters from val in retVal
-		for( var i = 0; i < fromVal; i++ ) { retVal = retVal.concat( val[i] ); }
-		retVal = retVal.concat( "..." );
-		for( var i = val.length - fromVal ; i < val.length; i++ ) { retVal = retVal.concat( val[i] ); }
-		if( val.length % 2 == 0 ) { retVal = retVal.concat( " " ); }
-	    }
-	    else {
-		for( var i = 0; i < num; i++ ) {
-		    if( val.length > i ) { retVal = retVal.concat( val[i] ); }
-		    else                 { retVal = retVal.concat( " " ); }
-		}
-	    }
-	}
-	return retVal;
-    }
-
     show( count, cep ) {
 	if( Object.keys( this.links ).length <= 0 ) { return ""; }
 	
-	console.log( this.fill( "ceProjId", 13 ),
-	             this.fill( "IssueId", 13 ),
-		     this.fill( "IssueNum",10 ),
-		     this.fill( "CardId", 13),
-		     this.fill( "Title", 25 ),
-		     this.fill( "ColId", 13),
-		     this.fill( "ColName", 20),
-		     this.fill( "ProjId", 13 ), 
-		     this.fill( "ProjName", 15 ),
-		     this.fill( "Repo", 10 ),
-		     this.fill( "RepoId", 10 )
-		     // this.fill( "sourceCol", 10 )
+	console.log( utils.fill( "ceProjId", 13 ),
+	             utils.fill( "IssueId", 13 ),
+		     utils.fill( "IssueNum",10 ),
+		     utils.fill( "CardId", 13),
+		     utils.fill( "Title", 25 ),
+		     utils.fill( "ColId", 13),
+		     utils.fill( "ColName", 20),
+		     utils.fill( "ProjId", 13 ), 
+		     utils.fill( "ProjName", 15 ),
+		     utils.fill( "Repo", 10 ),
+		     utils.fill( "RepoId", 10 )
+		     // utils.fill( "sourceCol", 10 )
 		   );
 
 	// console.log( this.links );
@@ -697,18 +676,18 @@ class Linkage {
 	
 	for( let i = start; i < printables.length; i++ ) {
 	    let link = printables[i]; 
-	    console.log( this.fill( link.ceProjectId, 13 ),
-			 this.fill( link.hostIssueId, 13 ),
-			 this.fill( link.hostIssueNum, 10 ),
-			 this.fill( link.hostCardId, 13 ),
-			 this.fill( link.hostIssueName, 25 ),
-			 link.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 13 ) : this.fill( link.hostColumnId, 13 ),
-			 this.fill( link.hostColumnName, 20 ),
-			 link.hostProjectId == config.EMPTY ? this.fill( config.EMPTY, 13 ) : this.fill( link.hostProjectId, 13 ),
-			 this.fill( link.hostProjectName, 15 ),
-			 // link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
-			 this.fill( link.hostRepoName, 10 ), 
-			 this.fill( link.hostRepoId, 10 )
+	    console.log( utils.fill( link.ceProjectId, 13 ),
+			 utils.fill( link.hostIssueId, 13 ),
+			 utils.fill( link.hostIssueNum, 10 ),
+			 utils.fill( link.hostCardId, 13 ),
+			 utils.fill( link.hostIssueName, 25 ),
+			 link.hostColumnId == config.EMPTY ? utils.fill( config.EMPTY, 13 ) : utils.fill( link.hostColumnId, 13 ),
+			 utils.fill( link.hostColumnName, 20 ),
+			 link.hostProjectId == config.EMPTY ? utils.fill( config.EMPTY, 13 ) : utils.fill( link.hostProjectId, 13 ),
+			 utils.fill( link.hostProjectName, 15 ),
+			 // link.flatSource == -1 ? utils.fill( "-1", 10 ) : utils.fill( link.flatSource, 10 ),
+			 utils.fill( link.hostRepoName, 10 ), 
+			 utils.fill( link.hostRepoId, 10 )
 		       );
 	}
     }
@@ -725,11 +704,11 @@ class Linkage {
 	}
 
 	if( printables.length > 0 ) {
-	    console.log( this.fill( "ceProj", 15 ),
-			 this.fill( "ProjName", 15 ),
-			 this.fill( "ProjId", 20 ), 
-			 this.fill( "ColId", 10),
-			 this.fill( "ColName", 20)
+	    console.log( utils.fill( "ceProj", 15 ),
+			 utils.fill( "ProjName", 15 ),
+			 utils.fill( "ProjId", 20 ), 
+			 utils.fill( "ColId", 10),
+			 utils.fill( "ColName", 20)
 		       );
 	}
 
@@ -740,11 +719,11 @@ class Linkage {
 
 	for( let i = start; i < printables.length; i++ ) {
 	    const loc = printables[i];
-	    console.log( this.fill( loc.ceProjectId, 16 ),
-			 this.fill( loc.hostProjectName, 15 ),
-			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
-			 loc.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 10 ) : this.fill( loc.hostColumnId, 10 ),
-			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )
+	    console.log( utils.fill( loc.ceProjectId, 16 ),
+			 utils.fill( loc.hostProjectName, 15 ),
+			 loc.hostProjectId == -1 ? utils.fill( "-1", 20 ) : utils.fill( loc.hostProjectId, 20 ),
+			 loc.hostColumnId == config.EMPTY ? utils.fill( config.EMPTY, 10 ) : utils.fill( loc.hostColumnId, 10 ),
+			 utils.fill( loc.hostColumnName, 20 ), utils.fill( loc.active, 7 )
 		       );
 	}
     }
