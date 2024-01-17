@@ -145,7 +145,7 @@ async function validatePEQ( authData, ceProjId, issueId, title, pid ) {
 
     let peqType = "";
     assert( issueId != -1 );
-    peq = await awsUtils.getPeq( authData, ceProjId, issueId );
+    peq = await awsUtils.getPEQ( authData, ceProjId, issueId );
 
     if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostProjectId == pid )  {
 	console.log( authData.who, "validatePeq success" );

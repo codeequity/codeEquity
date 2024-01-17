@@ -43,7 +43,7 @@ async function clearSummary( authData, td ) {
 async function loadPEQ( authData, td ) {
 
     // First, remove.
-    const oldPeqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId } );
+    const oldPeqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId } );
     if( oldPeqs != -1 ) {
 	const opids = oldPeqs.map( peq => [peq.PEQId] );
 	await awsUtils.cleanDynamo( authData, "CEPEQs", opids );				   

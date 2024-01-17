@@ -73,7 +73,7 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 
 	    await ghV2.rebuildLabel( authData, label.id, newLabel.id, issue.id );
 	    // Don't wait
-	    awsUtils.changeReportPeqVal( authData, pd, peqVal, links[0] );
+	    awsUtils.changeReportPEQVal( authData, pd, peqVal, links[0] );
 	    break;
 	}
 	idx += 1;
@@ -139,7 +139,7 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 	    specials.pact     = "addRelo";
 	    specials.columnId = split.hostColumnId; 
 	    
-	    awsUtils.recordPeqData(authData, pd, false, specials );
+	    awsUtils.recordPEQData(authData, pd, false, specials );
 	}
     }
     
@@ -352,7 +352,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	return 'early';
     }
 
-    // Can't typically have situated issue in reserved.
+    // Can't typically have carded issue in reserved.
     // However, we are allowing some negotiation, e.g. peq issue in PEND, owner sez 2k instead of 1k, unlabels and relabels.
     //          It is a narrow entry point to this case, but currently valid.
     // assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
@@ -380,7 +380,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	// If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
 	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
 	// Note: assigments are not relevant for allocations
-	// If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
+	// If moving card out of unclaimed, keep those assignees.. recordPEQData handles this for relocate
 	if( !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
     }
 
@@ -410,7 +410,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( pact != -1 && !gotSplit && pd.peqType != "end" ) {
 	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
-	awsUtils.recordPeqData( authData, pd, true, specials );
+	awsUtils.recordPEQData( authData, pd, true, specials );
     }
     else {
 	console.log( authData.who, "No need to update peq" );

@@ -19,7 +19,7 @@ const ISS_SINFLAT  = "single in Flatworld";
 const ISS_DUBMIX   = "doubly in Flat-Recommended mix";
 
 
-// During normal operation, when a second card is added to a carded or situated issue, it is immediately split
+// During normal operation, when a second card is added to a situated issue, it is immediately split
 async function testIncrementalResolve( authData, testLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];

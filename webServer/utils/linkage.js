@@ -12,10 +12,8 @@ const locData  = require( './locData' );
 const gh2LU    = require( './gh/gh2/linkageUtils' );
 const ghcLU    = require( './gh/ghc/linkageUtils' );
 
-// For populate.
-const gh2DUtils = require('./gh/gh2/gh2DataUtils' );
-
-// Linkage table contains all identifying info related to situated issues or better.
+// Linkage table contains all identifying info related to peq issues
+// Linkage table does not contain column, project name or issue name for carded issues
 // linkage is { issueId: { cardId: {} }}
 // linkage is NOT stored in dynamo.
 
@@ -45,7 +43,7 @@ class Linkage {
 	let pms   = utils.validField( entry, "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
 	
 	// Wait later
-	let peqs = awsUtils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
+	let peqs = awsUtils.getPEQs( authData, { "CEProjectId": entry.CEProjectId } );
 
 	let res       = {};
 	let baseLinks = [];
@@ -121,7 +119,6 @@ class Linkage {
 	let tstart = Date.now();
 	console.log( authData.who, "Init linkages" );
 	
-	// XXX aws fix name here.  Get ceProj status.
 	let ceProjects = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
 	if( ceProjects === -1 ) { return; }
 	let promises = [];
@@ -149,7 +146,7 @@ class Linkage {
 	}
     }
 
-    // Linkage table only contains situated issues or better.  Card titles point to issue titles for situated issues.
+    // Linkage table only contains situated issue data, but only some if issue is just carded
     addLinkage( authData, ceProjId, orig, specials ) {
 	let source   = typeof specials !== 'undefined' && specials.hasOwnProperty( "source" )   ? specials.source   : false;
 	let populate = typeof specials !== 'undefined' && specials.hasOwnProperty( "populate" ) ? specials.populate : false;
@@ -240,7 +237,6 @@ class Linkage {
 	let retVal = -1;
 	if( utils.validField( this.links, ceProjId ) && utils.validField( this.links[ceProjId], issueId )) {
 	    let issueLinks = Object.entries( this.links[ceProjId][issueId] );  // [ [cardId, link], [cardId, link] ...]
-	    // console.log( "XXX", issueLinks );
 	    
 	    if      ( issueLinks.length < 1 ) { console.log(authData.who, "Link not found.", issueId ); }  // 204
 	    else if ( issueLinks.length > 1 ) { console.log(authData.who, "Semantic error.  More items found than expected.", issueId ); } // 422
@@ -508,47 +504,11 @@ class Linkage {
     }
 
     // To attach major components to ceProject in aws.  Also, manage links, locs, resolve as needed
-    // XXX Because of gh2DUtils, should move this to gh2lu
     async linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails ) {
-	console.log( "Link repo", ceProjId, repoId, repoName );
-	if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
-	    console.log( authData.who, "WARNING.  Attempting to link a repo to a ceProject, one of which is empty.", ceProjId, repoId, repoName );
-	    return false;
-	}
-	
-	let cep = ceProjects.findById( ceProjId );
-	
-	// TESTING ONLY!  Outside testing, ceFlutter controls all access to this, will never need initBlank.
-	if( typeof cep === 'undefined' ) {
-	    let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO];
-	    let repoShort    = repoName.split('/');
-	    repoShort        = repoShort[ repoShort.length - 1 ]; 
-	    assert( testingRepos.includes( repoShort ));
-	    assert( typeof cepDetails !== 'undefined' );
-	    cep = ceProjects.initBlank( ceProjId, cepDetails );
-	}
-
-	// CEP may already be linked.  For example, transfering issues will issue linkRepo for new connection.
-	// If already linked, we are done.
-	if( utils.validField( cep, "HostParts" ) && utils.validField( cep.HostParts, "hostRepositories" ) ) {
-	    let repo = cep.HostParts.hostRepositories.find( c => c.repoId == repoId );
-	    if( typeof repo !== 'undefined' ) {
-		console.log( authData.who, "Repo is already linked", ceProjId, repoName );
-		return cep;
-	    }
-	}
-	
-	// Expensive.  Handle resolve, links, locs.
-	await gh2DUtils.populateCELinkage( authData, this, { ceProjectId: ceProjId, repoId: repoId } );
-
-	// Update AWS, ceProjects (via cep)
-	let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );
-	if( !utils.validField( cep, "HostParts" )) { cep.HostParts = {}; }
-	cep.HostParts.hostRepositories = hostRepos;
-	return await awsUtils.updateCEPHostParts( authData, cep );
+	return await gh2LU.linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails );
     }
 
-    // To unattach major components to ceProject
+    // To unattach major components from ceProject
     async unlinkRepo( authData, ceProjects, ceProjId, repoId ) {
 	console.log( "unLink repo", ceProjId, repoId );
 	if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
@@ -559,11 +519,10 @@ class Linkage {
 	let cep = ceProjects.findById( ceProjId );
 	if( typeof cep === 'undefined' ) { return true; }
 
-	// XXX hmm.  Expensive.
 	// TESTING ONLY!  This will be executed by ceFlutter before issuing unlink.
 	// We do not allow unlink repo if it contains active peqs.
 	const query = { CEProjectId: ceProjId, Active: "true" };
-	let peqs  = await awsUtils.getPeqs( authData, query );
+	let peqs  = await awsUtils.getPEQs( authData, query );
 	peqs = peqs == -1 ? [] : peqs;
 	for( const peq of peqs ) {
 	    let link = await this.getLinks( authData, { "ceProjId": ceProjId, "issueId": peq.HostIssueId } );

@@ -44,7 +44,7 @@ async function checkNewbornIssue( authData, testLinks, td, issueData, testStatus
     subTest = tu.checkEq( meltLink.length, 0, subTest, "invalid linkage" );
     
     // CHECK dynamo Peq
-    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
     subTest = tu.checkEq( meltPeqs.length, 0, subTest, "invalid peq" );
     
@@ -98,7 +98,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, issueData, testStat
 	subTest = tu.checkEq( meltLink.hostProjectId, td.unclaimPID,          subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
-	let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+	let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
 	let meltPeq = ( peqs.filter((peq) => peq.HostIssueId == issueData[0] ))[0];
 	subTest = tu.checkEq( typeof meltPeq !== 'undefined', true,        subTest, "no peq yet" );
 	if( typeof meltPeq !== 'undefined' ) {
@@ -168,7 +168,7 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await awsUtils.getPeqs( authData,  { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData,  { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == meltIssue.id );
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];

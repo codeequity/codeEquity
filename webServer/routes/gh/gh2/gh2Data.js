@@ -14,9 +14,6 @@ class GH2Data extends ceData.CEData{
 
     // Use projectV2 node ids, not databaseIds
     constructor( authData, jd, ceProjects, ceProjectId ) {
-	// XXX May need ceFlutter to assign hostProj to ceProj.
-	//     when linking hostProj to repo, could do assignment to ceProj internally.
-
 	let settings = {};
 
 	settings.org     = jd.org;

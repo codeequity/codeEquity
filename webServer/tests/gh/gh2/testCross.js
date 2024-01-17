@@ -72,7 +72,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // Adding makeProjectCard creates second add/relo which clears assignees found in pnp:fromLabelIssue.  It's ok, PACt has it.
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1});
     
-    let oldPeqs = await awsUtils.getPeqs( authData, { "ceProjectId": td.ceProjectId });
+    let oldPeqs = await awsUtils.getPEQs( authData, { "ceProjectId": td.ceProjectId });
     let peq     = oldPeqs.find(p => p.HostIssueId == issDat[0].toString() );
     let sub     = [peq.PEQId, td.githubOpsPID.toString(), stripeLoc.colId.toString() ];
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, issDat[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
@@ -89,7 +89,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1});
     
-    let oldPeqsX  = await awsUtils.getPeqs( authDataX, { "ceProjectId": tdX.ceProjectId });
+    let oldPeqsX  = await awsUtils.getPEQs( authDataX, { "ceProjectId": tdX.ceProjectId });
     let peqX      = oldPeqsX.find(p => p.HostIssueId == issDatX[0].toString() );
     sub           = [peqX.PEQId, crossPid.toString(), crossCid.toString() ];
     testStatus    = await gh2tu.checkPact( authDataX, testLinks, tdX, issDatX[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
@@ -132,8 +132,8 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, stripeLoc, issDat, card, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: tdX.ceProjectId} );    
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, crossLoc, issDatX, cardX, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: td.ceProjectId} );    
 
-    let newPeqs  = awsUtils.getPeqs( authDataX, { "ceProjectId": td.ceProjectId });
-    let newPeqsX = awsUtils.getPeqs( authDataX, { "ceProjectId": tdX.ceProjectId });
+    let newPeqs  = awsUtils.getPEQs( authDataX, { "ceProjectId": td.ceProjectId });
+    let newPeqsX = awsUtils.getPEQs( authDataX, { "ceProjectId": tdX.ceProjectId });
 
     
     let testRepo = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
@@ -236,11 +236,11 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
 	case 2: dat = gh2tu.blastIssue( authData,  td,  "Interleave 2",  [lab, labNP1],         [assignee3, assignee2], {wait: false});            break;
 	case 3: dat = gh2tu.blastIssue( authData,  td,  "Interleave 3",  [lab, labNP1, labNP2], [assignee1, assignee2, assignee3], {wait: false}); break;
 	case 4: dat = gh2tu.blastIssue( authData,  td,  "Interleave 4",  [labNP1],              [assignee1, assignee3], {wait: false});            break;
-	case 5: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 0", [labNP2],              [assignee1M], {wait: false});                       break;
-	case 6: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 1", [lab],                 [assignee3M, assignee2M], {wait: false});            break;
-	case 7: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 2", [lab, labNP1],         [assignee3M, assignee1M, assignee2M], {wait: false}); break;
-	case 8: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 3", [lab, labNP1, labNP2], [assignee1M, assignee2M], {wait: false});            break;
-	case 9: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 4", [lab, labNP2],         [assignee2M, assignee1M], {wait: false});            break;
+	case 5: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 0", [labNP2M],              [assignee1M], {wait: false});                       break;
+	case 6: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 1", [labM],                 [assignee3M, assignee2M], {wait: false});            break;
+	case 7: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 2", [labM, labNP1M],         [assignee3M, assignee1M, assignee2M], {wait: false}); break;
+	case 8: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 3", [labM, labNP1M, labNP2M], [assignee1M, assignee2M], {wait: false});            break;
+	case 9: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 4", [labM, labNP2M],         [assignee2M, assignee1M], {wait: false});            break;
 	default: assert( false );  break;
 	}
 	issDatPromises[index] =  dat;

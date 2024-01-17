@@ -83,7 +83,6 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 	let cardId = reqBody.projects_v2_item.node_id;
 
 	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
-	if( !( links  !== -1 && links[0].hostColumnId != config.EMPTY )) { console.log( "XXX", links, cardId, reqBody ); }
 	assert( links  !== -1 && links[0].hostColumnId != config.EMPTY );
 
 	subject = [ peq.PEQId, links[0].hostProjectId, links[0].hostColumnId ];
@@ -126,7 +125,7 @@ async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue 
     
     // PEQ.  Card is gone in GH, issue may be gone depending on source.  Need to manage linkage, location, peq label, peq/pact.
     // Wait later
-    let peq = awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );
+    let peq = awsUtils.getPEQ( authData, pd.ceProjectId, link.hostIssueId );
     
     // Regular peq?  or ACCR already in unclaimed?  remove it no matter what.
     if( !accr || link.hostProjectName == config.UNCLAIMED ) {
@@ -177,7 +176,7 @@ async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue 
     }
 }
 
-// XXX consider creating rejectLoc if this is not MAIN_PROJ
+// Consider creating rejectLoc if this is not MAIN_PROJ.  At least, once we can create cols again.
 // Either move card back to rejectLoc, or if delete it.
 async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) {
     let ceProjId = pd.ceProjectId;
@@ -231,8 +230,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    assert( card.content_type == config.GH_ISSUE );
 	    pd.issueId = card.content_node_id;
 
-	    // Get from GH.. will not postpone if populate
-	    // XXX after ceFlutter, move this below postpone, remove populate condition.  pop label not yet attached.  
+	    // Get from GH.. will not postpone if issue is already in place
 	    let issue = await ghV2.getFullIssue( authData, pd.issueId);
 	    assert( Object.keys( issue ).length > 0 );	    
 
@@ -288,8 +286,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    if( pd.reqBody.changes == null ) {
 		console.log( authData.who, "Move within columns are ignored.", cardId );
-		// XXX ran into notification error, empty changes during cross-col xfer.  temporary?
-		console.log( authData.who, "XXX", pd.reqBody );
 		return;
 	    }
 
@@ -323,8 +319,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		// Check to see if this card was removed during split.
 		let newLinks = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "hostUtility": cardId });
 		if( newLinks.length == 1 ) {
-		    // XXX No need to get card here, as long as newLinks is correct.
+		    
+		    // newLink can come in with config.EMPTY col name, otherwise could avoid get card here
 		    newCard = await ghV2.getCard( authData, newLinks[0].hostCardId );
+		    
 		    assert( newCard !== -1 );
 		    console.log( ".. original card was removed by PNP.  Processing move for replacement card" );
 		    newLinks[0].hostUtility = config.EMPTY;
@@ -456,17 +454,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	// Source of notification: delete card (delete col, delete proj, xfer   ???)
 	await deleteCard( authData, ghLinks, ceProjects, pd, pd.reqBody.projects_v2_item.node_id );
 	break;
-    case 'edited' :
-	// Only newborn can be edited.   Track issue-free creation above.
-	{
-	    assert( false );
-	    let cardContent = pd.reqBody['project_card']['note'].split('\n');  // XXXX
-	    cardContent = cardContent.map( line => line.replace(/[\x00-\x1F\x7F-\x9F]/g, "") ); // XXXX
-
-	    // Don't wait
-	    // XXX XXX add pact: change?
-	    ghcDUtils.processNewPEQ( authData, ghLinks, pd, cardContent, -1, {fromCard: true} );
-	}
+    case 'edited' :   // Do nothing.
 	break;
     default:
 	console.log( "Unrecognized action (cards)" );

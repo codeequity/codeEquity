@@ -67,7 +67,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
     let foundBOSub = false;
     
     // Check DYNAMO PEQ table
-    let ghPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.githubOpsTitle });
+    let ghPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.githubOpsTitle });
     assert( ghPeqs.length > 0 ); // total fail if this fails
     subTest = tu.checkEq( ghPeqs.length, 1,                             subTest, "Number of githubOps peq objects" );
     subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,      subTest, "PeqType" );
@@ -77,7 +77,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
     // projSub can be NS in some cases.  Valid, if pact exists
     if( (ghPeqs[0].HostProjectSub)[0] == td.softContTitle ) { foundGHSub = true; }
     
-    let dsPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.dataSecTitle });
+    let dsPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.dataSecTitle });
     subTest = tu.checkEq( dsPeqs.length, 1,                             subTest, "Number of datasec peq objects" );
     subTest = tu.checkEq( typeof dsPeqs[0] !== 'undefined', true,       subTest, "Peq not in place yet" );
     if( typeof dsPeqs[0] !== 'undefined' ) {
@@ -86,7 +86,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
     }
     else { foundDSSub = true; }
     
-    let unPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.unallocTitle });
+    let unPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": td.unallocTitle });
     subTest = tu.checkEq( unPeqs.length, 2,                            subTest, "Number of unalloc peq objects" );
     subTest = tu.checkEq( unPeqs[0].PeqType, config.PEQTYPE_ALLOC,     subTest, "PeqType" );
     subTest = tu.checkEq( typeof unPeqs[0] !== 'undefined', true,      subTest, "have unpeq 0" );

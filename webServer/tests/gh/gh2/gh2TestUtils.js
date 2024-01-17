@@ -553,7 +553,7 @@ function findCardForIssue( cards, issueNum ) {
 
 /* not in use
 async function ingestPActs( authData, issDat ) {
-    const peq   = await awsUtils.getPeq( authData, issDat[0] );    
+    const peq   = await awsUtils.getPEQ( authData, issDat[0] );    
     const pacts = await awsUtils.getPActs( authData, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
     const pactIds = pacts.map( pact => pact.PEQActionId );
     await utils.ingestPActs( authData, pactIds );
@@ -1018,7 +1018,7 @@ async function checkUntrackedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( link.hostProjectId, loc.pid,             subTest, "Linkage project id" );
 
     // CHECK dynamo Peq.  inactive, if it exists
-    let peqs      = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs      = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let issuePeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     subTest = tu.checkLE( issuePeqs.length, 1,                      subTest, "Peq count" );
     if( issuePeqs.length > 0 ) {
@@ -1033,7 +1033,7 @@ async function checkUntrackedIssue( authData, testLinks, td, loc, issDat, card, 
     return await tu.settle( subTest, testStatus, checkUntrackedIssue, authData, testLinks, td, loc, issDat, card, testStatus, specials );
 }
 
-// Used for previously situated issues that were unlabeled
+// Used for previously peq'd issues that were unlabeled
 async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, testStatus ) {
 
     console.log( "Check demotedissue", loc.projName, loc.colName );
@@ -1059,7 +1059,7 @@ async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, te
 	// CHECK dynamo Peq.  inactive
 	// Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
 	// Unclaimed may not have happened if peq'd a carded issue
-	let peqs      = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+	let peqs      = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
 	let issuePeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
 	subTest = tu.checkEq( issuePeqs.length, 1,                      subTest, "Peq count" );
 	for( const peq of issuePeqs ) {
@@ -1135,7 +1135,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	subTest = tu.checkEq( link.hostProjectId, loc.pid,          subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
-	let allPeqs  =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+	let allPeqs  =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
 	let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
 	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
@@ -1182,6 +1182,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     return await tu.settle( subTest, testStatus, checkAlloc, authData, testLinks, td, loc, issDat, card, testStatus, specials );
 }
 
+// This does not strictly need to check for a peq amount, which is why it is not checkPeq.
 async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
     let muteIngested = typeof specials !== 'undefined' && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
@@ -1202,7 +1203,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     let cardsP = getCards( authData, loc.pid, loc.colId );
     let cardsU = td.unclaimPID == config.EMPTY ? [] : getCards( authData, td.unclaimPID, td.unclaimCID );
     let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": peqCEP });
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": peqCEP });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": peqCEP });
     
     // CHECK github issues
@@ -1347,7 +1348,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     // Start promises
     let cardsU = getCards( authData, td.unclaimPID, td.unclaimCID );
     let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     // CHECK github issues
@@ -1449,7 +1450,7 @@ async function checkNewlyClosedIssue( authData, testLinks, td, loc, issDat, card
     console.log( "Check Closed issue", loc.projName, loc.colName );
 
     // Start promises
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     const allPeqs =  await peqsP;
@@ -1486,7 +1487,7 @@ async function checkNewlyOpenedIssue( authData, testLinks, td, loc, issDat, card
     console.log( "Check Opened issue", loc.projName, loc.colName );
 
     // Start promises
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     const allPeqs = await peqsP;
@@ -1517,7 +1518,7 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     let subTest = [ 0, 0, []];
     
     // Start promises
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     // CHECK dynamo Peq
@@ -1576,7 +1577,7 @@ async function checkNewlyAccruedIssue( authData, testLinks, td, loc, issDat, car
     let subTest = [ 0, 0, []];
 
     // CHECK dynamo Peq
-    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let allPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
@@ -1630,7 +1631,7 @@ async function checkUnclaimedAccr( authData, testLinks, td, loc, issDatOld, issD
     let subTest = [ 0, 0, []];
     
     // CHECK dynamo Peq
-    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let allPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDatNew[0].toString() );
     subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
@@ -1693,7 +1694,7 @@ async function checkNewbornCard( authData, testLinks, td, loc, cardId, title, te
 
     // CHECK dynamo Peq.  inactive, if it exists
     // Risky test - will fail if unrelated peqs with same title exist
-    let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
+    let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
     subTest = tu.checkEq( peqs, -1,                                    subTest, "Newbie peq exists" );
 
     // CHECK dynamo Pact.. nothing to do here for newborn
@@ -1724,7 +1725,7 @@ async function checkNewbornIssue( authData, testLinks, td, issDat, testStatus, s
     subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
-    let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueId": issDat[0] });
+    let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueId": issDat[0] });
     if( peqs !== -1 ) {
 	let peq = peqs.find(peq => peq.HostIssueId == issDat[0].toString() );
 	subTest = tu.checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
@@ -1917,7 +1918,7 @@ async function checkNoSplit( authData, testLinks, td, issDat, newLoc, cardId, te
     subTest = tu.checkEq( noCard, true,                  subTest, "Split card should not exist" );
 
     // Check peq
-    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let allPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let peq = allPeqs.find( peq => peq.HostIssueTitle.includes( splitName ));
     subTest = tu.checkEq( typeof peq === 'undefined', true,   subTest, "Peq should not exist" );
 
@@ -1954,7 +1955,7 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
     if( !skipAllPeq ) {
 	// Risky test - will fail if unrelated peqs with same title exist
 	// No card may have inactive peq
-	let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
+	let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
 	if( checkPeq ) {
 	    let peq = peqs[0];
 	    subTest = tu.checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
@@ -1985,7 +1986,7 @@ async function checkPact( authData, testLinks, td, title, verb, action, note, te
 
     if( title != -1 ) {
 	// modestly risky test - will fail if unrelated peqs with same title exist.  Do not use with remIssue/rebuildIssue.  No card may have inactive peq
-	let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
+	let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
 	pacts    = allPacts.filter((pact) => pact.Subject[0] == peqs[0].PEQId );
     }
     else { pacts = allPacts; }
@@ -2067,7 +2068,7 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -2115,7 +2116,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issDat, testStatus ) 
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0] );
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -2192,7 +2193,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
     subTest = tu.checkEq( meltIssue.assignees.length, 2,             subTest, "Issue assignee count" );
 
     // CHECK Dynamo PEQ  .. no change already verified
-    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0] );
     subTest = tu.checkEq( meltPeqs.length, 1, subTest, "Peq count" );
     let meltPeq = meltPeqs[0];

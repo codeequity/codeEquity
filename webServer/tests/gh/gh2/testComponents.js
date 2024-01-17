@@ -35,7 +35,7 @@ async function checkDubLabel( authData, testLinks, td, loc, issueData, card, tes
 	const labels1 = issue.labels[1].name == kpConv && issue.labels[0].name == "documentation";
 	subTest = tu.checkEq( labels0 || labels1, true,              subTest, "Issue label" );
 
-	let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+	let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
 	peqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
 	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
@@ -84,7 +84,7 @@ async function testLabel( authData, testLinks, td ) {
 	console.log( "Test label/unlabel in full CE structure" );
 
 	// 1. create peq issue in dsplan
-	console.log( "Make newly situated issue in dsplan" );
+	console.log( "Make newly peq'd issue in dsplan" );
 	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB, [] );     // [id, number, cardId, title]  
 	let label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
 	await gh2tu.addLabel( authData, label.id, issueData );
@@ -146,7 +146,7 @@ async function testLabel( authData, testLinks, td ) {
 	console.log( "Double-labels" );
 
 	// 1. create 1k peq issue in bacon
-	console.log( "Make newly situated issue in bacon" );
+	console.log( "Make newly peq'd issue in bacon" );
 	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, cardId, title] 
 	let label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
 	await gh2tu.addLabel( authData, label.id, issueData );
@@ -252,7 +252,7 @@ async function testAssignment( authData, testLinks, td ) {
     
     // 1. Create PEQ issue, add to proj
     const kp = "1000 " + config.PEQ_LABEL;
-    console.log( "Make newly situated issue" );
+    console.log( "Make newly peq'd issue" );
     let assData = await gh2tu.makeIssue( authData, td, ISS_ASS, [] );     // [id, number, title]  
 
     let newLabel = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
@@ -641,7 +641,7 @@ async function testCreateDelete( authData, testLinks, td ) {
     }
     
     {
-	console.log( "Situated testing" );
+	console.log( "PEQ testing" );
 
 	const ISS_FLAT = ISS_SITU + " Flat";
 	const ISS_PROG = ISS_SITU + " In Progress";
