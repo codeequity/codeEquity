@@ -38,11 +38,11 @@ function printEdges( base, item, values ) {
 // Note: an issue will belong to 1 repo only, but 1 proj can have issues from multiple repos
 // Note: it seems that "... on Issue" is applying a host-side filter, so no need to more explicitely filter out draft issues and pulls.
 // Note: optionId is sufficient for columnId, given the pid.
-// XXX if optionId changes per view... ? 
-// XXX views does not (yet?) have a fieldByName, which would make it much quicker to find status.
-// XXX Getting several values per issue here that are unused.  remove.
+// Note: view:options.id, pv2:ssfv.optionId stay stable across roadmap/table/board views, independent of sorting, display.
 async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 
+    // XXX Getting several values per issue here that are unused.  remove.
+    // See notes above.  first:1 is appropriate here.
     const query1 = `query linkLoc($nodeId: ID!, $fName: String!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
@@ -112,8 +112,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 		// Note: can not build this from issues below, since we may have empty columns in board view.
 		if( locData.length <= 0 ) {
 		    
-		    // XXX why process every view?
-		    // Plunder the first view to get status (i.e. column) info
+		    // XXX Why process every view?  Plunder the first view to get status (i.e. column) info
 		    let views = project.views;
 		    if( typeof views === 'undefined' ) {
 			console.log( "Warning.  Project views are not defined.  GH2 ceProject with classic project?", pid );
@@ -122,6 +121,7 @@ async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 			return;
 		    }
 		    for( let i = 0; i < views.edges.length; i++ ) {
+			// Views does not (yet?) have a fieldByName, which would make it much quicker to find status.
 			const aview = views.edges[i].node;
 			for( let j = 0; j < aview.fields.edges.length; j++ ) {
 			    if( j >= 99 ) { console.log( authData.who, "WARNING.  Detected a very large number of columns, ignoring some." ); }
@@ -943,7 +943,7 @@ async function deleteColumn( authData, newValue ) {
     return retVal;
 }
 
-// XXX not done  .. this will probably move me to no status.
+// this will probably move me to no status.
 async function clearColumn( authData, newValue ) {
     let query     = `mutation( $dt:DeleteProjectV2FieldInput! ) 
                              { clearProjectV2ItemFieldValue( input: $dt ) 
@@ -1103,7 +1103,6 @@ async function moveCard( authData, pid, itemId, fieldId, value ) {
     return ret;
 }
 
-// XXX check for pd.GH*
 // Note. alignment risk if card moves in the middle of this
 async function moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout )
 {
@@ -1230,118 +1229,9 @@ async function removeCard( authData, pid, cardId ) {
     return true;
 }
 
-/*
-// XXX unnecessary?
-async function rebuildCard( authData, ceProjId, ghLinks, colId, origCardId, issueData, locData ) {
-    
-    let isReserved = typeof locData !== 'undefined' && locData.hasOwnProperty( "reserved" ) ? locData.reserved : false;    
-    let pid     = typeof locData !== 'undefined' && locData.hasOwnProperty( "pid" )   ? locData.pid   : -1;
-    let projName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "projName" ) ? locData.projName : "";
-    let fullName   = typeof locData !== 'undefined' && locData.hasOwnProperty( "fullName" ) ? locData.fullName : "";
-
-    assert( issueData.length == 3 );
-    let issueId   = issueData[0];
-    let issueNum  = issueData[1];
-    let newCardId = issueData[2];  // rebuildIssue called for peq issues, will card the issue
-
-    if( colId == config.EMPTY ) {
-	console.log( authData.who, "Card rebuild is for No Status column, which is a no-op.  Early return." );
-	return newCardId;
-    }
-    
-    let statusId  = -1;
-    assert.notEqual( issueId, -1, "Attempting to attach card to non-issue." );
-
-    // If card has not been tracked, colId could be wrong.  relocate.
-    // Note: do not try to avoid this step during populateCE - creates a false expectation (i.e. ce is tracking) for any simple carded issue.
-    if( colId === -1 ) {
-	let projCard = await getCard( authData, origCardId ); 
-	colId = projCard.columnId;
-	statusId = projCard.statusId;
-    }
-    else {
-	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );
-	assert( locs !== -1 );
-	statusId = locs[0].hostUtility;
-    }
-
-    // XXX Untested
-    // Trying to build new card in reserved space .. move out of reserved, prog is preferred.
-    // Finding or creating non-reserved is a small subset of getCEprojectLayout
-    // StatusId is per-project.  No need to find again.
-    if( isReserved ) {
-	assert( pid   !== -1 );
-	assert( fullName != "" );
-	const planName = config.PROJ_COLS[ config.PROJ_PLAN ];
-	const progName = config.PROJ_COLS[ config.PROJ_PROG ];
-
-	const locs = ghLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid } );   
-	assert( locs !== -1 );
-	projName = projName == "" ? locs[0].hostProjectName : projName;
-
-	colId = -1;
-	let loc = locs.find( loc => loc.hostColumnName == progName );   // prefer PROG
-	if( typeof loc !== 'undefined' ) { colId = loc.hostColumnId; }
-	else {
-	    loc = locs.find( loc => loc.hostColumnName == planName )
-	    if( typeof loc !== 'undefined' ) { colId = loc.hostColumnId; }
-	}
-
-	// XXX this currently fails since columns can't be created programmatically.
-	// Create in progress, if needed
-	if( colId === -1 ) {
-	    let progCol = await createColumn( authData, ghLinks, ceProjId, pid, progName );
-	    console.log( authData.who, "Creating new column:", progName );
-	    assert( progCol !== -1 );
-	    colId = progCol.hostColumnId;
-	    let nLoc = {};
-	    nLoc.ceProjectId     = ceProjId; 
-	    nLoc.hostProjectId   = pid;
-	    nLoc.hostProjectName = projName;
-	    nLoc.hostColumnId    = progName;
-	    nLoc.hostColumnName  = colId;
-	    nLoc.active          = "true";
-	    await ghLinks.addLoc( authData, nLoc, true );
-	}
-    }
-
-    // issue-linked project_card already exists if issue exists, in No Status.  Move it.
-    await createProjectCard( authData, ghLinks, {"ceProjId": ceProjId, "pid": pid, "colId": colId}, issueId, statusId, true );
-    assert.notEqual( newCardId, -1, "Unable to create new issue-linked card." );	    
-    
-    // remove orig card
-    // Note: await waits for GH to finish - not for notification to be received by webserver.
-    removeCard( authData, pid, origCardId );
-
-    return newCardId;
-}
-*/
-
 
 // Get all, open or closed.  Otherwise, for example, link table won't see pending issues properly.
 // Returning issueId, not issueNodeId
-/*
-async function getLabelIssues( authData, owner, repo, labelName, data, cursor ) {
-    const query1 = `query($owner: String!, $repo: String!, $labelName: String! ) {
-	repository(owner: $owner, name: $repo) {
-	    label(name: $labelName) {
-	       issues(first: 100) {
-	          pageInfo { hasNextPage, endCursor },
-		  edges { node { id title number }}
-		}}}}`;
-    
-    const queryN = `query($owner: String!, $repo: String!, $labelName: String!, $cursor: String!) {
-	repository(owner: $owner, name: $repo) {
-	    label(name: $labelName) {
-               issues(first: 100 after: $cursor ) {
-	          pageInfo { hasNextPage, endCursor },
-		     edges { node { id title number }}
-		}}}}`;
-
-    let query     = cursor === -1 ? query1 : queryN;
-    let variables = cursor === -1 ? {"owner": owner, "repo": repo, "labelName": labelName } : {"owner": owner, "repo": repo, "labelName": labelName, "cursor": cursor};
-    query = JSON.stringify({ query, variables });
-    */
 async function getLabelIssues( authData, repoId, labelName, data, cursor ) {
     const query1 = `query( $rid: ID!, $labelName: String! ) {
           node( id:$rid ) {
@@ -1637,9 +1527,9 @@ async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 	console.log( authData.who, "Error.  Please create the", config.UNCLAIMED, "project by hand, for now." );
     }
     else {
-	// XXX
-	// Update locs.  During initialization Unclaimed may be linked in GH, but without PEQ, will not go through linkage:init.
-	// This is only a problem for unclaimed, and only until we can create columns, when ACCR is deleted elsewhere to be recreated here.
+	// Update locs.  Note that if ACCR is deleted elsewhere and recreated here, the peq is also recreated in AWS, so there should
+	// be no issues during linkage:init (in other words, linkage init will drive unclaimed initialization.  And in other cases
+	// unclaimed currently is linked up front, no peq needed.
 	let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: unClaimedProjId } );
 	if( projLocs === -1 ) {
 
@@ -1898,7 +1788,6 @@ exports.moveToStateColumn  = moveToStateColumn;
 exports.createProjectCard  = createProjectCard;
 exports.cardIssue          = cardIssue;
 exports.removeCard         = removeCard; 
-// exports.rebuildCard        = rebuildCard;
 
 exports.getLabelIssues     = getLabelIssues;
 
@@ -1917,6 +1806,6 @@ exports.cloneFromTemplate      = cloneFromTemplate;      // XXX speculative.  us
 exports.createCustomField      = createCustomField;      // XXX speculative.  useful?
 exports.createColumn           = createColumn;           
 exports.deleteColumn           = deleteColumn;           // XXX NYI
-exports.clearColumn            = clearColumn;           // XXX NYI
+exports.clearColumn            = clearColumn;            // XXX NYI
 
 exports.checkReserveSafe       = checkReserveSafe;

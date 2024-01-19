@@ -9,8 +9,7 @@ const utils     = require( rootLoc + 'utils/ceUtils' );
 const awsUtils  = require( rootLoc + 'utils/awsUtils' );
 
 const ghV2      = require( './ghV2Utils' );
-
-// XXX is known host, and pms.  
+const gh2DUtils = require( './gh2DataUtils' );
 
 
 // If project has peq in CEP, then get all links, locs, then filter links out for those that are from repos associated with cep.
@@ -26,7 +25,8 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     
     console.log( authData.who, ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
-    assert( pms == config.PMS_GH2 );
+    assert( pms  == config.PMS_GH2 );
+    assert( host == config.HOST_GH );
     
     // mainly to get pat
     await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR );
@@ -137,9 +137,8 @@ async function unlinkProject( authData, ghLinks, ceProjects, ceProjId, hostProje
     return true;
 }
 
-async function linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails ) {
+async function linkRepo( authData, ghLinks, ceProjects, ceProjId, repoId, repoName, cepDetails ) {
     console.log( "Link repo", ceProjId, repoId, repoName );
-    return await gh2LU.linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails );
     if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
 	console.log( authData.who, "WARNING.  Attempting to link a repo to a ceProject, one of which is empty.", ceProjId, repoId, repoName );
 	return false;
@@ -168,7 +167,7 @@ async function linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDe
     }
     
     // Expensive.  Handle resolve, links, locs.
-    await gh2DUtils.populateCELinkage( authData, this, { ceProjectId: ceProjId, repoId: repoId } );
+    await gh2DUtils.populateCELinkage( authData, ghLinks, { ceProjectId: ceProjId, repoId: repoId } );
     
     // Update AWS, ceProjects (via cep)
     let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );

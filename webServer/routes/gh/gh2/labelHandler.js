@@ -192,6 +192,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // add label to all.  recreate card.  peq was not modified.
 	    for( const peq of peqs ) {
 		// Even if unlabelIss came first, link should exist since it is rebased, not deleted.  link count is 1 or 0.
+		// Note - do not need repoId here, but it's existence may have helped catch the error below, so keep it.
 		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": peq.HostIssueId });
 		if( links === -1 || links.length != 1 ) { 
 		    console.log( authData.who, "WARNING.  XXX Link does not exist on deleted label.  Mismatching peq during server init?", pd.repoId, pd.ceProjectId, peq, links ); 

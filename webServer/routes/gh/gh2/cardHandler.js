@@ -34,7 +34,7 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
     // I want peqId for notice PActions, with or without issueId
     if( typeof peq == 'undefined' ) {
 	// Note.  Spin wait for peq to finish recording from sibling labelIssue notification
-	peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.ceProjectId, link.hostIssueId, link.hostIssueName, link.hostProjectId );
+	peq = await utils.settleWithVal( "validatePeq", awsUtils.validatePEQ, authData, pd.ceProjectId, link.hostIssueId, link.hostIssueName, link.hostProjectId );
     }
     
     assert( peq['PeqType'] != config.PEQTYPE_GRANT );

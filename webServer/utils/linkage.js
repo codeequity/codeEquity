@@ -505,7 +505,7 @@ class Linkage {
 
     // To attach major components to ceProject in aws.  Also, manage links, locs, resolve as needed
     async linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails ) {
-	return await gh2LU.linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails );
+	return await gh2LU.linkRepo( authData, this, ceProjects, ceProjId, repoId, repoName, cepDetails );
     }
 
     // To unattach major components from ceProject

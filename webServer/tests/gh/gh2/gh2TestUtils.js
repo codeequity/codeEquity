@@ -13,8 +13,7 @@ const tu       = require( '../../ceTestUtils' );
 
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
 // Server is fast enough for sub 1s, but GH struggles.
-// XXX Is GQL faster?  Try lowering this once all up and running.
-const GH_DELAY = 400;
+const GH_DELAY = 400;  // No point to dip below 400 - GH interface does not even support this speed
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
 
@@ -601,7 +600,7 @@ async function remProject( authData, pid ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
-// XXX move to ghV2?
+// do NOT move to ghV2 - this is used during testing only.  handlers are oblivious to this view-centric action.
 async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
     let query     = "mutation( $pid:ID!, $rid:ID! ) { unlinkProjectV2FromRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
     let variables = {"pid": pid, "rid": rNodeId };
@@ -745,28 +744,6 @@ async function makeAlloc( authData, testLinks, ceProjId, rNodeId, pid, colId, ti
     return issDat[2];
 }
 
-// XXX untested.  Get this working before using makeNewbornCard.
-//     My not be possible given spotty api coverage.
-async function removeNewbornCard( authData, pid, dissueNodeId, dissueContentId ) {
-    console.log( authData.who, "Remove Newborn Card (draft issue)" );
-
-    // First try removing the draft issue project node.  This should work - does it remove content node?
-    let query = `mutation( $pid:ID!, $did:ID! )
-                    {deleteProjectV2Item( input:{ projectId: $pid, itemId: $did }) 
-                    {clientMutationId}}`;
-
-    let variables = { "pid": pid, "did": dissueNodeId };
-    let queryJ    = JSON.stringify({ query, variables });
-
-    try{
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "TU_removeNewbornCard" )
-	    .then( ret => {
-		if( ret.status != 200 ) { throw ret; }
-	    });
-    }
-    catch( e ) { await ghUtils.errorHandler( "removeNewbornCard", e, removeNewbornCard, authData, pid, dissueNodeId, dissueContentId ); }
-}
-
 
 async function makeNewbornCard( authData, testLinks, ceProjId, pid, colId, title ) {
     const locs = testLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );    
@@ -877,7 +854,7 @@ async function updateLabel( authData, label, updates ) {
 }
 
 async function delLabel( authData, label ) {
-    console.log( "Removing label from repo:", label.name );
+    console.log( "Removing label from repo:", label.name, label.id );
 
     let query     = `mutation( $labelId:ID! ) 
                         { deleteLabel( input:{ id: $labelId })  {clientMutationId}}`;
@@ -2277,7 +2254,6 @@ exports.createColumnTest    = createColumnTest;
 exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
 exports.makeAlloc       = makeAlloc;
-exports.removeNewbornCard = removeNewbornCard;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;

@@ -142,6 +142,25 @@ async function wrappedPostAWS( authData, shortName, postData ) {
     }
 }
 
+// returns -1 if could not find.
+async function validatePEQ( authData, ceProjId, issueId, title, pid ) {
+    let peq = -1;
+
+    let peqType = "";
+    assert( issueId != -1 );
+    peq = await getPEQ( authData, ceProjId, issueId );
+
+    if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostProjectId == pid )  {
+	console.log( authData.who, "validatePeq success" );
+    }
+    else {
+	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, pid );
+	peq = -1;
+    }
+    return peq;  
+}
+
+
 // Check for stored PAT.  Not available means public repo that uses ceServer PAT
 async function getStoredPAT( authData, host, actor ) {
     console.log( authData.who, "Get stored PAT for:", host, actor );
@@ -533,6 +552,7 @@ exports.getCEServer  = getCEServer;
 exports.getStoredPAT = getStoredPAT;
 exports.show         = show;
 
+exports.validatePEQ        = validatePEQ;
 exports.getProjectStatus   = getProjectStatus;
 exports.getPEQ             = getPEQ;
 exports.removePEQ          = removePEQ;

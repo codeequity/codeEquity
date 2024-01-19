@@ -238,7 +238,7 @@ async function runTests() {
     tdM.GHRepoId      = await ghUtils.getRepoId( authDataM.pat, tdM.GHOwner, tdM.GHRepo );
 
 
-    // XXX ceFlutter fix
+    // ceFlutter fix ?? If so, would have a 3-phase test nightly.  1: ceFlutter init.  2: ceServer.  3: ceFlutter ingest.  hmmm.
     // This is yucky.  ceFlutter is responsible to initiate cep, and id (link) initial repo(s).
     // linkRepo assumes cep exists.  it helps during testing to have fixed repo and cep ids, makes debugging much simpler.
     // testDelete may have already removed ceProjects.HostParts.
@@ -254,11 +254,11 @@ async function runTests() {
 
     // cepDetails, typically set from ceFlutter
     let tdBlank = {};
-    tdBlank.projComponent = "ceServer Testing";   // XXX config?
-    tdBlank.description   = "testing only";       // XXX config?
+    tdBlank.projComponent = "ceServer Testing";   
+    tdBlank.description   = "testing only";       
     tdBlank.platform      = config.HOST_GH;
     tdBlank.org           = config.TEST_OWNER;
-    tdBlank.ownerCategory = "Organization";       // XXX config?
+    tdBlank.ownerCategory = "Organization";       
     tdBlank.pms           = config.PMS_GH2;
 
     let tdXBlank = { ...tdBlank }; 
@@ -277,7 +277,7 @@ async function runTests() {
 
     // Save dynamo data if run was successful
     if( testStatus[1] == 0 ) {
-	subTest = await testSaveDynamo.runTests( flutterTest );   // XXXXXX
+	subTest = await testSaveDynamo.runTests( flutterTest ); 
 	console.log( "\n\nSave Dynamo complete" );
 	await utils.sleep( 1000 );
 	testStatus = tu.mergeTests( testStatus, subTest );

@@ -86,7 +86,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	let card        = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
-	ghV2.updateIssue( authData, issueData[0], "state", "CLOSED" );
+	ghV2.updateIssue( authData, issueData[0], "state", config.GH_ISSUE_CLOSED );
 
 	// Move to unclaimed:accrued col
 	card = await card;
@@ -298,7 +298,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
-			    let peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.ceProjectId,
+			    let peq = await utils.settleWithVal( "validatePeq", awsUtils.validatePEQ, authData, pd.ceProjectId,
 								 link.hostIssueId, link.hostIssueName, link.hostProjectId );
 
 			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
@@ -394,7 +394,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		let newColId = await ghV2.moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
-		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.ceProjectId, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
+		    let peqId = ( await( awsUtils.validatePEQ( authData, pd.ceProjectId, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
 		    if( peqId === -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }

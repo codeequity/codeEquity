@@ -185,7 +185,7 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     let testStatus = [ 0, 0, []];
     let testName = "Multithread";
 
-    console.log( "Test", testName );
+    console.log( "Test", testName, td.GHRepoId, tdM.GHRepoId );
     authData.who = "<TEST: " + testName + ">";
 
     await gh2tu.refreshRec( authData, td );
@@ -219,6 +219,8 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     let assignee2M  = await gh2tu.getAssignee( authDataM, ASSIGNEE2 );
     let assignee3M  = await gh2tu.getAssignee( authDataM, ASSIGNEE3 );
 
+    console.log( authData.who, lab, td.GHRepoId );
+    console.log( authDataM.who, labM, tdM.GHRepoId );
     
     // There are 5 blast issues of each repo, randomized, sent with a small random gap between 200-500ms.
 
@@ -315,7 +317,7 @@ async function runTests( flutterTest, authData, authDataX, authDataM, testLinks,
     // First build up aws CEProjects hostRepositories for repo: ceTesterAriAlt, ceTesterConnie
     await gh2tu.linkRepo( authDataM, tdM.ceProjectId, tdM.GHRepoId, tdM.GHFullName, tdM.cepDetails );
     await gh2tu.linkRepo( authDataX, tdX.ceProjectId, tdX.GHRepoId, tdX.GHFullName, tdX.cepDetails );
-    
+
     let t1 = await testCrossRepo( flutterTest, authData, authDataX, testLinks, td, tdX );
     console.log( "\n\nCross Repo test complete." );
     // ghUtils.show( true );
