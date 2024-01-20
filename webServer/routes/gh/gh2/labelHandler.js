@@ -178,6 +178,19 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
 	    const peqs  = await awsUtils.getPEQs( authData, query );
+
+	    // hostProject can include peqs from multiple repos and otherwise-identical labels.  Need to winnow here by repo
+	    // Peq is not real peq if link doesn't place it in correct repo.  Keep repo in link test below.
+	    if( peqs !== -1 ) {
+		for( let i = peqs.length - 1; i >= 0; i-- ) {
+		    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": peqs[i].HostIssueId });
+		    if( links === -1 ) {
+			console.log( authData.who, "Winnowing", peqs[i].HostIssueTitle, "for", lVal );
+			peqs.splice( i, 1 );
+		    }
+		    
+		}
+	    }
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs with this deleted label" );
 		return;
@@ -192,7 +205,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // add label to all.  recreate card.  peq was not modified.
 	    for( const peq of peqs ) {
 		// Even if unlabelIss came first, link should exist since it is rebased, not deleted.  link count is 1 or 0.
-		// Note - do not need repoId here, but it's existence may have helped catch the error below, so keep it.
 		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": peq.HostIssueId });
 		if( links === -1 || links.length != 1 ) { 
 		    console.log( authData.who, "WARNING.  XXX Link does not exist on deleted label.  Mismatching peq during server init?", pd.repoId, pd.ceProjectId, peq, links ); 
