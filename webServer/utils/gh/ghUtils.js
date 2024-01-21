@@ -182,10 +182,6 @@ function parseLabelName( name ) {
     return [peqValue, alloc];
 }
 
-// Allow:
-// <allocation, PEQ: 1000>      typical by hand description
-// <allocation, PEQ: 1,000>
-// <allocation, PEQ: 1,000>
 // Allocation PEQ value         typical by resolve description & existing label description
 function getAllocated( content ) {
     let res = false;
@@ -194,7 +190,7 @@ function getAllocated( content ) {
 	if( s > -1 ){ res = true; break; }
 
 	s = line.indexOf( config.PALLOC );      // by hand entry
-	if( s > -1 ){ res = true; break; }
+	if( s > -1 ){ assert( false ); res = true; break; }
     }
     return res;
 }

@@ -45,7 +45,7 @@ async function runTests( authData, testLinks, td ) {
 
     // This should copy template into new project.. but puts it into user space, not under repo (should expect this).
     // let newPID = await gh2tu.cloneFromTemplate( authData, "O_kgDOA8JELg", "PVT_kwDOA8JELs4AS5_h", "a newbier project" );
-    // await tu.linkProject( authData, td.ceProjectId, newPID, td.GHRepoId, td.GHFullName );
+    // await tu.linkProject( authData, td.ceProjectId, newPID, td.ghRepoId, td.ghFullName );
 
     
     return testStatus;

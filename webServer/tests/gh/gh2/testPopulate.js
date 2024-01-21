@@ -42,9 +42,9 @@ async function testIncrementalResolve( authData, testLinks, td ) {
 
     // 1. Setup.
     console.log( "make labels" );
-    let label1k  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "", 1000 );
-    let labelDoc = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "documentation", -1 );
-    let labelBug = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
+    let label1k  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "", 1000 );
+    let labelDoc = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "documentation", -1 );
+    let labelBug = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "bug", -1 );
 
     console.log( "make issues" );
     const issMoonDat = await gh2tu.makeIssue( authData, td, ISS_MOON, [ labelBug, labelDoc ] );
@@ -53,7 +53,7 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     const issPendDat = await gh2tu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
     const issAccrDat = await gh2tu.makeIssue( authData, td, ISS_ACCR, [ label1k, labelDoc, labelBug ] );
 
-    await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.githubOpsPID, "Moons" );
+    await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.githubOpsPID, "Moons" );
 
     // From
     const moonLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Moons" );
@@ -205,8 +205,8 @@ async function testSplitAlloc( authData, testLinks, td ) {
     await gh2tu.refreshFlat( authData, td );
 
     // 1. Setup.
-    let label1m  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, true, "", 1000000 );
-    let labelBug = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
+    let label1m  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, true, "", 1000000 );
+    let labelBug = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "bug", -1 );
 
     const issAllocDat = await gh2tu.makeIssue( authData, td, ISS_ALLOC, [ labelBug, label1m ] );
 

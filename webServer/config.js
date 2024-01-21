@@ -22,13 +22,9 @@ const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
 // Host notifier platforms
 const HOST_GH = "GitHub";
 
-// XXX no. not here.
 // Project Management Source
 const PMS_GHC = "GH Classic";   // Github's 'classic' projects that are now largely deprecated
 const PMS_GH2 = "GH Version 2"; // Github's 'Projects Version 2' projects
-// const PROJ_OPTIONS = [ PMS_GHC, PMS_GH2 ];
-// const PROJ_SOURCE  = PROJ_OPTIONS[1];  // Which project management system is the notification source for this effort
-
 
 // For testing .. needs work
 const CREDS_TPATH       = "../ops/github/auth/ghAppTestCredentials";
@@ -65,9 +61,7 @@ const PROJ_ACCR = 3;
 // Peq label grammar
 const PEQSTART = '<';
 const PEQ      = 'PEQ: ';
-const _PEQ     = ' PEQ';
 
-const PPLAN    = PEQSTART + PEQ;
 const PALLOC   = PEQSTART +'allocation';
 const PDESC    = 'PEQ value: '; 
 const ADESC    = 'Allocation ' + PDESC;
@@ -127,8 +121,6 @@ const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
 // server notification buffer size for testing
 const NOTICE_BUFFER_SIZE = 20;
 
-// XXX TEMP will go away   GHC only.
-const POPULATE = "populate";
 
 
 // ceRepoPrefs
@@ -157,8 +149,6 @@ exports.PROJ_PROG = PROJ_PROG;
 exports.PROJ_PEND = PROJ_PEND;
 exports.PROJ_ACCR = PROJ_ACCR;
 
-exports.POPULATE = POPULATE;
-
 exports.PEQ_COLOR   = PEQ_COLOR;
 exports.APEQ_COLOR  = APEQ_COLOR;
 exports.GH_TEMPLATE = GH_TEMPLATE;
@@ -167,8 +157,6 @@ exports.GH_VIEWCOL  = GH_VIEWCOL;
 
 exports.PEQSTART = PEQSTART;
 exports.PEQ      = PEQ;
-exports._PEQ     = _PEQ;
-exports.PPLAN    = PPLAN;
 exports.PALLOC   = PALLOC;
 exports.PDESC    = PDESC;
 exports.ADESC    = ADESC;
@@ -180,8 +168,6 @@ exports.UNCLAIMED = UNCLAIMED;
 exports.HOST_GH      = HOST_GH;
 exports.PMS_GHC      = PMS_GHC;
 exports.PMS_GH2      = PMS_GH2;
-// exports.PROJ_OPTIONS = PROJ_OPTIONS;
-// exports.PROJ_SOURCE  = PROJ_SOURCE;
 
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
 exports.COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;

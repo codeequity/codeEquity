@@ -22,33 +22,33 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     console.log( "Building preferred CE project layout, a mini version" );
 
     // First build up aws CEProjects hostRepositories for repo: ceTesterAri
-    await gh2tu.linkRepo( authData, td.ceProjectId, td.GHRepoId, td.GHFullName, td.cepDetails );
+    await gh2tu.linkRepo( authData, td.ceProjectId, td.ghRepoId, td.ghFullName, td.cepDetails );
     
     // Modules: softwareContr, businessOps, unallocated
     td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
-    let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.softContTitle );
-    let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.busOpsTitle );
-    let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, td.unallocTitle );
+    let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, td.softContTitle );
+    let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, td.busOpsTitle );
+    let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, td.unallocTitle );
 
     // dataSec: 4x
     let dataPID  = await gh2tu.createProjectWorkaround( authData, td, td.dataSecTitle, "Make PII safe" );
-    let dataCols = await gh2tu.make4xCols( authData, testLinks, td.ceProjectId, td.GHFullName, dataPID );
+    let dataCols = await gh2tu.make4xCols( authData, testLinks, td.ceProjectId, td.ghFullName, dataPID );
 
     // githubOPs: 4x
     let ghOpPID  = await gh2tu.createProjectWorkaround( authData, td, td.githubOpsTitle, "Make it giddy" );
-    let ghOpCols = await gh2tu.make4xCols( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID );
-    await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stars" );	
-    await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, ghOpPID, "Stripes" );
+    let ghOpCols = await gh2tu.make4xCols( authData, testLinks, td.ceProjectId, td.ghFullName, ghOpPID );
+    await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, ghOpPID, "Stars" );	
+    await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, ghOpPID, "Stripes" );
 
-    await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId, td.GHRepoId ); 
+    await tu.settleWithVal( "checkPopulated", awsUtils.checkPopulated, authData, td.ceProjectId, td.ghRepoId ); 
     
     // softCont: dataSecurity, githubOps, unallocated
-    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
-    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
-    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, td.masterPID, mastCol1, td.dataSecTitle, "1,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, td.masterPID, mastCol1, td.githubOpsTitle, "1,500,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, td.masterPID, mastCol1, td.unallocTitle, "3,000,000" );
     
     // busOps:  unallocated
-    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
+    await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, td.masterPID, mastCol2, td.unallocTitle, "1,000,000" );
 
     // This should NOT be needed.  But last makeAlloc above can be unfinished by the time test runs (i.e. can get card, but field is not yet available).
     // This rare sluggishness happened 6/30/23
@@ -146,7 +146,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	if( !foundDSSub ) { console.log( dsPeqs, locs.hostColumnId ); }
 
 	// Check DYNAMO RepoStatus
-	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId, td.GHRepoId );
+	let pop = await awsUtils.checkPopulated( authData, td.ceProjectId, td.ghRepoId );
 	subTest = tu.checkEq( pop, true, subTest, "Repo status wrt populated" );
 	
 	// Check GITHUB Labels
@@ -260,7 +260,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 
 	
 	// Check DYNAMO Linkage
-	let links = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+	let links = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
 	subTest = tu.checkGE( links.length, 4, subTest, "Linkage count" );
 	let unallocSoft = false;   let lSoft = -1;
 	let unallocBus  = false;   let lBus  = -1;

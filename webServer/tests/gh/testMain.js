@@ -61,7 +61,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     }
 
     // gh2tu.remProject( authData, wakeyPID );
-    gh2tu.unlinkProject( authData, td.ceProjectId, wakeyPID, td.GHRepoId );
+    gh2tu.unlinkProject( authData, td.ceProjectId, wakeyPID, td.ghRepoId );
 
     // TESTS
 
@@ -123,7 +123,7 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
     }
 
     // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    let mastCol1  = await ghctu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, wakeyPID, td.softContTitle );
+    let mastCol1  = await ghctu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, wakeyPID, td.softContTitle );
     ghctu.remProject( authData, wakeyPID );
     assert( false );
 
@@ -182,60 +182,60 @@ async function runTests() {
     
     // TEST_REPO auth
     let td          = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER
+    td.ghOwner      = config.TEST_OWNER
     td.actor        = config.TEST_ACTOR;
-    td.GHRepo       = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
-    td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
+    td.ghRepo       = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
+    td.ghFullName   = td.ghOwner + "/" + td.ghRepo;
 
     let authData     = new authDataC.AuthData(); 
     authData.who     = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
-    authData.ic      = await ghAuth.getInstallationClient( td.GHOwner, td.GHRepo, td.GHOwner );
+    authData.ic      = await ghAuth.getInstallationClient( td.ghOwner, td.ghRepo, td.ghOwner );
     authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();    
     authData.pat     = await ghAuth.getPAT( td.actor );
-    console.log( "Get pat for owner", td.GHOwner );
-    td.GHOwnerId     = await ghUtils.getOwnerId( authData.pat, td.GHOwner );
+    console.log( "Get pat for owner", td.ghOwner );
+    td.ghOwnerId     = await ghUtils.getOwnerId( authData.pat, td.ghOwner );
     console.log( "Get pat for actor", td.actor );
     
     td.actorId       = await ghUtils.getOwnerId( authData.pat, td.actor );
-    td.GHRepoId      = await ghUtils.getRepoId( authData.pat, td.GHOwner, td.GHRepo );
+    td.ghRepoId      = await ghUtils.getRepoId( authData.pat, td.ghOwner, td.ghRepo );
 
     // CROSS_TEST_REPO auth
     let tdX        = new testData.TestData();
-    tdX.GHOwner    = config.CROSS_TEST_OWNER;
+    tdX.ghOwner    = config.CROSS_TEST_OWNER;
     tdX.actor      = config.CROSS_TEST_ACTOR;
-    tdX.GHRepo     = config.CROSS_TEST_REPO;
-    tdX.GHFullName = tdX.GHOwner + "/" + tdX.GHRepo;
+    tdX.ghRepo     = config.CROSS_TEST_REPO;
+    tdX.ghFullName = tdX.ghOwner + "/" + tdX.ghRepo;
     
     let authDataX     = new authDataC.AuthData();
-    authDataX.ic      = await ghAuth.getInstallationClient( tdX.GHOwner, tdX.GHRepo, tdX.GHOwner );
+    authDataX.ic      = await ghAuth.getInstallationClient( tdX.ghOwner, tdX.ghRepo, tdX.ghOwner );
     authDataX.who     = authData.who;
     authDataX.api     = authData.api;
     authDataX.cog     = authData.cog;
     authDataX.cogLast = Date.now();        
     authDataX.pat     = await ghAuth.getPAT( tdX.actor );
-    tdX.GHOwnerId     = await ghUtils.getOwnerId( authDataX.pat, tdX.GHOwner );
+    tdX.ghOwnerId     = await ghUtils.getOwnerId( authDataX.pat, tdX.ghOwner );
     tdX.actorId       = await ghUtils.getOwnerId( authDataX.pat, tdX.actor );
-    tdX.GHRepoId      = await ghUtils.getRepoId( authDataX.pat, tdX.GHOwner, tdX.GHRepo );
+    tdX.ghRepoId      = await ghUtils.getRepoId( authDataX.pat, tdX.ghOwner, tdX.ghRepo );
     
     // MULTI_TEST_REPO auth
     let tdM        = new testData.TestData();
-    tdM.GHOwner    = config.MULTI_TEST_OWNER;
+    tdM.ghOwner    = config.MULTI_TEST_OWNER;
     tdM.actor      = config.MULTI_TEST_ACTOR;
-    tdM.GHRepo     = config.MULTI_TEST_REPO;
-    tdM.GHFullName = tdM.GHOwner + "/" + tdM.GHRepo;
+    tdM.ghRepo     = config.MULTI_TEST_REPO;
+    tdM.ghFullName = tdM.ghOwner + "/" + tdM.ghRepo;
     
     let authDataM     = new authDataC.AuthData();
-    authDataM.ic      = await ghAuth.getInstallationClient( tdM.GHOwner, tdM.GHRepo, tdM.GHOwner );
+    authDataM.ic      = await ghAuth.getInstallationClient( tdM.ghOwner, tdM.ghRepo, tdM.ghOwner );
     authDataM.who     = authData.who;
     authDataM.api     = authData.api;
     authDataM.cog     = authData.cog;
     authDataM.cogLast = Date.now();            
     authDataM.pat     = await ghAuth.getPAT( tdM.actor );
-    tdM.GHOwnerId     = await ghUtils.getOwnerId( authDataM.pat, tdM.GHOwner );
+    tdM.ghOwnerId     = await ghUtils.getOwnerId( authDataM.pat, tdM.ghOwner );
     tdM.actorId       = await ghUtils.getOwnerId( authDataM.pat, tdM.actor );
-    tdM.GHRepoId      = await ghUtils.getRepoId( authDataM.pat, tdM.GHOwner, tdM.GHRepo );
+    tdM.ghRepoId      = await ghUtils.getRepoId( authDataM.pat, tdM.ghOwner, tdM.ghRepo );
 
 
     // ceFlutter fix ?? If so, would have a 3-phase test nightly.  1: ceFlutter init.  2: ceServer.  3: ceFlutter ingest.  hmmm.
@@ -245,9 +245,9 @@ async function runTests() {
     // Use testing-only map here to set initial ceProjectIds.
     // let ceProjects = new ceProjData.CEProjects();
     // await ceProjects.init( authData );
-    // td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.GHFullName );
-    // tdX.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.GHFullName );
-    // tdM.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.GHFullName );
+    // td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.ghFullName );
+    // tdX.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.ghFullName );
+    // tdM.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.ghFullName );
     td.ceProjectId  = config.TEST_CEPID;
     tdX.ceProjectId = config.CROSS_TEST_CEPID;
     tdM.ceProjectId = config.MULTI_TEST_CEPID;

@@ -86,7 +86,7 @@ async function testLabel( authData, testLinks, td ) {
 	// 1. create peq issue in dsplan
 	console.log( "Make newly peq'd issue in dsplan" );
 	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB, [] );     // [id, number, cardId, title]  
-	let label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
+	let label     = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );
 	await gh2tu.addLabel( authData, label.id, issueData );
 
 	let card  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanId, issueData[0] );
@@ -148,7 +148,7 @@ async function testLabel( authData, testLinks, td ) {
 	// 1. create 1k peq issue in bacon
 	console.log( "Make newly peq'd issue in bacon" );
 	let issueData = await gh2tu.makeIssue( authData, td, ISS_LAB2, [] );     // [id, number, cardId, title] 
-	let label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
+	let label     = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );
 	await gh2tu.addLabel( authData, label.id, issueData );
 	let card  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.flatPID, bacon.colId, issueData[0] );
 
@@ -156,14 +156,14 @@ async function testLabel( authData, testLinks, td ) {
 	tu.testReport( testStatus, "Label Dub 1" );
 	
 	// 2. add "documentation" twice (fail - will not receive 2nd notification)
-	let docLabel  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "documentation", -1 );	
+	let docLabel  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "documentation", -1 );	
 	await gh2tu.addLabel( authData, docLabel.id, issueData );
 	await gh2tu.addLabel( authData, docLabel.id, issueData );
 	testStatus = await checkDubLabel( authData, testLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 2" );
 	
 	// 3. add 500 peq (fail)
-	let label500  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, halfKP, 500 );	
+	let label500  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, halfKP, 500 );	
 	await gh2tu.addLabel( authData, label500.id, issueData );
 	testStatus = await checkDubLabel( authData, testLinks, td, bacon, issueData, card, testStatus );
 	tu.testReport( testStatus, "Label Dub 3" );	
@@ -255,7 +255,7 @@ async function testAssignment( authData, testLinks, td ) {
     console.log( "Make newly peq'd issue" );
     let assData = await gh2tu.makeIssue( authData, td, ISS_ASS, [] );     // [id, number, title]  
 
-    let newLabel = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
+    let newLabel = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );
     await gh2tu.addLabel( authData, newLabel.id, assData );
 
     let assCard  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanId, assData[0] );
@@ -303,7 +303,7 @@ async function testAssignment( authData, testLinks, td ) {
 
     // XXX HARSH.  If move to accrue notification arrives late, addAssignee will pass.  This is not expected to be an uncommon, fast sequence.
     //     3/8/21 fail, move notification is 8 seconds after assignment!
-    //     Could settlewait here, but this issue is too important, allows someone to modify an accrued issue. 
+    //     Could settlewait here, but this issue is too important, allows someone to modify an accrued issue.  
     await gh2tu.moveCard( authData, testLinks, td.ceProjectId, assCard.cardId, td.dsAccrId, {issId: assData[0]} );
     await  utils.sleep( 5000 );
     // Add, fail
@@ -348,7 +348,7 @@ async function testLabelCarded( authData, testLinks, td ) {
 
 	// 2. add label
 	const kp = "1000 " + config.PEQ_LABEL;
-	const label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
+	const label     = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );
 	await gh2tu.addLabel( authData, label.id, issueData );
 	testStatus     = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, bacon, issueData, card, testStatus );
     }	
@@ -378,7 +378,7 @@ async function testCloseReopen( authData, testLinks, td ) {
     {
 	console.log( "Open/close in flat" );
 	// 0. make peq in bacon
-	const label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
+	const label     = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );
 	const issueData = await gh2tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, cardId, title] 
 	const card      = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.flatPID, bacon.colId, issueData[0] );
 	issueData[2]    = card.cardId;
@@ -483,7 +483,7 @@ async function testCloseReopen( authData, testLinks, td ) {
 	ghoAccr.projSub = stars.projSub;
 	
 	// 0. make peq in stars
-	const label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );
+	const label     = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );
 	const issueData = await gh2tu.makeIssue( authData, td, ISS_LAB4, [label] );     // [id, number, title] 
 	const card      = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, stars.pid, stars.colId, issueData[0] );
 	testStatus     = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, stars, issueData, card, testStatus );
@@ -580,7 +580,6 @@ async function testCreateDelete( authData, testLinks, td ) {
 	const ISS_PEND = ISS_NEWB + " Pending";
 	const ISS_ACCR = ISS_NEWB + " Accrued";
 
-	// XXX Danger.  see gh2tu.removeNewborn
 	// 0. make newborns
 	const cardIdFlat  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stars.colId,   ISS_FLAT );
 	const cardIdProg  = await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoProg.colId, ISS_PROG );
@@ -649,7 +648,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 	const ISS_ACCR = ISS_SITU + " Accrued";
 
 	// 0. make situated issues
-	const label     = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );	
+	const label     = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );	
 	const issDatFlat = await gh2tu.makeIssue( authData, td, ISS_FLAT, [label] );     
 	const issDatProg = await gh2tu.makeIssue( authData, td, ISS_PROG, [label] );
 	const issDatPend = await gh2tu.makeIssue( authData, td, ISS_PEND, [label] );
@@ -691,7 +690,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 	const ISS_AGHO2 = ISS_SITU + " Accrued iss1st";
 
 	// 0. make situated issues
-	const label      = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );	
+	const label      = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );	
 	const issDatAgho1 = await gh2tu.makeIssue( authData, td, ISS_AGHO1, [label] );
 	const issDatAgho2 = await gh2tu.makeIssue( authData, td, ISS_AGHO2, [label] );
 
@@ -775,7 +774,7 @@ async function getCardHelp( authData, pid, colId, cardName, testStatus ) {
 async function labHelp( authData, td, getName, checkName, descr, testStatus ) {
     let subTest  = [ 0, 0, []];
 
-    let labelRes = await gh2tu.getLabel( authData, td.GHRepoId, getName );
+    let labelRes = await gh2tu.getLabel( authData, td.ghRepoId, getName );
     let label    = labelRes.label;
     subTest      = await gh2tu.checkLabel( authData, label, checkName, descr, subTest );
 
@@ -783,7 +782,7 @@ async function labHelp( authData, td, getName, checkName, descr, testStatus ) {
 }
 
 async function getLabHelp( authData, td, name ) {
-    const labelRes = await gh2tu.getLabel( authData, td.GHRepoId, name );
+    const labelRes = await gh2tu.getLabel( authData, td.ghRepoId, name );
     return labelRes.label;
 }
 
@@ -844,9 +843,9 @@ async function testLabelMods( authData, testLinks, td ) {
     {
 	// 1. Setup
 	console.log( "\nMake labels, issues" );
-	let lab1   = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LAB1, 501 );
-	let labNP1 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP1, -1 );	
-	let labNP2 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP2, -1 );	
+	let lab1   = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, LAB1, 501 );
+	let labNP1 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, LABNP1, -1 );	
+	let labNP2 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, LABNP2, -1 );	
 
 	const issNewbDat = await gh2tu.makeIssue( authData, td, ISS_NEWB, [labNP1] );                // [id, number, cardId, title] 
 	const issPlanDat = await gh2tu.makeIssue( authData, td, ISS_PLAN, [lab1, labNP1, labNP2] );  
@@ -947,7 +946,7 @@ async function testLabelMods( authData, testLinks, td ) {
 	//       update label above drives a bunch of asynch unwaited-for labelings.  So, wait until can't see issue's label any longer (i.e. remove is done)
 	await tu.settleWithVal( "LabelMods remove from lmAccr", labNotInIssueHelp, authData, td, pl105, issAccrDat[0] );
 	// updateLabel has changed values - get new stuff
-	labNP1 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, pl105, -1 );		
+	labNP1 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, pl105, -1 );		
 	await gh2tu.delLabel( authData, labNP1 );
 	
     }
@@ -983,15 +982,15 @@ async function testProjColMods( authData, testLinks, td ) {
     {
 	// 1. Setup.  New project. full cols. 1 peq issue each.
 	const projId    = await gh2tu.makeProject( authData, td, PROJ_NAME, "" );
-	const planColId = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, projId, planName );
-	const pendColId = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, projId, pendName );
-	const accrColId = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, projId, accrName );
+	const planColId = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, projId, planName );
+	const pendColId = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, projId, pendName );
+	const accrColId = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, projId, accrName );
 
 	const planLoc = await gh2tu.getFlatLoc( authData, projId, PROJ_NAME, planName );
 	const pendLoc = await gh2tu.getFlatLoc( authData, projId, PROJ_NAME, pendName );
 	const accrLoc = await gh2tu.getFlatLoc( authData, projId, PROJ_NAME, accrName );
 
-	let label1k  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, kp, 1000 );	
+	let label1k  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, kp, 1000 );	
 
 	const issPlanDat = await gh2tu.makeIssue( authData, td, ISS_PLAN, [ label1k ] );
 	const issPendDat = await gh2tu.makeIssue( authData, td, ISS_PEND, [ label1k ] );
@@ -1081,10 +1080,10 @@ async function testAlloc( authData, testLinks, td ) {
 
     // 1. Setup.
     let ap1m = "1000000 " + config.ALLOC_LABEL;
-    let label1m  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, true, ap1m, 1000000 );
-    let label2m  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, true, "2000000 " + config.ALLOC_LABEL, 2000000 );
-    let label1k  = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "1000 "   + config.PEQ_LABEL, 1000 );
-    let labelBug = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "bug", -1 );
+    let label1m  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, true, ap1m, 1000000 );
+    let label2m  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, true, "2000000 " + config.ALLOC_LABEL, 2000000 );
+    let label1k  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "1000 "   + config.PEQ_LABEL, 1000 );
+    let labelBug = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "bug", -1 );
     
     const issAllocDat = await gh2tu.makeAllocIssue( authData, td, ISS_ALLOC, [ label1m ] );
 
@@ -1146,9 +1145,9 @@ async function testAlloc( authData, testLinks, td ) {
 	testStatus = await labHelp( authData, td, ap100, ap100, "Allocation PEQ value: 100", testStatus );	
 	    
 	// delete label2m, ap100, good
-	labelRes = await gh2tu.getLabel( authData, td.GHRepoId, ap100 );
+	labelRes = await gh2tu.getLabel( authData, td.ghRepoId, ap100 );
 	if( !utils.validField( labelRes, "label" ) ) {
-	    console.log( "OI???", ap100, td.GHRepoId, labelRes );
+	    console.log( "OI???", ap100, td.ghRepoId, labelRes );
 	    let junk = await labHelp( authData, td, ap100, ap100, "Allocation PEQ value: 100", testStatus );
 	    console.log( "OI???", junk ); 
 	}
@@ -1170,7 +1169,7 @@ async function testAlloc( authData, testLinks, td ) {
 	testStatus = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_NOTE, "PEQ label delete attempt", testStatus );
 	testStatus = await gh2tu.checkAlloc( authData, testLinks, td, stripeLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2} );	
 	// get label1m, it was recreated so labelId changes.
-	label1m = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, true, ap1m, 1000000 );	
+	label1m = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, true, ap1m, 1000000 );	
 	tu.testReport( testStatus, "Alloc C" );
     }
 
@@ -1189,9 +1188,9 @@ async function testAlloc( authData, testLinks, td ) {
     // Create/delete inna good column
     {
 	// Create from card .. NOTE!  card is rebuilt to point to issue.  Re-find it.
-	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, starLoc.pid, starLoc.colId, "Alloc star 1", "1,000,000" );     
+	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, starLoc.pid, starLoc.colId, "Alloc star 1", "1,000,000" );     
 	await utils.sleep( 2000 );
-	const links       = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+	const links       = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
 	const link        = links.find( link => link.hostIssueName == "Alloc star 1" );
 	const starCard1   = await gh2tu.getCard( authData, link.hostCardId );
 	const issStarDat1 = [link.hostIssueId, link.hostIssueNum, starCard1.cardId, link.hostIssueName];
@@ -1219,10 +1218,10 @@ async function testAlloc( authData, testLinks, td ) {
     // Create/delete reserved columns, should fail
     {
 	// Create from card 
-	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, progLoc.pid, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
-	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.GHRepoId, accrLoc.pid, accrLoc.colId, "Alloc accr", "1,000,000" );
+	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, progLoc.pid, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
+	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, accrLoc.pid, accrLoc.colId, "Alloc accr", "1,000,000" );
 	await utils.sleep( 2000 );
-	const links      = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+	const links      = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
 	const linkProg   = links.find( link => link.hostIssueName == "Alloc prog" );
 	const linkAccr   = links.find( link => link.hostIssueName == "Alloc accr" );
 

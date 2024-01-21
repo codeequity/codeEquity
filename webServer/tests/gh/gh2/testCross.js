@@ -44,11 +44,11 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // Setup.
     // Add populate label to testProject2, to invoke repostatus
     let crossPid = await gh2tu.createProjectWorkaround( authDataX, tdX, "Cross Proj", "For testing transfers to other repos" );
-    let crossCid = await gh2tu.makeColumn( authDataX, testLinks, tdX.ceProjectId, tdX.GHFullName, crossPid, "Cross Col" );
+    let crossCid = await gh2tu.makeColumn( authDataX, testLinks, tdX.ceProjectId, tdX.ghFullName, crossPid, "Cross Col" );
     
     const LAB = "704 " + config.PEQ_LABEL;
-    let lab   = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LAB, 704 );
-    let labX  = await gh2tu.findOrCreateLabel( authDataX, tdX.GHRepoId, false, LAB, 704 );
+    let lab   = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LAB, 704 );
+    let labX  = await gh2tu.findOrCreateLabel( authDataX, tdX.ghRepoId, false, LAB, 704 );
 
     const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "builderCE";
@@ -139,10 +139,10 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     let testRepo = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
 
     // PAct is found from oldCEP
-    sub         = [peqX.PEQId, oldIdX, tdX.GHRepoId, tdX.ceProjectId, issDatX[0], td.GHRepoId, td.ceProjectId ];
+    sub         = [peqX.PEQId, oldIdX, tdX.ghRepoId, tdX.ceProjectId, issDatX[0], td.ghRepoId, td.ceProjectId ];
     testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer", testStatus, {sub: sub, depth: 4} );
 
-    sub         = [peq.PEQId, oldId, td.GHRepoId, td.ceProjectId, issDat[0], tdX.GHRepoId, tdX.ceProjectId ];
+    sub         = [peq.PEQId, oldId, td.ghRepoId, td.ceProjectId, issDat[0], tdX.ghRepoId, tdX.ceProjectId ];
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer", testStatus, {sub: sub, depth: 4} );
 
     // New Peqs were validated above.  Check delete/add pacts.  
@@ -185,29 +185,29 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     let testStatus = [ 0, 0, []];
     let testName = "Multithread";
 
-    console.log( "Test", testName, td.GHRepoId, tdM.GHRepoId );
+    console.log( "Test", testName, td.ghRepoId, tdM.ghRepoId );
     authData.who = "<TEST: " + testName + ">";
 
     await gh2tu.refreshRec( authData, td );
 
     // Setup for blasting from two different testers / repos. 
     assert( config.MULTI_TEST_ACTOR != config.TEST_ACTOR );
-    assert( td.GHFullName != tdM.GHFullName );
+    assert( td.ghFullName != tdM.ghFullName );
 
     // Add populate label to testProject2, to invoke repostatus. 
     let multiPid = await gh2tu.createProjectWorkaround( authDataM, tdM, "Multi Proj", "For testing request interleaving" );
-    let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.GHFullName, multiPid, "Multi Col" );
+    let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.ghFullName, multiPid, "Multi Col" );
 
     // Labels, Assignees & Locs
     const LAB    = "903 " + config.PEQ_LABEL;
     const LABNP1 = "bug";
     const LABNP2 = "documentation";
-    let lab     = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LAB, 903 );
-    let labNP1  = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LABNP1, -1 );
-    let labNP2  = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LABNP2, -1 );
-    let labM    = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, LAB, 903 );
-    let labNP1M = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, LABNP1, -1 );
-    let labNP2M = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, LABNP2, -1 );
+    let lab     = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LAB, 903 );
+    let labNP1  = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LABNP1, -1 );
+    let labNP2  = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LABNP2, -1 );
+    let labM    = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LAB, 903 );
+    let labNP1M = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LABNP1, -1 );
+    let labNP2M = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LABNP2, -1 );
 
     const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "builderCE";
@@ -219,8 +219,8 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     let assignee2M  = await gh2tu.getAssignee( authDataM, ASSIGNEE2 );
     let assignee3M  = await gh2tu.getAssignee( authDataM, ASSIGNEE3 );
 
-    console.log( authData.who, lab, td.GHRepoId );
-    console.log( authDataM.who, labM, tdM.GHRepoId );
+    console.log( authData.who, lab, td.ghRepoId );
+    console.log( authDataM.who, labM, tdM.ghRepoId );
     
     // There are 5 blast issues of each repo, randomized, sent with a small random gap between 200-500ms.
 
@@ -315,8 +315,8 @@ async function runTests( flutterTest, authData, authDataX, authDataM, testLinks,
     let testStatus = [ 0, 0, []];
 
     // First build up aws CEProjects hostRepositories for repo: ceTesterAriAlt, ceTesterConnie
-    await gh2tu.linkRepo( authDataM, tdM.ceProjectId, tdM.GHRepoId, tdM.GHFullName, tdM.cepDetails );
-    await gh2tu.linkRepo( authDataX, tdX.ceProjectId, tdX.GHRepoId, tdX.GHFullName, tdX.cepDetails );
+    await gh2tu.linkRepo( authDataM, tdM.ceProjectId, tdM.ghRepoId, tdM.ghFullName, tdM.cepDetails );
+    await gh2tu.linkRepo( authDataX, tdX.ceProjectId, tdX.ghRepoId, tdX.ghFullName, tdX.cepDetails );
 
     let t1 = await testCrossRepo( flutterTest, authData, authDataX, testLinks, td, tdX );
     console.log( "\n\nCross Repo test complete." );

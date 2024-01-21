@@ -6,8 +6,8 @@ const config  = require( rootLoc + 'config' );
 const utils     = require( rootLoc + 'utils/ceUtils' );
 const awsUtils  = require( rootLoc + 'utils/awsUtils' );
 
-const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
-const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
+const ghUtils     = require( rootLoc + 'utils/gh/ghUtils' );
+const ingestUtils = require( rootLoc + 'utils/gh/gh2/ingestUtils' );
 
 const ghV2     = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
 
@@ -267,7 +267,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    skipPNP     = skipPNP && links[0].hostColumnId != -1 && links[0].hostColumnId != config.GH_NO_STATUS;   // skip if existing link is meaningful
 	    skipPNP     = skipPNP && links[0].hostCardId == card.node_id;                                           // skip if don't need to resolve 2nd card
 	    // Wait.  Linkage should not be in progress when subsequent card:move is processed.
-	    if( !skipPNP ) { await gh2DUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, specials ); }
+	    if( !skipPNP ) { await ingestUtils.processNewPEQ( authData, ghLinks, pd, issue, -1, specials ); }
 	}
 	break;
     case 'converted' :

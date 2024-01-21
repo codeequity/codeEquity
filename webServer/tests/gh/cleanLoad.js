@@ -39,6 +39,7 @@ async function clearSummary( authData, td ) {
 }
 
 
+// XXX Out of date
 // Only load items for  TEST_ACTOR, FLUTTER_TEST_REPO.  Need to work through dynamo storage format.
 async function loadPEQ( authData, td ) {
 
@@ -61,7 +62,7 @@ async function loadPEQ( authData, td ) {
 	const repo = aput.PutRequest.Item.GHRepo.S;
 	const id   = aput.PutRequest.Item.PEQId.S;
 	
-	if( repo == td.GHFullName ) {
+	if( repo == td.ghFullName ) {
 	    // console.log( "Loading", repo, id );
 	    peqCount++;
 
@@ -133,7 +134,7 @@ async function loadPAct( authData, td ) {
 	    const repo = aput.PutRequest.Item.GHRepo.S;
 	    const id   = aput.PutRequest.Item.PEQActionId.S;
 	    
-	    if( repo == td.GHFullName ) { pactIds.push( id ); }
+	    if( repo == td.ghFullName ) { pactIds.push( id ); }
 	}
 	
 	// Skip other repos
@@ -153,7 +154,7 @@ async function loadPAct( authData, td ) {
 	const repo = aput.PutRequest.Item.GHRepo.S;
 	const id   = aput.PutRequest.Item.PEQActionId.S;
 	
-	if( repo == td.GHFullName ) {
+	if( repo == td.ghFullName ) {
 	    pactCount++;
 	    if( loadRaw ) {
 		assert( praw.hasOwnProperty( id ) );
@@ -200,7 +201,7 @@ async function loadLinkage( authData, td ) {
 	let locSummary = linkJson.CELinkage[repoNum].PutRequest.Item;
 	let repo    = locSummary.GHRepo.S;
 	
-	if( repo == td.GHFullName ) {
+	if( repo == td.ghFullName ) {
 	    let locs    = locSummary.Locations.L;
 	    let ghLinks = new links.Linkage();
 	    for( let i = 0; i < locs.length; i++  ) {
@@ -233,14 +234,14 @@ async function runTests() {
 
     // TEST_REPO auth
     let td          = new testData.TestData();
-    td.GHOwner      = config.TEST_OWNER;
+    td.ghOwner      = config.TEST_OWNER;
     td.actor        = config.TEST_ACTOR;
-    td.GHRepo       = config.FLUTTER_TEST_REPO;
-    td.GHFullName   = td.GHOwner + "/" + td.GHRepo;
+    td.ghRepo       = config.FLUTTER_TEST_REPO;
+    td.ghFullName   = td.ghOwner + "/" + td.ghRepo;
 
     let authData     = new authDataC.AuthData();
     authData.who     = "<TEST: Main> ";
-    authData.ic      = await auth.getInstallationClient( td.actor, td.GHRepo, td.GHOwner );
+    authData.ic      = await auth.getInstallationClient( td.actor, td.ghRepo, td.ghOwner );
     authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();        

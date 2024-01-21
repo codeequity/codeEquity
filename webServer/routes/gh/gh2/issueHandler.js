@@ -8,8 +8,8 @@ const utils    = require( rootLoc + 'utils/ceUtils' );
 const awsUtils = require( rootLoc + 'utils/awsUtils' );
 const ghUtils  = require( rootLoc + 'utils/gh/ghUtils' );
 
-const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
-const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
+const ghV2        = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
+const ingestUtils = require( rootLoc + 'utils/gh/gh2/ingestUtils' );
 
 const cardHandler = require( './cardHandler' );
 
@@ -239,7 +239,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.labelNodeId              = pd.reqBody.label.node_id;
 	
     // Don't wait, no dependence.  Be aware link may be incomplete until this first PNP finishes
-    let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );
+    let retVal = ingestUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );
     return (retVal != 'early' && retVal != 'removeLabel')
 }
 
@@ -640,7 +640,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		pd.peqType                       = peq.PeqType;
 		pd.ceProjectId                   = newCEP;
 		pd.issueId                       = newIssueId;
-		gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, newLink, { havePeq: true, pact: "justAdd" } );
+		ingestUtils.processNewPEQ( authData, ghLinks, pd, content, newLink, { havePeq: true, pact: "justAdd" } );
 	    }
 	    
 	}

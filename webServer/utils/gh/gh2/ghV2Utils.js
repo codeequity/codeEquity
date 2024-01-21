@@ -689,9 +689,8 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
     if( !utils.validField( labelRes, "status" ) || labelRes.status != 200 ) {
 	console.log( authData.who, "Label not found, creating.." );
 	
-	if( peqHumanLabelName == config.POPULATE ) { theLabel = await createLabel( authData, repoNode, peqHumanLabelName, '111111', "populate" ); }
-	else if( peqValue < 0 )                    { theLabel = await createLabel( authData, repoNode, peqHumanLabelName, '654321', "Oi!" ); }
-	else                                       { theLabel = await createPeqLabel( authData, repoNode, allocation, peqValue );            }
+	if( peqValue < 0 ) { theLabel = await createLabel( authData, repoNode, peqHumanLabelName, '654321', "Oi!" ); }
+	else               { theLabel = await createPeqLabel( authData, repoNode, allocation, peqValue );            }
     }
     assert( theLabel != null && typeof theLabel !== 'undefined', "Did not manage to find or create the PEQ label" );
     return theLabel;

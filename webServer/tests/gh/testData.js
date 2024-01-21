@@ -3,13 +3,13 @@ var config    = require('../../config');
 class TestData {
     constructor( ) {
 	this.ceProjectId  = config.EMPTY;
-	this.GHRepo       = config.EMPTY;
-	this.GHOwner      = config.EMPTY;
-	this.GHOwnerId    = config.EMPTY; 
+	this.ghRepo       = config.EMPTY;
+	this.ghOwner      = config.EMPTY;
+	this.ghOwnerId    = config.EMPTY; 
 	this.actor        = config.EMPTY;
 	this.actorId      = config.EMPTY; 
-	this.GHRepoId     = config.EMPTY; 
-	this.GHFullName   = config.EMPTY;
+	this.ghRepoId     = config.EMPTY; 
+	this.ghFullName   = config.EMPTY;
 
 	// A Recommended CE structure
 	this.softContTitle    = "Software Contributions";
@@ -138,13 +138,13 @@ class TestData {
     
     show() {
 	console.log( "TestData object contents.. Recommended==============" );
-	if( this.GHRepo     != config.EMPTY ) { console.log( "GHRepo", this.GHRepo ); }
-	if( this.GHRepoId   != config.EMPTY ) { console.log( "GHRepoId", this.GHRepoId ); }
-	if( this.GHOwner    != config.EMPTY ) { console.log( "GHOwner", this.GHOwner ); }
-	if( this.GHOwnerId  != config.EMPTY ) { console.log( "GHOwnerId", this.GHOwnerId ); }
+	if( this.ghRepo     != config.EMPTY ) { console.log( "GHRepo", this.ghRepo ); }
+	if( this.ghRepoId   != config.EMPTY ) { console.log( "GHRepoId", this.ghRepoId ); }
+	if( this.ghOwner    != config.EMPTY ) { console.log( "GHOwner", this.ghOwner ); }
+	if( this.ghOwnerId  != config.EMPTY ) { console.log( "GHOwnerId", this.ghOwnerId ); }
 	if( this.actor      != config.EMPTY ) { console.log( "actor", this.actor ); }
 	if( this.actorId    != config.EMPTY ) { console.log( "GHactorId", this.actorId ); }
-	if( this.GHFullName != config.EMPTY ) { console.log( "GHFullName", this.GHFullName ); }
+	if( this.ghFullName != config.EMPTY ) { console.log( "GHFullName", this.ghFullName ); }
 
 	if( this.masterPID    != config.EMPTY ) { console.log( "masterPID", this.masterPID ); }
 	if( this.dataSecPID   != config.EMPTY )   { console.log( "dataSecPID", this.dataSecPID ); }

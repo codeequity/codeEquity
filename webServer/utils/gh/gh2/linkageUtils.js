@@ -8,8 +8,8 @@ const ceAuth    = require( rootLoc + 'auth/ceAuth' );
 const utils     = require( rootLoc + 'utils/ceUtils' );
 const awsUtils  = require( rootLoc + 'utils/awsUtils' );
 
-const ghV2      = require( './ghV2Utils' );
-const gh2DUtils = require( './gh2DataUtils' );
+const ghV2        = require( './ghV2Utils' );
+const ingestUtils = require( './ingestUtils' );
 
 
 // If project has peq in CEP, then get all links, locs, then filter links out for those that are from repos associated with cep.
@@ -167,7 +167,7 @@ async function linkRepo( authData, ghLinks, ceProjects, ceProjId, repoId, repoNa
     }
     
     // Expensive.  Handle resolve, links, locs.
-    await gh2DUtils.populateCELinkage( authData, ghLinks, { ceProjectId: ceProjId, repoId: repoId } );
+    await ingestUtils.populateCELinkage( authData, ghLinks, { ceProjectId: ceProjId, repoId: repoId } );
     
     // Update AWS, ceProjects (via cep)
     let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );
