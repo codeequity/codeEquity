@@ -3,15 +3,27 @@ const utils    = require( "../utils/ceUtils" );
 // minimalistic histogram.
 class Histogram {
 
+    constructor(div, elements) {
+	this.buckets = elements;
+	this.buckets.push( elements[ elements.length - 1] * 100 );
+	this.times   = new Array( this.buckets.length ).fill(0);
+	this.last    = -1;
+	this.div     = div;
+
+	// this.show( "" );
+    }
+
+    /*
     constructor(...elements) {
 	this.buckets = [...elements];
 	this.buckets.push( 9999 );
 	this.times   = new Array( this.buckets.length ).fill(0);
 	this.last    = -1;
 
-	this.show();
+	// this.show( "" );
     }
-
+    */
+    
     purge() {
 	this.last = -1;
 	this.times = [];
@@ -19,9 +31,19 @@ class Histogram {
 
     add( stamp ) {
 	if( this.last == -1 ) { this.last = stamp; }
-	const mDiff = ( utils.millisDiff( stamp, this.last ) ) / 1000;
+	const mDiff = ( utils.millisDiff( stamp, this.last ) ) / this.div;
 	this.last = stamp;
 
+	for( let i = 0; i < this.buckets.length; i++ ) {
+	    if( mDiff < this.buckets[i] ) {
+		this.times[i]++;
+		break;
+	    }
+	}
+    }
+
+    addDiff( diff ) {
+	let mDiff = diff / this.div;
 	for( let i = 0; i < this.buckets.length; i++ ) {
 	    if( mDiff < this.buckets[i] ) {
 		this.times[i]++;
@@ -43,13 +65,15 @@ class Histogram {
 	return retVal;
     }
 
-    show() {
+    show( title ) {
 	let header  = "";
 	let content = "";
 
+	console.log( title );
 	for( let i = 0; i < this.buckets.length; i++ ) {
-	    header  += this.prefill( this.buckets[i], 5 );
-	    content += this.prefill( this.times[i], 5 );
+	    if( i == this.buckets.length - 1 ) { header += this.prefill( "last", 6 ); }
+	    else                               { header  += this.prefill( this.buckets[i], 6 ); }
+	    content += this.prefill( this.times[i], 6 );
 	}
 	
 	console.log( header );

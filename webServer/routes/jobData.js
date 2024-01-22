@@ -14,6 +14,9 @@ class JobData {
 	this.tag         = config.EMPTY;    // host-specific name for object, debugging. Example - iss4810
 	this.reqBody     = config.EMPTY;    // The incoming request body, json
 
+	this.stampLat    = -1;              // latency - includes time for demotions and delays (postpones)
+	this.stamp       = -1;              // rough measure of unit cost.  Does not include top level demotions & etc., but children may be demoted.
+	
 	this.delayCount  = 0;                 
 	this.queueId     = utils.randAlpha(10);
 

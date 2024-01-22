@@ -59,10 +59,7 @@ const PROJ_ACCR = 3;
 
 
 // Peq label grammar
-const PEQSTART = '<';
 const PEQ      = 'PEQ: ';
-
-const PALLOC   = PEQSTART +'allocation';
 const PDESC    = 'PEQ value: '; 
 const ADESC    = 'Allocation ' + PDESC;
 
@@ -155,9 +152,7 @@ exports.GH_TEMPLATE = GH_TEMPLATE;
 exports.GH_VIEW     = GH_VIEW;
 exports.GH_VIEWCOL  = GH_VIEWCOL;
 
-exports.PEQSTART = PEQSTART;
 exports.PEQ      = PEQ;
-exports.PALLOC   = PALLOC;
 exports.PDESC    = PDESC;
 exports.ADESC    = ADESC;
 

@@ -188,9 +188,6 @@ function getAllocated( content ) {
     for( const line of content ) {
 	let s = line.indexOf( config.ADESC );  // existing label desc
 	if( s > -1 ){ res = true; break; }
-
-	s = line.indexOf( config.PALLOC );      // by hand entry
-	if( s > -1 ){ assert( false ); res = true; break; }
     }
     return res;
 }
