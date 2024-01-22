@@ -22,13 +22,9 @@ const TESTING_ENDPOINT    = 'http://127.0.0.1:3000/github/testing';
 // Host notifier platforms
 const HOST_GH = "GitHub";
 
-// XXX no. not here.
 // Project Management Source
 const PMS_GHC = "GH Classic";   // Github's 'classic' projects that are now largely deprecated
 const PMS_GH2 = "GH Version 2"; // Github's 'Projects Version 2' projects
-// const PROJ_OPTIONS = [ PMS_GHC, PMS_GH2 ];
-// const PROJ_SOURCE  = PROJ_OPTIONS[1];  // Which project management system is the notification source for this effort
-
 
 // For testing .. needs work
 const CREDS_TPATH       = "../ops/github/auth/ghAppTestCredentials";
@@ -63,12 +59,7 @@ const PROJ_ACCR = 3;
 
 
 // Peq label grammar
-const PEQSTART = '<';
 const PEQ      = 'PEQ: ';
-const _PEQ     = ' PEQ';
-
-const PPLAN    = PEQSTART + PEQ;
-const PALLOC   = PEQSTART +'allocation';
 const PDESC    = 'PEQ value: '; 
 const ADESC    = 'Allocation ' + PDESC;
 
@@ -96,13 +87,13 @@ const PACTACT_NOTE = "notice";
 const PACTACT_ACCR = "accrue";
 const PACTACT_RELO = "relocate";   // For moving cards.  Use "Transfer out" if moving out of repo
 const PACTACT_CHAN = "change";     // Notes for change will be one of
-                                   // "Project rename" for changing name of project
-                                   // "Column rename" for the column.
-                                   // "add assignee", "remove assignee"
-                                   // "peq val update"
-                                   // "recreate"  when rebuilding peq in unclaimed after deleting accrued
-                                   // "Change title"
- 
+
+const PACTNOTE_PREN = "Project rename";
+const PACTNOTE_CREN = "Column rename";
+const PACTNOTE_ADDA = "add assignee";
+const PACTNOTE_PVU  = "peq val update";
+const PACTNOTE_RECR = "recreate";
+const PACTNOTE_CTIT = "Change title";
 
 // server job queue operation
 const MAX_DELAYS = 30;          // how many times can a single job be pushed further back into queue waiting for pre-req job to complete
@@ -111,10 +102,15 @@ const NOQ_DELAY  = 10000;       // backoff millis if queue is empty
 const MIN_DIFF   = 1000;        // min timestamp diff in millis for new insert location 
 
 // GitHub related
-const MAX_GH_RETRIES = 5;           // GH internals can be quite slow to update at times. Allow retries in some cases.
-const GH_GHOST       = "ghost";     // GH bot actions are executed by this actor
-const GH_NO_STATUS   = "No Status"; // GH name of column holding issues whose status has not yet been set
-const GH_BOT         = "github-project-automation[bot]" // new GH bot name
+const MAX_GH_RETRIES  = 5;           // GH internals can be quite slow to update at times. Allow retries in some cases.
+const GH_GHOST        = "ghost";     // GH bot actions are executed by this actor
+const GH_NO_STATUS    = "No Status"; // GH name of column holding issues whose status has not yet been set
+const GH_BOT          = "github-project-automation[bot]"; // new GH bot name
+const GH_ISSUE_OPEN   = "OPEN";
+const GH_ISSUE_CLOSED = "CLOSED";
+const GH_ISSUE        = "Issue";
+const GH_ISSUE_DRAFT  = "DraftIssue";
+const GH_COL_FIELD    = "Status";    // GH uses a field named status to hold the columns for a project
 
 // AWS related
 const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
@@ -122,8 +118,6 @@ const MAX_AWS_RETRIES = 5;      // Very, very rarely, can see AWS timeouts
 // server notification buffer size for testing
 const NOTICE_BUFFER_SIZE = 20;
 
-// XXX TEMP will go away   GHC only.
-const POPULATE = "populate";
 
 
 // ceRepoPrefs
@@ -152,19 +146,13 @@ exports.PROJ_PROG = PROJ_PROG;
 exports.PROJ_PEND = PROJ_PEND;
 exports.PROJ_ACCR = PROJ_ACCR;
 
-exports.POPULATE = POPULATE;
-
 exports.PEQ_COLOR   = PEQ_COLOR;
 exports.APEQ_COLOR  = APEQ_COLOR;
 exports.GH_TEMPLATE = GH_TEMPLATE;
 exports.GH_VIEW     = GH_VIEW;
 exports.GH_VIEWCOL  = GH_VIEWCOL;
 
-exports.PEQSTART = PEQSTART;
 exports.PEQ      = PEQ;
-exports._PEQ     = _PEQ;
-exports.PPLAN    = PPLAN;
-exports.PALLOC   = PALLOC;
 exports.PDESC    = PDESC;
 exports.ADESC    = ADESC;
 
@@ -175,8 +163,6 @@ exports.UNCLAIMED = UNCLAIMED;
 exports.HOST_GH      = HOST_GH;
 exports.PMS_GHC      = PMS_GHC;
 exports.PMS_GH2      = PMS_GH2;
-// exports.PROJ_OPTIONS = PROJ_OPTIONS;
-// exports.PROJ_SOURCE  = PROJ_SOURCE;
 
 exports.APIPATH_CONFIG_LOC  = APIPATH_CONFIG_LOC;
 exports.COGNITO_CONFIG_LOC  = COGNITO_CONFIG_LOC;
@@ -226,13 +212,26 @@ exports.PACTACT_ACCR = PACTACT_ACCR;
 exports.PACTACT_RELO = PACTACT_RELO;
 exports.PACTACT_CHAN = PACTACT_CHAN;
 
+exports.PACTNOTE_PREN = PACTNOTE_PREN;
+exports.PACTNOTE_CREN = PACTNOTE_CREN;
+exports.PACTNOTE_ADDA = PACTNOTE_ADDA;
+exports.PACTNOTE_PVU  = PACTNOTE_PVU;
+exports.PACTNOTE_RECR = PACTNOTE_RECR;
+exports.PACTNOTE_CTIT = PACTNOTE_CTIT;
+
 exports.MAX_DELAYS = MAX_DELAYS;
 exports.STEP_COST  = STEP_COST;
 exports.NOQ_DELAY  = NOQ_DELAY;
 exports.MIN_DIFF   = MIN_DIFF;
 
-exports.GH_GHOST     = GH_GHOST;
-exports.GH_NO_STATUS = GH_NO_STATUS;
-exports.GH_BOT       = GH_BOT;
+exports.GH_GHOST        = GH_GHOST;
+exports.GH_NO_STATUS    = GH_NO_STATUS;
+exports.GH_BOT          = GH_BOT;
+exports.GH_ISSUE_OPEN   = GH_ISSUE_OPEN;
+exports.GH_ISSUE_CLOSED = GH_ISSUE_CLOSED;
+exports.GH_ISSUE_DRAFT  = GH_ISSUE_DRAFT;
+exports.GH_ISSUE        = GH_ISSUE;
+exports.GH_COL_FIELD    = GH_COL_FIELD;
+
 
 exports.NOTICE_BUFFER_SIZE = NOTICE_BUFFER_SIZE;

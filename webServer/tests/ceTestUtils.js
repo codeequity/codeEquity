@@ -114,17 +114,6 @@ async function unlinkRepo( authData, ceProjId, rNodeId ) {
 
 
 
-// XXX XXX
-async function setUnpopulated( authData, td ) {
-    // XXX erm.. no more repo here
-    console.log( "Error.  repo no longer stored with ceProjects" );
-    assert( false ); 
-    let status = await awsUtils.getProjectStatus( authData, td.ceProjectId );
-    let statusIds = status == -1 ? [] : [ [status.GHRepo] ];
-    console.log( "Dynamo status id", statusIds );
-    await awsUtils.cleanDynamo( authData, "CERepoStatus", statusIds );
-}
-
 
 async function hasRaw( authData, pactId ) {
     let retVal = false;
@@ -302,7 +291,6 @@ exports.linkProject      = linkProject;
 exports.unlinkProject    = unlinkProject;
 exports.linkRepo         = linkRepo;
 exports.unlinkRepo       = unlinkRepo;
-exports.setUnpopulated   = setUnpopulated;
 
 // minor testing utils
 exports.hasRaw           = hasRaw; 

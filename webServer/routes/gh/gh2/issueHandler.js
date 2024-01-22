@@ -8,24 +8,27 @@ const utils    = require( rootLoc + 'utils/ceUtils' );
 const awsUtils = require( rootLoc + 'utils/awsUtils' );
 const ghUtils  = require( rootLoc + 'utils/gh/ghUtils' );
 
-const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
-const gh2DUtils = require( rootLoc + 'utils/gh/gh2/gh2DataUtils' );
+const ghV2        = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
+const ingestUtils = require( rootLoc + 'utils/gh/gh2/ingestUtils' );
 
 const cardHandler = require( './cardHandler' );
 
 // Terminology:
 // ceProject:      a codeequity project that includes 0 or more gh projects that CE knows about
-// newborn card :  a card without an issue.. this can NOT exist in projects v2
+// newborn card :  a card without an issue.. these are draft issues, ignored by ceServer
 // newborn issue:  a plain issue without a project card, without PEQ label
-// carded issue:   an issue with a card, but no PEQ label.
 // situated issue: an issue with a card, with or without a PEQ label.  May reside in unclaimed if PID not known.
+//                 i.e. situated is a set containing carded and peq.
+// carded issue:   an issue with a card, but no PEQ label.
 // PEQ issue:      a situated issue with a PEQ label
 
-// Guarantee: Once populateCEProjects has been run once for a repo:
-//            1) Newborn issues can exist (pre-existing, or post-populate), but with no data in the linkage table.
-//            2) Every carded issue in the repo resides in the linkage table, but without column info
-//            3) {label, add card} operation on newborn issues will cause conversion to situated or PEQ issue as needed,
+// Guarantee: For every repo that is part of a ceProject:
+//            1) Every carded issue in that repo resides in the linkage table. but without column info, issue and project names
+//            2) Newborn issues and newborn cards can exist, but will not reside in the linkage table.
+//            3) {label, add card} operation on newborn issues will cause conversion to a situated issue (carded or peq) as needed,
 //               and inclusion in linkage table.
+//            4) there is a 1:{0,1} mapping between issue:card
+//            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
 
 // When issueHandler:delete is called, GH will remove card as well.  Call deleteCard from here.
 async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
@@ -63,7 +66,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	issue.id = issue.node_id;
 
 	// Can only be alloc:false peq label here.
-	let peq  = await awsUtils.getPeq( authData, pd.ceProjectId, link.hostIssueId );
+	let peq  = await awsUtils.getPEQ( authData, pd.ceProjectId, link.hostIssueId );
 	assert( utils.validField( peq, "Amount" ));
 	const lName = ghV2.makeHumanLabel( peq.Amount, config.PEQ_LABEL );
 	const theLabel = await ghV2.findOrCreateLabel( authData, link.hostRepoId, false, lName, peq.Amount.toString() );
@@ -83,7 +86,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	let card        = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
 
 	// Don't wait - closing the issue at GH, no dependence
-	ghV2.updateIssue( authData, issueData[0], "state", "CLOSED" );
+	ghV2.updateIssue( authData, issueData[0], "state", config.GH_ISSUE_CLOSED );
 
 	// Move to unclaimed:accrued col
 	card = await card;
@@ -104,7 +107,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	
 	awsUtils.removePEQ( authData, peq.PEQId );	
 	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-			       config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], "recreate",
+			       config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], config.PACTNOTE_RECR,
 			       utils.getToday(), pd.reqBody );
 	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
 			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
@@ -125,7 +128,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     // label may be from json payload, or from internal call.  Convert id format.
     if( utils.validField( label, "node_id" ) ) { label.id = label.node_id; }
         
-    // Was this a carded issue?  Get linkage
+    // Was this a situated issue?  Get linkage
     // Note: During initial creation, some item:create notifications are delayed until issue:label, so no linkage (yet)
     // Note: if issue is opened with a project selected, we will receive open, label and create notices.
     //       so, card may exist in GH, but linkage has not been established yet if label preceeds create.
@@ -155,7 +158,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	    ghV2.removeLabel( authData, origLabel, pd.issueId );
 	    
 	    // Don't wait.  this doesn't push to aws
-	    awsUtils.changeReportPeqVal( authData, pd, curVal, link );  // XXX new note for PACT would make sense.
+	    awsUtils.changeReportPEQVal( authData, pd, curVal, link );  // XXX new note for PACT would make sense.
 	    return false;
 	}
 	else{
@@ -236,7 +239,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
     content.labelNodeId              = pd.reqBody.label.node_id;
 	
     // Don't wait, no dependence.  Be aware link may be incomplete until this first PNP finishes
-    let retVal = gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );
+    let retVal = ingestUtils.processNewPEQ( authData, ghLinks, pd, content, link, specials );
     return (retVal != 'early' && retVal != 'removeLabel')
 }
 
@@ -263,7 +266,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     case 'labeled':
 	// Can get here at any point in issue interface by adding a label, peq or otherwise
 	// Can peq-label newborn and carded issues that are not >= PROJ_PEND
-	// PROJ_PEND label can be added during pend negotiation, but it if is situated already, adding a second peq label is ignored.
+	// PROJ_PEND label can be added during pend negotiation, but it if is peq already, adding a second peq label is ignored.
 	// Note: a 1:1 mapping issue:card is maintained here, via resolve.  So, this labeling is relevant to 1 card only
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
@@ -280,7 +283,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 		console.log( "PEQ labeled closed issue." )
 
-		// Must be situated by now.  Move, if in flatworld.
+		// Must be peq by now.  Move, if in flatworld.
 		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
 		assert( links.length == 1 );
 		let link = links[0];
@@ -295,7 +298,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			if( newColId ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
-			    let peq = await utils.settleWithVal( "validatePeq", ghUtils.validatePEQ, authData, pd.ceProjectId,
+			    let peq = await utils.settleWithVal( "validatePeq", awsUtils.validatePEQ, authData, pd.ceProjectId,
 								 link.hostIssueId, link.hostIssueName, link.hostProjectId );
 
 			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
@@ -339,7 +342,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 	    
-	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );	
+	    let peq = await awsUtils.getPEQ( authData, pd.ceProjectId, pd.issueId );	
 	    console.log( "WARNING.  PEQ Issue unlabeled, issue no longer tracked." );
 	    ghLinks.rebaseLinkage( authData, pd.ceProjectId, pd.issueId );   // setting various to EMPTY, as it is now untracked
 	    awsUtils.removePEQ( authData, peq.PEQId );
@@ -358,7 +361,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'deleted':
-	// Delete card of carded issue sends itemHandler:deleted.  Delete issue of carded issue sends issueHandler:delete
+	// Delete card of situated issue sends itemHandler:deleted.  Delete issue of situated issue sends issueHandler:delete
 	
 	// Similar to unlabel, but delete link (since issueId is now gone).  No access to label
 	// Wait here, since delete issue can createUnclaimed
@@ -391,7 +394,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		let newColId = await ghV2.moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
-		    let peqId = ( await( ghUtils.validatePEQ( authData, pd.ceProjectId, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
+		    let peqId = ( await( awsUtils.validatePEQ( authData, pd.ceProjectId, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
 		    if( peqId === -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }
@@ -438,7 +441,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    // Peq issues only.  PEQ assignees are tracked in ceFlutter.  Just send PAct upstream.
-	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
+	    let peq = await awsUtils.getPEQ( authData, pd.ceProjectId, pd.issueId );
 
 	    // This should only happen during blast-issue creation.
 	    if( peq === -1 ) {
@@ -470,7 +473,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	}
 	break;
     case 'edited':
-	// Only need to catch title edits, and only for situated.
+	// Only need to catch title edits, and only for peq.
 	// Will get this notice for a transfer, safe to ignore.
 	{
 	    if( pd.reqBody.changes.hasOwnProperty( 'title' ) && 
@@ -483,7 +486,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		if( link !== -1 && link.hostIssueName != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.
-		    // XXX record reject change notice?  rules for confirm reject?  check consistency.
 		    if( link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
 			console.log( "WARNING.  Can't modify PEQ issues that have accrued." );
 			ghV2.updateTitle( authData, pd.issueId, link.hostIssueName );
@@ -492,13 +494,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			assert( pd.reqBody.changes.title.from == link.hostIssueName );
 			console.log( "Title changed from", link.hostIssueName, "to", newTitle );
 			
-			// if link has title, we have situated card.
+			// if link has title, we have peq card.
 			ghLinks.updateTitle( authData, link, newTitle );
-			let peq = await awsUtils.getPeq( authData, pd.ceProjectId, pd.issueId );
-			assert( peq !== -1 );  
+			let peq = await awsUtils.getPEQ( authData, pd.ceProjectId, pd.issueId );
+			assert( peq !== -1 );
 			const subject = [ peq.PEQId, newTitle ]; 
 			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, "Change title",
+					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, config.PACTNOTE_CTIT,
 					       utils.getToday(), pd.reqBody );
 		    }
 		}
@@ -558,7 +560,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    assert( links.length == 1 );
 	    // console.log( authData.who, "old link", links[0] );
 
-	    let peq = await awsUtils.getPeq( authData, pd.ceProjectId, oldIssueId, false );
+	    let peq = await awsUtils.getPEQ( authData, pd.ceProjectId, oldIssueId, false );
 
 	    // Undo if trying to move peq into repo that is not CEP.  ceServer should not create new ceProject without owner input.
 	    if( newCEP == config.EMPTY && peq !== -1 ) {
@@ -570,7 +572,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
 		ghLinks.addLinkage( authData, oldCEP, newLink );
 
-		// XXX notice pact
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, xferIssue.id, oldRepoId, oldCEP ];
 		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, newCEP,
 					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, "Bad transfer attempted",
@@ -578,8 +579,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		return;
 	    }
 
-	    // XXX Reject carded with peq label from oldRepo not in CEP to newRepo in CEP. Else, could sneak accr in?
-	    // XXX need resolve as well in this case.  Need new ghUtils:utility to check for peq label amongst labels
+	    // XXX Reject carded (i.e. not official peq, but) with peq label from oldRepo not in CEP to newRepo in CEP. Else, could sneak accr in?
 	    if( oldCEP == config.EMPTY ) { assert( false ); }
 
 	    // To get here, either peq in cep cep world, carded in cep - ??? world.  Handle carded
@@ -640,7 +640,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		pd.peqType                       = peq.PeqType;
 		pd.ceProjectId                   = newCEP;
 		pd.issueId                       = newIssueId;
-		gh2DUtils.processNewPEQ( authData, ghLinks, pd, content, newLink, { havePeq: true, pact: "justAdd" } );
+		ingestUtils.processNewPEQ( authData, ghLinks, pd, content, newLink, { havePeq: true, pact: "justAdd" } );
 	    }
 	    
 	}

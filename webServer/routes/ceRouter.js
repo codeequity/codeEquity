@@ -37,7 +37,7 @@ ceJobs.lastCEP = config.EMPTY;
 var notificationCount = 0;
 
 // CE arrival hist
-var ceArrivals = new hist.Histogram( 1, 3, 5, 8, 12, 15, 20, 30 );
+var ceArrivals = new hist.Histogram( 1000, [1, 3, 5, 8, 12, 15, 20, 30] );
 
 // CE Notification buffer, TESTING ONLY
 var ceNotification = new circBuff.CircularBuffer( config.NOTICE_BUFFER_SIZE );
@@ -82,6 +82,8 @@ async function initAuth( authData ) {
 // ceRouter core
 // Build, add jobs, get next job, send to platform handler
 // ****************************************************************
+// do NOT update stampLat(ency), just stamp
+// NOTE: on a clean job queue, jd.stamp will be set with stampLat upon initial arrival, then immediately updated by checkQueue.  
 function stampJob( jd, delayCount ) {
     if( jd.host == "" || jd.projMgmtSys == "" || jd.actor == "" ) {
 	console.log( "Warning.  Job does not indicate host, pms or actor.  Skipping." );
@@ -91,6 +93,7 @@ function stampJob( jd, delayCount ) {
 
     jd.delayCount  = delayCount;
     jd.stamp = Date.now();
+    console.log( "STAMP", jd.queueId, jd.stamp );
 }
 
 function summarizeQueue( ceJobs, msg, limit, short ) {
@@ -195,10 +198,12 @@ async function getFromQueue( ceJobs ) {
 // Only this call will remove from the queue before getting next.
 // Called from host handlers's switcher routines.
 async function getNextJob( authData, res ) {
-    let jobData = await getFromQueue( ceJobs );   
+    let jobData = await getFromQueue( ceJobs );
     if( jobData !== -1 ) {
 
-	let hostHandler = null; 
+	stampJob( jobData, jobData.delayCount );  // update to track cost
+	
+	let hostHandler = null;
 	if( jobData.host == config.HOST_GH ) { hostHandler = ghr.ghSwitcher; }
 	else {
 	    console.log( "Warning.  Incoming notification is not from a known platform", jobData.reqBody );
@@ -207,7 +212,7 @@ async function getNextJob( authData, res ) {
 	
 	// Need a new authData, else source for non-awaited actions is overwritten
 	let ic = {};
-	ic.who     = "<"+jobData.event+": "+jobData.action+" "+jobData.tag+"> ";   
+	ic.who     = "<GNJ "+jobData.event+": "+jobData.action+" "+jobData.tag+"> ";   
 	ic.api     = authData.api;
 	ic.cog     = authData.cog;
 	ic.cogLast = authData.cogLast;
@@ -221,12 +226,15 @@ async function getNextJob( authData, res ) {
 	authData.pat = tmp;
 	
 	console.log( "\n\nGot next job:", ic.who );
-	await hostHandler( ic, ceProjects, hostLinks, jobData, res, jobData.stamp );   
+	await hostHandler( ic, ceProjects, hostLinks, jobData, res );   
     }
     else {
 	console.log( authData.who, "jobs done" );
 	hostLinks.show( 5, ceJobs.lastCEP );
-	ceArrivals.show();
+	ceArrivals.show( "CE notice arrivals (s):      ");
+	// Cycle through each host's reporting
+	ghr.reportCosts();
+	
 	//hostLinks.showLocs( 10 );
 	console.log( "\n" );
     }
@@ -270,10 +278,9 @@ router.post('/:location?', async function (req, res) {
     // projPath    Unique locator for hostProject. Example - "GitHub/ariCETester/codeEquityTests"
     // source      Printable data for debugging notices.    Example - <item:create AnIssue>
     let locator   = { projPath: "", source: "<" };   
-    let newStamp  = utils.getMillis();
 
-    // Host platform get job data summary info
-    let ret = hostGetJobData( newStamp, jd, req.headers, locator );
+    // Host platform get job data summary info, including original arrival time for stampLat(ency)
+    let ret = hostGetJobData( jd, req.headers, locator );
     if( ret == -1 ) {
 	console.log( "Ignoring notification" );
 	return res.end();
@@ -284,6 +291,7 @@ router.post('/:location?', async function (req, res) {
 	console.log( "\nNotification for", jd.event, jd.action, jd.actor, "is Bot-sent, skipping." );
 	return res.end();
     }
+    let newStamp  = utils.getMillis();   
     console.log( "Notification:", jd.actor, jd.event, jd.action, jd.tag, jd.queueId, "for", jd.org, newStamp );
     
     // XXX TESTING ONLY.  Remove before release.  Allow once on CEServer startup, only.
@@ -291,7 +299,7 @@ router.post('/:location?', async function (req, res) {
     if( notificationCount % 50 == 0 ) { hostLinks.show(15); }
     
 
-    ceArrivals.add( newStamp );                                    // how responsive is the server, debugging
+    ceArrivals.add( newStamp );                                                      // how quickly are notifications arriving?
     ceNotification.push( jd.event+" "+jd.action+" "+jd.tag+" "+locator.projPath );   // testing data
 
     // Only 1 externally driven job (i.e. triggered from non-CE host platform notification) active at any time
@@ -309,7 +317,7 @@ router.post('/:location?', async function (req, res) {
     authData.job = jd.queueId;
     
     console.log( authData.who, "job Q [" + locator.projPath + "] clean, start-er-up" );
-    await hostHandler( authData, ceProjects, hostLinks, jd, res, newStamp ); 
+    await hostHandler( authData, ceProjects, hostLinks, jd, res ); 
     
     // avoid socket hangup error, response undefined
     return res.end();

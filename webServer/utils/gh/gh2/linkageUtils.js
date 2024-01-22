@@ -8,9 +8,8 @@ const ceAuth    = require( rootLoc + 'auth/ceAuth' );
 const utils     = require( rootLoc + 'utils/ceUtils' );
 const awsUtils  = require( rootLoc + 'utils/awsUtils' );
 
-const ghV2      = require( './ghV2Utils' );
-
-// XXX is known host, and pms.  
+const ghV2        = require( './ghV2Utils' );
+const ingestUtils = require( './ingestUtils' );
 
 
 // If project has peq in CEP, then get all links, locs, then filter links out for those that are from repos associated with cep.
@@ -26,7 +25,8 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     
     console.log( authData.who, ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
-    assert( pms == config.PMS_GH2 );
+    assert( pms  == config.PMS_GH2 );
+    assert( host == config.HOST_GH );
     
     // mainly to get pat
     await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR );
@@ -36,7 +36,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     let hostRepoIds = preferredRepoId == -1 ? ceProject.HostParts.hostRepositories.map( repo => repo.repoId ) : [preferredRepoId]; 
     
     // Find all hostProjects that provide a card home for a peq in the cep
-    let hostProjs = await awsUtils.getHostPeqProjects( authData, { CEProjectId: ceProject.CEProjectId } );
+    let hostProjs = await awsUtils.getHostPEQProjects( authData, { CEProjectId: ceProject.CEProjectId } );
     if( hostProjs == -1 ) { hostProjs = []; }
 
     // Add organization's unclaimed to each hostRepo that holds PEQ, since aws:peq table will not record delete movements to UNCL
@@ -137,7 +137,46 @@ async function unlinkProject( authData, ghLinks, ceProjects, ceProjId, hostProje
     return true;
 }
 
+async function linkRepo( authData, ghLinks, ceProjects, ceProjId, repoId, repoName, cepDetails ) {
+    console.log( "Link repo", ceProjId, repoId, repoName );
+    if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
+	console.log( authData.who, "WARNING.  Attempting to link a repo to a ceProject, one of which is empty.", ceProjId, repoId, repoName );
+	return false;
+    }
+    
+    let cep = ceProjects.findById( ceProjId );
+    
+    // TESTING ONLY!  Outside testing, ceFlutter controls all access to this, will never need initBlank.
+    if( typeof cep === 'undefined' ) {
+	let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO];
+	let repoShort    = repoName.split('/');
+	repoShort        = repoShort[ repoShort.length - 1 ]; 
+	assert( testingRepos.includes( repoShort ));
+	assert( typeof cepDetails !== 'undefined' );
+	cep = ceProjects.initBlank( ceProjId, cepDetails );
+    }
+    
+    // CEP may already be linked.  For example, transfering issues will issue linkRepo for new connection.
+    // If already linked, we are done.
+    if( utils.validField( cep, "HostParts" ) && utils.validField( cep.HostParts, "hostRepositories" ) ) {
+	let repo = cep.HostParts.hostRepositories.find( c => c.repoId == repoId );
+	if( typeof repo !== 'undefined' ) {
+	    console.log( authData.who, "Repo is already linked", ceProjId, repoName );
+	    return cep;
+	}
+    }
+    
+    // Expensive.  Handle resolve, links, locs.
+    await ingestUtils.populateCELinkage( authData, ghLinks, { ceProjectId: ceProjId, repoId: repoId } );
+    
+    // Update AWS, ceProjects (via cep)
+    let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );
+    if( !utils.validField( cep, "HostParts" )) { cep.HostParts = {}; }
+    cep.HostParts.hostRepositories = hostRepos;
+    return await awsUtils.updateCEPHostParts( authData, cep );
+}
 
 exports.buildHostLinks  = buildHostLinks; 
 exports.linkProject     = linkProject;
 exports.unlinkProject   = unlinkProject;
+exports.linkRepo        = linkRepo;

@@ -13,8 +13,7 @@ const tu       = require( '../../ceTestUtils' );
 
 // Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
 // Server is fast enough for sub 1s, but GH struggles.
-// XXX Is GQL faster?  Try lowering this once all up and running.
-const GH_DELAY = 400;
+const GH_DELAY = 400;  // No point to dip below 400 - GH interface does not even support this speed
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast
 
@@ -29,7 +28,7 @@ async function refresh( authData, td, projName ){
     if( td.masterPID != config.EMPTY ) { return; }
 
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td.GHFullname, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.ghFullname, hostProjs, -1 );
 
     hostProjs.forEach( proj => { if( proj.hostProjectName == projName ) { td.masterPID = project.id; } });
 }
@@ -38,7 +37,7 @@ async function refresh( authData, td, projName ){
 // Refresh a recommended project layout.  This is useful when running tests piecemeal.
 async function refreshRec( authData, td ) {
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.ghFullName, hostProjs, -1 );
 
     // console.log( "Got hprojs", hostProjs );
     for( const proj of hostProjs ) {
@@ -76,7 +75,7 @@ async function refreshRec( authData, td ) {
 // Refresh a flat project layout.  This is useful when running tests piecemeal.
 async function refreshFlat( authData, td ) {
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1 );
+    await ghV2.getProjectIds( authData, td.ghFullName, hostProjs, -1 );
 
     for( const proj of hostProjs ) {
 	if( proj.hostProjectName == td.flatTitle ) {
@@ -98,10 +97,10 @@ async function refreshUnclaimed( authData, td ) {
     forceFind = typeof forceFind === 'undefined' ? false : forceFind;
     
     let hostProjs = [];
-    await ghV2.getProjectIds( authData, td.GHFullName, hostProjs, -1, true );
+    await ghV2.getProjectIds( authData, td.ghFullName, hostProjs, -1, true );
 
     for( const proj of hostProjs ) {
-	console.log( "checking", proj.hostProjectName, proj.hostProjectId, td.GHFullName, td.unclaimTitle );
+	console.log( "checking", proj.hostProjectName, proj.hostProjectId, td.ghFullName, td.unclaimTitle );
 	if( proj.hostProjectName == td.unclaimTitle ) {
 	    td.unclaimPID = proj.hostProjectId;
 
@@ -139,7 +138,7 @@ async function checkLoc( authData, td, issDat, loc ) {
 
     if( retVal ) {
 	if( loc === -1 ) {
-	    retVal = retVal && (issue.state == 'OPEN' || issue.state == 'CLOSED' );
+	    retVal = retVal && (issue.state == config.GH_ISSUE_OPEN || issue.state == config.GH_ISSUE_CLOSED );
 	}
 	else {
 	    let cards = await getCards( authData, loc.pid, loc.colId );
@@ -169,7 +168,7 @@ async function getLabels( authData, td ) {
                edges{node{
                  id, name, color, description}}}
     }}}`;
-    let variables = {"nodeId": td.GHRepoId };
+    let variables = {"nodeId": td.ghRepoId };
     query = JSON.stringify({ query, variables });
 
     try{ 
@@ -196,7 +195,7 @@ async function getLabels( authData, td ) {
 
 // Note, this is not returning full issues. 
 async function getIssues( authData, td ) {
-    let issues = await ghV2.getIssues( authData, td.GHRepoId );
+    let issues = await ghV2.getIssues( authData, td.ghRepoId );
     return issues;
 }
 
@@ -213,7 +212,7 @@ async function getProjects( authData, td ) {
                  repositories(first:100) {
                     edges{node{ id name owner { login }}}}}}}
     }}}`;
-    let variables = {"nodeId": td.GHRepoId };
+    let variables = {"nodeId": td.ghRepoId };
     query = JSON.stringify({ query, variables });
 
     try{
@@ -283,7 +282,7 @@ async function getColumns( authData, pid ) {
 		
 		for( let i = 0; i < view.fields.edges.length; i++ ) {
 		    const afield = view.fields.edges[i].node;
-		    if( afield.name == "Status" ) {
+		    if( afield.name == config.GH_COL_FIELD ) {
 			statusId = afield.id;  
 			for( let k = 0; k < afield.options.length; k++ ) {
 			    let datum = {};
@@ -351,14 +350,14 @@ async function getCards( authData, pid, colId ) {
     let cards = [];
 
     console.log( "get cards", pid, colId );
-    let query = `query($nodeId: ID!) {
+    let query = `query($nodeId: ID!, $fName: String!) {
 	node( id: $nodeId ) {
         ... on ProjectV2 {
             items(first: 100) {
                edges { node {
                ... on ProjectV2Item {
                    type id
-                   fieldValueByName(name: "Status") {
+                   fieldValueByName(name: $fName) {
                    ... on ProjectV2ItemFieldSingleSelectValue { name optionId }}
                    content {
                    ... on ProjectV2ItemContent { ... on Issue { id title number }
@@ -366,7 +365,7 @@ async function getCards( authData, pid, colId ) {
                            }}
                }}}}
     }}}`;
-    let variables = {"nodeId": pid };
+    let variables = {"nodeId": pid, "fName": config.GH_COL_FIELD };
     query = JSON.stringify({ query, variables });
 
     try{ 
@@ -505,7 +504,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 }
 
 async function findRepo( authData, td ) {
-    let repoId = await ghUtils.getRepoId( authData.pat, td.GHOwner, td.GHRepo ); 
+    let repoId = await ghUtils.getRepoId( authData.pat, td.ghOwner, td.ghRepo ); 
     if( repoId != -1 ) { repoId = {id:repoId}; }
     return repoId;
 }
@@ -553,7 +552,7 @@ function findCardForIssue( cards, issueNum ) {
 
 /* not in use
 async function ingestPActs( authData, issDat ) {
-    const peq   = await awsUtils.getPeq( authData, issDat[0] );    
+    const peq   = await awsUtils.getPEQ( authData, issDat[0] );    
     const pacts = await awsUtils.getPActs( authData, {"Subject": [peq.PEQId.toString()], "Ingested": "false"} );
     const pactIds = pacts.map( pact => pact.PEQActionId );
     await utils.ingestPActs( authData, pactIds );
@@ -567,13 +566,13 @@ async function ingestPActs( authData, issDat ) {
 // NOTE: testing projects are created by codeequity
 async function createProjectWorkaround( authData, td, name, body ) {
 
-    let pid = await ghV2.linkProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.GHOwner, td.GHOwnerId, td.GHRepoId, td.GHFullName, name, body );
+    let pid = await ghV2.linkProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.ghOwner, td.ghOwnerId, td.ghRepoId, td.ghFullName, name, body );
     assert( typeof pid !== 'undefined' && !(pid <= -1) );
 
     // force linking in ceServer:ghLinks, not local ghLinks
-    await tu.linkProject( authData, td.ceProjectId, pid, td.GHRepoId, td.GHFullName ); 
+    await tu.linkProject( authData, td.ceProjectId, pid, td.ghRepoId, td.ghFullName ); 
     
-    console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.GHRepoId );
+    console.log( "Confirmed", name, "with PID:", pid, "in repo:", td.ghRepoId );
 
     await utils.sleep( tu.MIN_DELAY );
     return pid;
@@ -601,7 +600,7 @@ async function remProject( authData, pid ) {
     await utils.sleep( tu.MIN_DELAY );
 }
 
-// XXX move to ghV2?
+// do NOT move to ghV2 - this is used during testing only.  handlers are oblivious to this view-centric action.
 async function unlinkProject( authData, ceProjId, pid, rNodeId ) {
     let query     = "mutation( $pid:ID!, $rid:ID! ) { unlinkProjectV2FromRepository( input:{projectId: $pid, repositoryId: $rid }) {clientMutationId}}";
     let variables = {"pid": pid, "rid": rNodeId };
@@ -745,28 +744,6 @@ async function makeAlloc( authData, testLinks, ceProjId, rNodeId, pid, colId, ti
     return issDat[2];
 }
 
-// XXX untested.  Get this working before using makeNewbornCard.
-//     My not be possible given spotty api coverage.
-async function removeNewbornCard( authData, pid, dissueNodeId, dissueContentId ) {
-    console.log( authData.who, "Remove Newborn Card (draft issue)" );
-
-    // First try removing the draft issue project node.  This should work - does it remove content node?
-    let query = `mutation( $pid:ID!, $did:ID! )
-                    {deleteProjectV2Item( input:{ projectId: $pid, itemId: $did }) 
-                    {clientMutationId}}`;
-
-    let variables = { "pid": pid, "did": dissueNodeId };
-    let queryJ    = JSON.stringify({ query, variables });
-
-    try{
-	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "TU_removeNewbornCard" )
-	    .then( ret => {
-		if( ret.status != 200 ) { throw ret; }
-	    });
-    }
-    catch( e ) { await ghUtils.errorHandler( "removeNewbornCard", e, removeNewbornCard, authData, pid, dissueNodeId, dissueContentId ); }
-}
-
 
 async function makeNewbornCard( authData, testLinks, ceProjId, pid, colId, title ) {
     const locs = testLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );    
@@ -797,7 +774,7 @@ async function makeProjectCard( authData, testLinks, ceProjId, pid, colId, issue
     justId = typeof justId === 'undefined' ? false : justId;
     let card = await ghV2.createProjectCard( authData, testLinks, query, issueId, statusId, justId );
 
-    // XXX very weak notice - could be anything.  Verbose ceNotification.  
+    // Very weak notice - could be anything.
     // Notification: ariCETester projects_v2_item edited codeequity/I_kwDOIiH6ss5fNfog VudsdHVkWc for codeequity 03.17.798
     // gives notice: projects_v2_item edited codeequity/I_kwDOIiH6ss5fNinX GitHub/codeequity/I_kwDOIiH6ss5fNinX
     let path = config.TEST_OWNER + "/" + issueId;
@@ -805,7 +782,6 @@ async function makeProjectCard( authData, testLinks, ceProjId, pid, colId, issue
     query       = "projects_v2_item edited " + path + locator;
     await tu.settleWithVal( "makeProjCard", tu.findNotice, query );
 
-    // XXX either leave this in to allow peq data to record, or set additional post condition.
     await utils.sleep( tu.MIN_DELAY );
     return card;
 }
@@ -813,7 +789,7 @@ async function makeProjectCard( authData, testLinks, ceProjId, pid, colId, issue
 // [contentId, num, cardId, title]
 // NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function makeIssue( authData, td, title, labels ) {
-    let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels} );
+    let issue = await ghV2.createIssue( authData, td.ghRepoId, -1, {title: title, labels: labels} );
     issue.push( title );
     assert( issue.length == 4 );
     await utils.sleep( tu.MIN_DELAY );
@@ -823,7 +799,7 @@ async function makeIssue( authData, td, title, labels ) {
 // [contentId, num, cardId, title]
 // NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function makeAllocIssue( authData, td, title, labels ) {
-    let issue = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels, allocation: true} );
+    let issue = await ghV2.createIssue( authData, td.ghRepoId, -1, {title: title, labels: labels, allocation: true} );
     issue.push( title );
     await utils.sleep( tu.MIN_DELAY );
     return issue;
@@ -833,7 +809,7 @@ async function makeAllocIssue( authData, td, title, labels ) {
 async function blastIssue( authData, td, title, labels, assignees, specials ) {
     let wait  = typeof specials !== 'undefined' && specials.hasOwnProperty( "wait" )   ? specials.wait   : true;
 
-    let issDat = await ghV2.createIssue( authData, td.GHRepoId, -1, {title: title, labels: labels, assignees: assignees, body: "Hola"} );    
+    let issDat = await ghV2.createIssue( authData, td.ghRepoId, -1, {title: title, labels: labels, assignees: assignees, body: "Hola"} );    
     
     issDat.push( title );
     if( wait ) { await utils.sleep( tu.MIN_DELAY ); }
@@ -850,7 +826,6 @@ async function transferIssue( authData, issueId, toRepoId ) {
 async function addLabel( authData, lNodeId, issDat ) {
     await ghV2.addLabel( authData, lNodeId, issDat[0] );
 
-    // XXX verify all notice query strings
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
     let query = "issue labeled " + issDat[3] + locator;
     await tu.settleWithVal( "label", tu.findNotice, query );
@@ -877,7 +852,7 @@ async function updateLabel( authData, label, updates ) {
 }
 
 async function delLabel( authData, label ) {
-    console.log( "Removing label from repo:", label.name );
+    console.log( "Removing label from repo:", label.name, label.id );
 
     let query     = `mutation( $labelId:ID! ) 
                         { deleteLabel( input:{ id: $labelId })  {clientMutationId}}`;
@@ -954,7 +929,7 @@ async function remCard( authData, ceProjId, pid, cardId ) {
 // Extra time needed.. CE bot-sent notifications to, say, move to PEND, time to get seen by GH.
 // Without it, a close followed immediately by a move, will be processed in order by CE, but may arrive out of order for GH.
 async function closeIssue( authData, td, issDat, loc = -1 ) {
-    await ghV2.updateIssue( authData, issDat[0], "state", "CLOSED" );
+    await ghV2.updateIssue( authData, issDat[0], "state", config.GH_ISSUE_CLOSED );
 
     let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;
     let query = "issue closed " + issDat[3] + locator;
@@ -964,7 +939,7 @@ async function closeIssue( authData, td, issDat, loc = -1 ) {
 }
 
 async function reopenIssue( authData, td, issueId ) {
-    await ghV2.updateIssue( authData, issueId, "state", "OPEN" );
+    await ghV2.updateIssue( authData, issueId, "state", config.GH_ISSUE_OPEN );
 
     // Can take GH a long time to move card.  
     await utils.sleep( tu.MIN_DELAY + 500 );
@@ -1007,7 +982,7 @@ async function checkUntrackedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label" );
 
     // CHECK linkage
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
     let link   = ( links.filter((link) => link.hostIssueId == issDat[0] ))[0];
     subTest = tu.checkEq( link.hostIssueNum, issDat[1].toString(), subTest, "Linkage Issue num" );
     subTest = tu.checkEq( link.hostCardId, card.cardId,               subTest, "Linkage Card Id" );
@@ -1018,7 +993,7 @@ async function checkUntrackedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( link.hostProjectId, loc.pid,             subTest, "Linkage project id" );
 
     // CHECK dynamo Peq.  inactive, if it exists
-    let peqs      = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs      = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let issuePeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     subTest = tu.checkLE( issuePeqs.length, 1,                      subTest, "Peq count" );
     if( issuePeqs.length > 0 ) {
@@ -1033,7 +1008,7 @@ async function checkUntrackedIssue( authData, testLinks, td, loc, issDat, card, 
     return await tu.settle( subTest, testStatus, checkUntrackedIssue, authData, testLinks, td, loc, issDat, card, testStatus, specials );
 }
 
-// Used for previously situated issues that were unlabeled
+// Used for previously peq'd issues that were unlabeled
 async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, testStatus ) {
 
     console.log( "Check demotedissue", loc.projName, loc.colName );
@@ -1059,7 +1034,7 @@ async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, te
 	// CHECK dynamo Peq.  inactive
 	// Will have 1 or 2, both inactive, one for unclaimed, one for the demoted project.
 	// Unclaimed may not have happened if peq'd a carded issue
-	let peqs      = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+	let peqs      = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
 	let issuePeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
 	subTest = tu.checkEq( issuePeqs.length, 1,                      subTest, "Peq count" );
 	for( const peq of issuePeqs ) {
@@ -1097,7 +1072,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     let splitVal    = typeof specials !== 'undefined' && specials.hasOwnProperty( "splitVal" )  ? specials.splitVal    : awsVal;
     let labelCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )  ? specials.lblCount    : 1;
     let assignCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" ) ? specials.assignees   : false;
-    let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : "OPEN";
+    let state       = typeof specials !== 'undefined' && specials.hasOwnProperty( "state" )     ? specials.state       : config.GH_ISSUE_OPEN;
 
     console.log( "Check Allocation", loc.projName, loc.colName, awsVal, splitVal );
     let subTest = [ 0, 0, []];
@@ -1124,7 +1099,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	subTest = tu.checkEq( mCard[0].cardId, card.cardId,               subTest, "Card claimed" );
 	
 	// CHECK linkage
-	let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+	let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
 	let link = ( links.filter((link) => link.hostIssueId == issDat[0] ))[0];
 	subTest = tu.checkEq( link.hostIssueNum, issDat[1].toString(), subTest, "Linkage Issue num" );
 	subTest = tu.checkEq( link.hostCardId, card.cardId,            subTest, "Linkage Card Id" );
@@ -1135,7 +1110,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	subTest = tu.checkEq( link.hostProjectId, loc.pid,          subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
-	let allPeqs  =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+	let allPeqs  =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
 	let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
 	subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
 	let peq = peqs[0];
@@ -1182,6 +1157,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     return await tu.settle( subTest, testStatus, checkAlloc, authData, testLinks, td, loc, issDat, card, testStatus, specials );
 }
 
+// This does not strictly need to check for a peq amount, which is why it is not checkPeq.
 async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
     let muteIngested = typeof specials !== 'undefined' && specials.hasOwnProperty( "muteIngested" ) ? specials.muteIngested : false;
@@ -1201,8 +1177,8 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     // Start promises
     let cardsP = getCards( authData, loc.pid, loc.colId );
     let cardsU = td.unclaimPID == config.EMPTY ? [] : getCards( authData, td.unclaimPID, td.unclaimCID );
-    let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": peqCEP });
+    let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": peqCEP });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": peqCEP });
     
     // CHECK github issues
@@ -1346,8 +1322,8 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     
     // Start promises
     let cardsU = getCards( authData, td.unclaimPID, td.unclaimCID );
-    let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let linksP = tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     // CHECK github issues
@@ -1359,7 +1335,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     const lname = labelVal ? ghV2.makeHumanLabel( labelVal, config.PEQ_LABEL ) : ghV2.makeHumanLabel( 1000, config.PEQ_LABEL );
     const lval  = labelVal ? labelVal                     : 1000;
     subTest = tu.checkEq( typeof issue.labels.find( l => l.name == lname ) !== "undefined", true, subTest, "Issue label names missing" + lname );        
-    subTest = tu.checkEq( issue.state, "OPEN",                   subTest, "Issue state" ); 
+    subTest = tu.checkEq( issue.state, config.GH_ISSUE_OPEN,                   subTest, "Issue state" ); 
 
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
@@ -1441,7 +1417,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
 async function checkNewlyClosedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.state ) { specials.state = "CLOSED"; }
+    if( !specials.state ) { specials.state = config.GH_ISSUE_CLOSED; }
 
     testStatus = await checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials );
     let subTest = [ 0, 0, []];
@@ -1449,7 +1425,7 @@ async function checkNewlyClosedIssue( authData, testLinks, td, loc, issDat, card
     console.log( "Check Closed issue", loc.projName, loc.colName );
 
     // Start promises
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     const allPeqs =  await peqsP;
@@ -1477,7 +1453,7 @@ async function checkNewlyClosedIssue( authData, testLinks, td, loc, issDat, card
 async function checkNewlyOpenedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.state ) { specials.state = "OPEN"; }
+    if( !specials.state ) { specials.state = config.GH_ISSUE_OPEN; }
 
     testStatus = await checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials );
 
@@ -1486,7 +1462,7 @@ async function checkNewlyOpenedIssue( authData, testLinks, td, loc, issDat, card
     console.log( "Check Opened issue", loc.projName, loc.colName );
 
     // Start promises
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     const allPeqs = await peqsP;
@@ -1509,7 +1485,7 @@ async function checkNewlyOpenedIssue( authData, testLinks, td, loc, issDat, card
 async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials ) {
 
     if( typeof specials === 'undefined' ) { specials = {}; }
-    if( !specials.hasOwnProperty( "state" ) ) { specials.state = "OPEN"; }
+    if( !specials.hasOwnProperty( "state" ) ) { specials.state = config.GH_ISSUE_OPEN; }
 
     testStatus = await checkSituatedIssue( authData, testLinks, td, loc, issDat, card, testStatus, specials );
 
@@ -1517,7 +1493,7 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
     let subTest = [ 0, 0, []];
     
     // Start promises
-    let peqsP  = awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqsP  = awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let pactsP = awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
     
     // CHECK dynamo Peq
@@ -1576,7 +1552,7 @@ async function checkNewlyAccruedIssue( authData, testLinks, td, loc, issDat, car
     let subTest = [ 0, 0, []];
 
     // CHECK dynamo Peq
-    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let allPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
@@ -1604,7 +1580,7 @@ async function checkNewlyAccruedIssue( authData, testLinks, td, loc, issDat, car
 	    const pact = pacts[i];
 	    if( pact.Action == config.PACTACT_CHAN &&
 		pact.Verb   == config.PACTVERB_CONF &&
-		pact.Note   == "add assignee" ) {
+		pact.Note   == config.PACTNOTE_ADDA ) {
 		foundAssignment = true;
 		break;
 	    }
@@ -1630,7 +1606,7 @@ async function checkUnclaimedAccr( authData, testLinks, td, loc, issDatOld, issD
     let subTest = [ 0, 0, []];
     
     // CHECK dynamo Peq
-    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let allPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let peqs = allPeqs.filter((peq) => peq.HostIssueId == issDatNew[0].toString() );
     subTest = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
     let peq = peqs[0];
@@ -1663,7 +1639,7 @@ async function checkUnclaimedAccr( authData, testLinks, td, loc, issDatOld, issD
 	let pact = pacts[ pacts.length - 1];
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	subTest = tu.checkEq( pact.Action, config.PACTACT_CHAN,    subTest, "PAct Action"); 
-	subTest = tu.checkEq( pact.Note, "recreate",               subTest, "PAct Note"); 
+	subTest = tu.checkEq( pact.Note, config.PACTNOTE_RECR,               subTest, "PAct Note"); 
     }
 
     return await tu.settle( subTest, testStatus, checkUnclaimedAccr, authData, testLinks, td, loc, issDatOld, issDatNew, cardNew, testStatus, source );
@@ -1687,13 +1663,13 @@ async function checkNewbornCard( authData, testLinks, td, loc, cardId, title, te
     subTest = tu.checkEq( cardTitle, title,                            subTest, "Newbie title" );
 
     // CHECK linkage
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
     let link   = links.find( l => l.hostCardId == cardId );
     subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
     // Risky test - will fail if unrelated peqs with same title exist
-    let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
+    let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
     subTest = tu.checkEq( peqs, -1,                                    subTest, "Newbie peq exists" );
 
     // CHECK dynamo Pact.. nothing to do here for newborn
@@ -1719,12 +1695,12 @@ async function checkNewbornIssue( authData, testLinks, td, issDat, testStatus, s
     // no need, get content link below
     
     // CHECK linkage
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
     let link   = links.find( l => l.hostIssueId == issDat[0].toString() );
     subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
-    let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueId": issDat[0] });
+    let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueId": issDat[0] });
     if( peqs !== -1 ) {
 	let peq = peqs.find(peq => peq.HostIssueId == issDat[0].toString() );
 	subTest = tu.checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
@@ -1766,7 +1742,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	// console.log( "Split..", cards, newLoc, splitIssues.length, splitIss, splitDat );
 
 	// Get cards
-	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
+	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.ghFullName });
 	let issLink   = allLinks.find( l => l.hostIssueId == issDat[0].toString() );
 	let splitLink = allLinks.find( l => l.hostIssueId == splitDat[0].toString() );
 	
@@ -1850,7 +1826,7 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
     if( splitDat[0] != -1 ) {
 	
 	// Get cards
-	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.GHFullName });
+	let allLinks  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, repo: td.ghFullName });
 	let issLink   = allLinks.find( l => l.hostIssueId == issDat[0].toString() );
 	let splitLink = allLinks.find( l => l.hostIssueId == splitDat[0].toString() );
 	
@@ -1902,7 +1878,7 @@ async function checkNoSplit( authData, testLinks, td, issDat, newLoc, cardId, te
     subTest = tu.checkEq( typeof splitIss === 'undefined', true, subTest, "Split issue should not exist" );
 
     // Check links
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
     let flinks = ( links.filter((link) => link.hostIssueId == issDat[0] ));
     if( flinks.length > 1 ) { console.log( "Flinks", flinks, link, issDat ); }
     subTest = tu.checkLE( flinks.length, 1, subTest, "Split issue should not exist, too many links" );
@@ -1917,7 +1893,7 @@ async function checkNoSplit( authData, testLinks, td, issDat, newLoc, cardId, te
     subTest = tu.checkEq( noCard, true,                  subTest, "Split card should not exist" );
 
     // Check peq
-    let allPeqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let allPeqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let peq = allPeqs.find( peq => peq.HostIssueTitle.includes( splitName ));
     subTest = tu.checkEq( typeof peq === 'undefined', true,   subTest, "Peq should not exist" );
 
@@ -1946,7 +1922,7 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
     }
     
     // CHECK linkage
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
     let link   = links.find( l => l.hostCardId == cardId.toString() );
     subTest = tu.checkEq( typeof link === "undefined", true,            subTest, "Link should not exist" );
 
@@ -1954,7 +1930,7 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
     if( !skipAllPeq ) {
 	// Risky test - will fail if unrelated peqs with same title exist
 	// No card may have inactive peq
-	let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
+	let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
 	if( checkPeq ) {
 	    let peq = peqs[0];
 	    subTest = tu.checkEq( peq.Active, "false",                  subTest, "peq should be inactive" );
@@ -1985,7 +1961,7 @@ async function checkPact( authData, testLinks, td, title, verb, action, note, te
 
     if( title != -1 ) {
 	// modestly risky test - will fail if unrelated peqs with same title exist.  Do not use with remIssue/rebuildIssue.  No card may have inactive peq
-	let peqs = await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
+	let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId, "HostIssueTitle": title });
 	pacts    = allPacts.filter((pact) => pact.Subject[0] == peqs[0].PEQId );
     }
     else { pacts = allPacts; }
@@ -2040,7 +2016,7 @@ async function checkNoIssue( authData, testLinks, td, issDat, testStatus ) {
     subTest = tu.checkEq( issue, -1,                               subTest, "Issue should not exist" );
 
     // CHECK linkage
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
     let link   = links.find( l => l.hostIssueId == issDat[0] );
     subTest = tu.checkEq( typeof link, "undefined",                subTest, "Link should not exist" );
 
@@ -2067,7 +2043,7 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -2115,7 +2091,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issDat, testStatus ) 
 
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0] );
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -2192,7 +2168,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
     subTest = tu.checkEq( meltIssue.assignees.length, 2,             subTest, "Issue assignee count" );
 
     // CHECK Dynamo PEQ  .. no change already verified
-    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issDat[0] );
     subTest = tu.checkEq( meltPeqs.length, 1, subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -2222,8 +2198,8 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
     subTest = tu.checkEq( addA1.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
     subTest = tu.checkEq( addA2.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
     subTest = tu.checkEq( foundAssigns, true,                          subTest, "PAct sub"); 
-    subTest = tu.checkEq( addA1.Note, "add assignee",                  subTest, "PAct note"); 
-    subTest = tu.checkEq( addA2.Note, "add assignee",                  subTest, "PAct note"); 
+    subTest = tu.checkEq( addA1.Note, config.PACTNOTE_ADDA,            subTest, "PAct note"); 
+    subTest = tu.checkEq( addA2.Note, config.PACTNOTE_ADDA,            subTest, "PAct note"); 
 
     return await tu.settle( subTest, testStatus, checkProgAssignees, authData, td, ass1, ass2, issDat, testStatus );
 }
@@ -2276,7 +2252,6 @@ exports.createColumnTest    = createColumnTest;
 exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
 exports.makeAlloc       = makeAlloc;
-exports.removeNewbornCard = removeNewbornCard;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;

@@ -10,14 +10,13 @@ const ghV2     = require( './ghV2Utils' );
 
 const gh2Data  = require( '../../../routes/gh/gh2/gh2Data' );
 
-// XXX allocation set per label - don't bother to pass in
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
 //       learns 1:m is a semantic error in CE
 // Main trigger during typical runtime:
 //  1: add another project card to situated issue
-async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
+async function resolve( authData, ghLinks, pd, doNotTrack ) {
     let gotSplit = false;
     
     // console.log( authData.who, "RESOLVE", pd.issueId );
@@ -30,12 +29,12 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
     if( links.length < 2 ) { console.log(authData.who, "Resolve: early return, nothing to resolve." ); return gotSplit; }
     gotSplit = true;
 
-    // XXX Still in use?
     // Resolve gets here in 2 major cases: a) populateCE - not relevant to this, and b) add card to an issue.  PEQ not required.
     // For case b, ensure ordering such that pd element (the current card-link) is acted on below - i.e. is not in position 0
     //             since the carded issue has already been acted on earlier.
     if( pd.peqType != config.PEQTYPE_END && links[0].hostColumnId == pd.columnId ) {
-	console.log( "Ping" );
+	console.log( "XXX Ping" );
+	console.log( authData.who, "Switching link in resolve", links[0], links[1] );
 	[links[0], links[1]] = [links[1], links[0]];
     }
 
@@ -57,7 +56,7 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
     for( const label of issue.labels ) {
 	let content = ghUtils.parseLabelName( label.name );
 	let peqVal  = content[0];
-	allocation  = content[1];
+	let allocation  = content[1];
 
 	if( peqVal > 0 ) {
 	    console.log( authData.who, "Resolve, original peqValue:", peqVal );
@@ -73,7 +72,7 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 
 	    await ghV2.rebuildLabel( authData, label.id, newLabel.id, issue.id );
 	    // Don't wait
-	    awsUtils.changeReportPeqVal( authData, pd, peqVal, links[0] );
+	    awsUtils.changeReportPEQVal( authData, pd, peqVal, links[0] );
 	    break;
 	}
 	idx += 1;
@@ -121,7 +120,6 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
     // On initial populate call, resolve is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
     // Can no longer depend on links[i], since rebuildLinkage modded, then destroyed original copy.
-    // XXX Verify works for 3+ cards on initial populate.  splitIssues[i-1] is sloppy.
     for( split of splitIssues ) {
 	// Don't record simple multiply-carded issues
 	if( pd.peqType != config.PEQTYPE_END ) {
@@ -139,7 +137,7 @@ async function resolve( authData, ghLinks, pd, allocation, doNotTrack ) {
 	    specials.pact     = "addRelo";
 	    specials.columnId = split.hostColumnId; 
 	    
-	    awsUtils.recordPeqData(authData, pd, false, specials );
+	    awsUtils.recordPEQData(authData, pd, false, specials );
 	}
     }
     
@@ -182,7 +180,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 		pd.issueId  = link.hostIssueId;
 		pd.issueNum = link.hostIssueNum;
 		let pdCopy =  gh2Data.GH2Data.from( pd );
-		promises.push( resolve( authData, ghLinks, pdCopy, "???", false ) );
+		promises.push( resolve( authData, ghLinks, pdCopy, false ) );
 	    }
 	}
 	// mark duplicates
@@ -200,52 +198,23 @@ async function populateCELinkage( authData, ghLinks, pd )
 
 // Create new linkages, update peqs.
 // Only routes here are from issueHandler:label (peq only), or cardHandler:create (no need to be peq)
-// Only issue:label does peq-related work here. card still does linkage, resolve
+// Both fromCard, fromLabel do peq-related work - for example fromCard handles relo from unclaimed.   fromCard can trigger heavy lifting in resolve.
 // Linkage exists for carded & up issues.  Pure carded issues are not further tracked, so column info and many names set to -1 and ---, not updated further.
 // 
-// Cases:
-//  Type1: add 1st card to non-peq:    fromCard.  (populate is here, carded issues are here.  Only this has partial linkage)
-//  Type2: add 1st peq label to issue: fromLabel. (issueHandler will create in unclaimed.  )
-//  Type3: add 1st card to peq issue:  fromCard.  (card:create will fire.  will remove unclaimed, create new card)
-//  Type?: add 2nd card ??? issue:     fromCard.  (type depends on type of issue, i.e. resolve will treat as type1 or type3 )
-//
-// Specials for peq creation
-// Rule:
-//    issue:label is addRelo                     relo not needed for peq, but for ceFlutter summary
-//    card:move   diff col is relo               no x-proj moves are allowed, except unclaimed to first home.
-//    card:move   same col is ignore             label, or card:create will send relo pact if appropriate.
-//    card:create no  unclaimed is ignore        always accompanied by move.  let move do relo, create just handles resolve.
-//    card:create yes unclaimed is addRelo       add manages peq, sends pact.  relo sends pact.
-//    ceServer                                   only updates peq psub once after unclaimed -> home
-//    ---                                        for card:create, if before (peq) label, typically means postpone, then ignore.
+// Note: if fromCard, PNP is being called from card:create.  If cardCreate detects issue is PEQ, it will remove old card from unclaimed and create a new one for PNP.
+// Note: specials for peq creation, 'relo' is needed mainly for ceFlutter summary, not really for peq data. 
+//       issue:label is addRelo.  add manages peq and pact, whereas relo just sends pact
+//       ceServer   only updates peq psub once after unclaimed -> home
 //
 // label, then later create/move as part of separate call
 // ---------------------------------
 //  GH will have unclaimed card after issue:label is done.
 //    * label will create card in unclaimed.
-//	 
-//	 arrival: label, then later create, move
-//        ceServer: issue:label addRelo, card:create addRelo, card:move ignore   2nd addRelo moves from unclaimed to 1st home
 //
 // label, create/move as part of same call(s)
 // ---------------------------------
 //  GH will have card.  issue:label will detect card was created already, so will not create unclaimed.
 //  
-//    * create-move case (make project card has column info)
-//      in GH, card will be in correct location with correct colId
-//
-//	 arrival order: label, {create, move}  
-//        ceServer: issue:label addRelo, card:create ---, card: ---
-//	 arrival order: create, label, move
-//        ceServer: card:create ---.  issue:label addRelo, card: ---
-//	 arrival order: move, label, create
-//        ceServer: card:move relo(?) . issue:label addRelo, card:create ---           XXX verify
-//	 arrival order: {create, move}, label
-//	   ceServer: card:move relo(?), card:create ---,  issue:label addRelo          XXX verify
-//
-//      aws peq is correct in all cases.  2-3 pacts per gh2tu call.
-//	    -> Can reduce to 1-2 by expanding info carried in add.  not worth it.
-//	 
 //  By-hand add issue to project, before triage.
 //  -----------------------------------
 //   GH card will be in 'no status' for which all col info is null.
@@ -254,11 +223,6 @@ async function populateCELinkage( authData, ghLinks, pd )
 //                                   then create (redundantly) sets linkage in PNP, stops (i.e. no addrelo).
 //	    
 // Bail: because cards are created in no status, notice:create can't tell if destination is reserved until notice:move.
-//       NOTE cards are no longer creatable anywhere but No Status, unless they are for draft issues (so not relevant here).
-//       If a card is added to a peq issue, it will first hit no status, and it must split at this point otherwise by-hand does not match api.
-//       XXX no
-//       So, we look into GH to get current card location
-//       which is set before notice arrives at CE.
 //       Need to tread carefully with linkage for split (which creates new cards in GH) and linkage for cardHandler (which needs no tracking info at times)
 //      order of ops during split:
 //        1) tester makeProjectCard( issues create card, move card to GH as user)
@@ -302,12 +266,6 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // Note.  If support convert from draft issue with <> shorthand, will need to use parsePEQ( issDat, allocation ) instead
     if( !havePeq ) { pd.peqValue = ghUtils.parseLabelDescr( issDat ); }
 
-    // Don't wait
-    // XXX remove this after ceFlutter initialization is in place
-    if( pd.issueName != "A special populate issue" ) { 
-	awsUtils.checkPopulated( authData, pd.ceProjectId, pd.repoId ).then( res => assert( res != -1 ));
-    }
-    
     if( !havePeq && pd.peqValue > 0 ) { pd.peqType = allocation ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN; } 
     // console.log( authData.who, "PNP: processing", pd.peqValue.toString(), pd.peqType );
 
@@ -325,7 +283,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     const links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "issueId": pd.issueId } );
     const reserved = [config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR]];
 
-    // XXX  No.  This 'fix' triggers when adding card to peq, then tricks resolve into ping-reordering links, which breaks validatePeq.
+    // No.  This 'fix' triggers when adding card to peq, then tricks resolve into ping-reordering links, which breaks validatePeq.
     /*
     // Occasionally, card.move arrives before card.create.  In this case, link exists and is correct.  Do not overwrite.
     if( fromCard && links !== -1 && links.length == 1 ) {
@@ -352,7 +310,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	return 'early';
     }
 
-    // Can't typically have situated issue in reserved.
+    // Can't typically have carded issue in reserved.
     // However, we are allowing some negotiation, e.g. peq issue in PEND, owner sez 2k instead of 1k, unlabels and relabels.
     //          It is a narrow entry point to this case, but currently valid.
     // assert( !( fromLabel && reserved.includes( link.hostColumnName )) );
@@ -380,7 +338,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	// If assignments exist before an issue is PEQ, this is the only time to catch them.  PActs will catch subsequent mods.
 	// Note: likely to see duplicate assignment pacts for assignment during blast creates.  ceFlutter will need to filter.
 	// Note: assigments are not relevant for allocations
-	// If moving card out of unclaimed, keep those assignees.. recordPeqData handles this for relocate
+	// If moving card out of unclaimed, keep those assignees.. recordPEQData handles this for relocate
 	if( !allocation ) { pd.assignees = await ghV2.getAssignees( authData, pd.issueId ); }
     }
 
@@ -389,7 +347,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     orig.hostRepoId       = pd.repoId;
     orig.hostIssueId      = pd.issueId;
     orig.hostIssueNum     = pd.issueNum;
-    orig.hostIssueName    = pd.issueName;   // XXX inconsistent naming blech
+    orig.hostIssueName    = pd.issueName;
     orig.hostProjectId    = pd.projectId;
     orig.hostCardId       = origCardId;
     orig.hostColumnName   = colName;
@@ -398,7 +356,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // Update linkage with future GH locations, presuming peq.  Will undo this after resolve as needed.  Split needs locs to create for GH.
     ghLinks.addLinkage( authData, pd.ceProjectId, orig );
     let doNotTrack = fromCard && pd.peqValue <= 0; 
-    let gotSplit = await resolve( authData, ghLinks, pd, allocation, doNotTrack );  
+    let gotSplit = await resolve( authData, ghLinks, pd, doNotTrack );  
     if( doNotTrack ) { ghLinks.rebaseLinkage( authData, pd.ceProjectId, orig.hostIssueId ); }
 
     // record peq data for the original issue:card
@@ -410,7 +368,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( pact != -1 && !gotSplit && pd.peqType != "end" ) {
 	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
-	awsUtils.recordPeqData( authData, pd, true, specials );
+	awsUtils.recordPEQData( authData, pd, true, specials );
     }
     else {
 	console.log( authData.who, "No need to update peq" );

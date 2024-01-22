@@ -12,10 +12,8 @@ const locData  = require( './locData' );
 const gh2LU    = require( './gh/gh2/linkageUtils' );
 const ghcLU    = require( './gh/ghc/linkageUtils' );
 
-// For populate.
-const gh2DUtils = require('./gh/gh2/gh2DataUtils' );
-
-// Linkage table contains all identifying info related to situated issues or better.
+// Linkage table contains all identifying info related to peq issues
+// Linkage table does not contain column, project name or issue name for carded issues
 // linkage is { issueId: { cardId: {} }}
 // linkage is NOT stored in dynamo.
 
@@ -45,7 +43,7 @@ class Linkage {
 	let pms   = utils.validField( entry, "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
 	
 	// Wait later
-	let peqs = awsUtils.getPeqs( authData, { "CEProjectId": entry.CEProjectId } );
+	let peqs = awsUtils.getPEQs( authData, { "CEProjectId": entry.CEProjectId } );
 
 	let res       = {};
 	let baseLinks = [];
@@ -121,7 +119,6 @@ class Linkage {
 	let tstart = Date.now();
 	console.log( authData.who, "Init linkages" );
 	
-	// XXX aws fix name here.  Get ceProj status.
 	let ceProjects = await awsUtils.getProjectStatus( authData, -1 );   // get all ce projects
 	if( ceProjects === -1 ) { return; }
 	let promises = [];
@@ -149,7 +146,7 @@ class Linkage {
 	}
     }
 
-    // Linkage table only contains situated issues or better.  Card titles point to issue titles for situated issues.
+    // Linkage table only contains situated issue data, but only some if issue is just carded
     addLinkage( authData, ceProjId, orig, specials ) {
 	let source   = typeof specials !== 'undefined' && specials.hasOwnProperty( "source" )   ? specials.source   : false;
 	let populate = typeof specials !== 'undefined' && specials.hasOwnProperty( "populate" ) ? specials.populate : false;
@@ -240,7 +237,6 @@ class Linkage {
 	let retVal = -1;
 	if( utils.validField( this.links, ceProjId ) && utils.validField( this.links[ceProjId], issueId )) {
 	    let issueLinks = Object.entries( this.links[ceProjId][issueId] );  // [ [cardId, link], [cardId, link] ...]
-	    // console.log( "XXX", issueLinks );
 	    
 	    if      ( issueLinks.length < 1 ) { console.log(authData.who, "Link not found.", issueId ); }  // 204
 	    else if ( issueLinks.length > 1 ) { console.log(authData.who, "Semantic error.  More items found than expected.", issueId ); } // 422
@@ -508,47 +504,11 @@ class Linkage {
     }
 
     // To attach major components to ceProject in aws.  Also, manage links, locs, resolve as needed
-    // XXX Because of gh2DUtils, should move this to gh2lu
     async linkRepo( authData, ceProjects, ceProjId, repoId, repoName, cepDetails ) {
-	console.log( "Link repo", ceProjId, repoId, repoName );
-	if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
-	    console.log( authData.who, "WARNING.  Attempting to link a repo to a ceProject, one of which is empty.", ceProjId, repoId, repoName );
-	    return false;
-	}
-	
-	let cep = ceProjects.findById( ceProjId );
-	
-	// TESTING ONLY!  Outside testing, ceFlutter controls all access to this, will never need initBlank.
-	if( typeof cep === 'undefined' ) {
-	    let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO];
-	    let repoShort    = repoName.split('/');
-	    repoShort        = repoShort[ repoShort.length - 1 ]; 
-	    assert( testingRepos.includes( repoShort ));
-	    assert( typeof cepDetails !== 'undefined' );
-	    cep = ceProjects.initBlank( ceProjId, cepDetails );
-	}
-
-	// CEP may already be linked.  For example, transfering issues will issue linkRepo for new connection.
-	// If already linked, we are done.
-	if( utils.validField( cep, "HostParts" ) && utils.validField( cep.HostParts, "hostRepositories" ) ) {
-	    let repo = cep.HostParts.hostRepositories.find( c => c.repoId == repoId );
-	    if( typeof repo !== 'undefined' ) {
-		console.log( authData.who, "Repo is already linked", ceProjId, repoName );
-		return cep;
-	    }
-	}
-	
-	// Expensive.  Handle resolve, links, locs.
-	await gh2DUtils.populateCELinkage( authData, this, { ceProjectId: ceProjId, repoId: repoId } );
-
-	// Update AWS, ceProjects (via cep)
-	let hostRepos = ceProjects.getHostRepos( authData, ceProjId, repoId, repoName, { operation: "add" } );
-	if( !utils.validField( cep, "HostParts" )) { cep.HostParts = {}; }
-	cep.HostParts.hostRepositories = hostRepos;
-	return await awsUtils.updateCEPHostParts( authData, cep );
+	return await gh2LU.linkRepo( authData, this, ceProjects, ceProjId, repoId, repoName, cepDetails );
     }
 
-    // To unattach major components to ceProject
+    // To unattach major components from ceProject
     async unlinkRepo( authData, ceProjects, ceProjId, repoId ) {
 	console.log( "unLink repo", ceProjId, repoId );
 	if( ceProjId == config.EMPTY || repoId == config.EMPTY ) {
@@ -559,11 +519,10 @@ class Linkage {
 	let cep = ceProjects.findById( ceProjId );
 	if( typeof cep === 'undefined' ) { return true; }
 
-	// XXX hmm.  Expensive.
 	// TESTING ONLY!  This will be executed by ceFlutter before issuing unlink.
 	// We do not allow unlink repo if it contains active peqs.
 	const query = { CEProjectId: ceProjId, Active: "true" };
-	let peqs  = await awsUtils.getPeqs( authData, query );
+	let peqs  = await awsUtils.getPEQs( authData, query );
 	peqs = peqs == -1 ? [] : peqs;
 	for( const peq of peqs ) {
 	    let link = await this.getLinks( authData, { "ceProjId": ceProjId, "issueId": peq.HostIssueId } );
@@ -641,42 +600,21 @@ class Linkage {
 	return true;
     }
 
-    // first 4, ..., last 4
-    fill( val, num ) {
-	let retVal = "";
-	if( typeof val !== 'undefined' ) {  // undef if bad loc, say
-	    if( val.length > num ) {
-		let fromVal = Math.floor( (num-3)/2 );  // number of characters from val in retVal
-		for( var i = 0; i < fromVal; i++ ) { retVal = retVal.concat( val[i] ); }
-		retVal = retVal.concat( "..." );
-		for( var i = val.length - fromVal ; i < val.length; i++ ) { retVal = retVal.concat( val[i] ); }
-		if( val.length % 2 == 0 ) { retVal = retVal.concat( " " ); }
-	    }
-	    else {
-		for( var i = 0; i < num; i++ ) {
-		    if( val.length > i ) { retVal = retVal.concat( val[i] ); }
-		    else                 { retVal = retVal.concat( " " ); }
-		}
-	    }
-	}
-	return retVal;
-    }
-
     show( count, cep ) {
 	if( Object.keys( this.links ).length <= 0 ) { return ""; }
 	
-	console.log( this.fill( "ceProjId", 13 ),
-	             this.fill( "IssueId", 13 ),
-		     this.fill( "IssueNum",10 ),
-		     this.fill( "CardId", 13),
-		     this.fill( "Title", 25 ),
-		     this.fill( "ColId", 13),
-		     this.fill( "ColName", 20),
-		     this.fill( "ProjId", 13 ), 
-		     this.fill( "ProjName", 15 ),
-		     this.fill( "Repo", 10 ),
-		     this.fill( "RepoId", 10 )
-		     // this.fill( "sourceCol", 10 )
+	console.log( utils.fill( "ceProjId", 13 ),
+	             utils.fill( "IssueId", 13 ),
+		     utils.fill( "IssueNum",10 ),
+		     utils.fill( "CardId", 13),
+		     utils.fill( "Title", 25 ),
+		     utils.fill( "ColId", 13),
+		     utils.fill( "ColName", 20),
+		     utils.fill( "ProjId", 13 ), 
+		     utils.fill( "ProjName", 15 ),
+		     utils.fill( "Repo", 10 ),
+		     utils.fill( "RepoId", 10 )
+		     // utils.fill( "sourceCol", 10 )
 		   );
 
 	// console.log( this.links );
@@ -697,18 +635,18 @@ class Linkage {
 	
 	for( let i = start; i < printables.length; i++ ) {
 	    let link = printables[i]; 
-	    console.log( this.fill( link.ceProjectId, 13 ),
-			 this.fill( link.hostIssueId, 13 ),
-			 this.fill( link.hostIssueNum, 10 ),
-			 this.fill( link.hostCardId, 13 ),
-			 this.fill( link.hostIssueName, 25 ),
-			 link.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 13 ) : this.fill( link.hostColumnId, 13 ),
-			 this.fill( link.hostColumnName, 20 ),
-			 link.hostProjectId == config.EMPTY ? this.fill( config.EMPTY, 13 ) : this.fill( link.hostProjectId, 13 ),
-			 this.fill( link.hostProjectName, 15 ),
-			 // link.flatSource == -1 ? this.fill( "-1", 10 ) : this.fill( link.flatSource, 10 ),
-			 this.fill( link.hostRepoName, 10 ), 
-			 this.fill( link.hostRepoId, 10 )
+	    console.log( utils.fill( link.ceProjectId, 13 ),
+			 utils.fill( link.hostIssueId, 13 ),
+			 utils.fill( link.hostIssueNum, 10 ),
+			 utils.fill( link.hostCardId, 13 ),
+			 utils.fill( link.hostIssueName, 25 ),
+			 link.hostColumnId == config.EMPTY ? utils.fill( config.EMPTY, 13 ) : utils.fill( link.hostColumnId, 13 ),
+			 utils.fill( link.hostColumnName, 20 ),
+			 link.hostProjectId == config.EMPTY ? utils.fill( config.EMPTY, 13 ) : utils.fill( link.hostProjectId, 13 ),
+			 utils.fill( link.hostProjectName, 15 ),
+			 // link.flatSource == -1 ? utils.fill( "-1", 10 ) : utils.fill( link.flatSource, 10 ),
+			 utils.fill( link.hostRepoName, 10 ), 
+			 utils.fill( link.hostRepoId, 10 )
 		       );
 	}
     }
@@ -725,11 +663,11 @@ class Linkage {
 	}
 
 	if( printables.length > 0 ) {
-	    console.log( this.fill( "ceProj", 15 ),
-			 this.fill( "ProjName", 15 ),
-			 this.fill( "ProjId", 20 ), 
-			 this.fill( "ColId", 10),
-			 this.fill( "ColName", 20)
+	    console.log( utils.fill( "ceProj", 15 ),
+			 utils.fill( "ProjName", 15 ),
+			 utils.fill( "ProjId", 20 ), 
+			 utils.fill( "ColId", 10),
+			 utils.fill( "ColName", 20)
 		       );
 	}
 
@@ -740,11 +678,11 @@ class Linkage {
 
 	for( let i = start; i < printables.length; i++ ) {
 	    const loc = printables[i];
-	    console.log( this.fill( loc.ceProjectId, 16 ),
-			 this.fill( loc.hostProjectName, 15 ),
-			 loc.hostProjectId == -1 ? this.fill( "-1", 20 ) : this.fill( loc.hostProjectId, 20 ),
-			 loc.hostColumnId == config.EMPTY ? this.fill( config.EMPTY, 10 ) : this.fill( loc.hostColumnId, 10 ),
-			 this.fill( loc.hostColumnName, 20 ), this.fill( loc.active, 7 )
+	    console.log( utils.fill( loc.ceProjectId, 16 ),
+			 utils.fill( loc.hostProjectName, 15 ),
+			 loc.hostProjectId == -1 ? utils.fill( "-1", 20 ) : utils.fill( loc.hostProjectId, 20 ),
+			 loc.hostColumnId == config.EMPTY ? utils.fill( config.EMPTY, 10 ) : utils.fill( loc.hostColumnId, 10 ),
+			 utils.fill( loc.hostColumnName, 20 ), utils.fill( loc.active, 7 )
 		       );
 	}
     }

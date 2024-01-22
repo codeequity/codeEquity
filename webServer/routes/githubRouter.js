@@ -3,6 +3,8 @@ const assert  = require('assert');
 const config  = require( '../config');
 const ceAuth  = require( '../auth/ceAuth' );
 
+const hist     = require( '../components/histogram' );
+
 const utils   = require( '../utils/ceUtils' );
 const links   = require( '../utils/linkage' );
 const ghUtils = require( '../utils/gh/ghUtils' );
@@ -23,14 +25,17 @@ const gh2Label  = require( './gh/gh2/labelHandler' );
 // owner, repo needed for octokit installation client.
 // owner needed for personal access token
 
+// GitHub cost hist, latency hist
+var ghCost    = new hist.Histogram( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
+var ghLatency = new hist.Histogram( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
 
 
-function getJobSummaryGHC( newStamp, jobData, locator ) {
+function getJobSummaryGHC( jobData, locator ) {
     console.log( "GHC DEPRECATED" );
     assert( false );
 }
 
-function getJobSummaryGH2( newStamp, jobData, locator ) {
+function getJobSummaryGH2( jobData, locator ) {
 
     // ContentNotice carries repo information, pv2Item does not.
     if(jobData.event != "projects_v2_item" ) {
@@ -71,10 +76,10 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
 	jobData.org  = jobData.reqBody.organization.login;
 	jobData.tag  = fullName; 
 	
-	if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "Issue" ) {
+	if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == config.GH_ISSUE ) {
 	    locator.source += "projects_v2_item:";
 	}
-	else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == "DraftIssue" ) {
+	else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == config.GH_ISSUE_DRAFT ) {
 	    locator.source += "draftIssue:";
 	}
 	else {
@@ -90,14 +95,19 @@ function getJobSummaryGH2( newStamp, jobData, locator ) {
 }
 
 
-// At this point, a pv2 notice is fast and clear cut, but a content notice will take time to determine. 
-function getJobSummary( newStamp, jobData, headers, locator ) {
+// At this point, a pv2 notice is fast and clear cut, but a content notice will take time to determine.
+function getJobSummary( jobData, headers, locator ) {
     let retVal = -1;
     
     jobData.action = jobData.reqBody.action;
     jobData.actor  = jobData.reqBody.sender.login;
 
     jobData.event  = headers['x-github-event'];
+
+    // Initial job creation, set initial stamps.
+    let now = Date.now();
+    jobData.stamp    = now;
+    jobData.stampLat = now;
 
     // Nothing to do for pull requests
     if( jobData.event == "pull_request" ) { console.log( "Pull request" ); return retVal; }
@@ -108,21 +118,21 @@ function getJobSummary( newStamp, jobData, headers, locator ) {
     // if( jobData.reqBody.hasOwnProperty( "projects_v2_item" ) ) { jobData.projMgmtSys = config.PMS_GH2; }
     jobData.projMgmtSys = config.PMS_GH2;
 
-    // if(jobData.event == "projects_v2_item" ) { retVal = getJobSummaryGH2( newStamp, jobData, locator ); }
-    // else                                     { retVal = getJobSummaryGHC( newStamp, jobData, locator ); }
+    // if(jobData.event == "projects_v2_item" ) { retVal = getJobSummaryGH2( jobData, locator ); }
+    // else                                     { retVal = getJobSummaryGHC( jobData, locator ); }
 
-    retVal = getJobSummaryGH2( newStamp, jobData, locator );
+    retVal = getJobSummaryGH2( jobData, locator );
     return retVal;
 }
 
 
-async function switcherGHC( authData, ceProjects, ghLinks, jd, res, origStamp ) {
+async function switcherGHC( authData, ceProjects, ghLinks, jd, res ) {
     console.log( "GHC DEPRECATED" );
     assert( false );
 }
 
 
-async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, ceProjectId ) {
+async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 
     let retVal = "";
 
@@ -153,7 +163,7 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	// Note: reopen/closed will generate pv notice with ghost pv2 edit (no changes).  Treat this here to avoid dependence on Ghost.
 	//       ghost is unspecified, or incorrectly specified for github as of 10/23.  
 	
-	let pd = new gh2Data.GH2Data( authData, jd, ceProjects, ceProjectId );
+	let pd = new gh2Data.GH2Data( authData, jd, ceProjects );
 	if( pd.ceProjectId == -1 ) { await pd.setCEProjectId( authData, jd, ceProjects ); }
 	
 	if( pd.ceProjectId == config.EMPTY ) {
@@ -202,19 +212,30 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res, origStamp, c
 	}
     }
 
-    // initial ceRouter jobData stamps in raw millis.  handler has interpreted string.  origStamp could be either.
-    let mdiff = ( typeof origStamp == "string" ) ? utils.millisDiff( utils.getMillis(), origStamp ) : Date.now() - origStamp; 
-    console.log( authData.who, "Millis:", mdiff, "Delays: ", jd.delayCount );
+    // initial ceRouter jobData stamps in raw millis.  handler has interpreted string.
+    let now = Date.now();
+    let stampDiff = now - jd.stamp;
+    let latDiff   = now - jd.stampLat;
+    let pre       = "Mid";
+
+    if( retVal != "postpone" ) {
+	pre = "Final";
+	ghCost.addDiff( stampDiff );
+	ghLatency.addDiff( latDiff );
+    }
+    
+    // console.log( authData.who, pre, "Millis:", stampDiff, "(", jd.stamp, ")", latDiff, "(", jd.stampLat, ")", "Delays:", jd.delayCount );
+    console.log( authData.who, pre, "Millis:", stampDiff, latDiff, "Delays:", jd.delayCount );
     ceRouter.getNextJob( authData, res );	
 }
 
 
 
-async function switcherUNK( authData, ceProjects, ghLinks, jd, res, origStamp ) {
+async function switcherUNK( authData, ceProjects, ghLinks, jd, res ) {
     assert( false );
 }
 
-async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
+async function switcher( authData, ceProjects, hostLinks, jd, res ) {
 
     // noticeCount = noticeCount + 1;
     // if( noticeCount % 25 == 0 ) { ghUtils.show( true ); }  // XXX formalize or remove
@@ -224,11 +245,17 @@ async function switcher( authData, ceProjects, hostLinks, jd, res, origStamp ) {
 	return res.end();
     }
 
-    if( jd.projMgmtSys == config.PMS_GH2 ) { await switcherGH2( authData, ceProjects, hostLinks, jd, res, origStamp ); }
-    else {                                   await switcherUNK( authData, ceProjects, hostLinks, jd, res, origStamp ); }
+    if( jd.projMgmtSys == config.PMS_GH2 ) { await switcherGH2( authData, ceProjects, hostLinks, jd, res ); }
+    else {                                   await switcherUNK( authData, ceProjects, hostLinks, jd, res ); }
     
+}
+
+async function reportCosts( ) {
+    ghCost.show(    "GH processing costs (ms):    " );
+    ghLatency.show( "GH processing latencies (ms):" );
 }
 
 
 exports.ghSwitcher          = switcher;
 exports.ghGetJobSummaryData = getJobSummary;
+exports.reportCosts         = reportCosts;

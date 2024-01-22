@@ -16,10 +16,10 @@ async function createFlatProject( authData, testLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
     td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, FLAT_PROJ, "" );
-    let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Eggs" );
-    let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, "Bacon" );
+    let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, "Eggs" );
+    let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, "Bacon" );
     // Note: this col is used for testing in testComponents:testProjColMods
-    let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.GHFullName, td.masterPID, config.PROJ_COLS[config.PROJ_PLAN] );
+    let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, config.PROJ_COLS[config.PROJ_PLAN] );
 
     // i.e. draft issues
     await gh2tu.makeNewbornCard( authData, testLinks, td.ceProjectId, td.masterPID, mastCol1, "Parsley" );
@@ -35,7 +35,7 @@ async function testFlatProject( authData, testLinks, td ) {
     await gh2tu.refresh( authData, td, FLAT_PROJ );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
-    let links = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let links = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
     let foundFlat = false;
     if( links == -1 ) { links = []; }
 

@@ -100,8 +100,6 @@ export function handler( event, context, callback) {
     else if( endPoint == "UpdateLinkage")  { resultPromise = updateLinkage( rb.newLoc ); }
     else if( endPoint == "UpdateCEP")      { resultPromise = putCEP( rb.ceProject ); }
     else if( endPoint == "GetHostProjects"){ resultPromise = getHostProjs( rb.query ); }
-    // else if( endPoint == "LinkProject")    { resultPromise = link( rb.query ); }
-    // else if( endPoint == "UnlinkProject")  { resultPromise = unlink( rb.query ); }
     else {
 	callback( null, errorResponse( "500", "EndPoint request not understood: " + endPoint, context.awsRequestId));
 	return;

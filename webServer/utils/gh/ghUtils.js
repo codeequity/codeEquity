@@ -6,7 +6,7 @@ const config = require( '../../config' );
 const utils    = require( '../ceUtils' );
 const awsUtils = require( '../awsUtils' );
 
-var handlerRetries = {}; // XXX hmmm.   will this reset constantly?
+var handlerRetries = {}; 
 var postRecord = {}; 
 
 
@@ -30,7 +30,6 @@ function show( full ) {
     console.log( "-------------" );
 }
 
-// XXX Accept header is for label preview.  Check back to delete.
 async function postGH( PAT, url, postData, name, check422 ) {
     if( typeof check422 === 'undefined' ) { check422 = false; }
 
@@ -39,7 +38,8 @@ async function postGH( PAT, url, postData, name, check422 ) {
 
     if( typeof postRecord[name] === 'undefined' ) { postRecord[name] = 0; }
     postRecord[name] = postRecord[name] + 1;
-    
+
+    // Accept header is for label 'preview'.
     const params = {
 	method: "POST",
         headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json" },
@@ -103,7 +103,7 @@ async function errorHandler( source, e, func, ...params ) {
     {
 	console.log( source, "Issue", arguments[6], "may already be gone, can't remove labels or add comments." );
     }
-    else if( e.status == 401 ||                             // XXX authorization will probably keep failing
+    else if( e.status == 401 ||                             // authorization will probably keep failing
 	     e.status == 500 ||                             // internal server error, wait and retry
 	     e.status == 502 )                              // server error, please retry       
     {
@@ -137,25 +137,6 @@ async function errorHandler( source, e, func, ...params ) {
 }
 
 
-
-// XXX Consider promoting this to ceUtils
-// returns -1 if could not find.
-async function validatePEQ( authData, ceProjId, issueId, title, pid ) {
-    let peq = -1;
-
-    let peqType = "";
-    assert( issueId != -1 );
-    peq = await awsUtils.getPeq( authData, ceProjId, issueId );
-
-    if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostProjectId == pid )  {
-	console.log( authData.who, "validatePeq success" );
-    }
-    else {
-	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, pid );
-	peq = -1;
-    }
-    return peq;  
-}
 
 
 
@@ -201,18 +182,11 @@ function parseLabelName( name ) {
     return [peqValue, alloc];
 }
 
-// Allow:
-// <allocation, PEQ: 1000>      typical by hand description
-// <allocation, PEQ: 1,000>
-// <allocation, PEQ: 1,000>
 // Allocation PEQ value         typical by resolve description & existing label description
 function getAllocated( content ) {
     let res = false;
     for( const line of content ) {
 	let s = line.indexOf( config.ADESC );  // existing label desc
-	if( s > -1 ){ res = true; break; }
-
-	s = line.indexOf( config.PALLOC );      // by hand entry
 	if( s > -1 ){ res = true; break; }
     }
     return res;
@@ -319,8 +293,6 @@ async function getIssueRepo( authData, issueId ) {
 
 exports.postGH       = postGH;
 exports.errorHandler = errorHandler;
-
-exports.validatePEQ     = validatePEQ;
 
 exports.parseLabelDescr = parseLabelDescr;
 exports.parseLabelName  = parseLabelName;

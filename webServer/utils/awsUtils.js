@@ -117,8 +117,9 @@ async function wrappedPostAWS( authData, shortName, postData ) {
     let pName = shortName + "." + ( typeof postData.tableName === 'undefined' ? "" : postData.tableName );
     if( typeof postRecord[pName] === 'undefined' ) { postRecord[pName] = 0; }
     postRecord[pName] = postRecord[pName] + 1;
+    // XXX formalize or remove ... if use this again, move count to config, with opt out
     // recordCount = recordCount + 1;
-    // if( recordCount % 25 == 0 ) { show( true ); }  // XXX formalize or remove    
+    // if( recordCount % 25 == 0 ) { show( true ); }  
     
     if( response['status'] == 201 ) {
 	let body = await response.json();
@@ -140,6 +141,25 @@ async function wrappedPostAWS( authData, shortName, postData ) {
 	return -1;
     }
 }
+
+// returns -1 if could not find.
+async function validatePEQ( authData, ceProjId, issueId, title, pid ) {
+    let peq = -1;
+
+    let peqType = "";
+    assert( issueId != -1 );
+    peq = await getPEQ( authData, ceProjId, issueId );
+
+    if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostProjectId == pid )  {
+	console.log( authData.who, "validatePeq success" );
+    }
+    else {
+	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, pid );
+	peq = -1;
+    }
+    return peq;  
+}
+
 
 // Check for stored PAT.  Not available means public repo that uses ceServer PAT
 async function getStoredPAT( authData, host, actor ) {
@@ -172,7 +192,7 @@ async function getProjectStatus( authData, ceProjId ) {
 }
 
 // XXX inconsistent caps
-async function getPeq( authData, ceProjId, issueId, checkActive ) {
+async function getPEQ( authData, ceProjId, issueId, checkActive ) {
     // console.log( authData.who, "Get PEQ from issueId:", ceProjId, issueId );
     let active = true;
     if( typeof checkActive !== 'undefined' ) { active = checkActive; }
@@ -212,21 +232,19 @@ async function updatePEQPSub( authData, peqId, projSub ) {
 
 // Note: Only called by resolve.  PNP rejects all attempts to create in ACCR before calling resolve.
 // The only critical component here for interleaving is getting the ID.
-async function changeReportPeqVal( authData, pd, peqVal, link ) {
+async function changeReportPEQVal( authData, pd, peqVal, link ) {
     console.log( authData.who, "rebuild existing peq for issue:", pd.issueId );
 
     // Confirm call chain is as expected.  Do NOT want to be modifying ACCR peq vals
     assert( link.hostColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
 
-    let newPEQ = await getPeq( authData, pd.ceProjectId, pd.issueId );
+    let newPEQ = await getPEQ( authData, pd.ceProjectId, pd.issueId );
 
     // do NOT update aws.. rely on ceFlutter to update values during ingest, using pact.  otherwise, when a split happens after
     // the initial peq has been ingested, if ingest is ignoring this pact, new value will not be picked up correctly.
-    // console.log( authData.who, "Updating peq", newPEQ.PEQId, peqVal );
-    // updatePEQVal( authData, newPEQ.PEQId, peqVal );
 
     recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-		     config.PACTVERB_CONF, "change", [newPEQ.PEQId, peqVal.toString()], "peq val update",   // XXX formalize
+		     config.PACTVERB_CONF, config.PACTACT_CHAN, [newPEQ.PEQId, peqVal.toString()], config.PACTNOTE_PVU,
 		     utils.getToday(), pd.reqBody );
 }
 
@@ -271,22 +289,22 @@ async function rebuildPEQ( authData, link, oldPeq ) {
     return newPEQId; 
 }
 
-// There is a rare race condition that can cause recordPeqData to fail.
+// There is a rare race condition that can cause recordPEQData to fail.
 //   label issue.  calls PNP, but does not await.  (PNP will create PEQ, eventually)
-//   create card.  calls PNP, which calls recordPeqData, which checks for unclaimed:relocate and existence of PEQ.  
+//   create card.  calls PNP, which calls recordPEQData, which checks for unclaimed:relocate and existence of PEQ.  
 // await in label does not solve it 100%.   Having bad dependent peq recordings in aws may hurt later.
 // Settlewait.. this has shown up once in... hundreds of runs of the full test suite?
 // not, dup check could occur in lambda handler, save a round trip
 // NOTE PNP sets hostAssignees based on call to host.  This means we MAY have assignees, or not, upon first
 //      creation of AWS PEQ, depending on if assignment occured in host before peq label notification processing completes.
-async function recordPeqData( authData, pd, checkDup, specials ) {
+async function recordPEQData( authData, pd, checkDup, specials ) {
     assert(typeof pd.ceProjectId !== 'undefined' );
     let pact      = typeof specials !== 'undefined' && specials.hasOwnProperty( "pact" )     ? specials.pact     : -1;
     let columnId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "columnId" ) ? specials.columnId : -1;
 
     // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
 
-    assert( pact == -1 || pact == "addRelo" || pact == "justAdd" );  // XXX formalize
+    assert( pact == -1 || pact == "addRelo" || pact == "justAdd" ); 
     let add       = pact == "addRelo" || pact == "justAdd";
     let relocate  = pact != "justAdd" && pact == "addRelo" ;
     
@@ -294,7 +312,7 @@ async function recordPeqData( authData, pd, checkDup, specials ) {
     let newPEQ = -1
     if( checkDup ) { 
 	// Only 1 peq per issueId. Might be moving a card here
-	newPEQ = await getPeq( authData, pd.ceProjectId, pd.issueId, false );
+	newPEQ = await getPEQ( authData, pd.ceProjectId, pd.issueId, false );
 	if( newPEQ != -1 ) { newPEQId = newPEQ.PEQId; }
     }
     
@@ -455,7 +473,7 @@ async function getPActs( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-async function getPeqs( authData, query ) {
+async function getPEQs( authData, query ) {
     // console.log( "Get PEQs for a given repo:", query);
 
     let shortName = "GetEntries";
@@ -464,7 +482,7 @@ async function getPeqs( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
-async function getHostPeqProjects( authData, query ) {
+async function getHostPEQProjects( authData, query ) {
     // console.log( "Get PEQy projects for ceProject:", query);
 
     let shortName = "GetHostProjects";
@@ -527,37 +545,6 @@ async function getStoredLocs( authData, ceProjId ) {
 }
 
 
-/* Not in use
-async function clearLinkage( authData, pd ) {
-    let shortName = "GetEntry";
-    let query     = { "CEProjectId": pd.ceProjectId };
-    let postData  = { "Endpoint": shortName, "tableName": "CELinkage", "query": query };
-    let oldLinks  = await wrappedPostAWS( authData, shortName, postData );
-    
-    if( oldLinks != -1 ) {
-	console.log( "Clearing linkage id:", oldLinks.CELinkageId );	
-	await cleanDynamo( authData, "CELinkage", [ [ oldLinks.CELinkageId ] ] );
-    }
-}
-
-// Ingest does this work now.
-// XXX Note.   This must be guarded, at a minimum, not ACCR
-async function updatePEQVal( authData, peqId, peqVal ) {
-    console.log( authData.who, "Updating PEQ value after label split", peqVal );
-
-    let shortName = "UpdatePEQ";
-
-    let postData = {};
-    postData.PEQId        = peqId.toString();
-    postData.Amount       = peqVal;
-    
-    console.log( authData.who, "update pval", postData );
-
-    let pd = { "Endpoint": shortName, "pLink": postData }; 
-    return await wrappedPostAWS( authData, shortName, pd );
-}
-*/
-
 
 exports.getAPIPath   = getAPIPath;
 exports.getCognito   = getCognito;
@@ -565,14 +552,15 @@ exports.getCEServer  = getCEServer;
 exports.getStoredPAT = getStoredPAT;
 exports.show         = show;
 
+exports.validatePEQ        = validatePEQ;
 exports.getProjectStatus   = getProjectStatus;
-exports.getPeq             = getPeq;
+exports.getPEQ             = getPEQ;
 exports.removePEQ          = removePEQ;
 exports.updatePEQPSub      = updatePEQPSub;
-exports.changeReportPeqVal = changeReportPeqVal;
+exports.changeReportPEQVal = changeReportPEQVal;
 exports.recordPEQ          = recordPEQ;
 exports.rebuildPEQ         = rebuildPEQ;
-exports.recordPeqData      = recordPeqData;
+exports.recordPEQData      = recordPEQData;
 
 exports.recordPEQAction = recordPEQAction;
 exports.checkPopulated  = checkPopulated;
@@ -586,8 +574,8 @@ exports.updateCEPHostParts    = updateCEPHostParts;
 exports.getRaw       = getRaw; 
 exports.getPRaws     = getPRaws;
 exports.getPActs     = getPActs;
-exports.getPeqs      = getPeqs;
-exports.getHostPeqProjects = getHostPeqProjects;
+exports.getPEQs      = getPEQs;
+exports.getHostPEQProjects = getHostPEQProjects;
 exports.getSummaries = getSummaries;
 exports.getLinkage   = getLinkage;
 

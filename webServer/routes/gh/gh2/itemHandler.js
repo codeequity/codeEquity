@@ -10,20 +10,14 @@ const ghV2      = require( rootLoc + 'utils/gh/gh2/ghV2Utils' );
 
 const cardHandler = require( './cardHandler' );
 
-// XXX 
-// Terminology:
-// situated issue: an issue with a card in a CE-valid project structure
-// carded issue:   an issue with a card not in a CE-valid structure
-// newborn issue:  a plain issue without a project card, without PEQ label
-// newborn card :  a card without an issue
 
-// Guarantee: Once populateCEProjects has been run once for a repo:
-//            1) Every carded issues in that repo resides in the linkage table.
-//            2) Newborn issues and newborn cards can still exist (pre-existing, or post-populate), and will not reside in the linkage table.
-//            3) {label, add card} operation on newborn issues will cause conversion to carded (unclaimed) or situated issue as needed,
+// Guarantee: For every repo that is part of a ceProject:
+//            1) Every carded issue in that repo resides in the linkage table. but without column info, issue and project names
+//            2) Newborn issues and newborn cards can exist, but will not reside in the linkage table.
+//            3) {label, add card} operation on newborn issues will cause conversion to a situated issue (carded or peq) as needed,
 //               and inclusion in linkage table.
+//            4) there is a 1:{0,1} mapping between issue:card
 //            Implies: {open} newborn issue will not create linkage.. else the attached PEQ would be confusing
-
 
 async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCount ) {
 
@@ -45,8 +39,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     assert( typeof item !== 'undefined' );
 
     // Allow draftIssue:edit to pass through to protect movement into reserved columns
-    let diEdit = item.content_type == "DraftIssue" && action == "edited";
-    if( item.content_type != "Issue" && !diEdit ) {
+    let diEdit = item.content_type == config.GH_ISSUE_DRAFT && action == "edited";
+    if( item.content_type != config.GH_ISSUE && !diEdit ) {
 	console.log( authData.who, "Skipping", item.content_type, action );
 	return;
     }
@@ -55,21 +49,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     let reqBody  = pd.reqBody;
     pd.projectId = item.project_node_id;
 
-    // XXX need to pass in and return res from ceRouter
-
-    // Create issue notifications: (can ignore)
-    // * convert draft issue -> projects_v2_item:reorder     draft issue     (sometimes)
-    // * (pick a repo)       -> projects_v2_item:converted   issue
-    //                       -> issues          :opened      XXX confirm event
-
-    // Create label : have to open issue in new tab (!!)
-    // * create new label    -> label          :created
-    
-    
-    // Create new status, new project:   nothing.  why.
-    // Peq label draft issue: can't perform this action
-
-    
     switch( action ) {
     case 'edited':
 	{

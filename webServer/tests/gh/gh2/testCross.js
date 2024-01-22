@@ -44,11 +44,11 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // Setup.
     // Add populate label to testProject2, to invoke repostatus
     let crossPid = await gh2tu.createProjectWorkaround( authDataX, tdX, "Cross Proj", "For testing transfers to other repos" );
-    let crossCid = await gh2tu.makeColumn( authDataX, testLinks, tdX.ceProjectId, tdX.GHFullName, crossPid, "Cross Col" );
+    let crossCid = await gh2tu.makeColumn( authDataX, testLinks, tdX.ceProjectId, tdX.ghFullName, crossPid, "Cross Col" );
     
     const LAB = "704 " + config.PEQ_LABEL;
-    let lab   = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LAB, 704 );
-    let labX  = await gh2tu.findOrCreateLabel( authDataX, tdX.GHRepoId, false, LAB, 704 );
+    let lab   = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LAB, 704 );
+    let labX  = await gh2tu.findOrCreateLabel( authDataX, tdX.ghRepoId, false, LAB, 704 );
 
     const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "builderCE";
@@ -72,7 +72,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // Adding makeProjectCard creates second add/relo which clears assignees found in pnp:fromLabelIssue.  It's ok, PACt has it.
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, stripeLoc, issDat, card, testStatus, {label: 704, lblCount: 1});
     
-    let oldPeqs = await awsUtils.getPeqs( authData, { "ceProjectId": td.ceProjectId });
+    let oldPeqs = await awsUtils.getPEQs( authData, { "ceProjectId": td.ceProjectId });
     let peq     = oldPeqs.find(p => p.HostIssueId == issDat[0].toString() );
     let sub     = [peq.PEQId, td.githubOpsPID.toString(), stripeLoc.colId.toString() ];
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, issDat[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
@@ -89,7 +89,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, crossLoc, issDatX, cardX, testStatus, {label: 704, lblCount: 1});
     
-    let oldPeqsX  = await awsUtils.getPeqs( authDataX, { "ceProjectId": tdX.ceProjectId });
+    let oldPeqsX  = await awsUtils.getPEQs( authDataX, { "ceProjectId": tdX.ceProjectId });
     let peqX      = oldPeqsX.find(p => p.HostIssueId == issDatX[0].toString() );
     sub           = [peqX.PEQId, crossPid.toString(), crossCid.toString() ];
     testStatus    = await gh2tu.checkPact( authDataX, testLinks, tdX, issDatX[3], config.PACTVERB_CONF, config.PACTACT_RELO, "", testStatus, {sub: sub} );
@@ -132,17 +132,17 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, stripeLoc, issDat, card, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: tdX.ceProjectId} );    
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, crossLoc, issDatX, cardX, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: td.ceProjectId} );    
 
-    let newPeqs  = awsUtils.getPeqs( authDataX, { "ceProjectId": td.ceProjectId });
-    let newPeqsX = awsUtils.getPeqs( authDataX, { "ceProjectId": tdX.ceProjectId });
+    let newPeqs  = awsUtils.getPEQs( authDataX, { "ceProjectId": td.ceProjectId });
+    let newPeqsX = awsUtils.getPEQs( authDataX, { "ceProjectId": tdX.ceProjectId });
 
     
     let testRepo = flutterTest ? config.FLUTTER_TEST_REPO : config.TEST_REPO;
 
     // PAct is found from oldCEP
-    sub         = [peqX.PEQId, oldIdX, tdX.GHRepoId, tdX.ceProjectId, issDatX[0], td.GHRepoId, td.ceProjectId ];
+    sub         = [peqX.PEQId, oldIdX, tdX.ghRepoId, tdX.ceProjectId, issDatX[0], td.ghRepoId, td.ceProjectId ];
     testStatus  = await gh2tu.checkPact( authDataX, testLinks, tdX, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer", testStatus, {sub: sub, depth: 4} );
 
-    sub         = [peq.PEQId, oldId, td.GHRepoId, td.ceProjectId, issDat[0], tdX.GHRepoId, tdX.ceProjectId ];
+    sub         = [peq.PEQId, oldId, td.ghRepoId, td.ceProjectId, issDat[0], tdX.ghRepoId, tdX.ceProjectId ];
     testStatus  = await gh2tu.checkPact( authData, testLinks, td, -1, config.PACTVERB_CONF, config.PACTACT_RELO, "Transfer", testStatus, {sub: sub, depth: 4} );
 
     // New Peqs were validated above.  Check delete/add pacts.  
@@ -185,29 +185,29 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     let testStatus = [ 0, 0, []];
     let testName = "Multithread";
 
-    console.log( "Test", testName );
+    console.log( "Test", testName, td.ghRepoId, tdM.ghRepoId );
     authData.who = "<TEST: " + testName + ">";
 
     await gh2tu.refreshRec( authData, td );
 
     // Setup for blasting from two different testers / repos. 
     assert( config.MULTI_TEST_ACTOR != config.TEST_ACTOR );
-    assert( td.GHFullName != tdM.GHFullName );
+    assert( td.ghFullName != tdM.ghFullName );
 
     // Add populate label to testProject2, to invoke repostatus. 
     let multiPid = await gh2tu.createProjectWorkaround( authDataM, tdM, "Multi Proj", "For testing request interleaving" );
-    let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.GHFullName, multiPid, "Multi Col" );
+    let multiCid = await gh2tu.makeColumn( authDataM, testLinks, tdM.ceProjectId, tdM.ghFullName, multiPid, "Multi Col" );
 
     // Labels, Assignees & Locs
     const LAB    = "903 " + config.PEQ_LABEL;
     const LABNP1 = "bug";
     const LABNP2 = "documentation";
-    let lab     = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LAB, 903 );
-    let labNP1  = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LABNP1, -1 );
-    let labNP2  = await gh2tu.findOrCreateLabel( authData,  td.GHRepoId, false, LABNP2, -1 );
-    let labM    = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, LAB, 903 );
-    let labNP1M = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, LABNP1, -1 );
-    let labNP2M = await gh2tu.findOrCreateLabel( authDataM, tdM.GHRepoId, false, LABNP2, -1 );
+    let lab     = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LAB, 903 );
+    let labNP1  = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LABNP1, -1 );
+    let labNP2  = await gh2tu.findOrCreateLabel( authData,  td.ghRepoId, false, LABNP2, -1 );
+    let labM    = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LAB, 903 );
+    let labNP1M = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LABNP1, -1 );
+    let labNP2M = await gh2tu.findOrCreateLabel( authDataM, tdM.ghRepoId, false, LABNP2, -1 );
 
     const ASSIGNEE1 = "ariCETester";
     const ASSIGNEE2 = "builderCE";
@@ -219,6 +219,8 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     let assignee2M  = await gh2tu.getAssignee( authDataM, ASSIGNEE2 );
     let assignee3M  = await gh2tu.getAssignee( authDataM, ASSIGNEE3 );
 
+    console.log( authData.who, lab, td.ghRepoId );
+    console.log( authDataM.who, labM, tdM.ghRepoId );
     
     // There are 5 blast issues of each repo, randomized, sent with a small random gap between 200-500ms.
 
@@ -236,11 +238,11 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
 	case 2: dat = gh2tu.blastIssue( authData,  td,  "Interleave 2",  [lab, labNP1],         [assignee3, assignee2], {wait: false});            break;
 	case 3: dat = gh2tu.blastIssue( authData,  td,  "Interleave 3",  [lab, labNP1, labNP2], [assignee1, assignee2, assignee3], {wait: false}); break;
 	case 4: dat = gh2tu.blastIssue( authData,  td,  "Interleave 4",  [labNP1],              [assignee1, assignee3], {wait: false});            break;
-	case 5: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 0", [labNP2],              [assignee1M], {wait: false});                       break;
-	case 6: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 1", [lab],                 [assignee3M, assignee2M], {wait: false});            break;
-	case 7: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 2", [lab, labNP1],         [assignee3M, assignee1M, assignee2M], {wait: false}); break;
-	case 8: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 3", [lab, labNP1, labNP2], [assignee1M, assignee2M], {wait: false});            break;
-	case 9: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 4", [lab, labNP2],         [assignee2M, assignee1M], {wait: false});            break;
+	case 5: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 0", [labNP2M],              [assignee1M], {wait: false});                       break;
+	case 6: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 1", [labM],                 [assignee3M, assignee2M], {wait: false});            break;
+	case 7: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 2", [labM, labNP1M],         [assignee3M, assignee1M, assignee2M], {wait: false}); break;
+	case 8: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 3", [labM, labNP1M, labNP2M], [assignee1M, assignee2M], {wait: false});            break;
+	case 9: dat = gh2tu.blastIssue( authDataM, tdM, "InterleaveM 4", [labM, labNP2M],         [assignee2M, assignee1M], {wait: false});            break;
 	default: assert( false );  break;
 	}
 	issDatPromises[index] =  dat;
@@ -313,9 +315,9 @@ async function runTests( flutterTest, authData, authDataX, authDataM, testLinks,
     let testStatus = [ 0, 0, []];
 
     // First build up aws CEProjects hostRepositories for repo: ceTesterAriAlt, ceTesterConnie
-    await gh2tu.linkRepo( authDataM, tdM.ceProjectId, tdM.GHRepoId, tdM.GHFullName, tdM.cepDetails );
-    await gh2tu.linkRepo( authDataX, tdX.ceProjectId, tdX.GHRepoId, tdX.GHFullName, tdX.cepDetails );
-    
+    await gh2tu.linkRepo( authDataM, tdM.ceProjectId, tdM.ghRepoId, tdM.ghFullName, tdM.cepDetails );
+    await gh2tu.linkRepo( authDataX, tdX.ceProjectId, tdX.ghRepoId, tdX.ghFullName, tdX.cepDetails );
+
     let t1 = await testCrossRepo( flutterTest, authData, authDataX, testLinks, td, tdX );
     console.log( "\n\nCross Repo test complete." );
     // ghUtils.show( true );

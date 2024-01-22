@@ -73,7 +73,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    // Only disallow if orig label being edited has active peqs.
 	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: origVal, PeqType: tVal };
-	    const peqs  = await awsUtils.getPeqs( authData, query );
+	    const peqs  = await awsUtils.getPEQs( authData, query );
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs to handle with this edited label" );
 		// Just make sure description is consistent with name, if it is a peq label.  Must wait for bool, else always true.  Could break this up, buuuutttt
@@ -166,7 +166,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     case 'deleted':
 	// The proper way to delete a peq label is to unlabel all issues first, then can remove the unused label.  Otherwise, we put them back.
 	// Check if label is in use.  If so, recreate it, and relabel all.  Potentially very expensive!
-	// If this was used peq label, by now, unlabels have been issued everywhere, triggering de-peq actions, and the label is gone.
+	// If this was used peq label, unlabels are being issued everywhere, triggering de-peq actions.  Watch race conditions.
 	{
 	    // All work done here.
 	    // Issue handler gets notifications for open issues.  It will do nothing if the label still exists.
@@ -177,7 +177,20 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
 	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
-	    const peqs  = await awsUtils.getPeqs( authData, query );
+	    const peqs  = await awsUtils.getPEQs( authData, query );
+
+	    // hostProject can include peqs from multiple repos and otherwise-identical labels.  Need to winnow here by repo
+	    // Peq is not real peq if link doesn't place it in correct repo.  Keep repo in link test below.
+	    if( peqs !== -1 ) {
+		for( let i = peqs.length - 1; i >= 0; i-- ) {
+		    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": peqs[i].HostIssueId });
+		    if( links === -1 ) {
+			console.log( authData.who, "Winnowing", peqs[i].HostIssueTitle, "for", lVal );
+			peqs.splice( i, 1 );
+		    }
+		    
+		}
+	    }
 	    if( peqs == -1 ) {
 		console.log( authData.who, "No active peqs with this deleted label" );
 		return;
@@ -191,11 +204,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // add label to all.  recreate card.  peq was not modified.
 	    for( const peq of peqs ) {
+		// Even if unlabelIss came first, link should exist since it is rebased, not deleted.  link count is 1 or 0.
 		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": peq.HostIssueId });
-		if( links.length != 1 ) {
-		    // XXX hmm.. if init error mismatching peq, this will fire.  not an issue during test construction (i.e. frequent mismatches), just production.
-		    console.log( authData.who, "WARNING.  Links exist on deleted label.  Mismatching peq during server init?", peq, links );  // need await somewhere for aws?
-		    // assert( links.length == 1 );
+		if( links === -1 || links.length != 1 ) { 
+		    console.log( authData.who, "WARNING.  XXX Link does not exist on deleted label.  Mismatching peq during server init?", pd.repoId, pd.ceProjectId, peq, links ); 
 		    return;
 		}
 

@@ -39,12 +39,12 @@ async function checkNewbornIssue( authData, testLinks, td, issueData, testStatus
     
     
     // CHECK dynamo linkage
-    let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName } );
+    let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
     let meltLink = links.filter((link) => link.hostIssueId == issueData[0] );
     subTest = tu.checkEq( meltLink.length, 0, subTest, "invalid linkage" );
     
     // CHECK dynamo Peq
-    let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == issueData[0] );
     subTest = tu.checkEq( meltPeqs.length, 0, subTest, "invalid peq" );
     
@@ -84,7 +84,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, issueData, testStat
     subTest = tu.checkEq( meltCard.columnId, td.unclaimCID,     subTest, "Card location" );
     
     // CHECK dynamo linkage
-    let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName });
+    let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName });
     let meltLink = ( links.filter((link) => link.hostIssueId == issueData[0] ))[0];
     subTest = tu.checkEq( typeof meltLink !== 'undefined', true,        subTest, "Link not present" );
 
@@ -98,7 +98,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, issueData, testStat
 	subTest = tu.checkEq( meltLink.hostProjectId, td.unclaimPID,          subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
-	let peqs =  await awsUtils.getPeqs( authData, { "CEProjectId": td.ceProjectId });
+	let peqs =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
 	let meltPeq = ( peqs.filter((peq) => peq.HostIssueId == issueData[0] ))[0];
 	subTest = tu.checkEq( typeof meltPeq !== 'undefined', true,        subTest, "no peq yet" );
 	if( typeof meltPeq !== 'undefined' ) {
@@ -153,9 +153,9 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     let subTest = [ 0, 0, []];
     
     subTest = tu.checkEq( meltIssue.assignees.length, 2,                              subTest, "Issue assignee count" );
-    if     ( colId == td.dsPendId ) { subTest = tu.checkEq( meltIssue.state, "CLOSED",     subTest, "Issue status" );  }
-    else if( colId == td.dsAccrId ) { subTest = tu.checkEq( meltIssue.state, "CLOSED",     subTest, "Issue status" );  }
-    else                            { subTest = tu.checkEq( meltIssue.state, "OPEN",       subTest, "Issue status" );  }
+    if     ( colId == td.dsPendId ) { subTest = tu.checkEq( meltIssue.state, config.GH_ISSUE_CLOSED,     subTest, "Issue status" );  }
+    else if( colId == td.dsAccrId ) { subTest = tu.checkEq( meltIssue.state, config.GH_ISSUE_CLOSED,     subTest, "Issue status" );  }
+    else                            { subTest = tu.checkEq( meltIssue.state, config.GH_ISSUE_OPEN,       subTest, "Issue status" );  }
 
     // CHECK github location
     let cards = await gh2tu.getCards( authData, pid, colId );   
@@ -168,7 +168,7 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     
     // CHECK Dynamo PEQ
     // Should be no change
-    let peqs =  await awsUtils.getPeqs( authData,  { "CEProjectId": td.ceProjectId });
+    let peqs =  await awsUtils.getPEQs( authData,  { "CEProjectId": td.ceProjectId });
     let meltPeqs = peqs.filter((peq) => peq.HostIssueId == meltIssue.id );
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
@@ -219,7 +219,7 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     let prog = config.PROJ_COLS[ config.PROJ_PROG ]; 
     let pend = config.PROJ_COLS[ config.PROJ_PEND ]; 
     let accr = config.PROJ_COLS[ config.PROJ_ACCR ]; 
-    let links = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.GHFullName });
+    let links = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName });
     assert( links != -1 );
     let meltLink = ( links.filter((link) => link.hostIssueId == meltIssue.id ))[0];
     subTest = tu.checkEq( meltLink.hostIssueNum, meltIssue.number,        subTest, "Linkage Issue num" );
@@ -256,7 +256,7 @@ async function testStepByStep( authData, testLinks, td ) {
     if( VERBOSE ) { tu.testReport( testStatus, "A" ); }
     
     // 2. add peq label
-    let newLabel = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "", 1000 );
+    let newLabel = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "", 1000 );
     await gh2tu.addLabel( authData, newLabel.id, meltData );
 
     // gh needs to create unclaimed first time through.  can take time. 
@@ -279,7 +279,7 @@ async function testStepByStep( authData, testLinks, td ) {
     await gh2tu.addAssignee( authData, meltData, assignee2 );
     await utils.sleep( 1000 );
     testStatus = await gh2tu.checkAssignees( authData, td, [ASSIGNEE1, ASSIGNEE2], meltData, testStatus );
-    testStatus = await gh2tu.checkPact( authData, testLinks, td, ISS_FLOW, config.PACTVERB_CONF, config.PACTACT_CHAN, "add assignee", testStatus );
+    testStatus = await gh2tu.checkPact( authData, testLinks, td, ISS_FLOW, config.PACTVERB_CONF, config.PACTACT_CHAN, config.PACTNOTE_ADDA, testStatus );
     
     if( VERBOSE ) { tu.testReport( testStatus, "D" ); }
 
@@ -321,7 +321,7 @@ async function testEndpoint( authData, testLinks, td ) {
     let meltData = await gh2tu.makeIssue( authData, td, ISS_RACE, [] );               // [id, number, title]  (mix str/int)
     
     // 2. add peq label
-    let newLabel = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "", 1000 );
+    let newLabel = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "", 1000 );
     await gh2tu.addLabel( authData, newLabel.id, meltData );
     
     // 3. Add to project
@@ -380,9 +380,9 @@ async function testBlast( authData, testLinks, td ) {
     let assignee1   = await gh2tu.getAssignee( authData, ASSIGNEE1 );
     let assignee2   = await gh2tu.getAssignee( authData, ASSIGNEE2 );
     
-    let lab1   = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, "",      604 );
-    let labNP1 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP1, -1 );	
-    let labNP2 = await gh2tu.findOrCreateLabel( authData, td.GHRepoId, false, LABNP2, -1 );	
+    let lab1   = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "",      604 );
+    let labNP1 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, LABNP1, -1 );	
+    let labNP2 = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, LABNP2, -1 );	
 
 
     // 1. Simple blast
@@ -393,7 +393,7 @@ async function testBlast( authData, testLinks, td ) {
     const uncLoc = await gh2tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.UNCLAIMED );
 
     let title  = "Blast 1";
-    let link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
+    let link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.ghFullName );
     let card   = await gh2tu.getCard( authData, link.hostCardId );
     testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [assignee1.id]});
 
@@ -402,7 +402,7 @@ async function testBlast( authData, testLinks, td ) {
     // 2. blast  
     issDat = await gh2tu.blastIssue( authData, td, "Blast 2", [labNP1, lab1, labNP2], [assignee1, assignee2] );
     title  = "Blast 2";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );    
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.ghFullName );    
     card   = await gh2tu.getCard( authData, link.hostCardId );
     testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
 						  {soft: true, label: 604, lblCount: 3, assigns: [assignee1.id, assignee2.id]});
@@ -412,7 +412,7 @@ async function testBlast( authData, testLinks, td ) {
     // 3. blast  
     issDat = await gh2tu.blastIssue( authData, td, "Blast 3", [lab1, labNP2], [assignee1, assignee2] );               
     title  = "Blast 3";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.ghFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
     testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
 						  {soft: true, label: 604, lblCount: 2, assigns: [assignee1.id, assignee2.id]});
@@ -422,7 +422,7 @@ async function testBlast( authData, testLinks, td ) {
     // 4. blast  
     issDat = await gh2tu.blastIssue( authData, td, "Blast 4", [labNP1, lab1], [assignee1, assignee2] );
     title  = "Blast 4";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.ghFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
     testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
 						  {soft: true, label: 604, lblCount: 2, assigns: [assignee1.id, assignee2.id]});
@@ -432,7 +432,7 @@ async function testBlast( authData, testLinks, td ) {
     // 5. blast  
     issDat = await gh2tu.blastIssue( authData, td, "Blast 5", [labNP1, labNP2, lab1], [assignee2, assignee1] );               
     title  = "Blast 5";
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.ghFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
     testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,
 						  {soft: true, label: 604, lblCount: 3, assigns: [assignee2.id, assignee1.id]});
@@ -448,7 +448,7 @@ async function testBlast( authData, testLinks, td ) {
     await gh2tu.remLabel( authData, labNP1, issDat );    
     await gh2tu.remLabel( authData, labNP2, issDat );    
     
-    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.GHFullName );
+    link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.ghFullName );
     card   = await gh2tu.getCard( authData, link.hostCardId );
     // Assigns show up still - peq assignees not updated once created until ceFlutter
     testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus,

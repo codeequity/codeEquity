@@ -133,6 +133,27 @@ function validField( arr, field ) {
     return !!arr && arr.hasOwnProperty( field ) && !!arr[field] && typeof arr[field] !== 'undefined';
 }
 
+// Utility to improve print spacing
+// first 4, ..., last 4
+function fill( val, num ) {
+    let retVal = "";
+    if( typeof val !== 'undefined' ) {  // undef if bad loc, say
+	if( val.length > num ) {
+	    let fromVal = Math.floor( (num-3)/2 );  // number of characters from val in retVal
+	    for( var i = 0; i < fromVal; i++ ) { retVal = retVal.concat( val[i] ); }
+	    retVal = retVal.concat( "..." );
+	    for( var i = val.length - fromVal ; i < val.length; i++ ) { retVal = retVal.concat( val[i] ); }
+	    if( val.length % 2 == 0 ) { retVal = retVal.concat( " " ); }
+	}
+	else {
+	    for( var i = 0; i < num; i++ ) {
+		if( val.length > i ) { retVal = retVal.concat( val[i] ); }
+		else                 { retVal = retVal.concat( " " ); }
+	    }
+	}
+    }
+    return retVal;
+}
 
 
 // Use this sparingly, if at all!!
@@ -181,6 +202,7 @@ async function ingestPActs( authData, pactIds ) {
 
 exports.randAlpha     = randAlpha;
 exports.validField    = validField;
+exports.fill          = fill;
 exports.postCE        = postCE;
 exports.sleep         = sleep;
 exports.getMillis     = getMillis;
