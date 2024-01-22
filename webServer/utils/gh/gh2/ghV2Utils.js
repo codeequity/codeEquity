@@ -41,6 +41,8 @@ function printEdges( base, item, values ) {
 // Note: view:options.id, pv2:ssfv.optionId stay stable across roadmap/table/board views, independent of sorting, display.
 async function getHostLinkLoc( authData, pid, locData, linkData, cursor ) {
 
+    // await getNonLegacy( authData );
+    
     // XXX Getting several values per issue here that are unused.  remove.
     // See notes above.  first:1 is appropriate here.
     const query1 = `query linkLoc($nodeId: ID!, $fName: String!) {
@@ -614,6 +616,29 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
 
     return labelRes;
 }
+
+/*
+// Test header .. works
+async function getNonLegacy( authData ) {
+    let query = `query( $id: ID! ) {
+                   node( id: $id ) {
+                        ... on Organization { id, name
+                 	                      projectsV2( first:100)
+                                                 {edges{node{ title id }}}
+                                       }}}`;
+    // let variables = {"id": "MDEyOk9yZ2FuaXphdGlvbjYzMDYzMDg2"};
+    let variables = {"id": "O_kgDOA8JELg"};
+    let queryJ    = JSON.stringify({ query, variables });
+
+    try {
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "getNonLeg" )
+	    // .then( ret => { console.log( ret.data, ret.extensions.warnings ); });
+	    .then( ret => { console.log( ret.data, ret ); });
+    }
+    catch( e ) { console.log( e ); }
+}    
+*/
+
 
 async function getLabels( authData, issueId ) {
     console.log( authData.who, "Get labels on issue", issueId );
