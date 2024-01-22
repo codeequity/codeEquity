@@ -1,8 +1,10 @@
-const assert   = require( 'assert' );
-const ceRouter = require( './ceRouter' );
+const rootLoc = "../../";
 
-const awsUtils  = require( '../utils/awsUtils' );
-const ghUtils   = require( '../utils/gh/ghUtils' );
+const assert   = require( 'assert' );
+const ceRouter = require( rootLoc + 'routes/ceRouter' );
+
+const awsUtils  = require( rootLoc + 'utils/awsUtils' );
+const ghUtils   = require( rootLoc + 'utils/gh/ghUtils' );
 
 async function handler( ghLinks, ceJobs, ceProjects, ceNotification, reqBody, res ) {
 
