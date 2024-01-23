@@ -10,13 +10,89 @@ const ghV2     = require( './ghV2Utils' );
 
 const gh2Data  = require( '../../../routes/gh/gh2/gh2Data' );
 
+// locked cards list
+var locked = [];
+
+function unlockCards( cardId ) {
+    for( let i = 0; i < locked.length; i++ ) {
+	if( locked[i] == cardId ) { locked.splice( i, 1 ); }
+    }
+}
+
+function isLocked( cardId ) {
+    let retVal = false;
+    for( let i = 0; i < locked.length; i++ ) {
+	if( locked[i] == cardId ) { retVal = true; break; }
+    }
+    if( retVal ) { console.log( cardId, "is locked" ); }
+    return retVal;
+}
+
+function lockCard( cardId ) {
+    locked.push( cardId );
+}
+
+async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, splitTag, doNotTrack, rebase ) {
+    let origIssueId = pd.issueId;
+    let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
+    assert( issueData[2] != -1 );
+    
+    // New issueId, name, num, cardId.  Location is already correct in link so no need to update splitLink
+    // resolve needed col data to rewrite info to GH.  But should not keep it if non-peq.  resolve handles 1-n, pnp handles 0
+    // Need to put card in correct spot in GH.  await later
+    let movePromise = ghV2.moveCard( authData, pd.projectId, issueData[2], hostUtility, link.hostColumnId );
+    
+    // Note: earlier card removal means subsequent card:moved notice fails since card does not exist.  rebuild uses link.hostUtil to record connection
+    link.hostUtility = link.hostCardId;
+
+    let splitLink = ghLinks.rebuildLinkage( authData, link, issueData, issue.title );
+    if( doNotTrack ) { splitLink = ghLinks.rebaseLinkage( authData, pd.ceProjectId, issueData[0] ); }
+    unlockCards( link.hostCardId );
+    
+    // On initial populate call, resolve is called first, followed by processNewPeq.
+    // Leave first issue for PNP.  Start from second.
+    // Can no longer depend on link, since rebuildLinkage modded, then destroyed original copy.
+
+    // Don't record simple multiply-carded issues
+    if( pd.peqType != config.PEQTYPE_END ) {
+	console.log( authData.who, "Building peq for", splitLink.hostIssueName, splitLink.hostColumnName );
+	let projName   = splitLink.hostProjectName;
+	let colName    = splitLink.hostColumnName;
+	assert( projName != "" );
+	pd.projSub   = utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
+	pd.issueId   = splitLink.hostIssueId;
+	pd.issueNum  = splitLink.hostIssueNum;
+	pd.issueName = splitLink.hostIssueName;
+	
+	let specials = {};
+	specials.pact     = "addRelo";
+	specials.columnId = splitLink.hostColumnId; 
+	
+	awsUtils.recordPEQData(authData, pd, false, specials );
+    }
+    let success = await movePromise;
+    assert( success );
+
+    // populateCE does not require this
+    if( typeof rebase === 'undefined' ) { return; }
+
+    if( doNotTrack ) { ghLinks.rebaseLinkage( authData, pd.ceProjectId, origIssueId ); }
+}
+
+// Resolve peels off splitIssue so there is no need to spin-await for it.  splitIssue is very expensive (2+s).  In particular, createIssue takes GH 1 full s to process
+// Tough issue is when ghV2:makeProjectCard, cardIssue generates create notice, which triggers PNP, then resolve.  If
+// followup moveCard notice reaches CE before above resolve finishes, specifically before splitIssue:rebuildLinkage finishes
+// move is processed on a card that was removed during split.   This issue is avoided by locking the card that is about to be removed
+// to prevent operations on those cards that will just fail (like card:move).  The alternative is to await, which is too costly.
+// 
 // populateCE is called BEFORE first PEQ label association.  Resulting resolve may have many 1:m with large m and PEQ.
 // each of those needs to recordPeq and recordPAction
 // NOTE: when this triggers, it can be very expensive.  But after populate, any trigger is length==2, and only until user
 //       learns 1:m is a semantic error in CE
 // Main trigger during typical runtime:
 //  1: add another project card to situated issue
-async function resolve( authData, ghLinks, pd, doNotTrack ) {
+async function resolve( authData, ghLinks, pd, issue, doNotTrack, rebase ) {
+    let now = Date.now();
     let gotSplit = false;
     
     // console.log( authData.who, "RESOLVE", pd.issueId );
@@ -38,12 +114,13 @@ async function resolve( authData, ghLinks, pd, doNotTrack ) {
 	[links[0], links[1]] = [links[1], links[0]];
     }
 
-    
     console.log( authData.who, "Splitting issue to preserve 1:1 issue:card mapping, issueId:", pd.issueId, pd.issueNum );
 
     // Need all issue data, with mod to title and to comment
     assert( links[0].hostIssueNum == pd.issueNum );
-    let issue = await ghV2.getFullIssue( authData, pd.issueId );  
+    // labelHandler, populate does not call getFull, do so here (need id, proper label format).  CardHandler does
+    if( !utils.validField( issue, "id" )) { issue = await ghV2.getFullIssue( authData, pd.issueId ); }
+	
     assert( Object.keys( issue ).length > 0 );
     pd.repoId    = links[1].hostRepoId;
     pd.projectId = links[1].hostProjectId;
@@ -70,16 +147,15 @@ async function resolve( authData, ghLinks, pd, doNotTrack ) {
 	    // update peqData for subsequent recording
 	    pd.peqValue = peqVal;
 
-	    await ghV2.rebuildLabel( authData, label.id, newLabel.id, issue.id );
+	    ghV2.rebuildLabel( authData, label.id, newLabel.id, issue.id );
 	    // Don't wait
 	    awsUtils.changeReportPEQVal( authData, pd, peqVal, links[0] );
 	    break;
 	}
 	idx += 1;
     }
-
+    
     // Create a new split issue for each copy, move new card loc if need be, set links
-    let splitIssues = [];
     for( let i = 1; i < links.length; i++ ) {
 	let splitTag   = utils.randAlpha(8);
 	pd.repoId      = links[i].hostRepoId;
@@ -100,50 +176,17 @@ async function resolve( authData, ghLinks, pd, doNotTrack ) {
 	
 	// Remove card user just created.  Create new issue and card, relink.  Leave it in 'no status' for subsequent card:move to manage.
 	ghV2.removeCard( authData, pd.projectId, links[i].hostCardId); 
-	let issueData  = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
-	assert( issueData[2] != -1 );
 
-	// Need to put card in correct spot in GH
-	let success = await ghV2.moveCard( authData, pd.projectId, issueData[2], locs[0].hostUtility, links[i].hostColumnId );
-	assert( success );
-
-	// New issueId, name, num, cardId.  Location is already correct in links[i] so no need to update splitLink
-	// resolve needed col data to rewrite info to GH.  But should not keep it if non-peq.  resolve handles 1-n, pnp handles 0
-	// Note: above card removal means subsequent card:moved notice fails since card does not exist.  rebuild uses link.hostUtil to record connection
-	links[i].hostUtility = links[i].hostCardId;
-	let splitLink = ghLinks.rebuildLinkage( authData, links[i], issueData, issue.title );
-	if( doNotTrack ) { splitLink = ghLinks.rebaseLinkage( authData, pd.ceProjectId, issueData[0] ); }
+	// Block further actions (like moves) on this card until splitIssue is in a good state
+	lockCard( links[i].hostCardId );
 	
-	splitIssues.push( splitLink );
-    }
-
-    // On initial populate call, resolve is called first, followed by processNewPeq.
-    // Leave first issue for PNP.  Start from second.
-    // Can no longer depend on links[i], since rebuildLinkage modded, then destroyed original copy.
-    for( split of splitIssues ) {
-	// Don't record simple multiply-carded issues
-	if( pd.peqType != config.PEQTYPE_END ) {
-	    console.log( authData.who, "Building peq for", split.hostIssueName, split.hostColumnName );
-	    let projName   = split.hostProjectName;
-	    let colName    = split.hostColumnName;
-	    assert( projName != "" );
-	    pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );	    
-
-	    pd.issueId    = split.hostIssueId;
-	    pd.issueNum   = split.hostIssueNum;
-	    pd.issueName  = split.hostIssueName;
-
-	    let specials = {};
-	    specials.pact     = "addRelo";
-	    specials.columnId = split.hostColumnId; 
-	    
-	    awsUtils.recordPEQData(authData, pd, false, specials );
-	}
+	splitIssue( authData, ghLinks, links[i], locs[0].hostUtility, pd, issue, splitTag, doNotTrack, rebase );
     }
     
-    console.log( authData.who, "Resolved." );
+    console.log( authData.who, "Resolved.", Date.now() - now );
     return gotSplit;
 }
+
 
 // Add linkage data for all carded issues in a new project, then resolve to guarantee 1:1
 // 
@@ -180,7 +223,7 @@ async function populateCELinkage( authData, ghLinks, pd )
 		pd.issueId  = link.hostIssueId;
 		pd.issueNum = link.hostIssueNum;
 		let pdCopy =  gh2Data.GH2Data.from( pd );
-		promises.push( resolve( authData, ghLinks, pdCopy, false ) );
+		promises.push( resolve( authData, ghLinks, pdCopy, {}, false ) );
 	    }
 	}
 	// mark duplicates
@@ -355,11 +398,14 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // Resolve splits issues to ensure a 1:1 mapping issue:card, record data for all newly created issue:card(s)
     // Update linkage with future GH locations, presuming peq.  Will undo this after resolve as needed.  Split needs locs to create for GH.
     ghLinks.addLinkage( authData, pd.ceProjectId, orig );
-    let doNotTrack = fromCard && pd.peqValue <= 0; 
-    let gotSplit = await resolve( authData, ghLinks, pd, doNotTrack );  
-    if( doNotTrack ) { ghLinks.rebaseLinkage( authData, pd.ceProjectId, orig.hostIssueId ); }
+    let doNotTrack = fromCard && pd.peqValue <= 0;
+    let gotSplit = await resolve( authData, ghLinks, pd, issue, doNotTrack, true );
+
+    // resolve rebases if it does work.
+    if( !gotSplit && doNotTrack ) { ghLinks.rebaseLinkage( authData, pd.ceProjectId, orig.hostIssueId ); }
 
     // record peq data for the original issue:card
+    // If resolve did nothing, all is orig, record. 
     // NOTE: If peq == end, there is no peq/pact to record, in resolve or here.
     //       else, if resolve splits an issue due to create card, that means the base link is already fully in dynamo.
     //                Resolve will add the new one, which means work is done.
@@ -367,14 +413,19 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     //                issue is to create card.  Furthermore populate does not call this function.
     //       So.. this fires only if resolve doesn't split - all standard peq labels come here.
     if( pact != -1 && !gotSplit && pd.peqType != "end" ) {
-	pd.projSub = await utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
+	pd.projSub = utils.getProjectSubs( authData, ghLinks, pd.ceProjectId, projName, colName );
 	awsUtils.recordPEQData( authData, pd, true, specials );
+    }
+    else if( gotSplit ) {
+	console.log( authData.who, "No need to further update peq" );
     }
     else {
 	console.log( authData.who, "No need to update peq" );
     }
+
 }
 
 exports.resolve           = resolve;
 exports.populateCELinkage = populateCELinkage;
 exports.processNewPEQ     = processNewPEQ;
+exports.isLocked          = isLocked;

@@ -32,6 +32,8 @@ var ghCost    = new hist.Histogram( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 3
 var ghLatency = new hist.Histogram( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
 
 
+// Github Demote queue
+
 function getJobSummaryGHC( jobData, locator ) {
     console.log( "GHC DEPRECATED" );
     assert( false );

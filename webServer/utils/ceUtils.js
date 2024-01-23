@@ -48,7 +48,7 @@ async function postCE( shortName, postData ) {
 
 // This needs to occur after linkage is overwritten.
 // Provide good subs no matter if using Master project indirection, or flat projects.
-async function getProjectSubs( authData, ghLinks, ceProjId, projName, colName ) {
+function getProjectSubs( authData, ghLinks, ceProjId, projName, colName ) {
     let projSub = [ "Unallocated" ];  // Should not occur.
 
     // console.log( authData.who, "Set up proj subs", projName, colName );

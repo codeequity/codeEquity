@@ -312,6 +312,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		}
 	    }
 
+	    // Locked?
+	    // --------------
+	    if( ingestUtils.isLocked( cardId ) ) { return "postpone"; }
+
 	    // Move into.  Split results have no 'from' onto a 'to' location.  Changes reject logic slightly.
 	    // --------------
 	    if( newCard === -1 ) {
