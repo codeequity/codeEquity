@@ -9,7 +9,7 @@ CodeEquity is composed of the following major components:
 <br>
 
 
-* **CodeEquity GitHub App**.  A GitHub app that converts projects in a GitHub repository into CodeEquity projects.
+* **CodeEquity GitHub App**.  A GitHub app that converts GitHub repositories into CodeEquity projects.
 * **CE Flutter**.  A multi-platform front end for managing CodeEquity projects.
 * **CE Server**.  A Node.js Express server that handles requests from the CodeEquity GitHub App and
                   CE Flutter, and manages all related modifications to provisional equity.  

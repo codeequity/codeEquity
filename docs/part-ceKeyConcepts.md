@@ -13,32 +13,35 @@ binding definitions and details, refer to the **CodeEquity Venture Equity Agreem
 
 ### CodeEquity Ventures & Projects
 
-A CodeEquity Venture is analogous to a company.  A CodeEquity Project is analogous to a project, or
-part of a project within a company.
+A CodeEquity Venture is analogous to a company.  Equity within a company is separate and distinct
+from equity within a second company.  A CodeEquity Project is analogous to a project, or part of a
+project within a company.  Equity within a company may be earmarked for different projects or
+purposes within that company.
 
 For example, Jessie has a great idea for an app that allows people within a community to browse,
-borrow and loan books with each-other, and has decided to pursue this idea within the CodeEquity
-framework.  Jessie is calling the app "BookShare".  To simplify planning, Jessie decides to break the app
-development, planning and tracking into several projects: *BookShare frontend*, *BookShare backend*, and *BookShare
+borrow, and loan books with each-other, and has decided to pursue this idea within the CodeEquity
+framework.  Jessie is calling the app "BookShare".  To simplify planning, Jessie decides to break the app's
+development tasks into several smaller projects: *BookShare frontend*, *BookShare backend*, and *BookShare
 operations*.  In this example, the CodeEquity Venture is BookShare.  The Venture is made up of three
 CodeEquity Projects: *BookShare frontend*, *BookShare backend*, and *BookShare operations*.
 CodeEquity will track and collate provisional equity across the three projects and report it within
-the umbrella of the Venture: BookShare.
+the umbrella of the Venture: BookShare.  Jessie could have chosen a different way to structure
+BookShare within the CodeEquity framework, but this breakdown is simple and functional.
 
 
 ### Provisional Equity (PEQ)
 
 In point of fact, *equity* is not earned in CodeEquity Ventures, but rather *provisional equity* is.
 Equity in a company requires the company to exist as a legal entity such as an LLC or a Corporation.
-This is not a useful step for most early ventures, since it takes time and money to set up, time
-that is better spent on developing and testing the ideas for the venture.
+This is not a useful step for most early ventures.  It takes time and money to set up these
+entities, both of which can be better spent developing and testing the ideas for the venture.
 
 Provisional equity are normal stock options, provisional on the venture being converted into a legal
 business entity at some point in the future.  The CodeEquity promise, secured by the CodeEquity legal framework, is that every
 share of provisional equity owned by a contributor will be converted 1:1 to a stock option in any
 company created from the venture.  Furthermore, any revenue gained by a CodeEquity Venture (for
 example, with the sale of related intellectual property) that is not fed back into the venture will
-be split among contributors according to how many shares of Provisional Equity they have.
+be split among contributors according to how many shares of Provisional Equity they have accrued.
 
 For binding definitions and details, refer to **Provisional Stock Options** in the **CodeEquity Venture Equity Agreement**.  
 For simplicity of reference throughout CodeEquity, one provisional stock option is denoted as *1 PEQ*,
@@ -49,7 +52,7 @@ or *one share of provisional equity*.
 
 A CodeEquity Project will normally be planned and tracked with a collection of *issues* managed 
 with project management software, such as GitHub project boards.  Common issues
-involve planned features, feature requests, and bug reports.
+involve planned features, feature requests, bug reports, and operational tasks.
 
 A PEQ issue is any issue that has a PEQ value attached to it.  For example, the *BookShare frontend*
 project might have an issue: "Add book detail page".  Without an associated PEQ value, this is not a
