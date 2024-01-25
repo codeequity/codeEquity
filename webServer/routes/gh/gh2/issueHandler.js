@@ -325,7 +325,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		console.log( authData.who, "Label was deleted.  Stop, let labelHandler address this." );
 		return;
 	    }
-		
+
+	    // At this point, PEQ label
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );	    
@@ -483,6 +484,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "issueId": pd.issueId } );
 		let link = links === -1 ? links : links[0]; 
 
+		// Ignores untracked issues
 		if( link !== -1 && link.hostIssueName != config.EMPTY) {
 
 		    // Unacceptable for ACCR.  No changes, no PAct.  Put old title back.

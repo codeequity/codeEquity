@@ -132,6 +132,10 @@ changed down the road.
 
 # CodeEquity for GitHub
 
+CodeEquity is built to interface with any code hosting platform that can meet certain requirements.  The
+core elements of CE Server and CE Flutter are agnostic to the host platform the CodeEquity Project
+is hosted on.  This portion of the manual is specific to CodeEquity for GitHub.
+
 CodeEquity works with GitHub through
 [project boards](https://docs.github.com/en/github/managing-your-work-on-github/managing-project-boards/about-project-boards),
 which is a Kanban-style project management
@@ -630,18 +634,18 @@ the notifications to.  The notifications are JSON REST, see a full example of on
 
 # CE Server
 
-CE Server is a Node.js Express server.  GitHub sends notifications to CE Server whenever a change is
+CE Server is a Node.js Express server.  The host GitHub sends notifications to CE Server whenever a change is
 made to a CodeEquity Project, as directed by the CodeEquity App for GitHub.  The express
 specification is found in [ceServer.js](ceServer.js), which establishes
-[githubRouter.js](routes/githubRouter.js) as the central dispatcher for CE Server.
+[ceRouter.js](routes/ceRouter.js) as the central dispatcher for CE Server.
 
-The main notification types in GitHub include: `issue`, `project_v2_item`, and `label`.  `issue`
+The main notification types in GitHub include: `issue`, `project_v2_item`, and `label`.  The `issue`
 notifications tend to deal with content, whereas the `project_v2_item` notifications tend to deal
-with views, for example card creation and location updates.  There are others
+with view modifications such as card creation and location updates.  There are other
 types, for example `synchronize` or `repository`, but these are irrelevant to CodeEquity.  The
 payloads for each notification type vary (details can be found
 [here](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#issues),
-but most carry information like action, repo, issue, timestamp and so on.  A simplified example of a
+but often carry information like action, repo, issue, timestamp and so on.  A simplified example of a
 `labeled` action for an `issue` notification is shown below.
 
 ```
@@ -674,10 +678,11 @@ but most carry information like action, repo, issue, timestamp and so on.  A sim
    { login: 'rmusick2000' }}
 ```
 
-CE Server will often act upon GitHub as a service to the user, to help keep the CodeEquity project
+All communication with the GitHub is encoded as JSON REST data.  CE Server will make REST calls to GitHub's
+GraphQL interface with as a service to the user, to help keep the CodeEquity project
 in a valid state.  Calls to GitHub may fail for a variety of reasons.  An error handler in
 [ghUtils.js](./ghUtils.js) will retry operations a number of times if the error type is
-recognizable.  All communication with the GitHub is encoded as JSON REST data.
+recognizable.  
 
 A key challenge for CE Server is that the server, AWS and GitHub are all marching along to a
 different clock.  CE Server starts to act only after receiving notifications from GitHub.  GitHub
@@ -686,13 +691,14 @@ aftershocks of that action have completely resolved.  GitHub sends these notific
 of what CE Server is currently working on.  Much of the effort in CE Server revolves around dealing with
 the asynchronous nature of these pairings.
 
-## `githubRouter` Job Dispatch
+## `ceRouter` Job Dispatch
 At the time of writing, CE Server is singly-threaded with no thread pool or worker threads.
 
 ### `ceJobs`
-In a well-behaved world, the handler in `githubRouter` would simply reroute each notification to
-it's specific handler, for example, `issueHandler` for the `issue:labeled` notification above.  As is typically the
-case for servers in the wild, however, that doesn't work here.  
+In a well-behaved world, the handler in `ceRouter` would simply reroute each notification to
+the host handler `githubRouter`, and from there to a specific handler like
+`issueHandler` (good for the `issue:labeled` notification above).  As is typically the case for servers in
+the wild, however, that doesn't work here.   
 
 The most common way in which this fails is when a group of notifications arrive at CE Server in
 close proximity (by time).  By default, each time a new notification arrives, it acts as an
@@ -701,23 +707,25 @@ pending operations interleave in the server in unpredictable ways.  This has sev
 including difficult debugging, out of order execution (vs. the originating actions in GitHub)
 becoming the norm, and job starvation.
 
-CE Server handles this with a FIFO (first in first out) queue in `githubRouter` called `ceJobs`.
-Every notification that arrives interrupts `githubRouter` long enough to add the job details to
+CE Server handles this with a FIFO (first in first out) queue in `ceRouter` called `ceJobs`.
+Every notification that arrives interrupts `ceRouter` long enough to add the job details to
 `ceJobs`, then processing continues with the first job on the queue.  In this manner, actual server
 operations begin and end with a single notification before starting on the next notification, and
 job starvation is not an issue.
 
 ### Demotion
 The `ceJobs` queue ensures that each notification is treated by CE Server as one atomic unit, in other
-words, no other notification can interfere with it during processing.  The `ceJobs` queue does not address
-out of order operations, however, which can lead to uncommon but pernicious failures due to
-dependency issues.
+words, no other notification can interfere with it during processing.  
 
-> This is a simplification, as some portions of jobs that do not need to be waited upon are allowed
-  to interrupt a currently active job.  For example, job1 may end up needing to record the raw GitHub
-  activity related to a PEQ issue on the AWS back end.  Since CE Server does not operate on these
-  raw notifications, the synchronous portion of job1 may terminate without waiting for the AWS
-  update to be constructed and sent upstream, and instead begin operating on job2.
+> Note: This is an over-simplification, as some portions of jobs that are self-contained are allowed
+  to interrupt a currently active job.  For example, job1 may end up recording the raw JSON payload
+  related to a PEQ issue notification on the AWS back end.  Since CE Server does not operate on these
+  raw notifications, job1 may terminate without waiting for the AWS
+  update to be constructed and sent upstream, and the server may begin operating on job2.  In cases
+  like this, the self-contained portion of job1 may interleave with any portion of job2 on the queue.
+
+The `ceJobs` queue does not address out of order operations, however, which can lead to uncommon but
+pernicious failures due to dependency issues.
 
 Many operations in GitHub generate several component notifications.  For example, creating an issue
 can generate an `issue:open` notification, several `issue:assigned` notifications, several
@@ -726,7 +734,7 @@ and can arrive at CE Server out of order.  There is no sequencing or grouping in
 notifications, and the timestamps are not dependable (for example, stamps only record to the second,
 and different stamps for the same operation can vary by as much as 10s!).
 
-To manage this, if a subhandler of `githubRouter` detects a dependency issue, it will direct the
+To manage this, if a subhandler of `githubRouter` detects a dependency issue, it will direct
 `githubRouter` to demote the current job by pushing it further down the `ceJobs` queue, so that the job it
 depends on can be handled first.
 
@@ -734,8 +742,8 @@ depends on can be handled first.
 
 Jessie is creating a new issue in BookShareFE, called *Blast 1*.   Jessie has filled out the issue
 details, including who is assigned to it, and has given the issue a PEQ label.  As soon Jessie
-clicks `Submit new issue` in GitHub, GitHub sends `githubRouter` a slew of notifications.  At some point
-during processing, the `ceJobs` queue looks like this: 
+clicks `Submit new issue` in GitHub, GitHub sends `ceRouter` a slew of notifications.  At some point
+during processing, the `ceJobs` queue looks like this (minus the payload for each notification): 
 
 ```
 ceJobs, Depth 2 Max depth 11 Count: 236 Demotions: 1
@@ -779,9 +787,10 @@ the next job.  The values controlling this operation can be configured in
 
 ## Linkages
 
-CE Server's subhandlers interact with GitHub via Octokit, and with the AWS Backend.  These APIs
+CE Server's subhandlers interact with GitHub via GraphQL API, and with the AWS Backend through it's
+Lambda interface (XXX revisit XXX) links.  These APIs
 frequently require information related to the operation at hand that can not be found in the
-notification.  For example, closing a PEQ issue in GitHub will cause CE Server to move that issue
+notification's payload.  For example, closing a PEQ issue in GitHub will cause CE Server to move that issue
 into the **Pending PEQ Approval** column.  The move requires the project ID and column ID of the
 target column, neither of which are to be found in the `issue:closed` notification.  
 
@@ -814,7 +823,7 @@ ariCETester/CodeEqui 12566159   Data Security   14524020   Accrued
 
 CE Server keeps `ghLinks` and `ghLocs` up to date with every operation on projects and columns in
 GitHub, and regenerates the state from scratch should the server be restarted.  Together, this state
-information is responsible for significant speedups for user operations on GitHub.
+information is responsible for significant speedups when responding to user operations on GitHub.
 
 ## Authorizations
 
@@ -824,6 +833,7 @@ CE Server uses several APIs to communicate with GitHub and the AWS Backend:
 * An [AWS Lambda Gateway](https://docs.aws.amazon.com/lambda/index.html) for CodeEquity's AWS Backend
 
 Each of these requires a different form of authorization.
+(XXX revisit XXX) verify octokit is out.  verify entire section.
 
 ##### CodeEquity App for Github credentials  (enabled upon app install)
 
@@ -838,7 +848,7 @@ also copied into the CE Flutter space as part of the flutter build step.
 
 Note that CodeEquity has a separate testing app for GitHub, called "ceTester", described in the
 **Testing** Section below.  ceTester generates GitHub activity under a separate testing account
-through the GitHub Octokit API, and so requires it's own set of app credentials.  These are stored
+through the GitHub GraphQL API, and so requires it's own set of app credentials.  These are stored
 as siblings to the credentials for the main CodeEquity App for GitHub.
 
 ##### Installation client for Octokit (refreshed hourly by CE Server)
@@ -852,7 +862,7 @@ specific to the CodeEquity App for GitHub, then uses that to get an installation
 which is used to sign all subsequent requests to the REST API from the app, for the
 repo-specific installation.
 
-At the time of writing, the installation token expires after an hour or so.  `githubRouter` tracks
+At the time of writing, the installation token expires after an hour or so.  `ceRouter` tracks
 the age of each token for every known owner and repo, and will refresh the token when the next
 notification arrives that requires communication with GitHub.
 
@@ -862,21 +872,19 @@ The installation token is not stored in the system.
 
 The REST API is useful up to a point for a GitHub app, but comes with some serious limitations.  For
 example, you can not delete an issue by using the REST API, which is critical for automated testing.
-For example, cards in a GitHub project point to issues, so it is very easy to find an issue given a
-card.  However, there are no reverse pointers.. if you only have an issue ID, you would need to ask
-GitHub for all projects for the repo, then all columns per project, all cards per column, then
-search all those cards for the desired issue.  This clearly does not scale.
 
 GitHub's Octokit also provides a GraphQL API, which allows an app to traverse the object hierarchy
-internal to GitHub within the context of a single query to the system.  In the example above,
-finding a card from an issue is a single, simple GraphQL query, in contrast to the hundreds of
+internal to GitHub within the context of a single query to the system.  A single GraphQL query can
+often do the work of, literally, hundreds of 
 queries the REST API might require.  The GraphQL API is fast and scalable, but does require access
 to a usable personal access token. 
 
 CodeEquity's personal access token is stored along with other server authorization data in
 `ops/github/auth`.  CE Server will use this token by default for all server-related GitHub GraphQL
-requests.  *This token works for all public repositories the have installed the CodeEquity App for
+requests.  *This token works for all public repositories that have installed the CodeEquity App for
 GitHub.*
+
+(XXX revisit XXX) seem to need PAT per person
 
 If you want to create a CodeEquity project in a *private* repository, then you will need to supply your
 personal access token to CE Server via CE Flutter (instructions will follow).  Private repositories
@@ -898,7 +906,7 @@ Cognito account that it uses for all communication to the backend.  The credenti
 are stored in `ops/aws/auth`.
 
 The Cognito ID token expires roughly every hour.  As with the management of the installation token
-above, `githubRouter` tracks the age of each token for CE Server, and will refresh an
+above, `ceRouter` tracks the age of each token for CE Server, and will refresh an
 expired token when the next notification arrives that requires communication with AWS.
 
 
@@ -910,7 +918,7 @@ CodeEquity projects in GitHub on behalf of users, in order to keep projects in a
 For example, when a user closes a PEQ issue in a CodeEquity project, that indicates that the work
 associated with the issue is complete, and the PEQ issue is ready to be reviewed by whomever has
 approval authority on the project.  In this case, CE Server will send a request to GitHub via the
-Octokit REST API to move the related card (remember, every PEQ issue has exactly one card attached
+Octokit GraphQL API to move the related card (remember, every PEQ issue has exactly one card attached
 to it) into the **Pending PEQ Approval** column.  CE Server will also make a request to GitHub to
 create this column in the project if it does not already exist.
 
@@ -923,38 +931,41 @@ server moving the related card to the **Pending PEQ Approval** column.
 
 CE Server's subhandlers assume that every new notification from GitHub originates from a human user,
 which makes it straightforward to determine what additional actions CE Server must initiate in
-GitHub to maintain a valid state.  For this to work, `githubRouter` filters out and ignores all
+GitHub to maintain a valid state.  For this to work, `ceRouter` filters out and ignores all
 notifications that originated from CE Server itself.  Notifications generated by CE Server have a
 specific `sender:login` in the notification payload that is derived from the name of the CodeEquity
-for GitHub App.  Continuing with the example above, `githubRouter` will pass along notifications
+for GitHub App.  Continuing with the example above, `ceRouter` will pass along notifications
 related to closing the PEQ issue to the issue subhandler, but filter and ignore the notifications
 related to moving the card to the **Pending PEQ Approval** column.
 
-CE Server's `githubRouter` also filters out all notifications from CodeEquity's two primary testing
-accounts, and any notifications for actions that CE Server need not pay attention to such as
+CE Server's `ceRouter` also filters out all notifications 
+for actions that CE Server need not pay attention to such as
 `synchronize` and `repository`.
 
 ## SubHandlers 
 
-As noted earlier, CE Server is a Node.js Express server.  The server specification is found in
-[ceServer.js](ceServer.js), which establishes [githubRouter.js](routes/githubRouter.js) as the
-central dispatcher for CE Server.  All notifications arrive at `githubRouter`, and are either
-filtered and ignored at that point, or converted into a job on the `ceJobs` stack.  `githubRouter`
+CE Server is a Node.js Express server.  The server specification is found in
+[ceServer.js](ceServer.js), which establishes [ceRouter.js](routes/ceRouter.js) as the
+central dispatcher for CE Server.  All notifications arrive at `ceRouter`, and are either
+filtered and ignored at that point, or converted into a job on the `ceJobs` stack.  `ceRouter`
 handles one job at a time from the `ceJobs` stack, from start to finish, by sending that job to it's
-related subhandler and waiting for its resolution.  
+related host handler and waiting for its resolution.  The host handler in this case is
+[githubRouter.js](routes/gh/githubRouter.js), which in turn acts as a switchboard by passing the
+jobs from `ceJobs` down to the appropriate subhandler.
 
 CE Server pays attention to the following notification types from GitHub: `issue`,
-`project_card`, `project`, `project_column`, and `label`.  Each of these notification types has it's
-own subhandler.  The payloads for each notification type vary (details can be found
+`project_v2_item`, and `label`.  Each of these notification types has it's own subhandler.  There is
+also a `cardHandler` which manages the events in `project_v2_item` that deal with cards.  The
+payloads for each notification type vary (details can be found
 [here](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads).
 
 CE Server additionally has a test handler, which provides access to limited internal state of the
 server for unit testing.
 
-Note that in all cases, CE Server gets notifications *after* the corresponding event has already
-occured on GitHub (even though sometimes CE Server precipitates those events).  So if the server
-needs to change something, it is always after the fact, and often involves undoing an action or a
-set of actions.  The issue logs (such as in the [GarlicBeer](#basic-issue-lifecycle) example) will
+Note that in all cases, CE Server gets notifications *after* processing for the corresponding event has already
+on GitHub (even though sometimes CE Server initiates those events).  So if the server
+needs to change something, it is always after the fact, and at times involves undoing an action or a
+set of actions that just took place on GitHub.  The issue logs (such as in the [GarlicBeer](#basic-issue-lifecycle) example) will
 show the sequence of events clearly in cases like this. 
 
 
@@ -962,7 +973,7 @@ show the sequence of events clearly in cases like this.
 
 The issue subhandler is found in [issueHandler.js](routes/gh/gh2/issueHandler.js).  Issue
 notifications cover a broad range of interactions with GitHub issues, many of which are not relevant
-to CodeEquity. 
+to CodeEquity.  These notifications are primarily concerned with content.
 
 The following notification types for issues are ignored by the handler: `opened`, `pinned`, `unpinned`,
 `locked`, `unlocked`, `milestoned`, and `demilstoned`.  It may be surprising to see `opened` as one of
@@ -970,18 +981,24 @@ the ignored actions.  CodeEquity does not track every issue in a CodeEquity proj
 are PEQ issues.  A PEQ issue can only be created with a `labeled` action.
 
 The following notification types for issues are handled by the handler: `labeled`, `unlabeled`,
-`deleted`, `closed`, `reopened`, `assigned`, `unassigned`, `edited`, and `transferred`.  
-*All valid actions* in this group that do
-not violate the constraints below will all *cause the handler to store the raw request body for the
-action in the AWS Backend, and possibly also update (or create) the PEQ issue on the AWS Backend*.
+`deleted`, `closed`, `reopened`, `assigned`, `unassigned`, `edited`, and `transferred`.  *Nearly all valid
+actions* in this group that do not violate the constraints below will all *cause the handler to
+store the raw request body for the action in the AWS Backend, and possibly also update (or create)
+the PEQ issue on the AWS Backend*.
 
 The `labeled` and `unlabeled` actions are relevant only when the label is a PEQ or an AllocPEQ label, such as
 ***1000 PEQ***, or ***200,000 AllocPEQ***.   A `labeled` action with a PEQ label is one of two ways to create a PEQ
-issue.  The second is to create a card with a PEQ label shortcut, which is described in the card subhandler section.
+issue.  The second is to create a 2nd card on an existing PEQ issue, which then gets split to stay consistent
+with CE Servers's 1:1 issue:card mapping requirement.  This is described in the card subhandler
+section.  The `unlabeled` action is only handled for PEQ issues.  CodeEquity does not allow the
+deletion of a PEQ label from an issue that is an **Pending PEQ Approval** or **Accrued** column.  If
+this occurs, the issue handler will re-label that issue with the original PEQ label.
 
-The `deleted` action ignores non-PEQ issues.  Deleting a PEQ issue will cause GitHub to send CE Server at least two notifications:
-`issue:deleted` and `card:deleted`.  In most cases, the card subhandler will do all of the work.  If
-the issue is a PEQ issue residing in an **Accrued** column, the issue subhandler takes over.
+The `deleted` action ignores non-PEQ issues.  Deleting a PEQ issue will cause GitHub to send CE
+Server the `issue:deleted` notification.  Since every PEQ issue is tied to a (single) card, CE
+Server must address internal state for both the issue and the card.  The `issueHandler` calls
+`cardHandler:delete` upon delete notification to make this happen, which does the bulk of the work.
+If the issue is a PEQ issue residing in an **Accrued** column, the issue subhandler takes over.
 Accrued PEQ issues are never modified on the AWS Backend, and have a permanent, binding status in
 CodeEquity.  In GitHub, however, apps can be removed and repositories deleted, even those with
 accrued PEQ issues.  CodeEquity, therefore, allows deletion of accrued PEQ issues with a two-step
@@ -1000,17 +1017,18 @@ otherwise the handler will create **In Progress** column and move the card there
 The `assigned` and `unassigned` actions are ignored for both non-PEQ issues and AllocPEQ issues.  For a PEQ
 issue, it is possible that the backend has not yet been updated, in which case this job will be
 demoted in the `ceJobs` queue.  If the constraints below are satisfied, the handler simply updates
-the backend here.
+the backend.
 
 The `edited` action is only handled for PEQ issues, and only when the changes involve the issue's
 title.  If the constraints below are satisfied, the handler simply updates
-the backend here.
+the backend.
 
 The `transferred` action is only handled for PEQ issues.  The handler does not interfere with the
 transfer of accrued PEQ issues, for reasons similar to allowing deletion of accrued PEQ issues on
 GitHub.  The handler will record the raw action in the AWS Backend, but as before, the accrued PEQ
 issue itself will be unmodified on the backend and retain its permanent, binding status in CodeEquity.
-
+The handler does not allow transfer of PEQ issues into a repo that is not part of a CodeEquity
+Project.
 
 CodeEquity project Constraints for the Issue SubHandler:
 
@@ -1018,7 +1036,10 @@ CodeEquity project Constraints for the Issue SubHandler:
 
 ##### `labeled` One PEQ label per issue
 If an issue is already a PEQ issue, the new label can not be a PEQ label, otherwise which PEQ value label should take precedence?
-In this case the handler will send GitHub an `issue:unlabeled` event for the new label.
+In this case the handler will send GitHub an `issue:unlabeled` event, usually for the new label.
+If the PEQ issue is in the **Pending PEQ Approval** column, then CodeEquity will remove the old
+label in favor of the new label instead.  This is to support the possibility of a limited
+negotiation over a PEQ issue in the step right before it would be accrued.
 
 ##### `labeled` 1:1 mapping from issue to card
 If an issue is given a PEQ label, but does not have an associated card yet, the handler will ask
@@ -1030,15 +1051,22 @@ column yet in the CodeEquity project, the handler will create an **Unclaimed** p
 An ***AllocPEQ*** label is used to indicate some amount of as-of-yet unplanned work to be carried
 out in a given area.  For example, front end work may be allocated 2,000,000 PEQ up front during
 early planning, without having to break that front end work down to specific tasks quite yet.
-CodeEquity's reserved and suggested project columns, namely: **Planned**, **In Progress**, **Pending
+Most of CodeEquity's reserved and suggested project columns, namely:  **In Progress**, **Pending
 PEQ Approval** and **Accrued** are meant to be used specifically for individual tasks that have
 already been broken down.  It does not make sense to put an allocation for unplanned work in one of
 these columns.  If this occurs, the handler will remove the card and any associated issue.
 
-##### `unlabeled` Can not modify accrued PEQ issues in CodeEquity.
+##### `unlabeled` Can not remove PEQ labels from proposed or accrued PEQ issues in CodeEquity.
 Once accrued, a PEQ issue can no longer be modified in CodeEquity (as stored in the AWS Backend).  In most cases, the handler
-will take actions so ensure that the GitHub view of the PEQ issue is consistent with the AWS
+will take actions to ensure that the GitHub view of the PEQ issue is consistent with the AWS
 Backend.  If a PEQ label is removed on an Accrued PEQ issue by a user in GitHub, the handler will reinstate it.  
+For proposed PEQ issues, directly removing the PEQ label for the issue would leave a non-PEQ issue
+in a reserved column for an unknown period of time.  To prevent this, the handler will re-instate
+the label.  Instead, a new PEQ label can be added to a proposed PEQ issue, and the handler will
+address it as described in the first constraint above.
+
+##### `deleted` Can not delete accrued PEQ issues.
+See description above for `unlabeled`.
 
 ##### `closed` Can not submit a PEQ issue for approval without assignees
 Closing a PEQ issue signals CE Server and other members on the project that the issue is fully
@@ -1053,14 +1081,52 @@ for an accrued PEQ issue, the handler will undo that change.
 Accrued PEQ issues should not be modified.  If a user attempts to change the title of an accrued PEQ
 issue on GitHub, the handler will undo that change. 
 
+##### `transferred` Can not move PEQ issues into, or out of non-CodeEquity Projects
+Transfers of PEQ issues into or out of repos that are not part of a CodeEquity Project are
+rejected, and the handler will attempt to undo the transfer.
+
 </blockquote>
 
+
+### pv2Item SubHandler
+
+The pv2Item subhandler (version 2 of GitHub projects) is found in
+[itemHandler.js](routes/gh/gh2/itemHandler.js).  pv2Item notifications are focused on interactions
+with GitHubs version 2 projects.  These notifications are typically related to views, not content.  
+
+Curiously, at the time of this writing, GitHub does send notifications for any activity connected to
+a card, which is a `projects_v2_item`, but does not send notifications for activity related to
+the columns in a project.  
+
+The following notification types are ignored by the handler: `archived`, `converted`, `reordered`,
+and `restored`.
+
+The following notification types are handled by the handler: `created`, `deleted`, and `edited`.
+
+The pv2Item subhandler is primarily tasked with routing jobs to their final handler.  No other work
+is done in this subhandler.  
+
+The `created` and `deleted` actions deal exclusively with cards, and so are routed to the card
+subhandler.
+
+The `edited` actions can deal with card movements, or label edits, or project title edits.
+* An edit describing a card movement is determined by the field type in the `changes` attribute in the
+notification's payload.  These jobs are forwarded to the card handler.
+* An edit describing a label edit is also determined by the field type in the `changes` attribute.
+In this case, a sibling content notification is send alongside this pv2Item notice.  This handler
+ignores the label edit, deferring to the label handler to manage the sibling notification.
+* An edit describing a project title edit can not be determined by the `changes` attribute, which is
+empty.  Instead, the handler detects a project title edit based on the `node_id` and the `title`
+attributes of the notification's payload.  These jobs are forwarded to the project handler.
+
+
+There are no CodeEquity project Constraints for the pv2Item SubHandler.
 
 
 ### Card SubHandler
 
-The card subhandler is found in [githubCardHandler.js](routes/githubCardHandler.js), and is focused
-on handling `project_card` (or, more simply, "card") notifications.
+The card subhandler is found in [cardHandler.js](routes/gh/gh2/cardHandler.js), and is focused
+on handling elements from `project_v2_item` (or, more simply, "card") notifications.
 
 Every type of card notification is relevant to CodeEquity, including: `created`, `converted`,
 `moved`, `deleted`, and `edited`.
