@@ -13,8 +13,8 @@ const fifoQ    = require( '../components/queue' );
 const hist     = require( '../components/histogram' );
 const circBuff = require( '../components/circBuff' );
 
-const testing  = require( './githubTestHandler' );
-const ghr      = require( './githubRouter' );
+const testing  = require( './gh/githubTestHandler' );
+const ghr      = require( './gh/githubRouter' );
 
 const authDataC  = require( '../auth/authData' );
 const jobData    = require( './jobData' );
@@ -93,7 +93,6 @@ function stampJob( jd, delayCount ) {
 
     jd.delayCount  = delayCount;
     jd.stamp = Date.now();
-    console.log( "STAMP", jd.queueId, jd.stamp );
 }
 
 function summarizeQueue( ceJobs, msg, limit, short ) {

@@ -13,7 +13,8 @@ function execAWS_CLI( table, flutterTest ) {
     let stamp = d.getDate().toString();
     console.log( "Saving AWS Dynamo table:", table );
 
-    // cmd = "aws dynamodb scan --table-name CEPEQs | jq '{"Ownerships": [.Items[] | {PutRequest: {Item: .}}]}' > testData/testDataCEPEQS.json"
+    // cmd = "aws dynamodb scan --table-name CEPEQs | jq '{"CEPEQA": [.Items[] | {PutRequest: {Item: .}}]}' > testData/testDataCEPEQS.json"
+    // cmd = "aws dynamodb scan --table-name CEHostUser --projection-expression "HostPlatform,HostUserName" | jq '{"CEHostUser": [.Items[] | {PutRequest: {Item: .}}]}' > ./testDataCEHostUser.json"
     let fname = "tests/testData/dynamo" + table + "_" + stamp + ".json";
     let lname = "tests/testData/dynamo" + table +"_latest"    + ".json";
     if( flutterTest ) {
@@ -22,6 +23,10 @@ function execAWS_CLI( table, flutterTest ) {
     }
 	
     let cmd = "aws dynamodb scan --table-name " + table + " | jq ";
+    // Special case to eliminate PATs from hostUser table.  Not a secure fix, just a sloppy joe fix.
+    if( table == "CEHostUser" ) {
+	cmd = "aws dynamodb scan --table-name " + table + " --projection-expression \"HostUserId,CEProjectIds,CEUserId,FutureCEProjects,HostPlatform,HostUserName\" " + " | jq ";
+    }
     cmd    += "'{\"" + table + "\": [.Items[] | {PutRequest: {Item: .}}]}' > ";
 
     execSync( cmd + fname, { encoding: 'utf-8' });

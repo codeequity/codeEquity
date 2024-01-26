@@ -271,10 +271,10 @@ async function createIssue( authData, repoNode, pid, issue ) {
 	if( e.status == 422 ) { console.log( authData.who, "WARNING. Issue not created.", issue, e.errors ); }
 	issueData = await ghUtils.errorHandler( "createIssue", e, createIssue, authData, repoNode, pid, issue );
     }
-    
+
     if( pid !== -1 ) { issueData = await cardIssue( authData, pid, issueData ); }
     console.log( authData.who, " .. issue created, issueData:", issueData );
-    
+
     return issueData;
 }
 
@@ -442,6 +442,7 @@ async function rebuildIssue( authData, repoNodeId, projectNodeId, issue, msg, sp
 	// Don't wait.
 	addComment( authData, issueData[0], comment );
     }
+    
     return issueData;
 }
 
@@ -615,6 +616,7 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     return labelRes;
 }
 
+
 async function getLabels( authData, issueId ) {
     console.log( authData.who, "Get labels on issue", issueId );
 
@@ -768,7 +770,7 @@ async function addLabel( authData, labelNodeId, issueId ) {
     return true;
 }
 
-async function rebuildLabel( authData, oldLabelId, newLabelId, issueId ) {
+function rebuildLabel( authData, oldLabelId, newLabelId, issueId ) {
     // Don't wait.  
     removeLabel( authData, oldLabelId, issueId );
     addLabel( authData, newLabelId, issueId );

@@ -1,23 +1,25 @@
+const rootLoc = "../../";
+
 const assert  = require('assert');
 
-const config  = require( '../config');
-const ceAuth  = require( '../auth/ceAuth' );
+const config  = require( rootLoc + 'config');
+const ceAuth  = require( rootLoc + 'auth/ceAuth' );
 
-const hist     = require( '../components/histogram' );
+const hist    = require( rootLoc + 'components/histogram' );
 
-const utils   = require( '../utils/ceUtils' );
-const links   = require( '../utils/linkage' );
-const ghUtils = require( '../utils/gh/ghUtils' );
+const utils   = require( rootLoc + 'utils/ceUtils' );
+const links   = require( rootLoc + 'utils/linkage' );
+const ghUtils = require( rootLoc + 'utils/gh/ghUtils' );
 
-const ceRouter = require( './ceRouter' );
+const ceRouter = require( rootLoc + 'routes/ceRouter' );
 
 // PMS_GHC
 
 // PMS_GH2
-const gh2Data   = require( './gh/gh2/gh2Data' );
-const gh2Item   = require( './gh/gh2/itemHandler' );
-const gh2Issue  = require( './gh/gh2/issueHandler' );
-const gh2Label  = require( './gh/gh2/labelHandler' );
+const gh2Data   = require( rootLoc + 'routes/gh/gh2/gh2Data' );
+const gh2Item   = require( rootLoc + 'routes/gh/gh2/itemHandler' );
+const gh2Issue  = require( rootLoc + 'routes/gh/gh2/issueHandler' );
+const gh2Label  = require( rootLoc + 'routes/gh/gh2/labelHandler' );
 
 // var noticeCount = 0;
 
@@ -29,6 +31,8 @@ const gh2Label  = require( './gh/gh2/labelHandler' );
 var ghCost    = new hist.Histogram( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
 var ghLatency = new hist.Histogram( 1, [300, 600, 900, 1500, 3000, 5000, 8000, 30000] );
 
+
+// Github Demote queue
 
 function getJobSummaryGHC( jobData, locator ) {
     console.log( "GHC DEPRECATED" );

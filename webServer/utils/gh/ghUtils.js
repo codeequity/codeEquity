@@ -40,9 +40,10 @@ async function postGH( PAT, url, postData, name, check422 ) {
     postRecord[name] = postRecord[name] + 1;
 
     // Accept header is for label 'preview'.
+    // next global id is to avoid getting old IDs that don't work in subsequent GQL queries.
     const params = {
 	method: "POST",
-        headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json" },
+        headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json", 'X-Github-Next-Global-ID': 1 },
 	body: postData 
     };
 

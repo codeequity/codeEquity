@@ -95,8 +95,8 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
 			   utils.getToday(), reqBody );
 }
 
-// This is called from issue:delete, and triggered from card:delete (which may be triggered initially from issue:xfer since xfer leaves card in place)
-// This may also be triggered by a programmatic move to No Status, which requires a card delete, followed by card create.  Both peq and non-peq.
+// This is called from issue:delete, and triggered from card:delete (which may also be triggered initially from issue:xfer since xfer leaves card in place)
+// This may also be triggered programmatically by calling delete (moving to No Status requires a card delete, followed by card create).  Both peq and non-peq.
 // issue:delete - GH removes the card without notification.
 // transfer issue leaves card in place in old repo, so issue:transfer will issue a GH:delete card, which will trigger here eventually.
 // del project?  For now, not getting project notifications.
@@ -274,6 +274,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	{
 	    // Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle here.
 	    // Can only be non-PEQ.  Otherwise, would see created/content_url
+	    // XXX card it.
 	    console.log( "Non-PEQ card converted to issue.  No action." );
 	}
 	break;
@@ -311,6 +312,10 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    break;
 		}
 	    }
+
+	    // Locked?  postpone when a related resolve:split is still underway
+	    // --------------
+	    if( ingestUtils.isLocked( cardId ) ) { return "postpone"; }
 
 	    // Move into.  Split results have no 'from' onto a 'to' location.  Changes reject logic slightly.
 	    // --------------
@@ -451,7 +456,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	}
 	break;
     case 'deleted' :
-	// Source of notification: delete card (delete col, delete proj, xfer   ???)
+	// Source of notification: delete col just moves to noStatus.  delete card ( delete proj, xfer   ???)
 	await deleteCard( authData, ghLinks, ceProjects, pd, pd.reqBody.projects_v2_item.node_id );
 	break;
     case 'edited' :   // Do nothing.
