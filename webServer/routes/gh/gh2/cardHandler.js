@@ -274,6 +274,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	{
 	    // Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle here.
 	    // Can only be non-PEQ.  Otherwise, would see created/content_url
+	    // XXX card it.
 	    console.log( "Non-PEQ card converted to issue.  No action." );
 	}
 	break;
@@ -312,7 +313,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		}
 	    }
 
-	    // Locked?
+	    // Locked?  postpone when a related resolve:split is still underway
 	    // --------------
 	    if( ingestUtils.isLocked( cardId ) ) { return "postpone"; }
 

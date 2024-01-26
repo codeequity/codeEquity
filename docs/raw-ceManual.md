@@ -910,21 +910,21 @@ rejected, and the handler will attempt to undo the transfer.
 
 The pv2Item subhandler is found in
 [itemHandler.js](routes/gh/gh2/itemHandler.js).  pv2Item notifications are focused on interactions
-with GitHubs version 2 projects.  These notifications are typically related to views, not content.  
+with GitHub's version 2 projects.
 
 Curiously, at the time of this writing, GitHub does send notifications for any activity connected to
 a card, which is a `projects_v2_item`, but does not send notifications for activity related to
 the columns in a project.  
 
-The following notification types are ignored by the handler: `archived`, `converted`, `reordered`,
+The following notification types are ignored by the handler: `archived`, `reordered`,
 and `restored`.
 
-The following notification types are handled by the handler: `created`, `deleted`, and `edited`.
+The following notification types are handled by the handler: `created`, `deleted`, `converted`, and `edited`.
 
 The pv2Item subhandler is primarily tasked with routing jobs to their final handler.  No other work
 is done in this subhandler.  
 
-The `created` and `deleted` actions deal exclusively with cards, and so are routed to the card
+The `converted`, `created` and `deleted` actions deal exclusively with cards, and so are routed to the card
 subhandler.
 
 The `edited` actions can deal with card movements, or label edits, or project title edits.
@@ -944,54 +944,49 @@ There are no CodeEquity project Constraints for the pv2Item SubHandler.
 ### Card SubHandler
 
 The card subhandler is found in [cardHandler.js](routes/gh/gh2/cardHandler.js), and is focused
-on handling elements from `project_v2_item` (or, more simply, "card") notifications.
+on handling specific events sent from the pv2Item subhandler.
 
-Every type of card notification is relevant to CodeEquity, including: `created`, `converted`,
-`moved`, `deleted`, and `edited`.
-*All valid actions* in this group that do
-not violate the constraints below will all *cause the handler to store the raw request body for the
-action in the AWS Backend, and possibly also update (or create) the PEQ issue on the AWS Backend*.
+The following notification types are relevant to CodeEquity: `created`, `converted`, `deleted`, and
+`edited`.  *All valid actions* in this group that do not violate the constraints below will
+*cause the handler to store the raw request body for the action in the AWS Backend, and possibly
+also update (or create) the PEQ issue on the AWS Backend*.
 
-The `created` action is ignored if there is no associated issue.  If the card is linked to an issue
-that is not a PEQ issue, some internal state is collected to speed future activity.  If the user
-creates a card in the project board and uses a PEQ label shortcut such as `<PEQ: 10,000>`, the
-handler will recognize this as shorthand for PEQ issue creation.  The handler will create or find
-the PEQ label, create an issue for that card with the new label, and rebuild the card to point at
-the new issue.
+The `created` action is ignored if the `content_type` in the payload is `DraftIssue`.  Draft issues
+have no bearing on CodeEquity.  If the card is linked to an issue that is not a PEQ issue, some
+internal state is collected to speed future activity.   The job corresponding to the `created`
+action may be postponed if the notifications to open the underlying issue have not yet been received
+by CE Server, or if the handler detects that a PEQ label has been added to GitHub but that
+notification has yet to be seen by `ceRouter`.
 
-If the user instead created a PEQ issue in GitHub, GitHub initially prevents the assignment of the
-issue to a column in a project.  The user must first submit the issue, wait for a bit, then click on
-`triage` in the `Projects` sidebar to assign the issue to a column (i.e. to tell GitHub to create a
-card in the selected project column).  Before that action is taken, the handler must take action to
-avoid a PEQ issue existing without an associated card, which would violate the 1:1 mapping rule for
-CodeEquity projects.  To avoid this problem, immediately after the user submits the PEQ issue, the
-handler will tell GitHub to create a card pointed at the PEQ issue, and place it in the
-**Unclaimed** column of the Unclaimed project.  Once the user does `triage` on the PEQ issue,
-the handler will remove the card that was created in **Unclaimed**.
+The `created` action for a new PEQ issue will cause the card subhandler to modify the **UnClaimed** project.
+When the user first creates PEQ issue in GitHub by adding a PEQ label to an issue, GitHub
+initially prevents the assignment of the issue to a column in a project.  The user must first submit
+the issue, wait for a bit, then click on `triage` in the `Projects` sidebar to assign the issue to a
+column (i.e. to tell GitHub to create a card in the selected project column).  During this gap, the
+handler protects the CodeEquity project 1:1 issue:card mapping constraint by instructing GitHub to
+create a card for the new PEQ issue in the **UnClaimed** project and column.  Once the user chooses
+the intended project column for the issue causing the `created` notification to be issued, the card
+subhandler will remove the issue subhandler-created card in **UnClaimed**, and update CE Server's
+internal state to reflect the new card.
 
-The `converted` action notification is only generated with a non-PEQ issue, and so is ignored.
-
-The `moved` action is ignored if the card is moved within the same column.  The action is also
-ignored if the card belongs to a non-PEQ issue.  If a PEQ issue card is moved into, or out of the **Pending
-PEQ Approval** by hand in GitHub, the handler will `close` the corresponding issue, or `reopen`it,
-respectively.  
+The `converted` action notification is only generated with a non-PEQ issue.  It informs CE Server
+that a Draft Issue has been converted to an issue with a card.  The card subhandler will update CE
+Server internal state to identify this newly 'carded' issue.
 
 The `deleted` action will clean up all internal state related to the card, and de-activate any
-non-accrued PEQ issues.  A `card:deleted` action is often received with an `issue:deleted`
-action.  If an `issue:deleted` is received for a PEQ issue, then CE Server knows a `card:deleted`
-will be received as well and can act accordingly.  A `card:deleted` action does not carry any
-additional information, and so must carry out all work associated with the deletion of a card.
-For example, the handler will remove any PEQ labels from GitHub that are no longer in
-use.  For example, if a PEQ issue card is being deleted from an **Accrued** column that is not in the
-Unclaimed project, the handler will recreate the card in the **Accrued** column in Unclaimed.
-Note that accrued PEQ issues are never modified on the AWS Backend, and have a permanent, binding status in
-CodeEquity.  In GitHub, however, apps can be removed and repositories deleted, even those with
-accrued PEQ issues.  
+non-accrued PEQ issues.  If removing a non-accrued PEQ issue results in a PEQ label that is no
+longer in use, the handler will remove the label itself.  If a PEQ issue card is being deleted from
+an **Accrued** column that is not in the `UnClaimed` project, the handler will recreate the card in
+the **Accrued** column in Unclaimed.  Note that accrued PEQ issues are never modified on the AWS
+Backend, and have a permanent, binding status in CodeEquity.  In GitHub, however, apps can be
+removed and repositories deleted, even those with accrued PEQ issues.
 
-The `edited` action is only generated from GitHub when a card that is not linked to an issue is
-edited.  This is because once a card is linked to an issue, all content is stored in the issue.  The
-only edit the handler pays attention to is if the user adds a PEQ label shortcut such as `<PEQ:
-30,000>` to the card.  In this case, the handler acts just as though it is a `card:created` notification.
+The `edited` action routed here from the pv2Item handler indicates that a card has been moved.
+Moves are ignored if the card is moved within the same column.  The action is also
+ignored if the card belongs to a non-PEQ issue.  If a PEQ issue card is moved into, or out of the **Pending
+PEQ Approval** by hand in GitHub, the handler will `close` the corresponding issue, or `reopen`it,
+respectively.  If a PEQ issue card is moved into the **Accrued** column, then the underlying issue
+is now considered accrued and binding, and the record of it will remain untouched on the backend.  
 
 
 <blockquote>
@@ -1004,6 +999,11 @@ this case, the handler will remove the offending card.
 Creating a PEQ issue with a card in **Accrued** is not legal.  In
 this case, the handler will remove both the offending card and will strip the PEQ label from the
 issue, turning it into a non-PEQ issue.
+
+##### `created` Can not have an issue with two cards
+When a second card is added to an existing issue (PEQ or not) that already has a card, the handler
+will remove the 2nd card, duplicate the issue, rename it, then recreate the 2nd card attached to the
+new issue.  This is done in order to maintain the 1:1 mapping from issues to cards.
 
 ##### `created` No duplicates of an accrued PEQ issue
 When you click into `issues`, then click into a PEQ issue, in the Projects sidebar you could select
@@ -1022,11 +1022,10 @@ the card moved out, the handler will move the card back to **Accrued**.
 
 ##### `moved` Allocation PEQs are not useful in some columns.
 An ***AllocPEQ*** label is used to indicate some amount of as-of-yet unplanned work to be carried
-out in a given area.  
-CodeEquity's reserved and suggested project columns, namely: **Planned**, **In Progress**, **Pending
-PEQ Approval** and **Accrued** are meant to be used specifically for individual tasks that have
-already been broken down.  If an allocation PEQ is moved to one of these columns, the handler will
-move it back.
+out in a given area.  CodeEquity's reserved and suggested project columns, namely: **In
+Progress**, **Pending PEQ Approval** and **Accrued** are meant to be used specifically for
+individual tasks that have already been broken down.  If an allocation PEQ is moved to one of these
+columns, the handler will move it back.
 
 ##### `moved` PEQ issue cards can not move to reserved columns without assignees.
 If a PEQ issue card is moved to **Pending PEQ Approval** or **Accrued** columns without assignees,
@@ -1036,40 +1035,22 @@ the handler will move it back.
 
 ### Project SubHandler
 
-The project subhandler is found in [githubProjectHandler.js](routes/githubProjectHandler.js), and is
+The project subhandler is found in [projectHandler.js](routes/gh/gh2/projectHandler.js), and is
 focused on handling `project` notifications.
 
-All `project` notifications are relevant to the handler, including: `deleted`, `created`, `edited`,
-`reopened`, and `closed`.  In every case, the main action taken by the handler is to update internal
+The only `project` notifications relevant to the handler is the `edited` notice sent from the
+pv2Item handler.  In this case, the main action taken by the handler is to update internal
 state to properly track the name and ID, and in most cases the raw request body of the corresponding
 activity is recorded on the AWS Backend.
 
+Notifications for actions like `open` and `deleted` are not relevant to a CodeEquity
+project since GitHub projects are not bound to a specific repository or collection of issues. They
+only become relevant once a PEQ issue is added to it.
+
 Note that when a project is `deleted`, GitHub will delete the cards and columns (but not the issues)
 that are part of that project, sending notifications for each individual `deleted` action.  The card
-and column handlers do the vast majority of the work when a project is deleted.
+and handler does the vast majority of the work when a project is deleted.
 
-
-### Column SubHandler
-
-The column subhandler is found in [githubColumnHandler.js](routes/githubColumnHandler.js), and is
-focused on handling `column` notifications.
-
-The following notification types for issues are ignored by the handler: `moved`.
-
-The remaining `column` notifications are relevant to the handler, including: `deleted`, `created` and `edited`.
-In each case, the handler updates internal
-state to properly track the column name and ID, and in most cases the raw request body of the corresponding
-activity is recorded on the AWS Backend.
-
-<blockquote>
-
-##### `edited` Can not change reserved column names.
-The **Pending PEQ Approval** and **Accrued** columns can not have their names changed through the
-normal GitHub interface.  If an attempt is made, the handler will rename the columns as specified in
-[config.js](webServer/config.js).  To rename these columns, a user must change the names in
-config.js.  (XXX Revisit XXX) this will be done via CE Flutter.
-
-</blockquote>
 
 
 ### Label SubHandler
@@ -1081,7 +1062,10 @@ All label actions are relevant to the handler, including `created`, `deleted` an
 
 The `created` action is ignored for non-PEQ labels.  For a PEQ label, the handler will update the
 labe so that the description is consistent with the label's name, and so that the color is
-consistent with the schemes described in [config.js](webServer/config.js) (XXX REVISIT XXX).
+consistent with the schemes described in [config.js](webServer/config.js).  The handler accepts name
+inputs like ***10000 PEQ***, ***10,000 PEQ***, ***10k PEQ***, or ***10M PEQ***.  No matter which of
+the preceeding options the user inputs, the handler creates labels with the 'k' or 'M' shorthand for
+overall readability.
 
 The `deleted` action is ignored unless the label is a PEQ label and is in use by at least one active
 PEQ issue.  If there are active PEQs, the action is revoked and the raw request body is stored on
@@ -1094,7 +1078,7 @@ request body is stored on the backend.  The action is ignored if the new label i
 If the old label has no active PEQ issues (for example, it is not a PEQ label), and the new label is
 a PEQ label, the handler will rebuild the new label to make the name and description consistent, and
 will recolor the label to be consistent with the schemes described in
-[config.js](webServer/config.js) (XXX REVISIT XXX).  The handler will then run through all issues
+[config.js](webServer/config.js).  The handler will then run through all issues
 currently attached to the old label, and have GitHub relabel them with the new PEQ label.
 Subsequently, GitHub will send `issue:labeled` notifications, causing CE Server to create turn those
 issues into active PEQ issues.  Note that this operation can be expensive if there are a large
@@ -1116,7 +1100,7 @@ first delete all related PEQ issues.
 
 ### Test SubHandler
 
-The test subhandler is found in [githubTestHandler.js](routes/githubTestHandler.js).  It does not
+The test subhandler is found in [githubTestHandler.js](routes/gh/githubTestHandler.js).  It does not
 respond to any notifications from GitHub.  The sole purpose of this handler is to support internal
 testing.
 
@@ -1131,8 +1115,8 @@ reference.  The architecture is specified with a [yaml](../ops/aws/samInfrastruc
 that is a mixture of AWS's SAM and CloudFormation specifications. 
 
 Requests from CE Server and CE Flutter are signed with JWT tokens secured from AWS Cognito running
-with a user pool. Signed requests are sent to AWS Lambda functions via AWS Gateway. awsDynamo
-contains the key lambda handlers for the backend. Their primary function is saving and retrieving
+with a user pool. Signed requests are sent to AWS Lambda functions via AWS Gateway. [awsDynamo.js](../ops/aws/lambdaHandlers/awsDynamo.js)
+is the key lambda handler for the backend. Its primary function is saving and retrieving
 data from a collection of AWS DynamoDB tables. 
 
 All communication with the AWS Backend is encoded as JSON REST data.
@@ -1145,7 +1129,7 @@ Server depends on.  The key files are:
    * [createCE.py](../ops/aws/createCE.py)   
    * [samInfrastructure.yaml](../ops/aws/samInfrastructure.yaml)
    * [awsCECommon.py](../ops/aws/utils/awsCECommon.py)
-   * [samInstance.py](../ops/aws/utils/samInstance.py))
+   * [samInstance.py](../ops/aws/utils/samInstance.py)
    * [awsDynamo.js](../ops/aws/lambdaHandlers/awsDynamo.js)
 
 #### `createCE.py`
@@ -1292,7 +1276,8 @@ query result would be an empty set.
 
 #### if I'm not an org, can I not do CE?
 
-correct, GH withdrew push notification support for individuals when converted to pv2.  make an org (link).
+Correct, GitHub withdrew push notification support for individuals when converted to pv2.  make an
+org (link). XXX
     
 #### can an established company use CE? equity question
 

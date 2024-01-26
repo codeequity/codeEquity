@@ -10,7 +10,7 @@ const ghV2     = require( './ghV2Utils' );
 
 const gh2Data  = require( '../../../routes/gh/gh2/gh2Data' );
 
-// locked cards list
+// locked cards list, allowing cardHandler to postpone moves on cards that are still undergoing a resolve:split action
 var locked = [];
 
 function unlockCards( cardId ) {
