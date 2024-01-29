@@ -302,8 +302,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		return;
 	    }
 
-	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );  
-	    assert( locs !== -1 );
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );
+
+	    // If no locs, this card belongs to project that is not part of a CodeEquity project (i.e. no current/past PEQ issues).  
+	    if( locs == -1 ) {
+		console.log( authData.who, "Card moves in projects not related to CodeEquity are ignored." );
+		return;
+	    }
+
 	    // Note, config.MAIN_PROJ should not have PLAN
 	    let rejectLoc = -1;
 	    for( const aloc of locs ) {

@@ -51,7 +51,7 @@ or *one share of provisional equity*.
 ### PEQ Issues
 
 A CodeEquity Project will normally be planned and tracked with a collection of *issues* managed 
-with project management software, such as GitHub project boards.  Common issues
+with project management software, such as GitHub repositories and project boards.  Common issues
 involve planned features, feature requests, bug reports, and operational tasks.
 
 A PEQ issue is any issue that has a PEQ value attached to it.  For example, the *BookShare frontend*

@@ -1076,6 +1076,7 @@ async function getCardFromIssue( authData, issueId ) {
 
 
 // Currently, just relocates issue to another column (i.e. status).
+// Note: column ids (value) are not unique
 async function moveCard( authData, pid, itemId, fieldId, value ) {
     console.log( authData.who, "Updating card's column: project item field value", pid, itemId, fieldId, value );
 

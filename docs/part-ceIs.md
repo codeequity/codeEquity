@@ -8,11 +8,12 @@ more.  In return, those companies own all of the output of every one of their em
 companies are similar, but in place of stability, retirement plans, and competitive wages,
 they offer small amounts of equity in order to attract skilled employees.
 
-There are other models for organizing teams to create products.  GitHub provides a space for the
-primary alternative today in the software development world.  Most new ventures in the GitHub space do not
-offer money or equity to compensate skilled contributors.  Nor do they offer office space, insurance,
-retirement plans, or lots of free coffee.  Instead, they offer social recognition and a sense of
-purpose.  These incentives can be powerful, but only up to a point. 
+There are other models for organizing teams to create products.  GitHub is perhaps the best known
+developer platform available currently.  GitHub provides a space for the primary alternative today
+in the software development world.  Most new ventures in the GitHub space do not offer money or
+equity to compensate skilled contributors.  Nor do they offer office space, insurance, retirement
+plans, or lots of free coffee.  Instead, they offer social recognition and a sense of purpose.
+These incentives can be powerful, but only up to a point.
 
 CodeEquity proposes that these new ventures additionally offer up their primary currency - 
 ***ownership*** - as the key incentive to attract skilled contributors.  CodeEquity is both a legal
