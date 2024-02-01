@@ -203,32 +203,38 @@ class Linkage {
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, plocs] of Object.entries( clocs ) ) {
 		for( const [col, loc] of Object.entries( plocs )) {
-		    this.addLoc( {}, loc );
+		    this.addLocs( {}, [loc] );
 		}
 	    }
 	}
     }
 
     // ProjectID is the kanban project.  repo:pid  is 1:many
-    async addLoc( authData, locD, pushAWS = false ) {
-	locD.hostColumnId  = locD.hostColumnId.toString();
-	locD.hostProjectId = locD.hostProjectId.toString();
-	let ceProjId       = locD.ceProjectId;
+    async addLocs( authData, locDs, pushAWS = false ) {
+	assert( locDs.length >= 1 );
+	let locs = [];
+	let ceProjId = -1;
+	for( var locD of locDs ) {
+	    locD.hostColumnId  = locD.hostColumnId.toString();
+	    locD.hostProjectId = locD.hostProjectId.toString();
 
-	if( typeof ceProjId === 'undefined' ) { console.log( authData.who, "Warning.  Linkage addLoc was called without a CE Project Id." ); }
+	    assert( ceProjId == locD.ceProjectId || ceProjId == -1 ); 
+	    ceProjId           = locD.ceProjectId;
 	    
-	if( !utils.validField( this.locs, ceProjId ))                                        { this.locs[ceProjId] = {}; }
-	if( !utils.validField( this.locs[ceProjId], locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
-	if( !utils.validField( this.locs[ceProjId][locD.hostProjectId], locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData.LocData(); }
-											    
-	let loc = this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId];
-	loc.fromLoc( locD ); 
-
-	// Must wait.. aws dynamo ops handled by multiple threads.. order of processing is not dependable in rapid-fire situations.
-	// No good alternative - refresh could be such that earlier is processed later in dynamo
-	if( pushAWS ) { await awsUtils.updateLinkageSummary( authData, ceProjId, loc ); }
-	
-	return loc;
+	    if( typeof ceProjId === 'undefined' ) { console.log( authData.who, "Warning.  XXX Linkage addLoc was called without a CE Project Id." ); }
+	    
+	    if( !utils.validField( this.locs, ceProjId ))                                        { this.locs[ceProjId] = {}; }
+	    if( !utils.validField( this.locs[ceProjId], locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
+	    if( !utils.validField( this.locs[ceProjId][locD.hostProjectId], locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData.LocData(); }
+	    
+	    let loc = this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId];
+	    loc.fromLoc( locD );
+	    
+	    if( pushAWS ) { locs.push( loc ); }
+	}
+	// XXX may not need await any longer.
+	if( pushAWS ) { await awsUtils.updateLinkageSummary( authData, ceProjId, locs ); }
+	return locs;
     }
 
     getUniqueLink( authData, ceProjId, issueId ) {
@@ -535,23 +541,22 @@ class Linkage {
 	if( typeof ceProjId  !== 'undefined' ) { query.ceProjId = ceProjId; }
 
 	let matchFunc = function (locs, loc ) {
-	    loc.active = false;
+	    loc.active = "false";
 	    locs.push( loc );
 	};
 
 	let locs = this.iterateLocs( authData, query, matchFunc );
 	if( locs == -1 ) { return; }
 
-	// Need to refresh AWS.  In most cases, locs belong to passed in ceProjId.
-	// However, if deleting a project, it can cross ceProjId.   Need to construct {ceProjId: [loc, loc], ...} then refresh
-	let allLocs = {};
+	// Need to refresh AWS.  In most cases, locs belong to a single ceProjectId (the argument) .. but if deleting a project, it can cross ceProjIds.
+	// Could either delete these locs one by one in aws, or overwrite each chunk for cpid.  the latter is less communication.
+	let cpids = [];
 	for( const loc of locs ) {
-	    if( utils.validField( allLocs, loc.ceProjectId )) { allLocs[loc.ceProjectId].push( loc ); }
-	    else                                              { allLocs[loc.ceProjectId] = [ loc ]; }
-	}
-	
-	for( const [cpid, clocs] of Object.entries( allLocs ) ) {  
-	    awsUtils.refreshLinkageSummary( authData, cpid, clocs, false );
+	    if( !cpids.includes( loc.ceProjectId )) {
+		cpids.push( loc.ceProjectId );
+		let clocs = this.getLocs( authData, { ceProjId: loc.ceProjectId } );
+		awsUtils.refreshLinkageSummary( authData, loc.ceProjectId, clocs, false );
+	    }
 	}
     }
 

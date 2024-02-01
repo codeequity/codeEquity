@@ -400,6 +400,7 @@ async function rewritePAct( authData, postData ) {
 }
 
 // locData can be from GQL, or linkage
+// NOTE unlinked projects will not have ceProjectId
 async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) {
     console.log( authData.who, "Refreshing linkage summary", ceProjId, locData.length );
     if( locData.length < 1 ) { return; }
@@ -414,20 +415,20 @@ async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) 
     summary.CEProjectId = ceProjId;
     summary.LastMod     = utils.getToday();
     summary.Locations   = locData;
-
+    
     let shortName = "RecordLinkage"; 
     let pd = { "Endpoint": shortName, "summary": summary }; 
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
-// Called via linkage:addLoc from project/col handlers, and from ghUtils when creating unclaimed, ACCR, etc.
-async function updateLinkageSummary( authData, ceProjId, loc ) {
-    // console.log( authData.who, "Updating linkage summary" );
+// Called via linkage:addLocs from project/col handlers, and from ghUtils when creating unclaimed, ACCR, etc.
+async function updateLinkageSummary( authData, ceProjId, locs ) {
+    console.log( authData.who, "Updating linkage summary", ceProjId, locs.length );
 
     let newLoc = {};
     newLoc.CEProjectId  = ceProjId;
     newLoc.LastMod      = utils.getToday();
-    newLoc.Location     = loc;
+    newLoc.Locs         = locs;
 
     let shortName = "UpdateLinkage"; 
 

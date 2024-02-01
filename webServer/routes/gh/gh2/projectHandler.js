@@ -94,15 +94,11 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 				       config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.projectId.toString(), oldName, newName], "Project rename",
 				       utils.getToday(), pd.reqBody );
 
-		// Must wait to prevent out-of-order overwrites.  Could build an addLocs func, but value is low.
-		// Can't do promises.all - must be sequential.
 		const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": pd.projectId } );
 		for( const loc of locs ) {
-		    nLoc.hostProjectName = newName;
-		    nLoc.hostColumnName = loc.hostColumnName;
-		    nLoc.hostColumnId = loc.hostColumnId;
-		    await ghLinks.addLoc( authData, nLoc, true );
+		    loc.hostProjectName = newName;
 		}
+		await ghLinks.addLocs( authData, locs, true );
 	    }
 	}
 	break;

@@ -607,7 +607,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    
 	    // wait for this, PNP needs locs.
 	    // (e.g. from testing, issue: CT Blast in cep:serv repo:ari proj:ghOps  goes to  cep:hak repo:ariAlt proj:ghOps with new issue_id)
-	    await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId );
+	    // await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId );
+	    await ghV2.linkProject( authData, ghLinks, ceProjects, newCEP, pd.org, pd.actor, newRepoId, newRepo, links[0].hostProjectName ) 
 
 	    // Do this after linking project, so good link doesn't interfere with badlinks check during linkProject.
 	    ghLinks.addLinkage( authData, newCEP, newLink );

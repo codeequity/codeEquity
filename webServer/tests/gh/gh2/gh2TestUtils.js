@@ -566,7 +566,7 @@ async function ingestPActs( authData, issDat ) {
 // NOTE: testing projects are created by codeequity
 async function createProjectWorkaround( authData, td, name, body ) {
 
-    let pid = await ghV2.linkProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.ghOwner, td.ghOwnerId, td.ghRepoId, td.ghFullName, name, body );
+    let pid = await ghV2.linkProject( authData, -1, -1, td.ceProjectId, config.TEST_OWNER, td.ghOwner, td.ghRepoId, td.ghFullName, name, body );
     assert( typeof pid !== 'undefined' && !(pid <= -1) );
 
     // force linking in ceServer:ghLinks, not local ghLinks

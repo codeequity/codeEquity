@@ -128,6 +128,8 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // issDatX now has new id, same card, and belongs to td's ceProject and repo.  Peqs have been deleted, and re-added.
     // issDat still resides in githubOps, but now is part of tdx.ceProjectId.  This CEP does not have MAIN_PROJECT, so projsub will not (should not) pick that up.
     //        i.e. pre-transfer, peq proj sub is SoftCont:githubOps:NS, post transfer it is githubOps:stripes.
+    // Both GhOps and crossProj show up in both ari and ariAlt, at least until unlink proj from td and projx from tdx.
+    // But, choosing not to unlink in order to create confusion then cure in deeper way.
     stripeLoc.projSub = ["Github Operations", "Stripes" ];
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, stripeLoc, issDat, card, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: tdX.ceProjectId} );    
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, crossLoc, issDatX, cardX, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: td.ceProjectId} );    
@@ -177,6 +179,7 @@ async function getCardsHelp( authData, pid, cid, desiredCount ) {
     return ret;
 }
 
+// XXX consider using multiPid, multiCid to interleave across projects as well.  Currently, Multi proj just .. sits there.
 // Simulate a simple multithread test here, by randomly ordering a set of blast issues
 // for two different users/repos, and fire them all off nearly-simultaneously.  With the rest delay to and from GH,
 // resulting notifications will interleave and stack up 

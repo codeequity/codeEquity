@@ -66,12 +66,12 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
 	// console.log( authData.who, "Populate Linkage", pid );
 	rLinks.forEach( function (link) { ghLinks.addLinkage( authData, ceProject.CEProjectId, link, { populate: true } );
 					}, ghLinks);
-	
+
 	for( var loc of rLocs ) {
 	    loc.ceProjectId = ceProject.CEProjectId;
 	    loc.active = "true";
-	    ghLinks.addLoc( authData, loc, false ); 
 	}
+	ghLinks.addLocs( authData, rLocs, false ); 
 
 	// Concat creates a new array - need to return these results.
 	baseLinks = baseLinks.concat( rLinks );
@@ -100,15 +100,12 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProject
     // Can't test rLinks for the new repoId.  If this is a transfer result, GH may have already placed the new issue.
     // There may be links for ceProjId, hostProjId, for example unclaimed may be linked to repo1 not repo2, and now are linking to repo2.
 
-    let promises = [];
-    
     // Overwrites any existing locations, creates new ones as needed
     for( var loc of rLocs ) {
 	loc.ceProjectId = ceProjId;
 	loc.active = "true";
-	promises.push( ghLinks.addLoc( authData, loc, true ) );
     }
-    await Promise.all( promises );
+    await ghLinks.addLocs( authData, rLocs, true );
 
     // hostProjects are no longer recorded in connection with ceProjects, just ceLinkage.  No need to re-init ceProjects.
     
