@@ -57,11 +57,14 @@ class Linkage {
 	    baseLinks = res.links;
 	    locData   = res.locs; 
 	}
-	
+
+	// console.log( entry, preferredRepoId );
 	// console.log( authData.who, "LINKAGE: Locs",  locData );
 	// console.log( authData.who, "LINKAGE: Links", baseLinks );
 
-	awsUtils.refreshLinkageSummary( authData, entry.CEProjectId, locData );
+	// Update or refresh aws?  If have preferredRepo (one repo only, from ingest), must be update.
+	this.addLocs( authData, locData, { update: preferredRepoId != -1 } ); 
+	// awsUtils.refreshLinkageSummary( authData, entry.CEProjectId, locData );
 	
 	// peq add: cardTitle, colId, colName, projName - carded issues do not track this.
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
@@ -203,15 +206,22 @@ class Linkage {
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, plocs] of Object.entries( clocs ) ) {
 		for( const [col, loc] of Object.entries( plocs )) {
-		    this.addLocs( {}, [loc] );
+		    this.addLocs( {}, [loc], { pushAWS: false } );
 		}
 	    }
 	}
     }
 
     // ProjectID is the kanban project.  repo:pid  is 1:many
-    async addLocs( authData, locDs, pushAWS = false ) {
-	assert( locDs.length >= 1 );
+    async addLocs( authData, locDs, specials ) {
+	const pushAWS  = typeof specials !== 'undefined' && specials.hasOwnProperty( "pushAWS" )  ? specials.pushAWS   : true;
+	let   update   = typeof specials !== 'undefined' && specials.hasOwnProperty( "update" )   ? specials.update    : true;
+
+	update         =  update && pushAWS;
+	const refresh  = !update && pushAWS;
+
+	if( locDs.length < 1 ) { console.log( authData.who, "No locs to add."); return []; }
+	
 	let locs = [];
 	let ceProjId = -1;
 	for( var locD of locDs ) {
@@ -232,8 +242,13 @@ class Linkage {
 	    
 	    if( pushAWS ) { locs.push( loc ); }
 	}
+
 	// XXX may not need await any longer.
-	if( pushAWS ) { await awsUtils.updateLinkageSummary( authData, ceProjId, locs ); }
+	// Will not push to aws if, for example, request is from tester, i.e. fromJsonLocs or gh2tu:createProjectWorkaround
+	// update is additive or mod existing.  refresh is overwrite-destructive
+	if( update )       { await awsUtils.updateLinkageSummary( authData, ceProjId, locs ); }
+	else if( refresh ) { await awsUtils.refreshLinkageSummary( authData, ceProjId, locs ); }
+	    
 	return locs;
     }
 
@@ -560,85 +575,8 @@ class Linkage {
 	}
     }
 
-    // set .active flag to false.  getLocs requires active true, but showLocs may show inactive during debugging.
-    // This is faster, but in an unimportant way.  removeLocs is not a time-sensitive op, nor is it a common op.  This code is
-    // hard to maintain, brittle.
-    /*
-    removeLocs({ authData, ceProjId, pid, colId }) {
-	if( !authData ) { console.log( authData.who, "missing authData" ); return false; }
-
-	if( colId )    { console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); } // one delete
-	else if( pid ) { console.log( authData.who, "Remove locs for pid:", ceProjId, pid ); }    // many deletes
-
-
-	let havePID = typeof pid !== 'undefined';
-	let haveCID = typeof colId  !== 'undefined';
-	let cpid    = "";
-
-	// Easy cases, already do not exist
-	// No need to check for empty ceProjectIds, since there is nothing to set inactive.
-	if( (!havePID && !haveCID) ||                                                            // nothing specified
-	    (!utils.validField( this.locs, ceProjId )) ||                                        // nothing yet for ceProject
-	    (havePID && !utils.validField( this.locs[ceProjId], pid )) ||                     // have pid, but already not in locs
-	    (havePID && haveCID && !utils.validField( this.locs[ceProjId][pid], colId ))) {   // have pid & cid, but already not in locs
-	}
-	else if( havePID && utils.validField( this.locs[ceProjId], pid )) {
-	    if( haveCID && utils.validField( this.locs[ceProjId][pid], colId ))
-	    {
-		assert( cpid == "" || cpid == this.locs[ceProjId][pid][colId].ceProjectId );
-		cpid = this.locs[ceProjId][pid][colId].ceProjectId;
-		this.locs[ceProjId][pid][colId].active = "false"; 
-	    }
-	    else if( !haveCID ) {
-		for( var [_, loc] of Object.entries( this.locs[ceProjId][pid] )) {
-		    assert( cpid == "" || cpid == loc.ceProjectId );
-		    cpid = loc.ceProjectId;
-		    loc.active = "false"; 
-		}
-	    }
-	}
-	// I don't have PID, but I do have CID
-	else {  
-	    for( const [ceproj,cplinks] of Object.entries( this.locs )) {
-		for( const [proj,cloc] of Object.entries( cplinks )) {
-		    if( utils.validField( cloc, colId )) {
-			assert( cpid == "" || cpid == this.locs[ceproj][proj][colId].ceProjectId );
-			cpid = this.locs[ceproj][proj][colId].ceProjectId;
-			this.locs[ceproj][proj][colId].active = "false";
-			break;
-		    }
-		}
-	    }
-	}
-
-	// No need to wait.  Pass a list here, so no-one else need care about internals.
-	if( cpid != "" ) {
-	    let locs = [];
-	    for( const [_, cplinks] of Object.entries( this.locs ) ) {   // over ceProjs
-		for( const [_, cloc] of Object.entries( cplinks ) ) {    // over hostProjs
-		    for( const [_, loc] of Object.entries( cloc )) {     // over cols
-			
-			if( loc.ceProjectId == cpid ) {
-			    let aloc = {};
-			    aloc.hostProjectId   = loc.hostProjectId;
-			    aloc.hostProjectName = loc.hostProjectName;
-			    aloc.hostColumnId    = loc.hostColumnId;
-			    aloc.hostColumnName  = loc.hostColumnName;
-			    aloc.hostUtility     = loc.hostUtility;
-			    aloc.active          = loc.active;
-			    
-			    locs.push( aloc );
-			}
-		    }
-		}
-	    }
-	    awsUtils.refreshLinkageSummary( authData, cpid, locs, false );
-	}
-    }
-    */
-
-    async linkProject( authData, ceProjects, ceProjId, hostProjectId ) {
-	await gh2LU.linkProject( authData, this, ceProjects, ceProjId, hostProjectId);
+    async linkProject( authData, ceProjId, hostProjectId, pushAWS = true ) {
+	await gh2LU.linkProject( authData, this, ceProjId, hostProjectId, pushAWS);
 	return true;
     }
 

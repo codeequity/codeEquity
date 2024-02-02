@@ -123,7 +123,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 //      So when issue:label is received, card may exist in noStatus.  Or not, then issueLabel must createUnclaimed.
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
     // Zero's peqval if 2 found
-    [pd.peqValue,_] = ghUtils.theOnePEQ( issueLabels );  
+    [pd.peqValue, alloc] = ghUtils.theOnePEQ( issueLabels );  
 
     // label may be from json payload, or from internal call.  Convert id format.
     if( utils.validField( label, "node_id" ) ) { label.id = label.node_id; }
@@ -181,7 +181,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 
     // We have a peq.  Make sure project is linked in ceProj, PNP is dependent on locs existing.
     let projLinks = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: card.pid } );
-    if( projLinks === -1 ) { await ghLinks.linkProject( authData, ceProjects, pd.ceProjectId, card.pid ); }
+    if( projLinks === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, card.pid ); }
     
     // Newborn PEQ issue, pre-triage?  Create card in unclaimed to maintain promise of linkage in dynamo.
     if( link === -1 || link.hostCardId == -1) {
@@ -190,7 +190,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	    console.log( authData.who, "Newborn peq issue" );
 	    assert( link === -1 );
 	    link = {};
-	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId );
+	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId, alloc );
 	}
 	else if( utils.validField( card, "cardId" ) && !utils.validField( card, "columnId" ) ) {  // label notice beat create notice
 	    console.log( authData.who, "carded issue, no status -> peq issue", link === -1 );
@@ -609,7 +609,8 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    // (e.g. from testing, issue: CT Blast in cep:serv repo:ari proj:ghOps  goes to  cep:hak repo:ariAlt proj:ghOps with new issue_id)
 	    // await ghLinks.linkProject( authData, ceProjects, newCEP, links[0].hostProjectId );
 	    await ghV2.linkProject( authData, ghLinks, ceProjects, newCEP, pd.org, pd.actor, newRepoId, newRepo, links[0].hostProjectName ) 
-
+	    await ghLinks.linkProject( authData, newCEP, links[0].hostProjectId );
+	    
 	    // Do this after linking project, so good link doesn't interfere with badlinks check during linkProject.
 	    ghLinks.addLinkage( authData, newCEP, newLink );
 

@@ -1541,14 +1541,6 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 	
 	try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "linkProject" ) }
 	catch( e ) { return await ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, repoId, repoName, name ); }
-
-	// GH takes a while to process linking.  Can't initiate getHostLinkLoc below until things have settled.
-	// Find how many locs are in project.  then wait on GH...
-	// let colCount = await getColumnCount( authData, pid );
-	// console.log( "linkProject colCount", colCount );
-
-	// test process can't execute this, does not have server's ghLinks obj, so will do it independently
-	if( ghLinks !== -1 ) { await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId ); }
     }
     
     return pid;
@@ -1574,21 +1566,8 @@ async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 	// be no issues during linkage:init (in other words, linkage init will drive unclaimed initialization.  And in other cases
 	// unclaimed currently is linked up front, no peq needed.
 	let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: unClaimedProjId } );
-	if( projLocs === -1 ) {
 
-	    let rLinks = [];
-	    let rLocs  = [];
-	    
-	    console.log( authData.who, "Initializing unclaimed locs" );
-	    await getHostLinkLoc( authData, unClaimedProjId, rLocs, rLinks, -1 )
-		.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
-	    
-	    for( var loc of rLocs ) {
-		loc.ceProjectId = pd.ceProjectId;
-		loc.active = "true";
-	    }
-	    ghLinks.addLocs( authData, rLocs, false ); 
-	}
+	if( projLocs === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, unClaimedProjId ); }
 	
     }
 
@@ -1601,7 +1580,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 {
     let   loc = -1;
     const unClaimed = config.UNCLAIMED;
-    const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
+    const colName = accr ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
     console.log( authData.who, "create unclaimed col", unClaimedProjId, issueId, colName, accr );
 
@@ -1609,7 +1588,9 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
     if( locs === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
-	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand." );
+	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand for", pd.ceProjectId  );
+	locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId } );
+	console.log( locs );
     }
     else {
 	assert( unClaimedProjId == locs[0].hostProjectId );

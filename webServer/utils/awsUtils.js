@@ -399,7 +399,7 @@ async function rewritePAct( authData, postData ) {
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
-// locData can be from GQL, or linkage
+// ONLY called from linkage:addLocs/removeLocs
 // NOTE unlinked projects will not have ceProjectId
 async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) {
     console.log( authData.who, "Refreshing linkage summary", ceProjId, locData.length );
@@ -421,7 +421,7 @@ async function refreshLinkageSummary( authData, ceProjId, locData, gql = true ) 
     return await wrappedPostAWS( authData, shortName, pd );
 }
 
-// Called via linkage:addLocs from project/col handlers, and from ghUtils when creating unclaimed, ACCR, etc.
+// ONLY Called via linkage:addLocs 
 async function updateLinkageSummary( authData, ceProjId, locs ) {
     console.log( authData.who, "Updating linkage summary", ceProjId, locs.length );
 

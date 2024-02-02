@@ -71,7 +71,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
 	    loc.ceProjectId = ceProject.CEProjectId;
 	    loc.active = "true";
 	}
-	ghLinks.addLocs( authData, rLocs, false ); 
+	// ghLinks.addLocs( authData, rLocs, false ); 
 
 	// Concat creates a new array - need to return these results.
 	baseLinks = baseLinks.concat( rLinks );
@@ -88,27 +88,25 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
 // Other cases:
 // testing creating a project?               proj is empty, no need to get links 
 // user or testing creating unclaimed card?  according to ceServer strict relation, unclaimedProj belongs to ceProj, is not shared.
-async function linkProject( authData, ghLinks, ceProjects, ceProjId, hostProjectId ) {
+async function linkProject( authData, ghLinks, ceProjId, hostProjectId, pushAWS ) {
     
     let rLocs  = [];
     let rLinks = [];
-    console.log( authData.who, "link project", ceProjId, hostProjectId );
+    console.log( authData.who, "linkage:link project", ceProjId, hostProjectId, pushAWS );
     
     await ghV2.getHostLinkLoc( authData, hostProjectId, rLocs, rLinks, -1 )
 	.catch( e => console.log( authData.who, "Error.  linkProject failed.", e ));
 
     // Can't test rLinks for the new repoId.  If this is a transfer result, GH may have already placed the new issue.
     // There may be links for ceProjId, hostProjId, for example unclaimed may be linked to repo1 not repo2, and now are linking to repo2.
-
+    
     // Overwrites any existing locations, creates new ones as needed
     for( var loc of rLocs ) {
 	loc.ceProjectId = ceProjId;
 	loc.active = "true";
     }
-    await ghLinks.addLocs( authData, rLocs, true );
+    await ghLinks.addLocs( authData, rLocs, pushAWS );
 
-    // hostProjects are no longer recorded in connection with ceProjects, just ceLinkage.  No need to re-init ceProjects.
-    
     return true;
 }
 

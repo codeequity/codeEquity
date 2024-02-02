@@ -220,7 +220,7 @@ async function loadLinkage( authData, td ) {
 	    }
 
 	    var locsL = ghLinks.getLocs( authData, { "ceProjId": nLoc.ceProjectId, "repo": repo } );
-	    await awsUtils.refreshLinkageSummary( authData, repo, locsL, false );
+	    await awsUtils.refreshLinkageSummary( authData, repo, locsL, false ); // XXXXXXXXXXXXXXXXXXXXXXXXXX
 	    break;
 	}
     }
