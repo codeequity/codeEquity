@@ -339,6 +339,42 @@ async function getIssues( authData, repoNodeId ) {
     return issues;
 }
 
+// Note, this is not returning full issues. 
+async function getColumnCount( authData, pid ) {
+    let query = `query($nodeId: ID!) {
+                 node(id:$nodeId) {
+                 ... on ProjectV2 {
+                     number title id
+                     views(first: 1) { edges { node {
+                     ... on ProjectV2View {
+                         name layout 
+                         fields(first: 100) { edges { node {
+                         ... on ProjectV2FieldConfiguration {
+                             ... on ProjectV2SingleSelectField {id name options {id name}
+                          }}}}}}}}}}}}`;
+    let variables = {"nodeId": pid };
+    query = JSON.stringify({ query, variables });
+
+    let colCount = 0;
+    try {
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "getColumnCount" )
+	    .then( async (raw) => {
+		let item = raw.data.node.views.edges[0];
+		let fields = item.node.fields.edges;
+		assert( fields.length <= 99, "Need to paginate getColumnCount." );
+		for( let i = 0; i < fields.length; i++ ) {
+		    let field = fields[i].node;
+		    if( field.name == config.GH_COL_FIELD ) {
+			colCount = field.options.length + 1;  // no status
+			break;
+		    }}
+	    });
+    }
+    catch( e ) { issues = await ghUtils.errorHandler( "getColumnCount", e, getColumnCount, authData, pid ); }
+
+    return colCount;
+}
+
 
 // More is available.. needed?.  Content id here, not project item id
 async function getFullIssue( authData, issueId ) {
@@ -1076,6 +1112,7 @@ async function getCardFromIssue( authData, issueId ) {
 
 
 // Currently, just relocates issue to another column (i.e. status).
+// Note: column ids (value) are not unique
 async function moveCard( authData, pid, itemId, fieldId, value ) {
     console.log( authData.who, "Updating card's column: project item field value", pid, itemId, fieldId, value );
 
@@ -1479,7 +1516,7 @@ async function findProjectByRepo( authData, rNodeId, projName ) {
 
 // XXX in support of link workaround to avoid issue with creating columns.
 //     workaround is to create project by hand in GH with all required columns.  then link and unlink from repo to replace create and delete.
-async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ) {
+async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, repoId, repoName, name ) {
 
     // Already linked?  Using links here may be overly conservative
     if( ghLinks !== -1 ) {
@@ -1502,11 +1539,8 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 	let variables = {"pid": pid, "rid": repoId };
 	query         = JSON.stringify({ query, variables });
 	
-	try        { ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "linkProject" ) }
-	catch( e ) { return await ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, ownerId, repoId, repoName, name ); }
-	
-	// test process can't execute this, does not have server's ghLinks obj, so will do it independently
-	if( ghLinks !== -1 ) { await ghLinks.linkProject( authData, ceProjects, ceProjId, pid, repoId ); }
+	try        { await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "linkProject" ) }
+	catch( e ) { return await ghUtils.errorHandler( "linkProject", e, linkProject, authData, ghLinks, ceProjects, ceProjId, orgLogin, ownerLogin, repoId, repoName, name ); }
     }
     
     return pid;
@@ -1518,7 +1552,7 @@ async function linkProject( authData, ghLinks, ceProjects, ceProjId, orgLogin, o
 // NOTE: if this creates, then create unclaimed column below will fail.
 async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 {
-    let unClaimedProjId = await linkProject( authData, ghLinks, ceProjects, pd.ceProjectId, pd.org, pd.actor, pd.actorId, pd.repoId, pd.repoName,
+    let unClaimedProjId = await linkProject( authData, ghLinks, ceProjects, pd.ceProjectId, pd.org, pd.actor, pd.repoId, pd.repoName,
 					     config.UNCLAIMED, "All issues here should be attached to more appropriate projects" );
     
     if( unClaimedProjId === -1 ) {
@@ -1532,21 +1566,8 @@ async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 	// be no issues during linkage:init (in other words, linkage init will drive unclaimed initialization.  And in other cases
 	// unclaimed currently is linked up front, no peq needed.
 	let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: unClaimedProjId } );
-	if( projLocs === -1 ) {
 
-	    let rLinks = [];
-	    let rLocs  = [];
-	    
-	    console.log( authData.who, "Initializing unclaimed locs" );
-	    await getHostLinkLoc( authData, unClaimedProjId, rLocs, rLinks, -1 )
-		.catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
-	    
-	    for( var loc of rLocs ) {
-		loc.ceProjectId = pd.ceProjectId;
-		loc.active = "true";
-		ghLinks.addLoc( authData, loc, false ); 
-	    }
-	}
+	if( projLocs === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, unClaimedProjId ); }
 	
     }
 
@@ -1559,7 +1580,7 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
 {
     let   loc = -1;
     const unClaimed = config.UNCLAIMED;
-    const colName = (typeof accr !== 'undefined') ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
+    const colName = accr ? config.PROJ_COLS[config.PROJ_ACCR] : unClaimed;
 
     console.log( authData.who, "create unclaimed col", unClaimedProjId, issueId, colName, accr );
 
@@ -1567,7 +1588,9 @@ async function createUnClaimedColumn( authData, ghLinks, pd, unClaimedProjId, is
     locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": unClaimed } );
     if( locs === -1 ) {
 	// XXX revisit once (if) GH API supports column creation
-	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand." );
+	console.log( authData.who, "Error.  Please create the", unClaimed, "project by hand for", pd.ceProjectId  );
+	locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId } );
+	console.log( locs );
     }
     else {
 	assert( unClaimedProjId == locs[0].hostProjectId );
@@ -1721,7 +1744,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	    progCol = await progCol;
 	    nLoc.hostColumnName = progName;
 	    nLoc.hostColumnId   = progCol.data.id;
-	    await ghLinks.addLoc( authData, nLoc, true );
+	    await ghLinks.addLocs( authData, [nLoc], true );
 	}
 
 	if( pendCol ) {
@@ -1730,7 +1753,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	    nLoc.hostColumnId   = pendCol.data.id;
 
 	    foundReqCol[config.PROJ_PEND + 1] = pendCol.data.id;
-	    await ghLinks.addLoc( authData, nLoc, true );
+	    await ghLinks.addLocs( authData, [nLoc], true );
 	}
 
 	if( accrCol ) {
@@ -1739,7 +1762,7 @@ async function getCEProjectLayout( authData, ghLinks, pd )
 	    nLoc.hostColumnId   = accrCol.data.id;
 	    
 	    foundReqCol[config.PROJ_ACCR + 1] = accrCol.data.id;
-	    await ghLinks.addLoc( authData, nLoc, true );
+	    await ghLinks.addLocs( authData, [nLoc], true );
 	}
     }
     // console.log( "Layout:", foundReqCol );

@@ -52,7 +52,11 @@ class GH2Data extends ceData.CEData{
 	let retVal = config.EMPTY; 
 	if( Object.keys(ceProjects).length == 0 ) { return retVal; }
 	
-	// If this is content notice, get from repo
+	// If this is content notice, get from repo.  If projects_v2, just give up.
+	if( utils.validField( jd.reqBody, "projects_v2" ) ) {
+	    console.log( authData.who, "skip setting ceProjectId for project_v2 notifications." );
+	    return;
+	}
 	if( !utils.validField( jd.reqBody, "projects_v2_item" ) || !utils.validField( jd.reqBody.projects_v2_item, "project_node_id" ) ) {
 	    assert( utils.validField( jd.reqBody, "repository" ));
 	    console.log( "Find by repo", jd.org, jd.reqBody.repository.full_name );

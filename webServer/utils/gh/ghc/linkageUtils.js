@@ -57,7 +57,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, baseLinks, locData 
 	    for( var loc of locData ) {
 		loc.ceProjectId = ceProject.CEProjectId;
 		loc.active = "true";
-		ghLinks.addLoc( authData, loc, false );  
+		// ghLinks.addLoc( authData, loc, false );  
 	    }
 	    
 	    blPromise = await blPromise;  // no val here, just ensures linkData is set

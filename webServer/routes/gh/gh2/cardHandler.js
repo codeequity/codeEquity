@@ -258,7 +258,13 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    // Ingest manages peq.psub (i.e. move relo does not manage peq.psub), excluding this first move from unclaimed to initial residence.
 	    // if remade card, then update peq too, just this once.  This is the only time cross-project moves are allowed.
 	    let specials = foundUnclaimed ? {pact: "addRelo", fromCard: true} : {fromCard: true};
-	    
+
+	    // We have a peq.  Make sure project is linked in ceProj
+	    console.log( "YYY Looking for", pd.ceProjectId, card.project_node_id );
+	    let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: card.project_node_id } );
+	    if( projLocs === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, card.project_node_id ); }
+	    console.log( "YYY projLocs", projLocs );
+
 	    // Call PNP to add linkage, resolve, etc.  
 	    // pact is ignore, since 'create' is always accompanied by 'move'.  'move' does relo.
 	    // Buut.. skip pnp if columnId in link is already meaningful.  Means GH finished processing before label notice arrived for ceServer
@@ -302,8 +308,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		return;
 	    }
 
-	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );  
-	    assert( locs !== -1 );
+	    const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );
+
+	    // If no locs, this card belongs to project that is not part of a CodeEquity project (i.e. no current/past PEQ issues).  
+	    if( locs == -1 ) {
+		console.log( authData.who, "Card moves in projects not related to CodeEquity are ignored." );
+		return;
+	    }
+
 	    // Note, config.MAIN_PROJ should not have PLAN
 	    let rejectLoc = -1;
 	    for( const aloc of locs ) {

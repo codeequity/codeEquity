@@ -28,6 +28,9 @@ var githubPATs     = {};
 // base is org, repo is undefined
 async function getInstallationAccessToken(base, repo, app, jwt) {
 
+    // DEPRECATED
+    assert( false );
+    
     let loc = "";
     if( typeof repo === 'undefined' ) { loc = "https://api.github.com/orgs/"  + base              + "/installation"; }
     else                              { loc = "https://api.github.com/repos/" + base + "/" + repo + "/installation";}
@@ -60,6 +63,8 @@ function getInstallationClientFromToken(installationAccessToken) {
 }
 
 async function getInstallationClient(actor, repo, source) {
+    // DEPRECATED
+    assert( false );
 
     // Both the codeEquity app, and the ceTester app are installed for local development, both are authorized against the github repo.
     // the codeEquity app contains the webServer - use those credentials for posting to GH, otherwise secondary notification filtering

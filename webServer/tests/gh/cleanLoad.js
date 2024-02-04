@@ -216,11 +216,11 @@ async function loadLinkage( authData, td ) {
 		nLoc.hostColumnName  = loc.HostColumnName.S;
 		nLoc.active          = loc.Active.S;
 		
-		ghLinks.addLoc( authData, nLoc, false);
+		ghLinks.addLocs( authData, nLoc, false);  // XXXXXXXXXXXXXXXX
 	    }
 
 	    var locsL = ghLinks.getLocs( authData, { "ceProjId": nLoc.ceProjectId, "repo": repo } );
-	    await awsUtils.refreshLinkageSummary( authData, repo, locsL, false );
+	    await awsUtils.refreshLinkageSummary( authData, repo, locsL, false ); // XXXXXXXXXXXXXXXXXXXXXXXXXX
 	    break;
 	}
     }

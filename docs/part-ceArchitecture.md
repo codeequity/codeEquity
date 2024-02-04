@@ -54,5 +54,5 @@ with a user pool.  Signed requests are sent to AWS Lambda functions via AWS Gate
 [awsDynamo](ops/aws/lambdaHandlers/awsDynamo.js) contains the key lambda handlers for the backend.
 Their primary function is saving and retrieving data from a collection of AWS DynamoDB tables.
 
-All communication with the AWS Backend is encoded as JSON REST data.
+All communication with the AWS Backend is encoded as JSON data.
 

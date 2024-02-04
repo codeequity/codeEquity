@@ -537,52 +537,59 @@ async function putLinkage( summary ) {
 }
 
 // NOTE: if this is called multiple times with new repo, new locs, very quickly, more than 1 thread can pass the test, creating multiple
-//       linkages.  Which is bad.
-async function updateLinkage( newLoc ) {
+//       linkages.  Which is bad.  Also, can overwrite, which is stinky.
+async function updateLinkage( newLocs ) {
     // get any entry with summary.CEProjectId, overwrite
-    let oldSummary = await getLinkage( newLoc.CEProjectId );
+    let oldSummary = await getLinkage( newLocs.CEProjectId );
 
     // XXX not thread-safe, see above
     // Note!  First created project in repo will not have summary.
     if( oldSummary == -1 ) {
 	oldSummary = {};
 	oldSummary.CELinkageId = randAlpha(10);
-	oldSummary.CEProjectId = newLoc.CEProjectId;
+	oldSummary.CEProjectId = newLocs.CEProjectId;
 	console.log( "Created new summary object" );
     }
+    if( oldSummary.Locations === -1 ) {
+	oldSummary.Locations = [];
+    }
 
-    // Update to catch and overwrite with name changes
-    oldSummary.LastMod = newLoc.LastMod;
-    let foundLoc = false;
-    if( 'Locations' in oldSummary ) {
-	for( var loc of oldSummary.Locations ) {
-	    if( loc.HostProjectId == newLoc.Location.hostProjectId && loc.HostColumnId == newLoc.Location.hostColumnId ) {
-		console.log( "updating with", newLoc.Location.hostProjectName, newLoc.Location.hostColumnName );
-		loc.HostRepository  = newLoc.Location.hostRepository;
-		loc.HostRepositoryId  = newLoc.Location.hostRepositoryId;
-		loc.HostProjectName = newLoc.Location.hostProjectName;
-		loc.HostColumnName  = newLoc.Location.hostColumnName;
-		loc.HostUtility     = newLoc.Location.hostUtility;
-		loc.Active          = newLoc.Location.active;
-		foundLoc = true;
+    oldSummary.LastMod = newLocs.LastMod;
+    for( const nLoc of newLocs.Locs ) {
+	
+	assert( newLocs.CEProjectId == nLoc.ceProjectId );
+	
+	// Update to catch and overwrite with name changes
+	let foundLoc = false;
+	if( 'Locations' in oldSummary ) {
+	    for( var loc of oldSummary.Locations ) {
+		if( loc.hostProjectId == nLoc.hostProjectId && loc.hostColumnId == nLoc.hostColumnId ) {
+		    console.log( "updating with", nLoc.hostProjectName, nLoc.hostColumnName );
+		    loc.hostProjectName = nLoc.hostProjectName;
+		    loc.hostColumnName  = nLoc.hostColumnName;
+		    loc.hostUtility     = nLoc.hostUtility;
+		    loc.active          = nLoc.active;
+		    loc.ceProjectId     = nLoc.ceProjectId;
+		    foundLoc = true;
+		    break;
+		}
 	    }
 	}
-    }
-    else { oldSummary.Locations = []; }
-
-    // Add, if not already present
-    if( !foundLoc ) {
-	let aloc = {};
-	console.log( "Create new for", newLoc.Location.hostProjectName, newLoc.Location.hostColumnName );
-	aloc.HostProjectId   = newLoc.Location.hostProjectId;
-	aloc.HostProjectName = newLoc.Location.hostProjectName;
-	aloc.HostRepository  = newLoc.Location.hostRepository;
-	aloc.HostRepositoryId  = newLoc.Location.hostRepositoryId;
-	aloc.HostColumnId    = newLoc.Location.hostColumnId;
-	aloc.HostColumnName  = newLoc.Location.hostColumnName;
-	aloc.HostUtility     = newLoc.Location.hostUtility;
-	aloc.Active          = newLoc.Location.active;
-	oldSummary.Locations.push( aloc );
+	else { oldSummary.Locations = []; }
+	
+	// Add, if not already present
+	if( !foundLoc ) {
+	    let aloc = {};
+	    console.log( "Create new for", nLoc.hostProjectName, nLoc.hostColumnName );
+	    aloc.hostProjectId   = nLoc.hostProjectId;
+	    aloc.hostProjectName = nLoc.hostProjectName;
+	    aloc.hostColumnId    = nLoc.hostColumnId;
+	    aloc.hostColumnName  = nLoc.hostColumnName;
+	    aloc.hostUtility     = nLoc.hostUtility;
+	    aloc.active          = nLoc.active;
+	    aloc.ceProjectId     = nLoc.ceProjectId;
+	    oldSummary.Locations.push( aloc );
+	}
     }
     
     return await writeLinkHelp( oldSummary );

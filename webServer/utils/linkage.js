@@ -57,11 +57,14 @@ class Linkage {
 	    baseLinks = res.links;
 	    locData   = res.locs; 
 	}
-	
+
+	// console.log( entry, preferredRepoId );
 	// console.log( authData.who, "LINKAGE: Locs",  locData );
 	// console.log( authData.who, "LINKAGE: Links", baseLinks );
 
-	awsUtils.refreshLinkageSummary( authData, entry.CEProjectId, locData );
+	// Update or refresh aws?  If have preferredRepo (one repo only, from ingest), must be update.
+	this.addLocs( authData, locData, { update: preferredRepoId != -1 } ); 
+	// awsUtils.refreshLinkageSummary( authData, entry.CEProjectId, locData );
 	
 	// peq add: cardTitle, colId, colName, projName - carded issues do not track this.
 	// flatSource is a column id.  May not be in current return data, since source is orig col, not cur col.
@@ -203,32 +206,50 @@ class Linkage {
 	for( const [_, clocs] of Object.entries( locData ) ) {
 	    for( const [_, plocs] of Object.entries( clocs ) ) {
 		for( const [col, loc] of Object.entries( plocs )) {
-		    this.addLoc( {}, loc );
+		    this.addLocs( {}, [loc], { pushAWS: false } );
 		}
 	    }
 	}
     }
 
     // ProjectID is the kanban project.  repo:pid  is 1:many
-    async addLoc( authData, locD, pushAWS = false ) {
-	locD.hostColumnId  = locD.hostColumnId.toString();
-	locD.hostProjectId = locD.hostProjectId.toString();
-	let ceProjId       = locD.ceProjectId;
+    async addLocs( authData, locDs, specials ) {
+	const pushAWS  = typeof specials !== 'undefined' && specials.hasOwnProperty( "pushAWS" )  ? specials.pushAWS   : true;
+	let   update   = typeof specials !== 'undefined' && specials.hasOwnProperty( "update" )   ? specials.update    : true;
 
-	if( typeof ceProjId === 'undefined' ) { console.log( authData.who, "Warning.  Linkage addLoc was called without a CE Project Id." ); }
-	    
-	if( !utils.validField( this.locs, ceProjId ))                                        { this.locs[ceProjId] = {}; }
-	if( !utils.validField( this.locs[ceProjId], locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
-	if( !utils.validField( this.locs[ceProjId][locD.hostProjectId], locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData.LocData(); }
-											    
-	let loc = this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId];
-	loc.fromLoc( locD ); 
+	update         =  update && pushAWS;
+	const refresh  = !update && pushAWS;
 
-	// Must wait.. aws dynamo ops handled by multiple threads.. order of processing is not dependable in rapid-fire situations.
-	// No good alternative - refresh could be such that earlier is processed later in dynamo
-	if( pushAWS ) { await awsUtils.updateLinkageSummary( authData, ceProjId, loc ); }
+	if( locDs.length < 1 ) { console.log( authData.who, "No locs to add."); return []; }
 	
-	return loc;
+	let locs = [];
+	let ceProjId = -1;
+	for( var locD of locDs ) {
+	    locD.hostColumnId  = locD.hostColumnId.toString();
+	    locD.hostProjectId = locD.hostProjectId.toString();
+
+	    assert( ceProjId == locD.ceProjectId || ceProjId == -1 ); 
+	    ceProjId           = locD.ceProjectId;
+	    
+	    if( typeof ceProjId === 'undefined' ) { console.log( authData.who, "Warning.  XXX Linkage addLoc was called without a CE Project Id." ); }
+	    
+	    if( !utils.validField( this.locs, ceProjId ))                                        { this.locs[ceProjId] = {}; }
+	    if( !utils.validField( this.locs[ceProjId], locD.hostProjectId ))                    { this.locs[ceProjId][locD.hostProjectId] = {}; }
+	    if( !utils.validField( this.locs[ceProjId][locD.hostProjectId], locD.hostColumnId )) { this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId] = new locData.LocData(); }
+	    
+	    let loc = this.locs[ceProjId][locD.hostProjectId][locD.hostColumnId];
+	    loc.fromLoc( locD );
+	    
+	    if( pushAWS ) { locs.push( loc ); }
+	}
+
+	// XXX may not need await any longer.
+	// Will not push to aws if, for example, request is from tester, i.e. fromJsonLocs or gh2tu:createProjectWorkaround
+	// update is additive or mod existing.  refresh is overwrite-destructive
+	if( update )       { await awsUtils.updateLinkageSummary( authData, ceProjId, locs ); }
+	else if( refresh ) { await awsUtils.refreshLinkageSummary( authData, ceProjId, locs ); }
+	    
+	return locs;
     }
 
     getUniqueLink( authData, ceProjId, issueId ) {
@@ -251,8 +272,8 @@ class Linkage {
     // note: id = -1 here is simply used to turn on/off match.  does not grow beyond this func. config.empty signals untracked.
     getLinks( authData, query ) {
 
-	if( typeof query.ceProjId === 'undefined' ) {
-	    console.log( authData.who, "Error.  ceProjectId was not defined in Links query." );
+	if( typeof query.ceProjId === 'undefined' && typeof query.pid === 'undefined' ) {
+	    console.log( authData.who, "Error.  Neither ceProjectId nor host project id were not specified in Locs query." );
 	    assert( false );
 	}
 
@@ -268,7 +289,36 @@ class Linkage {
 	const hostUtility = utils.validField( query, "hostUtility" ) ? query.hostUtility        : config.EMPTY;
 
 	// console.log( authData.who, "get Links", ceProjId, issueId, cardId, pid, projName, colName, issueTitle );
-	
+
+	let links = [];
+
+	let seed = {};
+	if( typeof ceProjId === 'undefined' ) { seed = this.links; }
+	else                                  { seed = this.links[ceProjId]; }
+
+	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
+	if( !seed ) { return -1; }
+
+	for( const [cpid, clinks] of Object.entries( seed ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
+	    // Note, during initial resolve, this may NOT be 1:1 issue:card
+	    for( const [_, link] of Object.entries( clinks ) ) {
+		let match = true;
+		match = issueId == -1               ? match : match && (link.hostIssueId     == issueId);
+		match = cardId == -1                ? match : match && (link.hostCardId      == cardId);
+		match = pid == -1                   ? match : match && (link.hostProjectId   == pid);
+		match = repo == config.EMPTY        ? match : match && (link.hostRepoName    == repo);
+		match = repoId == config.EMPTY      ? match : match && (link.hostRepoId      == repoId);
+		match = projName == config.EMPTY    ? match : match && (link.hostProjectName == projName );
+		match = colName == config.EMPTY     ? match : match && (link.hostColumnName  == colName );
+		match = issueTitle == config.EMPTY  ? match : match && (link.hostIssueName   == issueTitle );
+		match = ceProjId == config.EMPTY    ? match : match && (link.ceProjectId     == ceProjId );
+		match = hostUtility == config.EMPTY ? match : match && (link.hostUtility     == hostUtility );
+		
+		if( match ) { links.push( link ); }
+	    }
+	}
+
+	/*
 	let links = [];
 	if( this.links[ceProjId] == null ) { return -1; }  // could be an empty ceproj
 	
@@ -290,19 +340,15 @@ class Linkage {
 		if( match ) { links.push( link ); }
 	    }
 	}
-
+	*/
+	
 	if( links.length == 0 ) { links = -1; }
 	return links;
     }
 
-    // No match on utility slot.  yet?
-    // note: ids = -1 here is simply used to turn on/off match.  does not grow beyond this func.
-    getLocs( authData, query ) {
-	// console.log( authData.who, "get Locs", query );
-	// this.showLocs();
-	    
-	if( typeof query.ceProjId === 'undefined' ) {
-	    console.log( authData.who, "Error.  ceProjectId was not defined in Locs query." );
+    iterateLocs( authData, query, matchFunc ) {
+	if( typeof query.ceProjId === 'undefined' && typeof query.pid === 'undefined' ) {
+	    console.log( authData.who, "Error.  Neither ceProjectId nor host project id were not specified in Locs query." );
 	    assert( false );
 	}
 
@@ -312,10 +358,89 @@ class Linkage {
 	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
 	const colName   = utils.validField( query, "colName" )  ? query.colName           : config.EMPTY;
 
+	let locs = [];
+
+	let seed = {};
+	if( typeof ceProjId === 'undefined' ) { seed = this.locs; }
+	else                                  { seed = this.locs[ceProjId]; }
+
+	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
+	if( !seed ) { return -1; }
+
+	for( const [cpid, clocs] of Object.entries( seed ) ) {  // one clocs is {pid1: { coldata }, pid2: { coldata }}
+	    for( const [_, loc] of Object.entries( clocs ) ) {            
+		let match = true;
+		
+		match = pid == -1                ? match : match && (loc.hostProjectId    == pid);
+		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
+		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
+		match = projName == config.EMPTY ? match : match && (loc.hostProjectName  == projName);
+		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName   == colName);
+		match =                                    match && (loc.active           == "true");
+
+		if( match ) { matchFunc( locs, loc ); }
+		// console.log( "locs match", query, match, loc, locs )
+	    }
+	}
+
+	if( locs.length == 0 ) { locs = -1; }
+	return locs;
+    }
+
+    getLocs( authData, query ) {
+	let matchFunc = function (locs, loc ) { locs.push( loc ); };
+	let locs = this.iterateLocs( authData, query, matchFunc );
+	return locs;
+    }
+
+    /*
+    // No match on utility slot.  yet?
+    // note: ids = -1 here is simply used to turn on/off match.  does not grow beyond this func.
+    // { ceProjId: { pid: { colId: {} } pid: { colId: {}}},  ceProjId: { pid: { colId: {} } pid: { colId: {}}}}
+    getLocs( authData, query ) {
+	// console.log( authData.who, "get Locs", query );
+	// this.showLocs();
+	    
+	if( typeof query.ceProjId === 'undefined' && typeof query.pid === 'undefined' ) {
+	    console.log( authData.who, "Error.  Neither ceProjectId nor host project id were not specified in Locs query." );
+	    assert( false );
+	}
+
+	const ceProjId  = query.ceProjId;
+	const pid       = utils.validField( query, "pid" )      ? query.pid.toString()    : -1;
+	const colId     = utils.validField( query, "colId" )    ? query.colId.toString()  : -1;
+	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
+	const colName   = utils.validField( query, "colName" )  ? query.colName           : config.EMPTY;
+
+	let locs = [];
+
+	let seed = {};
+	if( typeof ceProjId === 'undefined' ) { seed = this.locs; }
+	else                                  { seed = this.locs[ceProjId]; }
+
+	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
+	if( !seed ) { return -1; }
+
+	for( const [cpid, clocs] of Object.entries( seed ) ) {  // one clocs is {pid1: { coldata }, pid2: { coldata }}
+	    for( const [_, loc] of Object.entries( clocs ) ) {            
+		let match = true;
+		
+		match = pid == -1                ? match : match && (loc.hostProjectId    == pid);
+		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
+		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
+		match = projName == config.EMPTY ? match : match && (loc.hostProjectName  == projName);
+		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName   == colName);
+		match =                                    match && (loc.active           == "true");
+		
+		if( match ) { locs.push( loc ); }
+	    }
+	}
+	
+	// XXX
+
 	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
 	if( !this.locs[ceProjId] ) { return -1; }
 
-	let locs = [];
 	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) {// one clocs is {pid1: { coldata }, pid2: { coldata }}
 	    for( const [_, loc] of Object.entries( clocs ) ) {            
 		let match = true;
@@ -331,10 +456,12 @@ class Linkage {
 	    }
 	}
 
+	    
 	if( locs.length == 0 ) { locs = -1; }
 	return locs;
     }
-
+    */
+    
     
     // Zero out fields in linkage table no longer being tracked
     rebaseLinkage( authData, ceProjId, issueId ) {
@@ -417,83 +544,39 @@ class Linkage {
 	return retVal;
     }
 
-    // set .active flag to false.  getLocs requires active true, but showLocs may show inactive during debugging.
     removeLocs({ authData, ceProjId, pid, colId }) {
 	if( !authData ) { console.log( authData.who, "missing authData" ); return false; }
-
 
 	if( colId )    { console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); } // one delete
 	else if( pid ) { console.log( authData.who, "Remove locs for pid:", ceProjId, pid ); }    // many deletes
 
+	let query = { authData: authData };
+	if( typeof pid       !== 'undefined' ) { query.pid = pid; }
+	if( typeof colId     !== 'undefined' ) { query.colId = colId; }
+	if( typeof ceProjId  !== 'undefined' ) { query.ceProjId = ceProjId; }
 
-	let havePID = typeof pid !== 'undefined';
-	let haveCID = typeof colId  !== 'undefined';
-	let cpid    = "";
+	let matchFunc = function (locs, loc ) {
+	    loc.active = "false";
+	    locs.push( loc );
+	};
 
-	// Easy cases, already do not exist
-	// No need to check for empty ceProjectIds, since there is nothing to set inactive.
-	if( (!havePID && !haveCID) ||                                                            // nothing specified
-	    (!utils.validField( this.locs, ceProjId )) ||                                        // nothing yet for ceProject
-	    (havePID && !utils.validField( this.locs[ceProjId], pid )) ||                     // have pid, but already not in locs
-	    (havePID && haveCID && !utils.validField( this.locs[ceProjId][pid], colId ))) {   // have pid & cid, but already not in locs
-	}
-	else if( havePID && utils.validField( this.locs[ceProjId], pid )) {
-	    if( haveCID && utils.validField( this.locs[ceProjId][pid], colId ))
-	    {
-		assert( cpid == "" || cpid == this.locs[ceProjId][pid][colId].ceProjectId );
-		cpid = this.locs[ceProjId][pid][colId].ceProjectId;
-		this.locs[ceProjId][pid][colId].active = "false"; 
-	    }
-	    else if( !haveCID ) {
-		for( var [_, loc] of Object.entries( this.locs[ceProjId][pid] )) {
-		    assert( cpid == "" || cpid == loc.ceProjectId );
-		    cpid = loc.ceProjectId;
-		    loc.active = "false"; 
-		}
-	    }
-	}
-	// I don't have PID, but I do have CID
-	else {  
-	    for( const [ceproj,cplinks] of Object.entries( this.locs )) {
-		for( const [proj,cloc] of Object.entries( cplinks )) {
-		    if( utils.validField( cloc, colId )) {
-			assert( cpid == "" || cpid == this.locs[ceproj][proj][colId].ceProjectId );
-			cpid = this.locs[ceproj][proj][colId].ceProjectId;
-			this.locs[ceproj][proj][colId].active = "false";
-			break;
-		    }
-		}
-	    }
-	}
+	let locs = this.iterateLocs( authData, query, matchFunc );
+	if( locs == -1 ) { return; }
 
-	// No need to wait.  Pass a list here, so no-one else need care about internals.
-	if( cpid != "" ) {
-	    let locs = [];
-	    for( const [_, cplinks] of Object.entries( this.locs ) ) {   // over ceProjs
-		for( const [_, cloc] of Object.entries( cplinks ) ) {    // over hostProjs
-		    for( const [_, loc] of Object.entries( cloc )) {     // over cols
-			
-			if( loc.ceProjectId == cpid ) {
-			    let aloc = {};
-			    aloc.hostProjectId   = loc.hostProjectId;
-			    aloc.hostProjectName = loc.hostProjectName;
-			    aloc.hostColumnId    = loc.hostColumnId;
-			    aloc.hostColumnName  = loc.hostColumnName;
-			    aloc.hostUtility     = loc.hostUtility;
-			    aloc.active          = loc.active;
-			    
-			    locs.push( aloc );
-			}
-		    }
-		}
+	// Need to refresh AWS.  In most cases, locs belong to a single ceProjectId (the argument) .. but if deleting a project, it can cross ceProjIds.
+	// Could either delete these locs one by one in aws, or overwrite each chunk for cpid.  the latter is less communication.
+	let cpids = [];
+	for( const loc of locs ) {
+	    if( !cpids.includes( loc.ceProjectId )) {
+		cpids.push( loc.ceProjectId );
+		let clocs = this.getLocs( authData, { ceProjId: loc.ceProjectId } );
+		awsUtils.refreshLinkageSummary( authData, loc.ceProjectId, clocs, false );
 	    }
-	    awsUtils.refreshLinkageSummary( authData, cpid, locs, false );
 	}
     }
 
-
-    async linkProject( authData, ceProjects, ceProjId, hostProjectId ) {
-	await gh2LU.linkProject( authData, this, ceProjects, ceProjId, hostProjectId);
+    async linkProject( authData, ceProjId, hostProjectId, pushAWS = true ) {
+	await gh2LU.linkProject( authData, this, ceProjId, hostProjectId, pushAWS);
 	return true;
     }
 

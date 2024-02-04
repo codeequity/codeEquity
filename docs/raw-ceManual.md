@@ -20,8 +20,8 @@ They are quick to learn, and functional enough to easily support small to medium
 teams (for example, explore some [active projects at Google](https://github.com/orgs/google/projects?query=is%3Aopen)).
 GitHub has integrated their project boards with all core elements of its repository
 management toolkit, and provides a push-based notification system for external
-application integration.  CodeEquity utilizes this notification system along with GitHub's Octokit
-REST and GraphQL APIs to build a wrapper around any Github repository, converting it and it's elements into a part of a CodeEquity
+application integration.  CodeEquity utilizes this notification system along with GitHub's 
+GraphQL APIs to build a wrapper around any Github repository, converting it and it's elements into a part of a CodeEquity
 Project.
 
 GitHub repositories are owned by individuals or organizations.  A GitHub organization can own many GitHub repositories, each of which contains a collection of
@@ -448,7 +448,7 @@ access token.  To create a personal access token for CodeEquity,
 
 There is very little to this app, as mentioned in the overview.  It is a cohesive set of
 notification configurations and permissions, along with the address of CE Server so that GitHub knows where to send
-the notifications to.  The notifications are JSON REST, see a full example of one below.
+the notifications to.  The notifications are JSON data, see a full example of one below.
 
 # CE Server
 
@@ -496,8 +496,8 @@ but often carry information like action, repo, issue, timestamp and so on.  A si
    { login: 'rmusick2000' }}
 ```
 
-All communication with the GitHub is encoded as JSON REST data.  CE Server will make REST calls to GitHub's
-GraphQL interface with as a service to the user, to help keep the CodeEquity project
+All communication with the GitHub is encoded as JSON data.  CE Server will make calls to GitHub's
+GraphQL interface as a service to the user, to help keep the CodeEquity project
 in a valid state.  Calls to GitHub may fail for a variety of reasons.  An error handler in
 [ghUtils.js](./ghUtils.js) will retry operations a number of times if the error type is
 recognizable.  
@@ -645,57 +645,38 @@ information is responsible for significant speedups when responding to user oper
 
 ## Authorizations
 
-CE Server uses several APIs to communicate with GitHub and the AWS Backend:
-* The [Octokit REST API](https://octokit.github.io/rest.js) for GitHub
-* The [Octokit GraphQL API](https://docs.github.com/en/graphql/reference) for GitHub
+CE Server uses the following APIs to communicate with GitHub and the AWS Backend:
+* The [GraphQL API](https://docs.github.com/en/graphql/reference) for GitHub
 * An [AWS Lambda Gateway](https://docs.aws.amazon.com/lambda/index.html) for CodeEquity's AWS Backend
 
 Each of these requires a different form of authorization.
-(XXX revisit XXX) verify octokit is out.  verify entire section.
 
 ##### CodeEquity App for Github credentials  (enabled upon app install)
 
 When the CodeEquity App for GitHub was built, a set of private key credentials were created and
 associated with the app identifier.  Every time you install the CodeEquity App for GitHub for a new repo,
 GitHub internally authorizes the app (via the private key credentials) to interact with the repo.
+These credentials are stored in `ops/github/auth`.
 
-These credentials are stored in `ops/github/auth`, and used by CE Server to acquire the Octokit
-credentials described below.  Additionally, CE Flutter will on occasion
-communicate directly with GitHub through Octokit.  To make this feasible, the app credentials are
-also copied into the CE Flutter space as part of the flutter build step.
+CE Flutter will on occasion communicate directly with GitHub through Octokit.  To make this
+feasible, the app credentials are also copied into the CE Flutter space as part of the flutter build
+step.
 
 Note that CodeEquity has a separate testing app for GitHub, called "ceTester", described in the
 **Testing** Section below.  ceTester generates GitHub activity under a separate testing account
 through the GitHub GraphQL API, and so requires it's own set of app credentials.  These are stored
 as siblings to the credentials for the main CodeEquity App for GitHub.
 
-##### Installation client for Octokit (refreshed hourly by CE Server)
-
-GitHub's Octokit REST API requires an installation access token for all requests on a GitHub
-repo.  CE Server acquires this token by using the private key credentials of the app making the
-request, in other words, the CodeEquity App for GitHub credentials (or the ceTester credentials) described above.
-
-In slightly more detail, the server first gets a signed JSON web token (JWT) from Octokit that is
-specific to the CodeEquity App for GitHub, then uses that to get an installation-specific token
-which is used to sign all subsequent requests to the REST API from the app, for the
-repo-specific installation.
-
-At the time of writing, the installation token expires after an hour or so.  `ceRouter` tracks
-the age of each token for every known owner and repo, and will refresh the token when the next
-notification arrives that requires communication with GitHub.
-
-The installation token is not stored in the system.
 
 ##### Personal Access Token for GitHub (supplied by repo owner using CE Flutter)
 
 The REST API is useful up to a point for a GitHub app, but comes with some serious limitations.  For
 example, you can not delete an issue by using the REST API, which is critical for automated testing.
 
-GitHub's Octokit also provides a GraphQL API, which allows an app to traverse the object hierarchy
-internal to GitHub within the context of a single query to the system.  A single GraphQL query can
-often do the work of, literally, hundreds of 
-queries the REST API might require.  The GraphQL API is fast and scalable, but does require access
-to a usable personal access token. 
+GitHub also provides a GraphQL API, which allows an app to traverse the object hierarchy internal to
+GitHub within the context of a single query to the system.  A single GraphQL query can often do the
+work of, literally, hundreds of queries the REST API might require.  The GraphQL API is fast and
+scalable, but does require access to a usable personal access token.
 
 CodeEquity's personal access token is stored along with other server authorization data in
 `ops/github/auth`.  CE Server will use this token by default for all server-related GitHub GraphQL
@@ -736,7 +717,7 @@ CodeEquity projects in GitHub on behalf of users, in order to keep projects in a
 For example, when a user closes a PEQ issue in a CodeEquity project, that indicates that the work
 associated with the issue is complete, and the PEQ issue is ready to be reviewed by whomever has
 approval authority on the project.  In this case, CE Server will send a request to GitHub via the
-Octokit GraphQL API to move the related card (remember, every PEQ issue has exactly one card attached
+GraphQL API to move the related card (remember, every PEQ issue has exactly one card attached
 to it) into the **Pending PEQ Approval** column.  CE Server will also make a request to GitHub to
 create this column in the project if it does not already exist.
 
@@ -958,15 +939,15 @@ action may be postponed if the notifications to open the underlying issue have n
 by CE Server, or if the handler detects that a PEQ label has been added to GitHub but that
 notification has yet to be seen by `ceRouter`.
 
-The `created` action for a new PEQ issue will cause the card subhandler to modify the **UnClaimed** project.
+The `created` action for a new PEQ issue will cause the card subhandler to modify the **Unclaimed** project.
 When the user first creates PEQ issue in GitHub by adding a PEQ label to an issue, GitHub
 initially prevents the assignment of the issue to a column in a project.  The user must first submit
 the issue, wait for a bit, then click on `triage` in the `Projects` sidebar to assign the issue to a
 column (i.e. to tell GitHub to create a card in the selected project column).  During this gap, the
 handler protects the CodeEquity project 1:1 issue:card mapping constraint by instructing GitHub to
-create a card for the new PEQ issue in the **UnClaimed** project and column.  Once the user chooses
+create a card for the new PEQ issue in the **Unclaimed** project and column.  Once the user chooses
 the intended project column for the issue causing the `created` notification to be issued, the card
-subhandler will remove the issue subhandler-created card in **UnClaimed**, and update CE Server's
+subhandler will remove the issue subhandler-created card in **Unclaimed**, and update CE Server's
 internal state to reflect the new card.
 
 The `converted` action notification is only generated with a non-PEQ issue.  It informs CE Server
@@ -976,7 +957,7 @@ Server internal state to identify this newly 'carded' issue.
 The `deleted` action will clean up all internal state related to the card, and de-activate any
 non-accrued PEQ issues.  If removing a non-accrued PEQ issue results in a PEQ label that is no
 longer in use, the handler will remove the label itself.  If a PEQ issue card is being deleted from
-an **Accrued** column that is not in the `UnClaimed` project, the handler will recreate the card in
+an **Accrued** column that is not in the `Unclaimed` project, the handler will recreate the card in
 the **Accrued** column in Unclaimed.  Note that accrued PEQ issues are never modified on the AWS
 Backend, and have a permanent, binding status in CodeEquity.  In GitHub, however, apps can be
 removed and repositories deleted, even those with accrued PEQ issues.
@@ -1119,7 +1100,7 @@ with a user pool. Signed requests are sent to AWS Lambda functions via AWS Gatew
 is the key lambda handler for the backend. Its primary function is saving and retrieving
 data from a collection of AWS DynamoDB tables. 
 
-All communication with the AWS Backend is encoded as JSON REST data.
+All communication with the AWS Backend is encoded as JSON data.
 
 ## Creating the AWS Backend
 

@@ -189,7 +189,7 @@ async function runTests() {
 
     let authData     = new authDataC.AuthData(); 
     authData.who     = flutterTest ? "<TEST: ForFlutter> " : "<TEST: Main> ";
-    authData.ic      = await ghAuth.getInstallationClient( td.ghOwner, td.ghRepo, td.ghOwner );
+    // authData.ic      = await ghAuth.getInstallationClient( td.ghOwner, td.ghRepo, td.ghOwner );
     authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();    
@@ -209,7 +209,7 @@ async function runTests() {
     tdX.ghFullName = tdX.ghOwner + "/" + tdX.ghRepo;
     
     let authDataX     = new authDataC.AuthData();
-    authDataX.ic      = await ghAuth.getInstallationClient( tdX.ghOwner, tdX.ghRepo, tdX.ghOwner );
+    // authDataX.ic      = await ghAuth.getInstallationClient( tdX.ghOwner, tdX.ghRepo, tdX.ghOwner );
     authDataX.who     = authData.who;
     authDataX.api     = authData.api;
     authDataX.cog     = authData.cog;
@@ -227,7 +227,7 @@ async function runTests() {
     tdM.ghFullName = tdM.ghOwner + "/" + tdM.ghRepo;
     
     let authDataM     = new authDataC.AuthData();
-    authDataM.ic      = await ghAuth.getInstallationClient( tdM.ghOwner, tdM.ghRepo, tdM.ghOwner );
+    // authDataM.ic      = await ghAuth.getInstallationClient( tdM.ghOwner, tdM.ghRepo, tdM.ghOwner );
     authDataM.who     = authData.who;
     authDataM.api     = authData.api;
     authDataM.cog     = authData.cog;

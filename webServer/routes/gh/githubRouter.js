@@ -16,10 +16,11 @@ const ceRouter = require( rootLoc + 'routes/ceRouter' );
 // PMS_GHC
 
 // PMS_GH2
-const gh2Data   = require( rootLoc + 'routes/gh/gh2/gh2Data' );
-const gh2Item   = require( rootLoc + 'routes/gh/gh2/itemHandler' );
-const gh2Issue  = require( rootLoc + 'routes/gh/gh2/issueHandler' );
-const gh2Label  = require( rootLoc + 'routes/gh/gh2/labelHandler' );
+const gh2Data    = require( rootLoc + 'routes/gh/gh2/gh2Data' );
+const gh2Item    = require( rootLoc + 'routes/gh/gh2/itemHandler' );
+const gh2Issue   = require( rootLoc + 'routes/gh/gh2/issueHandler' );
+const gh2Label   = require( rootLoc + 'routes/gh/gh2/labelHandler' );
+const gh2Project = require( rootLoc + 'routes/gh/gh2/projectHandler' );
 
 // var noticeCount = 0;
 
@@ -41,8 +42,8 @@ function getJobSummaryGHC( jobData, locator ) {
 
 function getJobSummaryGH2( jobData, locator ) {
 
-    // ContentNotice carries repo information, pv2Item does not.
-    if(jobData.event != "projects_v2_item" ) {
+    // ContentNotice carries repo information, pv2Item does not. (issue, draftIssue, label)
+    if(jobData.event != "projects_v2_item" && jobData.event != "projects_v2") {
 	if( !jobData.reqBody.hasOwnProperty('repository') ) {
 	    console.log( "Content notice without repository.  Skipping.", jobData.reqBody );
 	    return -1;
@@ -74,13 +75,17 @@ function getJobSummaryGH2( jobData, locator ) {
 	    return -1;
 	}
 	
+	jobData.org  = jobData.reqBody.organization.login;
+
 	// NOTE Very little descriptive information known at this point, very hard to debug/track.  To get, say, an issue name,
 	//      we'd have to wait for a roundtrip query back to GH right now.  ouch!
-	let fullName = jobData.reqBody.organization.login + "/" + jobData.reqBody.projects_v2_item.content_node_id;
-	jobData.org  = jobData.reqBody.organization.login;
-	jobData.tag  = fullName; 
-	
-	if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == config.GH_ISSUE ) {
+	let tagId = jobData.event == "projects_v2" ? jobData.reqBody.projects_v2.node_id : jobData.reqBody.projects_v2_item.content_node_id;
+	jobData.tag  = jobData.org + "/" + tagId;
+
+	if( jobData.event == "projects_v2" ) {
+	    locator.source += "projects_v2:";
+	}
+	else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == config.GH_ISSUE ) {
 	    locator.source += "projects_v2_item:";
 	}
 	else if( jobData.event == "projects_v2_item" && jobData.reqBody.projects_v2_item.content_type == config.GH_ISSUE_DRAFT ) {
@@ -166,45 +171,47 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 	// Note: createIssue with label will generate issue:labeled.  May, or may not also generate pv2Notice, if carded issue.
 	// Note: reopen/closed will generate pv notice with ghost pv2 edit (no changes).  Treat this here to avoid dependence on Ghost.
 	//       ghost is unspecified, or incorrectly specified for github as of 10/23.  
-	
+
+	// Can not set ceProjectId if this is a project_v2 notice - they live cross-repo.
 	let pd = new gh2Data.GH2Data( authData, jd, ceProjects );
 	if( pd.ceProjectId == -1 ) { await pd.setCEProjectId( authData, jd, ceProjects ); }
 	
-	if( pd.ceProjectId == config.EMPTY ) {
-	    console.log( "WARNING.  Unlinked projects are not codeEquity projects.  No action is taken." );
-	}
-	else {
-	    ceRouter.setLastCEP( pd.ceProjectId );
-	    assert( jd.queueId == authData.job ) ;
-	    // await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
-	    await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, config.CE_ACTOR );
-	    
-	    switch( jd.event ) {
-	    case 'projects_v2_item' :
-		{
-		    // item created/deleted is ~ cardHandler.  Edited..?
-		    retVal = await gh2Item.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag, jd.delayCount )
-			.catch( e => console.log( "Error.  Item Handler failed.", e ));
-		}
+	ceRouter.setLastCEP( pd.ceProjectId );
+	assert( jd.queueId == authData.job ) ;
+	// await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, jd.actor );
+	await ceAuth.getAuths( authData, config.HOST_GH, jd.projMgmtSys, jd.org, config.CE_ACTOR );
+	
+	switch( jd.event ) {
+	case 'projects_v2_item' :
+	    {
+		// item created/deleted is ~ cardHandler.  Edited..?
+		retVal = await gh2Item.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag, jd.delayCount )
+		    .catch( e => console.log( "Error.  Item Handler failed.", e ));
+	    }
+	    break;
+	case 'issue' :
+	    {
+		retVal = await gh2Issue.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Issue Handler failed.", e ));
+	    }
+	    break;
+	case 'label' :
+	    {
+		retVal = await gh2Label.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Label Handler failed.", e ));
+	    }
+	    break;
+	case 'projects_v2' :
+	    {
+		retVal = await gh2Project.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
+		    .catch( e => console.log( "Error.  Label Handler failed.", e ));
+	    }
+	    break;
+	default:
+	    {
+		console.log( "Event unhandled", event );
+		retVal = res.json({ status: 400 });
 		break;
-	    case 'issue' :
-		{
-		    retVal = await gh2Issue.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
-			.catch( e => console.log( "Error.  Issue Handler failed.", e ));
-		}
-		break;
-	    case 'label' :
-		{
-		    retVal = await gh2Label.handler( authData, ceProjects, ghLinks, pd, jd.action, jd.tag )
-			.catch( e => console.log( "Error.  Label Handler failed.", e ));
-		}
-		break;
-	    default:
-		{
-		    console.log( "Event unhandled", event );
-		    retVal = res.json({ status: 400 });
-		    break;
-		}
 	    }
 	}
 	
