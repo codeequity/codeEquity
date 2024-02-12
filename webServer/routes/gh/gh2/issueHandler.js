@@ -123,7 +123,7 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 //      So when issue:label is received, card may exist in noStatus.  Or not, then issueLabel must createUnclaimed.
 async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLabels, label ) {
     // Zero's peqval if 2 found
-    [pd.peqValue, alloc] = ghUtils.theOnePEQ( issueLabels );  
+    [pd.peqValue, _] = ghUtils.theOnePEQ( issueLabels );  
 
     // label may be from json payload, or from internal call.  Convert id format.
     if( utils.validField( label, "node_id" ) ) { label.id = label.node_id; }
@@ -190,7 +190,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	    console.log( authData.who, "Newborn peq issue" );
 	    assert( link === -1 );
 	    link = {};
-	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId, alloc );
+	    card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, pd.issueId, false );
 	}
 	else if( utils.validField( card, "cardId" ) && !utils.validField( card, "columnId" ) ) {  // label notice beat create notice
 	    console.log( authData.who, "carded issue, no status -> peq issue", link === -1 );
