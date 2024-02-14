@@ -1092,7 +1092,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     cards = await getCards( authData, loc.pid, loc.colId );
     let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
 
-    subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
+    subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready " + card + issDat );
     if( typeof mCard[0] !== 'undefined' ) {
     
 	subTest = tu.checkEq( mCard.length, 1,                        subTest, "Card claimed" );

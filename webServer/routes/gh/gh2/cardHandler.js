@@ -325,7 +325,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    // Locked?  postpone when a related resolve:split is still underway
 	    // --------------
-	    if( ingestUtils.isLocked( cardId ) ) { return "postpone"; }
+	    if( ingestUtils.isLocked( authData, cardId ) ) { return "postpone"; }
 
 	    // Move into.  Split results have no 'from' onto a 'to' location.  Changes reject logic slightly.
 	    // --------------

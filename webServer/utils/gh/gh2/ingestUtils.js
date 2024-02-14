@@ -19,12 +19,12 @@ function unlockCards( cardId ) {
     }
 }
 
-function isLocked( cardId ) {
+function isLocked( authData, cardId ) {
     let retVal = false;
     for( let i = 0; i < locked.length; i++ ) {
 	if( locked[i] == cardId ) { retVal = true; break; }
     }
-    if( retVal ) { console.log( cardId, "is locked" ); }
+    if( retVal ) { console.log( authData.who, cardId, "is locked" ); }
     return retVal;
 }
 
@@ -47,7 +47,6 @@ async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, spli
 
     let splitLink = ghLinks.rebuildLinkage( authData, link, issueData, issue.title );
     if( doNotTrack ) { splitLink = ghLinks.rebaseLinkage( authData, pd.ceProjectId, issueData[0] ); }
-    unlockCards( link.hostCardId );
     
     // On initial populate call, resolve is called first, followed by processNewPeq.
     // Leave first issue for PNP.  Start from second.
@@ -72,6 +71,9 @@ async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, spli
     }
     let success = await movePromise;
     assert( success );
+    // If unlock is too soon, cardHandler:moved can soft-fail because GH may not have finished moving card, leading to bad link.
+    // splitAlloc can catch this.  If this happens again, wait on query to GH that card is showing up in column.
+    unlockCards( link.hostCardId );
 
     // populateCE does not require this
     if( typeof rebase === 'undefined' ) { return; }
