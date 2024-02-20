@@ -146,6 +146,9 @@ async function resolve( authData, ghLinks, pd, issue, doNotTrack, rebase ) {
 	    let peqHumanLabelName = ghV2.makeHumanLabel( peqVal, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL ) );
 	    newLabel = await ghV2.findOrCreateLabel( authData, pd.repoId, allocation, peqHumanLabelName, peqVal )
 	    issue.labels[idx] = newLabel;
+	    if( allocation ) { issue.allocation = true; }
+	    else             { issue.allocation = false; }
+	    
 	    // update peqData for subsequent recording
 	    pd.peqValue = peqVal;
 

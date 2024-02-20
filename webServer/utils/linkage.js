@@ -225,10 +225,10 @@ class Linkage {
 	let locs = [];
 	let ceProjId = -1;
 	for( var locD of locDs ) {
+	    assert( ceProjId == locD.ceProjectId || ceProjId == -1 ); 
+
 	    locD.hostColumnId  = locD.hostColumnId.toString();
 	    locD.hostProjectId = locD.hostProjectId.toString();
-
-	    assert( ceProjId == locD.ceProjectId || ceProjId == -1 ); 
 	    ceProjId           = locD.ceProjectId;
 	    
 	    if( typeof ceProjId === 'undefined' ) { console.log( authData.who, "Warning.  XXX Linkage addLoc was called without a CE Project Id." ); }
@@ -277,6 +277,8 @@ class Linkage {
 	    assert( false );
 	}
 
+	// NOTE: hostColumnIds may not be unique.  Don't query them directly.
+
 	const ceProjId    = query.ceProjId;
 	const repo        = utils.validField( query, "repo" )        ? query.repo               : config.EMPTY;
 	const repoId      = utils.validField( query, "repoId" )      ? query.repoId.toString()  : config.EMPTY;
@@ -318,37 +320,19 @@ class Linkage {
 	    }
 	}
 
-	/*
-	let links = [];
-	if( this.links[ceProjId] == null ) { return -1; }  // could be an empty ceproj
-	
-	for( const [_, clinks] of Object.entries( this.links[ceProjId] ) ) {  // one clinks is {cardId: { <link>}, cardId2: { <link> }}
-	    // Note, during initial resolve, this may NOT be 1:1 issue:card
-	    for( const [_, link] of Object.entries( clinks ) ) {
-		let match = true;
-		match = issueId == -1               ? match : match && (link.hostIssueId     == issueId);
-		match = cardId == -1                ? match : match && (link.hostCardId      == cardId);
-		match = pid == -1                   ? match : match && (link.hostProjectId   == pid);
-		match = repo == config.EMPTY        ? match : match && (link.hostRepoName    == repo);
-		match = repoId == config.EMPTY      ? match : match && (link.hostRepoId      == repoId);
-		match = projName == config.EMPTY    ? match : match && (link.hostProjectName == projName );
-		match = colName == config.EMPTY     ? match : match && (link.hostColumnName  == colName );
-		match = issueTitle == config.EMPTY  ? match : match && (link.hostIssueName   == issueTitle );
-		match = ceProjId == config.EMPTY    ? match : match && (link.ceProjectId     == ceProjId );
-		match = hostUtility == config.EMPTY ? match : match && (link.hostUtility     == hostUtility );
-		
-		if( match ) { links.push( link ); }
-	    }
-	}
-	*/
-	
 	if( links.length == 0 ) { links = -1; }
 	return links;
     }
 
     iterateLocs( authData, query, matchFunc ) {
 	if( typeof query.ceProjId === 'undefined' && typeof query.pid === 'undefined' ) {
-	    console.log( authData.who, "Error.  Neither ceProjectId nor host project id were not specified in Locs query." );
+	    console.log( authData.who, "Error.  Neither ceProjectId nor host project id were specified in Locs query." );
+	    assert( false );
+	}
+
+	// ColId is not unique
+	if( typeof query.colId !== 'undefined' && typeof query.pid === 'undefined' && typeof query.projName === 'undefined' && typeof query.hostUtility === 'undefined' ) {
+	    console.log( authData.who, "Error.  ColId is not a unique speficifier for a Locs query, need other identifying information." );
 	    assert( false );
 	}
 
@@ -393,75 +377,6 @@ class Linkage {
 	return locs;
     }
 
-    /*
-    // No match on utility slot.  yet?
-    // note: ids = -1 here is simply used to turn on/off match.  does not grow beyond this func.
-    // { ceProjId: { pid: { colId: {} } pid: { colId: {}}},  ceProjId: { pid: { colId: {} } pid: { colId: {}}}}
-    getLocs( authData, query ) {
-	// console.log( authData.who, "get Locs", query );
-	// this.showLocs();
-	    
-	if( typeof query.ceProjId === 'undefined' && typeof query.pid === 'undefined' ) {
-	    console.log( authData.who, "Error.  Neither ceProjectId nor host project id were not specified in Locs query." );
-	    assert( false );
-	}
-
-	const ceProjId  = query.ceProjId;
-	const pid       = utils.validField( query, "pid" )      ? query.pid.toString()    : -1;
-	const colId     = utils.validField( query, "colId" )    ? query.colId.toString()  : -1;
-	const projName  = utils.validField( query, "projName" ) ? query.projName          : config.EMPTY;
-	const colName   = utils.validField( query, "colName" )  ? query.colName           : config.EMPTY;
-
-	let locs = [];
-
-	let seed = {};
-	if( typeof ceProjId === 'undefined' ) { seed = this.locs; }
-	else                                  { seed = this.locs[ceProjId]; }
-
-	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
-	if( !seed ) { return -1; }
-
-	for( const [cpid, clocs] of Object.entries( seed ) ) {  // one clocs is {pid1: { coldata }, pid2: { coldata }}
-	    for( const [_, loc] of Object.entries( clocs ) ) {            
-		let match = true;
-		
-		match = pid == -1                ? match : match && (loc.hostProjectId    == pid);
-		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
-		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
-		match = projName == config.EMPTY ? match : match && (loc.hostProjectName  == projName);
-		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName   == colName);
-		match =                                    match && (loc.active           == "true");
-		
-		if( match ) { locs.push( loc ); }
-	    }
-	}
-	
-	// XXX
-
-	// At times, locs can be purged.  Without recreating here, object.entries below is unhappy
-	if( !this.locs[ceProjId] ) { return -1; }
-
-	for( const [_, clocs] of Object.entries( this.locs[ceProjId] ) ) {// one clocs is {pid1: { coldata }, pid2: { coldata }}
-	    for( const [_, loc] of Object.entries( clocs ) ) {            
-		let match = true;
-		
-		match = pid == -1                ? match : match && (loc.hostProjectId    == pid);
-		match = colId == -1              ? match : match && (loc.hostColumnId     == colId);
-		match = ceProjId == config.EMPTY ? match : match && (loc.ceProjectId      == ceProjId);
-		match = projName == config.EMPTY ? match : match && (loc.hostProjectName  == projName);
-		match = colName == config.EMPTY  ? match : match && (loc.hostColumnName   == colName);
-		match =                                    match && (loc.active           == "true");
-		
-		if( match ) { locs.push( loc ); }
-	    }
-	}
-
-	    
-	if( locs.length == 0 ) { locs = -1; }
-	return locs;
-    }
-    */
-    
     
     // Zero out fields in linkage table no longer being tracked
     rebaseLinkage( authData, ceProjId, issueId ) {
@@ -547,13 +462,12 @@ class Linkage {
     removeLocs({ authData, ceProjId, pid, colId }) {
 	if( !authData ) { console.log( authData.who, "missing authData" ); return false; }
 
-	if( colId )    { console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); } // one delete
-	else if( pid ) { console.log( authData.who, "Remove locs for pid:", ceProjId, pid ); }    // many deletes
-
 	let query = { authData: authData };
-	if( typeof pid       !== 'undefined' ) { query.pid = pid; }
-	if( typeof colId     !== 'undefined' ) { query.colId = colId; }
 	if( typeof ceProjId  !== 'undefined' ) { query.ceProjId = ceProjId; }
+	if( typeof pid       !== 'undefined' ) { query.pid = pid;
+						 console.log( authData.who, "Remove locs for pid:", ceProjId, pid ); }    // many deletes 
+	if( typeof colId     !== 'undefined' ) { query.colId = colId;
+						 console.log( authData.who, "Remove loc for colId:", ceProjId, colId ); } // one delete
 
 	let matchFunc = function (locs, loc ) {
 	    loc.active = "false";
