@@ -259,7 +259,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    // if remade card, then update peq too, just this once.  This is the only time cross-project moves are allowed.
 	    let specials = foundUnclaimed ? {pact: "addRelo", fromCard: true} : {fromCard: true};
 
-	    // We have a peq.  Make sure project is linked in ceProj
+	    // Still unclear if have peq.  Make sure project is linked in ceProj
 	    let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: card.project_node_id } );
 	    if( projLocs === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, card.project_node_id ); }
 
@@ -276,10 +276,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	break;
     case 'converted' :
 	{
-	    // Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle here.
-	    // Can only be non-PEQ.  Otherwise, would see created/content_url
-	    // XXX card it.
-	    console.log( "Non-PEQ card converted to issue.  No action." );
+	    // Convert to issue' on a newborn card sends converted to itemHandler.  should not get here.
+	    console.log( "Error.  cardHandler converted?" );
+	    assert( false );
 	}
 	break;
     case 'moved' :
@@ -387,7 +386,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		    return "postpone"; 
 		}
 		else {
-		    console.log( authData.who, "Card not found (probably rejected in PNP), ignoring move request.", delayCount );
+		    console.log( authData.who, "Card not found (probably rejected in PNP), ignoring move request.", delayCount, config.MAX_GH_RETRIES );
 		    return;
 		}
 	    }

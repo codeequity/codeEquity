@@ -81,12 +81,19 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
     case 'converted':
 	// Oddly, can add assignees to draft issue, but not labels.
 	// This means converted can not be PEQ.  
-	// When select "convert" a draft issue, one notification is 'reorder' for draft issue
-	// another notification is 'converted' for issue.
-	// third notification is 'opened' for event type issue, i.e. different handler
+	// When select "convert" a draft issue, may see a 'reorder' notification for draft issue
+	// Will see 'converted' here.
+	// Will see 'opened' for event type: issue
 	{
-	    console.log( "PV2ItemHandler", action, "No action required."  );
-	    console.log( reqBody );
+	    console.log( "PV2ItemHandler", action );
+	    if( !utils.validField( item, "content_type" ) || item.content_type != config.GH_ISSUE ) {
+		console.log( "Error.  Unexpected conversion for pv2 item", item );
+		assert( false );
+	    }
+
+	    // Can not be PEQ.  Make sure project is linked in ceProj to match cardHandler operation during 'create' for non-peq label
+	    let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: pd.projectId } );
+	    if( projLocs === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, pd.projectId ); }
 	}
 	break;
     case 'created':
