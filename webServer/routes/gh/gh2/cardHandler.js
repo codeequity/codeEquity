@@ -379,14 +379,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
 	    if( links === -1 ) {
-		if( delayCount <= config.MAX_GH_RETRIES ) {
+		if( delayCount <= config.GH_MAX_RETRIES ) {
 		    // Both events are rare.  One does not require postpone (rejection), the other does.
 		    // in the reject case, GH will finish deleting the card quickly, which causes ghV2:getCard to fail, which triggers 'no such card' above, eliminating further delay.
 		    console.log( authData.who, "Card not found.  Either rejected in PNP during split, or move notification arrived before create notification.  Delay.", delayCount );
 		    return "postpone"; 
 		}
 		else {
-		    console.log( authData.who, "Card not found (probably rejected in PNP), ignoring move request.", delayCount, config.MAX_GH_RETRIES );
+		    console.log( authData.who, "Card not found (probably rejected in PNP), ignoring move request.", delayCount, config.GH_MAX_RETRIES );
 		    return;
 		}
 	    }

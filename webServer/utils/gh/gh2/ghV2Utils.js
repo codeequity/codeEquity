@@ -1632,7 +1632,7 @@ async function checkReserveSafe( authData, issueId, colNameIndex ) {
     if( colNameIndex > config.PROJ_PROG ) { 
 	let assignees = await getAssignees( authData, issueId );
 	let retries = 0;
-	while( assignees.length == 0 && retries < config.MAX_GH_RETRIES ) {
+	while( assignees.length == 0 && retries < config.GH_MAX_RETRIES ) {
 	    retries++;
 	    console.log( "XXX WARNING.  No assignees found.  Retrying.", retries, Date.now() );
 	    assignees = await getAssignees( authData, issueId );	    
