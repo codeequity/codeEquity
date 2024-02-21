@@ -259,11 +259,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	    // if remade card, then update peq too, just this once.  This is the only time cross-project moves are allowed.
 	    let specials = foundUnclaimed ? {pact: "addRelo", fromCard: true} : {fromCard: true};
 
-	    // We have a peq.  Make sure project is linked in ceProj
-	    console.log( "YYY Looking for", pd.ceProjectId, card.project_node_id );
+	    // Still unclear if have peq.  Make sure project is linked in ceProj
 	    let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: card.project_node_id } );
 	    if( projLocs === -1 ) { await ghLinks.linkProject( authData, pd.ceProjectId, card.project_node_id ); }
-	    console.log( "YYY projLocs", projLocs );
 
 	    // Call PNP to add linkage, resolve, etc.  
 	    // pact is ignore, since 'create' is always accompanied by 'move'.  'move' does relo.
@@ -278,10 +276,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 	break;
     case 'converted' :
 	{
-	    // Get here with: Convert to issue' on a newborn card, which also notifies with project_card converted.  handle here.
-	    // Can only be non-PEQ.  Otherwise, would see created/content_url
-	    // XXX card it.
-	    console.log( "Non-PEQ card converted to issue.  No action." );
+	    // Convert to issue' on a newborn card sends converted to itemHandler.  should not get here.
+	    console.log( "Error.  cardHandler converted?" );
+	    assert( false );
 	}
 	break;
     case 'moved' :
@@ -327,7 +324,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    // Locked?  postpone when a related resolve:split is still underway
 	    // --------------
-	    if( ingestUtils.isLocked( cardId ) ) { return "postpone"; }
+	    if( ingestUtils.isLocked( authData, cardId ) ) { return "postpone"; }
 
 	    // Move into.  Split results have no 'from' onto a 'to' location.  Changes reject logic slightly.
 	    // --------------
@@ -382,14 +379,14 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "cardId": cardId } );
 	    if( links === -1 ) {
-		if( delayCount <= config.MAX_GH_RETRIES ) {
+		if( delayCount <= config.GH_MAX_RETRIES ) {
 		    // Both events are rare.  One does not require postpone (rejection), the other does.
 		    // in the reject case, GH will finish deleting the card quickly, which causes ghV2:getCard to fail, which triggers 'no such card' above, eliminating further delay.
 		    console.log( authData.who, "Card not found.  Either rejected in PNP during split, or move notification arrived before create notification.  Delay.", delayCount );
 		    return "postpone"; 
 		}
 		else {
-		    console.log( authData.who, "Card not found (probably rejected in PNP), ignoring move request.", delayCount );
+		    console.log( authData.who, "Card not found (probably rejected in PNP), ignoring move request.", delayCount, config.GH_MAX_RETRIES );
 		    return;
 		}
 	    }

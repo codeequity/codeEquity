@@ -1086,13 +1086,13 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 
     const lname = ghV2.makeHumanLabel( splitVal, config.ALLOC_LABEL );
     const theLabel = issue.labels.find( l => l.name == lname ); 
-    subTest = tu.checkEq( typeof theLabel !== "undefined", true, subTest, "Issue label names missing" + lname );
+    subTest = tu.checkEq( typeof theLabel !== "undefined", true, subTest, "Issue label names missing " + lname );
 
     // CHECK github location
     cards = await getCards( authData, loc.pid, loc.colId );
     let mCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
 
-    subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready" );
+    subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready " + card + issDat );
     if( typeof mCard[0] !== 'undefined' ) {
     
 	subTest = tu.checkEq( mCard.length, 1,                        subTest, "Card claimed" );
@@ -1116,42 +1116,44 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	let peq = peqs[0];
 	
 	assignCnt = assignCnt ? assignCnt : 0;
-	
-	subTest = tu.checkEq( peq.PeqType, config.PEQTYPE_ALLOC,      subTest, "peq type invalid" );        
-	subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-	subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
-	subTest = tu.checkEq( peq.HostHolderId.length, assignCnt,     subTest, "peq gh holders wrong" );      
-	subTest = tu.checkEq( peq.CEHolderId.length, 0,               subTest, "peq ce holders wrong" );    
-	subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,          subTest, "peq grantor wrong" );      
-	subTest = tu.checkEq( peq.Amount, awsVal,                     subTest, "peq amount" );
-	subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
-	subTest = tu.checkEq( peq.HostProjectId, loc.pid,          subTest, "peq project id bad" );
-	// Can not depend on last element of pSub, since it is not generally updated after 1st move out of unclaimed. Catch last element of projSub from pact, below.
-	for( let i = 0; i < loc.projSub.length - 1; i++ ) {
-	    subTest = tu.checkEq( peq.HostProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" ); 
-	}
-	
-	// CHECK dynamo Pact
-	let allPacts  = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
-	let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-	subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );  
-	
-	// Could have been many operations on this.
-	let foundMove = false;
-	for( const pact of pacts ) {
-	    let hr  = await tu.hasRaw( authData, pact.PEQActionId );
-	    subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	    subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,    subTest, "PAct user name" ); 
-	    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
-	    subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
-	    if( pact.Subject.length >= 3 ) {
-		if( link.hostColumnId == pact.Subject.slice(-1)) {
-		    if( link.hostColumnName == loc.projSub.slice(-1) ) { foundMove = true; }
-		}
-		// console.log( "XXX", link, pact.Subject, loc.projSub, foundMove );
+
+	if( typeof peq !== 'undefined' ) {
+	    subTest = tu.checkEq( peq.PeqType, config.PEQTYPE_ALLOC,      subTest, "peq type invalid" );        
+	    subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+	    subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
+	    subTest = tu.checkEq( peq.HostHolderId.length, assignCnt,     subTest, "peq gh holders wrong" );      
+	    subTest = tu.checkEq( peq.CEHolderId.length, 0,               subTest, "peq ce holders wrong" );    
+	    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,          subTest, "peq grantor wrong" );      
+	    subTest = tu.checkEq( peq.Amount, awsVal,                     subTest, "peq amount" );
+	    subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
+	    subTest = tu.checkEq( peq.HostProjectId, loc.pid,          subTest, "peq project id bad" );
+	    // Can not depend on last element of pSub, since it is not generally updated after 1st move out of unclaimed. Catch last element of projSub from pact, below.
+	    for( let i = 0; i < loc.projSub.length - 1; i++ ) {
+		subTest = tu.checkEq( peq.HostProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" ); 
 	    }
+	    
+	    // CHECK dynamo Pact
+	    let allPacts  = await awsUtils.getPActs( authData, { "CEProjectId": td.ceProjectId });
+	    let pacts = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+	    subTest = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );  
+	    
+	    // Could have been many operations on this.
+	    let foundMove = false;
+	    for( const pact of pacts ) {
+		let hr  = await tu.hasRaw( authData, pact.PEQActionId );
+		subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
+		subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,    subTest, "PAct user name" ); 
+		subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+		subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
+		if( pact.Subject.length >= 3 ) {
+		    if( link.hostColumnId == pact.Subject.slice(-1)) {
+			if( link.hostColumnName == loc.projSub.slice(-1) ) { foundMove = true; }
+		    }
+		    // console.log( "XXX", link, pact.Subject, loc.projSub, foundMove );
+		}
+	    }
+	    subTest = tu.checkEq( foundMove, true,                    subTest, "Did not find psub pact" );
 	}
-	subTest = tu.checkEq( foundMove, true,                    subTest, "Did not find psub pact" );
     }
 
     return await tu.settle( subTest, testStatus, checkAlloc, authData, testLinks, td, loc, issDat, card, testStatus, specials );

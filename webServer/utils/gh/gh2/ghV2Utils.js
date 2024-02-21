@@ -240,10 +240,11 @@ async function createIssue( authData, repoNode, pid, issue ) {
     if( !utils.validField( issue, "milestone" ))  { issue.milestone = null; }
     
     console.log( authData.who, "Create issue, from alloc?", repoNode, pid, issue.title, issue.allocation );
-
-    assert( !issue.allocation || issue.body == "", "Error.  createIssue body is about to be overwritten." );
+    
+    // assert( !issue.allocation || issue.body == "", "Error.  createIssue body is about to be overwritten." );
     if( issue.allocation ) {
-	issue.body  = "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
+	issue.body += "";
+	issue.body += "This is an allocation issue added by CodeEquity.  It does not reflect specific work or issues to be resolved.  ";
 	issue.body += "It is simply a rough estimate of how much work will be carried out in this category.\n\n"
 	issue.body += "It is safe to filter this out of your issues list.\n\n";
 	issue.body += "It is NOT safe to close, reopen, or edit this issue.";
@@ -1631,7 +1632,7 @@ async function checkReserveSafe( authData, issueId, colNameIndex ) {
     if( colNameIndex > config.PROJ_PROG ) { 
 	let assignees = await getAssignees( authData, issueId );
 	let retries = 0;
-	while( assignees.length == 0 && retries < config.MAX_GH_RETRIES ) {
+	while( assignees.length == 0 && retries < config.GH_MAX_RETRIES ) {
 	    retries++;
 	    console.log( "XXX WARNING.  No assignees found.  Retrying.", retries, Date.now() );
 	    assignees = await getAssignees( authData, issueId );	    
