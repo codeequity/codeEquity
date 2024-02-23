@@ -11,7 +11,7 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 
 class CEAddGHPage extends StatefulWidget {
-   CEAddGHPage({Key key}) : super(key: key);
+   CEAddGHPage({Key? key}) : super(key: key);
 
   @override
   _CEAddGHState createState() => _CEAddGHState();

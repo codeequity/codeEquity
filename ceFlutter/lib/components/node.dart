@@ -31,7 +31,7 @@ class Node extends StatelessWidget implements Tree {
    String path;
 
 
-   final List<Tree> leaves = List<Tree>();
+   final List<Tree> leaves = [];
    
    AppState appState;
    
@@ -50,7 +50,7 @@ class Node extends StatelessWidget implements Tree {
   }
 
   @override
-  Tree findNode( String target ) {
+  Tree? findNode( String target ) {
      //print( "   in findNode" );
      for( var leaf in leaves ) {
         if( leaf.getTitle() == target ) {
@@ -183,7 +183,7 @@ class Node extends StatelessWidget implements Tree {
 
      // Path is known here.  Make _tileExpanded consistent with path state, in case we have paged back into an active summary page
      if( appState.allocExpanded.containsKey(path) && firstPass ) {
-        _tileExpanded       = appState.allocExpanded[path];
+        _tileExpanded       = appState.allocExpanded[path] ?? false;
         isInitiallyExpanded = _tileExpanded;
      }
 
@@ -226,7 +226,7 @@ class Node extends StatelessWidget implements Tree {
      if( appState != null && appState.verbose >= 2 ) { print( "Reopening previously expanded $title, and their kids" ); }
      isVisible = true;
      // Note: appState is null if reopen was called for a child below that has not yet been seen (generated).
-     if( appState != null && appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] ) {
+     if( appState != null && appState.allocExpanded.containsKey(path) && ( appState.allocExpanded[path] ?? false ) ) {
         // Should only get here for nodes, given allocExpanded above... oops.. ok.  tree
         leaves.forEach( (child) => child.reopenKids() );
      }

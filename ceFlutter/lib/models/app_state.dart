@@ -29,9 +29,9 @@ class AppState {
    String cogAppClientSecret;
    String cogRegion;
 
-   CognitoUserPool cogUserPool;
-   UserService cogUserService;
-   User cogUser;
+   CognitoUserPool? cogUserPool;
+   UserService? cogUserService;
+   User? cogUser;
 
    // Dev aid
    int verbose;           // controls how much is printed to terminal. 0 hardly anything. 3 everything.
@@ -50,16 +50,16 @@ class AppState {
    
    List<PEQ>       myPEQs;                // ??? 
    List<PEQAction> myPEQActions;          // ???
-   PEQSummary      myPEQSummary;          // XXX need 1 proj, one my per repo
-   Linkage         myGHLinks;             // Current project/column disposition for current repo in github
+   PEQSummary?     myPEQSummary;          // XXX need 1 proj, one my per repo
+   Linkage?        myGHLinks;             // Current project/column disposition for current repo in github
    bool peqUpdated;
 
    List<GHAccount> myGHAccounts;   
    bool ghUpdated;
 
-   Node allocTree;
-   bool updateAllocTree;
-   bool expansionChanged;
+   Node? allocTree;
+   bool  updateAllocTree;
+   bool  expansionChanged;
 
    HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
    
@@ -101,8 +101,8 @@ class AppState {
       myGHLinks    = null;
       ghUpdated    = false;      // XXX not in use?
 
-      allocTree = null;
-      updateAllocTree = false;
+      allocTree        = null;
+      updateAllocTree  = false;
       expansionChanged = false;
 
       allocExpanded = HashMap<String, bool>();

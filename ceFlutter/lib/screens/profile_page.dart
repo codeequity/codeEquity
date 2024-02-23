@@ -7,7 +7,7 @@ import 'package:ceFlutter/models/app_state.dart';
 
 
 class CEProfilePage extends StatefulWidget {
-  CEProfilePage({Key key}) : super(key: key);
+  CEProfilePage({Key? key}) : super(key: key);
 
   @override
   _CEProfileState createState() => _CEProfileState();

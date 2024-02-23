@@ -2,7 +2,7 @@ import 'dart:convert';  // json encode/decode
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';      // list equals
+import 'package:collection/collection.dart';      // list equals, firstwhereornull
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:tuple/tuple.dart';
 
@@ -48,7 +48,7 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
    }
 
    // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
-   peq.ceHolderId = new List<String>();
+   peq.ceHolderId = [];
    for( var peqGHUser in peq.ghHolderId ) {
       if( !appState.idMapGH.containsKey( peqGHUser )) {
          appState.idMapGH[ peqGHUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$peqGHUser" }', "GetCEUID" );
@@ -75,7 +75,7 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
 // XXX may be able to kill categoryBase
 
 // One allocation per category.. i.e. project:column:pallocCat or project:column:assignee.  Could also be project:project is first is the master proj
-void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmount, PeqType peqType, {Allocation source = null, String pid = ""} ) {
+void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmount, PeqType peqType, {Allocation? source = null, String pid = ""} ) {
    
    assert( appState.myPEQSummary.allocations != null );
    
@@ -188,7 +188,7 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
 
    // build kp from mySummary.  Only active peqs are part of allocations.
    if( appState.myPEQSummary != null ) {
-      for( Allocation alloc in appState.myPEQSummary.allocations ) { kp = kp + alloc.sourcePeq.keys; }
+      for( Allocation alloc in appState.myPEQSummary.allocations ) { kp = kp + alloc.sourcePeq.keys.toList(); }
       kp = kp.toSet().toList();  // if this way to remove duplicates turns out to be slow, use hashmap
    }
 
@@ -245,14 +245,14 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
       // update demotion status.
       // Undemote if have demoted from earlier, and just saw confirm add.  If so, swap all down one.
       if( dp.containsKey( peq.id ) && kp.contains( peq.id ) ) {
-         assert( dp[peq.id].length > 0 );
-         dp[peq.id].sort();
+         assert( dp[peq.id]!.length > 0 );
+         dp[peq.id]!.sort();
 
          // sort is lowest to highest.  Keep swapping current todo up the chain in reverse order, has the effect of pushing all down.
          int confirmAdd = i;
-         for( int j = dp[peq.id].length-1; j >= 0; j-- ) {
-            vPrint( appState, "   swapping todo at position:" + confirmAdd.toString() + " to position:" + dp[peq.id][j].toString() );
-            swap( todos, dp[peq.id][j], confirmAdd );
+         for( int j = dp[peq.id]!.length-1; j >= 0; j-- ) {
+            vPrint( appState, "   swapping todo at position:" + confirmAdd.toString() + " to position:" + dp[peq.id]![j].toString() );
+            swap( todos, dp[peq.id]![j], confirmAdd );
             confirmAdd--;
             assert( confirmAdd >= 0 );
          }
@@ -263,7 +263,7 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
       // demote if needed.  Needed if working on peq that hasn't been added yet.
       else if( !kp.contains( peq.id ) && !deleted ) {
          if( !dp.containsKey( peq.id ) ) { dp[peq.id] = []; }
-         dp[peq.id].add( i );  
+         dp[peq.id]!.add( i );  
          vPrint( appState, "   demoting peq: " + peq.ghIssueTitle + " " + peq.id );
       }
 
@@ -297,18 +297,20 @@ void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    for( var i = 0; i < todos.length; i++ ) {
       PEQAction pact = todos[i].item1;
       PEQ       peq  = todos[i].item2;
-      
+
+      GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.ghColumnId == pact.subject[0] );
       if( pact.verb == PActVerb.confirm && pact.action == PActAction.change ) {
          if( pact.note == "Column rename" ) {
             assert( pact.subject.length == 3 );
-            GHLoc loc = appLocs.firstWhere( (a) => a.ghColumnId == pact.subject[0], orElse: () => null );
             assert( loc != null );
-            colRenames.add( new GHLoc( ghProjectId: loc.ghProjectId, ghColumnId: pact.subject[0], ghColumnName: pact.subject[1] ) );
+            // XXX why do I need loc! for projId, but can't have it for active?  funky promotion short-circuit?
+            colRenames.add( new GHLoc( ghProjectId: loc!.ghProjectId, ghProjectName: loc.ghProjectName, ghColumnId: pact.subject[0], ghColumnName: pact.subject[1], active: loc.active ) );
             vPrint( appState, "... col rename " + pact.subject[1] );
          }
          else if( pact.note == "Project rename" ) {
             assert( pact.subject.length == 3 );
-            projRenames.add( new GHLoc( ghProjectId: pact.subject[0], ghColumnId: "-1", ghProjectName: pact.subject[1] ) );
+            assert( loc != null );
+            projRenames.add( new GHLoc( ghProjectId: pact.subject[0], ghColumnId: "-1", ghProjectName: pact.subject[1], ghColumnName: loc!.ghColumnName, active: loc.active ) );
             vPrint( appState, "... proj rename " + pact.subject[1] );            
          }
       }
@@ -321,9 +323,9 @@ void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    for( Allocation alloc in appAllocs ) {
       for( GHLoc proj in projRenames ) {
          if( alloc.ghProjectId == proj.ghProjectId ) {
-            GHLoc loc = appLocs.firstWhere( (a) => a.ghProjectId == proj.ghProjectId, orElse: () => null );
+            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.ghProjectId == proj.ghProjectId );
             assert( loc != null );
-            vPrint( appState, " .. found project name update: " + proj.ghProjectName + " => " + loc.ghProjectName );
+            vPrint( appState, " .. found project name update: " + proj.ghProjectName  + " => " + loc!.ghProjectName );
 
             // pindex can be -1 when there are multiple renames in this ingest stream.  myGHLinks will skip to the final.
             int pindex = alloc.category.indexOf( proj.ghProjectName );
@@ -336,9 +338,9 @@ void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       for( GHLoc col in colRenames ) {
          if( alloc.ghProjectId == col.ghProjectId ) {
 
-            GHLoc loc = appLocs.firstWhere( (a) => a.ghColumnId == col.ghColumnId, orElse: () => null );
+            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.ghColumnId == col.ghColumnId );
             assert( loc != null );
-            vPrint( appState, " .. found Column name update: " + col.ghColumnName + " => " + loc.ghColumnName );
+            vPrint( appState, " .. found Column name update: " + col.ghColumnName + " => " + loc!.ghColumnName );
 
             int pindex = alloc.category.indexOf( col.ghColumnName );
             if( pindex >= 0 ) { alloc.category[pindex] = loc.ghColumnName; }

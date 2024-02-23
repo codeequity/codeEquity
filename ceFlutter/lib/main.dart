@@ -19,7 +19,7 @@ import 'package:ceFlutter/app_state_container.dart';
 void main() {
    WidgetsFlutterBinding.ensureInitialized();                // localStore
 
-   runApp( new AppStateContainer( child: new CEApp() ));
+   runApp( new AppStateContainer( child: new CEApp(), state: new AppState() ));
 }
 
 
@@ -35,8 +35,9 @@ class CEApp extends StatelessWidget {
            appBarTheme: AppBarTheme(
               color: Colors.grey[200],
               // title is deprecated 1.13, but as of 2/20 headline6 has not yet made it to the stable release
-              textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
+              // textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
               //textTheme: TextTheme( title: TextStyle( color: Colors.black )),
+              titleTextStyle: Theme.of(context).textTheme.headline6?.copyWith( color: Colors.black ),
               iconTheme: IconThemeData( color: Colors.black ) ),
            bottomAppBarColor: Colors.grey[200] ),
         home:  CESplashPage( title: 'CodeEquity'),
@@ -46,7 +47,7 @@ class CEApp extends StatelessWidget {
 
 
 class CESplashPage extends StatefulWidget {
-   CESplashPage({Key key, this.title}) : super(key: key);
+   CESplashPage({Key? key, required this.title}) : super(key: key);
 
    final String title;
    
@@ -94,7 +95,8 @@ class _CESplashPageState extends State<CESplashPage> {
   
   void navigateUser() async{
      print( "Weh do i go?" );
-     if( appState.cogUser.confirmed ) {
+     assert( appState.cogUser != null );
+     if( appState.cogUser!.confirmed ) {
         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
         Navigator.pushReplacement(context, newPage );
      } else {

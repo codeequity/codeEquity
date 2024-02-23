@@ -21,11 +21,10 @@ const EMPTY = "---";
 
 // enum accessibility funcs
 // https://medium.com/@amir.n3t/advanced-enums-in-flutter-a8f2e2702ffd
-String enumToStr(Object o) => o.toString().split('.').last;
+String enumToStr(Object? o) => (o ?? "").toString().split('.').last;
 
-T enumFromStr<T>(String key,
-                 List<T> values) => values.firstWhere((v) => key == enumToStr(v),
-                                                      orElse: (() { print( "Warning " + key + " not found"); return null; }));
+T enumFromStr<T>(String key, List<T> values) => values.firstWhere((v) => key == enumToStr(v),
+                                                                  orElse: (() { print( "Warning " + key + " not found"); return values[values.length - 1]; }));
 
 
 
@@ -301,7 +300,7 @@ Widget makeInputField( appState, hintText, obscure, controller ) {
 
 
 // XXX Partial
-Widget makeTopAppBar( BuildContext context, currentPage ) {
+PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
    final container   = AppStateContainer.of(context);
    final appState    = container.state;
    final iconSize    = appState.screenHeight*.0422;

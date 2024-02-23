@@ -13,7 +13,7 @@ import 'package:ceFlutter/models/app_state.dart';
 
 
 class CELoginPage extends StatefulWidget {
-  CELoginPage({Key key}) : super(key: key);
+  CELoginPage({Key? key}) : super(key: key);
 
   @override
   _CELoginState createState() => _CELoginState();

@@ -10,10 +10,11 @@ class Person {
    String       userName;
    String       email;
    bool         locked;
-   Uint8List    imagePng;     // ONLY   use to, from and in dynamoDB
-   Image        image;        // ALWAYS use elsewhere
+   Uint8List?   imagePng;     // ONLY   use to, from and in dynamoDB
+   Image?       image;        // ALWAYS use elsewhere
 
-   Person({this.id, this.firstName, this.lastName, this.userName, this.email, this.locked, this.imagePng, this.image});
+   Person({required this.id, required this.firstName, required this.lastName, required this.userName,
+            required this.email, required this.locked, required this.imagePng, required this.image});
    
    dynamic toJson() {
       if( imagePng == null ) {

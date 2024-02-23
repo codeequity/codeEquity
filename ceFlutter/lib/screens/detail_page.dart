@@ -19,7 +19,7 @@ import 'package:ceFlutter/components/leaf.dart';
 Function eq = const ListEquality().equals;
 
 class CEDetailPage extends StatefulWidget {
-   CEDetailPage({Key key}) : super(key: key);
+   CEDetailPage({Key? key}) : super(key: key);
 
   @override
   _CEDetailState createState() => _CEDetailState();
@@ -39,9 +39,11 @@ class _CEDetailState extends State<CEDetailPage> {
    @override
    void initState() {
       peqPAct = new Map<String, List<PEQAction>>();
-      selectedPeqs = new List<PEQ>();
       userPActUpdated = false;
-      pactList = new List<Widget>();
+      // selectedPeqs = new List<PEQ>();
+      // pactList = new List<Widget>();
+      selectedPeqs = [];
+      pactList     = [];
       
       super.initState();
    }
@@ -85,9 +87,10 @@ class _CEDetailState extends State<CEDetailPage> {
             var postData = {};
             postData['PEQRawId'] = pact.id;
             var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQRaw", "query": postData }; 
-            PEQRaw pr = await fetchPEQRaw( context, container, json.encode( pd ));
+            PEQRaw? pr = await fetchPEQRaw( context, container, json.encode( pd ));
+            assert( pr != null );
             var encoder = new JsonEncoder.withIndent("  ");
-            var prj = json.decode( pr.rawReqBody );
+            var prj = json.decode( pr!.rawReqBody );
             String prettyRaw = encoder.convert(prj);
 
             // Let makeBody handle the json
@@ -115,7 +118,7 @@ class _CEDetailState extends State<CEDetailPage> {
             pactList.add( _makePeq( peq ) );
 
             var pactCount = 0;
-            for( final pact in peqPAct[peq.id] ) {
+            for( final pact in peqPAct[peq.id] ?? [] ) {
                print( "PL added " + pact.id );
                pactList.add( _makePAct( pact, peqCount, pactCount ) );
                pactCount++;
@@ -176,29 +179,29 @@ class _CEDetailState extends State<CEDetailPage> {
       // If ingest is not up to date, this filter breaks
       // if alloc, alloc name is made part of the category list, and is needed to distinguish allocs
       if( appState.selectedUser == appState.ALLOC_USER ) {
-         selectedPeqs = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub + [p.ghIssueTitle], category )).toList();
+         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.ghProjectSub + [p.ghIssueTitle], category )).toList();
       }
       else {
          List<String> cat = category.sublist(0, category.length - 1 );
-         selectedPeqs = appState.userPeqs[ appState.selectedUser ].where( (p) => eq( p.ghProjectSub, cat )).toList();
+         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.ghProjectSub, cat )).toList();
       }
       List<String> peqs = selectedPeqs.map((peq) => peq.id ).toList();
       
       await updateUserPActions( peqs, container, context );      
 
       // populate peqPAct to avoid multiple trips through pacts
-      for( var pact in appState.userPActs[ appState.selectedUser ] ) {
+      for( var pact in appState.userPActs[ appState.selectedUser ] ?? [] ) {
          assert( pact.subject.length > 0 );
          String peqId = pact.subject[0]; 
          if( peqPAct[peqId] == null ) { peqPAct[peqId] = [ pact ]; }
-         else                         { peqPAct[peqId].add( pact ); }
+         else                         { peqPAct[peqId]!.add( pact ); }
       }
 
       // Sort PAct list oldest first. Sort Peq list newest first.
       for( final peq in peqs ) {
-         peqPAct[peq].sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
+         (peqPAct[peq] ?? []).sort((a,b) => a.timeStamp.compareTo( b.timeStamp ));
       }
-      selectedPeqs.sort((a,b) => peqPAct[b.id].last.timeStamp.compareTo( peqPAct[a.id].last.timeStamp ));
+      selectedPeqs.sort((a,b) => (peqPAct[b.id] ?? []).last.timeStamp.compareTo( (peqPAct[a.id] ?? []).last.timeStamp ));
       
       appState.userPActUpdate = false;
       setState(() => userPActUpdated = true );
@@ -207,9 +210,11 @@ class _CEDetailState extends State<CEDetailPage> {
    @override
       Widget build(BuildContext context) {
 
-      category    = ModalRoute.of(context).settings.arguments;
+      assert( ModalRoute.of(context) != null );
+      category    = ModalRoute.of(context)!.settings.arguments as List<String>;
       container   = AppStateContainer.of(context);
       appState    = container.state;
+      print( "XXX Attempted to build category from routes: " + category.toString() );
 
       if( appState.verbose >= 3 ) { print( "BUILD DETAIL" ); }
       if( appState.verbose >= 3 ) { print( "is context null ? " + (context == null).toString() ); }

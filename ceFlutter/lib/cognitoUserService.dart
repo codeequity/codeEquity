@@ -21,9 +21,13 @@ class Storage extends CognitoStorage {
    
    @override
       Future getItem(String key) async {
-      String item;
+      String? item;
       try {
-         item = json.decode(_prefs.getString(key));
+         if( key != null ) {
+            item = json.decode( ( _prefs.getString(key)) ?? "" );
+            if( item == "" ) { print( "Warning.  item malformed " + key.toString() ); }
+         }
+         else { item = null; }
       } catch (e) {
          return null;
       }
@@ -53,8 +57,8 @@ class Storage extends CognitoStorage {
 }
 
 class User {
-   String email;
-   String name;
+   String? email;
+   String? name;
    String password;
    bool confirmed = false;
    bool hasAccess = false;
@@ -76,36 +80,39 @@ class User {
 }
 
 class UserService {
-   CognitoUserPool _userPool;
-   CognitoUser _cognitoUser;
-   CognitoUserSession _session;
-   UserService(this._userPool);
-   CognitoCredentials credentials;
+   CognitoUserPool?    _userPool;
+   CognitoUser?        _cognitoUser;
+   CognitoUserSession? _session;
+   CognitoCredentials  credentials;
    
+   UserService(this._userPool);
+
    // Initiate user session from local storage if present
    Future<bool> init() async {
       final prefs = await SharedPreferences.getInstance();
       final storage = Storage(prefs);
-      _userPool.storage = storage;
+
+      assert( _userPool != null );
+      _userPool!.storage = storage;
       
-      _cognitoUser = await _userPool.getCurrentUser();
+      _cognitoUser = await _userPool!.getCurrentUser();
       if (_cognitoUser == null) {
          return false;
       }
-      _session = await _cognitoUser.getSession();
-      return _session.isValid();
+      _session = await _cognitoUser!.getSession();
+
+      assert( _session != null );
+      return _session!.isValid();
    }
    
    // Get existing user from session with his/her attributes
-   Future<User> getCurrentUser() async {
-      if (_cognitoUser == null || _session == null) {
+   Future<User?> getCurrentUser() async {
+      if( _cognitoUser == null || _session == null || !_session!.isValid() ) {
          return null;
       }
-      if (!_session.isValid()) {
-         return null;
-      }
-      final attributes = await _cognitoUser.getUserAttributes();
-      if (attributes == null) {
+
+      final attributes = await _cognitoUser!.getUserAttributes();
+      if( attributes == null ) {
          return null;
       }
       final user = User.fromUserAttributes(attributes);
@@ -114,7 +121,7 @@ class UserService {
    }
    
    // Retrieve user credentials -- for use with other AWS services
-   Future<String> getCredentials() async {
+   Future<String?> getCredentials() async {
       if (_cognitoUser == null || _session == null) {
          print( "Uh oh.. null doodies" );
          return null;
@@ -124,13 +131,16 @@ class UserService {
       // credentials = CognitoCredentials( identityPoolId, _userPool);
       // await credentials.getAwsCredentials(_session.getIdToken().getJwtToken());
       // await _session.getAwsCredentials(_session.getIdToken().getJwtToken());
-      return _session.getIdToken().getJwtToken();
+      return _session!.getIdToken().getJwtToken();
    }
    
    // Login user
-   Future<User> login(String name, String password) async {
+   Future<User?> login(String name, String password) async {
       print( "Cog start login" );
-      _cognitoUser = CognitoUser(name, _userPool, storage: _userPool.storage);
+      assert( _userPool != null );
+      _cognitoUser = CognitoUser(name, _userPool!, storage: _userPool!.storage);
+
+      assert( _cognitoUser != null );
 
       final authDetails = AuthenticationDetails(
          username: name,
@@ -143,7 +153,7 @@ class UserService {
          showToast( "Authenticating.. can take a few seconds." );
 
          Stopwatch stopwatch = new Stopwatch()..start();
-         _session = await _cognitoUser.authenticateUser(authDetails);
+         _session = await _cognitoUser!.authenticateUser(authDetails);
          print(' ...authenticate executed in ${stopwatch.elapsed}');
          
          isConfirmed = true;
@@ -155,15 +165,16 @@ class UserService {
          }
       }
       
-      if (!_session.isValid()) {
+      if (_session == null || !_session!.isValid()) {
          return null;
       }
 
       Stopwatch stopwatch = new Stopwatch()..start();      
-      final attributes = await _cognitoUser.getUserAttributes();
+      final attributes = await _cognitoUser!.getUserAttributes();
       print(' ...getAttribs executed in ${stopwatch.elapsed}');
-         
-      final user = User.fromUserAttributes(attributes);
+
+      assert( attributes != null );
+      final user = User.fromUserAttributes(attributes!);
       user.confirmed = isConfirmed;
       user.hasAccess = true;
       
@@ -172,14 +183,23 @@ class UserService {
    
    // Confirm user's account with confirmation code sent to email
    Future<bool> confirmAccount(String name, String confirmationCode) async {
-      _cognitoUser = CognitoUser(name, _userPool, storage: _userPool.storage);
-      return await _cognitoUser.confirmRegistration(confirmationCode);
+      bool retVal = false;
+      assert( _userPool != null );
+      _cognitoUser = CognitoUser(name, _userPool!, storage: _userPool!.storage);
+
+      if( _cognitoUser != null ) {
+         retVal = await _cognitoUser!.confirmRegistration(confirmationCode);
+      }
+      return retVal;
    }
    
    // Resend confirmation code to user's email
    Future<void> resendConfirmationCode(String name) async {
-      _cognitoUser = CognitoUser(name, _userPool, storage: _userPool.storage);
-      await _cognitoUser.resendConfirmationCode();
+      assert( _userPool != null );
+      _cognitoUser = CognitoUser(name, _userPool!, storage: _userPool!.storage);
+
+      if( _cognitoUser != null ) { await _cognitoUser!.resendConfirmationCode(); }
+      else { print( "Warning.  CognitoUser not available.  Resend failed." ); }
    }
    
    // Check if user's current session is valid
@@ -187,26 +207,28 @@ class UserService {
       if (_cognitoUser == null || _session == null) {
          return false;
       }
-      return _session.isValid();
+      return _session!.isValid();
    }
 
    // XXX Note, user not being caught here - wait for confirmation code.  Could remove lower portion
    Future<User> signUp(String email, String password, String name) async {
       CognitoUserPoolData data;
       final userAttributes = [ AttributeArg(name: 'email', value: email )];
-      data = await _userPool.signUp(name, password, userAttributes: userAttributes);
+
+      assert( _userPool != null );
+      data = await _userPool!.signUp(name, password, userAttributes: userAttributes);
       
       final user = User();
       user.email = email;
       user.name = name;
-      user.confirmed = data.userConfirmed;
+      user.confirmed = data.userConfirmed ?? false;
       
       return user;
    }
    
    Future<User> signOut() async {
       if (credentials != null) {   await credentials.resetAwsCredentials(); }
-      if (_cognitoUser != null) {  _cognitoUser.signOut();  }
+      if (_cognitoUser != null) {  _cognitoUser!.signOut();  }
 
       final user = User();
       user.email = "";

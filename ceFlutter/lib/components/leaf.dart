@@ -41,7 +41,7 @@ class Leaf extends StatelessWidget implements Tree {
    int getAccrueAmount() { return accrueAmount; }
    
    @override
-   Tree findNode( String target ) { return null; }
+   Tree? findNode( String target ) { return null; }
    
    
    @override

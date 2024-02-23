@@ -47,10 +47,10 @@ class PEQAction {
    final bool    locked;           // is this action currently being ingested
    final int     timeStamp;        // for operation sequencing control
 
-   PEQAction({this.id, this.ceUID, this.ghUserName, this.ghRepo,
-            this.verb, this.action, this.subject,
-            this.note, this.entryDate,
-            this.ingested, this.locked, this.timeStamp });
+   PEQAction({required this.id, required this.ceUID, required this.ghUserName, required this.ghRepo,
+            required this.verb, required this.action, required this.subject,
+            required this.note, required this.entryDate,
+            required this.ingested, required this.locked, required this.timeStamp });
             
    dynamic toJson() => {'id': id, 'ceUID': ceUID, 'ghUserName': ghUserName, 'ghRepo': ghRepo,
                            'verb': enumToStr(verb), 'action': enumToStr(action), 'subject': subject,

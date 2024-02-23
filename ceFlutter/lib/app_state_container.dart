@@ -19,7 +19,7 @@ class AppStateContainer extends StatefulWidget {
   final AppState state;   // codeequity state
   final Widget child;     // This widget is simply the root of the tree, child will be CEApp
 
-  AppStateContainer({ @required this.child, this.state });
+  AppStateContainer({ required this.child, required this.state });
 
   // Return container state with AppState, as the 'of' method which provides state to all children
   static _AppStateContainerState of(BuildContext context) {
@@ -49,17 +49,19 @@ class _AppStateContainerState extends State<AppStateContainer> {
         print("... ... have user pool" );
 
         state.cogUserService = UserService( state.cogUserPool );
+        assert( state.cogUserService != null ); 
+
         state.cogUser = User();
         print("... ... have cog user service" );
 
-        await state.cogUserService.init();
+        await state.cogUserService!.init();
         print("... user service init done." );
         
         // XXX Inactive.  Useful for cookies?
-        bool isAuthenticated = await state.cogUserService.checkAuthenticated();
+        bool isAuthenticated = await state.cogUserService!.checkAuthenticated();
         print( "... auth done: " + isAuthenticated.toString() );
         if( isAuthenticated ) {
-           state.cogUser = await state.cogUserService.getCurrentUser();
+           state.cogUser = await state.cogUserService!.getCurrentUser();
            print( "Got User: " );
         }
 
@@ -97,11 +99,14 @@ class _AppStateContainerState extends State<AppStateContainer> {
      if( state.accessToken == "" || state.idToken == "" || override == true) {
 
         // May not need accessToken, or refreshToken
-        String credentials = await state.cogUserService.getCredentials( );
+        assert( state.cogUserService != null );         
+        String credentials = ( await state.cogUserService!.getCredentials() ) ?? "";
+        if( credentials == "" ) { print( "Warning.  Empty credentials." ); }
 
-        print( "GAT set: " + state.cogUser.email );
+        assert( state.cogUser != null );         
+        print( "GAT set: " + (state.cogUser!.email ?? ""));
         _db.collection('userNames').doc('userName').set({
-           'uname': state.cogUser.email,
+           'uname': state.cogUser!.email,
                  'credentials': credentials
                  });
         
@@ -140,23 +145,25 @@ class _AppStateContainerState extends State<AppStateContainer> {
   }
 
   Future<bool> finalizeUser( newUser ) async {
-     assert( state.newUser == newUser );
-     String name  = state.cogUser.name ?? "";
-     String email = state.cogUser.email ?? "";
+     assert( state.newUser  == newUser );
+     assert( state.cogUser != null );
+     
+     String name  = state.cogUser!.name ?? "";
+     String email = state.cogUser!.email ?? "";
      print( "Finalize User " + name + " " + email );
      
      // XXX ooh temp workaround only
      final cookie = await _db.collection('userNames').doc('userName').get();
      // print( "XXX erm... " + cookie.toString() );
      
-     if( state.cogUser.confirmed ) {
+     if( state.cogUser!.confirmed ) {
         await getAuthTokens( false );
      }
-     else if( cookie != null && cookie['uname'] == state.cogUser.email ) {
+     else if( cookie != null && cookie['uname'] == email ) {
         print( "setting credentials.  no setstate, triggers newUser" );
         state.idToken = cookie['credentials'];
-        state.cogUser.confirmed = true;
-        state.cogUser.hasAccess = true;
+        state.cogUser!.confirmed = true;
+        state.cogUser!.hasAccess = true;
      }
      else {
         print( "User is not confirmed - can not finalize cognito and project setup." );
@@ -214,9 +221,9 @@ class _InheritedStateContainer extends InheritedWidget {
   // InheritedWidgets are always just wrappers.
   // Flutter knows to build the Widget thats passed to it, so no build method
   _InheritedStateContainer({
-    Key key,
-    @required this.data,
-    @required Widget child,
+    Key? key,
+    required this.data,
+    required Widget child,
   }) : super(key: key, child: child);
   
   // Flutter automatically calls this method when any data in this widget is changed. 

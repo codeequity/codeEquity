@@ -11,7 +11,7 @@ import 'package:ceFlutter/models/app_state.dart';
 
 
 class CELaunchPage extends StatefulWidget {
-   CELaunchPage({Key key}) : super(key: key);
+   CELaunchPage({Key? key}) : super(key: key);
 
    @override
    _CELaunchPageState createState() => _CELaunchPageState();

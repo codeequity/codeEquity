@@ -22,7 +22,8 @@ class Allocation {
    final String       notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
    final String       ghProjectId;     // a fixed point that chains the category to a specific location in GH
 
-   Allocation({this.category, this.categoryBase, this.amount, this.sourcePeq, this.allocType, this.ceUID, this.ghUserName, this.vestedPerc, this.notes, this.ghProjectId });
+   Allocation({required this.category, required this.categoryBase, required this.amount, required this.sourcePeq,
+            required this.allocType, required this.ceUID, required this.ghUserName, required this.vestedPerc, required this.notes, required this.ghProjectId });
 
    // Not explicitly constructed in lambda handler - watch caps
    dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),

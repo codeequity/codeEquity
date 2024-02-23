@@ -5,9 +5,9 @@ class GHAccount {
    String       ceOwnerId;
    String       ghUserName;
    List<String> repos;       // note repos may be ghUserName/repo or <someOtherUser>/repo
-   List<bool>   ceProject;   // 1:1 with repos.  NOTE: this is set in utils_load:reloadMyProjects from awsDynamo on fetch.
+   List<bool>?  ceProject;   // XXX no longer 1:1 with repos.  NOTE: this is set in utils_load:reloadMyProjects from awsDynamo on fetch.
 
-   GHAccount({this.id, this.ceOwnerId, this.ghUserName, this.repos, this.ceProject});
+   GHAccount({required this.id, required this.ceOwnerId, required this.ghUserName, required this.repos, this.ceProject});
    
    dynamic toJson() {
       return { 'id': id, 'ceOwnerId': ceOwnerId, 'ghUserName': ghUserName, 'repos': repos, 'ceProjs': ceProject };
@@ -29,12 +29,14 @@ class GHAccount {
    }
 
    String toString() {
-      ghUserName = ghUserName ?? "";
-      repos      = repos ?? [];
+      ghUserName = ghUserName;
+      repos      = repos;
 
       String res = "\nGH user : " + ghUserName + " CE owner id: " + ceOwnerId + " repos: ";
       repos.forEach((repo) => res += " " + repo );
-      ceProject.forEach((ceProj) => res += " " + ceProj.toString() );
+      if( ceProject != null ) {
+         ceProject!.forEach((ceProj) => res += " " + ceProj.toString() );
+      }
 
       return res;
    }

@@ -187,14 +187,16 @@ Future<bool> checkFailure( response, shortName, context, container ) async {
 
 Future<String> fetchPAT( context, container, postData, shortName ) async {
    final response = await postIt( shortName, postData, container );
+   final failure = "-1";
    
    if (response.statusCode == 201) {
       final gha = json.decode(utf8.decode(response.bodyBytes));
-      return gha['PAT'];
+      return gha['PAT'] ?? failure;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPAT( context, container, postData, shortName ); }
    }
+   return failure;
 }
 
 Future<String> fetchString( context, container, postData, shortName ) async {
@@ -206,6 +208,7 @@ Future<String> fetchString( context, container, postData, shortName ) async {
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchString( context, container, postData, shortName ); }
+      else return "-1";
    }
 }
 
@@ -267,6 +270,7 @@ Future<bool> updateColumnName( context, container, guide ) async {
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await updateColumnName( context, container, guide ); }
+      else { return false; }
    }
 }
 
@@ -296,6 +300,7 @@ Future<bool> updateProjectName( context, container, guide ) async {
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await updateProjectName( context, container, guide ); }
+      else { return false; }
    }
 }
 
@@ -313,9 +318,11 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPEQs( context, container, postData ); }
+      else { return []; }
    }
 }
 
+/*
 Future<PEQ> fetchaPEQ( context, container, postData ) async {
    String shortName = "fetchaPEQ";
    final response = await postIt( shortName, postData, container );
@@ -329,7 +336,7 @@ Future<PEQ> fetchaPEQ( context, container, postData ) async {
       if( didReauth ) { return await fetchaPEQ( context, container, postData ); }
    }
 }
-
+*/
 
 Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
    String shortName = "fetchPEQAction";
@@ -345,10 +352,11 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPEQActions( context, container, postData ); }
+      else { return []; }
    }
 }
 
-Future<PEQSummary> fetchPEQSummary( context, container, postData ) async {
+Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    String shortName = "fetchPEQSummary";
 
    final response = await postIt( shortName, json.encode( postData ), container );
@@ -366,7 +374,7 @@ Future<PEQSummary> fetchPEQSummary( context, container, postData ) async {
    }
 }
 
-Future<Linkage> fetchGHLinkage( context, container, postData ) async {
+Future<Linkage?> fetchGHLinkage( context, container, postData ) async {
    String shortName = "fetchGHLinkage";
 
    final response = await postIt( shortName, json.encode( postData ), container );
@@ -384,7 +392,7 @@ Future<Linkage> fetchGHLinkage( context, container, postData ) async {
    }
 }
 
-Future<PEQRaw> fetchPEQRaw( context, container, postData ) async {
+Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
    String shortName = "fetchPEQRaw";
    final response = await postIt( shortName, postData, container );
    
@@ -419,6 +427,7 @@ Future<List<GHAccount>> fetchGHAcct( context, container, postData ) async {
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchGHAcct( context, container, postData ); }
+      else{ return []; }
    }
 }
 
@@ -436,6 +445,7 @@ Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async 
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await lockFetchPActions( context, container, postData ); }
+      else { return []; }
    }
 }
 
@@ -589,21 +599,22 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
    var github = await GitHub(auth: Authentication.withToken( personalAccessToken ));   
 
    // NOTE id, node_id are available if needed
-   String patLogin = "";
-   await github.users.getCurrentUser().then((final CurrentUser user) {
-         patLogin = user.login;
-      }).catchError((e) {
+   String? patLogin = "";
+   await github.users.getCurrentUser()
+      .then((final CurrentUser user) {
+            patLogin = user.login;
+         })
+      .catchError((e) {
             print( "Could not validate github acct." + e.toString() );
             showToast( "Github validation failed.  Please try again." );
          });
    
-   List<String> repos = null;
    bool newAssoc = false;
-   if( patLogin != "" ) {
-      print( "Goot, Got Auth'd.  " + patLogin );
+   if( patLogin != "" && patLogin != null ) {
+      print( "Goot, Got Auth'd.  " + patLogin! );
       
       bool newLogin = true;
-      appState.myGHAccounts.forEach((acct) => newLogin = ( newLogin && ( acct.ghUserName != patLogin )) );
+      appState.myGHAccounts.forEach((acct) => newLogin = ( newLogin && ( acct.ghUserName != patLogin! )) );
 
       if( newLogin ) {
          newAssoc = true;
@@ -623,7 +634,7 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          print( "Repo done " + repos.toString() );
    
          String pid = randAlpha(10);
-         GHAccount myGHAcct = new GHAccount( id: pid, ceOwnerId: appState.userId, ghUserName: patLogin, repos: repos );
+         GHAccount myGHAcct = new GHAccount( id: pid, ceOwnerId: appState.userId, ghUserName: patLogin!, repos: repos );
          
          
          String newGHA = json.encode( myGHAcct );

@@ -8,7 +8,7 @@ abstract class Tree {
    int getPendingAmount();
    int getAccrueAmount();
 
-   Tree findNode( String target ); 
+   Tree? findNode( String target ); 
    
    String getTitle();
    String toStr();

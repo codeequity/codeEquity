@@ -13,7 +13,7 @@ class PEQSummary {
    final String           lastMod;
    final List<Allocation> allocations;   
 
-   PEQSummary({ this.id, this.ghRepo, this.targetType, this.targetId, this.lastMod, this.allocations });
+   PEQSummary({ required this.id, required this.ghRepo, required this.targetType, required this.targetId, required this.lastMod, required this.allocations });
             
    dynamic toJson() => { 'id': id, 'ghRepo': ghRepo, 'targetType': targetType, 'targetId': targetId,
                             'lastMod': lastMod, 'allocations': allocations };

@@ -13,7 +13,7 @@ import 'package:ceFlutter/screens/detail_page.dart';
 
 
 class CEProjectPage extends StatefulWidget {
-   CEProjectPage({Key key}) : super(key: key);
+   CEProjectPage({Key? key}) : super(key: key);
 
   @override
   _CEProjectState createState() => _CEProjectState();
@@ -51,10 +51,10 @@ class _CEProjectState extends State<CEProjectPage> {
       await updatePEQAllocations( appState.selectedRepo, context, container );
 
       // Reset tree state to ensure proper open/close with tree.getCurrent, else appState never set
-      if( appState.myPEQSummary.ghRepo == appState.selectedRepo && appState.allocTree != null )
+      if( appState.myPEQSummary != null && appState.myPEQSummary!.ghRepo == appState.selectedRepo && appState.allocTree != null )
       {
          appState.allocExpanded.clear();
-         appState.allocTree.reset();
+         appState.allocTree!.reset();
       }
 
       // Reset storage key, otherwise horDiv and colors don't match expansion state

@@ -40,7 +40,7 @@ class CESummaryFrame extends StatefulWidget {
    final allocExpansionCallback;
 
    CESummaryFrame(
-      {Key key,
+      {Key? key,
             this.appContainer,
             this.pageStamp,
             this.frameHeightUsed,
@@ -124,7 +124,7 @@ class _CESummaryState extends State<CESummaryFrame> {
             
             bool lastCat = false;
             if( i == alloc.category.length - 1 ) { lastCat = true; }
-            Tree childNode = curNode.findNode( alloc.category[i] );
+            Tree? childNode = curNode.findNode( alloc.category[i] );
             
             if( childNode is Leaf && !lastCat ) {
                // allocation leaf, convert to a node to accomodate plan/accrue
