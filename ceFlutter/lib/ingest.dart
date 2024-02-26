@@ -23,15 +23,15 @@ void vPrint( appState, String astring ) {
 
 // XXX associateGithub has to update appState.idMapGH
 // PActions, PEQs are added by webServer, which does not have access to ceUID.
-// set CEUID by matching my peqAction:ghUserName  or peq:ghUserNames to cegithub:ghUsername, then writing that CEOwnerId
-// if there is not yet a corresponding ceUID, use "GHUSER: $ghUserName" in it's place, to be fixed later by associateGitub XXX (done?)
+// set CEUID by matching my peqAction:hostUserName  or peq:hostUserNames to cegithub:ghUsername, then writing that CEOwnerId
+// if there is not yet a corresponding ceUID, use "GHUSER: $hostUserName" in it's place, to be fixed later by associateGitub XXX (done?)
 // NOTE: Expect multiple PActs for each PEQ.  For example, open, close, and accrue
 Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) async {
 
    PEQAction pact = tup.item1;
    PEQ       peq  = tup.item2;
 
-   String ghu  = pact.ghUserName;
+   String ghu  = pact.hostUserName;
    if( !appState.idMapGH.containsKey( ghu )) {
       appState.idMapGH[ ghu ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "GHUserName": "$ghu" }', "GetCEUID" );
    }
@@ -150,7 +150,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    // Create allocs, if not already updated
    vPrint( appState, " ... adding new Allocation" );
    Allocation alloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: {peqId: splitAmount}, allocType: peqType,
-                                      ceUID: EMPTY, ghUserName: assignee, vestedPerc: 0.0, notes: "", ghProjectId: pid );
+                                      ceUID: EMPTY, hostUserName: assignee, vestedPerc: 0.0, notes: "", ghProjectId: pid );
    appState.myPEQSummary.allocations.add( alloc );
 }
 
@@ -424,8 +424,8 @@ Future _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo
 
    if( newType == enumToStr( PeqType.grant )) {
       postData['AccrualDate'] = pact.entryDate;
-      String ceUID = appState.idMapGH[ pact.ghUserName ];
-      if( ceUID == "" ) { ceUID = "GHUSER: " + pact.ghUserName; }  // XXX formalize
+      String ceUID = appState.idMapGH[ pact.hostUserName ];
+      if( ceUID == "" ) { ceUID = "GHUSER: " + pact.hostUserName; }  // XXX formalize
       postData['CEGrantorId'] = ceUID;
    }
    else {
@@ -464,11 +464,11 @@ void _delete( appState, pact, peq, List<Future> dynamo, assignees, assigneeShare
          }
          else {
             vPrint( appState, "\n Delete: " + ka.category.toString() );
-            List<Allocation> remAllocs = [];  // category, ghUserName, allocType
+            List<Allocation> remAllocs = [];  // category, hostUserName, allocType
             
             // avoid concurrent mod of list
             for( Allocation sourceAlloc in appAllocs.where( (a) => ( a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
-               Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
+               Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserName: sourceAlloc.hostUserName );
                remAllocs.add( miniAlloc );
             }
             for( var remAlloc in remAllocs ) {
@@ -571,17 +571,17 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
       else
       {
          // Exactly one alloc per peq.id,assignee pair
-         List<Allocation> reloAlloc = [];  // category, ghUserName, allocType
+         List<Allocation> reloAlloc = [];  // category, hostUserName, allocType
          
          // avoid concurrent mod of list
          for( Allocation sourceAlloc in appAllocs.where( (a) => (a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
-            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
+            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserName: sourceAlloc.hostUserName );
             reloAlloc.add( miniAlloc );
          }
          
          for( var remAlloc in reloAlloc ) {
-            assert( assignees.contains( remAlloc.ghUserName ));
-            vPrint( appState, "\n Assignee: " + remAlloc.ghUserName );
+            assert( assignees.contains( remAlloc.hostUserName ));
+            vPrint( appState, "\n Assignee: " + remAlloc.hostUserName );
             adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
          }
       }
@@ -637,17 +637,17 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
       else
       {
          // Exactly one alloc per peq.id,assignee pair
-         List<Allocation> reloAlloc = [];  // category, ghUserName, allocType
+         List<Allocation> reloAlloc = [];  // category, hostUserName, allocType
          
          // avoid concurrent mod of list
          for( Allocation sourceAlloc in appAllocs.where( (a) => (a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
-            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
+            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserName: sourceAlloc.hostUserName );
             reloAlloc.add( miniAlloc );
          }
          
          for( var remAlloc in reloAlloc ) {
-            assert( assignees.contains( remAlloc.ghUserName ));
-            vPrint( appState, "\n Assignee: " + remAlloc.ghUserName );
+            assert( assignees.contains( remAlloc.hostUserName ));
+            vPrint( appState, "\n Assignee: " + remAlloc.hostUserName );
             adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.ghProjectId );
 
             // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
@@ -668,7 +668,7 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
             
             vPrint( appState, "  .. relocating to " + loc.toString() );
             peqLoc = baseCat + [loc.ghColumnName];
-            adjustSummaryAlloc( appState, peq.id, baseCat + [loc.ghColumnName], remAlloc.ghUserName, assigneeShare, remAlloc.allocType, pid: loc.ghProjectId );
+            adjustSummaryAlloc( appState, peq.id, baseCat + [loc.ghColumnName], remAlloc.hostUserName, assigneeShare, remAlloc.allocType, pid: loc.ghProjectId );
          }
       }
 
@@ -960,7 +960,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
    List<String> assignees = [];
    Allocation? ka         = null;
    for( Allocation alloc in appAllocs.where( (a) => ( a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
-      assignees.add( alloc.ghUserName );
+      assignees.add( alloc.hostUserName );
       ka = alloc;
    }
    if( ka == null ) {

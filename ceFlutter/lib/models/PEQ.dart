@@ -7,7 +7,7 @@ enum PeqType   { allocation, plan, pending, grant, end }
 class PEQ {
    final String        id;
          List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
-   final List<String>  ghHolderId;   // assignees evenly splitting this PEQ, ghUserNames
+   final List<String>  ghHolderId;   // assignees evenly splitting this PEQ, hostUserNames
    final String        ceGrantorId;
 
    final PeqType       peqType;      // usually from Master, sub created/inprogress, sub pending/accrued

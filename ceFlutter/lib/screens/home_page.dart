@@ -105,14 +105,16 @@ class _CEHomeState extends State<CEHomePage> {
       repoChunks.add( _repoBar );
       chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
+      // XXX
+      print( "XXX fix makerepo" );
       if( gha != -1 ) {
          // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
          // if( gha.ceProject.any(( bool p ) => !p )) {}
-         for( var i = 0; i < gha.repos.length; i++ ) {
-            if( !gha.ceProject[i] ) {
-               repoChunks.add( _makeRepoChunk( gha.repos[i] ));
-               chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-            }
+         for( var i = 0; i < gha.futureCEProjects.length; i++ ) {
+            //if( !gha.ceProject[i] ) {
+            repoChunks.add( _makeRepoChunk( gha.futureCEProjects[i] ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+               //}
          }
       }
       repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
@@ -174,11 +176,14 @@ class _CEHomeState extends State<CEHomePage> {
 
       // Do we have any ceProjects?  Hmm.. no matter.
       // if( gha.ceProject.any(( bool p ) => p )) {}
-      for( var i = 0; i < gha.repos.length; i++ ) {
-         if( gha.ceProject[i] ) {
-            repoChunks.add( _makeRepoChunk( gha.repos[i] ));
-            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         }
+      for( var i = 0; i < gha.ceProjectIds.length; i++ ) {
+         // XXX
+         print( "XXX fix mkcep" );
+         // if( gha.ceProjectIds[i] ) {
+         // repoChunks.add( _makeRepoChunk( gha.repos[i] ));
+         repoChunks.add( _makeRepoChunk( gha.ceProjectIds[i] ));
+         chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         // }
       }
 
       repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));

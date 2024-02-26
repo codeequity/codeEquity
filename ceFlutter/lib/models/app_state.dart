@@ -10,7 +10,7 @@ import 'package:ceFlutter/cognitoUserService.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
-import 'package:ceFlutter/models/ghAccount.dart';
+import 'package:ceFlutter/models/hostAccount.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 
 import 'package:ceFlutter/components/node.dart';
@@ -54,7 +54,7 @@ class AppState {
    late Linkage?        myGHLinks;             // Current project/column disposition for current repo in github
    late bool peqUpdated;
 
-   late List<GHAccount> myGHAccounts;   
+   late List<HostAccount> myGHAccounts;   
    late bool ghUpdated;
 
    Node? allocTree;

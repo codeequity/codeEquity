@@ -81,10 +81,9 @@ class _CESplashPageState extends State<CESplashPage> {
         showToast( "AWS token initialization is slow.  Is your wifi on?" );
         navigateUser(); 
      } else {
-        assert( appState != null );
         Timer(Duration(seconds: duration), () {
               print("after duration, checking cogDone" );
-              if( !appState!.cogInitDone ) {
+              if( appState == null || !appState!.cogInitDone ) {
                  _startTimer( attempts + 1 );
               } else {
                  navigateUser();
