@@ -4,7 +4,7 @@ class PEQRaw {
    final String  id;               // same as PEQAction:id
    final String  rawReqBody;       // example use: final m = json.decode( rawReqBody ); print( m.keys ); print( m['project_card']['creator'] )
 
-   PEQRaw({this.id, this.rawReqBody });
+   PEQRaw({required this.id, required this.rawReqBody });
             
    dynamic toJson() => {'id': id, 'rawReqBody': rawReqBody };
    

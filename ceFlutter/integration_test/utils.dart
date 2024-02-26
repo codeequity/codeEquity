@@ -32,7 +32,7 @@ const TESTER_PASSWD = "passWD123";
 
 Future<bool> restart( WidgetTester tester ) async {
 
-   await tester.pumpWidget( AppStateContainer( child: new CEApp() ));
+   await tester.pumpWidget( AppStateContainer( child: new CEApp(), state: new AppState() ));
    await tester.pumpAndSettle();
    
    final splash = find.text( 'CodeEquity' );

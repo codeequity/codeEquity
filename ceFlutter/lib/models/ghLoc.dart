@@ -5,13 +5,13 @@
 // This is not intended to be independently stored in dynamo, only in association with GHLocations
 
 class GHLoc {
-   final String ghProjectId;
-   final String ghProjectName;
-   final String ghColumnId;
-   final String ghColumnName;
-   final bool   active;         // ceServer writes in real time, ceFlutter reads after the fact.  May need legacy data during ingest.
+   final String  ghProjectId;
+   final String  ghProjectName;
+   final String  ghColumnId;
+   final String  ghColumnName;
+   final bool    active;         // ceServer writes in real time, ceFlutter reads after the fact.  May need legacy data during ingest.
 
-   GHLoc({this.ghProjectId, this.ghProjectName, this.ghColumnId, this.ghColumnName , this.active});
+   GHLoc({required this.ghProjectId, required this.ghProjectName, required this.ghColumnId, required this.ghColumnName, required this.active});
 
    // Direction is ceServer -> aws -> ceFlutter, only.
    factory GHLoc.fromJson(Map<String, dynamic> json) {
@@ -28,7 +28,7 @@ class GHLoc {
    String toString() {
       String res = "";
       res += "\n    Project: " + ghProjectName + " (" + ghProjectId + ")";
-      res += "\n    Column:  " +  ghColumnName + " (" + ghColumnId  + ")";
+      res += "\n    Column:  " + ghColumnName  + " (" + ghColumnId  + ")";
       res += "\n    " + (active ? "Active!" : "Inactive.");
       return res;
    }

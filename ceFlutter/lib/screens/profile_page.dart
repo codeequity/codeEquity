@@ -7,7 +7,7 @@ import 'package:ceFlutter/models/app_state.dart';
 
 
 class CEProfilePage extends StatefulWidget {
-  CEProfilePage({Key key}) : super(key: key);
+  CEProfilePage({Key? key}) : super(key: key);
 
   @override
   _CEProfileState createState() => _CEProfileState();
@@ -18,7 +18,7 @@ class CEProfilePage extends StatefulWidget {
 class _CEProfileState extends State<CEProfilePage> {
 
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
-   AppState appState; 
+   late AppState appState; 
 
   @override
       void initState() {
@@ -47,6 +47,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
       final container = AppStateContainer.of(context);
       appState = container.state;
+      assert( appState != null );
 
       makeLogoutButton() {
          return makeActionButton( appState, 'Logout', _logout( context, container, appState) );

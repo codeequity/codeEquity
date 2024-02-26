@@ -19,7 +19,7 @@ import 'package:ceFlutter/app_state_container.dart';
 void main() {
    WidgetsFlutterBinding.ensureInitialized();                // localStore
 
-   runApp( new AppStateContainer( child: new CEApp() ));
+   runApp( new AppStateContainer( child: new CEApp(), state: new AppState() ));
 }
 
 
@@ -35,8 +35,9 @@ class CEApp extends StatelessWidget {
            appBarTheme: AppBarTheme(
               color: Colors.grey[200],
               // title is deprecated 1.13, but as of 2/20 headline6 has not yet made it to the stable release
-              textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
+              // textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
               //textTheme: TextTheme( title: TextStyle( color: Colors.black )),
+              titleTextStyle: Theme.of(context).textTheme.headline6?.copyWith( color: Colors.black ),
               iconTheme: IconThemeData( color: Colors.black ) ),
            bottomAppBarColor: Colors.grey[200] ),
         home:  CESplashPage( title: 'CodeEquity'),
@@ -46,7 +47,7 @@ class CEApp extends StatelessWidget {
 
 
 class CESplashPage extends StatefulWidget {
-   CESplashPage({Key key, this.title}) : super(key: key);
+   CESplashPage({Key? key, required this.title}) : super(key: key);
 
    final String title;
    
@@ -57,7 +58,7 @@ class CESplashPage extends StatefulWidget {
 
 class _CESplashPageState extends State<CESplashPage> {
 
-   AppState appState;    // Declaration.  Definition is in build, can be used below
+   AppState? appState;    // Declaration.  Definition is in build, can be used below
    
    @override
    void initState() {
@@ -79,10 +80,10 @@ class _CESplashPageState extends State<CESplashPage> {
      if( attempts > 15 ) {
         showToast( "AWS token initialization is slow.  Is your wifi on?" );
         navigateUser(); 
-     } else { 
+     } else {
         Timer(Duration(seconds: duration), () {
               print("after duration, checking cogDone" );
-              if( !appState.cogInitDone ) {
+              if( appState == null || !appState!.cogInitDone ) {
                  _startTimer( attempts + 1 );
               } else {
                  navigateUser();
@@ -94,7 +95,8 @@ class _CESplashPageState extends State<CESplashPage> {
   
   void navigateUser() async{
      print( "Weh do i go?" );
-     if( appState.cogUser.confirmed ) {
+     assert( appState != null && appState!.cogUser != null );
+     if( appState!.cogUser!.confirmed ) {
         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
         Navigator.pushReplacement(context, newPage );
      } else {
@@ -108,11 +110,12 @@ class _CESplashPageState extends State<CESplashPage> {
 
      var container = AppStateContainer.of(context);
      appState = container.state;
+     assert( appState != null );
 
      final devWidth  = MediaQuery.of(context).size.width;
      final devHeight = MediaQuery.of(context).size.height;
-     appState.screenHeight = devHeight;
-     appState.screenWidth = devWidth;
+     appState!.screenHeight = devHeight;
+     appState!.screenWidth = devWidth;
      print( "Main recalc screen size" );
 
        return Scaffold(

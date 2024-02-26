@@ -7,7 +7,7 @@ enum PeqType   { allocation, plan, pending, grant, end }
 class PEQ {
    final String        id;
          List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
-   final List<String>  ghHolderId;   // assignees evenly splitting this PEQ, ghUserNames
+   final List<String>  ghHolderId;   // assignees evenly splitting this PEQ, hostUserNames
    final String        ceGrantorId;
 
    final PeqType       peqType;      // usually from Master, sub created/inprogress, sub pending/accrued
@@ -23,10 +23,10 @@ class PEQ {
 
    final bool          active;       // has this PEQ been deliberately deleted, unlabeled or otherwise removed from project?
 
-   PEQ({this.id, this.ceHolderId, this.ghHolderId, this.ceGrantorId,
-            this.peqType, this.amount, this.accrualDate, this.vestedPerc,
-            this.ghRepo, this.ghProjectSub, this.ghProjectId, this.ghIssueId, this.ghIssueTitle,
-            this.active});
+   PEQ({ required this.id, required this.ceHolderId, required this.ghHolderId, required this.ceGrantorId,
+            required this.peqType, required this.amount, required this.accrualDate, required this.vestedPerc,
+            required this.ghRepo, required this.ghProjectSub, required this.ghProjectId, required this.ghIssueId, required this.ghIssueTitle,
+            required this.active});
 
    dynamic toJson() => {'PEQId': id, 'CEHolderId': ceHolderId, 'GHHolderId': ghHolderId, 'CEGrantorId': ceGrantorId,
                            'PeqType': enumToStr(peqType), 'Amount': amount, 'AccrualDate': accrualDate, 'VestedPerc': vestedPerc,
@@ -37,8 +37,8 @@ class PEQ {
    factory PEQ.empty() {
       return PEQ(
          id:            "-1",
-         ceHolderId:    new List<String>(),
-         ghHolderId:    new List<String>(),
+         ceHolderId:    [],
+         ghHolderId:    [],
          ceGrantorId:   "-1",
 
          peqType:       PeqType.end,
@@ -47,7 +47,7 @@ class PEQ {
          vestedPerc:    0.0,
 
          ghRepo:        "-1",
-         ghProjectSub:  new List<String>(),
+         ghProjectSub:  [],
          ghProjectId:   "-1",
          ghIssueId:     "-1",
          ghIssueTitle:  "-1",

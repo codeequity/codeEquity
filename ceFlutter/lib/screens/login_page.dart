@@ -13,7 +13,7 @@ import 'package:ceFlutter/models/app_state.dart';
 
 
 class CELoginPage extends StatefulWidget {
-  CELoginPage({Key key}) : super(key: key);
+  CELoginPage({Key? key}) : super(key: key);
 
   @override
   _CELoginState createState() => _CELoginState();
@@ -23,11 +23,11 @@ class CELoginPage extends StatefulWidget {
 class _CELoginState extends State<CELoginPage> {
 
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
-   TextEditingController usernameController;
-   TextEditingController passwordController;
+   late TextEditingController usernameController;
+   late TextEditingController passwordController;
 
-   var      container;
-   AppState appState;
+   late var      container;
+   late AppState appState;
    
    @override
    void initState() {
@@ -128,6 +128,7 @@ class _CELoginState extends State<CELoginPage> {
 
      container = AppStateContainer.of(context);
      appState  = container.state;
+     assert( appState != null );
 
      usernameController = new TextEditingController();
      passwordController = new TextEditingController();

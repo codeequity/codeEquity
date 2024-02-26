@@ -14,7 +14,7 @@ import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/models/person.dart';
 
 class CESignupPage extends StatefulWidget {
-  CESignupPage({Key key}) : super(key: key);
+  CESignupPage({Key? key}) : super(key: key);
 
   @override
   _CESignupState createState() => _CESignupState();
@@ -23,10 +23,12 @@ class CESignupPage extends StatefulWidget {
 
 class _CESignupState extends State<CESignupPage> {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
-   TextEditingController usernameController;
-   TextEditingController passwordController;
-   TextEditingController attributeController;
-   TextEditingController confirmationCodeController;
+   /*
+   late TextEditingController usernameController;
+   late TextEditingController passwordController;
+   late TextEditingController attributeController;
+   late TextEditingController confirmationCodeController;
+   */
 
    // Always create with false.  When logout, all stacks pop, recreate is with false.
    bool showCC = false;
@@ -47,20 +49,23 @@ class _CESignupState extends State<CESignupPage> {
 
       final container = AppStateContainer.of(context);
       final appState = container.state;
+      assert( appState != null );
 
       if( appState.verbose >= 2 ) { print( "REBUILD SIGNUP" ); }
 
-      usernameController = new TextEditingController();
-      passwordController = new TextEditingController();
-      attributeController = new TextEditingController();
-      confirmationCodeController = new TextEditingController();
+      TextEditingController usernameController = new TextEditingController();
+      TextEditingController passwordController = new TextEditingController();
+      TextEditingController attributeController = new TextEditingController();
+      TextEditingController confirmationCodeController = new TextEditingController();
       
       final usernameField = makeInputField( appState, "username", false, usernameController );
       final passwordField = makeInputField( appState, "password", true, passwordController );
       final emailField    = makeInputField( appState, "email address", false, attributeController );
       final confirmationCodeField = makeInputField( appState, "confirmation code", false, confirmationCodeController );
 
-      String message = "";  
+      String message = "";
+
+      bool userConfirmed = appState.cogUser == null ? false : appState.cogUser!.confirmed;
 
       // This is a tricky thing to get right in all cases.
       // For example, allow xyz+tester@gmail.com, don't allow %2@gmail.com
@@ -81,7 +86,8 @@ class _CESignupState extends State<CESignupPage> {
                   showToast( "Email address is empty or malformed." );
                }
                else {
-                  await appState.cogUserService.signUp( email, passwordController.text, usernameController.text );
+                  assert( appState.cogUserService != null );
+                  await appState.cogUserService!.signUp( email, passwordController.text, usernameController.text );
                   showToast( "Code sent to your email");
                   print( "Code sent to email" );
                   setState(() { showCC = true; });
@@ -91,7 +97,8 @@ class _CESignupState extends State<CESignupPage> {
 
       final confirmSignupButton = makeActionButton( appState, "Confirm signup, and Log in", cognitoSignupWrapper(context, () async {
                bool acctConfirmed = false;
-               acctConfirmed = await appState.cogUserService.confirmAccount( usernameController.text,
+               assert( appState.cogUserService != null );
+               acctConfirmed = await appState.cogUserService!.confirmAccount( usernameController.text,
                                                                                confirmationCodeController.text );
                if( acctConfirmed ) { print( "Account confirmed." ); }
                else {
@@ -100,10 +107,11 @@ class _CESignupState extends State<CESignupPage> {
                }
 
                appState.newUser = true;
-               appState.cogUser = await appState.cogUserService.login( usernameController.text, passwordController.text );
+               appState.cogUser = await appState.cogUserService!.login( usernameController.text, passwordController.text );
                print( "Login complete." );
 
-               if( !appState.cogUser.confirmed ) {
+               assert( appState.cogUser != null );
+               if( !appState.cogUser!.confirmed ) {
                   showToast( "Signin failed.  Incorrect confirmation code?" );
                   return;
                }
@@ -158,7 +166,7 @@ class _CESignupState extends State<CESignupPage> {
                            SizedBox( height: 5.0),
                            Visibility( key: Key("confirm signup button visNode"), visible: showCC, child: confirmSignupButton ),
                            SizedBox( height: 5.0),
-                           Text( appState.cogUser.confirmed?.toString() ?? "UserState here", style: TextStyle(fontStyle: FontStyle.italic))
+                           Text( userConfirmed ? "true" : "UserState here", style: TextStyle(fontStyle: FontStyle.italic))
                            ])))
                
                )));

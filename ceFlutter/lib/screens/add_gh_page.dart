@@ -11,7 +11,7 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 
 class CEAddGHPage extends StatefulWidget {
-   CEAddGHPage({Key key}) : super(key: key);
+   CEAddGHPage({Key? key}) : super(key: key);
 
   @override
   _CEAddGHState createState() => _CEAddGHState();
@@ -19,11 +19,11 @@ class CEAddGHPage extends StatefulWidget {
 
 class _CEAddGHState extends State<CEAddGHPage> {
 
-   var      container;
-   AppState appState;
-   bool     addGHAcct;
+   late var      container;
+   late AppState appState;
+   late bool     addGHAcct;
 
-   TextEditingController pat;
+   late TextEditingController pat;
 
    static const maxPaneWidth = 700.0;
    
@@ -123,7 +123,8 @@ class _CEAddGHState extends State<CEAddGHPage> {
 
       container   = AppStateContainer.of(context);
       appState    = container.state;
-
+      assert( appState != null );
+      
       pat = TextEditingController();
       
       appState.screenHeight = MediaQuery.of(context).size.height;

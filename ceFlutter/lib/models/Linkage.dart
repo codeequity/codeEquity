@@ -9,7 +9,7 @@ class Linkage {
    final String      lastMod;
    final List<GHLoc> locations;   
 
-   Linkage({ this.id, this.ghRepo, this.lastMod, this.locations });
+   Linkage({ required this.id, required this.ghRepo, required this.lastMod, required this.locations });
 
    // Direction is ceServer -> aws -> ceFlutter, only.            
    factory Linkage.fromJson(Map<String, dynamic> json) {

@@ -28,7 +28,7 @@ enum PActAction { add, delete, notice, accrue, relocate, change }        // (add
 class PEQAction {
    final String  id;
    final String  ceUID;            // ??? just .. metadata here?
-   final String  ghUserName;       // actor.  i.e. grantor, proposer, confirmer, etc.
+   final String  hostUserName;       // actor.  i.e. grantor, proposer, confirmer, etc.
    final String  ghRepo;
 
    final PActVerb   verb;      
@@ -47,12 +47,12 @@ class PEQAction {
    final bool    locked;           // is this action currently being ingested
    final int     timeStamp;        // for operation sequencing control
 
-   PEQAction({this.id, this.ceUID, this.ghUserName, this.ghRepo,
-            this.verb, this.action, this.subject,
-            this.note, this.entryDate,
-            this.ingested, this.locked, this.timeStamp });
+   PEQAction({required this.id, required this.ceUID, required this.hostUserName, required this.ghRepo,
+            required this.verb, required this.action, required this.subject,
+            required this.note, required this.entryDate,
+            required this.ingested, required this.locked, required this.timeStamp });
             
-   dynamic toJson() => {'id': id, 'ceUID': ceUID, 'ghUserName': ghUserName, 'ghRepo': ghRepo,
+   dynamic toJson() => {'id': id, 'ceUID': ceUID, 'hostUserName': hostUserName, 'ghRepo': ghRepo,
                            'verb': enumToStr(verb), 'action': enumToStr(action), 'subject': subject,
                            'note': note, 'entryDate': entryDate, 
                            'ingested': ingested, 'locked': locked, 'timeStamp': timeStamp };
@@ -67,7 +67,7 @@ class PEQAction {
       return PEQAction(
          id:         json['PEQActionId'],
          ceUID:      json['CEUID'],
-         ghUserName: json['GHUserName'],
+         hostUserName: json['GHUserName'],
          ghRepo:     json['GHRepo'],
 
          verb:       enumFromStr<PActVerb>(   json['Verb'], PActVerb.values ),
@@ -85,7 +85,7 @@ class PEQAction {
    
    String toString() {
       String res = "\nPEQAction for ceUserId: " + ceUID;
-      res += "\n    ghUser: " + ghUserName + ", repo: " + ghRepo;
+      res += "\n    hostUser: " + hostUserName + ", repo: " + ghRepo;
       res += "\n    " + enumToStr(verb) + ", " + enumToStr(action) + " " + subject.toString();
       // res += "\n    entry made: " + entryDate;
       // res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();
