@@ -20,8 +20,8 @@ class CELaunchPage extends StatefulWidget {
 
 class _CELaunchPageState extends State<CELaunchPage> {
 
-   var      container;
-   AppState appState;
+   late var      container;
+   late AppState appState;
 
    @override
    void initState() {
@@ -117,6 +117,7 @@ class _CELaunchPageState extends State<CELaunchPage> {
 
     container = AppStateContainer.of(context);
     appState  = container.state;
+    assert( appState != null );
 
     final devWidth  = MediaQuery.of(context).size.width;
     final devHeight = MediaQuery.of(context).size.height;

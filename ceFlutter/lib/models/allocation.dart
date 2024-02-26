@@ -12,18 +12,18 @@ import 'package:ceFlutter/models/PEQ.dart';
 
 class Allocation {
    final List<String> category;        // i.e. [founding], [Software Contributions, Data Security, Planned, Unassigned]
-   final List<String> categoryBase;    // i.e. category, minus "planned", assignee
-   int                amount;          // amount of provisional equity for this category
-   Map<String,int>    sourcePeq;       // all peqId:value that make up the total for this category. 
+   final List<String>? categoryBase;    // i.e. category, minus "planned", assignee
+   int?               amount;          // amount of provisional equity for this category
+   Map<String,int>?   sourcePeq;       // all peqId:value that make up the total for this category. 
    PeqType            allocType;
-   final String       ceUID;           // if Plan or Grant, who is it for
+   final String?      ceUID;           // if Plan or Grant, who is it for
    final String       ghUserName;      // ghUser associated with ceUID
-   double             vestedPerc;      // granted or accrued
-   final String       notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
-   final String       ghProjectId;     // a fixed point that chains the category to a specific location in GH
+   double?            vestedPerc;      // granted or accrued
+   final String?      notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
+   final String?      ghProjectId;     // a fixed point that chains the category to a specific location in GH
 
-   Allocation({required this.category, required this.categoryBase, required this.amount, required this.sourcePeq,
-            required this.allocType, required this.ceUID, required this.ghUserName, required this.vestedPerc, required this.notes, required this.ghProjectId });
+   Allocation({required this.category, this.categoryBase, this.amount, this.sourcePeq,
+            required this.allocType, this.ceUID, required this.ghUserName, this.vestedPerc, this.notes, this.ghProjectId });
 
    // Not explicitly constructed in lambda handler - watch caps
    dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
@@ -54,11 +54,11 @@ class Allocation {
    }
    
    String toString() {
-      String res = "\n" + category.toString() + "  " + ghProjectId;
-      res += "\n    " + enumToStr( allocType ) + " ceUID and ghUserName: " + ceUID + " " + ghUserName;
-      res += "\n    Amount: "+ amount.toString() + " of which vested %: " + vestedPerc.toString();
-      res += "\n    Source PEQs: " + sourcePeq.toString();
-      res += "\n    Notes: " + notes;
+      String res = "\n" + category.toString() + "  " + (ghProjectId ?? "");
+      res += "\n    " + enumToStr( allocType ) + " ceUID and ghUserName: " + (ceUID ?? "") + " " + ghUserName;
+      res += "\n    Amount: "+ (amount ?? -1).toString() + " of which vested %: " + (vestedPerc ?? 0.0).toString();
+      res += "\n    Source PEQs: " + (sourcePeq ?? []).toString();
+      res += "\n    Notes: " + (notes ?? "");
       return res;
    }
 

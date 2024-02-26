@@ -58,7 +58,7 @@ class CESplashPage extends StatefulWidget {
 
 class _CESplashPageState extends State<CESplashPage> {
 
-   AppState appState;    // Declaration.  Definition is in build, can be used below
+   AppState? appState;    // Declaration.  Definition is in build, can be used below
    
    @override
    void initState() {
@@ -80,10 +80,11 @@ class _CESplashPageState extends State<CESplashPage> {
      if( attempts > 15 ) {
         showToast( "AWS token initialization is slow.  Is your wifi on?" );
         navigateUser(); 
-     } else { 
+     } else {
+        assert( appState != null );
         Timer(Duration(seconds: duration), () {
               print("after duration, checking cogDone" );
-              if( !appState.cogInitDone ) {
+              if( !appState!.cogInitDone ) {
                  _startTimer( attempts + 1 );
               } else {
                  navigateUser();
@@ -95,8 +96,8 @@ class _CESplashPageState extends State<CESplashPage> {
   
   void navigateUser() async{
      print( "Weh do i go?" );
-     assert( appState.cogUser != null );
-     if( appState.cogUser!.confirmed ) {
+     assert( appState != null && appState!.cogUser != null );
+     if( appState!.cogUser!.confirmed ) {
         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
         Navigator.pushReplacement(context, newPage );
      } else {
@@ -110,11 +111,12 @@ class _CESplashPageState extends State<CESplashPage> {
 
      var container = AppStateContainer.of(context);
      appState = container.state;
+     assert( appState != null );
 
      final devWidth  = MediaQuery.of(context).size.width;
      final devHeight = MediaQuery.of(context).size.height;
-     appState.screenHeight = devHeight;
-     appState.screenWidth = devWidth;
+     appState!.screenHeight = devHeight;
+     appState!.screenWidth = devWidth;
      print( "Main recalc screen size" );
 
        return Scaffold(

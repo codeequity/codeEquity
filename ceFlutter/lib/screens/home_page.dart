@@ -22,8 +22,8 @@ class CEHomePage extends StatefulWidget {
 
 class _CEHomeState extends State<CEHomePage> {
 
-   var      container;
-   AppState appState;
+   late var      container;
+   late AppState appState;
 
    var      runningLHSHeight;
 
@@ -282,7 +282,8 @@ class _CEHomeState extends State<CEHomePage> {
 
       container   = AppStateContainer.of(context);
       appState    = container.state;
-
+      assert( appState != null );
+      
       // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.
       SystemChrome.setPreferredOrientations([ DeviceOrientation.portraitUp, DeviceOrientation.portraitDown ]);
       appState.screenHeight = MediaQuery.of(context).size.height;

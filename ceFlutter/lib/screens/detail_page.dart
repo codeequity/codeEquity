@@ -27,14 +27,14 @@ class CEDetailPage extends StatefulWidget {
 
 class _CEDetailState extends State<CEDetailPage> {
 
-   List<String> category;  // pass by navigator in projectpage callback
-   var      container;
-   AppState appState;
+   late List<String> category;  // pass by navigator in projectpage callback
+   late var          container;
+   late AppState     appState;
 
-   bool                         userPActUpdated;
-   Map<String, List<PEQAction>> peqPAct;
-   List<PEQ>                    selectedPeqs;
-   List<Widget>                 pactList;
+   late bool                         userPActUpdated;
+   late Map<String, List<PEQAction>> peqPAct;
+   late List<PEQ>                    selectedPeqs;
+   late List<Widget>                 pactList;
    
    @override
    void initState() {
@@ -214,6 +214,9 @@ class _CEDetailState extends State<CEDetailPage> {
       category    = ModalRoute.of(context)!.settings.arguments as List<String>;
       container   = AppStateContainer.of(context);
       appState    = container.state;
+      assert( appState != null );
+      assert( category != null );
+      
       print( "XXX Attempted to build category from routes: " + category.toString() );
 
       if( appState.verbose >= 3 ) { print( "BUILD DETAIL" ); }

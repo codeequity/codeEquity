@@ -15,25 +15,25 @@ class Node extends StatelessWidget implements Tree {
       
    final String title;
    int allocAmount;
-   final IconData icon;
+   final IconData? icon;
    
    final double width;
    final bool header;
    int  currentDepth;   // for indentation
  
    bool isInitiallyExpanded;   // Not final, to help deal with reloading an active page
-   bool isVisible;   // controls what tiles get added to display list
-   bool firstPass;   // use this to setVis based on isInitiallyExpanded, one time only.
+   late bool isVisible;   // controls what tiles get added to display list
+   late bool firstPass;   // use this to setVis based on isInitiallyExpanded, one time only.
 
    final stamp; 
    final expansion;     // setState callback in screens:summary
-   bool _tileExpanded;
-   String path;
+   late bool _tileExpanded;
+   late String path;
 
 
    final List<Tree> leaves = [];
    
-   AppState appState;
+   AppState? appState;
    
    Node(this.title, this.allocAmount, this.icon, this.width, this.stamp, this.expansion, {this.isInitiallyExpanded = false, this.header = false, this.currentDepth = 0} ) {
       isVisible = this.isInitiallyExpanded;
@@ -147,9 +147,10 @@ class Node extends StatelessWidget implements Tree {
   @override
   List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} ) {
      appState    = container.state;
+     assert( appState != null );
 
      final numWidth = width / 3.0;
-     final height   = appState.CELL_HEIGHT;
+     final height   = appState!.CELL_HEIGHT;
      
      currentDepth = treeDepth;
      path         = ancestors + "/" + title;
@@ -182,23 +183,23 @@ class Node extends StatelessWidget implements Tree {
      }
 
      // Path is known here.  Make _tileExpanded consistent with path state, in case we have paged back into an active summary page
-     if( appState.allocExpanded.containsKey(path) && firstPass ) {
-        _tileExpanded       = appState.allocExpanded[path] ?? false;
+     if( appState!.allocExpanded.containsKey(path) && firstPass ) {
+        _tileExpanded       = appState!.allocExpanded[path] ?? false;
         isInitiallyExpanded = _tileExpanded;
      }
 
      final priorExpansionState = _tileExpanded;
 
-     if( appState.verbose >= 2 ) { print( "Before GT expanded? " + _tileExpanded.toString() ); }
+     if( appState!.verbose >= 2 ) { print( "Before GT expanded? " + _tileExpanded.toString() ); }
      List<Widget> anode = [];
      // anode.add( this );
      anode.add( getTile( ) );
      
-     anode.add( makeTableText( appState, alloc, numWidth, height, false, 1 ) );
-     anode.add( makeTableText( appState, plan, numWidth, height, false, 1 ) );
-     anode.add( makeTableText( appState, pending, numWidth, height, false, 1 ) );
-     anode.add( makeTableText( appState, accrue, numWidth, height, false, 1 ) );
-     anode.add( makeTableText( appState, unalloc, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState!, alloc, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState!, plan, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState!, pending, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState!, accrue, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState!, unalloc, numWidth, height, false, 1 ) );
      nodes.add( anode );
 
      if( firstPass & isInitiallyExpanded ) {
@@ -209,7 +210,7 @@ class Node extends StatelessWidget implements Tree {
      // setVis on all kids that are allocExpanded to true.
      // no need to check allocExpanded.. if kids not yet opened, very little extra work is done
      if( priorExpansionState != _tileExpanded && _tileExpanded ) {
-        if( appState.verbose >= 2 ) { print( "!!! !!! $title just opened." ); }
+        if( appState!.verbose >= 2 ) { print( "!!! !!! $title just opened." ); }
         reopenKids();
      }
 
@@ -223,10 +224,10 @@ class Node extends StatelessWidget implements Tree {
   // If this just opened, re-vis any kid that was opened before - can save open/close state this way
   @override
   reopenKids() {
-     if( appState != null && appState.verbose >= 2 ) { print( "Reopening previously expanded $title, and their kids" ); }
+     if( appState != null && appState!.verbose >= 2 ) { print( "Reopening previously expanded $title, and their kids" ); }
      isVisible = true;
      // Note: appState is null if reopen was called for a child below that has not yet been seen (generated).
-     if( appState != null && appState.allocExpanded.containsKey(path) && ( appState.allocExpanded[path] ?? false ) ) {
+     if( appState != null && appState!.allocExpanded.containsKey(path) && ( appState!.allocExpanded[path] ?? false ) ) {
         // Should only get here for nodes, given allocExpanded above... oops.. ok.  tree
         leaves.forEach( (child) => child.reopenKids() );
      }
@@ -236,7 +237,7 @@ class Node extends StatelessWidget implements Tree {
   // If vis was set true, only me.  Else, myself and all kids are invis
   @override
   setVis( visible ) {
-     if( appState != null && appState.verbose >= 2 ) { print( "VISIBLE  $title :" + visible.toString() ); }
+     if( appState != null && appState!.verbose >= 2 ) { print( "VISIBLE  $title :" + visible.toString() ); }
      isVisible = visible;
      if( !visible ) {
         leaves.forEach( (child) => child.setVis( visible ) );
@@ -246,14 +247,15 @@ class Node extends StatelessWidget implements Tree {
 
   @override
   Widget getTile() {
-     final height = appState.CELL_HEIGHT;
+     assert( appState != null );
+     final height = appState!.CELL_HEIGHT;
 
-     if( appState.allocExpanded.containsKey(path) && appState.allocExpanded[path] != _tileExpanded ) {
+     if( appState!.allocExpanded.containsKey(path) && appState!.allocExpanded[path] != _tileExpanded ) {
         _tileExpanded = !_tileExpanded;
-        if( appState.verbose >= 3 ) { print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" ); }
+        if( appState!.verbose >= 3 ) { print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" ); }
      }
 
-     if( appState.verbose >= 2 ) { print( "GT $title " + _tileExpanded.toString() ); }
+     if( appState!.verbose >= 2 ) { print( "GT $title " + _tileExpanded.toString() ); }
      
      // XXX consider using font for clickability?
      return Container(
@@ -264,11 +266,11 @@ class Node extends StatelessWidget implements Tree {
            child: ExpansionTile(
               // children: leaves.map((Tree leaf) => leaf.render(context)).toList(),
               trailing: Icon( _tileExpanded ? Icons.arrow_drop_down_circle : Icons.arrow_drop_down ),
-              title: makeTableText( appState, "$title", width, height, false, 1, mux: currentDepth * .5 ),
+              title: makeTableText( appState!, "$title", width, height, false, 1, mux: currentDepth * .5 ),
               key: new PageStorageKey(path + stamp),
               initiallyExpanded: isInitiallyExpanded,
               onExpansionChanged: ((expanded) {
-                    if( appState.verbose >= 2 ) { print( "*** $title expanded? $expanded" ); }
+                    if( appState!.verbose >= 2 ) { print( "*** $title expanded? $expanded" ); }
                     leaves.forEach( (child) => child.setVis( expanded ) );
                     expansion( expanded, path );
                  })

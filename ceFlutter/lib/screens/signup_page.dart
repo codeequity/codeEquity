@@ -23,10 +23,12 @@ class CESignupPage extends StatefulWidget {
 
 class _CESignupState extends State<CESignupPage> {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
-   TextEditingController usernameController;
-   TextEditingController passwordController;
-   TextEditingController attributeController;
-   TextEditingController confirmationCodeController;
+   /*
+   late TextEditingController usernameController;
+   late TextEditingController passwordController;
+   late TextEditingController attributeController;
+   late TextEditingController confirmationCodeController;
+   */
 
    // Always create with false.  When logout, all stacks pop, recreate is with false.
    bool showCC = false;
@@ -47,13 +49,14 @@ class _CESignupState extends State<CESignupPage> {
 
       final container = AppStateContainer.of(context);
       final appState = container.state;
+      assert( appState != null );
 
       if( appState.verbose >= 2 ) { print( "REBUILD SIGNUP" ); }
 
-      usernameController = new TextEditingController();
-      passwordController = new TextEditingController();
-      attributeController = new TextEditingController();
-      confirmationCodeController = new TextEditingController();
+      TextEditingController usernameController = new TextEditingController();
+      TextEditingController passwordController = new TextEditingController();
+      TextEditingController attributeController = new TextEditingController();
+      TextEditingController confirmationCodeController = new TextEditingController();
       
       final usernameField = makeInputField( appState, "username", false, usernameController );
       final passwordField = makeInputField( appState, "password", true, passwordController );

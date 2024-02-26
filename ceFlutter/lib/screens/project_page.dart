@@ -21,8 +21,8 @@ class CEProjectPage extends StatefulWidget {
 
 class _CEProjectState extends State<CEProjectPage> {
 
-   var      container;
-   AppState appState;
+   late var      container;
+   late AppState appState;
 
    var pageStamp = "";
 
@@ -186,6 +186,7 @@ class _CEProjectState extends State<CEProjectPage> {
       
       container   = AppStateContainer.of(context);
       appState    = container.state;
+      assert( appState != null );
       
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;

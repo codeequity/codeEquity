@@ -59,7 +59,7 @@ class Storage extends CognitoStorage {
 class User {
    String? email;
    String? name;
-   String password;
+   String? password;
    bool confirmed = false;
    bool hasAccess = false;
    
@@ -83,7 +83,7 @@ class UserService {
    CognitoUserPool?    _userPool;
    CognitoUser?        _cognitoUser;
    CognitoUserSession? _session;
-   CognitoCredentials  credentials;
+   CognitoCredentials? credentials;
    
    UserService(this._userPool);
 
@@ -227,7 +227,7 @@ class UserService {
    }
    
    Future<User> signOut() async {
-      if (credentials != null) {   await credentials.resetAwsCredentials(); }
+      if (credentials != null) {   await credentials!.resetAwsCredentials(); }
       if (_cognitoUser != null) {  _cognitoUser!.signOut();  }
 
       final user = User();

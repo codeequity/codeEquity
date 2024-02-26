@@ -179,7 +179,7 @@ void swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 // XXX hashmap would probably speed this up a fair amount
 // XXX could speed up recreate bit.. no need to scan again
 // XXX minor - in theory recreate.source peq could come from myPEQSummary while recreate is in ingest batch.  vastly improbable...
-void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) async {
+Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) async {
 
    final appState            = container.state;
    List<String>           kp = []; // known peqs, with todo index
@@ -188,7 +188,10 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
 
    // build kp from mySummary.  Only active peqs are part of allocations.
    if( appState.myPEQSummary != null ) {
-      for( Allocation alloc in appState.myPEQSummary.allocations ) { kp = kp + alloc.sourcePeq.keys.toList(); }
+      for( Allocation alloc in appState.myPEQSummary.allocations ) {
+         assert( alloc.sourcePeq != null );
+         kp = kp + alloc.sourcePeq!.keys.toList();
+      }
       kp = kp.toSet().toList();  // if this way to remove duplicates turns out to be slow, use hashmap
    }
 
@@ -266,7 +269,6 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
          dp[peq.id]!.add( i );  
          vPrint( appState, "   demoting peq: " + peq.ghIssueTitle + " " + peq.id );
       }
-
    }
 }
 
@@ -283,7 +285,7 @@ void fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) asy
 // Adds are based on psub, but immediate relos are myGHLinks.
 // The only adds without relos are for unclaimed:unclaimed, which should be name-protected.
 // updateGHNames will update all allocs to cProj, leaving todo's alone as above.
-void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
+Future updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    vPrint( appState, "Updating GH Names in appAllocs ");
 
    List<GHLoc> colRenames  = [];
@@ -321,6 +323,7 @@ void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    // Update allocations.
    vPrint( appState, "... allocations size: " + appAllocs.length.toString() + " " + colRenames.length.toString() + " " + projRenames.length.toString() );
    for( Allocation alloc in appAllocs ) {
+      assert( alloc.categoryBase != null );
       for( GHLoc proj in projRenames ) {
          if( alloc.ghProjectId == proj.ghProjectId ) {
             GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.ghProjectId == proj.ghProjectId );
@@ -330,23 +333,23 @@ void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             // pindex can be -1 when there are multiple renames in this ingest stream.  myGHLinks will skip to the final.
             int pindex = alloc.category.indexOf( proj.ghProjectName );
             if( pindex >= 0 ) { alloc.category[pindex] = loc.ghProjectName; }
-            
-            pindex = alloc.categoryBase.indexOf( proj.ghProjectName );
-            if( pindex >= 0 ) { alloc.categoryBase[pindex] = loc.ghProjectName; }
+
+            pindex = alloc.categoryBase!.indexOf( proj.ghProjectName );
+            if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.ghProjectName; }
          }
       }
       for( GHLoc col in colRenames ) {
          if( alloc.ghProjectId == col.ghProjectId ) {
-
+            
             GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.ghColumnId == col.ghColumnId );
             assert( loc != null );
             vPrint( appState, " .. found Column name update: " + col.ghColumnName + " => " + loc!.ghColumnName );
 
             int pindex = alloc.category.indexOf( col.ghColumnName );
             if( pindex >= 0 ) { alloc.category[pindex] = loc.ghColumnName; }
-
-            pindex = alloc.categoryBase.indexOf( col.ghColumnName );
-            if( pindex >= 0 ) { alloc.categoryBase[pindex] = loc.ghColumnName; }
+            
+            pindex = alloc.categoryBase!.indexOf( col.ghColumnName );
+            if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.ghColumnName; }
          }
       }
    }
@@ -354,7 +357,8 @@ void updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
 
 // No need to clear appState.ingestUpdates - updateDynamo does that.
 // XXX Could, maybe, be more picky about releasing once the specific peq.id reaches 0
-void checkPendingUpdates( appState, dynamo, peqId ) async {
+// void checkPendingUpdates( appState, dynamo, peqId ) async {
+Future checkPendingUpdates( appState, dynamo, peqId ) async {
    if( appState.ingestUpdates.containsKey( peqId ) && appState.ingestUpdates[peqId] > 0 ) {
       vPrint( appState, "peq " + peqId + " has pending updates to dynamo.  Waiting." );
       await Future.wait( dynamo );
@@ -362,7 +366,7 @@ void checkPendingUpdates( appState, dynamo, peqId ) async {
    }
 }
 
-void _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo, List<String> assignees, int assigneeShare, Allocation sourceAlloc, List<String> subBase ) async {
+Future _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo, List<String> assignees, int assigneeShare, Allocation? sourceAlloc, List<String> subBase ) async {
    // Once see action accrue, should have already seen peqType.pending
    final appState = container.state;
    vPrint( appState, "Accrue PAct " + enumToStr( pact.action ) + " " + enumToStr( pact.verb ));
@@ -401,7 +405,8 @@ void _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo, 
       }
       else if( pact.verb == PActVerb.confirm ) {
          // remove any source alloc
-         adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, sourceAlloc.allocType );
+         assert( sourceAlloc != null );
+         adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, sourceAlloc!.allocType );
          adjustSummaryAlloc( appState, peq.id, subAccr, assignee,  assigneeShare, PeqType.grant );
          newType = enumToStr( PeqType.grant );
          peqLoc  = subAccr;
@@ -462,7 +467,7 @@ void _delete( appState, pact, peq, List<Future> dynamo, assignees, assigneeShare
             List<Allocation> remAllocs = [];  // category, ghUserName, allocType
             
             // avoid concurrent mod of list
-            for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+            for( Allocation sourceAlloc in appAllocs.where( (a) => ( a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
                Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
                remAllocs.add( miniAlloc );
             }
@@ -482,7 +487,7 @@ void _delete( appState, pact, peq, List<Future> dynamo, assignees, assigneeShare
 //       then unlabeled (untracked), then re-tracked.  In this case, the PEQ is re-created, with the correct column of "In Prog".
 //       From ingest point of view, In Prog === Planned, so no difference in operation.
 
-void _add( context, container, pact, peq, List<Future> dynamo, assignees, assigneeShare, subBase ) async {
+Future _add( context, container, pact, peq, List<Future> dynamo, assignees, assigneeShare, subBase ) async {
    // When adding, will only see peqType alloc or plan
    List<String> peqLoc = [];
    final appState = container.state;
@@ -501,7 +506,7 @@ void _add( context, container, pact, peq, List<Future> dynamo, assignees, assign
       //     Don't convert to preprocessing which depends on both recreate and add showing up in same ingest chunk - can fail.
       // Generated as part of 'recreate'?  If so, check location then ignore it.
       List<Allocation> appAllocs = appState.myPEQSummary.allocations;      
-      for( Allocation anAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+      for( Allocation anAlloc in appAllocs.where( (a) => ( a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
          assert( listEq( subBase, ["UnClaimed", "Accrued" ] ));
          vPrint( appState, "Skipping Add, which was generated as part of Recreate, which was already handled." );
          return;
@@ -538,7 +543,7 @@ void _add( context, container, pact, peq, List<Future> dynamo, assignees, assign
 // Note.  The only cross-project moves allowed are unclaimed -> new home.  This move is programmatic via ceServer.
 // Note.  There is a rare race condition in ceServer that may reorder when recordPeqs arrive.  Specifically, psub
 //        may be unclaimed when expect otherwise.  Relo must then deal with it.
-void _relo( context, container, pact, peq, List<Future> dynamo, assignees, assigneeShare, ka, pending, subBase ) async {
+Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, assigneeShare, ka, pending, subBase ) async {
 
    final appState = container.state;   
    List<Allocation> appAllocs = appState.myPEQSummary.allocations;
@@ -569,7 +574,7 @@ void _relo( context, container, pact, peq, List<Future> dynamo, assignees, assig
          List<Allocation> reloAlloc = [];  // category, ghUserName, allocType
          
          // avoid concurrent mod of list
-         for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+         for( Allocation sourceAlloc in appAllocs.where( (a) => (a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
             Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
             reloAlloc.add( miniAlloc );
          }
@@ -635,7 +640,7 @@ void _relo( context, container, pact, peq, List<Future> dynamo, assignees, assig
          List<Allocation> reloAlloc = [];  // category, ghUserName, allocType
          
          // avoid concurrent mod of list
-         for( Allocation sourceAlloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+         for( Allocation sourceAlloc in appAllocs.where( (a) => (a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
             Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, ghUserName: sourceAlloc.ghUserName );
             reloAlloc.add( miniAlloc );
          }
@@ -649,7 +654,7 @@ void _relo( context, container, pact, peq, List<Future> dynamo, assignees, assig
             if( !baseCat.contains( loc.ghProjectName ) ) {
                vPrint( appState, "  .. RELO is cross project!  Reconstituting category ");
 
-               Allocation newSource = appAllocs.firstWhere( (a) => a.category.contains( loc.ghProjectName ), orElse: () => null );
+               Allocation? newSource = appAllocs.firstWhereOrNull( (a) => a.category.contains( loc.ghProjectName ) );
                if( newSource == null ) {
                   // Possible if project name just changed.
                   // XXX If proj of MasterCol.proj just changed, will no longer see masterCol.
@@ -687,7 +692,7 @@ void _relo( context, container, pact, peq, List<Future> dynamo, assignees, assig
 //      Ingest needs to track all the changes in the middle
 // XXX If add assignee that is already present, expect to remove all, then re-add all allocs.
 //     this is slow, can cause n separate useless ingest steps - blast, n = #assignees
-void _change( context, container, pact, peq, List<Future> dynamo, assignees, assigneeShare, ka, pending ) async {
+Future _change( context, container, pact, peq, List<Future> dynamo, assignees, assigneeShare, ka, pending ) async {
    final appState = container.state;
    assert( ka != null || pact.note == "Column rename" || pact.note == "Project rename" );
 
@@ -933,7 +938,7 @@ note:  [DAcWeodOvb, 13302090, 15978796]
 //    modify peq.GHProjectSub after first relo from unclaimed to initial home
 //    set assignees only if issue existed before it was PEQ (pacts wont see this assignment)
 // ---------------
-void processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context, container, pending ) async {
+Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context, container, pending ) async {
 
    PEQAction pact = tup.item1;
    PEQ       peq  = tup.item2;
@@ -953,8 +958,8 @@ void processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context,
    // peq.ghUser?  empty, or reflects only issues assigned before becoming peq.  
    // peq.amount?  full initial peq amount for the issue, independent of number of assignees.  assigneeShares are identical per assignee per issue.
    List<String> assignees = [];
-   Allocation ka          = null;
-   for( Allocation alloc in appAllocs.where( (a) => a.sourcePeq.containsKey( peq.id ) )) {
+   Allocation? ka         = null;
+   for( Allocation alloc in appAllocs.where( (a) => ( a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
       assignees.add( alloc.ghUserName );
       ka = alloc;
    }
@@ -966,8 +971,12 @@ void processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context,
       if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }  // XXX Formalize
    }
 
-   List<String> subBase = ka == null ? peq.ghProjectSub                        : ka.categoryBase; 
-   int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.sourcePeq[ peq.id ];
+   assert( ka == null || ka.categoryBase       != null );
+   assert( ka == null || ka.sourcePeq          != null );
+   assert( ka == null || ka.sourcePeq![peq.id] != null );
+   
+   List<String> subBase = ka == null ? peq.ghProjectSub                        : ka.categoryBase!; 
+   int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.sourcePeq![ peq.id ]!;
    
    // XXX switch
    // propose accrue == pending.   confirm accrue == grant.  others are plan.  end?
@@ -1040,7 +1049,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
    // XXX NOTE - timestamp sort may hurt this. stable sort in dart?
    // sort by peq category length before processing.
-   List<Tuple2<PEQAction, PEQ>> todos = new List<Tuple2<PEQAction, PEQ>>();
+   List<Tuple2<PEQAction, PEQ>> todos = [];
    var foundPeqs = 0;
    for( var i = 0; i < todoPActions.length; i++ ) {
       // Can not assert the peqs are active - PAct might be a delete.

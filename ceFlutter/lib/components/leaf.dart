@@ -17,12 +17,12 @@ class Leaf extends StatelessWidget implements Tree {
    final int    pendingAmount;
    final int    accrueAmount;
    
-   final IconData icon;
+   final IconData? icon;
    final double width;
    final Widget details;
-   bool isVisible;
+   late bool isVisible;
 
-   AppState appState;
+   AppState? appState;
    
    Leaf(this.title, this.allocAmount, this.planAmount, this.pendingAmount, this.accrueAmount, this.icon, this.width, this.details) {
       isVisible = false;
@@ -58,14 +58,15 @@ class Leaf extends StatelessWidget implements Tree {
    @override
    List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} ) {
       appState     = container.state;
-
+      assert( appState != null );
+     
       final numWidth = width / 3.0;
-      final height   = appState.CELL_HEIGHT;
+      final height   = appState!.CELL_HEIGHT;
 
       List<List<Widget>> nodes = [];
       if( !isVisible ) { return nodes; }
 
-      // if( isVisible ) { print( "leaf GET CURRENT  $title mod: " + appState.expansionChanged.toString() ); }
+      // if( isVisible ) { print( "leaf GET CURRENT  $title mod: " + appState!.expansionChanged.toString() ); }
 
       int allocInt = getAllocAmount();
       int planInt  = getPlanAmount();
@@ -82,11 +83,11 @@ class Leaf extends StatelessWidget implements Tree {
       List<Widget> anode = [];
       // anode.add( this );
       anode.add( getTile() );
-      anode.add( makeTableText( appState, alloc,   numWidth, height, false, 1 ) );
-      anode.add( makeTableText( appState, plan,    numWidth, height, false, 1 ) );
-      anode.add( makeTableText( appState, pending, numWidth, height, false, 1 ) );
-      anode.add( makeTableText( appState, accrue,  numWidth, height, false, 1 ) );
-      anode.add( makeTableText( appState, unalloc, numWidth, height, false, 1 ) );      
+      anode.add( makeTableText( appState!, alloc,   numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState!, plan,    numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState!, pending, numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState!, accrue,  numWidth, height, false, 1 ) );
+      anode.add( makeTableText( appState!, unalloc, numWidth, height, false, 1 ) );      
       nodes.add( anode );
 
       return nodes;
@@ -94,7 +95,7 @@ class Leaf extends StatelessWidget implements Tree {
 
   @override
   setVis( visible ) {
-     if( appState != null && appState.verbose >= 2 ) { print( "Leaf vis? $visible" ); }
+     if( appState != null && appState!.verbose >= 2 ) { print( "Leaf vis? $visible" ); }
      isVisible = visible;
   }
 
@@ -108,8 +109,10 @@ class Leaf extends StatelessWidget implements Tree {
   
   @override
   Widget getTile() {
+     assert( appState != null );
+
      // String amounts = addCommas( allocAmount ) + " " + addCommas( planAmount ) + " " + addCommas( pendingAmount ) + " " + addCommas( accrueAmount );
-     final height = appState.CELL_HEIGHT;
+     final height = appState!.CELL_HEIGHT;
 
      return Container(
         width: width,

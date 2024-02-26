@@ -23,7 +23,7 @@ class Person {
 
       } else {
          return { 'id': id, 'firstName': firstName, 'lastName': lastName, 'userName': userName, 'email': email, 
-               'locked': false, 'imagePng': String.fromCharCodes( imagePng ) };
+               'locked': false, 'imagePng': String.fromCharCodes( imagePng! ) };
       }
    }
    
@@ -50,10 +50,10 @@ class Person {
    }
 
    String toString() {
-      firstName = firstName ?? "";
-      lastName  = lastName ?? "";
-      userName  = userName ?? "";
-      email     = email ?? "";
+      firstName = firstName;
+      lastName  = lastName;
+      userName  = userName;
+      email     = email;
 
       String res = "\nPerson : " + firstName + " " + lastName;
       res += "\n   userName: " + userName;

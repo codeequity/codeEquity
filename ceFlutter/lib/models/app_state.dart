@@ -19,57 +19,57 @@ import 'package:ceFlutter/components/node.dart';
 class AppState {
 
    // Credentials
-   String accessToken;
-   String idToken;
-   String refreshToken;
-   int authRetryCount;
-   bool cogInitDone;      // main: cog init is async.  Timer refires until this is true
-   String cogPoolId;
-   String cogAppClientId;
-   String cogAppClientSecret;
-   String cogRegion;
+   late String accessToken;
+   late String idToken;
+   late String refreshToken;
+   late int    authRetryCount;
+   late bool   cogInitDone;      // main: cog init is async.  Timer refires until this is true
+   late String cogPoolId;
+   late String cogAppClientId;
+   late String cogAppClientSecret;
+   late String cogRegion;
 
    CognitoUserPool? cogUserPool;
-   UserService? cogUserService;
-   User? cogUser;
+   UserService?     cogUserService;
+   User?            cogUser;
 
    // Dev aid
-   int verbose;           // controls how much is printed to terminal. 0 hardly anything. 3 everything.
+   late int verbose;           // controls how much is printed to terminal. 0 hardly anything. 3 everything.
    
-   bool newUser;          // signup: newuser creating a login has some special requirements during setup
+   late bool newUser;          // signup: newuser creating a login has some special requirements during setup
    
-   String apiBasePath;                         // where to find lambda interface to aws
-   double screenHeight;
-   double screenWidth;
+   late String apiBasePath;                         // where to find lambda interface to aws
+   late double screenHeight;
+   late double screenWidth;
 
    // App logic   
-   bool loaded;                              // control expensive aspects of state initialization
-   String userId;
+   late bool loaded;                              // control expensive aspects of state initialization
+   late String userId;
 
-   Map< String, String > idMapGH;         // github userid to CE user id
+   late Map< String, String > idMapGH;         // github userid to CE user id
    
-   List<PEQ>       myPEQs;                // ??? 
-   List<PEQAction> myPEQActions;          // ???
-   PEQSummary?     myPEQSummary;          // XXX need 1 proj, one my per repo
-   Linkage?        myGHLinks;             // Current project/column disposition for current repo in github
-   bool peqUpdated;
+   late List<PEQ>       myPEQs;                // ??? 
+   late List<PEQAction> myPEQActions;          // ???
+   late PEQSummary?     myPEQSummary;          // XXX need 1 proj, one my per repo
+   late Linkage?        myGHLinks;             // Current project/column disposition for current repo in github
+   late bool peqUpdated;
 
-   List<GHAccount> myGHAccounts;   
-   bool ghUpdated;
+   late List<GHAccount> myGHAccounts;   
+   late bool ghUpdated;
 
    Node? allocTree;
-   bool  updateAllocTree;
-   bool  expansionChanged;
+   late bool  updateAllocTree;
+   late bool  expansionChanged;
 
-   HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
+   late HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
    
 
-   String                          selectedRepo;
-   String                          selectedUser;    // Looking at details for this user, currently
-   Map< String, List<PEQAction> >  userPActs;       // ghUsers : pactions
-   Map< String, List<PEQ> >        userPeqs;        // ghUsers : peqs where user was pact actor
-   bool                            userPActUpdate;  // need to upate pact list
-   Map< String, int >              ingestUpdates;   // These peqIds have n pending updates waiting to finish.
+   late String                          selectedRepo;
+   late String                          selectedUser;    // Looking at details for this user, currently
+   late Map< String, List<PEQAction> >  userPActs;       // ghUsers : pactions
+   late Map< String, List<PEQ> >        userPeqs;        // ghUsers : peqs where user was pact actor
+   late bool                            userPActUpdate;  // need to upate pact list
+   late Map< String, int >              ingestUpdates;   // These peqIds have n pending updates waiting to finish.
 
    // UI constants
    final double BASE_TXT_HEIGHT = 20.0;     // 14pt font is 19.2 px height

@@ -33,7 +33,7 @@ class AppStateContainer extends StatefulWidget {
 
 
 class _AppStateContainerState extends State<AppStateContainer> {
-  AppState state;
+  late AppState state;
 
   // Create localstore instance
   // XXX remove this once cookies are in place from webServer

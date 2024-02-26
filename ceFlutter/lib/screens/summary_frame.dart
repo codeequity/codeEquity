@@ -56,8 +56,8 @@ class CESummaryFrame extends StatefulWidget {
 
 class _CESummaryState extends State<CESummaryFrame> {
 
-   var      container;
-   AppState appState;
+   late var      container;
+   late AppState appState;
 
    static const maxPaneWidth = 950.0;
    // static const maxPaneWidth = 800.0;
@@ -112,15 +112,20 @@ class _CESummaryState extends State<CESummaryFrame> {
       }
 
       // These were built during ingest
-      for( var alloc in appState.myPEQSummary.allocations ) {
+      for( var alloc in appState.myPEQSummary!.allocations ) {
+
+         assert( appState.allocTree != null );
          
-         Tree curNode = appState.allocTree;
+         Tree curNode = appState.allocTree!;
          
          // when allocs are created, they are leaves.
          // down the road, they become nodes
          for( int i = 0; i < alloc.category.length; i++ ) {
             
             if( appState.verbose >= 2 ) { print( "working on " + alloc.category.toString() + " : " + alloc.category[i] ); }
+
+            // Overly aggressive assert?
+            assert( alloc.amount != null );
             
             bool lastCat = false;
             if( i == alloc.category.length - 1 ) { lastCat = true; }
@@ -141,11 +146,11 @@ class _CESummaryState extends State<CESummaryFrame> {
                else {
                   if( appState.verbose >= 2 ) { print( "... nothing found, last cat, add leaf" ); }
                   // leaf.  amounts stay at leaves
-                  
-                  int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount : 0 );
-                  int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount : 0 );
-                  int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount : 0 );
-                  int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount : 0 );
+
+                  int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount! : 0 );
+                  int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount! : 0 );
+                  int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount! : 0 );
+                  int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount! : 0 );
                   Widget details = _pactDetail( alloc.category, width, i, alloc.allocType == PeqType.allocation );
                   Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
@@ -159,7 +164,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                else {
                   print( "... alloc adding into existing chain" );
                   assert( alloc.allocType == PeqType.allocation );
-                  (childNode as Node).addAlloc( alloc.amount );
+                  (childNode as Node).addAlloc( alloc.amount! );
                }
             }
             else {
@@ -185,10 +190,11 @@ class _CESummaryState extends State<CESummaryFrame> {
       // When node expansion changes, callback sets state on allocExpanded, which changes node, which changes here, which causes project_page rebuild
       if( appState.myPEQSummary != null )
       {
-         if( appState.myPEQSummary.ghRepo == appState.selectedRepo ) {
-            if( appState.myPEQSummary.allocations.length == 0 ) { return []; }
+         if( appState.myPEQSummary!.ghRepo == appState.selectedRepo ) {
+            assert( appState.allocTree != null );
+            if( appState.myPEQSummary!.allocations.length == 0 ) { return []; }
             if( appState.verbose >= 2 ) { print( "_showPalloc Update alloc" ); }
-            allocList.addAll( appState.allocTree.getCurrent( container ) );
+            allocList.addAll( appState.allocTree!.getCurrent( container ) );
 
             //print( appState.allocTree.toStr() );
          }
@@ -267,7 +273,8 @@ class _CESummaryState extends State<CESummaryFrame> {
       // XXX appContainer still needed?
       container   = widget.appContainer;   // Neat.  Access parameter in super.
       appState    = container.state;
-
+      assert( appState != null );
+     
       if( appState.verbose >= 2 ) { print( "SUMMARY BUILD. " + (appState == Null).toString()); }
 
       return getAllocation( context );
