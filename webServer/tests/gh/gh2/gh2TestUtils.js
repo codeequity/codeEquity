@@ -1057,7 +1057,7 @@ async function checkDemotedIssue( authData, testLinks, td, loc, issDat, card, te
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( lastPact.Verb, config.PACTVERB_CONF,     subTest, "PAct Verb"); 
 	subTest = tu.checkEq( lastPact.Action, config.PACTACT_DEL,     subTest, "PAct Verb"); 
-	subTest = tu.checkEq( lastPact.HostUserName, config.TEST_ACTOR,  subTest, "PAct user name" ); 
+	subTest = tu.checkEq( lastPact.HostUserId, td.actorId,         subTest, "PAct user name" ); 
 	subTest = tu.checkEq( lastPact.Ingested, "false",              subTest, "PAct ingested" );
 	subTest = tu.checkEq( lastPact.Locked, "false",                subTest, "PAct locked" );
     }
@@ -1142,7 +1142,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	    for( const pact of pacts ) {
 		let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 		subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-		subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,    subTest, "PAct user name" ); 
+		subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
 		subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 		subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 		if( pact.Subject.length >= 3 ) {
@@ -1250,59 +1250,61 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 	
 	// CHECK dynamo Peq
 	let allPeqs = await peqsP;
-	let peqs    = allPeqs.filter((peq) => peq.HostIssueId == peqIID.toString() );
-	subTest     = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
-	let peq     = peqs[0];
-	subTest     = tu.checkEq( typeof peq !== 'undefined', true,        subTest, "peq not ready yet" );
-
-	if( typeof peq !== 'undefined' ) {
-
-	    assignCnt = assignCnt ? assignCnt : 0;
-
-	    // When making an issue, peq.HostHolder will be assigned, or not, depending on if GH got the assign
-	    // signal before CE fully processed the label notification.  Since either is acceptible, let both pass.
-	    let holderCheck = peq.HostHolderId.length == assignCnt;
-	    if( peqHolder == "maybe" ) { holderCheck = holderCheck || peq.HostHolderId.length > 0; }
-	    if( !holderCheck ) { console.log( peq.HostHolderId.length.toString(), assignCnt.toString(), peqHolder ); }
-	    subTest = tu.checkEq( holderCheck, true,                       subTest, "peq holders wrong" );      
-	
-	    subTest = tu.checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
-	    subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-	    subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
-	    subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );    
-	    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
-	    subTest = tu.checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-	    subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
-	    subTest = tu.checkEq( peq.Active, "true",                      subTest, "peq" );
-	    if( !skipPeqPID ) {
-		subTest = tu.checkEq( peq.HostProjectId, loc.pid,         subTest, "peq project id bad" );
-	    }
+	if( allPeqs != -1 ) {
+	    let peqs    = allPeqs.filter((peq) => peq.HostIssueId == peqIID.toString() );
+	    subTest     = tu.checkEq( peqs.length, 1,                          subTest, "Peq count" );
+	    let peq     = peqs[0];
+	    subTest     = tu.checkEq( typeof peq !== 'undefined', true,        subTest, "peq not ready yet" );
 	    
-	    // CHECK dynamo Pact
-	    let allPacts = await pactsP;
-	    subTest   = tu.checkNEq( allPacts, -1,                           subTest, "PActs not yet ready" );
-
-	    if( allPacts !== -1 ) {
+	    if( typeof peq !== 'undefined' ) {
 		
-		let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
-		subTest   = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );
+		assignCnt = assignCnt ? assignCnt : 0;
 		
-		// This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
-		if( pacts.length <= 3 && loc.projSub.length > 1 ) {
-		    const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
-		    if( !pip.includes( loc.projSub[1] ) && peq.HostProjectSub[1] != config.GH_NO_STATUS ) { 
-			subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
-		    }
+		// When making an issue, peq.HostHolder will be assigned, or not, depending on if GH got the assign
+		// signal before CE fully processed the label notification.  Since either is acceptible, let both pass.
+		let holderCheck = peq.HostHolderId.length == assignCnt;
+		if( peqHolder == "maybe" ) { holderCheck = holderCheck || peq.HostHolderId.length > 0; }
+		if( !holderCheck ) { console.log( peq.HostHolderId.length.toString(), assignCnt.toString(), peqHolder ); }
+		subTest = tu.checkEq( holderCheck, true,                       subTest, "peq holders wrong" );      
+		
+		subTest = tu.checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
+		subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
+		subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
+		subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );    
+		subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
+		subTest = tu.checkEq( peq.Amount, lval,                        subTest, "peq amount" );
+		subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
+		subTest = tu.checkEq( peq.Active, "true",                      subTest, "peq" );
+		if( !skipPeqPID ) {
+		    subTest = tu.checkEq( peq.HostProjectId, loc.pid,         subTest, "peq project id bad" );
 		}
 		
-		// Could have been many operations on this.
-		for( const pact of pacts ) {
-		    let hr  = await tu.hasRaw( authData, pact.PEQActionId );
-		    subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-		    subTest = tu.checkEq( pact.HostUserName, td.actor,             subTest, "PAct user name" ); 
-		    subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+		// CHECK dynamo Pact
+		let allPacts = await pactsP;
+		subTest   = tu.checkNEq( allPacts, -1,                           subTest, "PActs not yet ready" );
+		
+		if( allPacts !== -1 ) {
 		    
-		    if( !muteIngested ) { subTest = tu.checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }
+		    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
+		    subTest   = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );
+		    
+		    // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
+		    if( pacts.length <= 3 && loc.projSub.length > 1 ) {
+			const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
+			if( !pip.includes( loc.projSub[1] ) && peq.HostProjectSub[1] != config.GH_NO_STATUS ) { 
+			    subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
+			}
+		    }
+		    
+		    // Could have been many operations on this.
+		    for( const pact of pacts ) {
+			let hr  = await tu.hasRaw( authData, pact.PEQActionId );
+			subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
+			subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
+			subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+			
+			if( !muteIngested ) { subTest = tu.checkEq( pact.Ingested, "false", subTest, "PAct ingested" ); }
+		    }
 		}
 	    }
 	}
@@ -1406,7 +1408,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     for( const pact of pacts ) {
 	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
-	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserId, td.actorId,         subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
     }
@@ -1533,7 +1535,7 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
 	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                            subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 	addUncl = addUncl + ( pact.Action == config.PACT_ADD  ? 1 : 0 ); 
@@ -2073,7 +2075,7 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
     for( const pact of meltPacts ) {
 	let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
-	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }
@@ -2135,7 +2137,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issDat, testStatus ) 
 	let hr  = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 
@@ -2191,7 +2193,7 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
 	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
-	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,      subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
     }

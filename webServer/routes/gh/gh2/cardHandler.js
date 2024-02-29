@@ -90,9 +90,9 @@ async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) {
     
     // Don't wait
     // Note.  Ingest manages peq.psub (i.e. move relo does not manage peq.psub), excluding this first move from unclaimed to initial residence.    
-    awsUtils.recordPEQAction( authData, config.EMPTY, reqBody['sender']['login'], pd.ceProjectId,
+    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
 			   verb, action, subject, "", 
-			   utils.getToday(), reqBody );
+			   utils.getToday());
 }
 
 // This is called from issue:delete, and triggered from card:delete (which may also be triggered initially from issue:xfer since xfer leaves card in place)
@@ -144,9 +144,9 @@ async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue 
 	else {             awsUtils.removePEQ( authData, peq.PEQId ); }
 	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
 	let note   = accr ? "Disconnected issue" : "";
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
 			       config.PACTVERB_CONF, action, [peq.PEQId], note,
-			       utils.getToday(), pd.reqBody );
+			       utils.getToday());
     }
     // ACCR, not in unclaimed.  
     else if( issueExists ) {
@@ -165,9 +165,9 @@ async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue 
 	// No need to wait
 	peq = await peq;
 	awsUtils.updatePEQPSub( authData, peq.PEQId, psub );
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
 			       config.PACTVERB_CONF, config.PACTACT_RELO, [peq.PEQId, link.hostProjectId, link.hostColumnId], "",
-			       utils.getToday(), pd.reqBody );
+			       utils.getToday() );
 	
     }
     // ACCR, not unclaimed, but issue deleted.  Delete issue must handle this since we don't have label, allocation.

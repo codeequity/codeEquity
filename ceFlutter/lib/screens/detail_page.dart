@@ -210,6 +210,8 @@ class _CEDetailState extends State<CEDetailPage> {
    @override
       Widget build(BuildContext context) {
 
+      print( "Detail page" + ModalRoute.of(context)!.settings.arguments.toString() ?? "" );
+      
       assert( ModalRoute.of(context) != null );
       category    = ModalRoute.of(context)!.settings.arguments as List<String>;
       container   = AppStateContainer.of(context);

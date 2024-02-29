@@ -32,12 +32,16 @@ class Allocation {
    
    factory Allocation.fromJson(Map<String, dynamic> json) {
 
+      assert( json != null );
+      
       var dynamicCat     = json['Category'];
       var dynamicCatBase = json['CategoryBase'];
       var dynamicSource  = json['SourcePEQ'];
 
       Map<String,int> sp = {};
       dynamicSource.forEach((k,v) { sp[k] = v; });
+
+      // print( json );
       
       return Allocation(
          category:      new List<String>.from(dynamicCat),
@@ -46,7 +50,7 @@ class Allocation {
          sourcePeq:     sp,
          allocType:     enumFromStr<PeqType>( json['AllocType'], PeqType.values ),
          ceUID:         json['CEUID'],
-         hostUserName:    json['hostUserName'],
+         hostUserName:    json['hostUserName'] ?? "",
          vestedPerc:    json['Vested'],
          notes:         json['Notes'],
          ghProjectId:   json['GHProjectId']

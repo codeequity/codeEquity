@@ -125,7 +125,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, issueData, testStat
 		    let hasRaw = await tu.hasRaw( authData, meltPact.PEQActionId );
 		    subTest = tu.checkEq( hasRaw, true,                                   subTest, "PAct Raw match" ); 
 		    subTest = tu.checkEq( meltPact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
-		    subTest = tu.checkEq( meltPact.HostUserName, config.TEST_ACTOR,       subTest, "PAct user name" ); 
+		    subTest = tu.checkEq( meltPact.HostUserId, td.actorId,                subTest, "PAct user name" ); 
 		    subTest = tu.checkEq( meltPact.Ingested, "false",                     subTest, "PAct ingested" );
 		    subTest = tu.checkEq( meltPact.Locked, "false",                       subTest, "PAct locked" );
 		}
@@ -197,7 +197,7 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
 	let hasRaw = await tu.hasRaw( authData, pact.PEQActionId );
 	console.log( pact.PEQActionId );
 	subTest = tu.checkEq( hasRaw, true,                            subTest, "PAct Raw match" ); 
-	subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,    subTest, "PAct user name" ); 
+	subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
 	if( colId == td.dsProgId ) {

@@ -173,6 +173,8 @@ async function switcherGH2( authData, ceProjects, ghLinks, jd, res ) {
 	//       ghost is unspecified, or incorrectly specified for github as of 10/23.  
 
 	// Can not set ceProjectId if this is a project_v2 notice - they live cross-repo.
+	// NOTE: pd.actorId starts as a promise - no real way to use it before resolves unless something is really broken,
+	//       and that something will cause error in server first.
 	let pd = new gh2Data.GH2Data( authData, jd, ceProjects );
 	if( pd.ceProjectId == -1 ) { await pd.setCEProjectId( authData, jd, ceProjects ); }
 	

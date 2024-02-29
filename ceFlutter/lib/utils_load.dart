@@ -243,21 +243,22 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
 Future<bool> updateColumnName( context, container, guide ) async {
 
    print( "Update Column Name: " + guide.toString() );
+   assert( false );  // NYI
    assert( guide.length == 3 );
 
    // myLocs reflects current state in GH, after the rename.  Use it to get projId before sending rename up to aws
    final appState  = container.state;
    final myLocs    = appState.myGHLinks.locations;
 
-   GHLoc loc = myLocs.firstWhere( (a) => a.ghColumnId == guide[0], orElse: () => null );
+   GHLoc loc = myLocs.firstWhere( (a) => a.hostColumnId == guide[0], orElse: () => null );
    assert( loc != null );
-   assert( loc.ghColumnName == guide[2] );
+   assert( loc.hostColumnName == guide[2] );
 
    // GH column names are unique within project.
    const shortName = "UpdateColProj";
    var postData = {};
    postData['GHRepo']      = appState.myGHLinks.ghRepo;
-   postData['GHProjectId'] = loc.ghProjectId;
+   postData['GHProjectId'] = loc.hostProjectId;
    postData['OldName']     = guide[1];
    postData['NewName']     = guide[2];
    postData['Column']      = "true";
@@ -431,6 +432,7 @@ Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
    }
 }
 
+
 // Lock uningested PEQActions, then return for processing.
 Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async {
    String shortName = "lockFetchPAction";
@@ -454,25 +456,24 @@ Future<void> reloadRepo( context, container ) async {
    
    final appState  = container.state;
 
+   String ceProj = appState.selectedCEProject;
    String ghRepo = appState.selectedRepo;
    String uid    = appState.userId;
-   print( "Loading " + ghRepo + " for " + uid );
-   assert( false ); // XXX need ceProjectId
+   print( "Loading " + ghRepo + " for " + uid + "'s " + ceProj + " CodeEquity project." );
 
    // XXX could be thousands... too much.  Just get uningested, most recent, etc.
    // Get all PEQ data related to the selected repo.  
    appState.myPEQs = await fetchPEQs( context, container,
-                                      '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "HostUserName": "", "GHRepo": "$ghRepo" }' );
+                                      '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "HostUserId": "", "CEProjectId": "$ceProj" }' );
    
    // XXX Really just want mine?  Hmmmmmmmm.......no.  get all for peqs above.
    // XXX could be thousands... too much.   Just get uningested, most recent, etc.
    // To get here, user has both a CEUID and an association with hostUserLogin
    // Any PEQActions recorded from github before the user had a CELogin will have been updated as soon as the linkage was created.
    appState.myPEQActions = await fetchPEQActions( context, container,
-                                                  '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "HostUserName": "", "GHRepo": "$ghRepo" }' );
-   assert( false ); // XXX need ceProjectId
+                                                  '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "HostUserName": "", "CEProjectId": "$ceProj" }' );
    var postData = {};
-   postData['GHRepo'] = ghRepo;
+   postData['CEProjectId'] = ceProj;
    var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postData };
    appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
    
@@ -501,6 +502,7 @@ Future<void> reloadMyProjects( context, container ) async {
 
    // FetchGH sets ghAccounts.ceProjs
    appState.myGHAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "$uid"  }' );
+
    print( "My CodeEquity Projects:" );
    print( appState.myGHAccounts );
 }
@@ -572,16 +574,16 @@ Future<void> updateUserPeqs( container, context ) async {
    if( uname == appState.ALLOC_USER || uname == appState.UNASSIGN_USER ) { uname = ""; }
    
    String rname = appState.selectedRepo;
+   String cep   = appState.selectedCEProject;
    print( "Building detail data for " + uname + ":" + rname );
-   assert( false ); // XXX need ceProjectId
 
    if( appState.selectedUser == appState.ALLOC_USER ) {
       appState.userPeqs[appState.selectedUser] =
-         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "GHRepo": "$rname", "isAlloc": "true" }' );
+         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "isAlloc": "true" }' );
    }
    else {
       appState.userPeqs[appState.selectedUser] =
-         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "GHRepo": "$rname" }' );
+         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep" }' );
    }
 }
 

@@ -190,7 +190,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       // When node expansion changes, callback sets state on allocExpanded, which changes node, which changes here, which causes project_page rebuild
       if( appState.myPEQSummary != null )
       {
-         if( appState.myPEQSummary!.ghRepo == appState.selectedRepo ) {
+         if( appState.myPEQSummary!.ceProjectId == appState.selectedCEProject ) {
             assert( appState.allocTree != null );
             if( appState.myPEQSummary!.allocations.length == 0 ) { return []; }
             if( appState.verbose >= 2 ) { print( "_showPalloc Update alloc" ); }

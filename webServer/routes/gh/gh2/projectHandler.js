@@ -58,13 +58,17 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    // Update peq for new project, psub
 		    const newPeqId = await awsUtils.rebuildPEQ( authData, link, peq );
 	
-		    awsUtils.removePEQ( authData, peq.PEQId );	
-		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, link.ceProjectId,
+		    awsUtils.removePEQ( authData, peq.PEQId );
+		    let tmp = pd.ceProjectId;
+		    pd.ceProjectId = link.ceProjectId;
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 					      config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], config.PACTNOTE_RECR,
-					      utils.getToday(), pd.reqBody );
-		    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, link.ceProjectId,
+					      utils.getToday() );
+		    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 					      config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
-					      utils.getToday(), pd.reqBody );
+					      utils.getToday() );
+		    pd.ceProjectId = tmp;
+		    
 		}
 	    }
 
@@ -90,9 +94,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		links.forEach( link => link.hostProjectName = newName );
 
 		// don't wait
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 				       config.PACTVERB_CONF, config.PACTACT_CHAN, [pd.projectId.toString(), oldName, newName], "Project rename",
-				       utils.getToday(), pd.reqBody );
+				       utils.getToday());
 
 		const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": pd.repoName, "projId": pd.projectId } );
 		for( const loc of locs ) {
@@ -114,9 +118,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    if( typeof projLink !== 'undefined' ) {
 		const note = "Project " + action;
 		console.log( "Notice.", action,  "project with active PEQs.  Notifying server."  );
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 				       config.PACTVERB_CONF, config.PACTACT_NOTE, [pd.projectId], note,
-				       utils.getToday(), pd.reqBody );
+				       utils.getToday());
 	    }
 	    
 	}

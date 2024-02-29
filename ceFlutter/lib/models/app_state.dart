@@ -65,6 +65,7 @@ class AppState {
    
 
    late String                          selectedRepo;
+   late String                          selectedCEProject;
    late String                          selectedUser;    // Looking at details for this user, currently
    late Map< String, List<PEQAction> >  userPActs;       // ghUsers : pactions
    late Map< String, List<PEQ> >        userPeqs;        // ghUsers : peqs where user was pact actor
@@ -108,6 +109,7 @@ class AppState {
       allocExpanded = HashMap<String, bool>();
 
       selectedRepo = "";
+      selectedCEProject = "";
       selectedUser = "";
       userPActs = new Map<String, List<PEQAction>>();
       userPeqs = new Map<String, List<PEQ>>();

@@ -5,11 +5,11 @@ import 'package:ceFlutter/models/ghLoc.dart';
 
 class Linkage {
    final String      id;
-   final String      ghRepo;        // reponame is form /owner/repo, so is unique
+   final String      ceProjectId;
    final String      lastMod;
    final List<GHLoc> locations;   
 
-   Linkage({ required this.id, required this.ghRepo, required this.lastMod, required this.locations });
+   Linkage({ required this.id, required this.ceProjectId, required this.lastMod, required this.locations });
 
    // Direction is ceServer -> aws -> ceFlutter, only.            
    factory Linkage.fromJson(Map<String, dynamic> json) {
@@ -21,14 +21,14 @@ class Linkage {
 
       return Linkage(
          id:            json['CELinkageId'],
-         ghRepo:        json['GHRepo'],
+         ceProjectId:   json['CEProjectId'],
          lastMod:       json['LastMod'],
          locations:     locs
          );
    }
    
    String toString() {
-      String res = "\n  Locations for ghRepo, last modified: " + lastMod;
+      String res = "\n  Locations for ceProject, last modified: " + lastMod;
       locations.forEach((loc) => res += "\n     " + loc.toString() );
       return res;
    }

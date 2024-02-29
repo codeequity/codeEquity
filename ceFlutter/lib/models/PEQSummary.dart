@@ -7,15 +7,15 @@ import 'package:ceFlutter/models/allocation.dart';
 // Summaries stored for each project, and separately herein each contributor
 class PEQSummary {
    final String           id;
-   final String           ghRepo;        // reponame is form /owner/repo, so is unique
+   final String           ceProjectId;        // reponame is form /owner/repo, so is unique
    final String           targetType;    // "repo", "contributor"
    final String           targetId;      // GHProjectId
    final String           lastMod;
    final List<Allocation> allocations;   
 
-   PEQSummary({ required this.id, required this.ghRepo, required this.targetType, required this.targetId, required this.lastMod, required this.allocations });
+   PEQSummary({ required this.id, required this.ceProjectId, required this.targetType, required this.targetId, required this.lastMod, required this.allocations });
             
-   dynamic toJson() => { 'id': id, 'ghRepo': ghRepo, 'targetType': targetType, 'targetId': targetId,
+   dynamic toJson() => { 'id': id, 'ceProjectId': ceProjectId, 'targetType': targetType, 'targetId': targetId,
                             'lastMod': lastMod, 'allocations': allocations };
    
    factory PEQSummary.fromJson(Map<String, dynamic> json) {
@@ -27,7 +27,7 @@ class PEQSummary {
       
       return PEQSummary(
          id:            json['PEQSummaryId'],
-         ghRepo:        json['GHRepo'],
+         ceProjectId:   json['CEProjectId'],
          targetType:    json['TargetType'],
          targetId:      json['TargetId'],
          lastMod:       json['LastMod'],
@@ -36,7 +36,7 @@ class PEQSummary {
    }
    
    String toString() {
-      String res = "\n" + ghRepo + " last modified: " + lastMod;
+      String res = "\n" + ceProjectId + " last modified: " + lastMod;
       res += "\n     Summary for " + targetType + ": " + targetId;
       allocations.forEach((alloc) => res += "\n     " + alloc.toString() );
       return res;

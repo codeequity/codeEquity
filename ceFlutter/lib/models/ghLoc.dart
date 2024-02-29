@@ -5,30 +5,37 @@
 // This is not intended to be independently stored in dynamo, only in association with GHLocations
 
 class GHLoc {
-   final String  ghProjectId;
-   final String  ghProjectName;
-   final String  ghColumnId;
-   final String  ghColumnName;
+   final String  ceProjectId;
+   final String  hostProjectId;
+   final String  hostProjectName;
+   final String  hostColumnId;
+   final String  hostColumnName;
+   final String  hostUtility;
    final bool    active;         // ceServer writes in real time, ceFlutter reads after the fact.  May need legacy data during ingest.
 
-   GHLoc({required this.ghProjectId, required this.ghProjectName, required this.ghColumnId, required this.ghColumnName, required this.active});
+   GHLoc({required this.ceProjectId, required this.hostProjectId, required this.hostProjectName, required this.hostColumnId, required this.hostColumnName,
+            required this.hostUtility, required this.active});
 
    // Direction is ceServer -> aws -> ceFlutter, only.
    factory GHLoc.fromJson(Map<String, dynamic> json) {
 
+      // print( json );
+      
       return GHLoc(
-         ghProjectId:     json['GHProjectId'],
-         ghProjectName:   json['GHProjectName'],
-         ghColumnId:      json['GHColumnId'],
-         ghColumnName:    json['GHColumnName'],
-         active:          json['Active'] == "true" ? true : false
+         ceProjectId:       json['ceProjectId'],
+         hostProjectId:     json['hostProjectId'],
+         hostProjectName:   json['hostProjectName'],
+         hostColumnId:      json['hostColumnId'],
+         hostColumnName:    json['hostColumnName'],
+         hostUtility   :    json['hostUtility'],
+         active:            json['active'] == "true" ? true : false
          );
    }
    
    String toString() {
       String res = "";
-      res += "\n    Project: " + ghProjectName + " (" + ghProjectId + ")";
-      res += "\n    Column:  " + ghColumnName  + " (" + ghColumnId  + ")";
+      res += "\n    cep: " + ceProjectId + " Project: " + hostProjectName + " (" + hostProjectId + ")";
+      res += "\n    Column:  " + hostColumnName  + " (" + hostColumnId  + ")";
       res += "\n    " + (active ? "Active!" : "Inactive.");
       return res;
    }

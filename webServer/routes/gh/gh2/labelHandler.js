@@ -158,9 +158,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		if( peqValue > 0 ) { ghV2.createPeqLabel( authData, pd.repoId, allocation, peqValue );  }
 		else               { ghV2.createLabel( authData, pd.repoId, newName, pd.reqBody.label.color, descr ); }
 	    }
-	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId, 
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label edit attempt",
-				   utils.getToday(), pd.reqBody );
+				   utils.getToday() );
 	}
 	break;
     case 'deleted':
@@ -226,9 +226,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		}
 
 	    }
-	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.reqBody['sender']['login'], pd.ceProjectId,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 				   config.PACTVERB_CONF, config.PACTACT_NOTE, [], "PEQ label delete attempt",
-				   utils.getToday(), pd.reqBody );
+				   utils.getToday() );
 	}
 	break;
     case 'created':  // do nothing
