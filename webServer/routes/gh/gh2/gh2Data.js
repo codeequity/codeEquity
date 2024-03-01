@@ -47,7 +47,7 @@ class GH2Data extends ceData.CEData{
 	jd.actor   = orig.actor;
 	jd.reqBody = orig.reqBody;
 	
-	let newPD = new GH2Data( jd, {}, orig.ceProjectId );
+	let newPD = new GH2Data( {}, jd, orig.ceProjectId );
 
 	newPD.issueNum  = orig.issueNum;
 	newPD.issueId   = orig.issueId;

@@ -565,13 +565,15 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		ghLinks.addLinkage( authData, oldCEP, newLink );
 
 		// not needed, but safer vs future changes
-		let tmp = pd.ceProjectId;
-		pd.ceProjectId = newCEP;
+		let pdCopy = {};
+		pdCopy.ceProjectId = newCEP;
+		pdCopy.actor       = pd.actor;
+		pdCopy.actorId     = pd.actorId;
+		pdCopy.reqBody     = pd.reqBody;
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, xferIssue.id, oldRepoId, oldCEP ];
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
 					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, "Bad transfer attempted",
 					  utils.getToday() );
-		pd.ceProjectId = tmp;
 		
 		return;
 	    }
@@ -611,20 +613,25 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    if( peq !== -1 ) {
 		
-		// Only record PAct for peq.  PEQ may be removed, so don't require Active
-		let tmp = pd.ceProjectId;
-		pd.ceProjectId = oldCEP;
+		// Only record PAct for peq.  PEQ may be removed, so don't require Active.
+		// Transfer is PAct'd with oldCEP
+		// NOTE: this record is async.  If just send in pd alone, the async won't start for a while, and pd can (is) rewritten before it starts
+		//       Need to send copy.
+		let pdCopy = {};
+		pdCopy.ceProjectId = oldCEP;
+		pdCopy.actor       = pd.actor;
+		pdCopy.actorId     = pd.actorId;
+		pdCopy.reqBody     = pd.reqBody;
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, newIssueId, newRepoId, newCEP ];
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
 					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer",
 					  utils.getToday() );
 
 		// Deactivate old peq, can't do much with old ID.
 		awsUtils.removePEQ( authData, peq.PEQId );
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
 					  config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], "",
 					  utils.getToday() );
-		pd.ceProjectId = tmp;
 		
 		// add new peq so we can operate on it normally in case of server restart before ingest
 		// link is all set, including card info.

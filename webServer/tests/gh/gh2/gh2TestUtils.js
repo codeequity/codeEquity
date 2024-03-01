@@ -1950,7 +1950,7 @@ async function checkNoCard( authData, testLinks, td, loc, cardId, title, testSta
 }
 
 async function checkPact( authData, testLinks, td, title, verb, action, note, testStatus, specials ) {
-    console.log( "Check PAct", td.ceProjectId, verb, action );
+    console.log( "Check PAct", td.ceProjectId, verb, action, note );
     let subTest = [ 0, 0, []];
     
     let subject = typeof specials !== 'undefined' && specials.hasOwnProperty( "sub" )   ? specials.sub   : -1;
@@ -1997,10 +1997,10 @@ async function checkPact( authData, testLinks, td, title, verb, action, note, te
 	}
     }
 
-    subTest = tu.checkEq( foundPAct, true,                     subTest, "pact bad" );
+    subTest = tu.checkEq( foundPAct, true,                     subTest, "pact bad " + subject.toString() );
 
     if( !foundPAct ) {
-	console.log( "Pact bad?  darg.  ", depth, pacts.length );
+	console.log( "Pact bad?  darg.  ", depth, pacts.length, subject.toString() );
 	for( let i = pacts.length - depth; i < pacts.length; i++ ) {
 	    const pact = pacts[i];
 	    console.log( i, pact );
