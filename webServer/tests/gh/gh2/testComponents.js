@@ -657,7 +657,7 @@ async function testCreateDelete( authData, testLinks, td ) {
 	const flatCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, stars.colId,   issDatFlat[0] );
 	const progCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoProg.colId, issDatProg[0] );
 
-	// note: pend never closes here (not assigned).
+	// note: pend never closes here (i.e. fail, not assigned).
 	const pendCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoPend.colId, issDatPend[0] );
 	const accrCard   = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.githubOpsPID, ghoAccr.colId, issDatAccr[0] );
 

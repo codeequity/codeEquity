@@ -27,7 +27,7 @@ class GH2Data extends ceData.CEData{
 	if( !githubUsers.hasOwnProperty( jd.actor )) {
 	    // NOTE this is a promise - not needed for a while.  
 	    githubUsers[ jd.actor] = ghUtils.getOwnerId( authData.pat, jd.actor );
-	    console.log( "XXX Got promise id for", jd.actor );
+	    console.log( "Got promise id for", jd.actor );
 	}
 	settings.actorId  = githubUsers[ jd.actor ]; 
 	
