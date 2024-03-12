@@ -10,6 +10,10 @@ const jobData = require( '../../jobData' );
 const utils   = require( rootLoc + "utils/ceUtils" );
 const ghUtils = require( rootLoc + "utils/gh/ghUtils" );
 
+// Cache GitHub hostUserName, hostUserId
+var githubUsers = {};
+
+
 class GH2Data extends ceData.CEData{
 
     // Use projectV2 node ids, not databaseIds
@@ -20,6 +24,13 @@ class GH2Data extends ceData.CEData{
 	settings.actor   = jd.actor;
 	settings.reqBody = jd.reqBody;
 
+	if( !githubUsers.hasOwnProperty( jd.actor )) {
+	    // NOTE this is a promise - not needed for a while.  
+	    githubUsers[ jd.actor] = ghUtils.getOwnerId( authData.pat, jd.actor );
+	    console.log( "Got promise id for", jd.actor );
+	}
+	settings.actorId  = githubUsers[ jd.actor ]; 
+	
 	super( settings );
 
 	// No async in constructors.  Require caller to get CEP directly if needed.
@@ -36,7 +47,7 @@ class GH2Data extends ceData.CEData{
 	jd.actor   = orig.actor;
 	jd.reqBody = orig.reqBody;
 	
-	let newPD = new GH2Data( jd, {}, orig.ceProjectId );
+	let newPD = new GH2Data( {}, jd, orig.ceProjectId );
 
 	newPD.issueNum  = orig.issueNum;
 	newPD.issueId   = orig.issueId;

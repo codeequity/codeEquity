@@ -300,19 +300,21 @@ Future updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       PEQAction pact = todos[i].item1;
       PEQ       peq  = todos[i].item2;
 
-      GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.ghColumnId == pact.subject[0] );
+      GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == pact.subject[0] );
       if( pact.verb == PActVerb.confirm && pact.action == PActAction.change ) {
          if( pact.note == "Column rename" ) {
             assert( pact.subject.length == 3 );
             assert( loc != null );
             // XXX why do I need loc! for projId, but can't have it for active?  funky promotion short-circuit?
-            colRenames.add( new GHLoc( ghProjectId: loc!.ghProjectId, ghProjectName: loc.ghProjectName, ghColumnId: pact.subject[0], ghColumnName: pact.subject[1], active: loc.active ) );
+            colRenames.add( new GHLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: loc!.hostProjectId, hostProjectName: loc.hostProjectName,
+                                       hostColumnId: pact.subject[0], hostColumnName: pact.subject[1], active: loc.active ) );
             vPrint( appState, "... col rename " + pact.subject[1] );
          }
          else if( pact.note == "Project rename" ) {
             assert( pact.subject.length == 3 );
             assert( loc != null );
-            projRenames.add( new GHLoc( ghProjectId: pact.subject[0], ghColumnId: "-1", ghProjectName: pact.subject[1], ghColumnName: loc!.ghColumnName, active: loc.active ) );
+            projRenames.add( new GHLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: pact.subject[0], hostColumnId: "-1", hostProjectName: pact.subject[1],
+                                        hostColumnName: loc!.hostColumnName, active: loc.active ) );
             vPrint( appState, "... proj rename " + pact.subject[1] );            
          }
       }
@@ -325,31 +327,31 @@ Future updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    for( Allocation alloc in appAllocs ) {
       assert( alloc.categoryBase != null );
       for( GHLoc proj in projRenames ) {
-         if( alloc.ghProjectId == proj.ghProjectId ) {
-            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.ghProjectId == proj.ghProjectId );
+         if( alloc.ghProjectId == proj.hostProjectId ) {
+            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostProjectId == proj.hostProjectId );
             assert( loc != null );
-            vPrint( appState, " .. found project name update: " + proj.ghProjectName  + " => " + loc!.ghProjectName );
+            vPrint( appState, " .. found project name update: " + proj.hostProjectName  + " => " + loc!.hostProjectName );
 
             // pindex can be -1 when there are multiple renames in this ingest stream.  myGHLinks will skip to the final.
-            int pindex = alloc.category.indexOf( proj.ghProjectName );
-            if( pindex >= 0 ) { alloc.category[pindex] = loc.ghProjectName; }
+            int pindex = alloc.category.indexOf( proj.hostProjectName );
+            if( pindex >= 0 ) { alloc.category[pindex] = loc.hostProjectName; }
 
-            pindex = alloc.categoryBase!.indexOf( proj.ghProjectName );
-            if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.ghProjectName; }
+            pindex = alloc.categoryBase!.indexOf( proj.hostProjectName );
+            if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.hostProjectName; }
          }
       }
       for( GHLoc col in colRenames ) {
-         if( alloc.ghProjectId == col.ghProjectId ) {
+         if( alloc.ghProjectId == col.hostProjectId ) {
             
-            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.ghColumnId == col.ghColumnId );
+            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == col.hostColumnId );
             assert( loc != null );
-            vPrint( appState, " .. found Column name update: " + col.ghColumnName + " => " + loc!.ghColumnName );
+            vPrint( appState, " .. found Column name update: " + col.hostColumnName + " => " + loc!.hostColumnName );
 
-            int pindex = alloc.category.indexOf( col.ghColumnName );
-            if( pindex >= 0 ) { alloc.category[pindex] = loc.ghColumnName; }
+            int pindex = alloc.category.indexOf( col.hostColumnName );
+            if( pindex >= 0 ) { alloc.category[pindex] = loc.hostColumnName; }
             
-            pindex = alloc.categoryBase!.indexOf( col.ghColumnName );
-            if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.ghColumnName; }
+            pindex = alloc.categoryBase!.indexOf( col.hostColumnName );
+            if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.hostColumnName; }
          }
       }
    }
@@ -394,9 +396,9 @@ Future _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo
       }
       else if( pact.verb == PActVerb.reject ) {
          // rem propose, add plan
-         GHLoc loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghColumnId == pact.subject.last, orElse: () => null );
+         GHLoc loc = appState.myGHLinks.locations.firstWhere( (a) => a.hostColumnId == pact.subject.last, orElse: () => null );
          assert( loc != null );
-         List<String> subDest = new List<String>.from( subBase ); subDest.last = loc.ghColumnName;
+         List<String> subDest = new List<String>.from( subBase ); subDest.last = loc.hostColumnName;
          
          adjustSummaryAlloc( appState, peq.id, subProp, assignee, -1 * assigneeShare, PeqType.pending );
          adjustSummaryAlloc( appState, peq.id, subDest, assignee, assigneeShare, PeqType.plan); 
@@ -598,7 +600,7 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
       
       // Get name of new column home
       assert( pact.subject.length == 3 );
-      GHLoc loc = appState.myGHLinks.locations.firstWhere( (a) => a.ghProjectId == pact.subject[1] && a.ghColumnId == pact.subject[2], orElse: () => null );
+      GHLoc loc = appState.myGHLinks.locations.firstWhere( (a) => a.hostProjectId == pact.subject[1] && a.hostColumnId == pact.subject[2], orElse: () => null );
       assert( loc != null );
       
       // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
@@ -623,15 +625,15 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
                newTitle = pending[peq.id][1];
             }
             peqLoc = peq.ghProjectSub;
-            adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, newTitle, assigneeShare, sourceAlloc.allocType, pid: loc.ghProjectId ); 
+            adjustSummaryAlloc( appState, peq.id, peq.ghProjectSub, newTitle, assigneeShare, sourceAlloc.allocType, pid: loc.hostProjectId ); 
          }
          else {
             // Have at least proj, col, title.
             assert( sourceAlloc.category.length >= 2 );
             List<String> suba = new List<String>.from( sourceAlloc.category.sublist(0, sourceAlloc.category.length-2) );
-            suba.add( loc.ghColumnName );
+            suba.add( loc.hostColumnName );
             peqLoc = suba;
-            adjustSummaryAlloc( appState, peq.id, suba, sourceAlloc.category.last, assigneeShare, sourceAlloc.allocType, pid: loc.ghProjectId ); 
+            adjustSummaryAlloc( appState, peq.id, suba, sourceAlloc.category.last, assigneeShare, sourceAlloc.allocType, pid: loc.hostProjectId ); 
          }
       }
       else
@@ -648,27 +650,27 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
          for( var remAlloc in reloAlloc ) {
             assert( assignees.contains( remAlloc.hostUserName ));
             vPrint( appState, "\n Assignee: " + remAlloc.hostUserName );
-            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.ghProjectId );
+            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.hostProjectId );
 
             // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
-            if( !baseCat.contains( loc.ghProjectName ) ) {
+            if( !baseCat.contains( loc.hostProjectName ) ) {
                vPrint( appState, "  .. RELO is cross project!  Reconstituting category ");
 
-               Allocation? newSource = appAllocs.firstWhereOrNull( (a) => a.category.contains( loc.ghProjectName ) );
+               Allocation? newSource = appAllocs.firstWhereOrNull( (a) => a.category.contains( loc.hostProjectName ) );
                if( newSource == null ) {
                   // Possible if project name just changed.
                   // XXX If proj of MasterCol.proj just changed, will no longer see masterCol.
-                  baseCat = [loc.ghProjectName];
+                  baseCat = [loc.hostProjectName];
                }
                else {
                   List<String> sourceCat = newSource.category;
-                  baseCat = sourceCat.sublist( 0, sourceCat.indexOf( loc.ghProjectName ) + 1 );
+                  baseCat = sourceCat.sublist( 0, sourceCat.indexOf( loc.hostProjectName ) + 1 );
                }
             }
             
             vPrint( appState, "  .. relocating to " + loc.toString() );
-            peqLoc = baseCat + [loc.ghColumnName];
-            adjustSummaryAlloc( appState, peq.id, baseCat + [loc.ghColumnName], remAlloc.hostUserName, assigneeShare, remAlloc.allocType, pid: loc.ghProjectId );
+            peqLoc = baseCat + [loc.hostColumnName];
+            adjustSummaryAlloc( appState, peq.id, baseCat + [loc.hostColumnName], remAlloc.hostUserName, assigneeShare, remAlloc.allocType, pid: loc.hostProjectId );
          }
       }
 
@@ -1098,10 +1100,11 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    vPrint( appState, "... done (ceuid)" );
 
    // Create, if need to
+   assert( false ); 
    if( appState.myPEQSummary == null && todos.length > 0) {
       String pid = randAlpha(10);
       vPrint( appState, "Create new appstate PSum " + pid + "\n" );
-      appState.myPEQSummary = new PEQSummary( id: pid, ghRepo: todos[0].item2.ghRepo,
+      appState.myPEQSummary = new PEQSummary( id: pid, ceProjectId: todos[0].item2.ghRepo,  // XXX
                                               targetType: "repo", targetId: todos[0].item2.ghProjectId, lastMod: getToday(), allocations: [] );
    }
    

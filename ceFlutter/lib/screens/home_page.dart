@@ -71,11 +71,22 @@ class _CEHomeState extends State<CEHomePage> {
    
    // This GD opens and closes peqSummary.
    Widget _makeRepoChunk( String repoName ) {
+      print( "Chunking " + repoName );
       final textWidth = appState.screenWidth * .4;
       return GestureDetector(
          onTap: () async
          {
-            appState.selectedRepo = repoName;  
+            appState.selectedRepo = repoName;
+            for( final gha in appState.myGHAccounts ) {
+               for( final ceProj in gha.ceProjectIds ) {
+                  for( final repo in gha.ceProjRepos[ceProj] ?? [] ) {
+                     if( repoName == repo ) {
+                        appState.selectedCEProject = ceProj;
+                        break;
+                     }
+                  }
+               }
+            }
 
             await reloadRepo( context, container );
             
@@ -88,6 +99,7 @@ class _CEHomeState extends State<CEHomePage> {
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeRepos( gha ) {
+      print( "MakeRepos" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;              // 2*container + button + pad
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> repoChunks = [];
@@ -157,6 +169,7 @@ class _CEHomeState extends State<CEHomePage> {
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeCEProjs( gha ) {
+      print( "MakeCEProj" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> repoChunks = [];
@@ -174,18 +187,15 @@ class _CEHomeState extends State<CEHomePage> {
       repoChunks.add( _ceProjBar );
       chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
-      // Do we have any ceProjects?  Hmm.. no matter.
-      // if( gha.ceProject.any(( bool p ) => p )) {}
       for( var i = 0; i < gha.ceProjectIds.length; i++ ) {
-         // XXX
-         print( "XXX fix mkcep" );
-         // if( gha.ceProjectIds[i] ) {
-         // repoChunks.add( _makeRepoChunk( gha.repos[i] ));
          repoChunks.add( _makeRepoChunk( gha.ceProjectIds[i] ));
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         // }
+         var repos = gha.ceProjRepos[ gha.ceProjectIds[i] ];
+         for( var j = 0; j < repos.length; j++ ) {
+            repoChunks.add( _makeRepoChunk( repos[j] ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         }
       }
-
       repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
       repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
       repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
@@ -203,7 +213,7 @@ class _CEHomeState extends State<CEHomePage> {
       acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
       runningLHSHeight += appState.BASE_TXT_HEIGHT;
       
-      // print( "SHOW " + appState.ghUpdated.toString() );
+      print( "SHOW " + appState.ghUpdated.toString() );
       if( appState.myGHAccounts != null || appState.ghUpdated ) {
 
          if( appState.myGHAccounts.length <= 0 ) {

@@ -693,7 +693,7 @@ async function putPAct( newPAction ) {
 	Item: {
 	    "PEQActionId":  newId,
 	    "CEUID":        newPAction.CEUID,
-	    "HostUserName": newPAction.HostUserName,
+	    "HostUserId":   newPAction.HostUserId,
 	    "CEProjectId":  newPAction.CEProjectId,
 	    "Verb":         newPAction.Verb,
 	    "Action":       newPAction.Action,
@@ -1288,10 +1288,12 @@ async function getHostA( uid ) {
     for( const hostAcc of hostAccs ) {
 	console.log( "Found Host account ", hostAcc );
 
-	let ceps = await getProjectStatus( hostAcc.CEProjectIds.concat( hostAcc.FutureCEProjects ) );  
-	console.log( "...working with ", ceps );
-	
-	hostAcc.ceProjs = ceps.map( cep => cep == -1 ? "false" : "true" );
+	// FutureCEProjects are repos, currently, no need to check
+	// let ceps = await getProjectStatus( hostAcc.CEProjectIds.concat( hostAcc.FutureCEProjects ) );
+	// hostAcc.ceProjs = ceps.map( cep => cep == -1 ? "false" : "true" );
+
+	hostAcc.ceProjects = await getProjectStatus( hostAcc.CEProjectIds );
+	console.log( "...working with ", hostAcc.ceProjs );
     }
     return success( hostAccs );
 }

@@ -124,7 +124,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 		subTest = tu.checkEq( pact.Locked, "false",                       subTest, "PAct locked" );
 		subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" );
 		subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
-		subTest = tu.checkEq( pact.HostUserName, config.TEST_ACTOR,       subTest, "PAct user name" ); 
+		subTest = tu.checkEq( pact.HostUserId, td.actorId,                subTest, "PAct user name" ); 
 		
 		console.log( pact.Subject[0], pact.Verb, pact.Action, pact.Subject.slice(-1) );
 		

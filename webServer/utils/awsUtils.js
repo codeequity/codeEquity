@@ -243,9 +243,9 @@ async function changeReportPEQVal( authData, pd, peqVal, link ) {
     // do NOT update aws.. rely on ceFlutter to update values during ingest, using pact.  otherwise, when a split happens after
     // the initial peq has been ingested, if ingest is ignoring this pact, new value will not be picked up correctly.
 
-    recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+    recordPEQAction( authData, config.EMPTY, pd,
 		     config.PACTVERB_CONF, config.PACTACT_CHAN, [newPEQ.PEQId, peqVal.toString()], config.PACTNOTE_PVU,
-		     utils.getToday(), pd.reqBody );
+		     utils.getToday() );
 }
 
 async function recordPEQ( authData, postData ) {
@@ -338,9 +338,9 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
 	else                 { recordPEQ( authData, postData ); }
 	assert( newPEQId != -1 );
 
-	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+	recordPEQAction( authData, config.EMPTY, pd,
 			 config.PACTVERB_CONF, config.PACTACT_ADD, [ newPEQId ], "",
-			 utils.getToday(), pd.reqBody );
+			 utils.getToday() );
     }
 
     // Some actions require both add/relo.  see gh2.issueHandler
@@ -348,9 +348,9 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
 	assert( columnId != -1 );
 	let subject = [ newPEQId, pd.projectId, columnId ];
 	
-	recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+	recordPEQAction( authData, config.EMPTY, pd, 
 			 config.PACTVERB_CONF, config.PACTACT_RELO, subject, "", 
-			 utils.getToday(), pd.reqBody );
+			 utils.getToday() );
     }
 
     return newPEQId;
@@ -358,24 +358,25 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
 
 
 // also allow actionNote, i.e. 'issue reopened, not full CE project layout, no related card moved"
-async function recordPEQAction( authData, ceUID, hostUserName, ceProjId, verb, action, subject, note, entryDate, rawBody ) {
-    console.log( authData.who, "Recording PEQAction: ", verb, action, subject, note );
+async function recordPEQAction( authData, ceUID, pd, verb, action, subject, note, entryDate ) {
+    pd.actorId = await pd.actorId;
+    console.log( authData.who, "Recording PEQAction: ", verb, action, subject, note, pd.actor, pd.actorId, pd.ceProjectId );
 
     let shortName = "RecordPEQAction";
 
-    let postData      = { "CEUID": ceUID, "HostUserName": hostUserName, "CEProjectId": ceProjId };
+    let postData      = { "CEUID": ceUID, "HostUserId": pd.actorId, "CEProjectId": pd.ceProjectId };
     postData.Verb     = verb;
     postData.Action   = action;
     postData.Subject  = subject; 
     postData.Note     = note;
     postData.Date     = entryDate;
-    postData.RawBody  = JSON.stringify( rawBody );
+    postData.RawBody  = JSON.stringify( pd.reqBody );
     postData.Ingested  = "false";
     postData.Locked    = "false";
     postData.TimeStamp = JSON.stringify( Date.now() );
 
-    let pd = { "Endpoint": shortName, "newPAction": postData };
-    return await wrappedPostAWS( authData, shortName, pd );
+    let ppd = { "Endpoint": shortName, "newPAction": postData };
+    return await wrappedPostAWS( authData, shortName, ppd );
 }
 
 async function checkPopulated( authData, ceProjId, repoId ) {

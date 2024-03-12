@@ -51,7 +51,7 @@ class _CEProjectState extends State<CEProjectPage> {
       await updatePEQAllocations( appState.selectedRepo, context, container );
 
       // Reset tree state to ensure proper open/close with tree.getCurrent, else appState never set
-      if( appState.myPEQSummary != null && appState.myPEQSummary!.ghRepo == appState.selectedRepo && appState.allocTree != null )
+      if( appState.myPEQSummary != null && appState.myPEQSummary!.ceProjectId == appState.selectedCEProject && appState.allocTree != null )
       {
          appState.allocExpanded.clear();
          appState.allocTree!.reset();

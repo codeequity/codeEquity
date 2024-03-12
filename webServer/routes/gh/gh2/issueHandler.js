@@ -106,12 +106,12 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
 	const newPeqId = await awsUtils.rebuildPEQ( authData, link, peq );
 	
 	awsUtils.removePEQ( authData, peq.PEQId );	
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-			       config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], config.PACTNOTE_RECR,
-			       utils.getToday(), pd.reqBody );
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-			       config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
-			       utils.getToday(), pd.reqBody );
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
+				  config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], config.PACTNOTE_RECR,
+				  utils.getToday());
+	awsUtils.recordPEQAction( authData, config.EMPTY, pd,
+				  config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
+				  utils.getToday() );
     }
 
     console.log( authData.who, "Delete issue finished, ms:", Date.now() - tstart );
@@ -271,7 +271,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	// Note: if n labels were added at same time, will get n notifications, where issue.labels are all including ith, and .label is ith of n
 	{
 	    
-	    pd.actorId  = await ghUtils.getOwnerId( authData.pat, pd.actor );
 	    assert( utils.validField( pd.reqBody, "repository" ) && utils.validField( pd.reqBody.repository, "node_id" ));
 	    // console.log( "Label issue", pd.reqBody );
 	    // pd.show();
@@ -325,12 +324,12 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		console.log( authData.who, "Label was deleted.  Stop, let labelHandler address this." );
 		return;
 	    }
-
+	    
 	    // At this point, PEQ label
 	    let links = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repoId": pd.repoId, "issueId": pd.issueId } );
 	    let link = links[0]; // cards are 1:1 with issues, this is peq
 	    let newNameIndex = config.PROJ_COLS.indexOf( link.hostColumnName );	    
-
+	    
 	    // GH already removed this.  Put it back.
 	    if( newNameIndex >= config.PROJ_ACCR ) {
 		console.log( "WARNING.  Can't remove the peq label from an accrued PEQ" );
@@ -347,18 +346,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    console.log( "WARNING.  PEQ Issue unlabeled, issue no longer tracked." );
 	    ghLinks.rebaseLinkage( authData, pd.ceProjectId, pd.issueId );   // setting various to EMPTY, as it is now untracked
 	    awsUtils.removePEQ( authData, peq.PEQId );
-	    awsUtils.recordPEQAction(
-		authData,
-		config.EMPTY,     // CE UID
-		pd.actor,         // gh user name
-		pd.ceProjectId,
-		config.PACTVERB_CONF,       // verb
-		config.PACTACT_DEL,         // action
-		[ peq.PEQId ],    // subject
-		"unlabel",        // note
-		utils.getToday(), // entryDate
-		pd.reqBody        // raw
-	    );
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
+				      config.PACTVERB_CONF, config.PACTACT_DEL,	[ peq.PEQId ], "unlabel",
+				      utils.getToday() ); 
 	}
 	break;
     case 'deleted':
@@ -411,9 +401,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			    subject = [ peqId.toString(), newColId.toString() ];
 			}
 			
-			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
-					       verb, paction, subject, "",
-					       utils.getToday(), pd.reqBody );
+			awsUtils.recordPEQAction( authData, config.EMPTY, pd,
+						  verb, paction, subject, "",
+						  utils.getToday());
 		    }
 		}
 		else { console.log( "Unable to complete move of issue card.  No action taken" ); }
@@ -468,9 +458,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    }
 	    
 	    let subject = [peq.PEQId.toString(), assignee];
-	    awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+	    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
 				   verb, paction, subject, note,
-				   utils.getToday(), pd.reqBody );
+				   utils.getToday());
 	}
 	break;
     case 'edited':
@@ -501,9 +491,9 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			let peq = await awsUtils.getPEQ( authData, pd.ceProjectId, pd.issueId );
 			assert( peq !== -1 );
 			const subject = [ peq.PEQId, newTitle ]; 
-			awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, pd.ceProjectId,
+			awsUtils.recordPEQAction( authData, config.EMPTY, pd,
 					       config.PACTVERB_CONF, config.PACTACT_CHAN, subject, config.PACTNOTE_CTIT,
-					       utils.getToday(), pd.reqBody );
+					       utils.getToday());
 		    }
 		}
 	    }
@@ -574,10 +564,17 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		ghLinks.removeLinkage( { "authData": authData, "ceProjId": oldCEP, "issueId": oldIssueId } );
 		ghLinks.addLinkage( authData, oldCEP, newLink );
 
+		// not needed, but safer vs future changes
+		let pdCopy = {};
+		pdCopy.ceProjectId = newCEP;
+		pdCopy.actor       = pd.actor;
+		pdCopy.actorId     = pd.actorId;
+		pdCopy.reqBody     = pd.reqBody;
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, xferIssue.id, oldRepoId, oldCEP ];
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, newCEP,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
 					  config.PACTVERB_CONF, config.PACTACT_NOTE, subject, "Bad transfer attempted",
-					  utils.getToday(), pd.reqBody );
+					  utils.getToday() );
+		
 		return;
 	    }
 
@@ -616,17 +613,25 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 
 	    if( peq !== -1 ) {
 		
-		// Only record PAct for peq.  PEQ may be removed, so don't require Active
+		// Only record PAct for peq.  PEQ may be removed, so don't require Active.
+		// Transfer is PAct'd with oldCEP
+		// NOTE: this record is async.  If just send in pd alone, the async won't start for a while, and pd can (is) rewritten before it starts
+		//       Need to send copy.
+		let pdCopy = {};
+		pdCopy.ceProjectId = oldCEP;
+		pdCopy.actor       = pd.actor;
+		pdCopy.actorId     = pd.actorId;
+		pdCopy.reqBody     = pd.reqBody;
 		const subject = [ peq.PEQId, oldIssueId, oldRepoId, oldCEP, newIssueId, newRepoId, newCEP ];
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, oldCEP,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
 					  config.PACTVERB_CONF, config.PACTACT_RELO, subject, "Transfer",
-					  utils.getToday(), pd.reqBody );
+					  utils.getToday() );
 
 		// Deactivate old peq, can't do much with old ID.
 		awsUtils.removePEQ( authData, peq.PEQId );
-		awsUtils.recordPEQAction( authData, config.EMPTY, pd.actor, oldCEP,
+		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
 					  config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], "",
-					  utils.getToday(), pd.reqBody );
+					  utils.getToday() );
 		
 		// add new peq so we can operate on it normally in case of server restart before ingest
 		// link is all set, including card info.
