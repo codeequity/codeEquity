@@ -2,12 +2,13 @@ import 'package:ceFlutter/utils.dart';
 
 enum PeqType   { allocation, plan, pending, grant, end } 
 
-// Legally, only CEUIDs have signed agreements.  ceHolderId is binding.  ghHolderId is just a helpful comment.
+// Legally, only CEUIDs have signed agreements.  ceHolderId is binding.  hostHolderId is just a helpful comment.
 
 class PEQ {
    final String        id;
+   final String        ceProjectId;
          List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
-   final List<String>  ghHolderId;   // assignees evenly splitting this PEQ, hostUserNames
+   final List<String>  hostHolderId;   // assignees evenly splitting this PEQ, hostUserNames
    final String        ceGrantorId;
 
    final PeqType       peqType;      // usually from Master, sub created/inprogress, sub pending/accrued
@@ -15,30 +16,30 @@ class PEQ {
    final String        accrualDate;  // when accrued
    final double        vestedPerc;   // as of accrual date
 
-   final String        ghRepo;   
-   final List<String>  ghProjectSub; // project subs, i.e. ["Master", "codeEquity web front end"]
-   final String        ghProjectId;    
-   final String        ghIssueId;   
-   final String        ghIssueTitle; // actually, issue-or-card title.
+   final List<String>  hostProjectSub; // project subs, i.e. ["Master", "codeEquity web front end"]
+   final String        hostProjectId;    
+   final String        hostIssueId;   
+   final String        hostIssueTitle; // actually, issue-or-card title.
 
    final bool          active;       // has this PEQ been deliberately deleted, unlabeled or otherwise removed from project?
 
-   PEQ({ required this.id, required this.ceHolderId, required this.ghHolderId, required this.ceGrantorId,
+   PEQ({ required this.id, required this.ceProjectId, required this.ceHolderId, required this.hostHolderId, required this.ceGrantorId,
             required this.peqType, required this.amount, required this.accrualDate, required this.vestedPerc,
-            required this.ghRepo, required this.ghProjectSub, required this.ghProjectId, required this.ghIssueId, required this.ghIssueTitle,
+            required this.hostProjectSub, required this.hostProjectId, required this.hostIssueId, required this.hostIssueTitle,
             required this.active});
 
-   dynamic toJson() => {'PEQId': id, 'CEHolderId': ceHolderId, 'GHHolderId': ghHolderId, 'CEGrantorId': ceGrantorId,
-                           'PeqType': enumToStr(peqType), 'Amount': amount, 'AccrualDate': accrualDate, 'VestedPerc': vestedPerc,
-                           'GHRepo': ghRepo, 'GHProjectSub': ghProjectSub, 'GHProjectId': ghProjectId, 'GHIssueId': ghIssueId,
-                           'GHIssueTitle': ghIssueTitle, 'Active': active }; 
+   dynamic toJson() => {'id': id, 'ceProjectId': ceProjectId, 'ceHolderId': ceHolderId, 'hostHolderId': hostHolderId, 'ceGrantorId': ceGrantorId,
+                           'peqType': enumToStr(peqType), 'amount': amount, 'accrualDate': accrualDate, 'vestedPerc': vestedPerc,
+                           'hostProjectSub': hostProjectSub, 'hostProjectId': hostProjectId, 'hostIssueId': hostIssueId,
+                           'hostIssueTitle': hostIssueTitle, 'active': active }; 
 
    // No PEQ found.  return empty peq.
    factory PEQ.empty() {
       return PEQ(
          id:            "-1",
+         ceProjectId:   "-1",
          ceHolderId:    [],
-         ghHolderId:    [],
+         hostHolderId:    [],
          ceGrantorId:   "-1",
 
          peqType:       PeqType.end,
@@ -46,11 +47,10 @@ class PEQ {
          accrualDate:   "-1",
          vestedPerc:    0.0,
 
-         ghRepo:        "-1",
-         ghProjectSub:  [],
-         ghProjectId:   "-1",
-         ghIssueId:     "-1",
-         ghIssueTitle:  "-1",
+         hostProjectSub:  [],
+         hostProjectId:   "-1",
+         hostIssueId:     "-1",
+         hostIssueTitle:  "-1",
 
          active:        false,
          );
@@ -58,40 +58,40 @@ class PEQ {
       
    factory PEQ.fromJson(Map<String, dynamic> json) {
 
-      var dynamicSub   = json['GHProjectSub'];
-      var dynamicAssCE = json['CEHolderId'];
-      var dynamicAssGH = json['GHHolderId'];
+      var dynamicSub   = json['HostProjectSub'] ?? [];
+      var dynamicAssCE = json['CEHolderId']     ?? [];
+      var dynamicAssHost = json['HostHolderId'] ?? [];
 
       // DynamoDB is not camelCase
       return PEQ(
          id:            json['PEQId'],
+         ceProjectId:   json['CEProjectId'],
          ceHolderId:    new List<String>.from(dynamicAssCE),
-         ghHolderId:    new List<String>.from(dynamicAssGH),
-         ceGrantorId:   json['CEGrantorId'],
+         hostHolderId:  new List<String>.from(dynamicAssHost),
+         ceGrantorId:   json['CEGrantorId'] ?? "",
 
          peqType:       enumFromStr<PeqType>( json['PeqType'], PeqType.values ),
          amount:        json['Amount'],
          accrualDate:   json['AccrualDate'],
          vestedPerc:    json['VestedPerc'],
 
-         ghRepo:        json['GHRepo'],
-         ghProjectSub:  new List<String>.from(dynamicSub),
-         ghProjectId:   json['GHProjectId'],
-         ghIssueId:     json['GHIssueId'],
-         ghIssueTitle:  json['GHIssueTitle'],
+         hostProjectSub:  new List<String>.from(dynamicSub),
+         hostProjectId:   json['HostProjectId'],
+         hostIssueId:     json['HostIssueId'],
+         hostIssueTitle:  json['HostIssueTitle'],
 
          active:        json['Active'] == "true" ? true : false,         
          );
    }
    
    String toString() {
-      String res = "\n" + ghRepo + " PEQs, active? " + active.toString();
-      res += "\n   " + amount.toString() + " PEQ, for: " + ghIssueTitle;
+      String res = "\n" + ceProjectId + " PEQs, active? " + active.toString();
+      res += "\n   " + amount.toString() + " PEQ, for: " + hostIssueTitle;
       // res += "\n    grantor: " + ceGrantorId;
       res += "\n    type: " + enumToStr(peqType) + ", accrued: " + accrualDate + ", vested %: " + vestedPerc.toString();
-      res += "\n    projectSub: " + ghProjectSub.toString() + " projId: " + ghProjectId + ", issue: " + ghIssueId;
+      res += "\n    projectSub: " + hostProjectSub.toString() + " projId: " + hostProjectId + ", issue: " + hostIssueId;
       // res += "\n    holder: " + ceHolderId.toString();
-      res += "\n    GHholder: " + ghHolderId.toString();
+      res += "\n    Hostholder: " + hostHolderId.toString();
       res += "\n";
 
       return res;

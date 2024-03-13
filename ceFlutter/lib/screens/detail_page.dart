@@ -179,11 +179,11 @@ class _CEDetailState extends State<CEDetailPage> {
       // If ingest is not up to date, this filter breaks
       // if alloc, alloc name is made part of the category list, and is needed to distinguish allocs
       if( appState.selectedUser == appState.ALLOC_USER ) {
-         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.ghProjectSub + [p.ghIssueTitle], category )).toList();
+         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + [p.hostIssueTitle], category )).toList();
       }
       else {
          List<String> cat = category.sublist(0, category.length - 1 );
-         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.ghProjectSub, cat )).toList();
+         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub, cat )).toList();
       }
       List<String> peqs = selectedPeqs.map((peq) => peq.id ).toList();
       
@@ -210,7 +210,7 @@ class _CEDetailState extends State<CEDetailPage> {
    @override
       Widget build(BuildContext context) {
 
-      print( "Detail page" + ModalRoute.of(context)!.settings.arguments.toString() ?? "" );
+      print( "Detail page" + ModalRoute.of(context)!.settings.arguments.toString() );
       
       assert( ModalRoute.of(context) != null );
       category    = ModalRoute.of(context)!.settings.arguments as List<String>;

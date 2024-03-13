@@ -14,7 +14,7 @@ const authDataC = require( '../../auth/authData' );
 var   fs       = require('fs'), json;
 const execSync = require('child_process').execSync;
 
-const baselineLoc = "../tests/flutterTestData/";
+const baselineLoc = "./tests/flutterTestData/";
 
 function getData( fname ) {
     try {
@@ -39,7 +39,6 @@ async function clearSummary( authData, td ) {
 }
 
 
-// XXX Out of date
 // Only load items for  TEST_ACTOR, FLUTTER_TEST_REPO.  Need to work through dynamo storage format.
 async function loadPEQ( authData, td ) {
 
@@ -59,21 +58,21 @@ async function loadPEQ( authData, td ) {
     var promises = [];
     for( var aput of peqJson.CEPEQs ) {
 	// console.log( aput.toString() );
-	const repo = aput.PutRequest.Item.GHRepo.S;
-	const id   = aput.PutRequest.Item.PEQId.S;
+	const ceProjId = aput.PutRequest.Item.CEProjectId.S;
+	const id       = aput.PutRequest.Item.PEQId.S;
 	
-	if( repo == td.ghFullName ) {
-	    // console.log( "Loading", repo, id );
+	if( ceProjId == td.ceProjectId ) {
+	    // console.log( "Loading", ceProjId, id );
 	    peqCount++;
 
 	    let postData = {};
 	    postData.PEQId        = id;
-	    postData.GHRepo       = repo;
+	    postData.CEProjectId  = aput.PutRequest.Item.CEProjectId.S;
 	    
 	    postData.PeqType        = aput.PutRequest.Item.PeqType.S;
-	    postData.HostProjectId  = aput.PutRequest.Item.GHProjectId.S;
-	    postData.HostIssueId    = aput.PutRequest.Item.GHIssueId.S;
-	    postData.HostIssueTitle = aput.PutRequest.Item.GHIssueTitle.S;
+	    postData.HostProjectId  = aput.PutRequest.Item.HostProjectId.S;
+	    postData.HostIssueId    = aput.PutRequest.Item.HostIssueId.S;
+	    postData.HostIssueTitle = aput.PutRequest.Item.HostIssueTitle.S;
 	    postData.Active         = aput.PutRequest.Item.Active.S;
 	    postData.AccrualDate    = aput.PutRequest.Item.AccrualDate.S;
 	    postData.CEGrantorId    = aput.PutRequest.Item.CEGrantorId.S;
@@ -81,9 +80,9 @@ async function loadPEQ( authData, td ) {
 	    postData.Amount       = parseInt( aput.PutRequest.Item.Amount.N );
 	    postData.VestedPerc   = parseInt( aput.PutRequest.Item.VestedPerc.N );            // XXX ??? parseFloat?
 
-	    postData.HostHolderId   = aput.PutRequest.Item.GHHolderId.L.map( elt => elt.S )
+	    postData.HostHolderId   = aput.PutRequest.Item.HostHolderId.L.map( elt => elt.S )
 	    postData.CEHolderId     = aput.PutRequest.Item.CEHolderId.L.map( elt => elt.S )
-	    postData.HostProjectSub = aput.PutRequest.Item.GHProjectSub.L.map( elt => elt.S )
+	    postData.HostProjectSub = aput.PutRequest.Item.HostProjectSub.L.map( elt => elt.S )
 
 	    postData.silent       = "true";
 	    postData.skipLock     = "true";
@@ -131,13 +130,13 @@ async function loadPAct( authData, td ) {
 	const rawStr   = getData( rname );
 	const rawJson  = JSON.parse( rawStr );
 	for( var aput of pactJson.CEPEQActions ) {
-	    const repo = aput.PutRequest.Item.GHRepo.S;
-	    const id   = aput.PutRequest.Item.PEQActionId.S;
+	    const ceProjId = aput.PutRequest.Item.CEProjectId.S;
+	    const id       = aput.PutRequest.Item.PEQActionId.S;
 	    
-	    if( repo == td.ghFullName ) { pactIds.push( id ); }
+	    if( ceProjId == td.ceProjectId ) { pactIds.push( id ); }
 	}
 	
-	// Skip other repos
+	// Skip other ceProjects
 	for( var araw of rawJson.CEPEQRaw ) {
 	    const pid = araw.PutRequest.Item.PEQRawId.S;
 	    if( pactIds.includes( pid  )) {
@@ -151,24 +150,31 @@ async function loadPAct( authData, td ) {
     let pactCount = 0;
     var promises = [];
     for( var aput of pactJson.CEPEQActions ) {
-	const repo = aput.PutRequest.Item.GHRepo.S;
-	const id   = aput.PutRequest.Item.PEQActionId.S;
+	const ceProjId = aput.PutRequest.Item.CEProjectId.S;
+	const id       = aput.PutRequest.Item.PEQActionId.S;
 	
-	if( repo == td.ghFullName ) {
+	if( ceProjId == td.ceProjectId ) {
 	    pactCount++;
 	    if( loadRaw ) {
 		assert( praw.hasOwnProperty( id ) );
-		console.log( "Loading", repo, id, praw[id].length.toString());
+		console.log( "Loading", ceProjId, id, praw[id].length.toString());
 	    }
 
 	    let postData = {};
 	    postData.PEQActionId  = id;
-	    postData.GHRepo       = repo;
+	    postData.CEProjectId  = ceProjId;
+
+	    // XXX Allow hostUserName for now in pact
+	    let hun = "";
+	    if( aput.PutRequest.Item.hasOwnProperty( "HostUserName" ) ) {
+		hun = aput.PutRequest.Item.HostUserName.S;
+	    }
 
 	    postData.Note       = aput.PutRequest.Item.Note.S;
 	    postData.CEUID      = aput.PutRequest.Item.CEUID.S;
 	    postData.Action     = aput.PutRequest.Item.Action.S;
-	    postData.GHUserName = aput.PutRequest.Item.GHUserName.S;
+	    postData.HostUserName = hun;
+	    postData.HostUserId = aput.PutRequest.Item.HostUserId.S;
 	    postData.Ingested   = aput.PutRequest.Item.Ingested.S;
 	    postData.TimeStamp  = aput.PutRequest.Item.TimeStamp.S;
 	    postData.Verb       = aput.PutRequest.Item.Verb.S;
@@ -234,6 +240,8 @@ async function runTests() {
 
     // TEST_REPO auth
     let td          = new testData.TestData();
+
+    td.ceProjectId  = config.TEST_CEPID;
     td.ghOwner      = config.TEST_OWNER;
     td.actor        = config.TEST_ACTOR;
     td.ghRepo       = config.FLUTTER_TEST_REPO;
@@ -241,7 +249,7 @@ async function runTests() {
 
     let authData     = new authDataC.AuthData();
     authData.who     = "<TEST: Main> ";
-    authData.ic      = await auth.getInstallationClient( td.actor, td.ghRepo, td.ghOwner );
+    // authData.ic      = await auth.getInstallationClient( td.actor, td.ghRepo, td.ghOwner );
     authData.api     = awsUtils.getAPIPath() + "/find";
     authData.cog     = await awsAuth.getCogIDToken();
     authData.cogLast = Date.now();        
@@ -249,8 +257,10 @@ async function runTests() {
 
     let promises = [];
     promises.push( clearIngested( authData, td ));
-    promises.push( clearSummary(  authData, td ));
-    await Promise.all( promises );
+
+    // XXX
+    // promises.push( clearSummary(  authData, td ));
+    // await Promise.all( promises );
 
     // Can't just overwrite, new operations will be in aws and be processed.
     await loadPEQ(  authData, td );
@@ -260,8 +270,9 @@ async function runTests() {
 
     // Load Linkage.  This means if last generate run failed, linkage table will be out of date with GH, 
     // but in synch with loaded PEQ/PAct.  Ingest requires linkage.
-    await loadLinkage( authData, td );
-    
+
+    // XXX probably not up to date
+    // await loadLinkage( authData, td );
 }
 
 

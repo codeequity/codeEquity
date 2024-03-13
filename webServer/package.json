@@ -7,7 +7,7 @@
         "testMain": "node ./tests/gh/testMain.js",
         "testFlutter": "node ./tests/testMain.js ceFlutter",
         "sanityCheck": "node ./tests/sanityCheck.js",
-        "cleanFlutter": "node ./tests/cleanLoad.js",
+        "cleanFlutter": "node ./tests/gh/cleanLoad.js",
         "cleanLoad": "node ./tests/cleanLoad.js",
         "testSetup": "node ./tests/testSetup.js",
         "testDelete": "node ./tests/gh/gh2/testDelete.js",

@@ -216,7 +216,7 @@ Future<String> fetchString( context, container, postData, shortName ) async {
 Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
-   // print( "updateDynamo " + postData );
+   print( "updateDynamo " + postData );
    
    if( peqId != -1 ) {
       appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
@@ -560,9 +560,9 @@ Future<void> updateProjects( context, container ) async {
 Future<void> updateUserPActions( peqs, container, context ) async {
    final appState  = container.state;
    String uname = appState.selectedUser;
-   String rname = appState.selectedRepo;
-   String pids = json.encode( peqs );
-   appState.userPActs[uname] = await fetchPEQActions( context, container, '{ "Endpoint": "GetPActsById", "GHRepo": "$rname", "PeqIds": $pids }' );
+   String cep   = appState.selectedCEProject;
+   String pids  = json.encode( peqs );
+   appState.userPActs[uname] = await fetchPEQActions( context, container, '{ "Endpoint": "GetPActsById", "CEProjectId": "$cep", "PeqIds": $pids }' );
 }
 
 // XXX Only update if dirty.  Only dirty after updatePeq.
