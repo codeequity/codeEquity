@@ -62,16 +62,16 @@ class _CEDetailState extends State<CEDetailPage> {
    Widget _makePeq( peq ) {
       final textWidth = appState.screenWidth * .6;
       String proj = "";
-      for( var p in peq.ghProjectSub ) {
+      for( var p in peq.hostProjectSub ) {
          if( p == "Software Contributions" ) { p = "Software"; }  // XXX TEMP
          proj += p + "::";
       }
       if( proj.length > 2 ) { proj = proj.substring( 0,proj.length - 2 ); }
 
-      String apeq =  peq.ghIssueTitle + " (" + proj + ") status: " + enumToStr( peq.peqType ) + " " + peq.amount.toString() + " PEQs";
-      if( peq.ghHolderId.length > 0 ) { apeq += "  Holder(s): " + peq.ghHolderId.toString(); }
+      String apeq =  peq.hostIssueTitle + " (" + proj + ") status: " + enumToStr( peq.peqType ) + " " + peq.amount.toString() + " PEQs";
+      if( peq.hostHolderId.length > 0 ) { apeq += "  Holder(s): " + peq.hostHolderId.toString(); }
       if( peq.ceGrantorId != EMPTY ) { apeq += "  Grantor: " + peq.ceGrantorId; }
-      return makeTitleText( appState, apeq, textWidth, false, 1, keyTxt: peq.ghIssueTitle );
+      return makeTitleText( appState, apeq, textWidth, false, 1, keyTxt: peq.hostIssueTitle );
    }
 
    // XXX rawbody -> prettier list of string

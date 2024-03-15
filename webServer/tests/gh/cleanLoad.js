@@ -203,30 +203,30 @@ async function loadLinkage( authData, td ) {
     const linkJson = JSON.parse( dataStr );
     console.log( "Reading", linkJson.CELinkage.length.toString(), "Linkages from", fname );
 
-    for( let repoNum = 0; repoNum < linkJson.CELinkage.length; repoNum++ ) {
-	let locSummary = linkJson.CELinkage[repoNum].PutRequest.Item;
-	let repo    = locSummary.GHRepo.S;
+    for( let ceProjNum = 0; ceProjNum < linkJson.CELinkage.length; ceProjNum++ ) {
+	let locSummary = linkJson.CELinkage[ceProjNum].PutRequest.Item;
+	let ceProjId   = locSummary.CEProjectId.S;
 	
-	if( repo == td.ghFullName ) {
+	if( ceProjId == td.ceProjectId ) {
 	    let locs    = locSummary.Locations.L;
 	    let ghLinks = new links.Linkage();
 	    for( let i = 0; i < locs.length; i++  ) {
 		let loc = locs[i].M;
 
 		let nLoc = {};
-		nLoc.ceProjectId     = loc.CEProjectId.S;
-		nLoc.hostRepository  = repo;
-		nLoc.hostProjectId   = loc.HostProjectId.S;
-		nLoc.hostProjectName = loc.HostProjectName.S;
-		nLoc.hostColumnId    = loc.HostColumnId.S;
-		nLoc.hostColumnName  = loc.HostColumnName.S;
-		nLoc.active          = loc.Active.S;
+		nLoc.ceProjectId     = loc.ceProjectId.S;
+		nLoc.hostProjectId   = loc.hostProjectId.S;
+		nLoc.hostProjectName = loc.hostProjectName.S;
+		nLoc.hostColumnId    = loc.hostColumnId.S;
+		nLoc.hostColumnName  = loc.hostColumnName.S;
+		nLoc.hostUtility     = loc.hostUtility.S;
+		nLoc.active          = loc.active.S;
 		
-		ghLinks.addLocs( authData, nLoc, false);  // XXXXXXXXXXXXXXXX
+		ghLinks.addLocs( authData, [nLoc], { pushAWS: false }); 
 	    }
 
-	    var locsL = ghLinks.getLocs( authData, { "ceProjId": nLoc.ceProjectId, "repo": repo } );
-	    await awsUtils.refreshLinkageSummary( authData, repo, locsL, false ); // XXXXXXXXXXXXXXXXXXXXXXXXXX
+	    var locsL = ghLinks.getLocs( authData, { "ceProjId": ceProjId } );
+	    await awsUtils.refreshLinkageSummary( authData, ceProjId, locsL, false ); 
 	    break;
 	}
     }
@@ -258,9 +258,8 @@ async function runTests() {
     let promises = [];
     promises.push( clearIngested( authData, td ));
 
-    // XXX
-    // promises.push( clearSummary(  authData, td ));
-    // await Promise.all( promises );
+    promises.push( clearSummary(  authData, td ));
+    await Promise.all( promises );
 
     // Can't just overwrite, new operations will be in aws and be processed.
     await loadPEQ(  authData, td );
@@ -271,8 +270,7 @@ async function runTests() {
     // Load Linkage.  This means if last generate run failed, linkage table will be out of date with GH, 
     // but in synch with loaded PEQ/PAct.  Ingest requires linkage.
 
-    // XXX probably not up to date
-    // await loadLinkage( authData, td );
+    await loadLinkage( authData, td );
 }
 
 
