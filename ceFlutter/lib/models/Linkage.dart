@@ -1,4 +1,4 @@
-import 'package:ceFlutter/models/ghLoc.dart';
+import 'package:ceFlutter/models/hostLoc.dart';
 
 
 // ceFlutter use only
@@ -7,7 +7,7 @@ class Linkage {
    final String      id;
    final String      ceProjectId;
    final String      lastMod;
-   final List<GHLoc> locations;   
+   final List<HostLoc> locations;   
 
    Linkage({ required this.id, required this.ceProjectId, required this.lastMod, required this.locations });
 
@@ -15,9 +15,9 @@ class Linkage {
    factory Linkage.fromJson(Map<String, dynamic> json) {
 
       // locations in dynamo is list<map<string>>
-      List<GHLoc> locs = [];
+      List<HostLoc> locs = [];
       var dynamicAlloc = json['Locations'];  
-      dynamicAlloc.forEach((m) { if( m.length >= 1 ) { locs.add( GHLoc.fromJson( m ) ); } });  // linkage can have empty maps
+      dynamicAlloc.forEach((m) { if( m.length >= 1 ) { locs.add( HostLoc.fromJson( m ) ); } });  // linkage can have empty maps
 
       return Linkage(
          id:            json['CELinkageId'],

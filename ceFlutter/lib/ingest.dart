@@ -13,7 +13,7 @@ import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/allocation.dart';
-import 'package:ceFlutter/models/ghLoc.dart';
+import 'package:ceFlutter/models/hostLoc.dart';
 
 Function listEq = const ListEquality().equals;
 
@@ -21,10 +21,10 @@ void vPrint( appState, String astring ) {
    if( appState.verbose >= 1 ) { print( astring ); }
 }
 
-// XXX associateGithub has to update appState.idMapGH
+// XXX associateGithub has to update appState.idMapHost
 // PActions, PEQs are added by webServer, which does not have access to ceUID.
 // set CEUID by matching my peqAction:hostUserId to CEHostUser:HostUsernId, then writing that CEUserId
-// if there is not yet a corresponding ceUID, use "GHUSER: $hostUserName" in it's place, to be fixed later by associateGitub XXX (done?)
+// if there is not yet a corresponding ceUID, use "HOSTUSER: $hostUserName" in it's place, to be fixed later by associateGitub XXX (done?)
 // NOTE: Expect multiple PActs for each PEQ.  For example, open, close, and accrue
 Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) async {
 
@@ -35,13 +35,13 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
    // print( peq );
    
    String hostUID  = pact.hostUserId;
-   if( !appState.idMapGH.containsKey( hostUID )) {
-      appState.idMapGH[ hostUID ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$hostUID" }', "GetCEUID" );
+   if( !appState.idMapHost.containsKey( hostUID )) {
+      appState.idMapHost[ hostUID ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$hostUID" }', "GetCEUID" );
    }
-   String ceu = appState.idMapGH[ hostUID ];
+   String ceu = appState.idMapHost[ hostUID ];
 
-   // Too aggressive.  If run 'refresh repos' from homepage, ghAccount is rewritten with new repo list, at which point pacts are updated with 'new' ceuid.
-   //                  This is done because in some (many?) cases, pacts are created by a gh user before that user has a CEUID.
+   // Too aggressive.  If run 'refresh repos' from homepage, hostAccount is rewritten with new repo list, at which point pacts are updated with 'new' ceuid.
+   //                  This is done because in some (many?) cases, pacts are created by a host user before that user has a CEUID.
    // assert( pact.ceUID == EMPTY );
    assert( pact.ceUID == EMPTY || pact.ceUID == ceu );
 
@@ -57,10 +57,10 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
    // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
    peq.ceHolderId = [];
    for( var peqHostUser in peq.hostHolderId ) {
-      if( !appState.idMapGH.containsKey( peqHostUser )) {
-         appState.idMapGH[ peqHostUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$peqHostUser" }', "GetCEUID" );
+      if( !appState.idMapHost.containsKey( peqHostUser )) {
+         appState.idMapHost[ peqHostUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$peqHostUser" }', "GetCEUID" );
       }
-      String ceUID = appState.idMapGH[ peqHostUser ];
+      String ceUID = appState.idMapHost[ peqHostUser ];
       if( ceUID == "" ) { ceUID = "HostUSER: " + peqHostUser; }  // XXX formalize
       peq.ceHolderId.add( ceUID );
    }
@@ -302,26 +302,26 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 }
 
 
-// ingest may contain edits to GH projects or columns.
+// ingest may contain edits to HOST projects or columns.
 // For renaming, will update peqSummary from dynamo, and build the list of current names for the next ingest
 // Example: ingest todos contains renames of project: aProj -> bProj, and bProj -> cProj
 //    aws dynamo peqs          will contain aproj, or earlier.  these will probably stay put
 //    myPEQSummary allocations will contain aProj
-//    myGHLinks ghLocs         will contain cProj
+//    myHostLinks hostLocs       will contain cProj
 //    ingest todos             will contain aProj, bProj and cProj
 
-// Todo list processing for relo and reject-to uses IDs, so names will be up to date based on myGHLinks.
-// Adds are based on psub, but immediate relos are myGHLinks.
+// Todo list processing for relo and reject-to uses IDs, so names will be up to date based on myHostLinks.
+// Adds are based on psub, but immediate relos are myHostLinks.
 // The only adds without relos are for unclaimed:unclaimed, which should be name-protected.
-// updateGHNames will update all allocs to cProj, leaving todo's alone as above.
-Future updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
-   vPrint( appState, "Updating GH Names in appAllocs ");
+// updateHostNames will update all allocs to cProj, leaving todo's alone as above.
+Future updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
+   vPrint( appState, "Updating Host Names in appAllocs ");
 
-   List<GHLoc> colRenames  = [];
-   List<GHLoc> projRenames = [];
+   List<HostLoc> colRenames  = [];
+   List<HostLoc> projRenames = [];
    
    List<Allocation> appAllocs = [];
-   List<GHLoc>      appLocs   = appState.myGHLinks.locations;
+   List<HostLoc>      appLocs   = appState.myHostLinks.locations;
    if( appState.myPEQSummary != null ) { appAllocs = appState.myPEQSummary.allocations; }
 
    print( appLocs );
@@ -337,18 +337,18 @@ Future updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
       if( pact.verb == PActVerb.confirm && pact.action == PActAction.change ) {
          if( pact.note == "Column rename" ) {
             assert( pact.subject.length == 3 );
-            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == pact.subject[0] );
+            HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == pact.subject[0] );
             assert( loc != null );
             // XXX why do I need loc! for projId, but can't have it for active?  funky promotion short-circuit?
-            colRenames.add( new GHLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: loc!.hostProjectId, hostProjectName: loc.hostProjectName,
+            colRenames.add( new HostLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: loc!.hostProjectId, hostProjectName: loc.hostProjectName,
                                        hostColumnId: pact.subject[0], hostColumnName: pact.subject[1], active: loc.active ) );
             vPrint( appState, "... col rename " + pact.subject[1] );
          }
          else if( pact.note == "Project rename" ) {
             assert( pact.subject.length == 3 );
-            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == pact.subject[0] );
+            HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == pact.subject[0] );
             assert( loc != null );
-            projRenames.add( new GHLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: pact.subject[0], hostColumnId: "-1", hostProjectName: pact.subject[1],
+            projRenames.add( new HostLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: pact.subject[0], hostColumnId: "-1", hostProjectName: pact.subject[1],
                                         hostColumnName: loc!.hostColumnName, active: loc.active ) );
             vPrint( appState, "... proj rename " + pact.subject[1] );            
          }
@@ -361,13 +361,13 @@ Future updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    vPrint( appState, "... allocations size: " + appAllocs.length.toString() + " " + colRenames.length.toString() + " " + projRenames.length.toString() );
    for( Allocation alloc in appAllocs ) {
       assert( alloc.categoryBase != null );
-      for( GHLoc proj in projRenames ) {
+      for( HostLoc proj in projRenames ) {
          if( alloc.hostProjectId == proj.hostProjectId ) {
-            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostProjectId == proj.hostProjectId );
+            HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostProjectId == proj.hostProjectId );
             assert( loc != null );
             vPrint( appState, " .. found project name update: " + proj.hostProjectName  + " => " + loc!.hostProjectName );
 
-            // pindex can be -1 when there are multiple renames in this ingest stream.  myGHLinks will skip to the final.
+            // pindex can be -1 when there are multiple renames in this ingest stream.  myHostLinks will skip to the final.
             int pindex = alloc.category.indexOf( proj.hostProjectName );
             if( pindex >= 0 ) { alloc.category[pindex] = loc.hostProjectName; }
 
@@ -375,10 +375,10 @@ Future updateGHNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             if( pindex >= 0 ) { alloc.categoryBase![pindex] = loc.hostProjectName; }
          }
       }
-      for( GHLoc col in colRenames ) {
+      for( HostLoc col in colRenames ) {
          if( alloc.hostProjectId == col.hostProjectId ) {
             
-            GHLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == col.hostColumnId );
+            HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == col.hostColumnId );
             assert( loc != null );
             vPrint( appState, " .. found Column name update: " + col.hostColumnName + " => " + loc!.hostColumnName );
 
@@ -431,7 +431,7 @@ Future _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo
       }
       else if( pact.verb == PActVerb.reject ) {
          // rem propose, add plan
-         GHLoc loc = appState.myGHLinks.locations.firstWhere( (a) => a.hostColumnId == pact.subject.last );
+         HostLoc loc = appState.myHostLinks.locations.firstWhere( (a) => a.hostColumnId == pact.subject.last );
          assert( loc != null );
          List<String> subDest = new List<String>.from( subBase ); subDest.last = loc.hostColumnName;
          
@@ -461,7 +461,7 @@ Future _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo
 
    if( newType == enumToStr( PeqType.grant )) {
       postData['AccrualDate'] = pact.entryDate;
-      String ceUID = appState.idMapGH[ pact.hostUserId ];
+      String ceUID = appState.idMapHost[ pact.hostUserId ];
       if( ceUID == "" ) { ceUID = "HostUSER: " + pact.hostUserName; }  // XXX formalize
       postData['CEGrantorId'] = ceUID;
    }
@@ -640,7 +640,7 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
       
       // Get name of new column home
       assert( pact.subject.length == 3 );
-      GHLoc loc = appState.myGHLinks.locations.firstWhere( (a) => a.hostProjectId == pact.subject[1] && a.hostColumnId == pact.subject[2] );
+      HostLoc loc = appState.myHostLinks.locations.firstWhere( (a) => a.hostProjectId == pact.subject[1] && a.hostColumnId == pact.subject[2] );
       assert( loc != null );
       
       // peq.psub IS the correct initial home if unclaimed, and right after the end of unclaimed residence.  Column is correct afterwards.
@@ -887,7 +887,7 @@ Future _change( context, container, pact, peq, List<Future> dynamo, assignees, a
    }
    else if( pact.note == "Column rename" ) {    // XXX formalize this
       // These arrive as viable pact, and -1 as peq.  Pact subject is [ colId, oldName, newName ]
-      // ceServer handles locs in dynamo.  myGHLinks.locations is current.
+      // ceServer handles locs in dynamo.  myHostLinks.locations is current.
       vPrint( appState, "Column rename handled at start of todo processing" );
       dynamo.add( updateColumnName( context, container, pact.subject ) );
       // This has the potential to impact any future operation on peqs.  Rather than look for each, wait for all.
@@ -898,7 +898,7 @@ Future _change( context, container, pact, peq, List<Future> dynamo, assignees, a
    }
    else if( pact.note == "Project rename" ) {    // XXX formalize this
       // These arrive as viable pact, and -1 as peq.  Pact subject is [ projId, oldName, newName ]
-      // ceServer handles locs in dynamo.  myGHLinks.locations is current.
+      // ceServer handles locs in dynamo.  myHostLinks.locations is current.
       vPrint( appState, "Project rename handled at start of todo processing" );
       dynamo.add( updateProjectName( context, container, pact.subject ) );
       // This has the potential to impact any future operation on peqs.  Rather than look for each, wait for all.
@@ -969,8 +969,8 @@ note:  [DAcWeodOvb, 13302090, 15978796]
 // XXX need to be updating PEQ in AWS after processing!  Ouch... slow, but could speed it up..
 // XXX Hmm.. why is "allocated" treated differently than "planned", "proposed" and "accrued" ?  that's why the length sort.
 //     Fix this before timestamp sort.  also interacts with adjustSummaryAlloc
-// XXX this may need updating if allow 1:many ce/gh association.  maybe limit ce login to 1:1 - pick before see stuff.
-// Assignees use gh names instead of ce ids - user comfort
+// XXX this may need updating if allow 1:many ce/host association.  maybe limit ce login to 1:1 - pick before see stuff.
+// Assignees use host names instead of ce ids - user comfort
 
 // ---------------
 // ceServer will...
@@ -1062,7 +1062,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
    // First, update myHostLinks.locs, since ceFlutter may have been sitting in memory long enough to be out of date.
    vPrint( appState, "Start myLoc update" );
-   Future myLocs = fetchGHLinkage( context, container, { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }} );
+   Future myLocs = fetchHostLinkage( context, container, { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }} );
    
    vPrint( appState, "Start pact update" );
    final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "CEProjectId": "$ceProjId" }' );
@@ -1126,10 +1126,10 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    await fixOutOfOrder( todos, context, container );
 
    vPrint( appState, "Complete myLoc update " + todos.length.toString());
-   appState.myGHLinks  = await myLocs;
-   if( appState.myGHLinks == null ) { return; }
+   appState.myHostLinks  = await myLocs;
+   if( appState.myHostLinks == null ) { return; }
    
-   await updateGHNames( todos, appState );
+   await updateHostNames( todos, appState );
 
    List<Future> dynamo = [];
    var pending = {};

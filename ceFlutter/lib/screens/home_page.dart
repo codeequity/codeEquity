@@ -56,7 +56,7 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
-   Widget _addGHAcct() {
+   Widget _addHostAcct() {
       return makeActionButtonFixed(
          appState,
          "Add",
@@ -77,9 +77,9 @@ class _CEHomeState extends State<CEHomePage> {
          onTap: () async
          {
             appState.selectedRepo = repoName;
-            for( final gha in appState.myGHAccounts ) {
-               for( final ceProj in gha.ceProjectIds ) {
-                  for( final repo in gha.ceProjRepos[ceProj] ?? [] ) {
+            for( final hosta in appState.myHostAccounts ) {
+               for( final ceProj in hosta.ceProjectIds ) {
+                  for( final repo in hosta.ceProjRepos[ceProj] ?? [] ) {
                      if( repoName == repo ) {
                         appState.selectedCEProject = ceProj;
                         break;
@@ -98,7 +98,7 @@ class _CEHomeState extends State<CEHomePage> {
    }
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-   List<Widget> _makeRepos( gha ) {
+   List<Widget> _makeRepos( hosta ) {
       print( "MakeRepos" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;              // 2*container + button + pad
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
@@ -110,7 +110,7 @@ class _CEHomeState extends State<CEHomePage> {
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
          children: <Widget>[ makeTitleText( appState, "GitHub Repositories", textWidth, false, 1 ),
                              Container( width: 10 ),
-                             _addGHAcct(),
+                             _addHostAcct(),
                              Container( width: 10 ),
             ]);
          
@@ -119,12 +119,12 @@ class _CEHomeState extends State<CEHomePage> {
 
       // XXX
       print( "XXX fix makerepo" );
-      if( gha != -1 ) {
+      if( hosta != -1 ) {
          // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
-         // if( gha.ceProject.any(( bool p ) => !p )) {}
-         for( var i = 0; i < gha.futureCEProjects.length; i++ ) {
-            //if( !gha.ceProject[i] ) {
-            repoChunks.add( _makeRepoChunk( gha.futureCEProjects[i] ));
+         // if( hosta.ceProject.any(( bool p ) => !p )) {}
+         for( var i = 0; i < hosta.futureCEProjects.length; i++ ) {
+            //if( !hosta.ceProject[i] ) {
+            repoChunks.add( _makeRepoChunk( hosta.futureCEProjects[i] ));
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
                //}
          }
@@ -149,7 +149,7 @@ class _CEHomeState extends State<CEHomePage> {
          () async
          {
             await updateProjects( context, container );
-            setState(() => appState.ghUpdated = true );            
+            setState(() => appState.hostUpdated = true );            
          }); 
       
       Widget buttonRow = Row(
@@ -168,7 +168,7 @@ class _CEHomeState extends State<CEHomePage> {
    }
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-   List<Widget> _makeCEProjs( gha ) {
+   List<Widget> _makeCEProjs( hosta ) {
       print( "MakeCEProj" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
@@ -187,10 +187,10 @@ class _CEHomeState extends State<CEHomePage> {
       repoChunks.add( _ceProjBar );
       chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
-      for( var i = 0; i < gha.ceProjectIds.length; i++ ) {
-         repoChunks.add( _makeRepoChunk( gha.ceProjectIds[i] ));
+      for( var i = 0; i < hosta.ceProjectIds.length; i++ ) {
+         repoChunks.add( _makeRepoChunk( hosta.ceProjectIds[i] ));
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         var repos = gha.ceProjRepos[ gha.ceProjectIds[i] ];
+         var repos = hosta.ceProjRepos[ hosta.ceProjectIds[i] ];
          for( var j = 0; j < repos.length; j++ ) {
             repoChunks.add( _makeRepoChunk( repos[j] ));
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
@@ -206,30 +206,30 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
    // Keep LHS panel between 250 and 300px, no matter what.
-   Widget _showGHAccts() {
+   Widget _showHostAccts() {
       List<Widget> acctList = [];
 
       // Whitespace
       acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
       runningLHSHeight += appState.BASE_TXT_HEIGHT;
       
-      print( "SHOW " + appState.ghUpdated.toString() );
-      if( appState.myGHAccounts != null || appState.ghUpdated ) {
+      print( "SHOW " + appState.hostUpdated.toString() );
+      if( appState.myHostAccounts != null || appState.hostUpdated ) {
 
-         if( appState.myGHAccounts.length <= 0 ) {
+         if( appState.myHostAccounts.length <= 0 ) {
             acctList.addAll( _makeRepos( -1 ) );
          }
          else {
-            for( final gha in appState.myGHAccounts ) {
-               acctList.addAll( _makeCEProjs( gha ));
-               acctList.addAll( _makeRepos( gha ));
+            for( final hosta in appState.myHostAccounts ) {
+               acctList.addAll( _makeCEProjs( hosta ));
+               acctList.addAll( _makeRepos( hosta ));
             }
          }
       }
       
       acctList.addAll( _makeRefresh() );
       
-      appState.ghUpdated = false;
+      appState.hostUpdated = false;
       final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
       final wrapPoint = lhsMaxWidth + vBarWidth + rhsPaneMinWidth;
       
@@ -270,7 +270,7 @@ class _CEHomeState extends State<CEHomePage> {
                children: <Widget>[
                   Container(
                      color: Colors.white,
-                     child: _showGHAccts()
+                     child: _showHostAccts()
                      ),
                   const VerticalDivider(
                      color: Colors.grey,

@@ -77,7 +77,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       if( appState.verbose >= 2 ) { print( "SummaryFrame Disposessed!" ); }
    }
 
-   // XXX ghUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
+   // XXX hostUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
    //     detail page..?
    _pactDetail( path, width, depthM1, isAlloc ) {
@@ -85,10 +85,10 @@ class _CESummaryState extends State<CESummaryFrame> {
       return GestureDetector(
          onTap: () async 
          {
-            String ghUserLogin = path[ depthM1 ];
+            String hostUserLogin = path[ depthM1 ];
             if( isAlloc )                          { appState.selectedUser = appState.ALLOC_USER; }
-            else if( ghUserLogin == "Unassigned" ) { appState.selectedUser = appState.UNASSIGN_USER; }  // XXX formalize
-            else                                   { appState.selectedUser = ghUserLogin; }
+            else if( hostUserLogin == "Unassigned" ) { appState.selectedUser = appState.UNASSIGN_USER; }  // XXX formalize
+            else                                   { appState.selectedUser = hostUserLogin; }
             appState.userPActUpdate = true;
             if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
             widget.detailCallback( path );
