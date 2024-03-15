@@ -28,8 +28,9 @@ enum PActAction { add, delete, notice, accrue, relocate, change }        // (add
 class PEQAction {
    final String  id;
    final String  ceUID;            // ??? just .. metadata here?
-   final String  hostUserName;       // actor.  i.e. grantor, proposer, confirmer, etc.
-   final String  ghRepo;
+   final String  hostUserName;     // actor.  i.e. grantor, proposer, confirmer, etc.
+   final String  hostUserId;       // actor.  i.e. grantor, proposer, confirmer, etc.
+   final String  ceProjectId;
 
    final PActVerb   verb;      
    final PActAction action;           
@@ -47,12 +48,12 @@ class PEQAction {
    final bool    locked;           // is this action currently being ingested
    final int     timeStamp;        // for operation sequencing control
 
-   PEQAction({required this.id, required this.ceUID, required this.hostUserName, required this.ghRepo,
+   PEQAction({required this.id, required this.ceUID, required this.hostUserName, required this.hostUserId, required this.ceProjectId,
             required this.verb, required this.action, required this.subject,
             required this.note, required this.entryDate,
             required this.ingested, required this.locked, required this.timeStamp });
             
-   dynamic toJson() => {'id': id, 'ceUID': ceUID, 'hostUserName': hostUserName, 'ghRepo': ghRepo,
+   dynamic toJson() => {'id': id, 'ceUID': ceUID, 'hostUserName': hostUserName, 'hostUserId': hostUserId, 'ceProjectId': ceProjectId,
                            'verb': enumToStr(verb), 'action': enumToStr(action), 'subject': subject,
                            'note': note, 'entryDate': entryDate, 
                            'ingested': ingested, 'locked': locked, 'timeStamp': timeStamp };
@@ -65,10 +66,11 @@ class PEQAction {
       
       // DynamoDB is not camelCase
       return PEQAction(
-         id:         json['PEQActionId'],
-         ceUID:      json['CEUID'],
-         hostUserName: json['GHUserName'],
-         ghRepo:     json['GHRepo'],
+         id:           json['PEQActionId'],
+         ceUID:        json['CEUID'] ?? "",
+         hostUserName: json['HostUserName'] ?? "",
+         hostUserId:   json['HostUserId']   ?? "",
+         ceProjectId:  json['CEProjectId'],
 
          verb:       enumFromStr<PActVerb>(   json['Verb'], PActVerb.values ),
          action:     enumFromStr<PActAction>( json['Action'], PActAction.values ),
@@ -85,7 +87,7 @@ class PEQAction {
    
    String toString() {
       String res = "\nPEQAction for ceUserId: " + ceUID;
-      res += "\n    hostUser: " + hostUserName + ", repo: " + ghRepo;
+      res += "\n    hostUser: " + hostUserName + " " + hostUserId + ", ceProjectId: " + ceProjectId;
       res += "\n    " + enumToStr(verb) + ", " + enumToStr(action) + " " + subject.toString();
       // res += "\n    entry made: " + entryDate;
       // res += "\n    ingested, locked, timestamp: " + ingested.toString() + " " + locked.toString() + " " + timeStamp.toString();

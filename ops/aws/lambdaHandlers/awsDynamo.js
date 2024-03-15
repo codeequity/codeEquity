@@ -78,7 +78,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
     else if( endPoint == "RemoveEntries")  { resultPromise = removeEntries( rb.tableName, rb.ids ); }
     else if( endPoint == "GetID")          { resultPromise = getCEUIDFromCE( username ); }             // username is local
-    else if( endPoint == "GetCEUID")       { resultPromise = getCEUIDFromHost( rb.HostUserName ); }           // return varies on no_content
+    else if( endPoint == "GetCEUID")       { resultPromise = getCEUIDFromHost( rb.HostUserName, rb.HostUserId ); }           // return varies on no_content
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "CheckHostPop")   { resultPromise = checkHostPop( rb.CEProjectId, rb.RepoId ); }
@@ -457,12 +457,18 @@ async function getCEUIDFromCE( username ) {
 }
 
 // get from host table
-async function getCEUIDFromHost( hostUser ) {
-    const params = {
-        TableName: 'CEHostUser',
-        FilterExpression: 'HostUserName = :uname',
-        ExpressionAttributeValues: { ":uname": hostUser }
-    };
+async function getCEUIDFromHost( hostUserName, hostUserId ) {
+    let params = {};
+    params.TableName = 'CEHostUser';
+
+    if( typeof hostUserId !== 'undefined' ) {
+	params.FilterExpression = 'HostUserId = :uname';
+	params.ExpressionAttributeValues = { ":uname": hostUserId };
+    }
+    else {
+	params.FilterExpression = 'HostUserName = :uname';
+	params.ExpressionAttributeValues = { ":uname": hostUserName };
+    }  
 
     let promise = paginatedScan( params );
     return promise.then((host) => {
@@ -656,6 +662,7 @@ async function putPeq( newPEQ ) {
         TableName: 'CEPEQs',
 	Item: {
 	    "PEQId":        newPEQ.PEQId,
+	    "CEProjectId":  newPEQ.CEProjectId,
 	    "CEHolderId":   newPEQ.CEHolderId,
 	    "HostHolderId": newPEQ.HostHolderId,
 	    "CEGrantorId":  newPEQ.CEGrantorId,
