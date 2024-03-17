@@ -10,18 +10,18 @@ import 'package:ceFlutter/models/app_state.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
 
-class CEAddGHPage extends StatefulWidget {
-   CEAddGHPage({Key? key}) : super(key: key);
+class CEAddHostPage extends StatefulWidget {
+   CEAddHostPage({Key? key}) : super(key: key);
 
   @override
-  _CEAddGHState createState() => _CEAddGHState();
+  _CEAddHostState createState() => _CEAddHostState();
 }
 
-class _CEAddGHState extends State<CEAddGHPage> {
+class _CEAddHostState extends State<CEAddHostPage> {
 
    late var      container;
    late AppState appState;
-   late bool     addGHAcct;
+   late bool     addHostAcct;
 
    late TextEditingController pat;
 
@@ -31,7 +31,7 @@ class _CEAddGHState extends State<CEAddGHPage> {
    void initState() {
       super.initState();
 
-      addGHAcct = false;
+      addHostAcct = false;
    }
 
    @override
@@ -70,16 +70,18 @@ class _CEAddGHState extends State<CEAddGHPage> {
          );
    }
       
-   
+
+   // NOTE:
+   // Down the road should split *GH* out, and connect alternate code host repositories
    Widget _makeAssociateGH() {
 
-      // XXX This is not clearly true.  Need PAT each time refresh GH repos, since have to use listRepositories.
+      // XXX This is not clearly true.  Need PAT each time refresh Host repos, since have to use listRepositories.
       // XXX <Profile> should be clickable, take you to profile.
       String ghExplain   = "CodeEquity will authenticate your account with Github one time only.  ";
       ghExplain         += "You can undo this association at any time under <Profile>.  ";
       ghExplain         += "Your Personal Access Token allows CodeEquity to make a secure connection to GitHub.";
 
-      // XXX <here> should be clickable, take you to GH page.
+      // XXX <here> should be clickable, take you to Host page.
       String patExplain  = "To create a Personal Access Token in GitHub, for CodeEquity, follow the instructions <here>.";
          
       return Center(

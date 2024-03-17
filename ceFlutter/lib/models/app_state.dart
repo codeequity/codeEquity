@@ -34,24 +34,24 @@ class AppState {
    User?            cogUser;
 
    // Dev aid
-   late int verbose;           // controls how much is printed to terminal. 0 hardly anything. 3 everything.
+   late int verbose;                           // controls how much is printed to terminal. 0 hardly anything. 3 everything.
    
-   late bool newUser;          // signup: newuser creating a login has some special requirements during setup
+   late bool newUser;                          // signup: newuser creating a login has some special requirements during setup
    
-   late String apiBasePath;                         // where to find lambda interface to aws
+   late String apiBasePath;                    // where to find lambda interface to aws
    late double screenHeight;
    late double screenWidth;
 
    // App logic   
-   late bool loaded;                              // control expensive aspects of state initialization
+   late bool loaded;                           // control expensive aspects of state initialization
    late String userId;
 
-   late Map< String, String > idMapHost;         // host userid to CE user id
+   late Map< String, String > idMapHost;       // host userid to CE user id
    
-   late List<PEQ>       myPEQs;                // ??? 
-   late List<PEQAction> myPEQActions;          // ???
-   late PEQSummary?     myPEQSummary;          // XXX need 1 proj, one my per repo
-   late Linkage?        myHostLinks;             // Current project/column disposition for current repo in github
+   late List<PEQ>       myPEQs;                // ??? XXX
+   late List<PEQAction> myPEQActions;          // ??? XXX
+   late PEQSummary?     myPEQSummary;          // Summary info for the selectedCEProject
+   late Linkage?        myHostLinks;           // Current project/column disposition per ceProject
    late bool peqUpdated;
 
    late List<HostAccount> myHostAccounts;   

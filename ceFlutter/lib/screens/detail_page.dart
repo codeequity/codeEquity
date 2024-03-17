@@ -169,7 +169,7 @@ class _CEDetailState extends State<CEDetailPage> {
    // Active only, for now.
    void rebuildPActions( container, context ) async {
 
-      print( "Rebuild PActions" );
+      print( "Rebuild PActions" + category.toString() );
 
       // Get all peqs for user.  Then, pare the list down to match selection
       // NOTE: allocations, unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.  XXX

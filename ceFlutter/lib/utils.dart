@@ -327,7 +327,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                onPressed: ()
                {
                   if( currentPage == "Detail" ) { return; }
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["a", "b"] ));
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
                   Navigator.push( context, newPage);
                },
                iconSize: iconSize,

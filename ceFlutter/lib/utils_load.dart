@@ -507,6 +507,7 @@ Future<void> reloadMyProjects( context, container ) async {
    print( appState.myHostAccounts );
 }
 
+// NOTE: GitHub-specific
 // Called upon refresh.. maybe someday on signin (via app_state_container:finalizeUser)
 // XXX This needs to check if PAT is known, query.
 // XXX update docs, pat-related
@@ -533,6 +534,7 @@ Future<void> updateProjects( context, container ) async {
                showToast( "Github validation failed.  Please try again." );
             });
 
+      /*
       List<String> repos = [];
       var repoStream =  await github.repositories.listRepositories( type: 'all' );
       print( "Repo listen" );
@@ -543,13 +545,13 @@ Future<void> updateProjects( context, container ) async {
       print( "Repo done " + repos.toString() );
 
       // acct.repos = repos;
+      */
 
-      // XXX NOPE, repo-centric
+      
       // write to dynamo.
       String newHostA = json.encode( acct );
       String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true", "pat": ""  }';
-      print( "XXX Update hostAccounts to AWS needs work" );
-      // await updateDynamo( context, container, postData, "PutHostA" );
+      await updateDynamo( context, container, postData, "PutHostA" );
    }
 
    await reloadMyProjects( context, container );
@@ -573,9 +575,8 @@ Future<void> updateUserPeqs( container, context ) async {
    String uname = appState.selectedUser;
    if( uname == appState.ALLOC_USER || uname == appState.UNASSIGN_USER ) { uname = ""; }
    
-   String rname = appState.selectedRepo;
    String cep   = appState.selectedCEProject;
-   print( "Building detail data for " + uname + ":" + rname );
+   print( "Building detail data for " + uname + ":" + cep );
 
    if( appState.selectedUser == appState.ALLOC_USER ) {
       appState.userPeqs[appState.selectedUser] =
@@ -625,6 +626,10 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
       bool newLogin = true;
       appState.myHostAccounts.forEach((acct) => newLogin = ( newLogin && ( acct.hostUserName != patLogin! )) );
 
+
+      // XXX This is old, wrong.
+      //     must rebuild to provide Map<String, List<String>> ceProjRepos in hostAccounts, which requires ceProj.  revisit
+      
       if( newLogin ) {
          newAssoc = true;
          
@@ -643,20 +648,15 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          print( "Repo done " + repos.toString() );
    
          String pid = randAlpha(10);
-         // XXX nope
-         // HostAccount myHostAcct = new HostAccount( hostUserId: pid, ceUserId: appState.userId, hostUserName: patLogin!, repos: repos );
-         print( "XXX NYI kjsdf-1" );
+         HostAccount myHostAcct = new HostAccount( hostUserId: pid, ceUserId: appState.userId, hostUserName: patLogin!, repos: repos );
 
-         // XXX nope
-         // String newHostA = json.encode( myHostAcct );
-         // String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "false", "pat": $personalAccessToken }';
-         // await updateDynamo( context, container, postData, "PutHostA" );
-         print( "XXX NYI kjsdf-2" );
+         String newHostA = json.encode( myHostAcct );
+         String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "false", "pat": $personalAccessToken }';
+         await updateDynamo( context, container, postData, "PutHostA" );
 
          await reloadMyProjects( context, container );
-         // if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
-         // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "PersonId": "${appState.userId}"  }' );
-         print( "XXX NYI kjsdf-3" );
+         if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
+         appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "PersonId": "${appState.userId}"  }' );
 
       }
 

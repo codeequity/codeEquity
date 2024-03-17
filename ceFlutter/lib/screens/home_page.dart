@@ -10,7 +10,7 @@ import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
-import 'package:ceFlutter/screens/add_gh_page.dart';
+import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 
 class CEHomePage extends StatefulWidget {
@@ -63,7 +63,7 @@ class _CEHomeState extends State<CEHomePage> {
          buttonWidth,
          () async
          {
-            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddGHPage());
+            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddHostPage());
             Navigator.push( context, newPage );
          });
    }
@@ -120,7 +120,7 @@ class _CEHomeState extends State<CEHomePage> {
       // XXX
       print( "XXX fix makerepo" );
       if( hosta != -1 ) {
-         // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
+         // Do we have any regular Host projects?  Hmm.. no matter.  want this present anyway.
          // if( hosta.ceProject.any(( bool p ) => !p )) {}
          for( var i = 0; i < hosta.futureCEProjects.length; i++ ) {
             //if( !hosta.ceProject[i] ) {

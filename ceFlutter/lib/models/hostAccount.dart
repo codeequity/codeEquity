@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+// Combines dynamo:CEHostUser with dynamo:CEProjects
 class HostAccount {
    String         hostPlatform;
    String         hostUserName;
