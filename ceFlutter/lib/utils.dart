@@ -232,6 +232,16 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
 }
 
 
+Widget makeIndentedActionText( appState, title, width, wrap, lines ) {
+   return Padding(
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD + appState.TINY_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
+      child: Container( width: width,
+                        height: appState.BASE_TXT_HEIGHT*lines,   
+                        key: Key( title ),
+                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 14, color: appState.BUTTON_COLOR, fontWeight: FontWeight.bold))));
+}
+
 Widget makeActionText( appState, title, width, wrap, lines ) {
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),

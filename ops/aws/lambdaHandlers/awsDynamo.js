@@ -450,9 +450,12 @@ async function getCEUIDFromCE( username ) {
 
     let personPromise = paginatedScan( paramsP );
     return personPromise.then((persons) => {
-	assert(persons.length == 1 );
-	console.log( "Found CEUserId ", persons[0].CEUserId );
-	return success( persons[0].CEUserId );
+	if( persons.length == 0 )     { return NO_CONTENT; }
+	else if( persons.length > 1 ) { return BAD_SEMANTICS; }
+	else {
+	    console.log( "Found CEUserId ", persons[0].CEUserId );
+	    return success( persons[0].CEUserId );
+	}
     });
 }
 
@@ -484,8 +487,22 @@ async function getCEUIDFromHost( hostUserName, hostUserId ) {
 }
 
 async function putPerson( newPerson ) {
-    // console.log('Put Person!', newPerson.firstName );
+    // XXX Expand error code for this - might be common
 
+    if( newPerson.email == "" || newPerson.userName == "" || newPerson.id == "" ) {
+	console.log( "Need both username and email.", newPerson.userName, newPerson.email, newPerson.id );
+	return BAD_SEMANTICS; 
+    }
+    
+    // XXX getEntry is conjunction.  If allow disjunction, this would avoid a call
+    // First verify person does not exist already
+    let ceUID = await getCEUIDFromCE( newPerson.userName );
+    let origPerson = await getEntry( "CEPeople", { Email: newPerson.email } );
+    if( ceUID.statusCode != 204 || origPerson.statusCode != 204 ) {
+	console.log( "person already exists, failing." );
+	return BAD_SEMANTICS; 
+    }
+    
     const params = {
 	TableName: 'CEPeople',
 	Item: {
@@ -670,7 +687,6 @@ async function putPeq( newPEQ ) {
 	    "Amount":       newPEQ.Amount,
 	    "AccrualDate":  newPEQ.AccrualDate,
 	    "VestedPerc":   newPEQ.VestedPerc,
-	    "CEProjectId":  newPEQ.CEProjectId,
 	    "HostProjectSub": newPEQ.HostProjectSub,
 	    "HostProjectId":  newPEQ.HostProjectId,
 	    "HostIssueId":    newPEQ.HostIssueId,

@@ -19,6 +19,7 @@ import 'package:ceFlutter/ingest.dart';
 import 'package:ceFlutter/screens/launch_page.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 
+import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
@@ -304,6 +305,26 @@ Future<bool> updateProjectName( context, container, guide ) async {
       else { return false; }
    }
 }
+
+Future<List<CEProject>> fetchCEProjects( context, container ) async {
+   String shortName = "fetchCEProjects";
+   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEProjects", "query": { "empty": "" }}';
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      List<CEProject> ceps = l.map( (sketch)=> sketch == -1 ? CEProject.empty() : CEProject.fromJson(sketch) ).toList();
+      return ceps;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no CEProjects found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchCEProjects( context, container ); }
+      else { return []; }
+   }
+}
+
 
 Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    String shortName = "fetchPEQs";
@@ -622,31 +643,40 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
    bool newAssoc = false;
    if( patLogin != "" && patLogin != null ) {
       print( "Goot, Got Auth'd.  " + patLogin! );
+      newAssoc = true;
+      appState.myHostAccounts.forEach((acct) => newAssoc = ( newAssoc && ( acct.hostUserName != patLogin! )) );
       
-      bool newLogin = true;
-      appState.myHostAccounts.forEach((acct) => newLogin = ( newLogin && ( acct.hostUserName != patLogin! )) );
+      // Map<String, List<String>> ceProjRepos in hostAccounts, which requires ceProj.  revisit
 
-
-      // XXX This is old, wrong.
-      //     must rebuild to provide Map<String, List<String>> ceProjRepos in hostAccounts, which requires ceProj.  revisit
-      
-      if( newLogin ) {
-         newAssoc = true;
+      if( newAssoc ) {
+         // At this point, we are connected with GitHub, have PAT and host login.  Separately, we have a CEPerson.
+         // CEHostUser may or may not exist, depending on if the user has been active on the host with peqs.
+         // Either way, CEHostUser and CEPeople are not yet connected (i.e. CEHostUser.ceuid is "")
          
+         // XXX
          // This only returns github accounts that are owned by current user(!).  Actually want subscriptions too.
          // String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
          // repos = await getSubscriptions( container, subUrl );
-         
+
+         // GitHub does not know ceProjectId.  Get repos from GH... 
          List<String> repos = [];
          print( "Repo stream" );
          var repoStream =  await github.repositories.listRepositories( type: 'all' );
-         print( "Repo listen" );
          await for (final r in repoStream) {
             print( 'Repo: ${r.fullName}' );
             repos.add( r.fullName );
          }
          print( "Repo done " + repos.toString() );
-   
+
+         // then check which are associated with which ceProjects.  The rest are in futureProjects.
+         final ceps = await fetchCEProjects( context, container );
+
+         // XXX do this on the server?  shipping all this data is not scalable
+         print( ceps.toString() );
+         // XXX
+         assert( false );
+
+         /*
          String pid = randAlpha(10);
          HostAccount myHostAcct = new HostAccount( hostUserId: pid, ceUserId: appState.userId, hostUserName: patLogin!, repos: repos );
 
@@ -657,8 +687,9 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          await reloadMyProjects( context, container );
          if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
          appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "PersonId": "${appState.userId}"  }' );
-
+         */
       }
+
 
    }
    return newAssoc;

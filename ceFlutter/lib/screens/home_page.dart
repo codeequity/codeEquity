@@ -59,7 +59,7 @@ class _CEHomeState extends State<CEHomePage> {
    Widget _addHostAcct() {
       return makeActionButtonFixed(
          appState,
-         "Add",
+         "Go",
          buttonWidth,
          () async
          {
@@ -70,17 +70,26 @@ class _CEHomeState extends State<CEHomePage> {
 
    
    // This GD opens and closes peqSummary.
-   Widget _makeRepoChunk( String repoName ) {
-      print( "Chunking " + repoName );
+   Widget _makeChunk( String itemName, { ceProj = false } ) {
       final textWidth = appState.screenWidth * .4;
+      Widget itemTxt = Container( width: 1, height: 1 );
+      if( ceProj ) {
+         print( "Chunking ceProj " + itemName );
+         itemTxt = makeActionText( appState, itemName, textWidth, false, 1 );
+      }
+      else {
+         print( "Chunking repo " + itemName );
+         itemTxt = makeIndentedActionText( appState, itemName, textWidth, false, 1 );
+      }
+      
       return GestureDetector(
          onTap: () async
          {
-            appState.selectedRepo = repoName;
+            appState.selectedRepo = itemName;
             for( final hosta in appState.myHostAccounts ) {
                for( final ceProj in hosta.ceProjectIds ) {
                   for( final repo in hosta.ceProjRepos[ceProj] ?? [] ) {
-                     if( repoName == repo ) {
+                     if( itemName == repo ) {
                         appState.selectedCEProject = ceProj;
                         break;
                      }
@@ -93,10 +102,11 @@ class _CEHomeState extends State<CEHomePage> {
             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
             Navigator.push( context, newPage );
          },
-         child: makeActionText( appState, repoName, textWidth, false, 1 )
+         child: itemTxt
          );
    }
-   
+
+   // XXX host-specific
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeRepos( hosta ) {
       print( "MakeRepos" );
@@ -105,33 +115,38 @@ class _CEHomeState extends State<CEHomePage> {
       List<Widget> repoChunks = [];
       var chunkHeight = 0.0;
 
-      Widget _repoBar = Row(
+      Widget _connectBar = Row(
          crossAxisAlignment: CrossAxisAlignment.center,
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( appState, "GitHub Repositories", textWidth, false, 1 ),
+         children: <Widget>[ makeTitleText( appState, "Connect to GitHub", textWidth, false, 1 ),
                              Container( width: 10 ),
                              _addHostAcct(),
                              Container( width: 10 ),
             ]);
-         
-      repoChunks.add( _repoBar );
-      chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
-      // XXX
-      print( "XXX fix makerepo" );
-      if( hosta != -1 ) {
-         // Do we have any regular Host projects?  Hmm.. no matter.  want this present anyway.
-         // if( hosta.ceProject.any(( bool p ) => !p )) {}
-         for( var i = 0; i < hosta.futureCEProjects.length; i++ ) {
-            //if( !hosta.ceProject[i] ) {
-            repoChunks.add( _makeRepoChunk( hosta.futureCEProjects[i] ));
+      bool addedMore = false;
+      if( hosta == -1 ) {
+         repoChunks.add( _connectBar );
+         chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         addedMore = true;
+      }
+      else {
+         if( hosta.futureCEProjects.length > 0 ) {
+            repoChunks.add( makeTitleText( appState, "Future CodeEquity Projects", textWidth, false, 1 ) );
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-               //}
+            addedMore = true;
+         }
+         for( var i = 0; i < hosta.futureCEProjects.length; i++ ) {
+            repoChunks.add( _makeChunk( hosta.futureCEProjects[i] ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+            addedMore = true;
          }
       }
-      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
-      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      if( addedMore ) {
+         repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+         repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+         repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      }
       chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
 
       runningLHSHeight += chunkHeight;
@@ -144,7 +159,7 @@ class _CEHomeState extends State<CEHomePage> {
       final textWidth = min( lhsPaneMaxWidth - (2*appState.FAT_PAD + appState.TINY_PAD), appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       Widget button = makeActionButtonFixed(
          appState,
-         "Refresh Repo List",
+         "Refresh Projects",
          textWidth,
          () async
          {
@@ -172,7 +187,7 @@ class _CEHomeState extends State<CEHomePage> {
       print( "MakeCEProj" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
-      List<Widget> repoChunks = [];
+      List<Widget> chunks = [];
       var chunkHeight = 0.0;
 
       Widget _ceProjBar = Row(
@@ -184,25 +199,25 @@ class _CEHomeState extends State<CEHomePage> {
                              Container( width: 10 ),
             ]);
          
-      repoChunks.add( _ceProjBar );
+      chunks.add( _ceProjBar );
       chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
       for( var i = 0; i < hosta.ceProjectIds.length; i++ ) {
-         repoChunks.add( _makeRepoChunk( hosta.ceProjectIds[i] ));
+         chunks.add( _makeChunk( hosta.ceProjectIds[i], ceProj:true ));
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
          var repos = hosta.ceProjRepos[ hosta.ceProjectIds[i] ];
          for( var j = 0; j < repos.length; j++ ) {
-            repoChunks.add( _makeRepoChunk( repos[j] ));
+            chunks.add( _makeChunk( repos[j] ));
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
          }
       }
-      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
-      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      chunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+      chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
       chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
 
       runningLHSHeight += chunkHeight;
-      return repoChunks;
+      return chunks;
    }
 
    // Keep LHS panel between 250 and 300px, no matter what.
@@ -223,11 +238,10 @@ class _CEHomeState extends State<CEHomePage> {
             for( final hosta in appState.myHostAccounts ) {
                acctList.addAll( _makeCEProjs( hosta ));
                acctList.addAll( _makeRepos( hosta ));
+               acctList.addAll( _makeRefresh() );
             }
          }
       }
-      
-      acctList.addAll( _makeRefresh() );
       
       appState.hostUpdated = false;
       final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
