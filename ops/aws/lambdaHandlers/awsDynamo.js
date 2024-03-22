@@ -1216,7 +1216,7 @@ async function putHostA( newHostAcct, update, pat ) {
     if( update == "true" ) {
 	const params = {
             TableName: 'CEHostUser',
-	    Key: { "HostUserId": newHostAcct.id },
+	    Key: { "HostUserId": newHostAcct.hostUserId },
 	    UpdateExpression: 'set CEUserId = :ceoid, HostUserName = :hostun, CEProjectIds = :pid, FutureCEProjects = :fid',
 	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceOwnerId, ':hostun': newHostAcct.hostUserName, ':pid': newHostAcct.ceProjectIds, ':fid': newHostAcct.futureCEProjects }
 	};
@@ -1229,7 +1229,7 @@ async function putHostA( newHostAcct, update, pat ) {
 	const params = {
             TableName: 'CEHostUser',
 	    Item: {
-		"HostUserId":       newHostAcct.id, 
+		"HostUserId":       newHostAcct.hostUserId, 
 		"CEUserId":         newHostAcct.ceOwnerId,
 		"HostUserName":     newHostAcct.hostUserName,
 		"HostPlatform":     newHostAcct.hostPlatform,

@@ -12,10 +12,11 @@ class HostAccount {
 
    HostAccount({required this.hostPlatform, required this.hostUserName, required this.ceUserId, required this.hostUserId,
             required this.ceProjectIds, required this.futureCEProjects, required this.ceProjRepos});
-   
+
+   // Will be going up to dynamo
    dynamic toJson() {
       return { 'hostPlatform': hostPlatform, 'hostUserId': hostUserId, 'ceUserId': ceUserId, 'hostUserName': hostUserName,
-            'ceProjectIds': ceProjectIds, 'futProjs': futureCEProjects, 'ceProjRepos': ceProjRepos };
+            'ceProjectIds': ceProjectIds, 'futureCEProjects': futureCEProjects };
    }
 
    factory HostAccount.fromJson(Map<String, dynamic> json) {

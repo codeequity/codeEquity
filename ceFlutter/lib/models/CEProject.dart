@@ -1,5 +1,6 @@
 import 'package:ceFlutter/utils.dart';
 
+
 class CEProject {
    final String ceProjectId;
    final String ceProjectComponent;
@@ -8,15 +9,16 @@ class CEProject {
    final String organization;
    final String ownerCategory;
    final String projectMgmtSys;
-   final List<Map<String, String>> repositories;  // [ {repoId: "", repoName: "" }, .. ]
+   // final Map<String, String> repositories;  //  {repoName: repoId, repoId: repoName}  (yes, bi-directional)
+   final List<String> repositories;            //  repoName
 
    CEProject({ required this.ceProjectId, required this.ceProjectComponent,  required this.description,
             required this.hostPlatform,  required this.organization,  required this.ownerCategory,  required this.projectMgmtSys,  
             required this.repositories});
 
-   dynamic toJson() => { 'ceProjectId': ceProjectId, 'ceProjectComponent': ceProjectComponent, 'description': description,
-                            'hostPlatform': hostPlatform, 'organization': organization, 'ownerCategory': ownerCategory, 'projectMgmtSys': projectMgmtSys,
-                            'repositories': repositories }; 
+   dynamic toJson() => { 'CEProjectId': ceProjectId, 'CEProjectComponent': ceProjectComponent, 'Description': description,
+                            'HostPlatform': hostPlatform, 'Organization': organization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys,
+                            'Repositories': repositories }; 
 
    // No CEProject found.  return empty 
    factory CEProject.empty() {
@@ -37,11 +39,17 @@ class CEProject {
       var dynamicRepos  = json['HostParts'] ?? {};
       var dynamicRList  = new List<Map<dynamic, dynamic>>.from( dynamicRepos['hostRepositories'] );
 
-      List<Map<String, String>> repos = [];
+      // Because ceProject does not cross hostPlatforms, both repoName and repoId can be assumed to be unique
+      List<String> repos = [];
+      for( final r in dynamicRList ) { repos.add( r['repoName'] ); }
+               
+      /*
+      Map<String, String> repos = {};
       for( final r in dynamicRList ) {
-         repos.add( {"repoName": r['repoName'], "repoId": r['repoId'] } );
+         repos[ r['repoName'] ] = r['repoId'];
+         // repos[ r['repoId']   ] = r['repoName'];
       }
-      
+      */
 
       // DynamoDB is not camelCase
       return CEProject(
