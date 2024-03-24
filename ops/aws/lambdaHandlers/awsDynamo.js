@@ -1218,10 +1218,10 @@ async function putHostA( newHostAcct, update, pat ) {
             TableName: 'CEHostUser',
 	    Key: { "HostUserId": newHostAcct.hostUserId },
 	    UpdateExpression: 'set CEUserId = :ceoid, HostUserName = :hostun, CEProjectIds = :pid, FutureCEProjects = :fid',
-	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceOwnerId, ':hostun': newHostAcct.hostUserName, ':pid': newHostAcct.ceProjectIds, ':fid': newHostAcct.futureCEProjects }
+	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceUserId, ':hostun': newHostAcct.hostUserName, ':pid': newHostAcct.ceProjectIds, ':fid': newHostAcct.futureCEProjects }
 	};
 	
-	console.log( "HostAcct update repos");
+	console.log( "HostAcct update repos", params);
 	const updateCmd = new UpdateCommand( params );	
 	await bsdb.send( updateCmd ); 
     }
@@ -1230,7 +1230,7 @@ async function putHostA( newHostAcct, update, pat ) {
             TableName: 'CEHostUser',
 	    Item: {
 		"HostUserId":       newHostAcct.hostUserId, 
-		"CEUserId":         newHostAcct.ceOwnerId,
+		"CEUserId":         newHostAcct.ceUserId,
 		"HostUserName":     newHostAcct.hostUserName,
 		"HostPlatform":     newHostAcct.hostPlatform,
 		"CEProjectIds":     newHostAcct.ceProjectIds,
@@ -1239,7 +1239,7 @@ async function putHostA( newHostAcct, update, pat ) {
 	    }
 	};
 	
-	console.log( "HostAcct put repos");
+	console.log( "HostAcct put repos", params);
 	const putCmd = new PutCommand( params );
 	
 	await bsdb.send( putCmd ); 
@@ -1253,7 +1253,7 @@ async function putHostA( newHostAcct, update, pat ) {
 	// Majority of cases will be 0 or just a few PEQActions without a CE UID, 
 	// especially since a PEQAction requires a PEQ label.
 	const hostPEQA = await getPEQActionsFromHost( newHostAcct.hostUserName );
-	await hostPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceOwnerId ));
+	await hostPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceUserId ));
 	console.log( "putHostA returning", updated );
     }
 

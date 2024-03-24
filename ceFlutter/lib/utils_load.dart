@@ -213,7 +213,7 @@ Future<String> fetchPAT( context, container, postData, shortName ) async {
    
    if (response.statusCode == 201) {
       final hosta = json.decode(utf8.decode(response.bodyBytes));
-      return hosta['PAT'] ?? failure;
+      return hosta['HostPAT'] ?? failure;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPAT( context, container, postData, shortName ); }
@@ -550,53 +550,92 @@ Future<void> reloadMyProjects( context, container ) async {
 }
 
 // NOTE: GitHub-specific
+// Build the association between ceProjects and github repos by finding all repos on github that user has auth on,
+// then associating those with known repos in aws:CEProjects.
+Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) async {
+   final appState  = container.state;
+
+   // XXX useful?
+   // String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
+   // repos = await getSubscriptions( container, subUrl );
+   
+   // GitHub does not know ceProjectId.  Get repos from GH...
+   // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-organization-repositories
+   // This gets all repos the user is a member of, even if not on top list.  
+   List<String> repos = [];
+   var repoStream =  await github.repositories.listRepositories( type: 'all' );
+   await for (final r in repoStream) {
+      // print( 'Repo: ${r.fullName}' );
+      repos.add( r.fullName );
+   }
+   print( "Found GitHub Repos " + repos.toString() );
+   
+   // then check which are associated with which ceProjects.  The rest are in futureProjects.
+   // XXX do this on the server?  shipping all this data is not scalable
+   final ceps = await fetchCEProjects( context, container );
+   print( ceps.toString() );
+   
+   List<String> futProjs = [];
+   List<String> ceProjs  = [];
+   Map<String, List<String>> ceProjRepos = {};
+   for( String repo in repos ) {
+      var cep = ceps.firstWhereOrNull( (c) => c.repositories.contains( repo ) );
+      if( cep != null && cep.ceProjectId != null ) {
+         ceProjs.add( cep.ceProjectId );
+         ceProjRepos[ cep.ceProjectId ] = cep.repositories;
+         // print( "Ok? " + repo + " " + ceProjRepos.toString() );
+      }
+      else { futProjs.add( repo ); }
+   }
+   
+   // XXX formalize 'GitHub'
+   // XXX Chck if have U_*  if so, has been active on GH, right?
+   
+   // Do not have, can not get, the U_* user id from GH.  initially use login.
+   if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
+   String huid = await getOwnerId( PAT, hostLogin );
+   print( "HOI! " + appState.userId + " " + huid );
+   assert( huid != "-1" );
+   HostAccount myHostAcct = new HostAccount( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.userId, hostUserId: huid, 
+                                             ceProjectIds: ceProjs, futureCEProjects: futProjs, ceProjRepos: ceProjRepos );
+   
+   String newHostA = json.encode( myHostAcct );
+   print( newHostA );
+   String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "false", "pat": "$PAT" }';
+   await updateDynamo( context, container, postData, "PutHostA" );
+}
+
+// NOTE: GitHub-specific
 // Called upon refresh.. maybe someday on signin (via app_state_container:finalizeUser)
 // XXX This needs to check if PAT is known, query.
 // XXX update docs, pat-related
+// XXX formalize
 Future<void> updateProjects( context, container ) async {
    final appState  = container.state;
    
-   // Iterate over all known HostAccounts.
+   // Iterate over all known HostAccounts.  One per host.
    for( HostAccount acct in appState.myHostAccounts ) {
-      
-      // get from host
-      // XXX combine with assocHost?  split out HostUtils?
 
-      // XXX Need ceProjectId, at least, to make this unique.
-      print( "XXX hostUser is not unique" );
+      if( acct.hostPlatform == "GitHub" ) {
       
-      // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
-      var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName } };
-      final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
+         // XXX formalize GitHub
+         // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
+         var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "GitHub" } };
+         final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
          
-      var github = await GitHub(auth: Authentication.withToken( PAT ));   
-      await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })
-         .catchError((e) {
-               print( "Could not validate github acct." + e.toString() );
-               showToast( "Github validation failed.  Please try again." );
-            });
-
-      /*
-      List<String> repos = [];
-      var repoStream =  await github.repositories.listRepositories( type: 'all' );
-      print( "Repo listen" );
-      await for (final r in repoStream) {
-         print( 'Repo: ${r.fullName}' );
-         repos.add( r.fullName );
+         var github = await GitHub(auth: Authentication.withToken( PAT ));
+         await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })
+            .catchError((e) {
+                  print( "Could not validate github acct." + e.toString() + " " + PAT + " " + acct.hostUserName );
+                  showToast( "Github validation failed.  Please try again." );
+               });
+         
+         await _buildCEProjectRepos( context, container, PAT, github, acct.hostUserName );
       }
-      print( "Repo done " + repos.toString() );
-
-      // acct.repos = repos;
-      */
-
-      
-      // write to dynamo.
-      String newHostA = json.encode( acct );
-      String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "update": "true", "pat": ""  }';
-      await updateDynamo( context, container, postData, "PutHostA" );
    }
 
    await reloadMyProjects( context, container );
+   appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
 }
 
 // XXX Only update if dirty.  Only dirty after updatePeq.
@@ -673,10 +712,10 @@ Future<String> getOwnerId( PAT, owner ) async {
 
 
 // XXX rewrite any ceUID or ceHolderId in PEQ, PEQAction that look like: "HOSTUSER: $hostUserName"  XXXX erm?
-Future<bool> associateGithub( context, container, personalAccessToken ) async {
+Future<bool> associateGithub( context, container, PAT ) async {
 
    final appState  = container.state;
-   var github = await GitHub(auth: Authentication.withToken( personalAccessToken ));   
+   var github = await GitHub(auth: Authentication.withToken( PAT ));   
 
    // NOTE id, node_id are available if needed
    // To see what's available, look in ~/.pub-cache/*
@@ -701,58 +740,11 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
          // At this point, we are connected with GitHub, have PAT and host login (not id).  Separately, we have a CEPerson.
          // CEHostUser may or may not exist, depending on if the user has been active on the host with peqs.
          // Either way, CEHostUser and CEPeople are not yet connected (i.e. CEHostUser.ceuid is "")
-         
-         // XXX useful?
-         // String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
-         // repos = await getSubscriptions( container, subUrl );
 
-         // GitHub does not know ceProjectId.  Get repos from GH...
-         // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-organization-repositories
-         // This gets all repos the user is a member of, even if not on top list.  
-         List<String> repos = [];
-         var repoStream =  await github.repositories.listRepositories( type: 'all' );
-         await for (final r in repoStream) {
-            // print( 'Repo: ${r.fullName}' );
-            repos.add( r.fullName );
-         }
-         print( "Found GitHub Repos " + repos.toString() );
-
-         // then check which are associated with which ceProjects.  The rest are in futureProjects.
-         // XXX do this on the server?  shipping all this data is not scalable
-         final ceps = await fetchCEProjects( context, container );
-         print( ceps.toString() );
-
-         List<String> futProjs = [];
-         List<String> ceProjs  = [];
-         Map<String, List<String>> ceProjRepos = {};
-         for( String repo in repos ) {
-            var cep = ceps.firstWhereOrNull( (c) => c.repositories.contains( repo ) );
-            if( cep != null && cep.ceProjectId != null ) {
-               ceProjs.add( cep.ceProjectId );
-               ceProjRepos[ cep.ceProjectId ] = cep.repositories;
-               // print( "Ok? " + repo + " " + ceProjRepos.toString() );
-            }
-            else { futProjs.add( repo ); }
-         }
-
-         // XXX formalize 'GitHub'
-         // XXX Chck if have U_*  if so, has been active on GH, right?
-         
-         // Do not have, can not get, the U_* user id from GH.  initially use login.
-         if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
-         String huid = await getOwnerId( personalAccessToken, patLogin! );
-         print( "HOI! " + appState.userId + " " + huid );
-         assert( huid != "-1" );
-         HostAccount myHostAcct = new HostAccount( hostPlatform: "GitHub", hostUserName: patLogin!, ceUserId: appState.userId, hostUserId: huid, 
-                                                   ceProjectIds: ceProjs, futureCEProjects: futProjs, ceProjRepos: ceProjRepos );
-         
-         String newHostA = json.encode( myHostAcct );
-         String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "false", "pat": "$personalAccessToken" }';
-         await updateDynamo( context, container, postData, "PutHostA" );
+         await _buildCEProjectRepos( context, container, PAT, github, patLogin! );
          
          await reloadMyProjects( context, container );
-         appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "PersonId": "${appState.userId}"  }' );
-
+         appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
       }
    }
    return newAssoc;
