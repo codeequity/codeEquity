@@ -24,7 +24,7 @@ const RESOURCES = {"assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
 "version.json": "3cfb0133b2d7f1df147f0443e8de04a9",
-"main.dart.js": "638f71655ebf9ff46f7d8dc8b0997403",
+"main.dart.js": "3489afbd8ebc53c1b29b1d52b6cb908f",
 "index.html": "dd7a8da1198208cd970e33ed55356584",
 "/": "dd7a8da1198208cd970e33ed55356584",
 "canvaskit/skwasm.js.symbols": "741d50ffba71f89345996b0aa8426af8",

@@ -8,8 +8,7 @@
         "testFlutter": "node ./tests/testMain.js ceFlutter",
         "sanityCheck": "node ./tests/sanityCheck.js",
         "cleanFlutter": "node ./tests/gh/cleanLoad.js",
-        "cleanLoad": "node ./tests/cleanLoad.js",
-        "testSetup": "node ./tests/testSetup.js",
+        "testSetup": "node ./tests/gh/testSetup.js",
         "testDelete": "node ./tests/gh/gh2/testDelete.js",
 	"testSave": "node ./tests/testSaveDynamo.js" 
     },

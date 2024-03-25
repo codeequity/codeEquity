@@ -11,6 +11,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:ceFlutter/customIcons.dart';
 
 import 'package:ceFlutter/main.dart';
+import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 
@@ -125,9 +126,9 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    // framing
    expect( find.text( 'Activity' ),             findsOneWidget );
    expect( find.text( 'Code Equity Projects' ), findsOneWidget );
-   expect( find.text( 'GitHub Repositories' ),  findsOneWidget );
+   // expect( find.text( 'GitHub Repositories' ),  findsOneWidget );
    expect( find.byKey(const Key( 'New' )),      findsOneWidget );
-   expect( find.byKey(const Key( 'Add' )),      findsOneWidget );
+   expect( find.byKey(const Key( 'Refresh Projects' )),      findsOneWidget );
 
    // testing ceproject - no.
    
@@ -138,11 +139,18 @@ Future<bool> verifyAriHome( WidgetTester tester ) async {
    expect( await verifyOnHomePage( tester ), true );   
 
    //  Four CE Projects
-   expect( find.byKey( const Key('ariCETester/ceFlutterTester' )), findsOneWidget );
-   expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
-   expect( find.byKey( const Key('ariCETester/ceTesterAlt' )), findsOneWidget );
-   expect( find.byKey( const Key('connieCE/CodeEquityTester' )),    findsOneWidget );   
+   expect( find.byKey( const Key('CE_FlutTest_ks8asdlg42' )), findsOneWidget );
+   expect( find.byKey( const Key('CE_AltTest_hakeld80a2' )),  findsOneWidget );
+   expect( find.byKey( const Key('CE_ServTest_usda23k425' )), findsOneWidget );
+   expect( find.byKey( const Key('CodeEquity_ycje7dk23f' )),  findsOneWidget );   
    
+   //  Five GH Repositories
+   expect( find.byKey( const Key('ariCETester/ceFlutterTester' )), findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceTesterAri' )),      findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceTesterConnie' )),   findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceTesterAriAlt' )),   findsOneWidget );   
+   expect( find.byKey( const Key('codeequity/codeEquity' )),       findsOneWidget );   
+
    return true;
 }
 

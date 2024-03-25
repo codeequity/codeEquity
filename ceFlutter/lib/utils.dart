@@ -277,7 +277,7 @@ Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 
    return Padding(
       padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
-                        height: height - appState.GAP_PAD,
+                        height: height - appState.GAP_PAD - appState.TINY_PAD,
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));

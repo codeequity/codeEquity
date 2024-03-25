@@ -581,9 +581,10 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    for( String repo in repos ) {
       var cep = ceps.firstWhereOrNull( (c) => c.repositories.contains( repo ) );
       if( cep != null && cep.ceProjectId != null ) {
-         ceProjs.add( cep.ceProjectId );
-         ceProjRepos[ cep.ceProjectId ] = cep.repositories;
-         // print( "Ok? " + repo + " " + ceProjRepos.toString() );
+         if( !ceProjs.contains( cep.ceProjectId )) {
+            ceProjs.add( cep.ceProjectId );
+            ceProjRepos[ cep.ceProjectId ] = cep.repositories;
+         }
       }
       else { futProjs.add( repo ); }
    }
