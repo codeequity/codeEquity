@@ -76,7 +76,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	
 	subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,      subTest, "PeqType" );
 	subTest = tu.checkEq( ghPeqs[0].Amount, "1500000",                  subTest, "Peq Amount" );  
-	subTest = tu.checkEq( ghPeqs[0].HostProjectId, td.masterPID,        subTest, "Project ID" );
+	subTest = tu.checkEq( ghPeqs[0].HostRepoId, td.ghRepoId,            subTest, "Repo ID" );
 	
 	// projSub can be NS in some cases.  Valid, if pact exists
 	if( (ghPeqs[0].HostProjectSub)[0] == td.softContTitle ) { foundGHSub = true; }

@@ -1323,6 +1323,37 @@ async function getLabelIssues( authData, repoId, labelName, data, cursor ) {
     }
 }
 
+async function getProjIdFromPeq ( authData, iid ) {
+
+    // Peq issues only, meaning 1 project only.
+    let query = `query($iid: ID!) {
+        node(id: $iid ) {
+         ... on Issue { id number title
+                projectItems(first: 100) { edges {node {
+                  id project { id } }}}}
+		}}`;
+
+    let variables = { iid: iid };
+    query = JSON.stringify({ query, variables });
+
+    let pid = -1;
+    try {
+	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "getProjIdFromPeq" )
+	.then( async (raw) => {
+	    let cards = raw.data.node.projectItems;
+	    assert( cards.edges.length == 1 );
+
+	    let pv2 = cards.edges[0].node.project;
+	    pid = pv2.id; 
+	});
+    }
+    catch( e ) {
+	return await ghUtils.errorHandler( "getProjIdFromPeq", e, getProjIdFromPeq, authData, iid );
+    }
+
+    return pid;
+}
+
 async function getProjectIds( authData, repoFullName, data, cursor ) {
 
     let rp = repoFullName.split('/');
@@ -1816,6 +1847,7 @@ exports.removeCard         = removeCard;
 
 exports.getLabelIssues     = getLabelIssues;
 
+exports.getProjIdFromPeq   = getProjIdFromPeq;
 exports.getProjectIds      = getProjectIds;
 
 exports.cleanUnclaimed     = cleanUnclaimed;

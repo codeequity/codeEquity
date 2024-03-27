@@ -265,6 +265,7 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
 Future<bool> updateColumnName( context, container, guide ) async {
 
    print( "Update Column Name: " + guide.toString() );
+   // XXX Need to provide hostRepoId
    assert( false );  // NYI
    assert( guide.length == 3 );
 
@@ -300,6 +301,10 @@ Future<bool> updateColumnName( context, container, guide ) async {
 // Called from ingest, which has up to date linkage
 // Guide is [projId, oldName, newName]
 Future<bool> updateProjectName( context, container, guide ) async {
+
+   // XXX Need to provide hostRepoId
+   assert( false ); 
+
 
    print( "Update Project Name: " + guide.toString() );
    assert( guide.length == 3 );

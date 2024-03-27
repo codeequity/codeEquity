@@ -37,6 +37,7 @@ const TEST_OWNER        = "codeequity";
 const TEST_ACTOR        = "ariCETester";
 const TEST_REPO         = "ceTesterAri";
 const TEST_CEPID        = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
+const FLUTTER_TEST_CEPID = "CE_FlutTest_ks8asdlg42";   // XXX Remove once ceFlutter is back up
 const FLUTTER_TEST_REPO = "ceFlutterTester";
 
 const CROSS_TEST_OWNER  = "codeequity";          
@@ -124,8 +125,9 @@ const NOTICE_BUFFER_SIZE = 20;
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
 const PROJ_COLS = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];    // Project columns used by codeEquity
-const MAIN_PROJ = 'Modules';                                                         // Parent project for all tracked github projects in repo
-const UNCLAIMED = 'UnClaimed';                                                       // Catch-all project for peq issues with no project home
+const MAIN_PROJ      = 'Modules';                                                         // Parent project for all tracked github projects in repo
+const MAIN_PROJ_TEST = 'Modules Flut';                                                    // Parent project for all tracked github projects in repo *** TESTING ONLY ***
+const UNCLAIMED      = 'UnClaimed';                                                       // Catch-all project for peq issues with no project home
 
 const PEQ_COLOR  = 'ffcc80';   // github color for PEQ labels
 const APEQ_COLOR = 'fef2c0';   // github color Alloc PEQ labels
@@ -182,6 +184,7 @@ exports.TEST_OWNER       = TEST_OWNER;
 exports.TEST_ACTOR       = TEST_ACTOR;
 exports.TEST_REPO        = TEST_REPO;
 exports.TEST_CEPID       = TEST_CEPID;
+exports.FLUTTER_TEST_CEPID = FLUTTER_TEST_CEPID;
 exports.FLUTTER_TEST_REPO = FLUTTER_TEST_REPO;
 exports.CROSS_TEST_OWNER = CROSS_TEST_OWNER;
 exports.CROSS_TEST_ACTOR  = CROSS_TEST_ACTOR;

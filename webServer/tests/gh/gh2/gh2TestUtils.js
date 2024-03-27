@@ -1126,7 +1126,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	    subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,          subTest, "peq grantor wrong" );      
 	    subTest = tu.checkEq( peq.Amount, awsVal,                     subTest, "peq amount" );
 	    subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
-	    subTest = tu.checkEq( peq.HostProjectId, loc.pid,          subTest, "peq project id bad" );
+	    subTest = tu.checkEq( peq.HostRepoId, link.hostRepoId,        subTest, "peq repo id bad" );
 	    // Can not depend on last element of pSub, since it is not generally updated after 1st move out of unclaimed. Catch last element of projSub from pact, below.
 	    for( let i = 0; i < loc.projSub.length - 1; i++ ) {
 		subTest = tu.checkEq( peq.HostProjectSub[i], loc.projSub[i], subTest, "peq project sub bad" ); 
@@ -1276,7 +1276,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
 		subTest = tu.checkEq( peq.Active, "true",                      subTest, "peq" );
 		if( !skipPeqPID ) {
-		    subTest = tu.checkEq( peq.HostProjectId, loc.pid,         subTest, "peq project id bad" );
+		    subTest = tu.checkEq( peq.HostRepoId, td.ghRepoId,         subTest, "peq repo id bad" );
 		}
 		
 		// CHECK dynamo Pact
@@ -1378,7 +1378,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( peq.Amount, lval,                       subTest, "peq amount" );
     subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],  subTest, "peq project sub 0 invalid" );
     subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
-    subTest = tu.checkEq( peq.HostProjectId, loc.pid,             subTest, "peq project id bad" );
+    subTest = tu.checkEq( peq.HostRepoId, link.hostRepoId,        subTest, "peq repo id bad" );
 
     let holderMatch = peq.HostHolderId.length == assignees.length;
     // soft allows 1 missing assignee
@@ -1517,7 +1517,7 @@ async function checkNewlySituatedIssue( authData, testLinks, td, loc, issDat, ca
 	let foundPsub = ( peq.HostProjectSub[1] == loc.projSub[1] ) || ( peq.HostProjectSub[1] == config.GH_NO_STATUS ); 
 	subTest = tu.checkEq( foundPsub, true,                    subTest, "peq project sub invalid" );
     }
-    subTest = tu.checkEq( peq.HostProjectId, loc.pid,             subTest, "peq PID bad" );
+    subTest = tu.checkEq( peq.HostRepoId, td.ghRepoId,            subTest, "peq RID bad" );
     subTest = tu.checkEq( peq.Active, "true",                     subTest, "peq" );
 
     // CHECK dynamo Pact
@@ -2060,7 +2060,7 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
     subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
     subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle, subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,  subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectId, td.dataSecPID,        subTest, "peq unclaimed PID bad" );
+    subTest = tu.checkEq( meltPeq.HostRepoId, td.ghRepoId,             subTest, "peq unclaimed Repo bad" );
     subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
     
@@ -2108,7 +2108,7 @@ async function checkNoAssignees( authData, td, ass1, ass2, issDat, testStatus ) 
     subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
     subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectId, td.dataSecPID,          subTest, "peq unclaimed PID bad" );
+    subTest = tu.checkEq( meltPeq.HostRepoId, td.ghRepoId,             subTest, "peq unclaimed RID bad" );
     subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
     

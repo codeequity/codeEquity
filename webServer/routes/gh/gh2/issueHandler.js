@@ -298,7 +298,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		    
 			    // NOTE.  Spin wait for peq to finish recording from PNP in labelIssue above.  Should be rare.
 			    let peq = await utils.settleWithVal( "validatePeq", awsUtils.validatePEQ, authData, pd.ceProjectId,
-								 link.hostIssueId, link.hostIssueName, link.hostProjectId );
+								 link.hostIssueId, link.hostIssueName, link.hostRepoId );
 
 			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
 			}
@@ -385,7 +385,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		let newColId = await ghV2.moveToStateColumn( authData, ghLinks, pd, action, ceProjectLayout ); 
 		if( newColId ) {
 		    console.log( authData.who, "Find & validate PEQ" );
-		    let peqId = ( await( awsUtils.validatePEQ( authData, pd.ceProjectId, pd.issueId, pd.issueName, ceProjectLayout[0] )) )['PEQId'];
+		    let peqId = ( await( awsUtils.validatePEQ( authData, pd.ceProjectId, pd.issueId, pd.issueName, pd.repoId )) )['PEQId'];
 		    if( peqId === -1 ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }

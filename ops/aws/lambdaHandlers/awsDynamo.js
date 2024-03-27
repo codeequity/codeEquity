@@ -300,7 +300,7 @@ async function getEntry( tableName, query ) {
 	props = ["HostUserName", "HostPlatform"];
 	break;
     case "CEPEQs":
-	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "CEProjectId", "HostProjectId", "HostIssueId", "HostIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "CEProjectId", "HostRepoId", "HostIssueId", "HostIssueTitle" ];
 	break;
     case "CEPEQActions":
 	props = [ "PEQActionId", "CEUID", "HostUserName", "CEProjectId", "Verb", "Action"];
@@ -346,7 +346,7 @@ async function getEntries( tableName, query ) {
     let props = [];
     switch( tableName ) {
     case "CEPEQs":
-	props = [ "PEQId", "Active", "CEGrantorId", "HostHolderId", "PeqType", "Amount", "CEProjectId", "HostProjectId", "HostIssueId", "HostIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "HostHolderId", "PeqType", "Amount", "CEProjectId", "HostRepoId", "HostIssueId", "HostIssueTitle" ];
 	break;
     case "CEPEQActions":
 	props = [ "PEQActionId", "CEUID", "HostUserName", "CEProjectId", "Verb", "Action", "Subject", "Ingested"];
@@ -670,7 +670,7 @@ async function putPeq( newPEQ ) {
 	if( spinCount >= MAX_SPIN ) { return LOCKED; }
     }
 
-    if( !newPEQ.hasOwnProperty( 'CEProjectId' ) || !newPEQ.hasOwnProperty( 'HostProjectId' ) || !newPEQ.hasOwnProperty( 'Amount' ) ) {
+    if( !newPEQ.hasOwnProperty( 'CEProjectId' ) || !newPEQ.hasOwnProperty( 'HostRepoId' ) || !newPEQ.hasOwnProperty( 'Amount' ) ) {
 	console.log( "Peq malformed", newPEQ.toString() );
 	return BAD_SEMANTICS;
     }
@@ -688,7 +688,7 @@ async function putPeq( newPEQ ) {
 	    "AccrualDate":  newPEQ.AccrualDate,
 	    "VestedPerc":   newPEQ.VestedPerc,
 	    "HostProjectSub": newPEQ.HostProjectSub,
-	    "HostProjectId":  newPEQ.HostProjectId,
+	    "HostRepoId":     newPEQ.HostRepoId,
 	    "HostIssueId":    newPEQ.HostIssueId,
 	    "HostIssueTitle": newPEQ.HostIssueTitle,
 	    "Active":         newPEQ.Active
@@ -1077,8 +1077,12 @@ async function updateColProj( update ) {
     // if proj name mode, every peq in project gets updated.  big change.
     // XXX if col name change, could be much smaller, but would need to generate list of peqIds in ingest from myHostLinks.  Possible.. 
 
+    // XXX Would need to grab all peqs, then filter by current psub.  hostprojectId no longer part of peq
+    //     first, make sure this is still needed.
+    assert( false );
+    
     // Get all active peqs in HostProjId, ceProjId
-    const query = { CEProjectId: update.CEProjectId, HostProjectId: update.HostProjectId, Active: "true" };
+    const query = { CEProjectId: update.CEProjectId, HostRepoId: update.HostRepoId, Active: "true" };
     var peqsWrap = await getEntries( "CEPEQs", query );
     // console.log( "Found peqs, raw:", peqsWrap );
 
@@ -1322,6 +1326,10 @@ async function getHostA( uid ) {
 }
 
 async function getHostProjs( query ) {
+
+    // XXX no longer in use
+    assert( false ); 
+    
     console.log( "Get host projects from", query.CEProjectId );
 
     const peqsWrap = await getEntries( "CEPEQs", {"CEProjectId": query.CEProjectId } );
@@ -1337,55 +1345,6 @@ async function getHostProjs( query ) {
 
     return success( hprojs );
 }
-
-/*
-// https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html
-async function link( query ) {
-
-    const oldProjWrap = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
-    const oldProjData = JSON.parse( oldProjWrap.body );    
-
-    if( !oldProjData.HostParts.hostProjectIds.includes( query.hostProjectId )) {
-	let params = { TableName: 'CEProjects' };
-	
-	params.Key                       = { "CEProjectId": query.ceProjId };
-	params.UpdateExpression          = 'set HostParts.hostProjectIds = list_append( HostParts.hostProjectIds, :pid )';
-	params.ExpressionAttributeValues = { ':pid': [query.hostProjectId] };
-	
-	console.log( params );
-
-	const updateCmd = new UpdateCommand( params );
-	return bsdb.send( updateCmd ).then(() => success( true ));
-    }
-    return success( true );
-}
-
-async function unlink( query ) {
-    let oldProjWrap = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
-    let index = -1;
-
-    const oldProjData = JSON.parse( oldProjWrap.body );    
-
-    for( let i = 0; i < oldProjData.HostParts.hostProjectIds.length; i++ ) {
-	if( query.hostProjectId == oldProjData.HostParts.hostProjectIds[i] ) { index = i; break; }
-    }
-
-    if( index == -1 ) { return success( true ); }
-    else {
-	let params = { TableName: 'CEProjects' };
-
-	// Can't pass parameter in this remove bit.  Build string, pass that.
-	// params.UpdateExpression          = 'REMOVE HostParts.hostProjectIds[:ind]';	
-
-	params.Key                       = { "CEProjectId": query.ceProjId };
-	params.UpdateExpression          = "REMOVE HostParts.hostProjectIds[" + index.toString() + "]";
-	
-	console.log( params );
-	const updateCmd = new UpdateCommand( params );
-	return bsdb.send( updateCmd ).then(() => success( true ));
-    }
-}
-*/
 
 
 function errorResponse(status, errorMessage, awsRequestId) {

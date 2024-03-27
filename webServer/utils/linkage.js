@@ -518,6 +518,8 @@ class Linkage {
 
 	// TESTING ONLY!  This will be executed by ceFlutter before issuing unlink.
 	// We do not allow unlink repo if it contains active peqs.
+	// NOTE this is broken.  if CEP has 2+ repos, any peq in any repo invalidates (wrongly) unlink of one of them.
+	/*
 	const query = { CEProjectId: ceProjId, Active: "true" };
 	let peqs  = await awsUtils.getPEQs( authData, query );
 	peqs = peqs == -1 ? [] : peqs;
@@ -527,6 +529,7 @@ class Linkage {
 	    // NOTE: this can trigger if there was a failure in previous test while splitting in resolve
 	    assert( link == -1 );
 	}
+	*/
 	
 	// remove links.  Locs can stay in place, no harm.  Locs only removed with unlinkProject.
 	let links = await this.getLinks( authData, { "ceProjId": ceProjId, "repoId": repoId } );
@@ -576,23 +579,27 @@ class Linkage {
     }
 
     // if pid == -1, all hostProjs are purged
-    purge( ceProjId, pid, specials ) {
+    purge( ceProjId, rid, specials ) {
 	let linksOnly  = typeof specials !== 'undefined' && specials.hasOwnProperty( "linksOnly" )  ? specials.linksOnly : false;	
-	console.log( "Removing links, locs for", ceProjId, pid, "links only?", linksOnly );
+	console.log( "Removing links, locs for", ceProjId, rid, "links only?", linksOnly );
 
 	let killList = [];
+	let killPid  = [];
 	for( const [_,cplinks] of Object.entries( this.links )) {
 	    for( const [_,clink] of Object.entries( cplinks )) {
 		for( const [cid,link] of Object.entries( clink )) {
-		    if( link.ceProjectId == ceProjId && (link.hostProjectId == pid || pid == -1 )) {
+		    if( link.ceProjectId == ceProjId && (link.hostRepoId == rid || rid == -1 )) {
 			killList.push( {"cpid": link.ceProjectId, "iid": link.hostIssueId} );
+			if( !killPid.includes( link.hostProjectId )) { killPid.push( link.hostProjectId ); }
 		    }
 		}
 	    }
 	}
 	for( const id of killList ) { delete this.links[id.cpid][id.iid]; }
 
-	if( !linksOnly ) {  this.purgeLocs( ceProjId, pid ); }
+	if( !linksOnly ) {
+	    for( const pid of killPid ) { this.purgeLocs( ceProjId, pid ); }
+	}
 	
 	return true;
     }

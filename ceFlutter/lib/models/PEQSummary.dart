@@ -9,7 +9,7 @@ class PEQSummary {
    final String           id;
    final String           ceProjectId;   // Summaries are per ceProject
    final String           targetType;    // "ceProject", "repo", "contributor"   XXX currently unused.
-   final String           targetId;      // HostProjectId
+   final String           targetId;      // HostProjectId ... ?  or repo now?    XXX
    final String           lastMod;
    final List<Allocation> allocations;   
 

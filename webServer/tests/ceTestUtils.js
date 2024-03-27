@@ -69,8 +69,8 @@ async function findNotice( query ) {
 }
 
 // Purge repo's links n locs from ceServer
-async function remLinks( authData, testLinks, ceProjId, hostProjectId ) {
-    let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "CEProjectId": ceProjId, "HostProjectId": hostProjectId };
+async function remLinks( authData, testLinks, ceProjId, hostRepoId ) {
+    let postData = {"Endpoint": "Testing", "Request": "purgeLinks", "CEProjectId": ceProjId, "HostRepoId": hostRepoId };
     let res = await utils.postCE( "testHandler", JSON.stringify( postData ));
     return res;
 }
