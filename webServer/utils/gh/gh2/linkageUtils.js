@@ -36,8 +36,11 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     if( !utils.validField( ceProject, "HostParts" ) || !utils.validField( ceProject.HostParts, "hostRepositories" ) ) { return { links: [], locs: [] }; }
     let hostRepoIds = preferredRepoId == -1 ? ceProject.HostParts.hostRepositories.map( repo => repo.repoId ) : [preferredRepoId]; 
 
-    // Get all PEQs in ceProject
-    let peqs = await awsUtils.getPEQs( authData, { "CEProjectId": ceProject.CEProjectId, "Active": "true" })
+    // Get PEQs 
+    let query = preferredRepoId == -1 ? { "CEProjectId": ceProject.CEProjectId } : { "CEProjectId": ceProject.CEProjectId, "HostRepoId": preferredRepoId };
+    query.Active = "true";
+    let peqs = await awsUtils.getPEQs( authData, query );
+    // console.log( "IOC", preferredRepoId, query, peqs.length );
 
     let hostProjs = [];
 

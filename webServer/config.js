@@ -159,6 +159,7 @@ exports.PDESC    = PDESC;
 exports.ADESC    = ADESC;
 
 exports.MAIN_PROJ = MAIN_PROJ;
+exports.MAIN_PROJ_TEST = MAIN_PROJ_TEST;
 exports.EMPTY     = EMPTY;
 exports.UNCLAIMED = UNCLAIMED;
 

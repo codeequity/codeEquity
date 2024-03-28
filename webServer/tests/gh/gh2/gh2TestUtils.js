@@ -41,7 +41,7 @@ async function refreshRec( authData, td ) {
 
     // console.log( "Got hprojs", hostProjs );
     for( const proj of hostProjs ) {
-	if( proj.hostProjectName == config.MAIN_PROJ ) {
+	if( proj.hostProjectName == td.mainTitle ) {
 	    td.masterPID = proj.hostProjectId;
 
 	    let columns = await getColumns( authData, proj.hostProjectId );

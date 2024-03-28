@@ -168,6 +168,7 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
 }
 
 function flutterRename ( td ) {
+    td.mainTitle        = config.MAIN_PROJ_TEST;
     td.dataSecTitle     = td.dataSecTitle   + " Flut";
     td.githubOpsTitle   = td.githubOpsTitle + " Flut";
     td.flatTitle        = td.flatTitle      + " Flut";

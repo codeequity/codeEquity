@@ -9,13 +9,10 @@ const testData = require( '../testData' );
 const gh2tu    = require( './gh2TestUtils' );
 
 
-const FLAT_PROJ = "A Pre-Existing Project";
-
-
 async function createFlatProject( authData, testLinks, td ) {
     console.log( "Building a flat CE project layout, a mini version" );
     
-    td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, FLAT_PROJ, "" );
+    td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, td.flatTitle, "" );
     let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, "Eggs" );
     let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, "Bacon" );
     // Note: this col is used for testing in testComponents:testProjColMods
@@ -32,7 +29,7 @@ async function testFlatProject( authData, testLinks, td ) {
     // [pass, fail, msgs]
     let testStatus = [ 0, 0, []];
 
-    await gh2tu.refresh( authData, td, FLAT_PROJ );
+    await gh2tu.refresh( authData, td, td.flatTitle );
 
     // Check DYNAMO Linkage.  Should be no relevant links.  No dynamo activity.
     let links = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
@@ -40,7 +37,7 @@ async function testFlatProject( authData, testLinks, td ) {
     if( links == -1 ) { links = []; }
 
     for( const link of links ) {
-	if( link.hostProjectName == FLAT_PROJ    ||
+	if( link.hostProjectName == td.flatTitle    ||
 	    link.hostProjectID   == td.masterPID ||
 	    link.hostColumnName  == "Eggs"       ||
 	    link.hostColumnName  == "Bacon"      ||
@@ -71,7 +68,7 @@ async function testFlatProject( authData, testLinks, td ) {
     testStatus = tu.checkGE( projects.length, 1,     testStatus, "Project count" );
     let foundProj = 0;
     for( const proj of projects ) {
-	if( proj.title == FLAT_PROJ ) {
+	if( proj.title == td.flatTitle ) {
 	    td.masterPID = proj.id;
 	    foundProj++;
 	}

@@ -43,7 +43,8 @@ class Linkage {
 	let pms   = utils.validField( entry, "ProjectMgmtSys" )     ? entry.ProjectMgmtSys                  : "";
 	
 	// Wait later
-	let peqs = awsUtils.getPEQs( authData, { "CEProjectId": entry.CEProjectId } );
+	const query = preferredRepoId == -1 ? { "CEProjectId": entry.CEProjectId } : { "CEProjectId": entry.CEProjectId, "HostRepoId": preferredRepoId };
+	let peqs = awsUtils.getPEQs( authData, query );
 
 	let res       = {};
 	let baseLinks = [];
