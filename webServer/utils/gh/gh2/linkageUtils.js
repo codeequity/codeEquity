@@ -30,10 +30,73 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     
     // mainly to get pat
     await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR );
-    
+
     // Get all hostRepoIds that belong to the ceProject
+    // Add organization's unclaimed to each hostRepo that holds PEQ, since aws:peq table will not record delete movements to UNCL
     if( !utils.validField( ceProject, "HostParts" ) || !utils.validField( ceProject.HostParts, "hostRepositories" ) ) { return { links: [], locs: [] }; }
     let hostRepoIds = preferredRepoId == -1 ? ceProject.HostParts.hostRepositories.map( repo => repo.repoId ) : [preferredRepoId]; 
+
+    // Get PEQs 
+    let query = preferredRepoId == -1 ? { "CEProjectId": ceProject.CEProjectId } : { "CEProjectId": ceProject.CEProjectId, "HostRepoId": preferredRepoId };
+    query.Active = "true";
+    let peqs = await awsUtils.getPEQs( authData, query );
+    // console.log( "IOC", preferredRepoId, query, peqs.length );
+
+    let hostProjs = [];
+
+    // XXX hmmm if uncl has peq, is built in below.  Otherwise, we add later, yes?  otherwise, need to special case front part of while
+    // let unclPID = await ghV2.findProjectByName( authData, org, "", config.UNCLAIMED ); 
+    // if( unclPID != -1 && !hostProjs.includes( unclPID ) ) { hostProjs.push( unclPID ); }
+
+    while( peqs.length > 0 ) {
+	const peq = peqs[0];
+	const pid = await ghV2.getProjIdFromPeq( authData, peq.HostIssueId );
+	assert( pid != -1 );
+
+	assert( !hostProjs.includes( pid ) );
+	hostProjs.push( pid );
+	
+	// Note, for links being built below, the link is a complete ceServer:link that supplied info for the 1:1 mapping issue:card.
+	//       it is not necessarily a complete picture of a host link (which ceServer does not need).
+	//       for example, in GH an issue may be 1:m i.e. in 1 repo with cards in many projects. several links will be created below
+	//       these multiple links will be resolved once that issue becomes peq.
+	// Note, any peq issue will have already been resolved.
+	console.log( authData.who, "GET FOR PROJECT", ceProject.CEProjectId, pid );
+	let rLinks = [];
+	let rLocs  = [];
+	
+	await ghV2.getHostLinkLoc( authData, pid, rLocs, rLinks, -1 )
+	    .catch( e => console.log( authData.who, "Error.  GraphQL for project layout failed.", e ));
+	
+	// hostProjs may contain issues from other ceProjects.  Filter these out by requiring hostRepo to match one of the list in ceProjects
+	// initialization of the other ceProjects will pick up these filtered out links.
+	rLinks = rLinks.filter( (link) => hostRepoIds.includes( link.hostRepoId ));
+	
+	// console.log( authData.who, "Populate Linkage", pid );
+	rLinks.forEach( function (link) { ghLinks.addLinkage( authData, ceProject.CEProjectId, link, { populate: true } );
+					}, ghLinks);
+	
+	for( var loc of rLocs ) {
+	    loc.ceProjectId = ceProject.CEProjectId;
+	    loc.active = "true";
+	}
+	// ghLinks.addLocs( authData, rLocs, false ); 
+	
+	// Concat creates a new array - need to return these results.
+	baseLinks = baseLinks.concat( rLinks );
+	locData = locData.concat( rLocs );
+
+	// Filter peqs list to remove those just pulled in by getHostLinkLoc
+	for( const link of rLinks ) {
+	    const idx = peqs.findIndex( p => p.HostIssueId == link.hostIssueId );
+	    if( idx >= 0 ) {
+		peqs.splice( idx, 1 );
+	    }
+	}
+	
+    }
+    
+    /*
     
     // Find all hostProjects that provide a card home for a peq in the cep
     let hostProjs = await awsUtils.getHostPEQProjects( authData, { CEProjectId: ceProject.CEProjectId } );
@@ -78,6 +141,8 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
 	locData = locData.concat( rLocs );
 
     }
+    */
+    
     return { links: baseLinks, locs: locData };
 }
 

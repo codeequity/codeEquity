@@ -17,7 +17,7 @@ class PEQ {
    final double        vestedPerc;   // as of accrual date
 
    final List<String>  hostProjectSub; // project subs, i.e. ["Master", "codeEquity web front end"]
-   final String        hostProjectId;    
+   final String        hostRepoId;    
    final String        hostIssueId;   
    final String        hostIssueTitle; // actually, issue-or-card title.
 
@@ -25,12 +25,12 @@ class PEQ {
 
    PEQ({ required this.id, required this.ceProjectId, required this.ceHolderId, required this.hostHolderId, required this.ceGrantorId,
             required this.peqType, required this.amount, required this.accrualDate, required this.vestedPerc,
-            required this.hostProjectSub, required this.hostProjectId, required this.hostIssueId, required this.hostIssueTitle,
+            required this.hostProjectSub, required this.hostRepoId, required this.hostIssueId, required this.hostIssueTitle,
             required this.active});
 
    dynamic toJson() => {'id': id, 'ceProjectId': ceProjectId, 'ceHolderId': ceHolderId, 'hostHolderId': hostHolderId, 'ceGrantorId': ceGrantorId,
                            'peqType': enumToStr(peqType), 'amount': amount, 'accrualDate': accrualDate, 'vestedPerc': vestedPerc,
-                           'hostProjectSub': hostProjectSub, 'hostProjectId': hostProjectId, 'hostIssueId': hostIssueId,
+                           'hostProjectSub': hostProjectSub, 'hostRepoId': hostRepoId, 'hostIssueId': hostIssueId,
                            'hostIssueTitle': hostIssueTitle, 'active': active }; 
 
    // No PEQ found.  return empty peq.
@@ -48,7 +48,7 @@ class PEQ {
          vestedPerc:    0.0,
 
          hostProjectSub:  [],
-         hostProjectId:   "-1",
+         hostRepoId:   "-1",
          hostIssueId:     "-1",
          hostIssueTitle:  "-1",
 
@@ -76,7 +76,7 @@ class PEQ {
          vestedPerc:    json['VestedPerc'],
 
          hostProjectSub:  new List<String>.from(dynamicSub),
-         hostProjectId:   json['HostProjectId'],
+         hostRepoId:      json['HostRepoId'],
          hostIssueId:     json['HostIssueId'],
          hostIssueTitle:  json['HostIssueTitle'],
 
@@ -89,7 +89,7 @@ class PEQ {
       res += "\n   " + amount.toString() + " PEQ, for: " + hostIssueTitle;
       // res += "\n    grantor: " + ceGrantorId;
       res += "\n    type: " + enumToStr(peqType) + ", accrued: " + accrualDate + ", vested %: " + vestedPerc.toString();
-      res += "\n    projectSub: " + hostProjectSub.toString() + " projId: " + hostProjectId + ", issue: " + hostIssueId;
+      res += "\n    projectSub: " + hostProjectSub.toString() + " repoId: " + hostRepoId + ", issue: " + hostIssueId;
       // res += "\n    holder: " + ceHolderId.toString();
       res += "\n    Hostholder: " + hostHolderId.toString();
       res += "\n";

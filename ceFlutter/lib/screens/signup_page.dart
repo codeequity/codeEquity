@@ -23,20 +23,23 @@ class CESignupPage extends StatefulWidget {
 
 class _CESignupState extends State<CESignupPage> {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
-   /*
    late TextEditingController usernameController;
    late TextEditingController passwordController;
    late TextEditingController attributeController;
    late TextEditingController confirmationCodeController;
-   */
 
    // Always create with false.  When logout, all stacks pop, recreate is with false.
    bool showCC = false;
    
    @override
    void initState() {
-      super.initState();
       showCC = false;
+      usernameController         = new TextEditingController();
+      passwordController         = new TextEditingController();
+      attributeController        = new TextEditingController();
+      confirmationCodeController = new TextEditingController();
+      
+      super.initState();
    }
 
    @override
@@ -51,13 +54,8 @@ class _CESignupState extends State<CESignupPage> {
       final appState = container.state;
       assert( appState != null );
 
-      if( appState.verbose >= 2 ) { print( "REBUILD SIGNUP" ); }
+      if( appState.verbose >= 1 ) { print( "REBUILD SIGNUP" ); }
 
-      TextEditingController usernameController = new TextEditingController();
-      TextEditingController passwordController = new TextEditingController();
-      TextEditingController attributeController = new TextEditingController();
-      TextEditingController confirmationCodeController = new TextEditingController();
-      
       final usernameField = makeInputField( appState, "username", false, usernameController );
       final passwordField = makeInputField( appState, "password", true, passwordController );
       final emailField    = makeInputField( appState, "email address", false, attributeController );
@@ -88,8 +86,8 @@ class _CESignupState extends State<CESignupPage> {
                else {
                   assert( appState.cogUserService != null );
                   await appState.cogUserService!.signUp( email, passwordController.text, usernameController.text );
-                  showToast( "Code sent to your email");
-                  print( "Code sent to email" );
+                  showToast( "Code sent to your email" );
+                  print( "Code sent to email " + attributeController.text + " " + usernameController.text );
                   setState(() { showCC = true; });
                }
                
@@ -98,6 +96,7 @@ class _CESignupState extends State<CESignupPage> {
       final confirmSignupButton = makeActionButton( appState, "Confirm signup, and Log in", cognitoSignupWrapper(context, () async {
                bool acctConfirmed = false;
                assert( appState.cogUserService != null );
+               
                acctConfirmed = await appState.cogUserService!.confirmAccount( usernameController.text,
                                                                                confirmationCodeController.text );
                if( acctConfirmed ) { print( "Account confirmed." ); }
@@ -105,6 +104,7 @@ class _CESignupState extends State<CESignupPage> {
                   print( "Account confirmation failure.  Bad confirmation code?" );
                   return;
                }
+
 
                appState.newUser = true;
                appState.cogUser = await appState.cogUserService!.login( usernameController.text, passwordController.text );

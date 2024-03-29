@@ -300,7 +300,7 @@ async function getEntry( tableName, query ) {
 	props = ["HostUserName", "HostPlatform"];
 	break;
     case "CEPEQs":
-	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "CEProjectId", "HostProjectId", "HostIssueId", "HostIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "CEProjectId", "HostRepoId", "HostIssueId", "HostIssueTitle" ];
 	break;
     case "CEPEQActions":
 	props = [ "PEQActionId", "CEUID", "HostUserName", "CEProjectId", "Verb", "Action"];
@@ -346,7 +346,7 @@ async function getEntries( tableName, query ) {
     let props = [];
     switch( tableName ) {
     case "CEPEQs":
-	props = [ "PEQId", "Active", "CEGrantorId", "HostHolderId", "PeqType", "Amount", "CEProjectId", "HostProjectId", "HostIssueId", "HostIssueTitle" ];
+	props = [ "PEQId", "Active", "CEGrantorId", "HostHolderId", "PeqType", "Amount", "CEProjectId", "HostRepoId", "HostIssueId", "HostIssueTitle" ];
 	break;
     case "CEPEQActions":
 	props = [ "PEQActionId", "CEUID", "HostUserName", "CEProjectId", "Verb", "Action", "Subject", "Ingested"];
@@ -450,9 +450,12 @@ async function getCEUIDFromCE( username ) {
 
     let personPromise = paginatedScan( paramsP );
     return personPromise.then((persons) => {
-	assert(persons.length == 1 );
-	console.log( "Found CEUserId ", persons[0].CEUserId );
-	return success( persons[0].CEUserId );
+	if( persons.length == 0 )     { return NO_CONTENT; }
+	else if( persons.length > 1 ) { return BAD_SEMANTICS; }
+	else {
+	    console.log( "Found CEUserId ", persons[0].CEUserId );
+	    return success( persons[0].CEUserId );
+	}
     });
 }
 
@@ -484,8 +487,22 @@ async function getCEUIDFromHost( hostUserName, hostUserId ) {
 }
 
 async function putPerson( newPerson ) {
-    // console.log('Put Person!', newPerson.firstName );
+    // XXX Expand error code for this - might be common
 
+    if( newPerson.email == "" || newPerson.userName == "" || newPerson.id == "" ) {
+	console.log( "Need both username and email.", newPerson.userName, newPerson.email, newPerson.id );
+	return BAD_SEMANTICS; 
+    }
+    
+    // XXX getEntry is conjunction.  If allow disjunction, this would avoid a call
+    // First verify person does not exist already
+    let ceUID = await getCEUIDFromCE( newPerson.userName );
+    let origPerson = await getEntry( "CEPeople", { Email: newPerson.email } );
+    if( ceUID.statusCode != 204 || origPerson.statusCode != 204 ) {
+	console.log( "person already exists, failing." );
+	return BAD_SEMANTICS; 
+    }
+    
     const params = {
 	TableName: 'CEPeople',
 	Item: {
@@ -653,7 +670,7 @@ async function putPeq( newPEQ ) {
 	if( spinCount >= MAX_SPIN ) { return LOCKED; }
     }
 
-    if( !newPEQ.hasOwnProperty( 'CEProjectId' ) || !newPEQ.hasOwnProperty( 'HostProjectId' ) || !newPEQ.hasOwnProperty( 'Amount' ) ) {
+    if( !newPEQ.hasOwnProperty( 'CEProjectId' ) || !newPEQ.hasOwnProperty( 'HostRepoId' ) || !newPEQ.hasOwnProperty( 'Amount' ) ) {
 	console.log( "Peq malformed", newPEQ.toString() );
 	return BAD_SEMANTICS;
     }
@@ -670,9 +687,8 @@ async function putPeq( newPEQ ) {
 	    "Amount":       newPEQ.Amount,
 	    "AccrualDate":  newPEQ.AccrualDate,
 	    "VestedPerc":   newPEQ.VestedPerc,
-	    "CEProjectId":  newPEQ.CEProjectId,
 	    "HostProjectSub": newPEQ.HostProjectSub,
-	    "HostProjectId":  newPEQ.HostProjectId,
+	    "HostRepoId":     newPEQ.HostRepoId,
 	    "HostIssueId":    newPEQ.HostIssueId,
 	    "HostIssueTitle": newPEQ.HostIssueTitle,
 	    "Active":         newPEQ.Active
@@ -1061,8 +1077,12 @@ async function updateColProj( update ) {
     // if proj name mode, every peq in project gets updated.  big change.
     // XXX if col name change, could be much smaller, but would need to generate list of peqIds in ingest from myHostLinks.  Possible.. 
 
+    // XXX Would need to grab all peqs, then filter by current psub.  hostprojectId no longer part of peq
+    //     first, make sure this is still needed.
+    assert( false );
+    
     // Get all active peqs in HostProjId, ceProjId
-    const query = { CEProjectId: update.CEProjectId, HostProjectId: update.HostProjectId, Active: "true" };
+    const query = { CEProjectId: update.CEProjectId, HostRepoId: update.HostRepoId, Active: "true" };
     var peqsWrap = await getEntries( "CEPEQs", query );
     // console.log( "Found peqs, raw:", peqsWrap );
 
@@ -1200,12 +1220,12 @@ async function putHostA( newHostAcct, update, pat ) {
     if( update == "true" ) {
 	const params = {
             TableName: 'CEHostUser',
-	    Key: { "HostUserId": newHostAcct.id },
+	    Key: { "HostUserId": newHostAcct.hostUserId },
 	    UpdateExpression: 'set CEUserId = :ceoid, HostUserName = :hostun, CEProjectIds = :pid, FutureCEProjects = :fid',
-	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceOwnerId, ':hostun': newHostAcct.hostUserName, ':pid': newHostAcct.ceProjectIds, ':fid': newHostAcct.futureCEProjects }
+	    ExpressionAttributeValues: { ':ceoid': newHostAcct.ceUserId, ':hostun': newHostAcct.hostUserName, ':pid': newHostAcct.ceProjectIds, ':fid': newHostAcct.futureCEProjects }
 	};
 	
-	console.log( "HostAcct update repos");
+	console.log( "HostAcct update repos", params);
 	const updateCmd = new UpdateCommand( params );	
 	await bsdb.send( updateCmd ); 
     }
@@ -1213,8 +1233,8 @@ async function putHostA( newHostAcct, update, pat ) {
 	const params = {
             TableName: 'CEHostUser',
 	    Item: {
-		"HostUserId":       newHostAcct.id, 
-		"CEUserId":         newHostAcct.ceOwnerId,
+		"HostUserId":       newHostAcct.hostUserId, 
+		"CEUserId":         newHostAcct.ceUserId,
 		"HostUserName":     newHostAcct.hostUserName,
 		"HostPlatform":     newHostAcct.hostPlatform,
 		"CEProjectIds":     newHostAcct.ceProjectIds,
@@ -1223,7 +1243,7 @@ async function putHostA( newHostAcct, update, pat ) {
 	    }
 	};
 	
-	console.log( "HostAcct put repos");
+	console.log( "HostAcct put repos", params);
 	const putCmd = new PutCommand( params );
 	
 	await bsdb.send( putCmd ); 
@@ -1237,7 +1257,7 @@ async function putHostA( newHostAcct, update, pat ) {
 	// Majority of cases will be 0 or just a few PEQActions without a CE UID, 
 	// especially since a PEQAction requires a PEQ label.
 	const hostPEQA = await getPEQActionsFromHost( newHostAcct.hostUserName );
-	await hostPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceOwnerId ));
+	await hostPEQA.forEach( async ( peqa ) => updated = updated && await updatePEQActions( peqa, newHostAcct.ceUserId ));
 	console.log( "putHostA returning", updated );
     }
 
@@ -1306,6 +1326,10 @@ async function getHostA( uid ) {
 }
 
 async function getHostProjs( query ) {
+
+    // XXX no longer in use
+    assert( false ); 
+    
     console.log( "Get host projects from", query.CEProjectId );
 
     const peqsWrap = await getEntries( "CEPEQs", {"CEProjectId": query.CEProjectId } );
@@ -1321,55 +1345,6 @@ async function getHostProjs( query ) {
 
     return success( hprojs );
 }
-
-/*
-// https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.UpdateExpressions.html
-async function link( query ) {
-
-    const oldProjWrap = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
-    const oldProjData = JSON.parse( oldProjWrap.body );    
-
-    if( !oldProjData.HostParts.hostProjectIds.includes( query.hostProjectId )) {
-	let params = { TableName: 'CEProjects' };
-	
-	params.Key                       = { "CEProjectId": query.ceProjId };
-	params.UpdateExpression          = 'set HostParts.hostProjectIds = list_append( HostParts.hostProjectIds, :pid )';
-	params.ExpressionAttributeValues = { ':pid': [query.hostProjectId] };
-	
-	console.log( params );
-
-	const updateCmd = new UpdateCommand( params );
-	return bsdb.send( updateCmd ).then(() => success( true ));
-    }
-    return success( true );
-}
-
-async function unlink( query ) {
-    let oldProjWrap = await getEntry( "CEProjects", {"CEProjectId": query.ceProjId } );
-    let index = -1;
-
-    const oldProjData = JSON.parse( oldProjWrap.body );    
-
-    for( let i = 0; i < oldProjData.HostParts.hostProjectIds.length; i++ ) {
-	if( query.hostProjectId == oldProjData.HostParts.hostProjectIds[i] ) { index = i; break; }
-    }
-
-    if( index == -1 ) { return success( true ); }
-    else {
-	let params = { TableName: 'CEProjects' };
-
-	// Can't pass parameter in this remove bit.  Build string, pass that.
-	// params.UpdateExpression          = 'REMOVE HostParts.hostProjectIds[:ind]';	
-
-	params.Key                       = { "CEProjectId": query.ceProjId };
-	params.UpdateExpression          = "REMOVE HostParts.hostProjectIds[" + index.toString() + "]";
-	
-	console.log( params );
-	const updateCmd = new UpdateCommand( params );
-	return bsdb.send( updateCmd ).then(() => success( true ));
-    }
-}
-*/
 
 
 function errorResponse(status, errorMessage, awsRequestId) {

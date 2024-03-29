@@ -1,10 +1,10 @@
 // ceFlutter use only
 
-// Baseline unit for representing a location in GitHub
-// GHLocations collects these to present an overall structural picture of a repo in GitHub
-// This is not intended to be independently stored in dynamo, only in association with GHLocations
+// Baseline unit for representing a location in the code hosting platform (e.g. GitHub)
+// HostLocations collects these to present an overall structural picture of a project in the Host platform
+// This is not intended to be independently stored in dynamo, only in association with HostLocations
 
-class GHLoc {
+class HostLoc {
    final String  ceProjectId;
    final String  hostProjectId;
    final String  hostProjectName;
@@ -13,15 +13,15 @@ class GHLoc {
    final String  hostUtility;
    final bool    active;         // ceServer writes in real time, ceFlutter reads after the fact.  May need legacy data during ingest.
 
-   GHLoc({required this.ceProjectId, required this.hostProjectId, required this.hostProjectName, required this.hostColumnId, required this.hostColumnName,
+   HostLoc({required this.ceProjectId, required this.hostProjectId, required this.hostProjectName, required this.hostColumnId, required this.hostColumnName,
             required this.hostUtility, required this.active});
 
    // Direction is ceServer -> aws -> ceFlutter, only.
-   factory GHLoc.fromJson(Map<String, dynamic> json) {
+   factory HostLoc.fromJson(Map<String, dynamic> json) {
 
       // print( json );
       
-      return GHLoc(
+      return HostLoc(
          ceProjectId:       json['ceProjectId'],
          hostProjectId:     json['hostProjectId'],
          hostProjectName:   json['hostProjectName'],

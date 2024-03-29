@@ -44,31 +44,64 @@ async function remIssues( authData, testLinks, pd ) {
     await Promise.all( promises );
 }
 
-// XXX This is ignoring repo, clearing for entire CEP.  No harm, just wasteful.
 // Note: this may be called multiple times for the same ceProj
+// Can not clear entire CEProj - host projects overlap hostrepos.
 async function clearCEProj( authData, testLinks, pd ) {
-    console.log( "\nClearing ceProj", pd.ceProjectId );
+    console.log( "\nClearing ceProj", pd.ceProjectId, pd.ghRepoId );
 
     let ceProjP = awsUtils.getProjectStatus( authData, pd.ceProjectId );
     
-    console.log( "Remove links", pd.ceProjectId );
-    await tu.remLinks( authData, testLinks, pd.ceProjectId, -1 );
-    let links  = await tu.getLinks( authData, testLinks, { "ceProjId": pd.ceProjectId } );
-    let locs   = await tu.getLocs ( authData, testLinks, { "ceProjId": pd.ceProjectId } );
+    // Note: locs do not carry repo information.  However, linkage:purge collects all hostProjectIds involved
+    //       with link purge, and purges those locs.  cool beans.
+    console.log( "Remove links", pd.ceProjectId, pd.ghRepoId );
+    await tu.remLinks( authData, testLinks, pd.ceProjectId, pd.ghRepoId );
+    let links  = await tu.getLinks( authData, testLinks, { ceProjId: pd.ceProjectId, repoId: pd.ghRepoId } );
+    // let locs   = await tu.getLocs ( authData, testLinks, { ceProjId: pd.ceProjectId });
     if( links !== -1 ) { console.log( links ); }
     assert( links === -1 );
-    if( locs !== -1 ) { console.log( locs ); }
-    assert( locs === -1 );
+    // if( locs !== -1 ) { console.log( locs ); }
+    // assert( locs === -1 );
     
+    // Clean up dynamo.
+    // Note: awaits may not be needed here.  No dependencies... yet...
+    // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
+
     // PEQs
-    // Should be attached to repo, but dynamo does not keep that information.  Can not move to clearRepo unless keep, say, ceTesterAri peqs away from ceTesterConnie peqs
+    // Are now attached to repo
     // NOTE this will run twice for ServTest.  td and tdM are same proj.  Runs in parallel, soooo....  inefficient, but not broken
-    let peqs = await awsUtils.getPEQs( authData,  { "CEProjectId": pd.ceProjectId });
+    let peqs = await awsUtils.getPEQs( authData,  { "CEProjectId": pd.ceProjectId, "HostRepoId": pd.ghRepoId });
     let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
     if( peqIds.length > 0 ) {
-	console.log( "Dynamo PEQ ids", pd.ceProjectId, peqIds );
+	console.log( "Dynamo PEQ ids", pd.ceProjectId, pd.ghRepoId, peqIds );
 	await awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
     }
+    else { console.log( "Dynamo PEQ ids empty" ); }
+
+    // PActs, raw.. get everything associated with peqs above (for which we have repo information).
+    // For whatever reason, anything interacting with cleanDynamo is list of lists.  grunk.
+    let pacts = await awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
+    let pactIds = [];
+    for( const pid of peqIds ) {
+	let t = pacts.filter( p => p.Subject[0] == pid[0] );
+	if( t.length > 0 ) {
+	    t = t.map( x => [x.PEQActionId] );
+	    pactIds = pactIds.concat( t );
+	}
+    }
+
+    // Also, get anything that has no Subject (notice) as there is no other way to delete these (and there is not impact to remove more than necessary)
+    if( pacts.length > 0 ) {
+	let notices = pacts.filter( p => p.Subject.length == 0 );
+	notices = notices.map( n => [n.PEQActionId] );
+	pactIds = pactIds.concat( notices );
+    }
+
+    console.log( "Dynamo bot PActIds", pd.ghFullName, pactIds );
+    let pactP  = awsUtils.cleanDynamo( authData, "CEPEQActions", pactIds );
+    let pactRP = awsUtils.cleanDynamo( authData, "CEPEQRaw", pactIds );
+    
+    pactP  = await pactP;
+    pactRP = await pactRP;
 }
 
 
@@ -125,20 +158,17 @@ async function clearRepo( authData, testLinks, pd ) {
     // So keep plugging away until things are done.
     await tu.settleWithVal( "remIssue helper", remIssueHelp, authData, testLinks, pd);	    
 
-    let pactsP  = awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
-
     // Get all existing projects in repo for deletion
     let pids = await gh2tu.getProjects( authData, pd );
 
     if( pids != -1 ) {
 	// Do not unlink unclaimed - causes race conditions when clearing multiple repos, some of which have ACCR issues that need to be recreated
 	let unclIndex = pids.findIndex( project => project.title == config.UNCLAIMED ); 
-	pids.splice( unclIndex, 1 );
-	console.log( "Unlinking all Projects but Unclaimed.", pd.ghRepoId, pd.ghFullName, pids );
+	if( unclIndex >= 0 ) { pids.splice( unclIndex, 1 ); }
+	console.log( "Unlinking all Projects but Unclaimed.", pd.ghRepoId, pd.ghFullName );
 
 	if( pids != -1 ) {
 	    pids = pids.map( project => project.id );
-	    console.log( "ProjIds", pd.ghFullName, pids );
 	    
 	    // XXX would like to delete.. buuut..
 	    for( const pid of pids ) {
@@ -154,20 +184,7 @@ async function clearRepo( authData, testLinks, pd ) {
 
     jobsP = await jobsP;
     
-    // Clean up dynamo.
-    // Note: awaits may not be needed here.  No dependencies... yet...
-    // Note: this could easily be 1 big function in lambda handler, but for now, faster to build/debug here.
-
-    // PActions raw and otherwise
-    // Note: bot, ceServer and actor may have pacts.  Just clean out all.
-    let pacts = await pactsP;
-    let pactIds = pacts == -1 ? [] : pacts.map(( pact ) => [pact.PEQActionId] );
-    console.log( "Dynamo bot PActIds", pd.ghFullName, pactIds );
-    let pactP  = awsUtils.cleanDynamo( authData, "CEPEQActions", pactIds );
-    let pactRP = awsUtils.cleanDynamo( authData, "CEPEQRaw", pactIds );
-    
-    
-    // Get all peq labels in repo for deletion... dependent on peq removal first.
+    // Get all peq labels in repo for deletion... dependent on issue removal first (above).
     console.log( "Removing all PEQ Labels.", pd.ghFullName );
     let pLabels = [];
     let labels  = await gh2tu.getLabels( authData, pd ); 
@@ -192,8 +209,6 @@ async function clearRepo( authData, testLinks, pd ) {
     labelRes = await gh2tu.getLabel( authData, pd.ghRepoId, "newName" );
     if( labelRes.status == 200 ) { gh2tu.delLabel( authData, labelRes.label ); }
     
-    pactP  = await pactP;
-    pactRP = await pactRP;
 }
 
 
@@ -210,17 +225,21 @@ async function runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM
     promises.push( clearRepo( authDataM, testLinks, tdM ));
     await Promise.all( promises );
 
+    console.log( "... Clear Repo finished." );
+    
     // clearRepo should unlinkRepo.  Running clearRepos in parallel saves a lot of time, but can cause
     // a race condition in linkage:unlinkRepo.  Serialize
     await gh2tu.unlinkRepo( authData,  td.ceProjectId,  td.ghRepoId );
-    await gh2tu.unlinkRepo( authDataX, tdX.ceProjectId, tdX.ghRepoId );
-    await gh2tu.unlinkRepo( authDataM, tdM.ceProjectId, tdM.ghRepoId );
+    await gh2tu.unlinkRepo( authDataX, tdX.ceProjectId, tdX.ghRepoId ); 
+    await gh2tu.unlinkRepo( authDataM, tdM.ceProjectId, tdM.ghRepoId );   // this is ce_serv, multiproj
+
+    console.log( "... Unlink Repo finished." );
     
     // Now, unlink unclaimed, which was avoided above to remove race condition
     await clearUnclaimed( authData,  testLinks, td  );
     await clearUnclaimed( authDataX, testLinks, tdX );
     await clearUnclaimed( authDataM, testLinks, tdM );
-    
+
     promises = [];
     promises.push( clearCEProj( authData,  testLinks, td ));
     promises.push( clearCEProj( authDataX, testLinks, tdX ));

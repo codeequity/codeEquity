@@ -21,7 +21,7 @@ class Allocation {
    final String?      hostUserId;      // hostUser associated with ceUID
    double?            vestedPerc;      // granted or accrued
    final String?      notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
-   final String?      hostProjectId;     // a fixed point that chains the category to a specific location in GH
+   final String?      hostProjectId;     // a fixed point that chains the category to a specific location in host
 
    Allocation({required this.category, this.categoryBase, this.amount, this.sourcePeq,
             required this.allocType, this.ceUID, required this.hostUserName, this.hostUserId, this.vestedPerc, this.notes, this.hostProjectId });
@@ -29,7 +29,7 @@ class Allocation {
    // Not explicitly constructed in lambda handler - watch caps
    dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
                            'CEUID': ceUID, 'HostUserName': hostUserName, 'HostUserId': hostUserId,
-                           'Vested': vestedPerc, 'Notes': notes, 'GHProjectId': hostProjectId };
+                           'Vested': vestedPerc, 'Notes': notes, 'HostProjectId': hostProjectId };
    
    factory Allocation.fromJson(Map<String, dynamic> json) {
 

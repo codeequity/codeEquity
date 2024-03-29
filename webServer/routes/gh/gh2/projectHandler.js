@@ -16,21 +16,33 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
     case 'deleted':
 	// Deleting a project now sends only 1 notification, this 'deleted' one.  Leaves issues in place, 'secretly' deletes cards.
 	// Projects are cross-repo, and therefore cross-CodeEquity projects.
-	// So.. get (all) pd.ceProjectId from links, work from there.  (i.e. don't need to pass in CEPid)
+	// Work from links, which hold hostProjectIds
 	// Can't just send delete issue, that will record as bot, and skip processing.  and it's slower. do processing here.
 	// Need to handle peqs, links, locs.
 	{
-	    const query = { HostProjectId: pd.projectId, Active: "true" };
-	    const peqs  = await awsUtils.getPEQs( authData, query );
 	    const links = ghLinks.getLinks( authData, { pid: pd.projectId } );
 	    const locs  = ghLinks.getLocs( authData, { pid: pd.projectId } );	    
 
+	    // get unique hostRepoIds that hostProject touches
+
+	    let hostRepoIds = [];
+	    for( const link of links ) {
+		if( !hostRepoIds.includes( link.hostRepoId ) ) { hostRepoIds.push( link.hostRepoId ); }
+	    }
+
+	    let peqs = [];
+	    let promises = [];
+	    for( const rid of hostRepoIds ) {
+		const query = { HostRepoId: rid, Active: "true" };  
+		promises.push( awsUtils.getPEQs( authData, query ) );
+	    }
+	    Promise.all( promises ).then( function (v) { peqs = v.flat(); });
+	    
 	    if( peqs !== -1 ) {
-		assert( links !== -1 );
 
 		console.log( authData.who, "Deleted project", pd.projectId, pd.projectName, "had PEQ issues. Reforming them in", config.UNCLAIMED );
 
-		// XXX promise.all?  This is very expensive for larger project.
+		// XXX promise.all?  This is very expensive for larger project.  Redoing some work here as well
 		for( const peq of peqs ) {
 		    let link = links.find( (l) => l.hostIssueId == peq.HostIssueId )
 		    assert( typeof link !== 'undefined' );

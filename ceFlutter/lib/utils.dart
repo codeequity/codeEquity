@@ -232,6 +232,16 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
 }
 
 
+Widget makeIndentedActionText( appState, title, width, wrap, lines ) {
+   return Padding(
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD + appState.TINY_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
+      child: Container( width: width,
+                        height: appState.BASE_TXT_HEIGHT*lines,   
+                        key: Key( title ),
+                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 14, color: appState.BUTTON_COLOR, fontWeight: FontWeight.bold))));
+}
+
 Widget makeActionText( appState, title, width, wrap, lines ) {
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
@@ -267,7 +277,7 @@ Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 
    return Padding(
       padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
       child: Container( width: width,
-                        height: height - appState.GAP_PAD,
+                        height: height - appState.GAP_PAD - appState.TINY_PAD,
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
@@ -327,7 +337,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                onPressed: ()
                {
                   if( currentPage == "Detail" ) { return; }
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["a", "b"] ));
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
                   Navigator.push( context, newPage);
                },
                iconSize: iconSize,

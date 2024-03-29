@@ -143,18 +143,18 @@ async function wrappedPostAWS( authData, shortName, postData ) {
 }
 
 // returns -1 if could not find.
-async function validatePEQ( authData, ceProjId, issueId, title, pid ) {
+async function validatePEQ( authData, ceProjId, issueId, title, rid ) {
     let peq = -1;
 
     let peqType = "";
     assert( issueId != -1 );
     peq = await getPEQ( authData, ceProjId, issueId );
 
-    if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostProjectId == pid )  {
+    if( peq !== -1 && peq.HostIssueTitle == title && peq.HostIssueId == issueId && peq.CEProjectId == ceProjId && peq.HostRepoId == rid )  {
 	console.log( authData.who, "validatePeq success" );
     }
     else {
-	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostProjectId, pid );
+	console.log( authData.who, "WARNING.  Peq not valid.", peq.HostIssueTitle, title, peq.HostIssueId, issueId, peq.CEProjectId, ceProjId, peq.HostRepoId, rid );
 	peq = -1;
     }
     return peq;  
@@ -274,9 +274,8 @@ async function rebuildPEQ( authData, link, oldPeq ) {
     postData.HostHolderId   = oldPeq.HostHolderId;
     postData.PeqType        = oldPeq.PeqType;
     postData.Amount         = oldPeq.Amount;
-    postData.HostRepo       = oldPeq.HostRepo;
+    postData.HostRepoId     = oldPeq.HostRepoId;
     postData.HostProjectSub = [ link.hostProjectName, link.hostColumnName ];
-    postData.HostProjectId  = link.hostProjectId; 
     postData.HostIssueId    = link.hostIssueId;
     postData.HostIssueTitle = link.hostIssueName;
     postData.Active         = "true";
@@ -322,9 +321,8 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
     postData.HostHolderId   = pd.assignees;   // list of hostUserLogins assigned
     postData.PeqType        = pd.peqType;               
     postData.Amount         = pd.peqValue;              
-    postData.HostRepo       = pd.repoName;
     postData.HostProjectSub = pd.projSub;               
-    postData.HostProjectId  = pd.projectId;         
+    postData.HostRepoId     = pd.repoId;         
     postData.HostIssueId    = pd.issueId.toString();
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";

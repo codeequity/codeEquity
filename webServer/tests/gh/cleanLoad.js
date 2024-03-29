@@ -70,7 +70,7 @@ async function loadPEQ( authData, td ) {
 	    postData.CEProjectId  = aput.PutRequest.Item.CEProjectId.S;
 	    
 	    postData.PeqType        = aput.PutRequest.Item.PeqType.S;
-	    postData.HostProjectId  = aput.PutRequest.Item.HostProjectId.S;
+	    postData.HostRepoId     = aput.PutRequest.Item.HostRepoId.S;
 	    postData.HostIssueId    = aput.PutRequest.Item.HostIssueId.S;
 	    postData.HostIssueTitle = aput.PutRequest.Item.HostIssueTitle.S;
 	    postData.Active         = aput.PutRequest.Item.Active.S;

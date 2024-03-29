@@ -167,6 +167,16 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
     testStatus = tu.mergeTests( testStatus, subTest );
 }
 
+function flutterRename ( td ) {
+    td.mainTitle        = config.MAIN_PROJ_TEST;
+    td.dataSecTitle     = td.dataSecTitle   + " Flut";
+    td.githubOpsTitle   = td.githubOpsTitle + " Flut";
+    td.flatTitle        = td.flatTitle      + " Flut";
+
+    // td.softContTitle    = td.softContTitle  + " Flut";
+    // td.busOpsTitle      = td.busOpsTitle    + " Flut";
+}
+
 
 async function runTests() {
 
@@ -201,6 +211,9 @@ async function runTests() {
     td.actorId       = await ghUtils.getOwnerId( authData.pat, td.actor );
     td.ghRepoId      = await ghUtils.getRepoId( authData.pat, td.ghOwner, td.ghRepo );
 
+
+    console.log( "Got repo: ", td.ghRepo, td.ghRepoId );
+    
     // CROSS_TEST_REPO auth
     let tdX        = new testData.TestData();
     tdX.ghOwner    = config.CROSS_TEST_OWNER;
@@ -248,10 +261,17 @@ async function runTests() {
     // td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.ghFullName );
     // tdX.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.ghFullName );
     // tdM.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.ghFullName );
-    td.ceProjectId  = config.TEST_CEPID;
+    td.ceProjectId  = flutterTest ? config.FLUTTER_TEST_CEPID : config.TEST_CEPID;
     tdX.ceProjectId = config.CROSS_TEST_CEPID;
     tdM.ceProjectId = config.MULTI_TEST_CEPID;
 
+    // Convert project names to flutter as needed to avoid crossover infection between server tests and flutter tests (the CEPIDs otherwise share projects)
+    if( flutterTest ) {
+	flutterRename( td  );
+	flutterRename( tdX );
+	flutterRename( tdM );
+    }
+    
     // cepDetails, typically set from ceFlutter
     let tdBlank = {};
     tdBlank.projComponent = "ceServer Testing";   

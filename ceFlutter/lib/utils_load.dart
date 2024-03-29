@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:http/http.dart' as http;
 import 'package:tuple/tuple.dart';
+import 'package:collection/collection.dart';  // firstWhereOrNull
 
 // This package is currently used only for authorization.  Github has deprecated username/passwd auth, so
 // authentication is done by personal access token.  The user model and repo service in this package are too
@@ -19,6 +20,7 @@ import 'package:ceFlutter/ingest.dart';
 import 'package:ceFlutter/screens/launch_page.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 
+import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
@@ -27,7 +29,7 @@ import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/hostAccount.dart';
 import 'package:ceFlutter/models/allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
-import 'package:ceFlutter/models/ghLoc.dart';
+import 'package:ceFlutter/models/hostLoc.dart';
 
 // XXX strip context, container where not needed
 
@@ -133,7 +135,7 @@ Future<http.Response> localPost( String shortName, postData ) async {
 }
 
 // XXX naming convention, pls
-Future<http.Response> ghGet( url ) async {
+Future<http.Response> hostGet( url ) async {
 
    final urlUri = Uri.parse( url );
    
@@ -145,6 +147,26 @@ Future<http.Response> ghGet( url ) async {
 
    return response;
 }
+
+
+Future<http.Response> postGH( PAT, postData, name ) async {
+
+   // XXX formalize
+   final gatewayURL = Uri.parse( 'https://api.github.com/graphql' );
+   
+   // XXX formalize
+   // Accept header is for label 'preview'.
+   // next global id is to avoid getting old IDs that don't work in subsequent GQL queries.
+   final response =
+      await http.post(
+         gatewayURL,
+         headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json", 'X-Github-Next-Global-ID': '1' },
+         body: postData
+         );
+   
+   return response;
+}
+
 
 // XXX awsPost
 Future<http.Response> postIt( String shortName, postData, container ) async {
@@ -190,8 +212,8 @@ Future<String> fetchPAT( context, container, postData, shortName ) async {
    final failure = "-1";
    
    if (response.statusCode == 201) {
-      final gha = json.decode(utf8.decode(response.bodyBytes));
-      return gha['PAT'] ?? failure;
+      final hosta = json.decode(utf8.decode(response.bodyBytes));
+      return hosta['HostPAT'] ?? failure;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchPAT( context, container, postData, shortName ); }
@@ -243,22 +265,23 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
 Future<bool> updateColumnName( context, container, guide ) async {
 
    print( "Update Column Name: " + guide.toString() );
+   // XXX Need to provide hostRepoId
    assert( false );  // NYI
    assert( guide.length == 3 );
 
-   // myLocs reflects current state in GH, after the rename.  Use it to get projId before sending rename up to aws
+   // myLocs reflects current state in HOST, after the rename.  Use it to get projId before sending rename up to aws
    final appState  = container.state;
-   final myLocs    = appState.myGHLinks.locations;
+   final myLocs    = appState.myHostLinks.locations;
 
-   GHLoc loc = myLocs.firstWhere( (a) => a.hostColumnId == guide[0], orElse: () => null );
+   HostLoc loc = myLocs.firstWhereOrNull( (a) => a.hostColumnId == guide[0] );
    assert( loc != null );
    assert( loc.hostColumnName == guide[2] );
 
-   // GH column names are unique within project.
+   // HOST column names are unique within project.
    const shortName = "UpdateColProj";
    var postData = {};
-   postData['GHRepo']      = appState.myGHLinks.ghRepo;
-   postData['GHProjectId'] = loc.hostProjectId;
+   postData['HostRepo']      = appState.myHostLinks.hostRepo;
+   postData['HostProjectId'] = loc.hostProjectId;
    postData['OldName']     = guide[1];
    postData['NewName']     = guide[2];
    postData['Column']      = "true";
@@ -279,16 +302,20 @@ Future<bool> updateColumnName( context, container, guide ) async {
 // Guide is [projId, oldName, newName]
 Future<bool> updateProjectName( context, container, guide ) async {
 
+   // XXX Need to provide hostRepoId
+   assert( false ); 
+
+
    print( "Update Project Name: " + guide.toString() );
    assert( guide.length == 3 );
 
    final appState  = container.state;
    const shortName = "UpdateColProj";
    
-   // GH column names are unique within project. 
+   // HOST column names are unique within project. 
    var postData = {};
-   postData['GHRepo']      = appState.myGHLinks.ghRepo;
-   postData['GHProjectId'] = guide[0];
+   postData['HostRepo']      = appState.myHostLinks.hostRepo;
+   postData['HostProjectId'] = guide[0];
    postData['OldName']     = guide[1];
    postData['NewName']     = guide[2];
    postData['Column']      = "false";
@@ -304,6 +331,26 @@ Future<bool> updateProjectName( context, container, guide ) async {
       else { return false; }
    }
 }
+
+Future<List<CEProject>> fetchCEProjects( context, container ) async {
+   String shortName = "fetchCEProjects";
+   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEProjects", "query": { "empty": "" }}';
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      List<CEProject> ceps = l.map( (sketch)=> sketch == -1 ? CEProject.empty() : CEProject.fromJson(sketch) ).toList();
+      return ceps;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no CEProjects found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchCEProjects( context, container ); }
+      else { return []; }
+   }
+}
+
 
 Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    String shortName = "fetchPEQs";
@@ -375,21 +422,21 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    }
 }
 
-Future<Linkage?> fetchGHLinkage( context, container, postData ) async {
-   String shortName = "fetchGHLinkage";
+Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
+   String shortName = "fetchHostLinkage";
 
    final response = await postIt( shortName, json.encode( postData ), container );
 
    if (response.statusCode == 201) {
-      final ghl = json.decode(utf8.decode(response.bodyBytes));
-      Linkage ghLinks = Linkage.fromJson(ghl);
-      return ghLinks;
+      final hostl = json.decode(utf8.decode(response.bodyBytes));
+      Linkage hostLinks = Linkage.fromJson(hostl);
+      return hostLinks;
    } else if( response.statusCode == 204) {
       print( "Fetch: no GitHub Linkage data found" );
       return null;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchGHLinkage( context, container, postData ); }
+      if( didReauth ) { return await fetchHostLinkage( context, container, postData ); }
    }
 }
 
@@ -415,7 +462,7 @@ Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
    final response = await postIt( shortName, postData, container );
    
    if (response.statusCode == 201) {
-      print( "FetchGHAcct: " );
+      print( "FetchHostAcct: " );
       Iterable ha = json.decode(utf8.decode(response.bodyBytes));
       List<HostAccount> hostAccounts = ha.map((acct) => HostAccount.fromJson(acct)).toList();
       assert( hostAccounts.length > 0);
@@ -457,9 +504,9 @@ Future<void> reloadRepo( context, container ) async {
    final appState  = container.state;
 
    String ceProj = appState.selectedCEProject;
-   String ghRepo = appState.selectedRepo;
+   String hostRepo = appState.selectedRepo;
    String uid    = appState.userId;
-   print( "Loading " + ghRepo + " for " + uid + "'s " + ceProj + " CodeEquity project." );
+   print( "Loading " + hostRepo + " for " + uid + "'s " + ceProj + " CodeEquity project." );
 
    // XXX could be thousands... too much.  Just get uningested, most recent, etc.
    // Get all PEQ data related to the selected repo.  
@@ -479,11 +526,11 @@ Future<void> reloadRepo( context, container ) async {
    
    // Get linkage
    pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postData };
-   appState.myGHLinks  = await fetchGHLinkage( context, container, pd );
+   appState.myHostLinks  = await fetchHostLinkage( context, container, pd );
 
    if( appState.verbose >= 2 ) {
       print( "Got Links?" ); 
-      appState.myGHLinks == null ? print( "nope - no associated repo" ) : print( appState.myGHLinks.toString() );
+      appState.myHostLinks == null ? print( "nope - no associated repo" ) : print( appState.myHostLinks.toString() );
    }
 
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
@@ -500,59 +547,101 @@ Future<void> reloadMyProjects( context, container ) async {
    assert( appState.userId != "" );
    String uid   = appState.userId;
 
-   // FetchGH sets ghAccounts.ceProjs
-   appState.myGHAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "$uid"  }' );
+   // FetchHost sets hostAccounts.ceProjs
+   appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "$uid"  }' );
 
    print( "My CodeEquity Projects:" );
-   print( appState.myGHAccounts );
+   print( appState.myHostAccounts );
 }
 
+// NOTE: GitHub-specific
+// Build the association between ceProjects and github repos by finding all repos on github that user has auth on,
+// then associating those with known repos in aws:CEProjects.
+Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) async {
+   final appState  = container.state;
+
+   // XXX useful?
+   // String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
+   // repos = await getSubscriptions( container, subUrl );
+   
+   // GitHub does not know ceProjectId.  Get repos from GH...
+   // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-organization-repositories
+   // This gets all repos the user is a member of, even if not on top list.  
+   List<String> repos = [];
+   var repoStream =  await github.repositories.listRepositories( type: 'all' );
+   await for (final r in repoStream) {
+      // print( 'Repo: ${r.fullName}' );
+      repos.add( r.fullName );
+   }
+   print( "Found GitHub Repos " + repos.toString() );
+   
+   // then check which are associated with which ceProjects.  The rest are in futureProjects.
+   // XXX do this on the server?  shipping all this data is not scalable
+   final ceps = await fetchCEProjects( context, container );
+   print( ceps.toString() );
+   
+   List<String> futProjs = [];
+   List<String> ceProjs  = [];
+   Map<String, List<String>> ceProjRepos = {};
+   for( String repo in repos ) {
+      var cep = ceps.firstWhereOrNull( (c) => c.repositories.contains( repo ) );
+      if( cep != null && cep.ceProjectId != null ) {
+         if( !ceProjs.contains( cep.ceProjectId )) {
+            ceProjs.add( cep.ceProjectId );
+            ceProjRepos[ cep.ceProjectId ] = cep.repositories;
+         }
+      }
+      else { futProjs.add( repo ); }
+   }
+   
+   // XXX formalize 'GitHub'
+   // XXX Chck if have U_*  if so, has been active on GH, right?
+   
+   // Do not have, can not get, the U_* user id from GH.  initially use login.
+   if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
+   String huid = await getOwnerId( PAT, hostLogin );
+   print( "HOI! " + appState.userId + " " + huid );
+   assert( huid != "-1" );
+   HostAccount myHostAcct = new HostAccount( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.userId, hostUserId: huid, 
+                                             ceProjectIds: ceProjs, futureCEProjects: futProjs, ceProjRepos: ceProjRepos );
+   
+   String newHostA = json.encode( myHostAcct );
+   print( newHostA );
+   String postData = '{ "Endpoint": "PutHostA", "NewHostA": $newHostA, "udpate": "false", "pat": "$PAT" }';
+   await updateDynamo( context, container, postData, "PutHostA" );
+}
+
+// NOTE: GitHub-specific
 // Called upon refresh.. maybe someday on signin (via app_state_container:finalizeUser)
 // XXX This needs to check if PAT is known, query.
 // XXX update docs, pat-related
+// XXX formalize
 Future<void> updateProjects( context, container ) async {
    final appState  = container.state;
    
-   // Iterate over all known GHAccounts.
-   for( HostAccount acct in appState.myGHAccounts ) {
-      
-      // get from gh
-      // XXX combine with assocGH?  split out GHUtils?
+   // Iterate over all known HostAccounts.  One per host.
+   for( HostAccount acct in appState.myHostAccounts ) {
 
-      // XXX Need ceProjectId, at least, to make this unique.
-      print( "XXX hostUser is not unique" );
+      if( acct.hostPlatform == "GitHub" ) {
       
-      // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
-      var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName } };
-      final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
+         // XXX formalize GitHub
+         // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
+         var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "GitHub" } };
+         final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
          
-      var github = await GitHub(auth: Authentication.withToken( PAT ));   
-      await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })
-         .catchError((e) {
-               print( "Could not validate github acct." + e.toString() );
-               showToast( "Github validation failed.  Please try again." );
-            });
-
-      List<String> repos = [];
-      var repoStream =  await github.repositories.listRepositories( type: 'all' );
-      print( "Repo listen" );
-      await for (final r in repoStream) {
-         print( 'Repo: ${r.fullName}' );
-         repos.add( r.fullName );
+         var github = await GitHub(auth: Authentication.withToken( PAT ));
+         await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })
+            .catchError((e) {
+                  print( "Could not validate github acct." + e.toString() + " " + PAT + " " + acct.hostUserName );
+                  showToast( "Github validation failed.  Please try again." );
+               });
+         
+         await _buildCEProjectRepos( context, container, PAT, github, acct.hostUserName );
       }
-      print( "Repo done " + repos.toString() );
-
-      // acct.repos = repos;
-
-      // XXX NOPE, repo-centric
-      // write to dynamo.
-      String newGHA = json.encode( acct );
-      String postData = '{ "Endpoint": "PutHostA", "NewGHA": $newGHA, "update": "true", "pat": ""  }';
-      print( "XXX Update hostAccounts to AWS needs work" );
-      // await updateDynamo( context, container, postData, "PutGHA" );
    }
 
    await reloadMyProjects( context, container );
+   appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
 }
 
 // XXX Only update if dirty.  Only dirty after updatePeq.
@@ -573,9 +662,8 @@ Future<void> updateUserPeqs( container, context ) async {
    String uname = appState.selectedUser;
    if( uname == appState.ALLOC_USER || uname == appState.UNASSIGN_USER ) { uname = ""; }
    
-   String rname = appState.selectedRepo;
    String cep   = appState.selectedCEProject;
-   print( "Building detail data for " + uname + ":" + rname );
+   print( "Building detail data for " + uname + ":" + cep );
 
    if( appState.selectedUser == appState.ALLOC_USER ) {
       appState.userPeqs[appState.selectedUser] =
@@ -593,7 +681,7 @@ Future<void> updateUserPeqs( container, context ) async {
 
 Future<List<String>> getSubscriptions( container, subUrl ) async {
    print( "Getting subs at " + subUrl );
-   final response = await ghGet( subUrl );
+   final response = await hostGet( subUrl );
    Iterable subs = json.decode(utf8.decode(response.bodyBytes));
    List<String> fullNames = [];
    subs.forEach((sub) => fullNames.add( sub['full_name'] ) );
@@ -601,17 +689,47 @@ Future<List<String>> getSubscriptions( container, subUrl ) async {
    return fullNames;
 }
 
-// XXX rewrite any ceUID or ceHolderId in PEQ, PEQAction that look like: "GHUSER: $hostUserName"  XXXX erm?
-Future<bool> associateGithub( context, container, personalAccessToken ) async {
+// This needs to work for both users and orgs
+Future<String> getOwnerId( PAT, owner ) async {
+
+   Map<String, dynamic> query = {};
+   query["query"]     = "query (\$login: String!) { user(login: \$login) { id } organization(login: \$login) { id } }";
+   query["variables"] = {"login": owner };
+
+   final jsonEncoder = JsonEncoder();
+   final queryS = jsonEncoder.convert( query );
+   print( queryS );
+
+   var retId = "-1";
+
+   final response = await postGH( PAT, queryS, "getOwnerId" );
+   print( response );
+
+   final huid = json.decode( utf8.decode( response.bodyBytes ) );
+   print( huid );
+
+   if( huid.containsKey( "data" )) {
+      if( huid["data"].containsKey( "user" ))              { retId = huid["data"]["user"]["id"]; }
+      else if( huid["data"].containsKey( "organization" )) { retId = huid["data"]["organization"]["id"]; }
+   }
+   
+   return retId;
+}
+
+
+// XXX rewrite any ceUID or ceHolderId in PEQ, PEQAction that look like: "HOSTUSER: $hostUserName"  XXXX erm?
+Future<bool> associateGithub( context, container, PAT ) async {
 
    final appState  = container.state;
-   var github = await GitHub(auth: Authentication.withToken( personalAccessToken ));   
+   var github = await GitHub(auth: Authentication.withToken( PAT ));   
 
    // NOTE id, node_id are available if needed
+   // To see what's available, look in ~/.pub-cache/*
    String? patLogin = "";
    await github.users.getCurrentUser()
       .then((final CurrentUser user) {
             patLogin = user.login;
+            print( "USER: " + user.id.toString() + " " + (user.login ?? "") );
          })
       .catchError((e) {
             print( "Could not validate github acct." + e.toString() );
@@ -621,45 +739,19 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
    bool newAssoc = false;
    if( patLogin != "" && patLogin != null ) {
       print( "Goot, Got Auth'd.  " + patLogin! );
+      newAssoc = true;
+      appState.myHostAccounts.forEach((acct) => newAssoc = ( newAssoc && ( acct.hostUserName != patLogin! )) );
       
-      bool newLogin = true;
-      appState.myGHAccounts.forEach((acct) => newLogin = ( newLogin && ( acct.hostUserName != patLogin! )) );
+      if( newAssoc ) {
+         // At this point, we are connected with GitHub, have PAT and host login (not id).  Separately, we have a CEPerson.
+         // CEHostUser may or may not exist, depending on if the user has been active on the host with peqs.
+         // Either way, CEHostUser and CEPeople are not yet connected (i.e. CEHostUser.ceuid is "")
 
-      if( newLogin ) {
-         newAssoc = true;
+         await _buildCEProjectRepos( context, container, PAT, github, patLogin! );
          
-         // This only returns github accounts that are owned by current user(!).  Actually want subscriptions too.
-         // String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
-         // repos = await getSubscriptions( container, subUrl );
-         
-         List<String> repos = [];
-         print( "Repo stream" );
-         var repoStream =  await github.repositories.listRepositories( type: 'all' );
-         print( "Repo listen" );
-         await for (final r in repoStream) {
-            print( 'Repo: ${r.fullName}' );
-            repos.add( r.fullName );
-         }
-         print( "Repo done " + repos.toString() );
-   
-         String pid = randAlpha(10);
-         // XXX nope
-         // HostAccount myGHAcct = new HostAccount( hostUserId: pid, ceUserId: appState.userId, hostUserName: patLogin!, repos: repos );
-         print( "XXX NYI kjsdf-1" );
-
-         // XXX nope
-         // String newGHA = json.encode( myGHAcct );
-         // String postData = '{ "Endpoint": "PutHostA", "NewGHA": $newGHA, "udpate": "false", "pat": $personalAccessToken }';
-         // await updateDynamo( context, container, postData, "PutGHA" );
-         print( "XXX NYI kjsdf-2" );
-
          await reloadMyProjects( context, container );
-         // if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
-         // appState.myGHAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "PersonId": "${appState.userId}"  }' );
-         print( "XXX NYI kjsdf-3" );
-
+         appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
       }
-
    }
    return newAssoc;
 }
@@ -668,10 +760,10 @@ Future<bool> associateGithub( context, container, personalAccessToken ) async {
 // FLUTTER ROUTER   unfinished 
 /*
 Future<bool> associateGithub( context, container, postData ) async {
-   String shortName = "assocGH";
+   String shortName = "assocHost";
    final response = await localPost( shortName, postData, container );
                  
-   setState(() { addGHAcct = false; });
+   setState(() { addHostAcct = false; });
 
    if (response.statusCode == 201) {
       // print( response.body.toString() );         

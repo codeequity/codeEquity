@@ -12,10 +12,10 @@ from subprocess import call, check_output, Popen, PIPE, STDOUT
 import shlex
 
 # to keep chromedriver up to date(r)
-# pip install webdriver-manager
-# pip install selenium
-# from selenium import webdriver
-# from webdriver_manager.chrome import ChromeDriverManager
+#pip install webdriver-manager
+#pip install selenium
+#from selenium import webdriver
+#from webdriver_manager.chrome import ChromeDriverManager
 
 
 from threading import Thread

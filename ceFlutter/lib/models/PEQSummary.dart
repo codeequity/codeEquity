@@ -7,9 +7,9 @@ import 'package:ceFlutter/models/allocation.dart';
 // Summaries stored for each project, and separately herein each contributor
 class PEQSummary {
    final String           id;
-   final String           ceProjectId;        // reponame is form /owner/repo, so is unique
-   final String           targetType;    // "repo", "contributor"
-   final String           targetId;      // GHProjectId
+   final String           ceProjectId;   // Summaries are per ceProject
+   final String           targetType;    // "ceProject", "repo", "contributor"   XXX currently unused.
+   final String           targetId;      // HostProjectId ... ?  or repo now?    XXX
    final String           lastMod;
    final List<Allocation> allocations;   
 

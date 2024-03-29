@@ -106,7 +106,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, issueData, testStat
 	    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 2,            subTest, "peq project sub invalid" );
 	    subTest = tu.checkEq( meltPeq.HostProjectSub[0], config.UNCLAIMED, subTest, "peq project sub invalid" );
 	    subTest = tu.checkEq( meltPeq.HostProjectSub[1], config.UNCLAIMED, subTest, "peq project sub invalid" );
-	    subTest = tu.checkEq( meltPeq.HostProjectId, td.unclaimPID,        subTest, "peq unclaimed PID bad" );
+	    subTest = tu.checkEq( meltPeq.HostRepoId, meltLink.hostRepoId,     subTest, "peq unclaimed RID bad" );
 	    subTest = tu.checkEq( meltPeq.HostIssueTitle, ISS_FLOW,            subTest, "peq title is wrong" );
 	    subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
 	    subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
@@ -182,7 +182,7 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
 	subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
 	subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle, subTest, "peq project sub invalid" );
 	subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,  subTest, "peq project sub invalid" );
-	subTest = tu.checkEq( meltPeq.HostProjectId, td.dataSecPID,        subTest, "peq unclaimed PID bad" );
+	subTest = tu.checkEq( meltPeq.HostRepoId, td.ghRepoId,             subTest, "peq unclaimed RID bad" );
 	subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 	
 	// CHECK Dynamo PAct

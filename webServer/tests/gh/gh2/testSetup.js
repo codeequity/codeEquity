@@ -25,7 +25,7 @@ async function createPreferredCEProjects( authData, testLinks, td ) {
     await gh2tu.linkRepo( authData, td.ceProjectId, td.ghRepoId, td.ghFullName, td.cepDetails );
     
     // Modules: softwareContr, businessOps, unallocated
-    td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, config.MAIN_PROJ, "Overall planned equity allocations, by category" );
+    td.masterPID  = await gh2tu.createProjectWorkaround( authData, td, td.mainTitle, "Overall planned equity allocations, by category" );
     let mastCol1  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, td.softContTitle );
     let mastCol2  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, td.busOpsTitle );
     let mastCol3  = await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.masterPID, td.unallocTitle );
@@ -60,7 +60,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
     // [pass, fail, msgs]
     let subTest  = [ 0, 0, []];
     
-    await gh2tu.refresh( authData, td, config.MAIN_PROJ );
+    await gh2tu.refresh( authData, td, td.mainTitle );
 
     let foundGHSub = false;
     let foundDSSub = false;
@@ -76,7 +76,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	
 	subTest = tu.checkEq( ghPeqs[0].PeqType, config.PEQTYPE_ALLOC,      subTest, "PeqType" );
 	subTest = tu.checkEq( ghPeqs[0].Amount, "1500000",                  subTest, "Peq Amount" );  
-	subTest = tu.checkEq( ghPeqs[0].HostProjectId, td.masterPID,        subTest, "Project ID" );
+	subTest = tu.checkEq( ghPeqs[0].HostRepoId, td.ghRepoId,            subTest, "Repo ID" );
 	
 	// projSub can be NS in some cases.  Valid, if pact exists
 	if( (ghPeqs[0].HostProjectSub)[0] == td.softContTitle ) { foundGHSub = true; }
@@ -125,8 +125,9 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 		subTest = tu.checkEq( hasRaw, true,                               subTest, "PAct Raw match" );
 		subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,            subTest, "PAct Verb"); 
 		subTest = tu.checkEq( pact.HostUserId, td.actorId,                subTest, "PAct user name" ); 
-		
-		console.log( pact.Subject[0], pact.Verb, pact.Action, pact.Subject.slice(-1) );
+
+		let s = pact.subject >= 1 ? pact.Subject[0] : pact.Note;
+		console.log( s, pact.Verb, pact.Action, pact.Subject.slice(-1) );
 		
 		if( pact.Action == config.PACTACT_ADD || pact.Action == config.PACTACT_RELO ) {
 		    if     ( pact.Subject[0] == ghPeqs[0].PEQId ) { foundGHPActs++; }
@@ -196,7 +197,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    subTest = tu.checkGE( projects.length, 3,     subTest, "Project count" );
 	    let foundProj = 0;
 	    for( const proj of projects ) {
-		if( proj.title == config.MAIN_PROJ ) {
+		if( proj.title == td.mainTitle ) {
 		    td.masterPID = proj.id;
 		    foundProj++;
 		}
@@ -308,7 +309,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 		if( link.hostIssueName == td.dataSecTitle ) { foundDS++; }
 		
 		if( found ) {
-		    subTest = tu.checkEq( link.hostProjectName, config.MAIN_PROJ, subTest, "Linkage Proj name" );
+		    subTest = tu.checkEq( link.hostProjectName, td.mainTitle, subTest, "Linkage Proj name" );
 		    subTest = tu.checkEq( link.hostProjectId, td.masterPID,       subTest, "Linkage Proj id" );
 		}
 	    }

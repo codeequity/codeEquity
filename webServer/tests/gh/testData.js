@@ -12,6 +12,7 @@ class TestData {
 	this.ghFullName   = config.EMPTY;
 
 	// A Recommended CE structure
+	this.mainTitle        = config.MAIN_PROJ; 
 	this.softContTitle    = "Software Contributions";
 	this.busOpsTitle      = "Business Operations"; 
 	this.dataSecTitle     = "Data Security";

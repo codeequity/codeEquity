@@ -10,7 +10,7 @@ import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
-import 'package:ceFlutter/screens/add_gh_page.dart';
+import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 
 class CEHomePage extends StatefulWidget {
@@ -56,31 +56,40 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
-   Widget _addGHAcct() {
+   Widget _addHostAcct() {
       return makeActionButtonFixed(
          appState,
-         "Add",
+         "Go",
          buttonWidth,
          () async
          {
-            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddGHPage());
+            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddHostPage());
             Navigator.push( context, newPage );
          });
    }
 
    
    // This GD opens and closes peqSummary.
-   Widget _makeRepoChunk( String repoName ) {
-      print( "Chunking " + repoName );
+   Widget _makeChunk( String itemName, { ceProj = false } ) {
       final textWidth = appState.screenWidth * .4;
+      Widget itemTxt = Container( width: 1, height: 1 );
+      if( ceProj ) {
+         print( "Chunking ceProj " + itemName );
+         itemTxt = makeActionText( appState, itemName, textWidth, false, 1 );
+      }
+      else {
+         print( "Chunking repo " + itemName );
+         itemTxt = makeIndentedActionText( appState, itemName, textWidth, false, 1 );
+      }
+      
       return GestureDetector(
          onTap: () async
          {
-            appState.selectedRepo = repoName;
-            for( final gha in appState.myGHAccounts ) {
-               for( final ceProj in gha.ceProjectIds ) {
-                  for( final repo in gha.ceProjRepos[ceProj] ?? [] ) {
-                     if( repoName == repo ) {
+            appState.selectedRepo = itemName;
+            for( final hosta in appState.myHostAccounts ) {
+               for( final ceProj in hosta.ceProjectIds ) {
+                  for( final repo in hosta.ceProjRepos[ceProj] ?? [] ) {
+                     if( itemName == repo ) {
                         appState.selectedCEProject = ceProj;
                         break;
                      }
@@ -93,45 +102,51 @@ class _CEHomeState extends State<CEHomePage> {
             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
             Navigator.push( context, newPage );
          },
-         child: makeActionText( appState, repoName, textWidth, false, 1 )
+         child: itemTxt
          );
    }
-   
+
+   // XXX host-specific
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-   List<Widget> _makeRepos( gha ) {
+   List<Widget> _makeRepos( hosta ) {
       print( "MakeRepos" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;              // 2*container + button + pad
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> repoChunks = [];
       var chunkHeight = 0.0;
 
-      Widget _repoBar = Row(
+      Widget _connectBar = Row(
          crossAxisAlignment: CrossAxisAlignment.center,
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( appState, "GitHub Repositories", textWidth, false, 1 ),
+         children: <Widget>[ makeTitleText( appState, "Connect to GitHub", textWidth, false, 1 ),
                              Container( width: 10 ),
-                             _addGHAcct(),
+                             _addHostAcct(),
                              Container( width: 10 ),
             ]);
-         
-      repoChunks.add( _repoBar );
-      chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
-      // XXX
-      print( "XXX fix makerepo" );
-      if( gha != -1 ) {
-         // Do we have any regular GH projects?  Hmm.. no matter.  want this present anyway.
-         // if( gha.ceProject.any(( bool p ) => !p )) {}
-         for( var i = 0; i < gha.futureCEProjects.length; i++ ) {
-            //if( !gha.ceProject[i] ) {
-            repoChunks.add( _makeRepoChunk( gha.futureCEProjects[i] ));
+      bool addedMore = false;
+      if( hosta == -1 ) {
+         repoChunks.add( _connectBar );
+         chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         addedMore = true;
+      }
+      else {
+         if( hosta.futureCEProjects.length > 0 ) {
+            repoChunks.add( makeTitleText( appState, "Future CodeEquity Projects", textWidth, false, 1 ) );
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-               //}
+            addedMore = true;
+         }
+         for( var i = 0; i < hosta.futureCEProjects.length; i++ ) {
+            repoChunks.add( _makeChunk( hosta.futureCEProjects[i] ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+            addedMore = true;
          }
       }
-      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
-      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      if( addedMore ) {
+         repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+         repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+         repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      }
       chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
 
       runningLHSHeight += chunkHeight;
@@ -144,12 +159,12 @@ class _CEHomeState extends State<CEHomePage> {
       final textWidth = min( lhsPaneMaxWidth - (2*appState.FAT_PAD + appState.TINY_PAD), appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       Widget button = makeActionButtonFixed(
          appState,
-         "Refresh Repo List",
+         "Refresh Projects",
          textWidth,
          () async
          {
             await updateProjects( context, container );
-            setState(() => appState.ghUpdated = true );            
+            setState(() => appState.hostUpdated = true );            
          }); 
       
       Widget buttonRow = Row(
@@ -168,11 +183,11 @@ class _CEHomeState extends State<CEHomePage> {
    }
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-   List<Widget> _makeCEProjs( gha ) {
+   List<Widget> _makeCEProjs( hosta ) {
       print( "MakeCEProj" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
-      List<Widget> repoChunks = [];
+      List<Widget> chunks = [];
       var chunkHeight = 0.0;
 
       Widget _ceProjBar = Row(
@@ -184,52 +199,51 @@ class _CEHomeState extends State<CEHomePage> {
                              Container( width: 10 ),
             ]);
          
-      repoChunks.add( _ceProjBar );
+      chunks.add( _ceProjBar );
       chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
-      for( var i = 0; i < gha.ceProjectIds.length; i++ ) {
-         repoChunks.add( _makeRepoChunk( gha.ceProjectIds[i] ));
+      for( var i = 0; i < hosta.ceProjectIds.length; i++ ) {
+         chunks.add( _makeChunk( hosta.ceProjectIds[i], ceProj:true ));
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         var repos = gha.ceProjRepos[ gha.ceProjectIds[i] ];
+         var repos = hosta.ceProjRepos[ hosta.ceProjectIds[i] ];
          for( var j = 0; j < repos.length; j++ ) {
-            repoChunks.add( _makeRepoChunk( repos[j] ));
+            chunks.add( _makeChunk( repos[j] ));
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
          }
       }
-      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
-      repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
+      chunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+      chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
       chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
 
       runningLHSHeight += chunkHeight;
-      return repoChunks;
+      return chunks;
    }
 
    // Keep LHS panel between 250 and 300px, no matter what.
-   Widget _showGHAccts() {
+   Widget _showHostAccts() {
       List<Widget> acctList = [];
 
       // Whitespace
       acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
       runningLHSHeight += appState.BASE_TXT_HEIGHT;
       
-      print( "SHOW " + appState.ghUpdated.toString() );
-      if( appState.myGHAccounts != null || appState.ghUpdated ) {
+      print( "SHOW " + appState.hostUpdated.toString() );
+      if( appState.myHostAccounts != null || appState.hostUpdated ) {
 
-         if( appState.myGHAccounts.length <= 0 ) {
+         if( appState.myHostAccounts.length <= 0 ) {
             acctList.addAll( _makeRepos( -1 ) );
          }
          else {
-            for( final gha in appState.myGHAccounts ) {
-               acctList.addAll( _makeCEProjs( gha ));
-               acctList.addAll( _makeRepos( gha ));
+            for( final hosta in appState.myHostAccounts ) {
+               acctList.addAll( _makeCEProjs( hosta ));
+               acctList.addAll( _makeRepos( hosta ));
+               acctList.addAll( _makeRefresh() );
             }
          }
       }
       
-      acctList.addAll( _makeRefresh() );
-      
-      appState.ghUpdated = false;
+      appState.hostUpdated = false;
       final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
       final wrapPoint = lhsMaxWidth + vBarWidth + rhsPaneMinWidth;
       
@@ -270,7 +284,7 @@ class _CEHomeState extends State<CEHomePage> {
                children: <Widget>[
                   Container(
                      color: Colors.white,
-                     child: _showGHAccts()
+                     child: _showHostAccts()
                      ),
                   const VerticalDivider(
                      color: Colors.grey,
