@@ -80,7 +80,6 @@ async function clearCEProj( authData, testLinks, pd ) {
     // PActs, raw.. get everything associated with peqs above (for which we have repo information).
     // For whatever reason, anything interacting with cleanDynamo is list of lists.  grunk.
     let pacts = await awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
-    // console.log( "XXX PActs:", pd.ceProjectId, pd.ghRepoId, peqIds, pacts );
     let pactIds = [];
     for( const pid of peqIds ) {
 	let t = pacts.filter( p => p.Subject[0] == pid[0] );
@@ -88,6 +87,13 @@ async function clearCEProj( authData, testLinks, pd ) {
 	    t = t.map( x => [x.PEQActionId] );
 	    pactIds = pactIds.concat( t );
 	}
+    }
+
+    // Also, get anything that has no Subject (notice) as there is no other way to delete these (and there is not impact to remove more than necessary)
+    if( pacts.length > 0 ) {
+	let notices = pacts.filter( p => p.Subject.length == 0 );
+	notices = notices.map( n => [n.PEQActionId] );
+	pactIds = pactIds.concat( notices );
     }
 
     console.log( "Dynamo bot PActIds", pd.ghFullName, pactIds );
@@ -233,7 +239,7 @@ async function runTests( authData, authDataX, authDataM, testLinks, td, tdX, tdM
     await clearUnclaimed( authData,  testLinks, td  );
     await clearUnclaimed( authDataX, testLinks, tdX );
     await clearUnclaimed( authDataM, testLinks, tdM );
-    
+
     promises = [];
     promises.push( clearCEProj( authData,  testLinks, td ));
     promises.push( clearCEProj( authDataX, testLinks, tdX ));

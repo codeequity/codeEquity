@@ -360,7 +360,7 @@ async function getCards( authData, pid, colId ) {
                    fieldValueByName(name: $fName) {
                    ... on ProjectV2ItemFieldSingleSelectValue { name optionId }}
                    content {
-                   ... on ProjectV2ItemContent { ... on Issue { id title number }
+                   ... on ProjectV2ItemContent { ... on Issue { id title number repository {id} }
                                                  ... on DraftIssue { id title }
                            }}
                }}}}
@@ -382,7 +382,7 @@ async function getCards( authData, pid, colId ) {
 		
 		for( let i = 0; i < issues.length; i++ ) {
 		    const iss = issues[i].node;
-		    
+
 		    // GH can sometimes take a long time to move a card out of No Status to it's home.  Try throwing a few times..
 		    if( ( iss.type == "DRAFT_ISSUE" || iss.type == "ISSUE" ) && !utils.validField( iss, "fieldValueByName" ) ) {
 			console.log( "Column is No Status.  Toss" );
@@ -397,7 +397,8 @@ async function getCards( authData, pid, colId ) {
 			datum.issueId  = iss.content.id;
 			datum.title    = iss.content.title;
 			datum.columnId = colId;
-			if( typeof datum.issueNum === 'undefined' ) { datum.issueNum = -1; } // draft issue
+			if( utils.validField( iss.content, "repository" )) { datum.repoId = iss.content.repository.id; }  // draft issue avoidance
+			if( typeof datum.issueNum === 'undefined' )        { datum.issueNum = -1; }                       // draft issue
 			cards.push( datum );
 		    }
 		}

@@ -131,6 +131,8 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     // Both GhOps and crossProj show up in both ari and ariAlt, at least until unlink proj from td and projx from tdx.
     // But, choosing not to unlink in order to create confusion then cure in deeper way.
     stripeLoc.projSub = ["Github Operations", "Stripes" ];
+    if( td.mainTitle == config.MAIN_PROJ_TEST ) { stripeLoc.projSub = ["Github Operations Flut", "Stripes" ]; }
+	
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, stripeLoc, issDat, card, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: tdX.ceProjectId} );    
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, crossLoc, issDatX, cardX, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: td.ceProjectId} );    
 
@@ -170,11 +172,11 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
 }
 
 // NOTE, this is sensitive.  Add more interleave cards in unclaimed before testCross runs, and this will fail.
-async function getCardsHelp( authData, pid, cid, desiredCount ) {
+async function getCardsHelp( authData, rid, pid, cid, desiredCount ) {
     allCards = await gh2tu.getCards( authData, pid, cid );
     let ret = false;
-    let interleaveCards = allCards.filter( card => card.title.includes( "Interleave" ));
-    if( interleaveCards.length == desiredCount ) { ret = allCards; }
+    let interleaveCards = allCards.filter( card => card.title.includes( "Interleave" ) && card.repoId == rid );
+    if( interleaveCards.length == desiredCount ) { ret = interleaveCards; }
 
     return ret;
 }
@@ -276,8 +278,8 @@ async function testMultithread( authData, authDataM, testLinks, td, tdM ) {
     // NOTE uncLoc and uncLocM are identical now that unclaimed is same project (view) used for both repos.
     //      Leave this in place - down the road may test multithread over multiple ceProjects.
     // This waits until interleave creations above has finished, which currently takes ~15s.  Each peq label is costing ~2s
-    let allCards  = await tu.settleWithVal( "Get cards from unclaimed", getCardsHelp, authData, uncLoc.pid, uncLoc.colId, 8 ); 
-    let allCardsM = await tu.settleWithVal( "Get cards from unclaimedM", getCardsHelp, authDataM, uncLocM.pid, uncLocM.colId, 8 ); 
+    let allCards  = await tu.settleWithVal( "Get cards from unclaimed ", getCardsHelp, authData, td.ghRepoId, uncLoc.pid, uncLoc.colId, 4 ); 
+    let allCardsM = await tu.settleWithVal( "Get cards from unclaimedM ", getCardsHelp, authDataM, tdM.ghRepoId, uncLocM.pid, uncLocM.colId, 4 ); 
 
     if( allCards && allCardsM ) {
 	let c, cM = {};
@@ -325,7 +327,7 @@ async function runTests( flutterTest, authData, authDataX, authDataM, testLinks,
     console.log( "\n\nCross Repo test complete." );
     // ghUtils.show( true );
     await utils.sleep( 5000 );
-
+    
     let t2 = await testMultithread( authData, authDataM, testLinks, td, tdM );
     console.log( "\n\nMultithread test complete." );
     // ghUtils.show( true );

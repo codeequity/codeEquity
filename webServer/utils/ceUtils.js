@@ -58,8 +58,9 @@ function getProjectSubs( authData, ghLinks, ceProjId, projName, colName ) {
 	// Check if project is a card in Master
 	let links  = ghLinks.getLinks( authData, {"ceProjId": ceProjId, "projName": config.MAIN_PROJ, "issueTitle": projName} );
 	let linksT = ghLinks.getLinks( authData, {"ceProjId": ceProjId, "projName": config.MAIN_PROJ_TEST, "issueTitle": projName} );
-	if( links != -1 || linksT != -1 ) { projSub = [ links[0]['hostColumnName'], projName ]; }
-	else                              { projSub = [ projName ]; }
+	if     ( links  != -1  ) { projSub = [ links[0]['hostColumnName'], projName ]; }
+	else if( linksT != -1 )  { projSub = [ linksT[0]['hostColumnName'], projName ]; }
+	else                     { projSub = [ projName ]; }
 
 	// No, induces too many special cases, with no return.
 	// If col isn't a CE organizational col, add to psub
