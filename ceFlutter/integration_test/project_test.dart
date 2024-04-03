@@ -22,7 +22,7 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 // https://blog.gskinner.com/archives/2021/06/flutter-a-deep-dive-into-integration_test-library.html
 // https://github.com/flutter/flutter/tree/master/packages/flutter/test/material
 
-// Gold standard for testing ingest and summary frame for ariCETester/ceFlutterTester
+// Gold standard for testing ingest and summary frame for codeequity/ceFlutterTester
 // XXX Category should show ["7,000,000", "12,840", "2,500", "11,001"] in ceFlutter
 // XXX Test for presence in gold not replicated in ceFlutter
 // XXX Discrepencies:
@@ -705,7 +705,7 @@ Future<bool> validateCE10( WidgetTester tester ) async {
    await expandLeaf( tester, 5, "codeequity 10" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    String issue  = "IR Prog";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
@@ -731,7 +731,7 @@ Future<bool> validateAri15( WidgetTester tester ) async {
    await expandLeaf( tester, 7, "ariCETester 15" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    // Most recent first
    String issue = "Close Open test"; 
@@ -774,7 +774,7 @@ Future<bool> validateAlloc23( WidgetTester tester ) async {
    await expandLeaf( tester, 10, "Component Alloc 23" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    String issue  = "Component Alloc";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
@@ -797,7 +797,7 @@ Future<bool> validateUnAlloc24( WidgetTester tester ) async {
    await expandLeaf( tester, 4, "Unallocated 24" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    String issue  = "Unallocated";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
@@ -816,7 +816,7 @@ Future<bool> validateUnAssign31( WidgetTester tester ) async {
    await expandLeaf( tester, 7, "Unassigned 31" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    // String issue  = "Unallocated";
    // expect( find.byKey( Key( issue ) ), findsOneWidget );
@@ -861,7 +861,7 @@ Future<bool> _checkHelper( tester ) async {
 
 void main() {
 
-   String repo = "ariCETester/ceFlutterTester";
+   String repo = "codeequity/ceFlutterTester";
    
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();

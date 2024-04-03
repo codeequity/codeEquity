@@ -1148,7 +1148,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       String pid = randAlpha(10);
       vPrint( appState, "Create new appstate PSum " + pid + "\n" );
       appState.myPEQSummary = new PEQSummary( id: pid, ceProjectId: todos[0].item2.ceProjectId,
-                                              targetType: "repo", targetId: todos[0].item2.hostProjectId, lastMod: getToday(), allocations: [] );
+                                              targetType: "repo", targetId: todos[0].item2.hostRepoId, lastMod: getToday(), allocations: [] );
    }
    
    appState.ingestUpdates.clear();
@@ -1163,6 +1163,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    print( "Ingest todos finished processing.  Update Dynamo." );
    // XXX Skip this if no change (say, on a series of notices).
    if( appState.myPEQSummary != null ) {
+      appState.myPEQSummary.lastMod = getToday();
       String psum = json.encode( appState.myPEQSummary );
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
       await updateDynamo( context, container, postData, "PutPSum" );

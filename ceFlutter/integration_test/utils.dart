@@ -145,7 +145,7 @@ Future<bool> verifyAriHome( WidgetTester tester ) async {
    expect( find.byKey( const Key('CodeEquity_ycje7dk23f' )),  findsOneWidget );   
    
    //  Five GH Repositories
-   expect( find.byKey( const Key('ariCETester/ceFlutterTester' )), findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceFlutterTester' )), findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterAri' )),      findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterConnie' )),   findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterAriAlt' )),   findsOneWidget );   
@@ -161,7 +161,7 @@ Future<bool> verifyConnieHome( WidgetTester tester ) async {
    // Four CE Projects
    expect( find.byKey( const Key('connieCE/CodeEquityTester' )),    findsOneWidget );
    expect( find.byKey( const Key('connieCE/GarlicBeer' )),          findsOneWidget );
-   expect( find.byKey( const Key('ariCETester/ceTesterAlt' )),      findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceTesterAlt' )),      findsOneWidget );
    expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
    
    return true;
@@ -206,7 +206,7 @@ Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
    expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 
    // framing
-   expect( find.text( 'ariCETester/ceFlutterTester' ),     findsOneWidget );  
+   expect( find.text( 'codeequity/ceFlutterTester' ),     findsOneWidget );  
    expect( find.text( 'Approvals' ),                       findsOneWidget );  
    expect( find.text( 'PEQ Summary' ),                     findsOneWidget );  
    expect( find.text( 'Contributors' ),                    findsOneWidget );  
@@ -269,7 +269,7 @@ Future<bool> backToSummary( WidgetTester tester ) async {
 
    // XXX Does this belong here?
    expect( await verifyAriHome( tester ), true );
-   String repo = "ariCETester/ceFlutterTester";
+   String repo = "codeequity/ceFlutterTester";
    final Finder ariLink = find.byKey( Key( repo ));   
 
    await tester.tap( ariLink );

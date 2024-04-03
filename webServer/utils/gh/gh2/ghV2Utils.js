@@ -1348,6 +1348,7 @@ async function getProjIdFromPeq ( authData, iid ) {
 	});
     }
     catch( e ) {
+	console.log( "Didn't like", iid );
 	return await ghUtils.errorHandler( "getProjIdFromPeq", e, getProjIdFromPeq, authData, iid );
     }
 

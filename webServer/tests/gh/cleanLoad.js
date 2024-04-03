@@ -241,9 +241,9 @@ async function runTests() {
     // TEST_REPO auth
     let td          = new testData.TestData();
 
-    td.ceProjectId  = config.TEST_CEPID;
     td.ghOwner      = config.TEST_OWNER;
     td.actor        = config.TEST_ACTOR;
+    td.ceProjectId  = config.FLUTTER_TEST_CEPID;
     td.ghRepo       = config.FLUTTER_TEST_REPO;
     td.ghFullName   = td.ghOwner + "/" + td.ghRepo;
 
