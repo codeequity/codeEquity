@@ -354,6 +354,9 @@ async function getEntries( tableName, query ) {
     case "CEPEQRaw":
 	props = [ "PEQRawId", "CEProjectId" ];
 	break;
+    case "CEHostUser":
+	props = [ "HostPlatform" ];
+	break;
     case "CEProjects":
 	props = [ "CEProjectId" ];
 	break;

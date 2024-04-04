@@ -35,10 +35,13 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
    // print( peq );
    
    String hostUID  = pact.hostUserId;
+   assert( appState.idMapHost.containsKey( hostUID ) );
+   /*
    if( !appState.idMapHost.containsKey( hostUID )) {
       appState.idMapHost[ hostUID ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$hostUID" }', "GetCEUID" );
    }
-   String ceu = appState.idMapHost[ hostUID ];
+   */
+   String ceu = appState.idMapHost[ hostUID ]['ceUID'];
 
    // Too aggressive.  If run 'refresh repos' from homepage, hostAccount is rewritten with new repo list, at which point pacts are updated with 'new' ceuid.
    //                  This is done because in some (many?) cases, pacts are created by a host user before that user has a CEUID.
@@ -57,10 +60,13 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
    // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
    peq.ceHolderId = [];
    for( var peqHostUser in peq.hostHolderId ) {
+      assert( appState.idMapHost.containsKey( peqHostUser ) );
+      /*
       if( !appState.idMapHost.containsKey( peqHostUser )) {
          appState.idMapHost[ peqHostUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$peqHostUser" }', "GetCEUID" );
       }
-      String ceUID = appState.idMapHost[ peqHostUser ];
+      */
+      String ceUID = appState.idMapHost[ peqHostUser ]['ceUID'];
       if( ceUID == "" ) { ceUID = "HostUSER: " + peqHostUser; }  // XXX formalize
       peq.ceHolderId.add( ceUID );
    }
@@ -461,7 +467,7 @@ Future _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo
 
    if( newType == enumToStr( PeqType.grant )) {
       postData['AccrualDate'] = pact.entryDate;
-      String ceUID = appState.idMapHost[ pact.hostUserId ];
+      String ceUID = appState.idMapHost[ pact.hostUserId ]['ceUID'];
       if( ceUID == "" ) { ceUID = "HostUSER: " + pact.hostUserName; }  // XXX formalize
       postData['CEGrantorId'] = ceUID;
    }
@@ -1011,6 +1017,16 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
       assert( pact.verb == PActVerb.confirm && ( nonPeqChange || peqChange ));
       assignees = peq.hostHolderId;
       if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }  // XXX Formalize
+      else {
+         // Convert host UID to host username
+         List<String> hname = [];
+         assignees.forEach( (a) {
+               String? hun = appState.idMapHost[a]['hostUserName'];
+               assert( hun != null );
+               hname.add( hun! );
+            });
+         assignees = hname;
+      }
    }
 
    assert( ka == null || ka.categoryBase       != null );
