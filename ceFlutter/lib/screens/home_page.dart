@@ -205,7 +205,7 @@ class _CEHomeState extends State<CEHomePage> {
       for( var i = 0; i < hosta.ceProjectIds.length; i++ ) {
          chunks.add( _makeChunk( hosta.ceProjectIds[i], ceProj:true ));
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         var repos = hosta.ceProjRepos[ hosta.ceProjectIds[i] ];
+         var repos = hosta.ceProjRepos[ hosta.ceProjectIds[i] ] ?? [];
          for( var j = 0; j < repos.length; j++ ) {
             chunks.add( _makeChunk( repos[j] ));
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;

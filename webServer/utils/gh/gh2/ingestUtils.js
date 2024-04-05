@@ -66,7 +66,9 @@ async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, spli
 	let specials = {};
 	specials.pact     = "addRelo";
 	specials.columnId = splitLink.hostColumnId; 
-	
+
+	// Won't be issuing non-bot-sent 'close' or moved notice, handle here.  ACCR already opted out.
+	if( link.hostColumnName == config.PROJ_COLS[config.PROJ_PEND] ) { specials.propose = true; }
 	awsUtils.recordPEQData(authData, pd, false, specials );
     }
     let success = await movePromise;
