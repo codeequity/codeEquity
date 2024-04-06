@@ -732,8 +732,8 @@ async function testCreateDelete( authData, testLinks, td ) {
 	const newIss = await gh2tu.findIssueByName( authData, td, issDatAgho2[3] );
 	const aghoIss2New = [newIss.id, newIss.number, -1, newIss.title];
 
-	aghoCard1New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, issDatAgho1[3].toString(), testStatus );
-	aghoCard2New = await tu.settleWithVal( "Get new card", getCardHelp, authData, uncAccr.pid, uncAccr.colId, aghoIss2New[3].toString(), testStatus );
+	aghoCard1New = await tu.settleWithVal( "Get new card", getCardHelp, authData, td, uncAccr.pid, uncAccr.colId, issDatAgho1[3].toString(), testStatus );
+	aghoCard2New = await tu.settleWithVal( "Get new card", getCardHelp, authData, td, uncAccr.pid, uncAccr.colId, aghoIss2New[3].toString(), testStatus );
 	aghoIss2New[2] = aghoCard2New.cardId;
 	
 	// card: old issue, new card.  issue: new issue, new card
@@ -765,8 +765,8 @@ async function testCreateDelete( authData, testLinks, td ) {
     return testStatus;
 }
 
-async function getCardHelp( authData, pid, colId, cardName, testStatus ) {
-    let uCards = await gh2tu.getCards( authData, pid, colId );
+async function getCardHelp( authData, td, pid, colId, cardName, testStatus ) {
+    let uCards = await gh2tu.getCards( authData, td.ghRepoId, pid, colId );
     const card = uCards.find( card => card.title == cardName );
     return card;
 }

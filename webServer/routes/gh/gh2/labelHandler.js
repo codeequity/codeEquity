@@ -186,7 +186,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    const pacts = await awsUtils.getPActs( authData, {CEProjectId: pd.ceProjectId, Ingested: "false", Note: config.PACTNOTE_PVU} );
 	    let addPeqs = [];
 	    let remPeqs = [];
-	    if( pacts != -1 ) {
+	    if( pacts !== -1 ) {
 		for( const p of pacts ) {
 		    if( p.Subject.length != 2 ) { console.log( "Oi???", p ); }
 		    assert( p.Subject.length == 2 );
@@ -199,15 +199,17 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			if( typeof rpeqs !== 'undefined' ) { remPeqs = remPeqs.concat( rpeqs.map( (r) => r.PEQId ));  }
 		    }
 		}
-		console.log( authData.who, "Peq Val Update is causing havoc.. add peqs", addPeqs, "remove peqs", remPeqs );
+		if( addPeqs.length > 0 || remPeqs.length > 0 ) { console.log( authData.who, "Peq Val Update is causing havoc.. add peqs", addPeqs, "remove peqs", remPeqs ); }
 		
 		// Add
-		let newPeqs = await awsUtils.getPeqsById( authData, addPeqs );
-		peqs = peqs.concat( newPeqs );
+		if( addPeqs.length > 0 ) {
+		    let newPeqs = await awsUtils.getPEQsById( authData, addPeqs );
+		    peqs = peqs == -1 ? newPeqs : peqs.concat( newPeqs );
+		}
 		
 		// Remove
-		if( peqs !== -1 ) {
-		    for( let i = peqs.length; i >= 0; i-- ) {
+		if( peqs !== -1 && remPeqs.length > 0 ) {
+		    for( let i = peqs.length - 1; i >= 0; i-- ) {
 			if( remPeqs.includes( peqs[i].PEQId )) { peqs.splice( i, 1 ); }
 		    }
 		}

@@ -94,8 +94,8 @@ async function testFlatProject( authData, testLinks, td ) {
 
 
     // Check GITHUB Cards
-    let eggCards = await gh2tu.getCards( authData, td.masterPID, eggsId );
-    let bacCards = await gh2tu.getCards( authData, td.masterPID, baconId );
+    let eggCards = await gh2tu.getCards( authData, td.ghRepoId, td.masterPID, eggsId );
+    let bacCards = await gh2tu.getCards( authData, td.ghRepoId, td.masterPID, baconId );
 
     testStatus = tu.checkEq( eggCards.length, 2, testStatus, "Egg col card count" );
     testStatus = tu.checkEq( bacCards.length, 1, testStatus, "Bacon col card count" );

@@ -489,7 +489,7 @@ async function getPEQs( authData, query ) {
 async function getPEQsById( authData, peqIds ) {
     // console.log( "Get PEQs for a given repo:", query);
 
-    let shortName = "GetPeqsById";
+    let shortName = "GetPEQsById";
     let postData  = { "Endpoint": shortName, "PeqIds": peqIds };
 
     return await wrappedPostAWS( authData, shortName, postData );
