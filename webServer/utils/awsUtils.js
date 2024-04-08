@@ -302,7 +302,7 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
     let columnId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "columnId" ) ? specials.columnId : -1;
     let propose   = typeof specials !== 'undefined' && specials.hasOwnProperty( "propose" )  ? specials.propose  : false;
 
-    // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
+    console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
 
     assert( pact == -1 || pact == "addRelo" || pact == "justAdd" ); 
     let add       = pact == "addRelo" || pact == "justAdd";
@@ -328,7 +328,7 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";
 
-    console.log( authData.who, "Recording peq data for", pd.issueName, pd.projectId, pact, columnId, pd.assignees);	
+    // console.log( authData.who, "Recording peq data for", pd.issueName, pd.projectId, pact, columnId, pd.assignees);	
     
     // Don't wait if already have Id
     // no need to wait
@@ -354,6 +354,9 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
 
     // Some actions such as split do not issue a non-bot issue:closed.  if split into pend, send note
     if( propose ){
+	recordPEQAction( authData, config.EMPTY, pd, 
+			 config.PACTVERB_PROP, config.PACTACT_ACCR, [newPEQId], "", 
+			 utils.getToday() );
     }
     return newPEQId;
 }

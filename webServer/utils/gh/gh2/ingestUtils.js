@@ -69,6 +69,7 @@ async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, spli
 
 	// Won't be issuing non-bot-sent 'close' or moved notice, handle here.  ACCR already opted out.
 	if( link.hostColumnName == config.PROJ_COLS[config.PROJ_PEND] ) { specials.propose = true; }
+	console.log( "Split time specials", specials );
 	awsUtils.recordPEQData(authData, pd, false, specials );
     }
     let success = await movePromise;
