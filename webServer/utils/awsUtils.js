@@ -319,7 +319,7 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
     let postData = {};
     postData.CEProjectId    = pd.ceProjectId;
     postData.PEQId          = newPEQId;
-    postData.HostHolderId   = pd.assignees;   // list of hostUserLogins assigned
+    postData.HostHolderId   = pd.assignees;   // list of hostUserIds assigned
     postData.PeqType        = pd.peqType;               
     postData.Amount         = pd.peqValue;              
     postData.HostProjectSub = pd.projSub;               
@@ -328,7 +328,7 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
     postData.HostIssueTitle = pd.issueName;        
     postData.Active         = "true";
 
-    // console.log( authData.who, "Recording peq data for", pd.issueName, pd.projectId, pact, columnId, pd.assignees);	
+    console.log( authData.who, "Recording peq data for", pd.issueName, pd.projectId, pact, columnId, pd.assignees);	
     
     // Don't wait if already have Id
     // no need to wait

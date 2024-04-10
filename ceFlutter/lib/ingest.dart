@@ -60,7 +60,12 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
    // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
    peq.ceHolderId = [];
    for( var peqHostUser in peq.hostHolderId ) {
-      assert( appState.idMapHost.containsKey( peqHostUser ) );
+      if( !appState.idMapHost.containsKey( peqHostUser )) {
+         print( peqHostUser );
+         print( peq.toString() );
+         print( appState.idMapHost.toString() );
+         assert( appState.idMapHost.containsKey( peqHostUser ) );
+      }
       /*
       if( !appState.idMapHost.containsKey( peqHostUser )) {
          appState.idMapHost[ peqHostUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$peqHostUser" }', "GetCEUID" );
@@ -555,11 +560,15 @@ Future _add( context, container, pact, peq, List<Future> dynamo, assignees, assi
          return;
       }
       
-      // iterate over assignees
+      // iterate over assignees.  Make sure using hostUserName here, not id.
       for( var assignee in assignees ) {
-         vPrint( appState, "\n Assignee: " + assignee );
+
+         String hostUserName = assignee;
+         if( appState.idMapHost.containsKey( assignee )) { hostUserName = appState.idMapHost[assignee]['hostUserName']; }
+         
+         vPrint( appState, "\n Assignee: " + assignee + " " + hostUserName );
          peqLoc = subBase;
-         adjustSummaryAlloc( appState, peq.id, subBase, assignee, assigneeShare, peq.peqType );
+         adjustSummaryAlloc( appState, peq.id, subBase, hostUserName, assigneeShare, peq.peqType );
       }
    }
    else {
@@ -570,7 +579,7 @@ Future _add( context, container, pact, peq, List<Future> dynamo, assignees, assi
    // can not add into ACCR
    var postData = {};
    // peqType is unchanged.  amount is unchanged
-   postData['PEQId']        = peq.id;
+   postData['PEQId']          = peq.id;
    postData['HostHolderId']   = listEq( assignees, ["Unassigned"] ) ? [] : assignees;
    postData['HostProjectSub'] = peqLoc;
 
@@ -1018,6 +1027,8 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
       assignees = peq.hostHolderId;
       if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }  // XXX Formalize
       else {
+         /* 
+         // NO.  Only within allocations
          // Convert host UID to host username
          List<String> hname = [];
          assignees.forEach( (a) {
@@ -1026,6 +1037,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
                hname.add( hun! );
             });
          assignees = hname;
+         */
       }
    }
 

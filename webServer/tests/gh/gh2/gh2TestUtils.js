@@ -1274,16 +1274,19 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		// signal before CE fully processed the label notification.  Since either is acceptible, let both pass.
 		let holderCheck = peq.HostHolderId.length == assignCnt;
 		if( peqHolder == "maybe" ) { holderCheck = holderCheck || peq.HostHolderId.length > 0; }
-		if( !holderCheck ) { console.log( peq.HostHolderId.length.toString(), assignCnt.toString(), peqHolder ); }
+		if( !holderCheck ) {
+		    console.log( peq.HostHolderId.length.toString(), assignCnt.toString(), peqHolder );
+		    console.log( peqIID, peq, peqs );
+		}
 		subTest = tu.checkEq( holderCheck, true,                       subTest, "peq holders wrong" );      
 		
 		subTest = tu.checkEq( peq.PeqType, loc.peqType,                subTest, "peq type invalid" );        
 		subTest = tu.checkEq( peq.HostProjectSub.length, loc.projSub.length, subTest, "peq project sub len invalid" );
-		subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
+		subTest = tu.checkEq( peq.HostIssueTitle, issDat[3],           subTest, "peq title is wrong" );
 		subTest = tu.checkEq( peq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );    
 		subTest = tu.checkEq( peq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );      
 		subTest = tu.checkEq( peq.Amount, lval,                        subTest, "peq amount" );
-		subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],     subTest, "peq project sub 0 invalid" );
+		subTest = tu.checkEq( peq.HostProjectSub[0], loc.projSub[0],   subTest, "peq project sub 0 invalid" );
 		subTest = tu.checkEq( peq.Active, "true",                      subTest, "peq" );
 		if( !skipPeqPID ) {
 		    subTest = tu.checkEq( peq.HostRepoId, td.ghRepoId,         subTest, "peq repo id bad" );
@@ -1778,10 +1781,11 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 
 	    
 	    // NOTE: orig issue will not adjust initial peq value.  new issue will be set with new value.  label is up to date tho.
+	    // NOTE: Orig issue will depend on future assign to add assignee.  the split relies on this first plug for assignees since followon notification is bot-sent
 	    if( situated ) {
 		let lval = origVal / 2;
 		subTest = await checkSituatedIssue( authData, testLinks, td, origLoc, issDat,   card,      subTest, {opVal: opVal, label: lval, lblCount: labelCnt} );
-		subTest = await checkSituatedIssue( authData, testLinks, td, newLoc,  splitDat, splitCard, subTest, {label: lval, lblCount: labelCnt } );
+		subTest = await checkSituatedIssue( authData, testLinks, td, newLoc,  splitDat, splitCard, subTest, {label: lval, lblCount: labelCnt, assign: assignCnt } );
 	    }
 	    else {
 		subTest = await checkUntrackedIssue( authData, testLinks, td, origLoc, issDat,   card,      subTest, {lblCount: labelCnt } );
