@@ -1736,6 +1736,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     let situated   = typeof specials !== 'undefined' && specials.hasOwnProperty( "peq" )        ? specials.peq        : false;
     let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
     let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
+    let checkPeq   = typeof specials !== 'undefined' && specials.hasOwnProperty( "checkPeq" )   ? specials.checkPeq   : false;
 
     console.log( "Check Split", issDat[3], origLoc.colName, newLoc.colName, situated.toString(), labelCnt.toString(), assignCnt.toString() );
     let subTest = [ 0, 0, []];
@@ -1785,7 +1786,8 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    if( situated ) {
 		let lval = origVal / 2;
 		subTest = await checkSituatedIssue( authData, testLinks, td, origLoc, issDat,   card,      subTest, {opVal: opVal, label: lval, lblCount: labelCnt} );
-		subTest = await checkSituatedIssue( authData, testLinks, td, newLoc,  splitDat, splitCard, subTest, {label: lval, lblCount: labelCnt, assign: assignCnt } );
+		let splitSpecials = checkPeq ? {label: lval, lblCount: labelCnt, assign: assignCnt } : {label: lval, lblCount: labelCnt }; 
+		subTest = await checkSituatedIssue( authData, testLinks, td, newLoc,  splitDat, splitCard, subTest, splitSpecials );
 	    }
 	    else {
 		subTest = await checkUntrackedIssue( authData, testLinks, td, origLoc, issDat,   card,      subTest, {lblCount: labelCnt } );
