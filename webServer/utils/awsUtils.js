@@ -233,7 +233,7 @@ async function updatePEQPSub( authData, peqId, projSub ) {
 // Note: Only called by resolve.  PNP rejects all attempts to create in ACCR before calling resolve.
 // The only critical component here for interleaving is getting the ID.
 async function changeReportPEQVal( authData, pd, peqVal, link ) {
-    console.log( authData.who, "rebuild existing peq for issue:", pd.issueId );
+    console.log( authData.who, "rebuild existing peq for issue:", pd.issueId, "to", peqVal );
 
     // Confirm call chain is as expected.  Do NOT want to be modifying ACCR peq vals
     assert( link.hostColumnName != config.PROJ_COLS[config.PROJ_ACCR] );
@@ -300,8 +300,9 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
     assert(typeof pd.ceProjectId !== 'undefined' );
     let pact      = typeof specials !== 'undefined' && specials.hasOwnProperty( "pact" )     ? specials.pact     : -1;
     let columnId  = typeof specials !== 'undefined' && specials.hasOwnProperty( "columnId" ) ? specials.columnId : -1;
+    let propose   = typeof specials !== 'undefined' && specials.hasOwnProperty( "propose" )  ? specials.propose  : false;
 
-    // console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
+    console.log( authData.who, "Recording peq data for", pd.issueName, specials, pact, columnId);
 
     assert( pact == -1 || pact == "addRelo" || pact == "justAdd" ); 
     let add       = pact == "addRelo" || pact == "justAdd";
@@ -318,7 +319,7 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
     let postData = {};
     postData.CEProjectId    = pd.ceProjectId;
     postData.PEQId          = newPEQId;
-    postData.HostHolderId   = pd.assignees;   // list of hostUserLogins assigned
+    postData.HostHolderId   = pd.assignees;   // list of hostUserIds assigned
     postData.PeqType        = pd.peqType;               
     postData.Amount         = pd.peqValue;              
     postData.HostProjectSub = pd.projSub;               
@@ -351,6 +352,12 @@ async function recordPEQData( authData, pd, checkDup, specials ) {
 			 utils.getToday() );
     }
 
+    // Some actions such as split do not issue a non-bot issue:closed.  if split into pend, send note
+    if( propose ){
+	recordPEQAction( authData, config.EMPTY, pd, 
+			 config.PACTVERB_PROP, config.PACTACT_ACCR, [newPEQId], "", 
+			 utils.getToday() );
+    }
     return newPEQId;
 }
 
@@ -482,6 +489,15 @@ async function getPEQs( authData, query ) {
     return await wrappedPostAWS( authData, shortName, postData );
 }
 
+async function getPEQsById( authData, peqIds ) {
+    // console.log( "Get PEQs for a given repo:", query);
+
+    let shortName = "GetPEQsById";
+    let postData  = { "Endpoint": shortName, "PeqIds": peqIds };
+
+    return await wrappedPostAWS( authData, shortName, postData );
+}
+
 async function getHostPEQProjects( authData, query ) {
     // console.log( "Get PEQy projects for ceProject:", query);
 
@@ -575,6 +591,7 @@ exports.getRaw       = getRaw;
 exports.getPRaws     = getPRaws;
 exports.getPActs     = getPActs;
 exports.getPEQs      = getPEQs;
+exports.getPEQsById  = getPEQsById;
 exports.getHostPEQProjects = getHostPEQProjects;
 exports.getSummaries = getSummaries;
 exports.getLinkage   = getLinkage;

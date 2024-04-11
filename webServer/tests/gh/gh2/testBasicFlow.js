@@ -32,7 +32,7 @@ async function checkNewbornIssue( authData, testLinks, td, issueData, testStatus
     let cards = [];
     for( const proj of projs ) {
 	let cols = await gh2tu.getColumns( authData, proj.id );
-	for( const col of cols ) { cards = cards.concat( await gh2tu.getCards( authData, proj.id, col.id )); }
+	for( const col of cols ) { cards = cards.concat( await gh2tu.getCards( authData, td.ghRepoId, proj.id, col.id )); }
     }
     let meltCards = cards.filter((card) => card.hasOwnProperty( 'issueNum' ) && card.issueNum == issueData[1].toString() );
     subTest = tu.checkEq( meltCards.length, 0,    subTest, "invalid card" );
@@ -68,7 +68,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, issueData, testStat
     }
 	
     // CHECK github location
-    let cards = await gh2tu.getCards( authData, td.unclaimPID, td.unclaimCID );   // everything here has an issue
+    let cards = await gh2tu.getCards( authData, td.ghRepoId, td.unclaimPID, td.unclaimCID );   // everything here has an issue
 
     // First time out, createUnclaimed can take a moment.
     subTest = tu.checkEq( cards != -1, true,        subTest, "cards not yet ready", td.unclaimCID );
@@ -158,7 +158,7 @@ async function checkMove( authData, testLinks, td, issueData, pid, colId, meltCa
     else                            { subTest = tu.checkEq( meltIssue.state, config.GH_ISSUE_OPEN,       subTest, "Issue status" );  }
 
     // CHECK github location
-    let cards = await gh2tu.getCards( authData, pid, colId );   
+    let cards = await gh2tu.getCards( authData, td.ghRepoId, pid, colId );   
     let mCard = cards.filter((card) => card.hasOwnProperty( 'issueNum' ) && card.issueNum == meltIssue.number );
     subTest = tu.checkGE( mCard.length, 1,                           subTest, "Card location" );
     let foundCard = false;

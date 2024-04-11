@@ -10,7 +10,7 @@ class PEQSummary {
    final String           ceProjectId;   // Summaries are per ceProject
    final String           targetType;    // "ceProject", "repo", "contributor"   XXX currently unused.
    final String           targetId;      // HostProjectId ... ?  or repo now?    XXX
-   final String           lastMod;
+         String           lastMod;
    final List<Allocation> allocations;   
 
    PEQSummary({ required this.id, required this.ceProjectId, required this.targetType, required this.targetId, required this.lastMod, required this.allocations });

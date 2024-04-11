@@ -144,7 +144,7 @@ async function labelIssue( authData, ghLinks, ceProjects, pd, issueNum, issueLab
 	// Check for negotiation potential - if in PEND, owner (XXX) can add new peq label, then approve.
 	assert( link != -1 );
 	if( link.hostColumnName == config.PROJ_COLS[config.PROJ_PEND] ) {
-	    console.log( authData.who, "Negotiated PEQ label detected.  Remove original, keep new" );
+	    console.log( authData.who, "Negotiated PEQ label detected in PEND for", pd.issueId, ".  Remove original, keep new" );
 
 	    let origLabel = -1;
 	    for( const alab of issueLabels ) {

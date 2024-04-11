@@ -80,20 +80,20 @@ class _CESummaryState extends State<CESummaryFrame> {
    // XXX hostUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
    //     detail page..?
-   _pactDetail( path, width, depthM1, isAlloc ) {
+   _pactDetail( path, convertedName, width, depthM1, isAlloc ) {
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
          {
             String hostUserLogin = path[ depthM1 ];
-            if( isAlloc )                          { appState.selectedUser = appState.ALLOC_USER; }
+            if( isAlloc )                            { appState.selectedUser = appState.ALLOC_USER; }
             else if( hostUserLogin == "Unassigned" ) { appState.selectedUser = appState.UNASSIGN_USER; }  // XXX formalize
-            else                                   { appState.selectedUser = hostUserLogin; }
+            else                                     { appState.selectedUser = hostUserLogin; }
             appState.userPActUpdate = true;
             if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
             widget.detailCallback( path );
          },
-         child: makeTableText( appState, path[ depthM1 ], width, height, false, 1, mux: (depthM1+1) * .5 )
+         child: makeTableText( appState, convertedName, width, height, false, 1, mux: (depthM1+1) * .5 )
          );
    }
    
@@ -151,8 +151,14 @@ class _CESummaryState extends State<CESummaryFrame> {
                   int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount! : 0 );
                   int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount! : 0 );
                   int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount! : 0 );
-                  Widget details = _pactDetail( alloc.category, width, i, alloc.allocType == PeqType.allocation );
-                  Leaf tmpLeaf = Leaf( alloc.category[i], allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
+
+                  // Everything starts as a leaf, so will often not have a mapping.  But if we do, use it, will be hostUserName instead of id
+                  String rowName = alloc.category[i];
+                  Map<String,String>? mapping = appState.idMapHost[ rowName ];
+                  if( mapping != null ) { rowName = mapping!['hostUserName'] ?? rowName; }
+
+                  Widget details = _pactDetail( alloc.category, rowName, width, i, alloc.allocType == PeqType.allocation );
+                  Leaf tmpLeaf   = Leaf( rowName, allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }
             }
@@ -167,11 +173,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   (childNode as Node).addAlloc( alloc.amount! );
                }
             }
-            else {
-               print( "XXXXXXXXXXXXXXXX BAD" );
-               print( "XXXXXXXXXXXXXXXX BOOBOO" );
-               print( "XXXXXXXXXXXXXXXX BABY" );
-            }
+            else { print( "XXX BAD" ); }
          }
       }
       appState.updateAllocTree = false;

@@ -176,8 +176,44 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 	    let   tVal = ghUtils.getAllocated( [ desc ] );
 	    tVal = tVal ? config.PEQTYPE_ALLOC : config.PEQTYPE_PLAN;
 
-	    const query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
-	    const peqs  = await awsUtils.getPEQs( authData, query );
+	    let query = { CEProjectId: pd.ceProjectId, Active: "true", Amount: parseInt( lVal ), PeqType: tVal };
+	    let peqs  = await awsUtils.getPEQs( authData, query );
+
+	    // Must modify peqs list for two peq val update (pvu) cases:
+	    // 1) add peqs where there was    a pvu to the lVal
+	    // 2) remove peqs where there was a pvu away from a the current peq val.
+	    // 3) pvu chains ? XXX
+	    const pacts = await awsUtils.getPActs( authData, {CEProjectId: pd.ceProjectId, Ingested: "false", Note: config.PACTNOTE_PVU} );
+	    let addPeqs = [];
+	    let remPeqs = [];
+	    if( pacts !== -1 ) {
+		for( const p of pacts ) {
+		    if( p.Subject.length != 2 ) { console.log( "Oi???", p ); }
+		    assert( p.Subject.length == 2 );
+		    // Case 1: pvu to lval
+		    if( lVal == parseInt( p.Subject[1] )) {  addPeqs.push( p.Subject[0] ); }
+		    
+		    // Case 2: pvu for lval-peq away from lval
+		    if( peqs !== -1 ) {
+			let rpeqs = peqs.filter( (apeq) => apeq.PEQId == p.Subject[0] && apeq.Amount == lVal );
+			if( typeof rpeqs !== 'undefined' ) { remPeqs = remPeqs.concat( rpeqs.map( (r) => r.PEQId ));  }
+		    }
+		}
+		if( addPeqs.length > 0 || remPeqs.length > 0 ) { console.log( authData.who, "Peq Val Update is causing havoc.. add peqs", addPeqs, "remove peqs", remPeqs ); }
+		
+		// Add
+		if( addPeqs.length > 0 ) {
+		    let newPeqs = await awsUtils.getPEQsById( authData, addPeqs );
+		    peqs = peqs == -1 ? newPeqs : peqs.concat( newPeqs );
+		}
+		
+		// Remove
+		if( peqs !== -1 && remPeqs.length > 0 ) {
+		    for( let i = peqs.length - 1; i >= 0; i-- ) {
+			if( remPeqs.includes( peqs[i].PEQId )) { peqs.splice( i, 1 ); }
+		    }
+		}
+	    }
 
 	    // hostProject can include peqs from multiple repos and otherwise-identical labels.  Need to winnow here by repo
 	    // Peq is not real peq if link doesn't place it in correct repo.  Keep repo in link test below.

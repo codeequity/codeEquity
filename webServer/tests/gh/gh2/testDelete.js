@@ -69,18 +69,28 @@ async function clearCEProj( authData, testLinks, pd ) {
     // PEQs
     // Are now attached to repo
     // NOTE this will run twice for ServTest.  td and tdM are same proj.  Runs in parallel, soooo....  inefficient, but not broken
-    let peqs = await awsUtils.getPEQs( authData,  { "CEProjectId": pd.ceProjectId, "HostRepoId": pd.ghRepoId });
-    let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
+    // Get more than needed for deletion, to support pacts below.
+    // let peqs = await awsUtils.getPEQs( authData,  { "CEProjectId": pd.ceProjectId, "HostRepoId": pd.ghRepoId });
+    // let peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
+    let peqs   = await awsUtils.getPEQs( authData,  { "CEProjectId": pd.ceProjectId });
+    let fpeqs  = peqs == -1 ? [] : peqs.filter( p => p.HostRepoId == pd.ghRepoId );
+    let peqIds = fpeqs.map(( peq ) => [peq.PEQId] );
     if( peqIds.length > 0 ) {
 	console.log( "Dynamo PEQ ids", pd.ceProjectId, pd.ghRepoId, peqIds );
 	await awsUtils.cleanDynamo( authData, "CEPEQs", peqIds );
     }
-    else { console.log( "Dynamo PEQ ids empty" ); }
+    else { console.log( "Dynamo PEQ ids empty", pd.ceProjectId, pd.ghRepoId ); }
 
     // PActs, raw.. get everything associated with peqs above (for which we have repo information).
     // For whatever reason, anything interacting with cleanDynamo is list of lists.  grunk.
     let pacts = await awsUtils.getPActs( authData, { "CEProjectId": pd.ceProjectId });
     let pactIds = [];
+    
+    // Pacts are associated with CEProjects.  Hostrepos do not overlap ceProjects, but hostProjects can
+    // Can't we just remove pacts for CEProject?  no.
+    // Both main and flutter test have elements that test cross ceProject and cross repo, so does testMain.
+    // So far, we have not split multi and connie repos into "* flut".  So all testing ceProj are involved in, say, flutter test.
+    
     for( const pid of peqIds ) {
 	let t = pacts.filter( p => p.Subject[0] == pid[0] );
 	if( t.length > 0 ) {
@@ -96,7 +106,19 @@ async function clearCEProj( authData, testLinks, pd ) {
 	pactIds = pactIds.concat( notices );
     }
 
-    console.log( "Dynamo bot PActIds", pd.ghFullName, pactIds );
+    // Also, when server is in error states, peqs and pacts can get misaligned, leading to pacts for peqIds that no longer exist
+    // remove any pacts with orphan peqIds.  Need to work with ALL peqs for given CEProject, in order to avoid removing non-orphans
+    peqIds = peqs == -1 ? [] : peqs.map(( peq ) => [peq.PEQId] );
+    let flatPeqs = peqIds.flat();
+    // console.log( "FLAT peqids", pd.ceProjectId, pd.ghFullName, flatPeqs );
+    if( pacts.length > 0 ) {
+	let notices = pacts.filter( p => p.Subject.length > 0 && !flatPeqs.includes( p.Subject[0] ) );
+	notices = notices.map( n => [n.PEQActionId] );
+	pactIds = pactIds.concat( notices );
+    }
+
+
+    console.log( "Dynamo bot PActIds", pd.ceProjectId, pd.ghFullName, pactIds );
     let pactP  = awsUtils.cleanDynamo( authData, "CEPEQActions", pactIds );
     let pactRP = awsUtils.cleanDynamo( authData, "CEPEQRaw", pactIds );
     
@@ -138,7 +160,7 @@ async function remIssueHelp( authData, testLinks, pd ) {
 }
 
 async function clearRepo( authData, testLinks, pd ) {
-    console.log( "\nClearing", pd.ghFullName );
+    console.log( "\nClearing", pd.ceProjectId, pd.ghFullName );
 
     // Delete all issues, cards, projects, columns, labels.
     // Eeek.  This works a little too well.  Make sure the repo is expected.

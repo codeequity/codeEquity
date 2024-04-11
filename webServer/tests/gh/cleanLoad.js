@@ -233,6 +233,52 @@ async function loadLinkage( authData, td ) {
     console.log( "Inserted fresh linkage " );
 }
 
+// Just renewing hostparts
+async function refreshCEProjects( authData, td ) {
+    // no need to remove, refresh overwrites
+
+    // load, ingest stored
+    let fname      = baselineLoc + "dynamoCEProjects_latest.json";
+    const dataStr  = getData( fname );
+    const projJson = JSON.parse( dataStr );
+    console.log( "Reading", projJson.CEProjects.length.toString(), "CEProjects from", fname );
+
+    for( let ceProjNum = 0; ceProjNum < projJson.CEProjects.length; ceProjNum++ ) {
+	let ceProj    = projJson.CEProjects[ceProjNum].PutRequest.Item;
+	let ceProjId  = ceProj.CEProjectId.S;
+	
+	if( ceProjId == td.ceProjectId ) {
+	    let updatedCEP = {};
+	    updatedCEP.CEProjectId        = ceProjId;
+	    updatedCEP.CEProjectComponent = ceProj.CEProjectComponent.S;
+	    updatedCEP.OwnerCategory      = ceProj.OwnerCategory.S;
+	    updatedCEP.HostPlatform       = ceProj.HostPlatform.S;
+	    updatedCEP.Organization       = ceProj.Organization.S;
+	    updatedCEP.ProjectMgmtSys     = ceProj.ProjectMgmtSys.S;
+	    updatedCEP.Description        = ceProj.Description.S;
+	    
+	    if( utils.validField( ceProj, "HostParts" )) {
+		let repos = ceProj.HostParts.M.hostRepositories.L;
+		let hostRepositories = [];
+		for( let i = 0; i < repos.length; i++  ) {
+		    let repo = repos[i].M;
+		    
+		    let nRepo = {};
+		    nRepo.repoId     = repo.repoId.S;
+		    nRepo.repoName   = repo.repoName.S;
+		    hostRepositories.push( nRepo );
+		}
+		updatedCEP.HostParts = {};
+		updatedCEP.HostParts.hostRepositories = hostRepositories;
+	    }
+	    await awsUtils.updateCEPHostParts( authData, updatedCEP );
+	    
+	    console.log( "Refreshed CEProjects entry" );
+	    break;
+	}
+    }
+}
+
 
 
 async function runTests() {
@@ -241,9 +287,9 @@ async function runTests() {
     // TEST_REPO auth
     let td          = new testData.TestData();
 
-    td.ceProjectId  = config.TEST_CEPID;
     td.ghOwner      = config.TEST_OWNER;
     td.actor        = config.TEST_ACTOR;
+    td.ceProjectId  = config.FLUTTER_TEST_CEPID;
     td.ghRepo       = config.FLUTTER_TEST_REPO;
     td.ghFullName   = td.ghOwner + "/" + td.ghRepo;
 
@@ -269,8 +315,10 @@ async function runTests() {
 
     // Load Linkage.  This means if last generate run failed, linkage table will be out of date with GH, 
     // but in synch with loaded PEQ/PAct.  Ingest requires linkage.
-
     await loadLinkage( authData, td );
+
+    // CEProject table for ce_flut can be in empty state
+    await refreshCEProjects( authData, td );
 }
 
 

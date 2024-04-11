@@ -91,7 +91,7 @@ class PEQ {
       res += "\n    type: " + enumToStr(peqType) + ", accrued: " + accrualDate + ", vested %: " + vestedPerc.toString();
       res += "\n    projectSub: " + hostProjectSub.toString() + " repoId: " + hostRepoId + ", issue: " + hostIssueId;
       // res += "\n    holder: " + ceHolderId.toString();
-      res += "\n    Hostholder: " + hostHolderId.toString();
+      res += "\n    HostholderId: " + hostHolderId.toString();
       res += "\n";
 
       return res;

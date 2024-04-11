@@ -22,11 +22,11 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 // https://blog.gskinner.com/archives/2021/06/flutter-a-deep-dive-into-integration_test-library.html
 // https://github.com/flutter/flutter/tree/master/packages/flutter/test/material
 
-// Gold standard for testing ingest and summary frame for ariCETester/ceFlutterTester
+// Gold standard for testing ingest and summary frame for codeequity/ceFlutterTester
 // XXX Category should show ["7,000,000", "12,840", "2,500", "11,001"] in ceFlutter
 // XXX Test for presence in gold not replicated in ceFlutter
 // XXX Discrepencies:
-//     - "Category, Software Contributions, Data Security, Pending PEQ Approval, Unassigned": ["0", "250", "0", "0"],   ir plan split is assigned
+//     - "Category, Software Contributions, Data Security Flut, Pending PEQ Approval, Unassigned": ["0", "250", "0", "0"],   ir plan split is assigned
 //     - "Category, UnClaimed, Accrued, ariCETester": ["0", "0", "0", "2,000"] does not exist (possibly one of the intentional deletes)
 //     - "Category, UnClaimed, UnClaimed, Unassigned": ["0", "1,709", "0", "0"] github shows 709
 //     - Entry 38, 'split' would actually have a random tag after the name, but that is hard to match in checkAllocs
@@ -36,30 +36,30 @@ const Map<String,List<String>> ALLOCS_GOLD =
       
       "Software Contributions 1": ["Category, Software Contributions", "5,500,000", "2,001", "1,500", "6,501"],
       
-      "Data Security 2":    ["Category, Software Contributions, Data Security", "1,000,000", "250", "0", "4,000"],
-      "Accrued 3":          ["Category, Software Contributions, Data Security, Accrued", "0", "0", "0", "4,000"],
+      "Data Security Flut 2":    ["Category, Software Contributions, Data Security Flut", "1,000,000", "250", "0", "4,000"],
+      "Accrued 3":               ["Category, Software Contributions, Data Security Flut, Accrued", "0", "0", "0", "4,000"],
       
-      "codeequity 4":           ["Category, Software Contributions, Data Security, Accrued, codeequity", "0", "0", "0", "1,000"],
-      "ariCETester 5":          ["Category, Software Contributions, Data Security, Accrued, ariCETester", "0", "0", "0", "3,000"],
-      "Pending PEQ Approval 6": ["Category, Software Contributions, Data Security, Pending PEQ Approval", "0", "250", "0", "0"],
-      "Unassigned 7":           ["Category, Software Contributions, Data Security, Pending PEQ Approval, Unassigned", "0", "250", "0", "0"],
+      "builderCE 4":            ["Category, Software Contributions, Data Security Flut, Accrued, builderCE", "0", "0", "0", "1,000"],
+      "ariCETester 5":          ["Category, Software Contributions, Data Security Flut, Accrued, ariCETester", "0", "0", "0", "3,000"],
+      "Pending PEQ Approval 6": ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval", "0", "250", "0", "0"],
+      "Unassigned 7":           ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval, Unassigned", "0", "250", "0", "0"],
 
-      "Github Operations 8":     ["Category, Software Contributions, Github Operations", "1,500,000", "1,751", "1,500", "2,501"],
-      "In Progress 9":           ["Category, Software Contributions, Github Operations, In Progress", "0", "1,000", "0", "0"],
-      "codeequity 10":           ["Category, Software Contributions, Github Operations, In Progress, codeequity", "0", "1,000", "0", "0"],
-      "Pending PEQ Approval 11": ["Category, Software Contributions, Github Operations, Pending PEQ Approval", "0", "0", "1,500", "0"],
-      "ariCETester 12":          ["Category, Software Contributions, Github Operations, Pending PEQ Approval, ariCETester", "0", "0", "750", "0"],
-      "codeequity 13":           ["Category, Software Contributions, Github Operations, Pending PEQ Approval, codeequity", "0", "0", "750", "0"],
-      "Accrued 14":              ["Category, Software Contributions, Github Operations, Accrued", "0", "0", "0", "2,501"],
-      "ariCETester 15":          ["Category, Software Contributions, Github Operations, Accrued, ariCETester", "0", "0", "0", "2,000"],
-      "codeequity 16":           ["Category, Software Contributions, Github Operations, Accrued, codeequity", "0", "0", "0", "501"],
-      "Planned 17":              ["Category, Software Contributions, Github Operations, Planned", "0", "751", "0", "0"],
-      "ariCETester 18":          ["Category, Software Contributions, Github Operations, Planned, ariCETester", "0", "250", "0", "0"],
-      "Unassigned 19":           ["Category, Software Contributions, Github Operations, Planned, Unassigned", "0", "501", "0", "0"],
-      "Stars 20":                ["Category, Software Contributions, Github Operations, Stars", "500,000", "0", "0", "0"],
-      "IR Alloc 21":             ["Category, Software Contributions, Github Operations, Stars, IR Alloc", "500,000", "0", "0", "0"],
-      "Stripes 22":              ["Category, Software Contributions, Github Operations, Stripes", "1,000,000", "0", "0", "0"],
-      "Component Alloc 23":      ["Category, Software Contributions, Github Operations, Stripes, Component Alloc", "1,000,000", "0", "0", "0"],
+      "Github Operations Flut 8":     ["Category, Software Contributions, Github Operations Flut", "1,500,000", "1,751", "1,500", "2,501"],
+      "In Progress 9":           ["Category, Software Contributions, Github Operations Flut, In Progress", "0", "1,000", "0", "0"],
+      "builderCE 10":            ["Category, Software Contributions, Github Operations Flut, In Progress, builderCE", "0", "1,000", "0", "0"],
+      "Pending PEQ Approval 11": ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval", "0", "0", "1,500", "0"],
+      "ariCETester 12":          ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, ariCETester", "0", "0", "750", "0"],
+      "builderCE 13":            ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, builderCE", "0", "0", "750", "0"],
+      "Accrued 14":              ["Category, Software Contributions, Github Operations Flut, Accrued", "0", "0", "0", "2,501"],
+      "ariCETester 15":          ["Category, Software Contributions, Github Operations Flut, Accrued, ariCETester", "0", "0", "0", "2,000"],
+      "builderCE 16":            ["Category, Software Contributions, Github Operations Flut, Accrued, builderCE", "0", "0", "0", "501"],
+      "Planned 17":              ["Category, Software Contributions, Github Operations Flut, Planned", "0", "751", "0", "0"],
+      "ariCETester 18":          ["Category, Software Contributions, Github Operations Flut, Planned, ariCETester", "0", "250", "0", "0"],
+      "Unassigned 19":           ["Category, Software Contributions, Github Operations Flut, Planned, Unassigned", "0", "501", "0", "0"],
+      "Stars 20":                ["Category, Software Contributions, Github Operations Flut, Stars", "500,000", "0", "0", "0"],
+      "IR Alloc 21":             ["Category, Software Contributions, Github Operations Flut, Stars, IR Alloc", "500,000", "0", "0", "0"],
+      "Stripes 22":              ["Category, Software Contributions, Github Operations Flut, Stripes", "1,000,000", "0", "0", "0"],
+      "Component Alloc 23":      ["Category, Software Contributions, Github Operations Flut, Stripes, Component Alloc", "1,000,000", "0", "0", "0"],
 
       "Unallocated 24":         ["Category, Software Contributions, Unallocated", "3,000,000", "0", "0", "0"],
 
@@ -69,24 +69,24 @@ const Map<String,List<String>> ALLOCS_GOLD =
       "UnClaimed 27":           ["Category, UnClaimed", "0", "8,339", "0", "2,000"],
       "UnClaimed 28":           ["Category, UnClaimed, UnClaimed", "0", "8,339", "0", "0"],
       "ariCETester 29":         ["Category, UnClaimed, UnClaimed, ariCETester", "0", "3,467", "0", "0"],
-      "codeequity 30":          ["Category, UnClaimed, UnClaimed, codeequity", "0", "2,411", "0", "0"],
+      "builderCE 30":           ["Category, UnClaimed, UnClaimed, builderCE", "0", "2,411", "0", "0"],
       "Unassigned 31":          ["Category, UnClaimed, UnClaimed, Unassigned", "0", "1,709", "0", "0"],
       "connieCE 32":            ["Category, UnClaimed, UnClaimed, connieCE", "0", "752", "0", "0"],
       "Accrued 33":             ["Category, UnClaimed, Accrued", "0", "0", "0", "2,000"],
       "ariCETester 34":         ["Category, UnClaimed, Accrued, ariCETester", "0", "0", "0", "2,000"],
 
-      "A Pre-Existing Project 35":   ["Category, A Pre-Existing Project", "500,000", "1,500", "0", "1,500"],
-      "Bacon 36":                    ["Category, A Pre-Existing Project, Bacon", "500,000", "1,500", "0", "0"],
-      "Unassigned 37":               ["Category, A Pre-Existing Project, Bacon, Unassigned", "0", "1,500", "0", "0"],
-      "IR Alloc split 38":           ["Category, A Pre-Existing Project, Bacon, IR Alloc split", "500,000", "0", "0", "0"],
-      "Accrued 39":                  ["Category, A Pre-Existing Project, Accrued", "0", "0", "0", "1,500"],
-      "ariCETester 40":              ["Category, A Pre-Existing Project, Accrued, ariCETester", "0", "0", "0", "1,500"],
+      "A Pre-Existing Project Flut 35":   ["Category, A Pre-Existing Project Flut", "500,000", "1,500", "0", "1,500"],
+      "Bacon 36":                    ["Category, A Pre-Existing Project Flut, Bacon", "500,000", "1,500", "0", "0"],
+      "Unassigned 37":               ["Category, A Pre-Existing Project Flut, Bacon, Unassigned", "0", "1,500", "0", "0"],
+      "IR Alloc split 38":           ["Category, A Pre-Existing Project Flut, Bacon, IR Alloc split", "500,000", "0", "0", "0"],
+      "Accrued 39":                  ["Category, A Pre-Existing Project Flut, Accrued", "0", "0", "0", "1,500"],
+      "ariCETester 40":              ["Category, A Pre-Existing Project Flut, Accrued, ariCETester", "0", "0", "0", "1,500"],
 
       "New ProjCol Proj 41":     ["Category, New ProjCol Proj", "0", "1,000", "1,000", "1,000"],
       "New plan name 42":        ["Category, New ProjCol Proj, New plan name", "0", "1,000", "0", "0"],
       "Unassigned 43":           ["Category, New ProjCol Proj, New plan name, Unassigned", "0", "1,000", "0", "0"],
       "Pending PEQ Approval 44": ["Category, New ProjCol Proj, Pending PEQ Approval", "0", "0", "1,000", "0"],
-      "codeequity 45":           ["Category, New ProjCol Proj, Pending PEQ Approval, codeequity", "0", "0", "1,000", "0"],
+      "builderCE 45":            ["Category, New ProjCol Proj, Pending PEQ Approval, builderCE", "0", "0", "1,000", "0"],
       "Accrued 46":              ["Category, New ProjCol Proj, Accrued", "0", "0", "0", "1,000"],
       "ariCETester 47":          ["Category, New ProjCol Proj, Accrued, ariCETester", "0", "0", "0", "1,000"],
 };
@@ -163,7 +163,7 @@ Future<bool> ariSummaryFraming( WidgetTester tester ) async {
    expect( find.text( 'Software Contributions' ), findsOneWidget );
    expect( find.text( 'Business Operations' ),    findsOneWidget );
    expect( find.text( 'UnClaimed' ),              findsOneWidget );
-   expect( find.text( 'A Pre-Existing Project' ), findsOneWidget );
+   expect( find.text( 'A Pre-Existing Project Flut' ), findsOneWidget );
    expect( find.text( 'New ProjCol Proj' ),       findsOneWidget );
 
    expect( find.text( 'Allocation' ), findsOneWidget );
@@ -319,7 +319,7 @@ Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
 Future<bool> expandAll( WidgetTester tester ) async {
 
    final topFinder    = find.text( "Category" );
-   final bottomFinder = find.text( "A Pre-Existing Project" );
+   final bottomFinder = find.text( "A Pre-Existing Project Flut" );
    final listFinder   = find.byType( ListView );
    
    // Scroll until the item to be found appears.  
@@ -700,17 +700,17 @@ Future<bool> validateRejectAccrue( WidgetTester tester, String repo, String issu
 Future<bool> validateCE10( WidgetTester tester ) async {
    await expandAllocs( tester, 1, 1 );
    await expandAllocs( tester, 3, 4 );
-   await checkOffsetAlloc( tester, 5, "codeequity 10" );
+   await checkOffsetAlloc( tester, 5, "builderCE 10" );
 
-   await expandLeaf( tester, 5, "codeequity 10" );
+   await expandLeaf( tester, 5, "builderCE 10" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    String issue  = "IR Prog";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
    expect( await validateRawAdd(       tester, repo, issue, "1000 PEQ",   "00 confirm add" ),      true );
-   expect( await validateRawAssign(    tester, repo, issue, "codeequity", "01 confirm change" ),   true );
+   expect( await validateRawAssign(    tester, repo, issue, "builderCE", "01 confirm change" ),   true );
    expect( await validateRawSituate(   tester, repo,                      "02 confirm relocate" ), true );
 
    expect( await backToSummary( tester ), true );
@@ -731,7 +731,7 @@ Future<bool> validateAri15( WidgetTester tester ) async {
    await expandLeaf( tester, 7, "ariCETester 15" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    // Most recent first
    String issue = "Close Open test"; 
@@ -774,7 +774,7 @@ Future<bool> validateAlloc23( WidgetTester tester ) async {
    await expandLeaf( tester, 10, "Component Alloc 23" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    String issue  = "Component Alloc";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
@@ -797,7 +797,7 @@ Future<bool> validateUnAlloc24( WidgetTester tester ) async {
    await expandLeaf( tester, 4, "Unallocated 24" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    String issue  = "Unallocated";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
@@ -816,7 +816,7 @@ Future<bool> validateUnAssign31( WidgetTester tester ) async {
    await expandLeaf( tester, 7, "Unassigned 31" );
    await pumpSettle( tester, 1 );
 
-   String repo   = "ariCETester/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
 
    // String issue  = "Unallocated";
    // expect( find.byKey( Key( issue ) ), findsOneWidget );
@@ -832,7 +832,7 @@ Future<bool> validateUnAssign31( WidgetTester tester ) async {
 Future<bool> ariSummaryContent( WidgetTester tester ) async {
    final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
-   final bottomFinder = find.text( "A Pre-Existing Project" );
+   final bottomFinder = find.text( "A Pre-Existing Project Flut" );
 
    // await getElt( tester, 'allocsTable 0' );
 
@@ -850,9 +850,9 @@ Future<bool> ariSummaryContent( WidgetTester tester ) async {
 
 Future<bool> _checkHelper( tester ) async {
    await checkAllocs( tester, 1, 6 );  
-   await checkOffsetAlloc( tester, 7, "Github Operations 8" );
+   await checkOffsetAlloc( tester, 7, "Github Operations Flut 8" );
    await checkOffsetAlloc( tester, 8, "Unallocated 24" );
-   await checkOffsetAlloc( tester, 11, "A Pre-Existing Project 35" );
+   await checkOffsetAlloc( tester, 11, "A Pre-Existing Project Flut 35" );
    await checkOffsetAlloc( tester, 12, "Bacon 36" );
    await checkOffsetAlloc( tester, 13, "Unassigned 37" );
    await checkOffsetAlloc( tester, 14, "IR Alloc split 38" );
@@ -861,7 +861,7 @@ Future<bool> _checkHelper( tester ) async {
 
 void main() {
 
-   String repo = "ariCETester/ceFlutterTester";
+   String repo = "codeequity/ceFlutterTester";
    
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -956,7 +956,7 @@ void main() {
          // expand depth-first to depth 4.  verify kids.  
          await expandAllocs( tester, 1, 3 );
          await checkAllocs( tester, 1, 6 );  // checks all of swCont, first path fully expanded
-         await checkOffsetAlloc( tester, 7, "Github Operations 8" );
+         await checkOffsetAlloc( tester, 7, "Github Operations Flut 8" );
          await checkOffsetAlloc( tester, 8, "Unallocated 24" );
 
          // close group1, verify
@@ -967,7 +967,7 @@ void main() {
          // open group1, verify 
          await toggleTableEntry( tester, 1, "" );
          await checkAllocs( tester, 1, 6 );  // checks all of swCont, first path fully expanded
-         await checkOffsetAlloc( tester, 7, "Github Operations 8" );
+         await checkOffsetAlloc( tester, 7, "Github Operations Flut 8" );
          await checkOffsetAlloc( tester, 8, "Unallocated 24" );
 
          
@@ -975,7 +975,7 @@ void main() {
          await toggleTableEntry( tester, 1, "" );  // close group1
          await expandAllocs( tester, 4, 5 );
          await toggleTableEntry( tester, 8, "" );  
-         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project 35" );
+         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project Flut 35" );
          await checkOffsetAlloc( tester, 5, "Bacon 36" );
          await checkOffsetAlloc( tester, 6, "Unassigned 37" );
          await checkOffsetAlloc( tester, 7, "IR Alloc split 38" );
@@ -987,12 +987,12 @@ void main() {
          await toggleTableEntry( tester, 4, "" );
          await checkOffsetAlloc( tester, 1, "Software Contributions 1" );
          await checkOffsetAlloc( tester, 2, "Business Operations 25" );
-         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project 35" );
+         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project Flut 35" );
          await checkOffsetAlloc( tester, 5, "New ProjCol Proj 41" );
             
          // OPEN 2nd group
          await toggleTableEntry( tester, 4, "" );  
-         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project 35" );
+         await checkOffsetAlloc( tester, 4, "A Pre-Existing Project Flut 35" );
          await checkOffsetAlloc( tester, 5, "Bacon 36" );
          await checkOffsetAlloc( tester, 6, "Unassigned 37" );
          await checkOffsetAlloc( tester, 7, "IR Alloc split 38" );

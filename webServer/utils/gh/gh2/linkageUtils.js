@@ -40,7 +40,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     let query = preferredRepoId == -1 ? { "CEProjectId": ceProject.CEProjectId } : { "CEProjectId": ceProject.CEProjectId, "HostRepoId": preferredRepoId };
     query.Active = "true";
     let peqs = await awsUtils.getPEQs( authData, query );
-    // console.log( "IOC", preferredRepoId, query, peqs.length );
+    // console.log( "buildHostLinks", ceProject.CEProjectId, preferredRepoId, query, peqs.length );
 
     let hostProjs = [];
 
@@ -208,7 +208,7 @@ async function linkRepo( authData, ghLinks, ceProjects, ceProjId, repoId, repoNa
     
     // TESTING ONLY!  Outside testing, ceFlutter controls all access to this, will never need initBlank.
     if( typeof cep === 'undefined' ) {
-	let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO];
+	let testingRepos = [config.TEST_REPO, config.MULTI_TEST_REPO, config.CROSS_TEST_REPO, config.FLUTTER_TEST_REPO];
 	let repoShort    = repoName.split('/');
 	repoShort        = repoShort[ repoShort.length - 1 ]; 
 	assert( testingRepos.includes( repoShort ));

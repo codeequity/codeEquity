@@ -239,7 +239,7 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
    final appState  = container.state;
 
    print( "updateDynamo " + postData );
-   
+
    if( peqId != -1 ) {
       appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
    }
@@ -348,6 +348,32 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchCEProjects( context, container ); }
       else { return []; }
+   }
+}
+
+Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform ) async {
+   String shortName = "fetchCEProjects";
+   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
+   final response = await postIt( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      Iterable hu = json.decode(utf8.decode(response.bodyBytes));
+      Map<String, Map<String,String>> t = new Map<String, Map<String, String>>();
+      for( final hostUser in hu ) {
+         print( "working on " + hostUser.toString() );
+         Map<String,String> vals = {};
+         vals['ceUID']        = hostUser['CEUserId'];
+         vals['hostUserName'] = hostUser['HostUserName'];
+         t[ hostUser['HostUserId'] ] = vals;
+      }
+      return t;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no CEHostUsers found" );
+      return {};
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform ); }
+      else { return {}; }
    }
 }
 
@@ -549,6 +575,10 @@ Future<void> reloadMyProjects( context, container ) async {
 
    // FetchHost sets hostAccounts.ceProjs
    appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "$uid"  }' );
+
+   // XXX This map should be limited to CEPs known by UID, no matter platform.  
+   // Set idMap to get from hostUID to hostUserName or ceUID easily
+   appState.idMapHost = await fetchHostMap( context, container, "GitHub" ); 
 
    print( "My CodeEquity Projects:" );
    print( appState.myHostAccounts );

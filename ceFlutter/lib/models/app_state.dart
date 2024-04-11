@@ -46,7 +46,7 @@ class AppState {
    late bool loaded;                           // control expensive aspects of state initialization
    late String userId;
 
-   late Map< String, String > idMapHost;       // host userid to CE user id
+   late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, hostUserName
    
    late List<PEQ>       myPEQs;                // ??? XXX
    late List<PEQAction> myPEQActions;          // ??? XXX
@@ -92,13 +92,13 @@ class AppState {
       loaded = false;
 
       userId       = "";
-      idMapHost    = new Map<String, String>();
+      idMapHost    = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
       myPEQs       = [];
       myPEQActions = [];
       myPEQSummary = null;
       peqUpdated   = false;
 
-      myHostAccounts = [];
+      myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
       myHostLinks    = null;
       hostUpdated    = false;      // XXX not in use?
 

@@ -245,9 +245,9 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    
 	    // Check GITHUB Cards
 	    // Don't try checking names - they belong to & were already checked, in issues.
-	    let scCards = await gh2tu.getCards( authData, td.masterPID, td.scColId );
-	    let boCards = await gh2tu.getCards( authData, td.masterPID, td.boColId );
-	    let noCards = await gh2tu.getCards( authData, td.masterPID, td.unColId );
+	    let scCards = await gh2tu.getCards( authData, td.ghRepoId, td.masterPID, td.scColId );
+	    let boCards = await gh2tu.getCards( authData, td.ghRepoId, td.masterPID, td.boColId );
+	    let noCards = await gh2tu.getCards( authData, td.ghRepoId, td.masterPID, td.unColId );
 	    
 	    subTest = tu.checkEq( scCards.length, 3, subTest, "Soft cont col card count" ); 
 	    subTest = tu.checkEq( boCards.length, 1, subTest, "Bus ops col card count" );
@@ -260,7 +260,7 @@ async function testPreferredCEProjects( authData, testLinks, td ) {
 	    let cols    = dsCols;
 	    let randPID = td.dataSecPID;
 	    if( rn2 == 1 )  { cols = ghCols; randPID = td.githubOpsPID; }
-	    noCards = await gh2tu.getCards( authData, randPID, cols[rn4].id );
+	    noCards = await gh2tu.getCards( authData, td.ghRepoId, randPID, cols[rn4].id );
 	    subTest = tu.checkEq( noCards.length, 0, subTest, "Unalloc col card count" );
 	    
 	    

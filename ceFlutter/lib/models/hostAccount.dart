@@ -32,13 +32,13 @@ class HostAccount {
       List<dynamic> ceProjects = new List<dynamic>.from( dynamicCEPs );
       for( var dynamicCEP in ceProjects ) {
 
-         List<dynamic> repos = new List<dynamic>.from( dynamicCEP["HostParts"]["hostRepositories"] );
-         cepRepos[ dynamicCEP["CEProjectId"] ] = [];
-         for( var repo in repos ) {
-            cepRepos[ dynamicCEP["CEProjectId"] ]!.add( repo["repoName"] ?? "" ); 
+         if( dynamicCEP["HostParts"] != null ) {
+            List<dynamic> repos = new List<dynamic>.from( dynamicCEP["HostParts"]["hostRepositories"] );
+            cepRepos[ dynamicCEP["CEProjectId"] ] = [];
+            for( var repo in repos ) {
+               cepRepos[ dynamicCEP["CEProjectId"] ]!.add( repo["repoName"] ?? "" ); 
+            }
          }
-         
-
       }
       
       return HostAccount(
