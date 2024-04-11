@@ -239,7 +239,7 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
    final appState  = container.state;
 
    print( "updateDynamo " + postData );
-   
+
    if( peqId != -1 ) {
       appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
    }

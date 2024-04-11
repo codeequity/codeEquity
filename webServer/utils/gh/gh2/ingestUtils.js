@@ -72,9 +72,6 @@ async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, spli
 	console.log( "Split time specials", specials );
 
 	// Add assignees to pd, so recordPD pushes them to aws.  hostUserName.  Should be present as we are splitting a GH issue here.
-	// assignees don't make sense for allocs
-	if( pd.peqType != config.PEQTYPE_ALLOC ) { pd.assignees = issue.assignees;  }
-
 	awsUtils.recordPEQData(authData, pd, false, specials );
     }
     let success = await movePromise;
