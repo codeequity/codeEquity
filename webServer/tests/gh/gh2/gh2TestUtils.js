@@ -1824,6 +1824,7 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
     let splitVal   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lval" )       ? specials.lval       : 1000000;
 
     // One is for dynamo peq, one is for gh issue
+    // XXX remove assignCnt
     let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 0;
     let issAssignCnt = typeof specials !== 'undefined' && specials.hasOwnProperty( "issAssignees" )  ? specials.issAssignees  : 1;
     
@@ -1859,9 +1860,10 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
 	    const splitCard = await getCard( authData, splitLink.hostCardId );
 	    splitDat[2]     = splitCard.cardId;
 
-	    let specials = { awsVal: awsVal, splitVal: splitVal, lblCount: labelCnt, assignees: assignCnt };
+	    let specials = { awsVal: awsVal, splitVal: splitVal, lblCount: labelCnt };
 	    testStatus = await checkAlloc( authData, testLinks, td, origLoc, issDat, card, testStatus, specials );
 	    specials.awsVal = splitVal;
+	    specials.assignees = issAssignCnt; 
 	    testStatus = await checkAlloc( authData, testLinks, td, newLoc,  splitDat, splitCard, testStatus, specials );
 	}
 	
