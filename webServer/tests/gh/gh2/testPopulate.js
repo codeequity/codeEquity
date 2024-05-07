@@ -110,7 +110,7 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     {
 	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toBacnLoc.pid, toBacnLoc.colId, issPlanDat[0] );
 	await utils.sleep( 4000 );
-	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, 1000, testStatus, {peq: true, lblCount: 3 } );
+	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issPlanDat, planLoc, toBacnLoc, 1000, 1000, testStatus, {peq: true, lblCount: 3, checkPeq: true } );
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve A" );
@@ -121,7 +121,7 @@ async function testIncrementalResolve( authData, testLinks, td ) {
 	// At this point, plan lval is 500
 	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toPendLoc.pid, toPendLoc.colId, issPlanDat[0] );
 	await utils.sleep( 3000 );
-	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issPlanDat, planLoc, toPendLoc, 500, 1000, testStatus, {peq: true, lblCount: 3 } );
+	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issPlanDat, planLoc, toPendLoc, 500, 1000, testStatus, {peq: true, lblCount: 3, checkPeq: true } );
 
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve B" );
@@ -156,7 +156,7 @@ async function testIncrementalResolve( authData, testLinks, td ) {
 	await utils.sleep( 2000 );
 	// testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, progLoc, issProgDat, cardProg, testStatus, {lblCount: 2 } );
 	// testStatus = await gh2tu.checkNoSplit( authData, testLinks, td, issProgDat, toAccrLoc, cardNew.cardId, testStatus );
-	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issProgDat, progLoc, toRejectLoc, 1000, 1000, testStatus, {peq: true, lblCount: 2 } );
+	testStatus = await gh2tu.checkSplit( authData, testLinks, td, issProgDat, progLoc, toRejectLoc, 1000, 1000, testStatus, {peq: true, lblCount: 2, checkPeq: true } );
 	
 	if( typeof testStatus === 'undefined' ) { console.log( "ts is undefined!??" ); }
 	tu.testReport( testStatus, "Incremental resolve E" );

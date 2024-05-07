@@ -630,7 +630,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 		// Deactivate old peq, can't do much with old ID.
 		awsUtils.removePEQ( authData, peq.PEQId );
 		awsUtils.recordPEQAction( authData, config.EMPTY, pdCopy,
-					  config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], "",
+					  config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], "Transferred",  // XXX formalize
 					  utils.getToday() );
 		
 		// add new peq so we can operate on it normally in case of server restart before ingest

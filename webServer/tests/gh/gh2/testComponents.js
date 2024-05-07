@@ -1220,7 +1220,13 @@ async function testAlloc( authData, testLinks, td ) {
 	// Create from card 
 	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, progLoc.pid, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
 	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, accrLoc.pid, accrLoc.colId, "Alloc accr", "1,000,000" );
-	await utils.sleep( 2000 );
+
+	// makeAlloc generates: open, label, cardIssue, moveCard.
+	//   If ceServer:labelIssue processes before GH finishes moveCard, the object will exist (for a brief moment), and this test will fail.
+	//   moveCard does eventually get processed to eliminate the link.
+	// If this fails one more time, settleWait here.
+	await utils.sleep( 3000 );
+
 	const links      = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
 	const linkProg   = links.find( link => link.hostIssueName == "Alloc prog" );
 	const linkAccr   = links.find( link => link.hostIssueName == "Alloc accr" );
