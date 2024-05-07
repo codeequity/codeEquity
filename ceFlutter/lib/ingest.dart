@@ -199,6 +199,7 @@ void swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 //         recreate already handles the add - need to tamp down on this one, which is automatic if it follows.
 // Case 3: "add" will arrive twice in many cases, one addRelo for no status (when peq label an issue, then the second when situating the issue
 //          ignore the second add, it is irrelevant
+// Case 4: "relo" can arrive after "delete" is received, during transfer.  Demote delete.
 // Need to have seen a 'confirm' 'add' before another action, in order for the allocation to be in a good state.
 // This will either occur in current ingest batch, or is already present in mySummary from a previous update.
 // Remember, all peqs are already in aws, either active or inactive, so no point to look there.
@@ -304,6 +305,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
             vPrint( appState, "   peq: " + peq.hostIssueTitle + " " + peq.id + " UN-demoted." );
          }
          // demote if needed.  Needed if working on peq that hasn't been added yet.
+         // Note: in some cases, demotion can occur on, say, a relo that has happened after delete.  Demotion does not hurt here, but certainly doesn't help
          else if( !kp.contains( peq.id ) && !deleted ) {
             if( !dp.containsKey( peq.id ) ) { dp[peq.id] = []; }
             dp[peq.id]!.add( i );  
@@ -1031,6 +1033,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
       if( alloc.hostUserId != "" ) { assignees.add( alloc.hostUserId );  }
       ka = alloc;
    }
+   // i.e. can't be relo .. relocating what if not already ka?
    if( ka == null ) {
       bool nonPeqChange = pact.action == PActAction.change && ( pact.note == "Column rename" || pact.note == "Project rename" );
       bool peqChange    = pact.action == PActAction.add || pact.action == PActAction.delete || pact.action == PActAction.notice;
