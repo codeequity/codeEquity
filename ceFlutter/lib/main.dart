@@ -22,7 +22,7 @@ void main() {
    runApp( new AppStateContainer( child: new CEApp(), state: new AppState() ));
 }
 
-
+/*
 class CEApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,32 @@ class CEApp extends StatelessWidget {
         );
   }
 }
+*/
 
+class CEApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+     // note: primarySwatch takes a set of colors (color + shade value), not an individual color.
+     return MaterialApp(
+        title: 'CodeEquity',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+           primarySwatch: Colors.green,
+           appBarTheme: AppBarTheme(
+              color: Colors.grey[200],
+              // title is deprecated 1.13, but as of 2/20 headline6 has not yet made it to the stable release
+              // textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
+              //textTheme: TextTheme( title: TextStyle( color: Colors.black )),
+	      // oi.  as of 2024, no more headline6
+	      // titleTextStyle: Theme.of(context).textTheme.headline6?.copyWith( color: Colors.black ),
+	      titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith( color: Colors.black ),
+              iconTheme: IconThemeData( color: Colors.black ) ),
+	   bottomAppBarTheme: BottomAppBarTheme(
+	      color: Colors.grey[200] ) ),
+        home:  CESplashPage( title: 'CodeEquity'),
+        );
+  }
+}
 
 class CESplashPage extends StatefulWidget {
    CESplashPage({Key? key, required this.title}) : super(key: key);
