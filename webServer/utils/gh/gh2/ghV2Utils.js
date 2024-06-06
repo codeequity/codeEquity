@@ -601,7 +601,12 @@ async function createLabel( authData, repoNode, name, color, desc ) {
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, queryJ, "createLabel" )
 	    .then( ret => {
-		if( typeof ret.errors !== 'undefined' ) { console.log( authData.who, "WARNING. Label not created", ret.errors ); }
+		if( typeof ret.errors !== 'undefined' ) {
+		    console.log( authData.who, "WARNING. Label not created", ret.errors );
+		    if( ret.errors.length == 1 && ret.errors[0].message.includes( "Name has already been taken" ) ) {
+			label.taken = true;
+		    }
+		}
 		else {
 		    // console.log( authData.who, " .. label added to repo, pv2ItemId:", ret.data.createLabel.label.id ); 
 		    label = ret.data.createLabel.label;
@@ -621,14 +626,27 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
 
     // query below checks both name and description
     // Oddly, GH returns anything that partially matches the query, without means to limit to precise matches.  i.e. if name is 1M Alloc, multiple are returned
+    // NOTE: As of 5/24, GH can no longer search label by name dependably.  Not long ago, GH could query"1M AllocPEQ" successfully.
+    // Now, it can query "1M", "1M " and "AllocPEQ", but no longer "1M A" with anything following.  Strange new bug.
+    // Need to search over all names now.
+    /*
     let query = `query( $repoNode:ID!, $name:String! ) {
                    node( id: $repoNode ) {
                    ... on Repository {
                        labels(first: 99, query: $name) {
                           edges { node { id, name, color, description }}}
-                  }}}`;
-
+			  }}}`;
     let variables = {"repoNode": repoNode, "name": peqHumanLabelName };
+    */
+    let query = `query( $repoNode:ID! ) {
+                   node( id: $repoNode ) {
+                   ... on Repository {
+                       labels(first: 99) {
+                          edges { node { id, name, color, description }}}
+			  }}}`;
+    
+
+    let variables = {"repoNode": repoNode };
     let queryJ    = JSON.stringify({ query, variables });
 
     try {
@@ -636,7 +654,8 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
 	    .then( ret => {
 		let labels = ret.data.node.labels;
 		if( typeof labels === 'undefined' ) { return labelRes; }
-		
+
+		// XXX relax this
 		if( labels.edges.length > 99 ) { console.log( authData.who, "WARNING. Found too many labels.  Ignoring some." ); }
 		
 		for( let i = 0; i < labels.edges.length; i++ ) {
@@ -650,6 +669,8 @@ async function getLabel( authData, repoNode, peqHumanLabelName ) {
     }
     catch( e ) { labelRes = await ghUtils.errorHandler( "getLabel", e, getLabel, authData, repoNode, peqHumanLabelName ); }
 
+    // if( labelRes.status == 404 ) { console.log( queryJ ); }
+    
     return labelRes;
 }
 
@@ -714,6 +735,7 @@ async function createPeqLabel( authData, repoNode, allocation, peqValue ) {
     return label;
 }
 
+
 async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelName, peqValue ) {
 
     console.log( authData.who, "Find or create label", repoNode, allocation, peqHumanLabelName, peqValue );
@@ -730,6 +752,17 @@ async function findOrCreateLabel( authData, repoNode, allocation, peqHumanLabelN
 	
 	if( peqValue < 0 ) { theLabel = await createLabel( authData, repoNode, peqHumanLabelName, '654321', "Oi!" ); }
 	else               { theLabel = await createPeqLabel( authData, repoNode, allocation, peqValue );            }
+
+	// If a label was just created, GH can be too slow in allowing it to be found
+	try{
+	    if( utils.validField( theLabel, "taken" )) {
+		console.log( "BINGO XXXXXXXXXXXX" );
+		let e = new Error( "GitHub needs a moment to make label available" );
+		e.status = 502;
+		throw e;
+	    }}
+	catch(e) { theLabel = await ghUtils.errorHandler( "findOrCreateLabel", e, findOrCreateLabel, authData, repoNode, allocation, peqHumanLabelName, peqValue ); }
+	    
     }
     assert( theLabel != null && typeof theLabel !== 'undefined', "Did not manage to find or create the PEQ label" );
     return theLabel;
