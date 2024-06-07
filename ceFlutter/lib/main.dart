@@ -55,6 +55,7 @@ class CEApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
            primarySwatch: Colors.green,
+           scaffoldBackgroundColor: Colors.white,
            appBarTheme: AppBarTheme(
               color: Colors.grey[200],
               // title is deprecated 1.13, but as of 2/20 headline6 has not yet made it to the stable release
