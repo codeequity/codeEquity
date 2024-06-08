@@ -197,9 +197,11 @@ void swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 //         PPA has strict guidelines from ceServer for when info in peq is valid - typically first 'confirm' 'add'.  assert protected.
 // Case 2: "add" arrives before a deleted accrued issue is recreated.
 //         recreate already handles the add - need to tamp down on this one, which is automatic if it follows.
-// Case 3: "add" will arrive twice in many cases, one addRelo for no status (when peq label an issue, then the second when situating the issue
+// Case 3: "add" will arrive twice in many cases, one addRelo for no status (when peq label an issue), then the second when situating the issue
 //          ignore the second add, it is irrelevant
-// Case 4: "relo" can arrive after "delete" is received, during transfer.  Demote delete.
+// Case 4: "relo" can arrive after "delete" is received, during transfer.
+//          _relo (used for local and x-proj transfers) handles allocation removal.  ignore delete and let relo manage local kp
+// 
 // Need to have seen a 'confirm' 'add' before another action, in order for the allocation to be in a good state.
 // This will either occur in current ingest batch, or is already present in mySummary from a previous update.
 // Remember, all peqs are already in aws, either active or inactive, so no point to look there.
@@ -212,7 +214,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
    final appState            = container.state;
    List<String>           kp = []; // known peqs, with todo index
    Map<String,List<int>>  dp = {}; // demoted peq: list of positions in todos
-   List<int>              ia = []; // ignore 2nd add of peq, index
+   List<int>              it = []; // ignore todo.  ignore 2nd add of peq, index.  ignore delete of relocated peq.
    List<String>           ip = []; // ignore 2nd add of peq, peqId, to allow quick failure check
 
    // build kp from mySummary.  Only active peqs are part of allocations.
@@ -245,7 +247,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
       // update known peqs and recreate targets with current todo.
       if( pact.verb == PActVerb.confirm && pact.action == PActAction.add ) {
          if( kp.contains( peq.id ) ) {
-            ia.add( i );
+            it.add( i );
             // make sure peq was not added more than twice
             assert( !ip.contains( peq.id ) );
             ip.add( peq.id );
@@ -257,11 +259,16 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
             vPrint( appState, "   Adding known peq " + peq.hostIssueTitle + " " + peq.id );
          }
       }
-      else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete ) {
+      else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete && pact.note != "Transferred" ) {  // XXX formalize
          assert( kp.contains( peq.id ) );
          kp.remove( peq.id );
          deleted = true;
          vPrint( appState, "   Removing known peq " + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
+      }
+      else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete && pact.note == "Transferred" ) {  // XXX formalize
+         vPrint( appState, "   Ignoring delete for relocated peq" + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
+         it.add( i );
+         ignored = true;
       }
       else if ( pact.note == "recreate" ) {    // XXX formalize
          assert( pact.subject.length == 2 );   // pact.subject[0] --> pact.subject[1]
@@ -304,7 +311,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
             dp.remove( peq.id );
             vPrint( appState, "   peq: " + peq.hostIssueTitle + " " + peq.id + " UN-demoted." );
          }
-         // demote if needed.  Needed if working on peq that hasn't been added yet.
+         // demote if needed.  Attempting to work (non-add, non-delete) on peq that hasn't been added yet.  Can be more actions here than 1.
          // Note: in some cases, demotion can occur on, say, a relo that has happened after delete.  Demotion does not hurt here, but certainly doesn't help
          else if( !kp.contains( peq.id ) && !deleted ) {
             if( !dp.containsKey( peq.id ) ) { dp[peq.id] = []; }
@@ -314,9 +321,9 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
       }
    }
    
-   // Remove ia 'ignore add' todos, there is nothing todo here.  These did not participate in any swaps above.
-   for( int i = ia.length - 1; i >= 0; i-- ) {
-      todos.removeAt( ia[ i ] );
+   // Remove it 'ignore add' todos, there is nothing todo here.  These did not participate in any swaps above.
+   for( int i = it.length - 1; i >= 0; i-- ) {
+      todos.removeAt( it[ i ] );
    }
 
 }
@@ -710,7 +717,7 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
             Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
             reloAlloc.add( miniAlloc );
          }
-         
+
          for( var remAlloc in reloAlloc ) {
             assert( assignees.contains( remAlloc.hostUserId ));
             vPrint( appState, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
@@ -730,6 +737,12 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
                   List<String> sourceCat = newSource.category;
                   baseCat = sourceCat.sublist( 0, sourceCat.indexOf( loc.hostProjectName ) + 1 );
                }
+            }
+
+            // Moving into ACCR is handled by _accrue.  moving out of ACCR, for example by rejecting a propose ACCR, must update allocType here
+            if( remAlloc.allocType == PeqType.grant && loc.hostColumnName != "Accrued" ) {  // XXX formalize
+               remAlloc.allocType = loc.hostColumnName == "Pending PEQ Approval" ? PeqType.pending : PeqType.plan;
+               vPrint( appState, "  .. Removed granted status, set to " + enumToStr(remAlloc.allocType) );
             }
             
             vPrint( appState, "  .. relocating to " + loc.toString() );
@@ -1057,7 +1070,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
    // XXX switch
    // propose accrue == pending.   confirm accrue == grant.  others are plan.  end?
    if     ( pact.action == PActAction.accrue )                                    { await _accrue( context, container, pact, peq, dynamo, assignees, assigneeShare, ka, subBase ); }
-   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete )   { _delete(           appState, pact, peq, dynamo, assignees, assigneeShare, ka      ); }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete )   { _delete(                 appState, pact, peq, dynamo, assignees, assigneeShare, ka      ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add )      { await _add(    context, container, pact, peq, dynamo, assignees, assigneeShare, subBase ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate ) { await _relo(   context, container, pact, peq, dynamo, assignees, assigneeShare, ka, pending, subBase ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.change )   { await _change( context, container, pact, peq, dynamo, assignees, assigneeShare, ka, pending ); }
