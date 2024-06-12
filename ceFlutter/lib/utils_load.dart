@@ -684,7 +684,9 @@ Future<void> updateUserPActions( peqs, container, context ) async {
    appState.userPActs[uname] = await fetchPEQActions( context, container, '{ "Endpoint": "GetPActsById", "CEProjectId": "$cep", "PeqIds": $pids }' );
 }
 
+ 
 // XXX Only update if dirty.  Only dirty after updatePeq.
+// Need both Active and Inactive (for accrued, only)
 Future<void> updateUserPeqs( container, context ) async {
    final appState  = container.state;
 
@@ -701,7 +703,7 @@ Future<void> updateUserPeqs( container, context ) async {
    }
    else {
       appState.userPeqs[appState.selectedUser] =
-         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep" }' );
+         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
    }
 }
 
