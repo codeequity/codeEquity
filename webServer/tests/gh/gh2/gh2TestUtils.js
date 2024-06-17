@@ -1609,6 +1609,8 @@ async function checkNewlyAccruedIssue( authData, testLinks, td, loc, issDat, car
     return await tu.settle( subTest, testStatus, checkNewlyAccruedIssue, authData, testLinks, td, loc, issDat, card, testStatus, specials );
 }
 
+
+// XXX still in use?
 // Accrued in !unclaimed just removed.  Check landing in unclaimed, which depends on source (delete card, delete issue)
 // construct data from new issue and new card as needed.
 async function checkUnclaimedAccr( authData, testLinks, td, loc, issDatOld, issDatNew, cardNew, testStatus, source ) {

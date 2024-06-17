@@ -43,7 +43,6 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
     console.log( authData.who, "delIss: DELETE FOR", pd.issueId, link.hostProjectId );
 
     await cardHandler.deleteCard( authData, ghLinks, ceProjects, pd, link.hostCardId, true );
-    // console.log( authData.who, "  .. done with card." );
     
     // After August 2021, GitHub notifications no longer have labels in the pd.reqBody after a GQL issue delete.
     // Can no longer short-circuit to no-op when just carded (delete issue also sends delete card, which handles linkage)
@@ -51,70 +50,8 @@ async function deleteIssue( authData, ghLinks, ceProjects, pd ) {
     // if( pd.peqValue <= 0 ) return;
 
     // Card is gone, issue is gone.  Delete card handled all but the one case below, in which case it leaves link intact.
-    
-    // ACCR, not unclaimed, deleted issue.
-    if( link.hostProjectName != config.UNCLAIMED && link.hostColumnName == config.PROJ_COLS[config.PROJ_ACCR] ) {
-
-	// Because of the change in August 2021, the request body no longer has labels.  
-	// Can recreate linkage to peq label, but will lose the others.  This is a bug, out of our immediate control.
-	// Rare.  GQL-only.  Would need to save more state.  Painful.
-	console.log( authData.who, "WARNING.  Deleted an accrued PEQ issue.  Recreating this in Unclaimed.  Non-PEQ labels will be lost.", pd.issueNum );
-
-	// the entire issue has no longer(!) been given to us here.  Recreate it.
-	// Reformat to gql-style. id only.
-	let issue = pd.reqBody.issue;
-	issue.id = issue.node_id;
-
-	// Can only be alloc:false peq label here.
-	let peq  = await awsUtils.getPEQ( authData, pd.ceProjectId, link.hostIssueId );
-	assert( utils.validField( peq, "Amount" ));
-	const lName = ghV2.makeHumanLabel( peq.Amount, config.PEQ_LABEL );
-	const theLabel = await ghV2.findOrCreateLabel( authData, link.hostRepoId, false, lName, peq.Amount.toString() );
-	issue.labels = [ theLabel ];
-	
-	let assg = [];
-	issue.assignees.forEach( a => {
-	    let entry = {};
-	    entry.id = a.node_id;
-	    assg.push( entry );
-	});
-	issue.assignees = assg;
-
-	const msg = "Accrued PEQ issue was deleted.  CodeEquity has rebuilt it.";
-
-	const issueData = await ghV2.rebuildIssue( authData, link.hostRepoId, -1, issue, msg );
-	let card        = ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, issueData[0], true );
-
-	// Don't wait - closing the issue at GH, no dependence
-	ghV2.updateIssue( authData, issueData[0], "state", config.GH_ISSUE_CLOSED );
-
-	// Move to unclaimed:accrued col
-	card = await card;
-	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "projName": config.UNCLAIMED, "colId": card.columnId } );
-	assert( locs.length = 1 );
-	await ghV2.moveCard( authData, card.pid, card.cardId, locs[0].hostUtility, card.columnId );
-	
-	issueData[2] = card.cardId; 
-	link = ghLinks.rebuildLinkage( authData, link, issueData );
-	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
-	link.hostProjectName = config.UNCLAIMED;
-	link.hostProjectId   = card.pid;
-	link.hostColumnId    = card.columnId;
-
-	// issueId is new.  Deactivate old peq, create new peq.  Reflect that in PAct.
-	// peq = await peq;
-	const newPeqId = await awsUtils.rebuildPEQ( authData, link, peq );
-	
-	awsUtils.removePEQ( authData, peq.PEQId );	
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
-				  config.PACTVERB_CONF, config.PACTACT_CHAN, [peq.PEQId, newPeqId], config.PACTNOTE_RECR,
-				  utils.getToday());
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd,
-				  config.PACTVERB_CONF, config.PACTACT_ADD, [newPeqId], "",
-				  utils.getToday() );
-    }
-
     console.log( authData.who, "Delete issue finished, ms:", Date.now() - tstart );
+
 }
 
 // labelIssue must deal with new wrinkles

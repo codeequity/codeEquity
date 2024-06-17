@@ -727,37 +727,13 @@ async function testCreateDelete( authData, testLinks, td ) {
 
 	await utils.sleep( 2000 );
 
-	// get newly created issue, cards.   card only for remCard, issue and card for remIssue
-	const uncAccr = await gh2tu.getFlatLoc( authData, td.unclaimPID, config.UNCLAIMED, config.PROJ_COLS[config.PROJ_ACCR] );
-	const newIss = await gh2tu.findIssueByName( authData, td, issDatAgho2[3] );
-	const aghoIss2New = [newIss.id, newIss.number, -1, newIss.title];
-
-	aghoCard1New = await tu.settleWithVal( "Get new card", getCardHelp, authData, td, uncAccr.pid, uncAccr.colId, issDatAgho1[3].toString(), testStatus );
-	aghoCard2New = await tu.settleWithVal( "Get new card", getCardHelp, authData, td, uncAccr.pid, uncAccr.colId, aghoIss2New[3].toString(), testStatus );
-	aghoIss2New[2] = aghoCard2New.cardId;
-	
-	// card: old issue, new card.  issue: new issue, new card
-	// peq for remCard is active for old issue.  peq for remIssue is active for new issue.
-	testStatus = await gh2tu.checkUnclaimedAccr( authData, testLinks, td, uncAccr, issDatAgho1, issDatAgho1, aghoCard1New, testStatus, "card" );
-	testStatus = await gh2tu.checkUnclaimedAccr( authData, testLinks, td, uncAccr, issDatAgho2, aghoIss2New, aghoCard2New, testStatus, "issue" );  
-
-	// Old stuff wont be present
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard1.cardId, ISS_AGHO1, testStatus, {"skipAllPeq": true} );  
-	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issDatAgho2, testStatus );
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard2.cardId, ISS_AGHO2, testStatus, {"skipAllPeq": true} );  
-	tu.testReport( testStatus, "accrued B" );
-
-	// 3. Remove one more time
-	await gh2tu.remCard( authData, td.ceProjectId, uncAccr.pid, aghoCard1New.cardId );      // newborn
-	await gh2tu.remIssue( authData, aghoIss2New[0]);   // gone
-
 	testStatus = await gh2tu.checkNewbornIssue( authData, testLinks, td, issDatAgho1, testStatus );
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard1New.cardId, ISS_AGHO1, testStatus, {"peq": true} );
-	testStatus = await gh2tu.checkPact( authData, testLinks, td, ISS_AGHO1, config.PACTVERB_CONF, config.PACTACT_NOTE, "Disconnected issue", testStatus );
+	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, aghoCard1.cardId, ISS_AGHO1, testStatus, {"peq": true} );
+	testStatus = await gh2tu.checkPact( authData, testLinks, td, ISS_AGHO1, config.PACTVERB_CONF, config.PACTACT_DEL, "", testStatus );
 
-	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, aghoIss2New, testStatus );
-	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, uncAccr, aghoCard2New.cardId, ISS_AGHO2, testStatus, {"peq": true} );
-	tu.testReport( testStatus, "accrued C" );
+	testStatus = await gh2tu.checkNoIssue( authData, testLinks, td, issDatAgho2, testStatus );
+	testStatus = await gh2tu.checkNoCard( authData, testLinks, td, ghoAccr, aghoCard2.cardId, ISS_AGHO2, testStatus, {"peq": true} );
+	tu.testReport( testStatus, "accrued B" );
     }
     
     tu.testReport( testStatus, "Test Create Delete" );

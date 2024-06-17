@@ -1628,8 +1628,8 @@ async function createUnClaimedProject( authData, ghLinks, ceProjects, pd  )
 	console.log( authData.who, "Error.  Please create the", config.UNCLAIMED, "project by hand, for now." );
     }
     else {
-	// Update locs.  Note that if ACCR is deleted elsewhere and recreated here, the peq is also recreated in AWS, so there should
-	// be no issues during linkage:init (in other words, linkage init will drive unclaimed initialization.  And in other cases
+	// Update locs.  
+	// linkage init will drive unclaimed initialization.  And in other cases
 	// unclaimed currently is linked up front, no peq needed.
 	let projLocs = ghLinks.getLocs( authData, { ceProjId: pd.ceProjectId, pid: unClaimedProjId } );
 

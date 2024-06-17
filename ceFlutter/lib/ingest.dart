@@ -208,6 +208,7 @@ void swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 //         PPA has strict guidelines from ceServer for when info in peq is valid - typically first 'confirm' 'add'.  assert protected.
 // Case 2: "add" arrives before a deleted accrued issue is recreated.
 //         recreate already handles the add - need to tamp down on this one, which is automatic if it follows.
+//         XXX should not longer occur
 // Case 3: "add" will arrive twice in many cases, one addRelo for no status (when peq label an issue), then the second when situating the issue
 //          ignore the second add, it is irrelevant
 // Case 4: "relo" can arrive after "delete" is received, during transfer.
@@ -239,6 +240,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 
    vPrint( appState, "Initial known peq-allocs: " + kp.toString() );
 
+   // XXX verify no longer seeing note:recreate
    // Case 1.  Fairly generic - if operation depends on peq, but haven't added it yet, swap the operation with the following confirm.add
    // Case 2.  Very specific  - if confirm.add matches subsequent recreate target, swap
    // look through current ingest batch for issues to resolve.
@@ -905,6 +907,7 @@ Future _change( context, container, pact, peq, List<Future> dynamo, assignees, a
       
    }
    else if( pact.note == "recreate" ) {    // XXX formalize this
+      assert( false );
       // This is only issued when user deletes an accrued issue, which ceServer then recreates in unclaimed.
       // Note. After 8/2021, Github sends only partial issues in request body during issue delete.  Thanks GQL.
       //       Assignees may be removed.. safest place to transfer them is here.
