@@ -127,53 +127,22 @@ async function deleteCard( authData, ghLinks, ceProjects, pd, cardId, fromIssue 
     // Wait later
     let peq = awsUtils.getPEQ( authData, pd.ceProjectId, link.hostIssueId );
     
-    // Regular peq?  or ACCR already in unclaimed?  remove it no matter what.
-    if( !accr || link.hostProjectName == config.UNCLAIMED ) {
-	console.log( authData.who, "Removing peq", accr, issueExists );
-	if( issueExists ) {
-	    let success = await ghV2.removePeqLabel( authData, link.hostIssueId );
-	    // Don't wait
-	    if( success ) { ghV2.addComment( authData, link.hostIssueId, comment ); }
-	}
-	ghLinks.removeLinkage({"authData": authData, "ceProjId": link.ceProjectId, "issueId": link.hostIssueId });
-	
-	// no need to wait.
-	// Notice for accr since we are NOT deleting an accrued peq, just removing GH records.
-	peq = await peq;
-	if( peq === -1 ) { console.log( "WARNING.  Race condition detected when deleting peq. Error?", peq, link ); }
-	else {             awsUtils.removePEQ( authData, peq.PEQId ); }
-	let action = accr ? config.PACTACT_NOTE  : config.PACTACT_DEL;
-	let note   = accr ? "Disconnected issue" : "";
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
-			       config.PACTVERB_CONF, action, [peq.PEQId], note,
-			       utils.getToday());
+    // It's a PEQ.  remove it no matter what, accr status no longer matters
+    console.log( authData.who, "Removing peq", accr, issueExists );
+    if( issueExists ) {
+	let success = await ghV2.removePeqLabel( authData, link.hostIssueId );
+	// Don't wait
+	if( success ) { ghV2.addComment( authData, link.hostIssueId, comment ); }
     }
-    // ACCR, not in unclaimed.  
-    else if( issueExists ) {
-	console.log( authData.who, "Moving ACCR", pd.repoId, accr, issueExists, link.hostIssueId );
-	// XXX BUG.  When attempting to transfer an accrued issue, GH issue delete is slow, can be in process when get here.
-	//           card creation can fail, and results can be uncertain at this point.  
-	let card = await ghV2.createUnClaimedCard( authData, ghLinks, ceProjects, pd, link.hostIssueId, accr );  
-	link.hostCardId      = card.cardId;
-	link.hostProjectId   = card.pid;
-	link.hostProjectName = config.UNCLAIMED;
-	link.hostColumnId    = card.columnId;
-	link.hostColumnName  = config.PROJ_COLS[config.PROJ_ACCR];
-	
-	const psub = [ link.hostProjectName, link.hostColumnName ];
-	
-	// No need to wait
-	peq = await peq;
-	awsUtils.updatePEQPSub( authData, peq.PEQId, psub );
-	awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
-			       config.PACTVERB_CONF, config.PACTACT_RELO, [peq.PEQId, link.hostProjectId, link.hostColumnId], "",
-			       utils.getToday() );
-	
-    }
-    // ACCR, not unclaimed, but issue deleted.  Delete issue must handle this since we don't have label, allocation.
-    else {
-	console.log( authData.who, "Issue handler will recreate ACCR in unclaimed", accr, issueExists );
-    }
+    ghLinks.removeLinkage({"authData": authData, "ceProjId": link.ceProjectId, "issueId": link.hostIssueId });
+    
+    // no need to wait.
+    peq = await peq;
+    if( peq === -1 ) { console.log( "WARNING.  Race condition detected when deleting peq. Error?", peq, link ); }
+    else {             awsUtils.removePEQ( authData, peq.PEQId ); }
+    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
+			      config.PACTVERB_CONF, config.PACTACT_DEL, [peq.PEQId], "",
+			      utils.getToday());
 }
 
 // Consider creating rejectLoc if this is not MAIN_PROJ.  At least, once we can create cols again.

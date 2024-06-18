@@ -37,7 +37,8 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
 
    PEQAction pact = tup.item1;
    PEQ       peq  = tup.item2;
-
+   var       origHIDLen = peq.ceHolderId.length; 
+   
    // print( pact );
    // print( peq );
    
@@ -62,8 +63,6 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
       await updateDynamo( context, container, '{ "Endpoint": "putPActCEUID", "CEUID": "$ceu", "PEQActionId": "${pact.id}" }', "putPActCEUID" );
    }
 
-   // print( "Started erm dynamo pact update " + ceu + " " + pact.id);
-
    // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
    peq.ceHolderId = [];
    for( var peqHostUser in peq.hostHolderId ) {
@@ -85,8 +84,8 @@ Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) a
 
    // Ignore CEGrantorId.  Must already be signed up to authorize PEQ, so all IDs will already be correct.
 
-   // Update PEQ, if there is one.
-   if( peq.id != "-1" ) {
+   // Update PEQ, if there is one, and if we are not replacing [] with []
+   if( peq.id != "-1" && origHIDLen == 0 && peq.ceHolderId.length != 0 ) {
       var postData = {};
       postData['PEQId']       = peq.id;
       postData['CEHolderId']  = peq.ceHolderId;
@@ -151,7 +150,9 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
 
          if     ( alloc.amount == 0 )                                        { appState.myPEQSummary.allocations.remove( alloc ); }
          else if( alloc.sourcePeq.containsKey(  peqId ) && splitAmount < 0 ) { alloc.sourcePeq.remove( peqId ); }
-         else if( !alloc.sourcePeq.containsKey( peqId ) && splitAmount > 0 ) { alloc.sourcePeq[ peqId ] = splitAmount; }
+         else if( !alloc.sourcePeq.containsKey( peqId ) && splitAmount > 0 ) {
+            alloc.sourcePeq[ peqId ] = splitAmount;
+         }
          else {
             // This should not be overly harsh.  Negotiations can remove then re-add.
             print( "Error.  XXX.  Uh oh.  AdjustSummaryAlloc $splitAmount $peqId " + alloc.toString() );
@@ -177,8 +178,18 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    vPrint( appState, " ... adding new Allocation" );
    Allocation alloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: {peqId: splitAmount}, allocType: peqType,
                                       ceUID: EMPTY, hostUserId: assignee, vestedPerc: 0.0, notes: "", hostProjectId: pid );
+   /*
+   // XXX
+   // grant is only set during confirm accrue(wrong - set by category list).  allocation may or may not already exist.
+   if( alloc.allocType == PeqType.grant ) {
+      print( "Confirm accrue, set in stone activated, type 1" );
+      if( alloc.setInStone == null ) { alloc.setInStone = []; }
+      alloc.setInStone!.add( peqId );
+   }
+   */
    appState.myPEQSummary.allocations.add( alloc );
 }
+
 
 // XXX utils: enumFromStr
 // Oh boy.  dart extensions are ugly, dart templates via abstract are much worse.  For now, 
@@ -197,6 +208,7 @@ void swap( List<Tuple2<PEQAction, PEQ>> alist, int indexi, int indexj ) {
 //         PPA has strict guidelines from ceServer for when info in peq is valid - typically first 'confirm' 'add'.  assert protected.
 // Case 2: "add" arrives before a deleted accrued issue is recreated.
 //         recreate already handles the add - need to tamp down on this one, which is automatic if it follows.
+//         XXX should not longer occur
 // Case 3: "add" will arrive twice in many cases, one addRelo for no status (when peq label an issue), then the second when situating the issue
 //          ignore the second add, it is irrelevant
 // Case 4: "relo" can arrive after "delete" is received, during transfer.
@@ -228,6 +240,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 
    vPrint( appState, "Initial known peq-allocs: " + kp.toString() );
 
+   // XXX verify no longer seeing note:recreate
    // Case 1.  Fairly generic - if operation depends on peq, but haven't added it yet, swap the operation with the following confirm.add
    // Case 2.  Very specific  - if confirm.add matches subsequent recreate target, swap
    // look through current ingest batch for issues to resolve.
@@ -472,6 +485,15 @@ Future _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo
          assert( sourceAlloc != null );
          adjustSummaryAlloc( appState, peq.id, subBase, assignee, -1 * assigneeShare, sourceAlloc!.allocType );
          adjustSummaryAlloc( appState, peq.id, subAccr, assignee,  assigneeShare, PeqType.grant );
+
+         // XXX
+         List<Allocation> appAllocs = appState.myPEQSummary.allocations;
+         for( Allocation alloc in appAllocs.where( (a) => ( a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {         
+            print( "Confirm accrue, set in stone activated, type 1 " );
+            if( alloc.setInStone == null ) { alloc.setInStone = []; }
+            alloc.setInStone!.add( peq.id );
+         }
+
          newType = enumToStr( PeqType.grant );
          peqLoc  = subAccr;
       }
@@ -611,6 +633,7 @@ Future _add( context, container, pact, peq, List<Future> dynamo, assignees, assi
 // Note.  The only cross-project moves allowed are unclaimed -> new home.  This move is programmatic via ceServer.
 // Note.  There is a rare race condition in ceServer that may reorder when recordPeqs arrive.  Specifically, psub
 //        may be unclaimed when expect otherwise.  Relo must then deal with it.
+// Note.  Once an allocation is in Accr, relo will no longer touch it.
 Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, assigneeShare, ka, pending, subBase ) async {
 
    final appState = container.state;   
@@ -668,6 +691,11 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
          print( "TRANSFERS ARE NOT YET HANDLED" );
          return;
       }
+
+      if( sourceAlloc.setInStone != null && sourceAlloc.setInStone!.contains( peq.id )) {
+         print( "Attempting to relocate an Accrued PEQ.  Disregard." );
+         return;
+      }
       
       // Get name of new column home
       assert( pact.subject.length == 3 );
@@ -714,6 +742,16 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
          
          // avoid concurrent mod of list
          for( Allocation sourceAlloc in appAllocs.where( (a) => (a.sourcePeq != null ) && a.sourcePeq!.containsKey( peq.id ) )) {
+            /*
+            // XXX speculative - accr weedout above may nullify this
+            if( sourceAlloc.allocType == PeqType.grant ) {
+               print( "Relo creation of ACCR allocation rejected." );
+            }
+            else {
+               Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
+               reloAlloc.add( miniAlloc );
+            }
+            */
             Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
             reloAlloc.add( miniAlloc );
          }
@@ -869,6 +907,7 @@ Future _change( context, container, pact, peq, List<Future> dynamo, assignees, a
       
    }
    else if( pact.note == "recreate" ) {    // XXX formalize this
+      assert( false );
       // This is only issued when user deletes an accrued issue, which ceServer then recreates in unclaimed.
       // Note. After 8/2021, Github sends only partial issues in request body during issue delete.  Thanks GQL.
       //       Assignees may be removed.. safest place to transfer them is here.
@@ -1064,7 +1103,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
    assert( ka == null || ka.sourcePeq          != null );
    assert( ka == null || ka.sourcePeq![peq.id] != null );
    
-   List<String> subBase = ka == null ? peq.hostProjectSub                        : ka.categoryBase!; 
+   List<String> subBase = ka == null ? peq.hostProjectSub                      : ka.categoryBase!; 
    int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.sourcePeq![ peq.id ]!;
    
    // XXX switch

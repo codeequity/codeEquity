@@ -174,6 +174,7 @@ async function clearRepo( authData, testLinks, pd ) {
     
     // Issues.
     // Some deleted issues get recreated in unclaimed.  Wait for them to finish, then repeat
+    // NOTE!  No longer.  this should be a no-op.
     await remIssues( authData, testLinks, pd );
 
     // await remIssues awaits issuance, but can't await completion either at GH or by subsequent notification-driven ceServer.
@@ -185,6 +186,7 @@ async function clearRepo( authData, testLinks, pd ) {
 
     if( pids != -1 ) {
 	// Do not unlink unclaimed - causes race conditions when clearing multiple repos, some of which have ACCR issues that need to be recreated
+	// NOTE! no longer.  should is no longer a thing.
 	let unclIndex = pids.findIndex( project => project.title == config.UNCLAIMED ); 
 	if( unclIndex >= 0 ) { pids.splice( unclIndex, 1 ); }
 	console.log( "Unlinking all Projects but Unclaimed.", pd.ghRepoId, pd.ghFullName );

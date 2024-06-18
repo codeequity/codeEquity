@@ -166,7 +166,7 @@ class _CEDetailState extends State<CEDetailPage> {
    }
 
    // Find peqs held by user, then all pacts for those peqs.
-   // Active only, for now.
+   // Need both Active and Inactive (for accrued, only)
    void rebuildPActions( container, context ) async {
 
       print( "Rebuild PActions" + category.toString() );

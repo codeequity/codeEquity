@@ -12,22 +12,23 @@ import 'package:ceFlutter/models/PEQ.dart';
 
 class Allocation {
    final List<String> category;        // i.e. [founding], [Software Contributions, Data Security, Planned, Unassigned]
-   final List<String>? categoryBase;    // i.e. category, minus "planned", assignee
+   final List<String>? categoryBase;   // i.e. category, minus "planned", assignee
    int?               amount;          // amount of provisional equity for this category
-   Map<String,int>?   sourcePeq;       // all peqId:value that make up the total for this category. 
+   Map<String,int>?   sourcePeq;       // all peqId:value that make up the total for this category.
+   List<String>?      setInStone;      // all source peq ids that have confirm accrued.  These will not be further adjusted
    PeqType            allocType;
    final String?      ceUID;           // if Plan or Grant, who is it for
    final String?      hostUserName;    // hostUser associated with ceUID
    final String       hostUserId;      // hostUser associated with ceUID
    double?            vestedPerc;      // granted or accrued
    final String?      notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
-   final String?      hostProjectId;     // a fixed point that chains the category to a specific location in host
+   final String?      hostProjectId;   // a fixed point that chains the category to a specific location in host
 
-   Allocation({required this.category, this.categoryBase, this.amount, this.sourcePeq,
+   Allocation({required this.category, this.categoryBase, this.amount, this.sourcePeq, this.setInStone,
             required this.allocType, this.ceUID, this.hostUserName, required this.hostUserId, this.vestedPerc, this.notes, this.hostProjectId });
 
    // Not explicitly constructed in lambda handler - watch caps
-   dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'AllocType': enumToStr(allocType),
+   dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'SetInStone': setInStone, 'AllocType': enumToStr(allocType),
                            'CEUID': ceUID, 'HostUserName': hostUserName, 'HostUserId': hostUserId,
                            'Vested': vestedPerc, 'Notes': notes, 'HostProjectId': hostProjectId };
    
@@ -38,6 +39,7 @@ class Allocation {
       var dynamicCat     = json['Category'];
       var dynamicCatBase = json['CategoryBase'];
       var dynamicSource  = json['SourcePEQ'];
+      var dynamicSIS     = json['SetInStone'];
 
       Map<String,int> sp = {};
       dynamicSource.forEach((k,v) { sp[k] = v; });
@@ -49,13 +51,14 @@ class Allocation {
          categoryBase:  new List<String>.from(dynamicCatBase),
          amount:        json['Amount'],
          sourcePeq:     sp,
+         setInStone:    new List<String>.from(dynamicSIS),
          allocType:     enumFromStr<PeqType>( json['AllocType'], PeqType.values ),
          ceUID:         json['CEUID'],
          hostUserName:  json['HostUserName'] ?? "",
          hostUserId:    json['HostUserId'] ?? "",
          vestedPerc:    json['Vested'],
          notes:         json['Notes'],
-         hostProjectId:   json['HostProjectId']
+         hostProjectId: json['HostProjectId']
          );
    }
    
@@ -64,6 +67,7 @@ class Allocation {
       res += "\n    " + enumToStr( allocType ) + " ceUID and hostUserName: " + (ceUID ?? "") + " " + (hostUserName ?? "") + " " + (hostUserId ?? "");
       res += "\n    Amount: "+ (amount ?? -1).toString() + " of which vested %: " + (vestedPerc ?? 0.0).toString();
       res += "\n    Source PEQs: " + (sourcePeq ?? []).toString();
+      res += "\n    Set in stone: " + (setInStone ?? []).toString();
       res += "\n    Notes: " + (notes ?? "");
       return res;
    }
