@@ -499,7 +499,7 @@ Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey
       print( "CheckOffsetAlloc failed to get agVals. " + agKey + " " + flutterPos.toString() );
    }
    for( var j = 1; j < 5; j++ ) {
-      if( allocs[j] != agVals[j] ) { print( allocs.toString() + "   " + agVals.toString() ); }
+      if( allocs.length < j || agVals.length < j || allocs[j] != agVals[j] ) { print( allocs.toString() + "   " + agVals.toString() ); }
       expect( allocs[j], agVals[j] );
    }
    
@@ -633,7 +633,29 @@ Future<bool> validateRawAddCard( WidgetTester tester, String repo, String issueT
    return true;
 }
 
-Future<bool> validateRawSituate( WidgetTester tester, String repo, String detailName ) async {
+
+Future<bool> validateRawRelo( WidgetTester tester, String repo, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                    "labeled" );
+   expect( pmap['repository']['full_name'],    repo );
+   // expect( pmap.containsKey( "project_card" ), true );
+
+   // expect( pmap["project_card"].containsKey( "content_url" ),        true );
+   // expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
+   // expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+Future<bool> validateRawCreatePV2Card( WidgetTester tester, String detailName ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
@@ -641,12 +663,13 @@ Future<bool> validateRawSituate( WidgetTester tester, String repo, String detail
    final Map<String, dynamic> pmap = getPact( detailName );
 
    expect( pmap['action'],                    "created" );
-   expect( pmap['repository']['full_name'],    repo );
-   expect( pmap.containsKey( "project_card" ), true );
 
-   expect( pmap["project_card"].containsKey( "content_url" ),        true );
-   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
-   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+   expect( pmap.containsKey( "projects_v2_item" ),                    true );
+   expect( pmap["projects_v2_item"]["content_type"], "issue" );
+   expect( pmap["projects_v2_item"].containsKey( "content_url" ),     true );
+   expect( pmap["projects_v2_item"].containsKey( "content_node_id" ), true );
+   expect( pmap["projects_v2_item"].containsKey( "node_id" ),         true );
+   expect( pmap["projects_v2_item"].containsKey( "project_node_id" ), true );
 
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
@@ -763,23 +786,25 @@ Future<bool> validateRejectAccrue( WidgetTester tester, String repo, String issu
 
 // Starts with initial expansion
 Future<bool> validateCE10( WidgetTester tester ) async {
-   await expandAllocs( tester, 1, 1 );
-   await expandAllocs( tester, 3, 4 );
-   await checkOffsetAlloc( tester, 5, "builderCE 10" );
+   await expandAllocs( tester, 1, 1 );  // soft cont
+   await expandAllocs( tester, 3, 3 );  // gho
+   await expandAllocs( tester, 7, 7 );  // prog
+   await checkOffsetAlloc( tester, 8, "builderCE 23" );
 
-   await expandLeaf( tester, 5, "builderCE 10" );
+   await expandLeaf( tester, 8, "builderCE 23" );
    await pumpSettle( tester, 1 );
 
    String repo   = "codeequity/ceFlutterTester";
 
    String issue  = "IR Prog";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
-   expect( await validateRawAdd(       tester, repo, issue, "1000 PEQ",   "00 confirm add" ),      true );
-   expect( await validateRawAssign(    tester, repo, issue, "builderCE", "01 confirm change" ),   true );
-   expect( await validateRawSituate(   tester, repo,                      "02 confirm relocate" ), true );
+   expect( await validateRawAdd(           tester, repo, issue, "1k PEQ",     "00 confirm add" ),      true );
+   expect( await validateRawAssign(        tester, repo, issue, "builderCE",  "02 confirm change" ),   true );
+   expect( await validateRawRelo(          tester, repo,                      "01 confirm relocate" ), true );
+   expect( await validateRawCreatePV2Card( tester,                            "03 confirm add" ),      true );
 
    expect( await backToSummary( tester ), true );
-   await toggleTableEntry( tester, 4, "" );
+   await toggleTableEntry( tester, 7, "" );
    await toggleTableEntry( tester, 3, "" );
    await toggleTableEntry( tester, 1, "" );
    
@@ -802,7 +827,7 @@ Future<bool> validateAri15( WidgetTester tester ) async {
    String issue = "Close Open test"; 
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "00 confirm add" ),      true );
-   expect( await validateRawSituate(    tester, repo,                       "01 confirm relocate" ), true );   
+   expect( await validateRawRelo(    tester, repo,                       "01 confirm relocate" ), true );   
    expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "02 confirm change" ),   true );
    expect( await validateProposeAccrue( tester, repo, issue,                "03 propose accrue" ),   true );
    expect( await validateRejectAccrue(  tester, repo, issue,                "04 reject accrue" ),    true );   
@@ -816,7 +841,7 @@ Future<bool> validateAri15( WidgetTester tester ) async {
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "10 confirm add" ),      true );
    expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "11 confirm change" ),   true );   
-   expect( await validateRawSituate(    tester, repo,                       "12 confirm relocate" ), true );
+   expect( await validateRawRelo(    tester, repo,                       "12 confirm relocate" ), true );
    expect( await validateProposeAccrue( tester, repo, issue,                "13 propose accrue" ),   true );
    expect( await validateConfirmAccrue( tester, repo,                       "14 confirm accrue" ),   true );
 
@@ -844,7 +869,7 @@ Future<bool> validateAlloc23( WidgetTester tester ) async {
    String issue  = "Component Alloc";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
    expect( await validateRawAdd(     tester, repo, issue, "1000000 AllocPEQ",  "00 confirm add" ),      true );
-   expect( await validateRawSituate( tester, repo,                             "01 confirm relocate" ), true );
+   expect( await validateRawRelo( tester, repo,                             "01 confirm relocate" ), true );
    expect( await validateRawMove(    tester, repo,                             "02 confirm relocate" ), true );
    
    expect( await backToSummary( tester ), true );

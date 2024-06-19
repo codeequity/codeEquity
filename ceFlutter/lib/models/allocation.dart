@@ -51,7 +51,7 @@ class Allocation {
          categoryBase:  new List<String>.from(dynamicCatBase),
          amount:        json['Amount'],
          sourcePeq:     sp,
-         setInStone:    new List<String>.from(dynamicSIS),
+         setInStone:    new List<String>.from(dynamicSIS ?? []),
          allocType:     enumFromStr<PeqType>( json['AllocType'], PeqType.values ),
          ceUID:         json['CEUID'],
          hostUserName:  json['HostUserName'] ?? "",
