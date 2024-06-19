@@ -32,6 +32,118 @@ function lockCard( cardId ) {
     locked.push( cardId );
 }
 
+// Move WITHIN project
+// The implied action of an underlying move out of a column depends on the originating PEQType.
+// PeqType:GRANT  Illegal       There are no 'takebacks' when it comes to provisional equity grants
+//                              This type only exists for cards/issues in the 'Accrued' column... can not move out 
+// PeqType:ALLOC  Notice only.  Master proj is not consistent with config.PROJ_COLS.
+//                              !Master projects do not recognize <allocation>
+// PeqType:PLAN  most common
+async function recordMove( authData, ghLinks, pd, oldCol, newCol, link, peq ) { 
+    let reqBody  = pd.reqBody;
+    let fullName = link.hostRepoName;
+    
+    assert( oldCol != config.PROJ_ACCR );  // no take-backs
+
+    // I want peqId for notice PActions, with or without issueId
+    if( typeof peq == 'undefined' ) {
+	// Note.  Spin wait for peq to finish recording from sibling labelIssue notification
+	peq = await utils.settleWithVal( "validatePeq", awsUtils.validatePEQ, authData, pd.ceProjectId, link.hostIssueId, link.hostIssueName, link.hostRepoId );
+    }
+    
+    assert( peq['PeqType'] != config.PEQTYPE_GRANT );
+    console.log( "Recording move for peq:", peq.PEQId );
+
+    let verb   = "";
+    let action = "";
+    // Note, flat projects/cols like eggs and bacon fall into this group
+    if( peq['PeqType'] == config.PEQTYPE_ALLOC ||
+	( oldCol <= config.PROJ_PROG && newCol <= config.PROJ_PROG ) ) {
+	// moving between plan, and in-progress has no impact on peq summary, but does impact summarization
+	verb   = config.PACTVERB_CONF;
+	action = config.PACTACT_RELO;
+    }
+    else if( oldCol <= config.PROJ_PROG && newCol == config.PROJ_PEND ) {
+	// task complete, waiting for peq approval
+	verb   = config.PACTVERB_PROP;
+	action = config.PACTACT_ACCR;
+    }
+    else if( oldCol == config.PROJ_PEND && newCol <= config.PROJ_PROG) {
+	// proposed peq has been rejected
+	verb   = config.PACTVERB_REJ;
+	action = config.PACTACT_ACCR;
+    }
+    else if( oldCol <= config.PROJ_PEND && newCol == config.PROJ_ACCR ) {
+	// approved!   PEQ will be updated to "type:accrue" when processed in ceFlutter.
+	verb   = config.PACTVERB_CONF;
+	action = config.PACTACT_ACCR;
+    }
+    else {
+	// XXX This can indicate a dropped notification.  Need to recover in some cases, this one is probably safe.
+	console.log( authData.who, "Verb, action combo not understood", oldCol, newCol, peq.PeqType );
+	console.log( reqBody );
+	console.log( link );
+	assert( false );
+    }
+
+    let subject = [peq.PEQId];
+    if( verb == config.PACTVERB_REJ && newCol >= 0 ) {
+	let locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "pid": pd.projectId, "colName": config.PROJ_COLS[newCol] } );
+	assert( locs !== -1 );
+	subject = [ peq.PEQId, locs[0].hostColumnName ];
+    }
+    else if( action == config.PACTACT_RELO ) {
+	// console.log( reqBody );
+	let cardId = reqBody.projects_v2_item.node_id;
+
+	let links  = ghLinks.getLinks( authData, { "ceProjId": pd.ceProjectId, "repo": fullName, "cardId": cardId } );  // linkage already updated
+	assert( links  !== -1 && links[0].hostColumnId != config.EMPTY );
+
+	subject = [ peq.PEQId, links[0].hostProjectId, links[0].hostColumnId ];
+    }
+    
+    // Don't wait
+    // Note.  Ingest manages peq.psub (i.e. move relo does not manage peq.psub), excluding this first move from unclaimed to initial residence.    
+    awsUtils.recordPEQAction( authData, config.EMPTY, pd, 
+			   verb, action, subject, "", 
+			   utils.getToday());
+}
+
+// Consider creating rejectLoc if this is not MAIN_PROJ.  At least, once we can create cols again.
+// Either move card back to rejectLoc, or if delete it.
+async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) {
+    let ceProjId = pd.ceProjectId;
+    let pid      = pd.projectId;
+    let issueId  = card.issueId;
+    let cardId   = card.cardId;
+    assert( typeof issueId !== 'undefined' && issueId != -1 );
+    console.log( authData.who, msg );
+
+    if( rejectLoc !== -1 ) {
+	ghV2.moveCard( authData, pid, cardId, rejectLoc.hostUtility, rejectLoc.hostColumnId );
+	if( track ) {
+	    let link = ghLinks.updateLinkage( authData, ceProjId, issueId, cardId, rejectLoc.hostColumnId, rejectLoc.hostColumnName );
+	    // treat reject as a move from flat
+	    let newNameIndex = config.PROJ_COLS.indexOf( rejectLoc.hostColumnName );
+	    // If coming from labelIssue, will not have pv2
+	    if( !utils.validField( pd.reqBody, "projects_v2_item" ) ) { pd.reqBody.projects_v2_item = {}; }
+	    pd.reqBody.projects_v2_item.node_id = cardId;
+	    pd.reqBody.ceComment = "move request was rejected, card relocated and possibly split and removed.  If so, split cardId placed in node_id."; 
+	    recordMove( authData, ghLinks, pd, -1, newNameIndex, link );
+	}
+    }
+    else {
+	// XXX better choice might be to remove label, not card
+	// This is a failure case, until we are able to create columns.
+	// Choice here is to move to a random column in project, or delete card.  Move to no status would be better, this is not possible (null field)
+	// Card deletion is annoying, but no information is lost.
+	// await ghV2.removeLabel( authData, lNodeId, pd.issueId );
+	console.log( authData.who, config.PROJ_COLS[config.PROJ_PLAN], "column does not exist .. deleting card." );
+	ghV2.removeCard( authData, pid, cardId );
+	ghLinks.removeLinkage( { authData: authData, ceProjId: ceProjId, issueId: issueId, cardId: cardId } );
+    }
+}
+
 async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, splitTag, doNotTrack, rebase ) {
     let origIssueId = pd.issueId;
     let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
@@ -355,15 +467,6 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	return 'early';
     }
 
-    //  Bail.  situated card exists in PROG+ (really, just PROG).  Add alloc peq label.  Link exists.
-    //         other cases will be caught in card:moved
-    if( fromLabel && allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
-	// remove label, leave issue & card in place.
-	console.log( authData.who, "WARNING.", "Allocations only useful in config:PROJ_PLAN, or flat columns.  Removing label." );
-	assert( lNodeId != -1 );
-	await ghV2.removeLabel( authData, lNodeId, pd.issueId );
-	return 'early';
-    }
 
     // Can't typically have carded issue in reserved.
     // However, we are allowing some negotiation, e.g. peq issue in PEND, owner sez 2k instead of 1k, unlabels and relabels.
@@ -410,6 +513,7 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
     // Resolve splits issues to ensure a 1:1 mapping issue:card, record data for all newly created issue:card(s)
     // Update linkage with future GH locations, presuming peq.  Will undo this after resolve as needed.  Split needs locs to create for GH.
     ghLinks.addLinkage( authData, pd.ceProjectId, orig );
+    
     let doNotTrack = fromCard && pd.peqValue <= 0;
     let gotSplit = await resolve( authData, ghLinks, pd, issue, doNotTrack, true );
 
@@ -435,8 +539,27 @@ async function processNewPEQ( authData, ghLinks, pd, issue, link, specials ) {
 	console.log( authData.who, "No need to update peq" );
     }
 
+    //  Repair.  situated card exists in PROG+ (really, just PROG).  Add alloc peq label.  need link added just above for reject
+    //         other cases will be caught in card:moved
+    if( fromLabel && allocation && config.PROJ_COLS.slice(config.PROJ_PROG).includes( colName )) {
+	let msg = "WARNING.  Allocations only useful in config:PROJ_PLAN, or flat columns.  Moving card back.";
+	let rejectLoc = -1;
+	const locs = ghLinks.getLocs( authData, { "ceProjId": pd.ceProjectId, "pid": pd.projectId } );	
+	for( const aloc of locs ) {
+	    if( aloc.hostColumnName == config.PROJ_COLS[config.PROJ_PLAN] ) {
+		rejectLoc = { ...aloc };  // will modify rejectLoc below, so make it a shallow copy
+		break;
+	    }
+	}
+	rejectCard( authData, ghLinks, pd, { issueId: pd.issueId, cardId: origCardId }, rejectLoc, msg, true );	
+	// assert( lNodeId != -1 );
+	// await ghV2.removeLabel( authData, lNodeId, pd.issueId );
+	// return 'early';
+    }
 }
 
+exports.recordMove        = recordMove;
+exports.rejectCard        = rejectCard;
 exports.resolve           = resolve;
 exports.populateCELinkage = populateCELinkage;
 exports.processNewPEQ     = processNewPEQ;

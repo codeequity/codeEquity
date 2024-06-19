@@ -237,7 +237,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			    let peq = await utils.settleWithVal( "validatePeq", awsUtils.validatePEQ, authData, pd.ceProjectId,
 								 link.hostIssueId, link.hostIssueName, link.hostRepoId );
 
-			    cardHandler.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
+			    ingestUtils.recordMove( authData, ghLinks, pd, -1, config.PROJ_PEND, link, peq );
 			}
 		    }
 		}
@@ -327,7 +327,7 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag ) {
 			console.log( authData.who, "Could not find or verify associated PEQ.  Trouble in paradise." );
 		    }
 		    else {
-			// cardHandler:recordMove must handle many more options.  Choices here are limited.
+			// ingestUtils:recordMove must handle many more options.  Choices here are limited.
 			// Closed: 
 			let verb    = config.PACTVERB_PROP;
 			let paction = config.PACTACT_ACCR;

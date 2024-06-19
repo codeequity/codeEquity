@@ -742,13 +742,14 @@ async function makeAlloc( authData, testLinks, ceProjId, rNodeId, pid, colId, ti
     // Create labeled issue, create PV2 item in correct project.  This will now be in nostatus.
     // issue:open, issue:label, item:create, maybe (?) item:edit
     let issDat = await ghV2.createIssue( authData, rNodeId, pid, allocIssue );
-    assert( issDat.length == 3 && issDat[0] != -1 && issDat[2] != -1 );
+    issDat.push( title );
+    assert( issDat.length == 4 && issDat[0] != -1 && issDat[2] != -1 );
 
     await ghV2.moveCard( authData, pid, issDat[2], statusId, colId );
-	
+
     console.log( "Made AllocCard and issue:", issDat );
     await utils.sleep( tu.MIN_DELAY );
-    return issDat[2];
+    return issDat;
 }
 
 
@@ -1102,8 +1103,8 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready " + card + issDat );
     if( typeof mCard[0] !== 'undefined' ) {
     
-	subTest = tu.checkEq( mCard.length, 1,                        subTest, "Card claimed" );
-	subTest = tu.checkEq( mCard[0].cardId, card.cardId,               subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard.length, 1,                       subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard[0].cardId, card.cardId,          subTest, "Card claimed" );
 	
 	// CHECK linkage
 	let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
@@ -1114,7 +1115,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	subTest = tu.checkEq( link.hostIssueName, issDat[3],           subTest, "Linkage Card Title" );
 	subTest = tu.checkEq( link.hostProjectName, loc.projName,      subTest, "Linkage Project Title" );
 	subTest = tu.checkEq( link.hostColumnId, loc.colId,            subTest, "Linkage Col Id" );
-	subTest = tu.checkEq( link.hostProjectId, loc.pid,          subTest, "Linkage project id" );
+	subTest = tu.checkEq( link.hostProjectId, loc.pid,             subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
 	let allPeqs  =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
