@@ -1222,9 +1222,13 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
    List<Future> ceuid = [];
    vPrint( appState, "Updating CE UIDs" );
+   var updateCount = 0;
    for( var tup in todos ) {
       // Wait here, else summary may be inaccurate
       ceuid.add( updateCEUID( appState, tup, context, container ) );
+      updateCount++;
+      // Give aws a chance to breathe
+      if( updateCount % 50 == 49 ) { await Future.delayed(Duration(milliseconds: 250)); }
    }
    await Future.wait( ceuid );
    vPrint( appState, "... done (ceuid)" );

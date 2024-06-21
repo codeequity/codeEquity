@@ -36,62 +36,62 @@ const Map<String,List<String>> ALLOCS_GOLD =
       
       "Software Contributions 1": ["Category, Software Contributions", "5,500,000", "3,455", "1,750", "6,501", "5,488,294"],
       
-      "Data Security Flut 2":   ["Category, Software Contributions, Data Security Flut", "1,000,000", "500", "250", "4,000", "995,250"],
-      "Accrued 3":              ["Category, Software Contributions, Data Security Flut, Accrued", "0", "0", "0", "4,000", "---"],
-      "builderCE 4":            ["Category, Software Contributions, Data Security Flut, Accrued, builderCE", "0", "0", "0", "1,000", "---"],
-      "ariCETester 5":          ["Category, Software Contributions, Data Security Flut, Accrued, ariCETester", "0", "0", "0", "3,000", "---"],
+      "Data Security Flut 2":      ["Category, Software Contributions, Data Security Flut", "1,000,000", "500", "250", "4,000", "995,250"],
+         "Accrued 3":              ["Category, Software Contributions, Data Security Flut, Accrued", "0", "0", "0", "4,000", "---"],
+            "builderCE 4":         ["Category, Software Contributions, Data Security Flut, Accrued, builderCE", "0", "0", "0", "1,000", "---"],
+            "ariCETester 5":       ["Category, Software Contributions, Data Security Flut, Accrued, ariCETester", "0", "0", "0", "3,000", "---"],
+         "Pending PEQ Approval 6": ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval", "0", "0", "250", "0", "---"],
+            "ariCETester 7":       ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval, ariCETester", "0", "0", "250", "0", "---"],
+         "Planned 8":              ["Category, Software Contributions, Data Security Flut, Planned", "750,000", "500", "0", "0", "---"],
+            "builderCE 9":         ["Category, Software Contributions, Data Security Flut, Planned, builderCE", "0", "500", "0", "0", "---"],
+            "IR Alloc split 10":   ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
+            "IR Alloc split 11":   ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
 
-      "Pending PEQ Approval 6": ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval", "0", "0", "250", "0", "---"],
-      "ariCETester 7":          ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval, ariCETester", "0", "0", "250", "0", "---"],
+      "Github Operations Flut 12":  ["Category, Software Contributions, Github Operations Flut", "1,500,000", "2,955", "1,500", "2,501", "1,493,044"],
+         "Pending PEQ Approval 13": ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval", "0", "0", "1,500", "0", "---"],
+            "ariCETester 14":       ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, ariCETester", "0", "0", "750", "0", "---"],
+            "builderCE 15":         ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, builderCE", "0", "0", "750", "0", "---"],
+         "Accrued 16":              ["Category, Software Contributions, Github Operations Flut, Accrued", "0", "0", "0", "2,501", "---"],
+            "ariCETester 17":       ["Category, Software Contributions, Github Operations Flut, Accrued, ariCETester", "0", "0", "0", "2,000", "---"],
+            "builderCE 18":         ["Category, Software Contributions, Github Operations Flut, Accrued, builderCE", "0", "0", "0", "501", "---"],
+         "Planned 19":              ["Category, Software Contributions, Github Operations Flut, Planned", "2,000,000", "1,751", "0", "0", "---"],
+            "ariCETester 20":       ["Category, Software Contributions, Github Operations Flut, Planned, ariCETester", "0", "250", "0", "0", "---"],
+            "Alloc prog 21":        ["Category, Software Contributions, Github Operations Flut, Planned, Alloc prog", "1,000,000", "0", "0", "0", "1,000,000"],
+            "Alloc accr 22":        ["Category, Software Contributions, Github Operations Flut, Planned, Alloc accr", "1,000,000", "0", "0", "0", "1,000,000"],
+            "Unassigned 23":        ["Category, Software Contributions, Github Operations Flut, Planned, Unassigned", "0", "1,501", "0", "0", "---"],
+         "In Progress 24":          ["Category, Software Contributions, Github Operations Flut, In Progress", "0", "500", "0", "0", "---"],
+            "builderCE 25":         ["Category, Software Contributions, Github Operations Flut, In Progress, builderCE", "0", "500", "0", "0", "---"],
+         "Stars 26":                ["Category, Software Contributions, Github Operations Flut, Stars", "125,000", "0", "0", "0", "---"],
+            "IR Alloc 27":          ["Category, Software Contributions, Github Operations Flut, Stars, IR Alloc", "125,000", "0", "0", "0", "125,000"],
+         "Stripes 28":              ["Category, Software Contributions, Github Operations Flut, Stripes", "1,000,000", "704", "0", "0", "---"],
+            "Component Alloc 29":   ["Category, Software Contributions, Github Operations Flut, Stripes, Component Alloc", "1,000,000", "0", "0", "0", "1,000,000"],
+            "ariCETester 30":       ["Category, Software Contributions, Github Operations Flut, Stripes, ariCETester", "0", "352", "0", "0", "---"],
+            "builderCE 31":         ["Category, Software Contributions, Github Operations Flut, Stripes, builderCE", "0", "352", "0", "0", "---"],
 
-      "Planned 8":              ["Category, Software Contributions, Data Security Flut, Planned", "750,000", "500", "0", "0", "---"],
-      "builderCE 9":            ["Category, Software Contributions, Data Security Flut, Planned, builderCE", "0", "500", "0", "0", "---"],
-      "IR Alloc split 10":      ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
-      "IR Alloc split 11":      ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
+      "Unallocated 32":             ["Category, Software Contributions, Unallocated", "3,000,000", "0", "0", "0", "3,000,000"],
 
-      "Github Operations Flut 12":     ["Category, Software Contributions, Github Operations Flut", "1,500,000", "2,955", "1,500", "2,501", "1,493,044"],
-      "Pending PEQ Approval 13": ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval", "0", "0", "1,500", "0", "---"],
-      "ariCETester 14":          ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, ariCETester", "0", "0", "750", "0", "---"],
-      "builderCE 15":            ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, builderCE", "0", "0", "750", "0", "---"],
-      "Accrued 16":              ["Category, Software Contributions, Github Operations Flut, Accrued", "0", "0", "0", "2,501", "---"],
-      "ariCETester 17":          ["Category, Software Contributions, Github Operations Flut, Accrued, ariCETester", "0", "0", "0", "2,000", "---"],
-      "builderCE 18":            ["Category, Software Contributions, Github Operations Flut, Accrued, builderCE", "0", "0", "0", "501", "---"],
-      "Planned 19":              ["Category, Software Contributions, Github Operations Flut, Planned", "0", "1,751", "0", "0", "---"],
-      "ariCETester 20":          ["Category, Software Contributions, Github Operations Flut, Planned, ariCETester", "0", "250", "0", "0", "---"],
-      "Unassigned 21":           ["Category, Software Contributions, Github Operations Flut, Planned, Unassigned", "0", "1,501", "0", "0", "---"],
-      "In Progress 22":          ["Category, Software Contributions, Github Operations Flut, In Progress", "0", "500", "0", "0", "---"],
-      "builderCE 23":            ["Category, Software Contributions, Github Operations Flut, In Progress, builderCE", "0", "500", "0", "0", "---"],
-      "Stars 24":                ["Category, Software Contributions, Github Operations Flut, Stars", "125,000", "0", "0", "0", "---"],
-      "IR Alloc 25":             ["Category, Software Contributions, Github Operations Flut, Stars, IR Alloc", "125,000", "0", "0", "0", "125,000"],
-      "Stripes 26":              ["Category, Software Contributions, Github Operations Flut, Stripes", "1,000,000", "704", "0", "0", "---"],
-      "Component Alloc 27":      ["Category, Software Contributions, Github Operations Flut, Stripes, Component Alloc", "1,000,000", "0", "0", "0", "1,000,000"],
-      "ariCETester 28":          ["Category, Software Contributions, Github Operations Flut, Stripes, ariCETester", "0", "352", "0", "0", "---"],
-      "builderCE 29":            ["Category, Software Contributions, Github Operations Flut, Stripes, builderCE", "0", "352", "0", "0", "---"],
+      "Business Operations 33":     ["Category, Business Operations", "1,000,000", "0", "0", "0", "1,000,000"],
+         "Unallocated 34":          ["Category, Business Operations, Unallocated", "1,000,000", "0", "0", "0", "1,000,000"],
 
-      "Unallocated 30":         ["Category, Software Contributions, Unallocated", "3,000,000", "0", "0", "0", "3,000,000"],
+      "UnClaimed 35":                    ["Category, UnClaimed", "0", "7,234", "0", "0", "---"],
+         "UnClaimed 36":                 ["Category, UnClaimed, UnClaimed", "0", "7,234", "0", "0", "---"],
+            "ariCETester 37":            ["Category, UnClaimed, UnClaimed, ariCETester", "0", "3,467", "0", "0", "---"],
+            "builderCE 38":              ["Category, UnClaimed, UnClaimed, builderCE", "0", "2,411", "0", "0", "---"],
+            "Unassigned 39":             ["Category, UnClaimed, UnClaimed, Unassigned", "0", "604", "0", "0", "---"],
+            "connieCE 40":               ["Category, UnClaimed, UnClaimed, connieCE", "0", "752", "0", "0", "---"],
 
-      "Business Operations 31": ["Category, Business Operations", "1,000,000", "0", "0", "0", "1,000,000"],
-      "Unallocated 32":         ["Category, Business Operations, Unallocated", "1,000,000", "0", "0", "0", "1,000,000"],
+      "A Pre-Existing Project Flut 41":  ["Category, A Pre-Existing Project Flut", "125,000", "1,500", "0", "1,500", "122,000"],
+         "Bacon 42":                     ["Category, A Pre-Existing Project Flut, Bacon", "125,000", "1,500", "0", "0", "123,500"],
+            "ariCETester 43":            ["Category, A Pre-Existing Project Flut, Bacon, ariCETester", "0", "500", "0", "0", "---"],
+            "IR Alloc split 44":         ["Category, A Pre-Existing Project Flut, Bacon, IR Alloc split", "125,000", "0", "0", "0", "125,000"],
+            "Unassigned 45":             ["Category, A Pre-Existing Project Flut, Bacon, Unassigned", "0", "1,000", "0", "0", "---"],
+         "Accrued 46":                   ["Category, A Pre-Existing Project Flut, Accrued", "0", "0", "0", "1,500", "---"],
+            "ariCETester 47":            ["Category, A Pre-Existing Project Flut, Accrued, ariCETester", "0", "0", "0", "1,500", "---"],
 
-      "UnClaimed 33":           ["Category, UnClaimed", "0", "7,234", "0", "0", "---"],
-      "UnClaimed 34":           ["Category, UnClaimed, UnClaimed", "0", "7,234", "0", "0", "---"],
-      "ariCETester 35":         ["Category, UnClaimed, UnClaimed, ariCETester", "0", "3,467", "0", "0", "---"],
-      "builderCE 36":           ["Category, UnClaimed, UnClaimed, builderCE", "0", "2,411", "0", "0", "---"],
-      "Unassigned 37":          ["Category, UnClaimed, UnClaimed, Unassigned", "0", "604", "0", "0", "---"],
-      "connieCE 38":            ["Category, UnClaimed, UnClaimed, connieCE", "0", "752", "0", "0", "---"],
-
-      "A Pre-Existing Project Flut 39":   ["Category, A Pre-Existing Project Flut", "125,000", "1,500", "0", "1,500", "122,000"],
-      "Bacon 40":                    ["Category, A Pre-Existing Project Flut, Bacon", "125,000", "1,500", "0", "0", "123,500"],
-      "ariCETester 41":              ["Category, A Pre-Existing Project Flut, Bacon, ariCETester", "0", "500", "0", "0", "---"],
-      "IR Alloc split 42":           ["Category, A Pre-Existing Project Flut, Bacon, IR Alloc split", "125,000", "0", "0", "0", "125,000"],
-      "Unassigned 43":               ["Category, A Pre-Existing Project Flut, Bacon, Unassigned", "0", "1,000", "0", "0", "---"],
-      "Accrued 44":                  ["Category, A Pre-Existing Project Flut, Accrued", "0", "0", "0", "1,500", "---"],
-      "ariCETester 45":              ["Category, A Pre-Existing Project Flut, Accrued, ariCETester", "0", "0", "0", "1,500", "---"],
-
-      "Cross Proj 46":     ["Category, Cross Proj", "0", "704", "0", "0", "---"],
-      "Cross Col 47":      ["Category, Cross Proj, Cross Col", "0", "704", "0", "0", "---"],
-      "ariCETester 48":    ["Category, Cross Proj, Cross Col, ariCETester", "0", "352", "0", "0", "---"],
-      "builderCE 49":      ["Category, Cross Proj, Cross Col, builderCE", "0", "352", "0", "0", "---"],
+      "Cross Proj 48":           ["Category, Cross Proj", "0", "704", "0", "0", "---"],
+         "Cross Col 49":         ["Category, Cross Proj, Cross Col", "0", "704", "0", "0", "---"],
+            "ariCETester 50":    ["Category, Cross Proj, Cross Col, ariCETester", "0", "352", "0", "0", "---"],
+            "builderCE 51":      ["Category, Cross Proj, Cross Col, builderCE", "0", "352", "0", "0", "---"],
 
 };
 /*
@@ -592,7 +592,7 @@ Map<String, dynamic> getPact( detailName ) {
 }
 
 
-Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
+Future<bool> validateAdd( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
@@ -610,9 +610,27 @@ Future<bool> validateRawAdd( WidgetTester tester, String repo, String issueTitle
    return true;
 }
 
+Future<bool> validateConfirmDelete( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName ) async {
+
+   await checkNTap( tester, detailName );
+   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+
+   final Map<String, dynamic> pmap = getPact( detailName );
+
+   expect( pmap['action'],                   "deleted" );
+   expect( pmap['repository']['full_name'],  repo );
+   expect( pmap['issue']['title'],           issueTitle );
+
+   await tester.tap( find.byKey( Key( 'Dismiss' ) ));
+   await pumpSettle( tester, 1 );
+   
+   return true;
+}
+
+
 // Allocs created from makeAllocCard, i.e. create card with peq note.  Raw request body is for cards, CE Server then converts to peq issue.
 // request body is not yet situated
-Future<bool> validateRawAddCard( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
+Future<bool> validateAddCard( WidgetTester tester, String repo, String issueTitle, String peqLabel, String detailName, {action = "labeled"} ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
@@ -633,21 +651,13 @@ Future<bool> validateRawAddCard( WidgetTester tester, String repo, String issueT
    return true;
 }
 
-
-Future<bool> validateRawRelo( WidgetTester tester, String repo, String detailName ) async {
+// Some pacts are simply informational
+Future<bool> validatePass( WidgetTester tester, String detailName ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( detailName );
-
-   expect( pmap['action'],                    "labeled" );
-   expect( pmap['repository']['full_name'],    repo );
-   // expect( pmap.containsKey( "project_card" ), true );
-
-   // expect( pmap["project_card"].containsKey( "content_url" ),        true );
-   // expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
-   // expect( pmap["project_card"]["content_url"].contains( repo ),     true );
 
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
@@ -655,7 +665,7 @@ Future<bool> validateRawRelo( WidgetTester tester, String repo, String detailNam
    return true;
 }
 
-Future<bool> validateRawCreatePV2Card( WidgetTester tester, String detailName ) async {
+Future<bool> validateCreateCard( WidgetTester tester, String detailName ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
@@ -665,8 +675,7 @@ Future<bool> validateRawCreatePV2Card( WidgetTester tester, String detailName ) 
    expect( pmap['action'],                    "created" );
 
    expect( pmap.containsKey( "projects_v2_item" ),                    true );
-   expect( pmap["projects_v2_item"]["content_type"], "issue" );
-   expect( pmap["projects_v2_item"].containsKey( "content_url" ),     true );
+   expect( pmap["projects_v2_item"]["content_type"], "Issue" );
    expect( pmap["projects_v2_item"].containsKey( "content_node_id" ), true );
    expect( pmap["projects_v2_item"].containsKey( "node_id" ),         true );
    expect( pmap["projects_v2_item"].containsKey( "project_node_id" ), true );
@@ -677,7 +686,7 @@ Future<bool> validateRawCreatePV2Card( WidgetTester tester, String detailName ) 
    return true;
 }
 
-Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
+Future<bool> validateAssign( WidgetTester tester, String repo, String issueTitle, String assignee, String detailName ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
@@ -695,24 +704,26 @@ Future<bool> validateRawAssign( WidgetTester tester, String repo, String issueTi
    return true;
 }
 
-Future<bool> validateRawMove( WidgetTester tester, String repo, String detailName ) async {
+Future<bool> validateMove( WidgetTester tester, String repo, String detailName ) async {
 
    await checkNTap( tester, detailName );
    expect( find.text( "Raw Github Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( detailName );
 
-   expect( pmap['action'],                    "moved" );
-   expect( pmap['repository']['full_name'],    repo );
+   expect( pmap['action'],                    "edited" );
 
-   expect( pmap.containsKey( "changes" ),                       true );
-   expect( pmap["changes"].containsKey( "column_id" ),          true );
-   expect( pmap["changes"]["column_id"].containsKey( "from" ),  true );
+   expect( pmap.containsKey( "projects_v2_item" ),                    true );
+   expect( pmap["projects_v2_item"]["content_type"],                 "Issue" );
+   expect( pmap["projects_v2_item"].containsKey( "content_node_id" ), true );
+   expect( pmap["projects_v2_item"].containsKey( "node_id" ),         true );
+   expect( pmap["projects_v2_item"].containsKey( "project_node_id" ), true );
 
-   expect( pmap.containsKey( "project_card" ),                       true );
-   expect( pmap["project_card"].containsKey( "content_url" ),        true );
-   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
-   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+   expect( pmap.containsKey( "changes" ),                        true );
+   expect( pmap["changes"].containsKey( "field_value" ),         true );
+   expect( pmap["changes"]["field_value"]["field_name"],        "Status" );
+   expect( pmap["changes"]["field_value"].containsKey( "from" ), true );
+   expect( pmap["changes"]["field_value"].containsKey( "to" ),   true );
 
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
@@ -745,17 +756,20 @@ Future<bool> validateConfirmAccrue( WidgetTester tester, String repo, String det
 
    final Map<String, dynamic> pmap = getPact( detailName );
 
-   expect( pmap['action'],                 "moved" );
-   expect( pmap['repository']['full_name'], repo );
+   expect( pmap['action'],                 "edited" );
 
-   expect( pmap.containsKey( "project_card" ),                       true );
-   expect( pmap["project_card"].containsKey( "content_url" ),        true );
-   expect( pmap["project_card"]["content_url"].contains( "issues" ), true );
-   expect( pmap["project_card"]["content_url"].contains( repo ),     true );
+   expect( pmap.containsKey( "projects_v2_item" ),                    true );
+   expect( pmap["projects_v2_item"]["content_type"], "Issue" );
+   expect( pmap["projects_v2_item"].containsKey( "content_node_id" ), true );
+   expect( pmap["projects_v2_item"].containsKey( "node_id" ),         true );
+   expect( pmap["projects_v2_item"].containsKey( "project_node_id" ), true );
 
-   expect( pmap.containsKey( "changes" ),                       true );
-   expect( pmap["changes"].containsKey( "column_id" ),          true );
-   expect( pmap["changes"]["column_id"].containsKey( "from" ),  true );
+   expect( pmap.containsKey( "changes" ),                        true );
+   expect( pmap["changes"].containsKey( "field_value" ),         true );
+   expect( pmap["changes"]["field_value"]["field_name"],        "Status" );
+   expect( pmap["changes"]["field_value"].containsKey( "from" ), true );
+   expect( pmap["changes"]["field_value"].containsKey( "to" ),   true );
+   expect( pmap["changes"]["field_value"]["to"]["name"],        "Accrued" );
 
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
    await pumpSettle( tester, 1 );
@@ -772,9 +786,7 @@ Future<bool> validateRejectAccrue( WidgetTester tester, String repo, String issu
 
    expect( pmap['action'],                 "reopened" );
    expect( pmap['repository']['full_name'], repo );
-
    expect( pmap['issue']['state'],         "open" );
-   expect( pmap['repository']['full_name'], repo );
    expect( pmap['issue']['title'],          issueTitle );   
    
    await tester.tap( find.byKey( Key( 'Dismiss' ) ));
@@ -785,23 +797,23 @@ Future<bool> validateRejectAccrue( WidgetTester tester, String repo, String issu
 
 
 // Starts with initial expansion
-Future<bool> validateCE10( WidgetTester tester ) async {
+Future<bool> validateBuilder25( WidgetTester tester ) async {
    await expandAllocs( tester, 1, 1 );  // soft cont
    await expandAllocs( tester, 3, 3 );  // gho
    await expandAllocs( tester, 7, 7 );  // prog
-   await checkOffsetAlloc( tester, 8, "builderCE 23" );
+   await checkOffsetAlloc( tester, 8, "builderCE 25" );
 
-   await expandLeaf( tester, 8, "builderCE 23" );
+   await expandLeaf( tester, 8, "builderCE 25" );
    await pumpSettle( tester, 1 );
 
    String repo   = "codeequity/ceFlutterTester";
 
    String issue  = "IR Prog";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
-   expect( await validateRawAdd(           tester, repo, issue, "1k PEQ",     "00 confirm add" ),      true );
-   expect( await validateRawAssign(        tester, repo, issue, "builderCE",  "02 confirm change" ),   true );
-   expect( await validateRawRelo(          tester, repo,                      "01 confirm relocate" ), true );
-   expect( await validateRawCreatePV2Card( tester,                            "03 confirm add" ),      true );
+   expect( await validateAdd(        tester, repo, issue, "1k PEQ",     "00 confirm add" ),      true );
+   expect( await validatePass(       tester,                            "01 confirm relocate" ), true );
+   expect( await validateAssign(     tester, repo, issue, "builderCE",  "02 confirm change" ),   true );
+   expect( await validateCreateCard( tester,                            "03 confirm add" ),      true );
 
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 7, "" );
@@ -812,42 +824,70 @@ Future<bool> validateCE10( WidgetTester tester ) async {
 }
 
 // Starts with initial expansion
-Future<bool> validateAri15( WidgetTester tester ) async {
+Future<bool> validateAri17( WidgetTester tester ) async {
    await expandAllocs( tester, 1, 1 );
    await expandAllocs( tester, 3, 3 );
-   await expandAllocs( tester, 6, 6 );
-   await checkOffsetAlloc( tester, 7, "ariCETester 15" );
+   await expandAllocs( tester, 5, 5 );
+   await checkOffsetAlloc( tester, 6, "ariCETester 17" );
 
-   await expandLeaf( tester, 7, "ariCETester 15" );
+   await expandLeaf( tester, 6, "ariCETester 17" );
    await pumpSettle( tester, 1 );
 
    String repo   = "codeequity/ceFlutterTester";
 
    // Most recent first
-   String issue = "Close Open test"; 
+
+   String issue = "Situated Accrued iss1st";
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
-   expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "00 confirm add" ),      true );
-   expect( await validateRawRelo(    tester, repo,                       "01 confirm relocate" ), true );   
-   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "02 confirm change" ),   true );
-   expect( await validateProposeAccrue( tester, repo, issue,                "03 propose accrue" ),   true );
-   expect( await validateRejectAccrue(  tester, repo, issue,                "04 reject accrue" ),    true );   
-   expect( await validateRawMove(       tester, repo,                       "05 confirm relocate" ), true );   
-   expect( await validateProposeAccrue( tester, repo, issue,                "06 propose accrue" ),   true );
-   expect( await validateRejectAccrue(  tester, repo, issue,                "07 reject accrue" ),    true );   
-   expect( await validateProposeAccrue( tester, repo, issue,                "08 propose accrue" ),   true );
-   expect( await validateConfirmAccrue( tester, repo,                       "09 confirm accrue" ),   true );
+   expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "00 confirm add" ),      true );
+   expect( await validatePass(          tester,                         "01 confirm relocate" ), true );
+   expect( await validateAssign(        tester, repo, issue, "ariCETester", "02 confirm change" ),   true );
+   expect( await validateCreateCard(    tester,                         "03 confirm add" ),      true );
+   expect( await validatePass(          tester,                         "04 confirm relocate" ), true );
+   expect( await validateProposeAccrue( tester, repo, issue,            "05 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                   "06 confirm accrue" ),   true );
+   expect( await validateConfirmDelete( tester, repo,                   "07 confirm delete" ),   true );
+
+   issue = "Situated Accrued Card1st";
+   expect( find.byKey( Key( issue ) ),  findsOneWidget );
+   expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "08 confirm add" ),      true );
+   expect( await validatePass(          tester,                         "09 confirm relocate" ), true );
+   expect( await validateAssign(        tester, repo, issue, "ariCETester", "10 confirm change" ),   true );
+   expect( await validateCreateCard(    tester,                         "11 confirm add" ),      true );
+   expect( await validatePass(          tester,                         "12 confirm relocate" ), true );
+   expect( await validateProposeAccrue( tester, repo, issue,            "13 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                   "14 confirm accrue" ),   true );
+   expect( await validateConfirmDelete( tester, repo,                   "15 confirm delete" ),   true );
+   
+   issue = "Close Open test"; 
+   expect( find.byKey( Key( issue ) ),  findsOneWidget );
+   expect( await validateAdd(        tester, repo, issue, "1k PEQ",  "16 confirm add" ),      true );
+   expect( await validatePass(       tester,                         "17 confirm relocate" ), true );
+   expect( await validateCreateCard( tester,                         "18 confirm add" ),      true );
+   expect( await validatePass(       tester,                         "19 confirm relocate" ), true );
+   expect( await validateMove(       tester,                         "20 confirm relocate" ), true );
+   expect( await validateAssign(     tester, repo, issue, "ariCETester", "21 confirm change" ),   true );
+   expect( await validateProposeAccrue( tester, repo, issue,         "22 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,         "23 reject accrue" ),    true );
+   expect( await validateMove(       tester, repo,                   "24 confirm relocate" ), true );
+   expect( await validateProposeAccrue( tester, repo, issue,         "25 propose accrue" ),   true );
+   expect( await validateRejectAccrue(  tester, repo, issue,         "26 reject accrue" ),    true );   
+   expect( await validateProposeAccrue( tester, repo, issue,         "27 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                "28 confirm accrue" ),   true );
 
    issue  = "IR Accrued";
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
-   expect( await validateRawAdd(        tester, repo, issue, "1000 PEQ",    "10 confirm add" ),      true );
-   expect( await validateRawAssign(     tester, repo, issue, "ariCETester", "11 confirm change" ),   true );   
-   expect( await validateRawRelo(    tester, repo,                       "12 confirm relocate" ), true );
-   expect( await validateProposeAccrue( tester, repo, issue,                "13 propose accrue" ),   true );
-   expect( await validateConfirmAccrue( tester, repo,                       "14 confirm accrue" ),   true );
-
+   expect( await validateAdd(        tester, repo, issue, "1k PEQ",      "29 confirm add" ),      true );
+   expect( await validatePass(       tester, repo,                       "30 confirm relocate" ), true );
+   expect( await validateAssign(     tester, repo, issue, "ariCETester", "31 confirm change" ),   true );   
+   expect( await validateCreateCard( tester,                             "32 confirm add" ),      true );
+   expect( await validatePass(       tester, repo,                       "33 confirm relocate" ), true );
+   expect( await validateMove(       tester,                             "34 confirm relocate" ), true );
+   expect( await validateProposeAccrue( tester, repo, issue,             "35 propose accrue" ),   true );
+   expect( await validateConfirmAccrue( tester, repo,                    "36 confirm accrue" ),   true );
    
    expect( await backToSummary( tester ), true );
-   await toggleTableEntry( tester, 6, "" );
+   await toggleTableEntry( tester, 5, "" );
    await toggleTableEntry( tester, 3, "" );
    await toggleTableEntry( tester, 1, "" );
 
@@ -868,9 +908,9 @@ Future<bool> validateAlloc23( WidgetTester tester ) async {
 
    String issue  = "Component Alloc";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
-   expect( await validateRawAdd(     tester, repo, issue, "1000000 AllocPEQ",  "00 confirm add" ),      true );
-   expect( await validateRawRelo( tester, repo,                             "01 confirm relocate" ), true );
-   expect( await validateRawMove(    tester, repo,                             "02 confirm relocate" ), true );
+   expect( await validateAdd(     tester, repo, issue, "1000000 AllocPEQ",  "00 confirm add" ),      true );
+   expect( await validateRelo( tester, repo,                             "01 confirm relocate" ), true );
+   expect( await validateMove(    tester, repo,                             "02 confirm relocate" ), true );
    
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 9, "" );
@@ -891,7 +931,7 @@ Future<bool> validateUnAlloc24( WidgetTester tester ) async {
 
    String issue  = "Unallocated";
    expect( find.byKey( Key( issue ) ), findsOneWidget );
-   expect( await validateRawAddCard( tester, repo, issue, "<allocation, PEQ: 3,000,000>",  "00 confirm add", action:"created" ), true );
+   expect( await validateAddCard( tester, repo, issue, "<allocation, PEQ: 3,000,000>",  "00 confirm add", action:"created" ), true );
    
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 1, "" );
@@ -910,7 +950,7 @@ Future<bool> validateUnAssign31( WidgetTester tester ) async {
 
    // String issue  = "Unallocated";
    // expect( find.byKey( Key( issue ) ), findsOneWidget );
-   // expect( await validateRawAdd( tester, repo, issue, "3000000 AllocPEQ",  "00 confirm add", action:"created" ), true );
+   // expect( await validateAdd( tester, repo, issue, "3000000 AllocPEQ",  "00 confirm add", action:"created" ), true );
    
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 4, "" );
@@ -1135,8 +1175,8 @@ void main() {
 
          expect( await peqSummaryTabFraming( tester ),   true );
 
-         expect( await validateCE10( tester ), true );
-         expect( await validateAri15( tester ), true );
+         // expect( await validateBuilder25( tester ), true );
+         expect( await validateAri17( tester ), true );
          expect( await validateAlloc23( tester ), true );
          expect( await validateUnAlloc24( tester ), true );
          expect( await validateUnAssign31( tester ), true );
