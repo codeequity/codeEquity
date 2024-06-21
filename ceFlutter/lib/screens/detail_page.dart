@@ -219,7 +219,7 @@ class _CEDetailState extends State<CEDetailPage> {
       assert( appState != null );
       assert( category != null );
       
-      print( "XXX Attempted to build category from routes: " + category.toString() );
+      // print( "XXX Attempted to build category from routes: " + category.toString() );
 
       if( appState.verbose >= 3 ) { print( "BUILD DETAIL" ); }
       if( appState.verbose >= 3 ) { print( "is context null ? " + (context == null).toString() ); }
