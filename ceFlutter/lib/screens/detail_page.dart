@@ -119,7 +119,7 @@ class _CEDetailState extends State<CEDetailPage> {
 
             var pactCount = 0;
             for( final pact in peqPAct[peq.id] ?? [] ) {
-               print( "PL added " + pact.id );
+               // print( "PL added " + pact.id );
                pactList.add( _makePAct( pact, peqCount, pactCount ) );
                pactCount++;
             }
@@ -170,16 +170,21 @@ class _CEDetailState extends State<CEDetailPage> {
    void rebuildPActions( container, context ) async {
 
       print( "Rebuild PActions" + category.toString() );
+      // print( "Selected user " + appState.selectedUser );
 
       // Get all peqs for user.  Then, pare the list down to match selection
       // NOTE: allocations, unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.  XXX
       await updateUserPeqs( container, context );
 
-      // XXX update for unassign
+      // print( "UserPeqs: " + appState.userPeqs[appState.selectedUser].toString() );
+
       // If ingest is not up to date, this filter breaks
       // if alloc, alloc name is made part of the category list, and is needed to distinguish allocs
       if( appState.selectedUser == appState.ALLOC_USER ) {
          selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + [p.hostIssueTitle], category )).toList();
+      }
+      else if(  appState.selectedUser == appState.UNASSIGN_USER ) { // XXX formalize
+         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + ["Unassigned"], category )).toList();
       }
       else {
          List<String> cat = category.sublist(0, category.length - 1 );

@@ -288,7 +288,9 @@ void report( descr, {group = false} ) {
 
 Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
 
+   print( "IN LOGIN" );
    await pumpSettle(tester, 2);
+   print( "AFTER PUMP" );
    expect( await verifyOnLaunchPage( tester ), true );
 
    final Finder loginButton = find.byKey(const Key( 'Login' ));

@@ -773,7 +773,7 @@ async function getPeq( uid, hostUser, ceProjId, isAlloc, allAccr ) {
 	else if( hostUser == "" ) {  // allocation, or unassigned.. neither case involves accr
 	    if( isAlloc ) { params.FilterExpression = 'size( HostHolderId ) < :empty AND PeqType = :alloc  AND CEProjectId = :pid AND Active = :true'; }
 	    else {          params.FilterExpression = 'size( HostHolderId ) < :empty AND PeqType <> :alloc AND CEProjectId = :pid AND Active = :true'; }
-            params.ExpressionAttributeValues = { ":empty": 5, ":alloc": "allocation", ":pid": ceProjId, ":true": "true" };
+            params.ExpressionAttributeValues = { ":empty": 1, ":alloc": "allocation", ":pid": ceProjId, ":true": "true" };
 	}
 	else {
             params.FilterExpression = 'contains( HostHolderId, :id) AND CEProjectId = :pid AND (PeqType = :grant OR Active = :true)';
@@ -788,7 +788,7 @@ async function getPeq( uid, hostUser, ceProjId, isAlloc, allAccr ) {
 	else if( hostUser == "" ) {  // allocation, or unassigned
 	    if( isAlloc ) { params.FilterExpression = 'size( HostHolderId ) < :empty AND PeqType = :alloc  AND CEProjectId = :pid AND Active = :true'; }
 	    else {          params.FilterExpression = 'size( HostHolderId ) < :empty AND PeqType <> :alloc AND CEProjectId = :pid AND Active = :true'; }
-            params.ExpressionAttributeValues = { ":empty": 5, ":alloc": "allocation", ":pid": ceProjId, ":true": "true" };
+            params.ExpressionAttributeValues = { ":empty": 1, ":alloc": "allocation", ":pid": ceProjId, ":true": "true" };
 	}
 	else {
             params.FilterExpression = 'contains( HostHolderId, :id) AND CEProjectId = :pid AND Active = :true';

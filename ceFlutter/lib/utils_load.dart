@@ -690,7 +690,7 @@ Future<void> updateUserPActions( peqs, container, context ) async {
 Future<void> updateUserPeqs( container, context ) async {
    final appState  = container.state;
 
-   // SelectedUser will be adjusted if user clicks on an alloc (summaryFrame)
+   // SelectedUser will be adjusted if user clicks on an alloc (summaryFrame) or unassigned
    String uname = appState.selectedUser;
    if( uname == appState.ALLOC_USER || uname == appState.UNASSIGN_USER ) { uname = ""; }
    
