@@ -1054,10 +1054,10 @@ void main() {
 
          expect( await verifyOnProjectPage( tester ), true );
 
-         // ceFlutterTester was just cleared
-         expect( await peqSummaryTabFraming( tester ),   true );
+         // ceFlutterTester was just cleared, so there are no category summaries yet.
+         // expect( await peqSummaryTabFraming( tester ),   true );
+         
          expect( await verifyEmptyProjectPage( tester ), true );         
-
          expect( await approvalsTabFraming( tester ),    true );
          expect( await contributorsTabFraming( tester ), true );
          expect( await equityPlanTabFraming( tester ),   true );

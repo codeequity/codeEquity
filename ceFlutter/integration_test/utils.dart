@@ -158,11 +158,11 @@ Future<bool> verifyConnieHome( WidgetTester tester ) async {
 
    expect( await verifyOnHomePage( tester ), true );   
 
-   // Four CE Projects
-   expect( find.byKey( const Key('connieCE/CodeEquityTester' )),    findsOneWidget );
-   expect( find.byKey( const Key('connieCE/GarlicBeer' )),          findsOneWidget );
-   expect( find.byKey( const Key('codeequity/ceTesterAlt' )),      findsOneWidget );
-   expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
+   // check four CE or future CE Projects
+   expect( find.byKey( const Key('connieCE/ceTesterConnie' )),    findsOneWidget );
+   expect( find.byKey( const Key('connieCE/GarlicBeer' )),        findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceTesterAriAlt' )),  findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceTesterAri' )),     findsOneWidget );
    
    return true;
 }

@@ -41,6 +41,9 @@ Future<bool> addRepo( WidgetTester tester ) async {
 
    expect( await verifyOnHomePage( tester ), true );
 
+   /*
+   // XXX need new signin
+   // This requires a signin with a new user - this is no longer done for known user
    final Finder addGHRButton = find.byKey(const Key( 'Add' ));
    await tester.tap( addGHRButton );
    await pumpSettle(tester, 1);
@@ -55,7 +58,19 @@ Future<bool> addRepo( WidgetTester tester ) async {
    await tester.tap( enableButton );
    await pumpSettle(tester, 1);
    expect( await verifyOnHomePage( tester ), true );
+   */
 
+   final Finder refreshButton = find.byKey(const Key( 'Refresh Projects' ));
+   expect( refreshButton, findsOneWidget );
+   await tester.tap( refreshButton );
+   await pumpSettle(tester, 1);
+
+   final Finder newButton = find.byKey( const Key( 'New' ));
+   expect( newButton, findsOneWidget );
+   await tester.tap( newButton );
+   await pumpSettle(tester, 1);
+   expect( await verifyOnHomePage( tester ), true );
+   
    // XXX Actual entry
    // XXX testerName should be ariCETester, not rm2k.
    // XXX use ghAriPat  ...  check it in?  probably ok.
