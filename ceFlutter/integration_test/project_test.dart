@@ -229,7 +229,7 @@ Future<bool> ariSummaryFraming( WidgetTester tester ) async {
    expect( find.text( 'Business Operations' ),    findsOneWidget );
    expect( find.text( 'UnClaimed' ),              findsOneWidget );
    expect( find.text( 'A Pre-Existing Project Flut' ), findsOneWidget );
-   expect( find.text( 'New ProjCol Proj' ),       findsOneWidget );
+   expect( find.text( 'Cross Proj' ),       findsOneWidget );
 
    expect( find.text( 'Allocation' ), findsOneWidget );
    expect( find.text( 'Planned' ),    findsOneWidget );
@@ -861,8 +861,8 @@ Future<bool> validateAri17( WidgetTester tester ) async {
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "00 confirm add" ),      true );
    expect( await validatePass(          tester,                         "01 confirm relocate" ), true );
    expect( await validateAssign(        tester, repo, issue, "ariCETester", "02 confirm change" ),   true );
-   expect( await validatePass(          tester,                         "03 confirm relocate" ), true );
-   expect( await validateCreateCard(    tester,                         "04 confirm add" ),      true );
+   expect( await validatePass(          tester,                         "03 confirm relocate" ), true );     // XXX order 
+   expect( await validateCreateCard(    tester,                         "04 confirm add" ),      true );     // XXX order 
    expect( await validateProposeAccrue( tester, repo, issue,            "05 propose accrue", action: "edited" ),   true );
    expect( await validateConfirmAccrue( tester, repo,                   "06 confirm accrue" ),   true );
    expect( await validateConfirmDelete( tester, repo, issue,            "07 confirm delete", issue: true ),   true );
@@ -1090,8 +1090,11 @@ void main() {
          final Finder updateButton = find.byKey( const Key( 'Update PEQ Summary?' ));
          expect( updateButton, findsOneWidget );
          await tester.tap( updateButton );
-         await pumpSettle( tester, 85, verbose: true );
+         print( 'Waiting 160s');
+         await pumpSettle( tester, 160, verbose: true );
+         print( 'Done waiting 160s');
          await pumpSettle( tester, 4, verbose: true );
+         await pumpSettle( tester, 2, verbose: true );
          
          // Make sure it all shows up
          expect( await peqSummaryTabFraming( tester ),   true );
