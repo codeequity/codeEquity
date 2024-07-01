@@ -1375,9 +1375,6 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     // CHECK dynamo Peq
     // If peq holders fail, especially during blast, one possibility is that GH never recorded the second assignment.
     // This happened 6/29/22, 7/5  To be fair, blast is punishing - requests on same issue arrive inhumanly fast, like 10x.
-    // It is also possible 12/15/23 that the test is too stringent even if GH succeeds.  From utils:recordpeqdata:
-    //     PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
-    //     creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
     let allPeqs =  await peqsP;
     let peqs    = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     let peq = peqs[0];
@@ -1395,14 +1392,17 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( peq.HostRepoId, link.hostRepoId,        subTest, "peq repo id bad" );
 
     let holderMatch = peq.HostHolderId.length == assignees.length;
-    // soft allows 1 missing assignee
-    if( soft && !holderMatch ) { hoderMatch = peq.HostHolderId.length == assignees.length - 1; }
+
+    // It is also possible 12/15/23, 7/1/24 that the test is too stringent even if GH succeeds.  From utils:recordpeqdata:
+    //     PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
+    //     creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
+    //     soft = skip.
     
-    subTest = tu.checkEq( holderMatch, true, subTest, "peq holders wrong" );      
+    subTest = tu.checkEq( holderMatch || soft, true, subTest, "peq holders wrong" );      
 
     for( const assignee of assignees ) {
-	if( !peq.HostHolderId.includes( assignee ) ) { console.log( peq.HostHolderId, assignee ); }
-	subTest = tu.checkEq( peq.HostHolderId.includes( assignee ), true, subTest, "peq holder bad" );
+	if( !peq.HostHolderId.includes( assignee ) ) { console.log( "Assignees don't match, but test is on soft:", peq.HostHolderId, assignee ); }
+	if( !soft ) { subTest = tu.checkEq( peq.HostHolderId.includes( assignee ), true, subTest, "peq holder bad" ); }
     }
     
     // CHECK dynamo Pact
