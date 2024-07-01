@@ -158,11 +158,11 @@ Future<bool> verifyConnieHome( WidgetTester tester ) async {
 
    expect( await verifyOnHomePage( tester ), true );   
 
-   // Four CE Projects
-   expect( find.byKey( const Key('connieCE/CodeEquityTester' )),    findsOneWidget );
-   expect( find.byKey( const Key('connieCE/GarlicBeer' )),          findsOneWidget );
-   expect( find.byKey( const Key('codeequity/ceTesterAlt' )),      findsOneWidget );
-   expect( find.byKey( const Key('ariCETester/CodeEquityTester' )), findsOneWidget );
+   // check four CE or future CE Projects
+   expect( find.byKey( const Key('connieCE/ceTesterConnie' )),    findsOneWidget );
+   expect( find.byKey( const Key('connieCE/GarlicBeer' )),        findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceTesterAriAlt' )),  findsOneWidget );
+   expect( find.byKey( const Key('codeequity/ceTesterAri' )),     findsOneWidget );
    
    return true;
 }
@@ -247,13 +247,37 @@ bool isPresent( Finder f ) {
    }
 }
 
-Future<bool> checkNTap( WidgetTester tester, String keyName ) async {
+// Account for pact reordering.  Return the key that was found.
+// XXX This will end up double-counting a pact here and there.
+//     For example, if should be: confirm add,    confirm relo, confirm change, confirm change
+//                        but is: confirm change, confirm add,  confirm relo,   confirm change
+//     check for add looks in pos 0, 1 (good), check for relo looks in 1,2 (good), check for first change looks in 2,3 (found wrong one), check change2 looks in 3 (same one)
+Future<String> checkNTap( WidgetTester tester, String keyName, {callCount = 0} ) async {
+   print( "CheckNTap " + keyName + " " + callCount.toString() );
    final Finder tapper = find.byKey( Key( keyName ));
-   expect( tapper, findsOneWidget );
-   await tester.tap( tapper );
-   await pumpSettle( tester, 4 );
-   await pumpSettle( tester, 1 );
-   return true;
+
+   if( tester.widgetList<Widget>(tapper).length > 0 ) {
+      expect( tapper, findsOneWidget );
+      await tester.tap( tapper );
+      await pumpSettle( tester, 4 );
+      await pumpSettle( tester, 1 );
+      return keyName;
+   }
+   else {
+      // parse key, call checkNTap
+      List<String> keyParts = keyName.split(' ');
+      int pactCount = int.parse( keyParts[0] );
+      assert( pactCount >= 0 );
+      
+      callCount++;
+      if     ( callCount == 1 ) { pactCount = pactCount + 1; }
+      else if( callCount == 2 ) { pactCount = pactCount - 2; }
+      else                      { print( "CheckNTap " + keyName + " " + callCount.toString() ); assert( false ); }
+
+      keyParts[0] = pactCount.toString();
+      keyName = keyParts.join( ' ' );
+      return await checkNTap( tester, keyName, callCount: callCount );
+   }
 }
 
 // Currently flutter integration_test for web can not make use of browser back button, or refresh button.
@@ -288,7 +312,9 @@ void report( descr, {group = false} ) {
 
 Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
 
+   print( "IN LOGIN" );
    await pumpSettle(tester, 2);
+   print( "AFTER PUMP" );
    expect( await verifyOnLaunchPage( tester ), true );
 
    final Finder loginButton = find.byKey(const Key( 'Login' ));

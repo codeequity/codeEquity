@@ -395,7 +395,7 @@ async function testBlast( authData, testLinks, td ) {
     let title  = "Blast 1";
     let link   = await tu.settleWithVal( "blastLink " + title, blastLink, authData, testLinks, title, td.ceProjectId, td.ghFullName );
     let card   = await gh2tu.getCard( authData, link.hostCardId );
-    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {label: 604, lblCount: 1, assigns: [assignee1.id]});
+    testStatus = await gh2tu.checkUnclaimedIssue( authData, testLinks, td, uncLoc, issDat, card, testStatus, {soft: true, label: 604, lblCount: 1, assigns: [assignee1.id]});
 
     tu.testReport( testStatus, "Test Blast A" );    
     

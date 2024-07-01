@@ -1066,6 +1066,7 @@ async function testAlloc( authData, testLinks, td ) {
     const starLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
     const stripeLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
     const progLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const planLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     const accrLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
     // NOTE: assignee added after makeIssue - will not show up
@@ -1191,24 +1192,27 @@ async function testAlloc( authData, testLinks, td ) {
 	tu.testReport( testStatus, "Alloc E" );
     }
 
-    // Create/delete reserved columns, should fail
+    // Create/delete reserved columns, should fail, but be moved to plan
     {
-	// Create from card 
-	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, progLoc.pid, progLoc.colId, "Alloc prog", "1,000,000" ); // returns here are no good
-	await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, accrLoc.pid, accrLoc.colId, "Alloc accr", "1,000,000" );
 
 	// makeAlloc generates: open, label, cardIssue, moveCard.
+	// XXX last seen 6/2024.  Source of issue was PNP operating differently than cardHandler.  Remove comment by 9/2024 if no longer seen
 	//   If ceServer:labelIssue processes before GH finishes moveCard, the object will exist (for a brief moment), and this test will fail.
 	//   moveCard does eventually get processed to eliminate the link.
 	// If this fails one more time, settleWait here.
-	await utils.sleep( 3000 );
+	// await utils.sleep( 3000 );
+	// const links      = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
+	// const linkProg   = links.find( link => link.hostIssueName == "Alloc prog" );
+	// const linkAccr   = links.find( link => link.hostIssueName == "Alloc accr" );
+	// testStatus = tu.checkEq( typeof linkProg, 'undefined',     testStatus, "alloc prog link should not exist" );
+	// testStatus = tu.checkEq( typeof linkAccr, 'undefined',     testStatus, "alloc accr link should not exist" );
 
-	const links      = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
-	const linkProg   = links.find( link => link.hostIssueName == "Alloc prog" );
-	const linkAccr   = links.find( link => link.hostIssueName == "Alloc accr" );
-
-	testStatus = tu.checkEq( typeof linkProg, 'undefined',     testStatus, "link should not exist" );
-	testStatus = tu.checkEq( typeof linkAccr, 'undefined',     testStatus, "link should not exist" );
+	const progDat  = await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, progLoc.pid, progLoc.colId, "Alloc prog", "1,000,000" ); 
+	const accrDat  = await gh2tu.makeAlloc( authData, testLinks, td.ceProjectId, td.ghRepoId, accrLoc.pid, accrLoc.colId, "Alloc accr", "1,000,000" );
+	const progCard = await gh2tu.getCard( authData, progDat[2] );	
+	const accrCard = await gh2tu.getCard( authData, accrDat[2] );
+	testStatus     = await gh2tu.checkAlloc( authData, testLinks, td, planLoc, progDat, progCard, testStatus, {lblCount: 1} );
+	testStatus     = await gh2tu.checkAlloc( authData, testLinks, td, planLoc, accrDat, accrCard, testStatus, {lblCount: 1} );
 	
 	tu.testReport( testStatus, "Alloc F" );
     }

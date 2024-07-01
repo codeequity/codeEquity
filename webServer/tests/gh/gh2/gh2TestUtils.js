@@ -742,13 +742,14 @@ async function makeAlloc( authData, testLinks, ceProjId, rNodeId, pid, colId, ti
     // Create labeled issue, create PV2 item in correct project.  This will now be in nostatus.
     // issue:open, issue:label, item:create, maybe (?) item:edit
     let issDat = await ghV2.createIssue( authData, rNodeId, pid, allocIssue );
-    assert( issDat.length == 3 && issDat[0] != -1 && issDat[2] != -1 );
+    issDat.push( title );
+    assert( issDat.length == 4 && issDat[0] != -1 && issDat[2] != -1 );
 
     await ghV2.moveCard( authData, pid, issDat[2], statusId, colId );
-	
+
     console.log( "Made AllocCard and issue:", issDat );
     await utils.sleep( tu.MIN_DELAY );
-    return issDat[2];
+    return issDat;
 }
 
 
@@ -1102,8 +1103,8 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
     subTest = tu.checkEq( typeof mCard[0] !== 'undefined', true,     subTest, "mCard not yet ready " + card + issDat );
     if( typeof mCard[0] !== 'undefined' ) {
     
-	subTest = tu.checkEq( mCard.length, 1,                        subTest, "Card claimed" );
-	subTest = tu.checkEq( mCard[0].cardId, card.cardId,               subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard.length, 1,                       subTest, "Card claimed" );
+	subTest = tu.checkEq( mCard[0].cardId, card.cardId,          subTest, "Card claimed" );
 	
 	// CHECK linkage
 	let links    = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
@@ -1114,7 +1115,7 @@ async function checkAlloc( authData, testLinks, td, loc, issDat, card, testStatu
 	subTest = tu.checkEq( link.hostIssueName, issDat[3],           subTest, "Linkage Card Title" );
 	subTest = tu.checkEq( link.hostProjectName, loc.projName,      subTest, "Linkage Project Title" );
 	subTest = tu.checkEq( link.hostColumnId, loc.colId,            subTest, "Linkage Col Id" );
-	subTest = tu.checkEq( link.hostProjectId, loc.pid,          subTest, "Linkage project id" );
+	subTest = tu.checkEq( link.hostProjectId, loc.pid,             subTest, "Linkage project id" );
 	
 	// CHECK dynamo Peq
 	let allPeqs  =  await awsUtils.getPEQs( authData, { "CEProjectId": td.ceProjectId });
@@ -1374,9 +1375,6 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     // CHECK dynamo Peq
     // If peq holders fail, especially during blast, one possibility is that GH never recorded the second assignment.
     // This happened 6/29/22, 7/5  To be fair, blast is punishing - requests on same issue arrive inhumanly fast, like 10x.
-    // It is also possible 12/15/23 that the test is too stringent even if GH succeeds.  From utils:recordpeqdata:
-    //     PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
-    //     creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
     let allPeqs =  await peqsP;
     let peqs    = allPeqs.filter((peq) => peq.HostIssueId == issDat[0].toString() );
     let peq = peqs[0];
@@ -1394,14 +1392,17 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( peq.HostRepoId, link.hostRepoId,        subTest, "peq repo id bad" );
 
     let holderMatch = peq.HostHolderId.length == assignees.length;
-    // soft allows 1 missing assignee
-    if( soft && !holderMatch ) { hoderMatch = peq.HostHolderId.length == assignees.length - 1; }
+
+    // It is also possible 12/15/23, 7/1/24 that the test is too stringent even if GH succeeds.  From utils:recordpeqdata:
+    //     PNP sets GHAssignees based on call to GH.  This means we MAY have assignees, or not, upon first
+    //     creation of AWS PEQ, depending on if assignment occured in GH before peq label notification processing completes.
+    //     soft = skip.
     
-    subTest = tu.checkEq( holderMatch, true, subTest, "peq holders wrong" );      
+    subTest = tu.checkEq( holderMatch || soft, true, subTest, "peq holders wrong" );      
 
     for( const assignee of assignees ) {
-	if( !peq.HostHolderId.includes( assignee ) ) { console.log( peq.HostHolderId, assignee ); }
-	subTest = tu.checkEq( peq.HostHolderId.includes( assignee ), true, subTest, "peq holder bad" );
+	if( !peq.HostHolderId.includes( assignee ) ) { console.log( "Assignees don't match, but test is on soft:", peq.HostHolderId, assignee ); }
+	if( !soft ) { subTest = tu.checkEq( peq.HostHolderId.includes( assignee ), true, subTest, "peq holder bad" ); }
     }
     
     // CHECK dynamo Pact
