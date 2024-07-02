@@ -23,7 +23,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     assert( host != "" && pms != "" && org != "" );
     assert( utils.validField( ceProject, "CEProjectId" ) );
     
-    console.log( authData.who, ".. working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
+    console.log( authData.who, ceProject.CEProjectId, " is working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
 
     assert( pms  == config.PMS_GH2 );
     assert( host == config.HOST_GH );
@@ -47,9 +47,10 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     // XXX hmmm if uncl has peq, is built in below.  Otherwise, we add later, yes?  otherwise, need to special case front part of while
     // let unclPID = await ghV2.findProjectByName( authData, org, "", config.UNCLAIMED ); 
     // if( unclPID != -1 && !hostProjs.includes( unclPID ) ) { hostProjs.push( unclPID ); }
-
+    
     while( peqs.length > 0 ) {
 	const peq = peqs[0];
+	// console.log( authData.who, ceProject.CEProjectId, "looking for", peq );
 	const pid = await ghV2.getProjIdFromPeq( authData, peq.HostIssueId );
 	assert( pid != -1 );
 

@@ -1145,13 +1145,18 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    final appState  = container.state;
    final ceProjId  = appState.selectedCEProject;
    vPrint( appState, "Updating allocations for ceProjectId: " + ceProjId );
+   final startUPA = DateTime.now();
 
    // First, update myHostLinks.locs, since ceFlutter may have been sitting in memory long enough to be out of date.
    vPrint( appState, "Start myLoc update" );
    Future myLocs = fetchHostLinkage( context, container, { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }} );
+   // 0s
+   print( "TIME FetchHostLink " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
    vPrint( appState, "Start pact update" );
    final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "CEProjectId": "$ceProjId" }' );
+   // 12s
+   print( "TIME FetchPAct " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    if( todoPActions.length == 0 ) { return; }
 
@@ -1167,12 +1172,37 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       // Note: not all in peqIds are valid peqIds, even with non-zero subject
       pact.subject.length > 0 ? peqIds.add( pact.subject[0] ) : peqIds.add( "-1" );  
    }
-
+   // 13s  0s
+   print( "TIME PeqPactPair " + DateTime.now().difference(startUPA).inSeconds.toString() );
+   
    // XXX Could preprocess peqIds to cut aws workload.. remove dups, bad peqs, etc.
+   //     where do my -1's get disappeared?
+   List<String> cleanPIDs  = [];
+   List<int>    peqToClean = [];
+   for( var pid in peqIds ) {
+      var index = cleanPIDs.indexOf( pid );
+      if( index == -1 ) {
+         cleanPIDs.add( pid );
+         index = cleanPIDs.length - 1;
+      }
+      assert( index >= 0 );
+      peqToClean.add( index );
+   }
 
    // This returns in order of request, including duplicates
-   String PeqIds = json.encode( peqIds );
-   List<PEQ> todoPeqs = await fetchPEQs( context, container,'{ "Endpoint": "GetPEQsById", "PeqIds": $PeqIds }' );
+   // String PeqIds = json.encode( peqIds );
+   // List<PEQ> todoPeqs = await fetchPEQs( context, container,'{ "Endpoint": "GetPEQsById", "PeqIds": $PeqIds }' );
+   
+   String PeqIds = json.encode( cleanPIDs );
+   List<PEQ> cleanPeqs = await fetchPEQs( context, container,'{ "Endpoint": "GetPEQsById", "PeqIds": $PeqIds }' );
+   List<PEQ> todoPeqs  = [];
+   assert( peqToClean.length == peqIds.length );
+   for( var i in peqToClean ) {
+      assert( i < cleanPeqs.length );
+      todoPeqs.add( cleanPeqs[i] ); 
+   }
+   print( "CleanPeqs: " + cleanPeqs.length.toString() + " todoPeqs: " + todoPeqs.length.toString() );
+         
    assert( pactIds.length == todoPActions.length );
    assert( peqIds.length  == todoPeqs.length );
    assert( peqIds.length  == pactIds.length );
@@ -1196,7 +1226,9 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    }
    // todos.sort((a, b) => a.item2.hostProjectSub.length.compareTo(b.item2.hostProjectSub.length));
    todos.sort((a, b) => a.item1.timeStamp.compareTo(b.item1.timeStamp));
-
+   // 21s 3s
+   print( "TIME Sorted " + DateTime.now().difference(startUPA).inSeconds.toString() );
+   
    // XXX Probably want another pass to stack up all updateCEUIDs.  Most can lay ontop of one another.
    vPrint( appState, "Will now process " + todoPActions.length.toString() + " pactions for " + foundPeqs.toString() + " non-unique peqs." );
    var i = 0;
@@ -1210,7 +1242,10 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    vPrint( appState, "Pre order fix " + todos.length.toString());
 
    await fixOutOfOrder( todos, context, container );
+   // 0s  0s
+   print( "TIME out of order sort " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
+   
    vPrint( appState, "Complete myLoc update " + todos.length.toString());
    appState.myHostLinks  = await myLocs;
    if( appState.myHostLinks == null ) { return; }
@@ -1232,6 +1267,8 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    }
    await Future.wait( ceuid );
    vPrint( appState, "... done (ceuid)" );
+   // 4s 4s
+   print( "TIME CEUID, hostnames " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    // Create, if need to
    if( appState.myPEQSummary == null && todos.length > 0) {
@@ -1245,9 +1282,14 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    for( var tup in todos ) {
       await processPEQAction( tup, dynamo, context, container, pending );
    }
+   // 50s  50s
+   print( "TIME PPA " + DateTime.now().difference(startUPA).inSeconds.toString() );
+
    vPrint( appState, "Finishing updating Dynamo..." );
    await Future.wait( dynamo );
    vPrint( appState, "... done (dynamo)" );
+   // 0s 1s
+   print( "TIME Finish initial dynamo actions " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    
    print( "Ingest todos finished processing.  Update Dynamo." );
@@ -1258,12 +1300,17 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
       await updateDynamo( context, container, postData, "PutPSum" );
    }
+   // 1s 0s
+   print( "TIME update dynamo peq summary " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    // unlock, set ingested
    if( pactIds.length > 0 ) {
       String newPIDs = json.encode( pactIds );
       final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
    }
+   // 10s 12s
+   // tot: 91s 82s
+   print( "TIME Ingested " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
 }
 
