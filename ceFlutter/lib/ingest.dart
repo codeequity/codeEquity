@@ -130,7 +130,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
       //         in this case, attempt to remove from [path, Pending PEQ Approval, assignee] but alloc is actually in [path, X, assignee]
       if( alloc.amount! < 0 ) {
          print( "WARNING.  Detected negative allocation, likely due to out of order Notifications.  Attempting to repair." );
-         for( var allocActual in appState.myPEQSummary.allocations ) {   // XXX index
+         for( var allocActual in appState.myPEQSummary.getAllAllocs() ) {  
             if( allocActual.sourcePeq.containsKey( peqId ) &&
                 allocActual.category.last == suba.last     &&
                 listEq( allocActual.category.sublist( 0, allocActual.category.length - 2 ), suba.sublist( 0, suba.length - 2 ) )) {
@@ -140,7 +140,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
                allocActual.amount = allocActual.amount + splitAmount;
                assert( allocActual.amount >= 0 && splitAmount < 0 );
                if ( allocActual.amount == 0 )  { appState.myPEQSummary.removeAlloc( allocActual ); }
-               else                            { allocActual.sourcePeq.remove( peqId ); }
+               else                            { appState.myPEQSummary.removeSourcePeq( allocActual, peqId ); }
                
                return;                  
             }
@@ -149,10 +149,8 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
       assert( alloc.amount! >= 0 );
       
       if     ( alloc.amount! == 0 )                                        { appState.myPEQSummary.removeAlloc( alloc ); }
-      else if( alloc.sourcePeq!.containsKey(  peqId ) && splitAmount < 0 ) { alloc.sourcePeq!.remove( peqId ); }
-      else if( !alloc.sourcePeq!.containsKey( peqId ) && splitAmount > 0 ) {
-         alloc.sourcePeq![ peqId ] = splitAmount;
-      }
+      else if( alloc.sourcePeq!.containsKey(  peqId ) && splitAmount < 0 ) { appState.myPEQSummary.removeSourcePeq( alloc, peqId ); }
+      else if( !alloc.sourcePeq!.containsKey( peqId ) && splitAmount > 0 ) { appState.myPEQSummary.addSourcePeq( alloc, peqId, splitAmount ); }
       else {
          // This should not be overly harsh.  Negotiations can remove then re-add.
          print( "Error.  XXX.  Uh oh.  AdjustSummaryAlloc $splitAmount $peqId " + alloc.toString() );
@@ -222,7 +220,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 
    // build kp from mySummary.  Only active peqs are part of allocations.
    if( appState.myPEQSummary != null ) {
-      for( Allocation alloc in appState.myPEQSummary.allocations ) {
+      for( Allocation alloc in appState.myPEQSummary.getAllAllocs() ) {
          assert( alloc.sourcePeq != null );
          kp = kp + alloc.sourcePeq!.keys.toList();
       }
@@ -353,7 +351,7 @@ Future updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    
    List<Allocation> appAllocs = [];
    List<HostLoc>      appLocs   = appState.myHostLinks.locations;
-   if( appState.myPEQSummary != null ) { appAllocs = appState.myPEQSummary.allocations; }
+   if( appState.myPEQSummary != null ) { appAllocs = appState.myPEQSummary.getAllAllocs(); }
 
    print( appLocs );
 
@@ -760,10 +758,15 @@ Future _relo( context, container, pact, peq, List<Future> dynamo, assignees, ass
             if( !baseCat.contains( loc.hostProjectName ) ) {
                vPrint( appState, "  .. RELO is cross project!  Reconstituting category ");
 
-               print( appState.myPEQSummary.allocations.toString() );
-               print( loc.toString() );
-               // eh?  what is null?  iterate by hand to find it.
-               Allocation? newSource = appState.myPEQSummary.allocations.firstWhereOrNull( (a) => a.category.contains( loc.hostProjectName ) );
+               Allocation? newSource = null;
+               // does not like firstwhereornull...
+               for( var ns in appState.myPEQSummary.getAllAllocs() ) {
+                  if( ns.category.contains( loc.hostProjectName )) {
+                     newSource = ns;
+                     break;
+                  }
+               }
+
                if( newSource == null ) {
                   // Possible if project name just changed.
                   // XXX If proj of MasterCol.proj just changed, will no longer see masterCol.
@@ -1121,7 +1124,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
    // NOTE: in all cases, if ingest is halted in the middle, it should be accurate as of last todo, just not necessarily up to date.
    if( subBase.length > 0 ) {  // notices have no subs
       vPrint( appState, "current allocs" );
-      for( var alloc in appState.myPEQSummary.allocations ) {
+      for( var alloc in appState.myPEQSummary.getAllAllocs() ) {
          // if( subBase[0] == alloc.category[0] ) { print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() ); }
          // print( alloc.hostProjectId + " " + alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
          vPrint( appState, alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
@@ -1271,7 +1274,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       String pid = randAlpha(10);
       vPrint( appState, "Create new appstate PSum " + pid + "\n" );
       appState.myPEQSummary = new PEQSummary( id: pid, ceProjectId: todos[0].item2.ceProjectId,
-                                              targetType: "repo", targetId: todos[0].item2.hostRepoId, lastMod: getToday(), allocations: [] );
+                                              targetType: "repo", targetId: todos[0].item2.hostRepoId, lastMod: getToday(), allocations: {}, jsonAllocs: [] );
    }
    
    appState.ingestUpdates.clear();
