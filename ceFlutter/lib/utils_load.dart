@@ -244,6 +244,12 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
       appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
    }
 
+   // XXXXX
+   if( shortName == "UpdatePEQ" && postData.contains( "PeqType" )) {
+      print( shortName + " " + postData );
+      assert( false );
+   }
+   
    final response = await postIt( shortName, postData, container );
    bool  res      = false;
    

@@ -986,7 +986,7 @@ async function getPeqsById( peqIds ) {
 		assert( peq.length <= 1 );
 		if( peq.length == 1 ) {
 		    res.push( peq[0] );
-		    console.log( "GPID", peq[0].hostIssueTitle, peq[0].PeqType );
+		    console.log( "GPID", peq[0].HostIssueTitle, peq[0].PeqType );
 		}
 		else {
 		    res.push( -1 );

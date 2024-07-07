@@ -33,68 +33,77 @@ String _convertNameToId( appState, String aname ) {
 // set CEUID by matching my peqAction:hostUserId to CEHostUser:HostUsernId, then writing that CEUserId
 // if there is not yet a corresponding ceUID, use "HOSTUSER: $hostUserId" in it's place, to be fixed later by associateGitub XXX (done?)
 // NOTE: Expect multiple PActs for each PEQ.  For example, open, close, and accrue
-Future updateCEUID( appState, Tuple2<PEQAction, PEQ> tup, context, container ) async {
+Future updateCEUID( appState, todos, context, container ) async {
 
-   PEQAction pact = tup.item1;
-   PEQ       peq  = tup.item2;
-   var       origHIDLen = peq.ceHolderId.length; 
-   
-   // print( pact );
-   // print( peq );
-   
-   String hostUID  = pact.hostUserId;
-   assert( appState.idMapHost.containsKey( hostUID ) );
-   /*
-   if( !appState.idMapHost.containsKey( hostUID )) {
-      appState.idMapHost[ hostUID ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$hostUID" }', "GetCEUID" );
-   }
-   */
-   String ceu = appState.idMapHost[ hostUID ]['ceUID'];
+   vPrint( appState, "Updating CE UIDs" );
 
-   // Too aggressive.  If run 'refresh repos' from homepage, hostAccount is rewritten with new repo list, at which point pacts are updated with 'new' ceuid.
-   //                  This is done because in some (many?) cases, pacts are created by a host user before that user has a CEUID.
-   // assert( pact.ceUID == EMPTY );
-   assert( pact.ceUID == EMPTY || pact.ceUID == ceu );
+   Map<String, List<String>> lastCEUID = new Map<String, List<String>>(); 
+   List<Future> promises = [];
 
-   // print( "Started dynamo pact update " + ceu + " " + pact.id);
-   
-   if( ceu != "" ) {
-      // Don't await here, CEUID not used during processPEQ
-      await updateDynamo( context, container, '{ "Endpoint": "putPActCEUID", "CEUID": "$ceu", "PEQActionId": "${pact.id}" }', "putPActCEUID" );
-   }
-
-   // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
-   peq.ceHolderId = [];
-   for( var peqHostUser in peq.hostHolderId ) {
-      if( !appState.idMapHost.containsKey( peqHostUser )) {
-         print( peqHostUser );
-         print( peq.toString() );
-         print( appState.idMapHost.toString() );
-         assert( appState.idMapHost.containsKey( peqHostUser ) );
-      }
-      /*
-      if( !appState.idMapHost.containsKey( peqHostUser )) {
-         appState.idMapHost[ peqHostUser ] = await fetchString( context, container, '{ "Endpoint": "GetCEUID", "HostUserId": "$peqHostUser" }', "GetCEUID" );
-      }
-      */
-      String ceUID = appState.idMapHost[ peqHostUser ]['ceUID'];
-      if( ceUID == "" ) { ceUID = "HostUSER: " + peqHostUser; }  // XXX formalize
-      peq.ceHolderId.add( ceUID );
-   }
-
-   // Ignore CEGrantorId.  Must already be signed up to authorize PEQ, so all IDs will already be correct.
-
-   // Update PEQ, if there is one, and if we are not replacing [] with []
-   if( peq.id != "-1" && origHIDLen == 0 && peq.ceHolderId.length != 0 ) {
-      var postData = {};
-      postData['PEQId']       = peq.id;
-      postData['CEHolderId']  = peq.ceHolderId;
-      var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
+   var passCount = 0;
+   var updateCount = 0;
+   for( var tup in todos ) {
+      PEQAction pact = tup.item1;
+      PEQ       peq  = tup.item2;
+      var       origHIDLen = peq.ceHolderId.length; 
       
-      // Do await, processPEQs needs holders
-      await updateDynamo( context, container, json.encode( pd ), "UpdatePEQ" );
+      String hostUID  = pact.hostUserId;
+      assert( appState.idMapHost.containsKey( hostUID ) );
+      String ceu = appState.idMapHost[ hostUID ]['ceUID'];
+      
+      // Too aggressive.  If run 'refresh repos' from homepage, hostAccount is rewritten with new repo list, at which point pacts are updated with 'new' ceuid.
+      //                  This is done because in some (many?) cases, pacts are created by a host user before that user has a CEUID.
+      // assert( pact.ceUID == EMPTY );
+      assert( pact.ceUID == EMPTY || pact.ceUID == ceu );
+      
+      if( ceu != "" ) {
+         // Don't await here, CEUID not used during processPEQ
+         updateDynamo( context, container, '{ "Endpoint": "putPActCEUID", "CEUID": "$ceu", "PEQActionId": "${pact.id}" }', "putPActCEUID" );
+      }
+      
+      // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
+      peq.ceHolderId = [];
+      for( var peqHostUser in peq.hostHolderId ) {
+         if( !appState.idMapHost.containsKey( peqHostUser )) {
+            print( peqHostUser );
+            print( peq.toString() );
+            print( appState.idMapHost.toString() );
+            assert( appState.idMapHost.containsKey( peqHostUser ) );
+         }
+         String ceUID = appState.idMapHost[ peqHostUser ]['ceUID'];
+         if( ceUID == "" ) { ceUID = "HostUSER: " + peqHostUser; }  // XXX formalize
+         peq.ceHolderId.add( ceUID );
+      }
+      
+      // Ignore CEGrantorId.  Must already be signed up to authorize PEQ, so all IDs will already be correct.
+      
+      // Update PEQ, if there is one.. original logic would not allow multiple ingest-changes to a non-accr peq
+      // if( peq.id != "-1" && origHIDLen == 0 && peq.ceHolderId.length != 0 ) {
+      if( peq.id != "-1" ) {
+         passCount++;
+         if( !lastCEUID.containsKey( peq.id ) || !listEq( lastCEUID[ peq.id ], peq.ceHolderId )){
+            lastCEUID[ peq.id ] = peq.ceHolderId;
+
+            // print( lastCEUID.toString() );
+            // print( peq.ceHolderId );
+            // print( "-----------------------------" );
+            
+            var postData = {};
+            postData['PEQId']       = peq.id;
+            postData['CEHolderId']  = peq.ceHolderId;
+            var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
+            
+            // Do await, processPEQs needs holders
+            promises.add( updateDynamo( context, container, json.encode( pd ), "UpdatePEQ" ) );
+
+            updateCount++;
+            // Give aws a chance to breathe
+            if( updateCount % 50 == 49 ) { await Future.delayed(Duration(milliseconds: 250)); }
+         }
+      }
    }
-   // print( "Finished peq update " + ceu + " " + peq.id + " " + pact.id);   
+   print( "UpdateCEUID todos pass dynamo " + todos.length.toString() + " " + passCount.toString() + " " + updateCount.toString() );
+   await Future.wait( promises );   
 }
 
 // XXX may be able to kill categoryBase
@@ -520,7 +529,7 @@ Future _accrue( context, container, PEQAction pact, PEQ peq, List<Future> dynamo
    
    var pd = { "Endpoint": "UpdatePEQ", "pLink": postData };
    await checkPendingUpdates( appState, dynamo, peq.id );
-   print( "Accrue udpating with "  + postData["PeqType"] + " " + peq.peqType.toString() );
+   print( "Accrue updating with "  + postData["PeqType"] + " " + peq.peqType.toString() );
    dynamo.add( updateDynamo( context, container, json.encode( pd ), "UpdatePEQ", peqId: peq.id ));
    print( "MILLI accr " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
    
@@ -1201,6 +1210,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       todoPeqs.add( cleanPeqs[i] ); 
    }
 
+   // XXX night run, already see 'grant' here.  How?
    for( var p in cleanPeqs ) { print( p.toString() ); }
          
    assert( pactIds.length == todoPActions.length );
@@ -1255,18 +1265,9 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    List<Future> dynamo = [];
    var pending = {};
 
-   List<Future> ceuid = [];
-   vPrint( appState, "Updating CE UIDs" );
-   var updateCount = 0;
-   for( var tup in todos ) {
-      // Wait here, else summary may be inaccurate
-      ceuid.add( updateCEUID( appState, tup, context, container ) );
-      updateCount++;
-      // Give aws a chance to breathe
-      if( updateCount % 50 == 49 ) { await Future.delayed(Duration(milliseconds: 250)); }
-   }
-   await Future.wait( ceuid );
+   await updateCEUID( appState, todos, context, container );
    vPrint( appState, "... done (ceuid)" );
+
    // 4s 4s
    print( "TIME CEUID, hostnames " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
