@@ -1200,7 +1200,8 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       assert( i < cleanPeqs.length );
       todoPeqs.add( cleanPeqs[i] ); 
    }
-   print( "CleanPeqs: " + cleanPeqs.length.toString() + " todoPeqs: " + todoPeqs.length.toString() );
+
+   for( var p in cleanPeqs ) { print( p.toString() ); }
          
    assert( pactIds.length == todoPActions.length );
    assert( peqIds.length  == todoPeqs.length );
