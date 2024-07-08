@@ -131,7 +131,8 @@ def runTest( testName, override, noBuild = True, optimized = False ):
     logging.info( "" )
 
     # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName + " -d web-server"
-    cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    # cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    cmd = "flutter drive -d chrome --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if optimized :
         cmd = cmd + " --release"
