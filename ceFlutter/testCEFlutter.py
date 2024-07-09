@@ -126,12 +126,14 @@ def runCmd( cmd, filterExp ):
 
 
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
-# Hmm.  Running in release mode does not work well.  Basic entering text fails.. 
+# Hmm.  Running in release mode does not work well.  Basic entering text fails..
 def runTest( testName, override, noBuild = True, optimized = False ):
     logging.info( "" )
 
-    # cmd = "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/" + testName + " -d web-server"
-    cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    # Test by hand, i.e. python testCEFlutter.py
+    #cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    # Test by cronjob.. why?  this will drive 2 windows in by-hand case
+    cmd = "flutter drive -d chrome --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if optimized :
         cmd = cmd + " --release"

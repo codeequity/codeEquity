@@ -2206,25 +2206,34 @@ async function checkProgAssignees( authData, td, ass1, ass2, issDat, testStatus 
     
     meltPacts.sort( (a, b) => parseInt( a.TimeStamp ) - parseInt( b.TimeStamp ) );
     // earlier 5 verified: add peq, add assignees, rem assignees
-    let len = meltPacts.length;
-    let addA1  = meltPacts[len-3];   // add assignee 1
-    let addA2  = meltPacts[len-2];   // add assignee 2
-    let relo1  = meltPacts[len-1];   // move to Prog
-    for( const pact of [relo1, addA1, addA2] ) {
+    let foundAdd1 = false;
+    let foundAdd2 = false;
+    let foundRelo = false;
+    let foundAss1 = false;
+    let foundAss2 = false;
+    for( const pact of meltPacts.slice(-3) ) {
 	let hr     = await tu.hasRaw( authData, pact.PEQActionId );
 	subTest = tu.checkEq( hr, true,                                subTest, "PAct Raw match" ); 
 	subTest = tu.checkEq( pact.Verb, config.PACTVERB_CONF,         subTest, "PAct Verb"); 
 	subTest = tu.checkEq( pact.HostUserId, td.actorId,             subTest, "PAct user name" ); 
 	subTest = tu.checkEq( pact.Ingested, "false",                  subTest, "PAct ingested" );
 	subTest = tu.checkEq( pact.Locked, "false",                    subTest, "PAct locked" );
+	if( pact.Action == config.PACTACT_RELO ) { foundRelo = true; }
+	else if( pact.Action == config.PACTACT_CHAN ) {
+	    if( foundAdd1 ) { foundAdd2 = true; }
+	    else            { foundAdd1 = true; }
+
+	    if     ( pact.Subject[1] == ass1 ) { foundAss1 = true; }
+	    else if( pact.Subject[1] == ass2 ) { foundAss2 = true; }
+
+	    subTest = tu.checkEq( pact.Note, config.PACTNOTE_ADDA,     subTest, "PAct note"); 	    
+	}
     }
-    let foundAssigns = ( addA1.Subject[1] == ass1 && addA2.Subject[1] == ass2 ) || ( addA2.Subject[1] == ass1 && addA1.Subject[1] == ass2 );
-    subTest = tu.checkEq( relo1.Action, config.PACTACT_RELO,           subTest, "PAct Act"); 
-    subTest = tu.checkEq( addA1.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
-    subTest = tu.checkEq( addA2.Action, config.PACTACT_CHAN,           subTest, "PAct Act"); 
-    subTest = tu.checkEq( foundAssigns, true,                          subTest, "PAct sub"); 
-    subTest = tu.checkEq( addA1.Note, config.PACTNOTE_ADDA,            subTest, "PAct note"); 
-    subTest = tu.checkEq( addA2.Note, config.PACTNOTE_ADDA,            subTest, "PAct note"); 
+    if(!(foundAdd1 && foundAdd2 && foundRelo )) { console.log( "missing pact", foundAdd1, foundAdd2, foundRelo ); }
+    if(!(foundAss1 && foundAss2 ))              { console.log( "missing assignee", foundAss1, foundAss2, ass1, ass2 ); }
+
+    subTest = tu.checkEq( foundAdd1 && foundAdd2 && foundRelo, true,  subTest, "PAct Act" );
+    subTest = tu.checkEq( foundAss1 && foundAss2, true,               subTest, "PAct Act" );
 
     return await tu.settle( subTest, testStatus, checkProgAssignees, authData, td, ass1, ass2, issDat, testStatus );
 }

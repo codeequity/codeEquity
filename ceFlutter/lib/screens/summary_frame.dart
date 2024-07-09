@@ -112,7 +112,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       }
 
       // These were built during ingest
-      for( var alloc in appState.myPEQSummary!.allocations ) {
+      for( var alloc in appState.myPEQSummary!.getAllAllocs() ) {
 
          assert( appState.allocTree != null );
          
@@ -194,7 +194,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       {
          if( appState.myPEQSummary!.ceProjectId == appState.selectedCEProject ) {
             assert( appState.allocTree != null );
-            if( appState.myPEQSummary!.allocations.length == 0 ) { return []; }
+            if( appState.myPEQSummary!.getAllAllocs().length == 0 ) { return []; }
             if( appState.verbose >= 2 ) { print( "_showPalloc Update alloc" ); }
             allocList.addAll( appState.allocTree!.getCurrent( container ) );
 
