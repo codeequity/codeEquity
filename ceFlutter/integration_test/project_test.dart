@@ -59,8 +59,8 @@ const Map<String,List<String>> ALLOCS_GOLD =
          "Pending PEQ Approval 19": ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval", "0", "0", "250", "0", "---"],
             "ariCETester 20":       ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval, ariCETester", "0", "0", "250", "0", "---"],
          "Planned 21":              ["Category, Software Contributions, Data Security Flut, Planned", "750,000", "500", "0", "0", "---"],
-            "IR Alloc split 22":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
-            "IR Alloc split 23":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
+            "IR Alloc split 22":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
+            "IR Alloc split 23":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
             "builderCE 24":         ["Category, Software Contributions, Data Security Flut, Planned, builderCE", "0", "500", "0", "0", "---"],
 
       "Github Operations Flut 25":  ["Category, Software Contributions, Github Operations Flut", "1,500,000", "2,955", "1,104", "2,501", "1,493,044"],
@@ -1023,7 +1023,9 @@ Future<bool> validateUnAssign51( WidgetTester tester ) async {
 Future<bool> ariSummaryContent( WidgetTester tester ) async {
    final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
-   final bottomFinder = find.text( "Cross Proj" );
+   // Unclaimed only works if it is not expanded, then there are 2.
+   // final bottomFinder = find.text( "Cross Proj" );
+   final bottomFinder = find.text( "UnClaimed" );
 
    // await getElt( tester, 'allocsTable 0' );
 
@@ -1071,7 +1073,7 @@ void main() {
    report( 'Project', group:true );
 
    testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
-         //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+         // testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -1191,7 +1193,8 @@ void main() {
          await checkOffsetAlloc( tester, 2, "Business Operations 8" );
          await checkOffsetAlloc( tester, 3, "Cross Proj 10" );
          await checkOffsetAlloc( tester, 4, "Software Contributions 14" );
-            
+
+         print( "A " );
          // OPEN 2nd group
          await toggleTableEntry( tester, 1, "" );  
          await checkOffsetAlloc( tester, 1, "A Pre-Existing Project Flut 1" );
@@ -1202,10 +1205,12 @@ void main() {
          await checkOffsetAlloc( tester, 6, "ariCETester 6");         
          await checkOffsetAlloc( tester, 7, "Unassigned 7" );
          await checkOffsetAlloc( tester, 9, "Cross Proj 10" );
-         
+         print( "B " );
+
          // OPEN 1st group
-         await toggleTableEntry( tester, 4, "" );
+         await toggleTableEntry( tester, 10, "" );
          await _checkHelper( tester );
+         print( "C " );
          
          // scroll up down up, check
          // cell height is 50
@@ -1217,7 +1222,10 @@ void main() {
          await tester.drag( listFinder, Offset(0.0, 300.0) );
          await tester.pumpAndSettle();
          print( "UPUP" );
-         
+
+         // Check 2nd group
+         // OPEN 2nd group 
+         // await toggleTableEntry( tester, 1, "" );
          await checkOffsetAlloc( tester, 2, "Accrued 2");
          await checkOffsetAlloc( tester, 3, "ariCETester 3");
          await checkOffsetAlloc( tester, 9, "Cross Proj 10" );
