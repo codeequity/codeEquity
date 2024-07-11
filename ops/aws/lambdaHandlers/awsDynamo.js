@@ -89,11 +89,11 @@ export function handler( event, context, callback) {
     else if( endPoint == "GetUnPAct")      { resultPromise = getUnPActions( rb.CEProjectId ); }
     else if( endPoint == "UpdatePAct")     { resultPromise = updatePActions( rb.PactIds ); }
     else if( endPoint == "Uningest")       { resultPromise = unIngest( rb.tableName, rb.query ); }    
-    else if( endPoint == "StartIngest")    { resultPromise = startIngest( rb.ceProjectId ); }
-    else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.pLink, rb.ingestSequence, rb.ceProjectId ); }
+    else if( endPoint == "UpdatePEQ")      { resultPromise = updatePEQ( rb.pLink ); }
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
+    else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods ); }
     else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
@@ -1032,43 +1032,9 @@ async function getPActsById( ceProjId, peqIds ) {
 	});
 }
 
-// Write an ingestSequence
-async function updateIngestSequence( cep, baseSeq ) {
-    const params = {
-        TableName:                 'CEProjects',
-	Key:                       {"CEProjectId": cep },
-	UpdateExpression:          'set IngestSequence = :seq',
-	ExpressionAttributeValues: {":seq": baseSeq }
-    };
-    const updateCmd = new UpdateCommand( params );
-
-    return bsdb.send( updateCmd ).then(() => success( cep ));
-}
-
-async function startIngest( cep ) {
-    return await updateIngestSequence( cep, 0 );
-}
-
-async function updatePEQ( pLink, seq, cep ) {
+async function updatePEQ( pLink ) {
 
     console.log( "Updating PEQ", pLink.PEQId);
-
-    if( typeof seq != 'undefined' && typeof cep != 'undefined' ) {
-	// Get current sequence number.  This first to avoid gridlock with peq locking.  
-	let baseSeq = getEntry( "CEProjects", { CEProjectId: cep });
-	if     ( baseSeq.statusCode == 204 ) { baseSeq = 0; }
-	else if( baseSeq.statusCode == 201 ) { baseSeq = baseSeq.body.IngestSequence; }
-	else                                 { assert( false ); }
-	
-	console.log( "sequencing", pLink.PEQId, seq, baseSeq );
-	let seqDelay = 0;
-	while( seq != baseSeq + 1 ) {
-	    seqDelay++;
-	    console.log( "sequencing spinning", pLink.PEQId, seq, baseSeq, seqDelay );
-	    await( SPIN_DELAY );
-	}
-	if( seqDelay > MAX_SPIN ) { return LOCKED; }
-    }
     
     let spinCount = 0;
     let peqLockId = randAlpha(10);
@@ -1098,10 +1064,6 @@ async function updatePEQ( pLink, seq, cep ) {
     // No need to wait for unset lock
     setPeqLock( pLink.PEQId, false );
 
-    if( typeof seq != 'undefined' && typeof cep != 'undefined' ) {
-	// No need to wait for update baseSeq
-	updateIngestSequence( cep, seq );
-    }
     return retVal;
 }
 
@@ -1239,6 +1201,25 @@ async function putPSum( psum ) {
     const putCmd = new PutCommand( paramsP );
 
     return bsdb.send( putCmd ).then(() => success( true ));
+}
+
+async function putPeqMods( pmods ) {
+
+    console.log( "PEQMods put" );
+    let promises = [];
+
+    for( String pid of pmods.keys() ) {
+	promises.push( putPeq( pmods[pid] ));
+    }
+
+    return await Promise.all( promises )
+	.then(( results ) => {
+	    console.log( "...promises done" );
+	    let res = true;
+	    results.forEach( function (r) { res = res && r.statusCode == 201; });
+	    if( res ) { return success( res ); }
+	    else      { return BAD_SEMANTICS; }
+	});
 }
 
 
