@@ -302,6 +302,7 @@ cognitoSignupWrapper(context, fn) {
          }
          print(e);
          print(stacktrace);
+         print( "Note.  Errors here may indicate runtime error in awsDynamo." );
          showToast( e.toString() );
       }           
       // finally {}

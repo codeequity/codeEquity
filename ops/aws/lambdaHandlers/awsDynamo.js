@@ -93,6 +93,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
+    else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods ); }
     else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
@@ -1031,11 +1032,10 @@ async function getPActsById( ceProjId, peqIds ) {
 	});
 }
 
-
 async function updatePEQ( pLink ) {
 
-    console.log( "Updating PEQ", pLink.PEQId );
-
+    console.log( "Updating PEQ", pLink.PEQId);
+    
     let spinCount = 0;
     let peqLockId = randAlpha(10);
     while( !(await acquireLock( pLink.PEQId, peqLockId )) && spinCount < MAX_SPIN )  {
@@ -1043,6 +1043,7 @@ async function updatePEQ( pLink ) {
 	await sleep( SPIN_DELAY );
     }
     if( spinCount >= MAX_SPIN ) { return LOCKED; }
+
     
     // Only props that get updated
     let props = [ "AccrualDate", "Active", "Amount", "CEGrantorId", "CEHolderId", "HostHolderId", "HostIssueTitle", "HostProjectSub", "PeqType", "VestedPerc" ];
@@ -1062,6 +1063,7 @@ async function updatePEQ( pLink ) {
 
     // No need to wait for unset lock
     setPeqLock( pLink.PEQId, false );
+
     return retVal;
 }
 
@@ -1199,6 +1201,23 @@ async function putPSum( psum ) {
     const putCmd = new PutCommand( paramsP );
 
     return bsdb.send( putCmd ).then(() => success( true ));
+}
+
+async function putPeqMods( pmods ) {
+
+    console.log( "PEQMods put" );
+    let promises = [];
+
+    Object.keys( pmods ).forEach( pid => promises.push( putPeq( pmods[pid] ))); 
+
+    return await Promise.all( promises )
+	.then(( results ) => {
+	    console.log( "...promises done" );
+	    let res = true;
+	    results.forEach( function (r) { res = res && r.statusCode == 201; });
+	    if( res ) { return success( res ); }
+	    else      { return BAD_SEMANTICS; }
+	});
 }
 
 

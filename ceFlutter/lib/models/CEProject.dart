@@ -14,11 +14,11 @@ class CEProject {
 
    CEProject({ required this.ceProjectId, required this.ceProjectComponent,  required this.description,
             required this.hostPlatform,  required this.organization,  required this.ownerCategory,  required this.projectMgmtSys,  
-            required this.repositories});
+               required this.repositories});
 
    dynamic toJson() => { 'CEProjectId': ceProjectId, 'CEProjectComponent': ceProjectComponent, 'Description': description,
                             'HostPlatform': hostPlatform, 'Organization': organization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys,
-                            'Repositories': repositories }; 
+                               'Repositories': repositories }; 
 
    // No CEProject found.  return empty 
    factory CEProject.empty() {
