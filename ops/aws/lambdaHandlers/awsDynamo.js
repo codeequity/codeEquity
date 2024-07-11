@@ -1208,9 +1208,7 @@ async function putPeqMods( pmods ) {
     console.log( "PEQMods put" );
     let promises = [];
 
-    for( String pid of pmods.keys() ) {
-	promises.push( putPeq( pmods[pid] ));
-    }
+    Object.keys( pmods ).forEach( pid => promises.push( putPeq( pmods[pid] ))); 
 
     return await Promise.all( promises )
 	.then(( results ) => {

@@ -5,34 +5,41 @@ enum PeqType   { allocation, plan, pending, grant, end }
 // Legally, only CEUIDs have signed agreements.  ceHolderId is binding.  hostHolderId is just a helpful comment.
 
 class PEQ {
-   final String        id;
-   final String        ceProjectId;
-         List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
-   final List<String>  hostHolderId;   // assignees evenly splitting this PEQ, hostUserNames
-   final String        ceGrantorId;
+   final String  id;
+   String        ceProjectId;
+   List<String>  ceHolderId;   // assignees evenly splitting this PEQ, CEUIDs    
+   List<String>  hostHolderId; // assignees evenly splitting this PEQ, hostUserNames
+   String        ceGrantorId;
 
-   final PeqType       peqType;      // usually from Master, sub created/inprogress, sub pending/accrued
-   final int           amount;     
-   final String        accrualDate;  // when accrued
-   final double        vestedPerc;   // as of accrual date
+   PeqType       peqType;      // usually from Master, sub created/inprogress, sub pending/accrued
+   int           amount;     
+   String        accrualDate;  // when accrued
+   double        vestedPerc;   // as of accrual date
 
-   final List<String>  hostProjectSub; // project subs, i.e. ["Master", "codeEquity web front end"]
-   final String        hostRepoId;    
-   final String        hostIssueId;   
-   final String        hostIssueTitle; // actually, issue-or-card title.
+   List<String>  hostProjectSub; // project subs, i.e. ["Master", "codeEquity web front end"]
+   String        hostRepoId;    
+   String        hostIssueId;   
+   String        hostIssueTitle; // actually, issue-or-card title.
 
-   final bool          active;       // has this PEQ been deliberately deleted, unlabeled or otherwise removed from project?
+   bool          active;       // has this PEQ been deliberately deleted, unlabeled or otherwise removed from project?
 
    PEQ({ required this.id, required this.ceProjectId, required this.ceHolderId, required this.hostHolderId, required this.ceGrantorId,
             required this.peqType, required this.amount, required this.accrualDate, required this.vestedPerc,
             required this.hostProjectSub, required this.hostRepoId, required this.hostIssueId, required this.hostIssueTitle,
             required this.active});
 
+   /*
    dynamic toJson() => {'id': id, 'ceProjectId': ceProjectId, 'ceHolderId': ceHolderId, 'hostHolderId': hostHolderId, 'ceGrantorId': ceGrantorId,
                            'peqType': enumToStr(peqType), 'amount': amount, 'accrualDate': accrualDate, 'vestedPerc': vestedPerc,
                            'hostProjectSub': hostProjectSub, 'hostRepoId': hostRepoId, 'hostIssueId': hostIssueId,
-                           'hostIssueTitle': hostIssueTitle, 'active': active }; 
+                           'hostIssueTitle': hostIssueTitle, 'active': active };
+   */
+   dynamic toJson() => {'PEQId': id, 'CEProjectId': ceProjectId, 'CEHolderId': ceHolderId, 'HostHolderId': hostHolderId, 'CEGrantorId': ceGrantorId,
+                           'PeqType': enumToStr(peqType), 'Amount': amount, 'AccrualDate': accrualDate, 'VestedPerc': vestedPerc,
+                           'HostProjectSub': hostProjectSub, 'HostRepoId': hostRepoId, 'HostIssueId': hostIssueId,
+                           'HostIssueTitle': hostIssueTitle, 'Active': active };
 
+   
    // No PEQ found.  return empty peq.
    factory PEQ.empty() {
       return PEQ(
@@ -82,6 +89,29 @@ class PEQ {
 
          active:        json['Active'] == "true" ? true : false,         
          );
+   }
+   
+   void set( String attr, var value ) {
+      switch( attr ) {
+      case "id":             assert( this.id == value );                                    break;
+      case "ceProjectId":    this.ceProjectId = value;                                      break;
+      case "ceHolderId":     this.ceHolderId = new List<String>.from( value );              break;
+      case "hostHolderId":   this.hostHolderId = new List<String>.from( value );            break;
+      case "ceGrantorId":    this.ceGrantorId = value;                                      break;
+      case "peqType":        this.peqType = enumFromStr<PeqType>( value, PeqType.values );  break;
+      case "amount":         this.amount = value;                                           break;
+      case "accrualDate":    this.accrualDate = value;                                      break;
+      case "vestedPerc":     this.vestedPerc = value;                                       break;
+      case "hostProjectSub": this.hostProjectSub = new List<String>.from( value );          break;
+      case "hostRepoId":     this.hostRepoId = value;                                       break;
+      case "hostIssueId":    this.hostIssueId = value;                                      break;
+      case "hostIssueTitle": this.hostIssueTitle = value;                                   break;
+      case "active":         this.active = value;                                           break;
+      default:
+         print( "PEQ setter failed, did not find attribute: " + attr );
+         assert( false );
+         break;
+      }
    }
    
    String toString() {
