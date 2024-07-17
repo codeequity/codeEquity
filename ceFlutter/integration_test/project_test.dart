@@ -59,8 +59,8 @@ const Map<String,List<String>> ALLOCS_GOLD =
          "Pending PEQ Approval 19": ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval", "0", "0", "250", "0", "---"],
             "ariCETester 20":       ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval, ariCETester", "0", "0", "250", "0", "---"],
          "Planned 21":              ["Category, Software Contributions, Data Security Flut, Planned", "750,000", "500", "0", "0", "---"],
-            "IR Alloc split 22":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
-            "IR Alloc split 23":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
+            "IR Alloc split 22":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
+            "IR Alloc split 23":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
             "builderCE 24":         ["Category, Software Contributions, Data Security Flut, Planned, builderCE", "0", "500", "0", "0", "---"],
 
       "Github Operations Flut 25":  ["Category, Software Contributions, Github Operations Flut", "1,500,000", "2,955", "1,104", "2,501", "1,493,044"],
@@ -1122,8 +1122,8 @@ void main() {
          final Finder updateButton = find.byKey( const Key( 'Update PEQ Summary?' ));
          expect( updateButton, findsOneWidget );
          await tester.tap( updateButton );
-         print( 'Waiting 100s');
-         await pumpSettle( tester, 100, verbose: true );
+         print( 'Waiting 60s');
+         await pumpSettle( tester, 60, verbose: true );
          print( 'Done waiting 100s');
          await pumpSettle( tester, 4, verbose: true );
          await pumpSettle( tester, 2, verbose: true );

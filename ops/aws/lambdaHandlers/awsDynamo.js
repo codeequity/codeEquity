@@ -313,7 +313,7 @@ async function getEntry( tableName, query ) {
 	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary":
-	props = [ "CEProjectId" ];
+	props = [ "PEQSummaryId" ];
 	break;
     case "CELinkage":
 	props = [ "CEProjectId" ];
@@ -365,7 +365,7 @@ async function getEntries( tableName, query ) {
 	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary": 
-	props = [ "CEProjectId" ];
+	props = [ "PEQSummaryId" ];
 	break;
     default:
 	console.log( "*"+tableName+"*", "not found" );
@@ -1162,6 +1162,7 @@ async function updateColProj( update ) {
 // XXX Due to https://github.com/flutter/flutter/issues/67090, if repo exists already but with different id, don't write.
 async function putPSum( psum ) {
 
+    /*
     // XXX START workaround: Remove this once issue 67090 is resolved
     const params = {
         TableName: 'CEPEQSummary',
@@ -1184,14 +1185,14 @@ async function putPSum( psum ) {
     });
     if( skip ) { return success( true ); }
     // XXX END
-
-    console.log( "PEQSummary put", psum.id.toString());
+    */
+    
+    console.log( "PEQSummary put", psum.ceProjectId.toString());
 
     const paramsP = {
         TableName: 'CEPEQSummary',
 	Item: {
-	    "PEQSummaryId": psum.id, 
-	    "CEProjectId":  psum.ceProjectId,
+	    "PEQSummaryId": psum.ceProjectId,
 	    "TargetType":   psum.targetType,
 	    "TargetId":     psum.targetId,
 	    "LastMod":      psum.lastMod,

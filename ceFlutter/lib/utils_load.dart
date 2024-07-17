@@ -564,13 +564,15 @@ Future<void> reloadRepo( context, container ) async {
    // Any PEQActions recorded from github before the user had a CELogin will have been updated as soon as the linkage was created.
    appState.myPEQActions = await fetchPEQActions( context, container,
                                                   '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "HostUserName": "", "CEProjectId": "$ceProj" }' );
-   var postData = {};
-   postData['CEProjectId'] = ceProj;
-   var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postData };
+   var postDataPS = {};
+   postDataPS['PEQSummaryId'] = ceProj;
+   var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
    appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
    
    // Get linkage
-   pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postData };
+   var postDataL = {};
+   postDataL['CEProjectId'] = ceProj;
+   pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postDataL };
    appState.myHostLinks  = await fetchHostLinkage( context, container, pd );
 
    if( appState.verbose >= 2 ) {

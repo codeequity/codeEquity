@@ -8,8 +8,7 @@ import 'package:ceFlutter/models/allocation.dart';
 // each individual grant is stored with full metadata
 // Summaries stored for each project, and separately herein each contributor
 class PEQSummary {
-   final String           id;
-   final String           ceProjectId;   // Summaries are per ceProject
+   final String           ceProjectId;   // Summaries are per ceProject.. this is the pkey
    final String           targetType;    // "ceProject", "repo", "contributor"   XXX currently unused.
    final String           targetId;      // HostProjectId ... ?  or repo now?    XXX
          String           lastMod;
@@ -19,14 +18,14 @@ class PEQSummary {
    late  Map<String, HashSet<String>> peqIndex; // index from peqId to a has set of category string for allocs.     TRANSIENT
 
    
-   PEQSummary({ required this.id, required this.ceProjectId, required this.targetType, required this.targetId, required this.lastMod, required this.allocations, required this.jsonAllocs }) {
+   PEQSummary({ required this.ceProjectId, required this.targetType, required this.targetId, required this.lastMod, required this.allocations, required this.jsonAllocs }) {
       peqIndex = new Map<String, HashSet<String>>();
       allocations.forEach( (key, val) => addAlloc( val ) );
       for( Allocation a in jsonAllocs ) { addAlloc( a, fromJson: true ); }
       jsonAllocs.clear();
    }
             
-   dynamic toJson() => { 'id': id, 'ceProjectId': ceProjectId, 'targetType': targetType, 'targetId': targetId,
+   dynamic toJson() => { 'ceProjectId': ceProjectId, 'targetType': targetType, 'targetId': targetId,
                          'lastMod': lastMod, 'allocations': getAllAllocs() };
    
    factory PEQSummary.fromJson(Map<String, dynamic> json) {
@@ -36,8 +35,7 @@ class PEQSummary {
       dynamicAlloc.forEach((m) { allocs.add( Allocation.fromJson( m ) ); });
       
       return PEQSummary(
-         id:            json['PEQSummaryId'],
-         ceProjectId:   json['CEProjectId'],
+         ceProjectId:   json['PEQSummaryId'],
          targetType:    json['TargetType'],
          targetId:      json['TargetId'],
          lastMod:       json['LastMod'],
@@ -120,8 +118,13 @@ class PEQSummary {
       List<Allocation> retVal = [];
 
       allocations.forEach( (key, val) { retVal.add( val ); });
-      // retVal.sort((a,b) => a.category.toString() < b.category.toString() );
-      retVal.sort((a,b) => a.category.toString().compareTo( b.category.toString() ));
+      // Need a stable ordering.  Things like IR Alloc split do not contain random alph id, so sort order is random
+      // retVal.sort((a,b) => a.category.toString().compareTo( b.category.toString() ));
+      retVal.sort((a,b) {
+            var astr = a.category.toString() + a.amount.toString();
+            var bstr = b.category.toString() + b.amount.toString();
+            return astr.compareTo( bstr ); 
+         });
       
       return retVal;
    }
