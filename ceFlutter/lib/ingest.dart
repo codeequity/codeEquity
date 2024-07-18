@@ -1276,7 +1276,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    // Create, if need to
    if( appState.myPEQSummary == null && todos.length > 0) {
       vPrint( appState, "Create new appstate PSum " + todos[0].item2.ceProjectId + "\n" );
-      appState.myPEQSummary = new PEQSummary( ceProjectId: todos[0].item2.ceProjectId,
+      appState.myPEQSummary = new PEQSummary( ceProjectId: ceProjId, 
                                               targetType: "repo", targetId: todos[0].item2.hostRepoId, lastMod: getToday(), allocations: {}, jsonAllocs: [] );
    }
    
@@ -1294,7 +1294,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    // send up peqMods
    if( peqMods.length > 0 ) {
       String pmods = json.encode( peqMods );
-      String postData = '{ "Endpoint": "PutPeqMods", "PeqMods": $pmods }';
+      String postData = '{ "Endpoint": "PutPeqMods", "CEProjectId": "$ceProjId", "PeqMods": $pmods }';
       await updateDynamoPeqMods( context, container, postData, "PutPeqMods");
    }
    
