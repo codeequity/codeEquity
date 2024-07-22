@@ -259,10 +259,12 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
 
    print( "updateDynamo " + postData );
 
+   /*
    if( peqId != -1 ) {
       appState.ingestUpdates[peqId] = appState.ingestUpdates.containsKey( peqId ) ? appState.ingestUpdates[peqId] + 1 : 1;
    }
-
+   */
+   
    final response = await postIt( shortName, postData, container );
    bool  res      = false;
    
@@ -272,10 +274,13 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
       if( didReauth ) { res = await updateDynamo( context, container, postData, shortName, peqId: peqId ); }
    }
 
+   /*
    if( peqId != -1 ) {
       assert( appState.ingestUpdates[peqId] >= 1 );
       appState.ingestUpdates[peqId] = appState.ingestUpdates[peqId] - 1;
    }
+   */
+   
    return res;
 }
 
