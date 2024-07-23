@@ -59,8 +59,8 @@ const Map<String,List<String>> ALLOCS_GOLD =
          "Pending PEQ Approval 19": ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval", "0", "0", "250", "0", "---"],
             "ariCETester 20":       ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval, ariCETester", "0", "0", "250", "0", "---"],
          "Planned 21":              ["Category, Software Contributions, Data Security Flut, Planned", "750,000", "500", "0", "0", "---"],
-            "IR Alloc split 22":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
-            "IR Alloc split 23":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
+            "IR Alloc split 22":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
+            "IR Alloc split 23":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
             "builderCE 24":         ["Category, Software Contributions, Data Security Flut, Planned, builderCE", "0", "500", "0", "0", "---"],
 
       "Github Operations Flut 25":  ["Category, Software Contributions, Github Operations Flut", "1,500,000", "2,955", "1,104", "2,501", "1,493,044"],
@@ -95,72 +95,6 @@ const Map<String,List<String>> ALLOCS_GOLD =
 
 };
 
-/*
-const Map<String,List<String>> ALLOCS_GOLD =
-{
-   "Category 0": ["Category", "Allocation", "Planned", "Pending", "Accrued", "Surplus"],
-      
-      "Software Contributions 1": ["Category, Software Contributions", "5,500,000", "3,455", "1,354", "6,501", "5,488,294"],
-      
-      "Data Security Flut 2":      ["Category, Software Contributions, Data Security Flut", "1,000,000", "500", "250", "4,000", "995,250"],
-         "Accrued 3":              ["Category, Software Contributions, Data Security Flut, Accrued", "0", "0", "0", "4,000", "---"],
-            "builderCE 4":         ["Category, Software Contributions, Data Security Flut, Accrued, builderCE", "0", "0", "0", "1,000", "---"],
-            "ariCETester 5":       ["Category, Software Contributions, Data Security Flut, Accrued, ariCETester", "0", "0", "0", "3,000", "---"],
-         "Pending PEQ Approval 6": ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval", "0", "0", "250", "0", "---"],
-            "ariCETester 7":       ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval, ariCETester", "0", "0", "250", "0", "---"],
-         "Planned 8":              ["Category, Software Contributions, Data Security Flut, Planned", "750,000", "500", "0", "0", "---"],
-            "builderCE 9":         ["Category, Software Contributions, Data Security Flut, Planned, builderCE", "0", "500", "0", "0", "---"],
-            "IR Alloc split 10":   ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
-            "IR Alloc split 11":   ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "250,000", "0", "0", "0", "250,000"],
-
-      "Github Operations Flut 12":  ["Category, Software Contributions, Github Operations Flut", "1,500,000", "2,955", "1,104", "2,501", "1,493,044"],
-         "Pending PEQ Approval 13": ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval", "0", "0", "1,104", "0", "---"],
-            "ariCETester 14":       ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, ariCETester", "0", "0", "552", "0", "---"],
-            "builderCE 15":         ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, builderCE", "0", "0", "552", "0", "---"],
-         "Accrued 16":              ["Category, Software Contributions, Github Operations Flut, Accrued", "0", "0", "0", "2,501", "---"],
-            "ariCETester 17":       ["Category, Software Contributions, Github Operations Flut, Accrued, ariCETester", "0", "0", "0", "2,000", "---"],
-            "builderCE 18":         ["Category, Software Contributions, Github Operations Flut, Accrued, builderCE", "0", "0", "0", "501", "---"],
-         "Planned 19":              ["Category, Software Contributions, Github Operations Flut, Planned", "2,000,000", "1,751", "0", "0", "---"],
-            "ariCETester 20":       ["Category, Software Contributions, Github Operations Flut, Planned, ariCETester", "0", "250", "0", "0", "---"],
-            "Alloc prog 21":        ["Category, Software Contributions, Github Operations Flut, Planned, Alloc prog", "1,000,000", "0", "0", "0", "1,000,000"],
-            "Alloc accr 22":        ["Category, Software Contributions, Github Operations Flut, Planned, Alloc accr", "1,000,000", "0", "0", "0", "1,000,000"],
-            "Unassigned 23":        ["Category, Software Contributions, Github Operations Flut, Planned, Unassigned", "0", "1,501", "0", "0", "---"],
-         "In Progress 24":          ["Category, Software Contributions, Github Operations Flut, In Progress", "0", "500", "0", "0", "---"],
-            "builderCE 25":         ["Category, Software Contributions, Github Operations Flut, In Progress, builderCE", "0", "500", "0", "0", "---"],
-         "Stars 26":                ["Category, Software Contributions, Github Operations Flut, Stars", "125,000", "0", "0", "0", "---"],
-            "IR Alloc 27":          ["Category, Software Contributions, Github Operations Flut, Stars, IR Alloc", "125,000", "0", "0", "0", "125,000"],
-         "Stripes 28":              ["Category, Software Contributions, Github Operations Flut, Stripes", "1,000,000", "704", "0", "0", "---"],
-            "Component Alloc 29":   ["Category, Software Contributions, Github Operations Flut, Stripes, Component Alloc", "1,000,000", "0", "0", "0", "1,000,000"],
-            "ariCETester 30":       ["Category, Software Contributions, Github Operations Flut, Stripes, ariCETester", "0", "352", "0", "0", "---"],
-            "builderCE 31":         ["Category, Software Contributions, Github Operations Flut, Stripes, builderCE", "0", "352", "0", "0", "---"],
-
-      "Unallocated 32":             ["Category, Software Contributions, Unallocated", "3,000,000", "0", "0", "0", "3,000,000"],
-
-      "Business Operations 33":     ["Category, Business Operations", "1,000,000", "0", "0", "0", "1,000,000"],
-         "Unallocated 34":          ["Category, Business Operations, Unallocated", "1,000,000", "0", "0", "0", "1,000,000"],
-
-      "UnClaimed 35":                    ["Category, UnClaimed", "0", "7,234", "0", "0", "---"],
-         "UnClaimed 36":                 ["Category, UnClaimed, UnClaimed", "0", "7,234", "0", "0", "---"],
-            "ariCETester 37":            ["Category, UnClaimed, UnClaimed, ariCETester", "0", "3,467", "0", "0", "---"],
-            "builderCE 38":              ["Category, UnClaimed, UnClaimed, builderCE", "0", "2,411", "0", "0", "---"],
-            "Unassigned 39":             ["Category, UnClaimed, UnClaimed, Unassigned", "0", "604", "0", "0", "---"],
-            "connieCE 40":               ["Category, UnClaimed, UnClaimed, connieCE", "0", "752", "0", "0", "---"],
-
-      "A Pre-Existing Project Flut 41":  ["Category, A Pre-Existing Project Flut", "125,000", "1,500", "0", "1,500", "122,000"],
-         "Bacon 42":                     ["Category, A Pre-Existing Project Flut, Bacon", "125,000", "1,500", "0", "0", "123,500"],
-            "ariCETester 43":            ["Category, A Pre-Existing Project Flut, Bacon, ariCETester", "0", "500", "0", "0", "---"],
-            "IR Alloc split 44":         ["Category, A Pre-Existing Project Flut, Bacon, IR Alloc split", "125,000", "0", "0", "0", "125,000"],
-            "Unassigned 45":             ["Category, A Pre-Existing Project Flut, Bacon, Unassigned", "0", "1,000", "0", "0", "---"],
-         "Accrued 46":                   ["Category, A Pre-Existing Project Flut, Accrued", "0", "0", "0", "1,500", "---"],
-            "ariCETester 47":            ["Category, A Pre-Existing Project Flut, Accrued, ariCETester", "0", "0", "0", "1,500", "---"],
-
-      "Cross Proj 48":           ["Category, Cross Proj", "0", "704", "0", "0", "---"],
-         "Cross Col 49":         ["Category, Cross Proj, Cross Col", "0", "704", "0", "0", "---"],
-            "ariCETester 50":    ["Category, Cross Proj, Cross Col, ariCETester", "0", "352", "0", "0", "---"],
-            "builderCE 51":      ["Category, Cross Proj, Cross Col, builderCE", "0", "352", "0", "0", "---"],
-
-};
-*/
 
 Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false } ) async {
    expect( await verifyOnProjectPage( tester ), true );

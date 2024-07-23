@@ -118,11 +118,23 @@ class PEQSummary {
       List<Allocation> retVal = [];
 
       allocations.forEach( (key, val) { retVal.add( val ); });
-      // Need a stable ordering.  Things like IR Alloc split do not contain random alph id, so sort order is random
-      // retVal.sort((a,b) => a.category.toString().compareTo( b.category.toString() ));
+      // Need a stable ordering.  Things like IR Alloc split contain random alph id, so sort order is random.
+      // remove alphId, add amount
       retVal.sort((a,b) {
-            var astr = a.category.toString() + a.amount.toString();
-            var bstr = b.category.toString() + b.amount.toString();
+            
+            var astr = a.category.toString();
+            if( astr.contains( " split: " )) {
+               astr = astr.substring( 0, astr.indexOf( " split: " ) );
+            }
+
+            var bstr = b.category.toString();
+            if( bstr.contains( " split: " )) {
+               bstr = bstr.substring( 0, bstr.indexOf( " split: " ) );
+            }
+
+            astr = astr + a.amount.toString();
+            bstr = bstr + b.amount.toString();
+            // print( astr + " . " + bstr + " . " + astr.compareTo( bstr ).toString());
             return astr.compareTo( bstr ); 
          });
       
