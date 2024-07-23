@@ -33,15 +33,11 @@ String _convertNameToId( appState, String aname ) {
 // set CEUID by matching my peqAction:hostUserId to CEHostUser:HostUsernId, then writing that CEUserId
 // if there is not yet a corresponding ceUID, use "HOSTUSER: $hostUserId" in it's place, to be fixed later by associateGitub XXX (done?)
 // NOTE: Expect multiple PActs for each PEQ.  For example, open, close, and accrue
-Future updateCEUID( appState, todos, context, container ) async {
+// NOTE: These are initial conditions, before todos are processed.
+Future updateCEUID( appState, todos, context, container, peqMods ) async {
 
    vPrint( appState, "Updating CE UIDs" );
 
-   Map<String, List<String>> lastCEUID = new Map<String, List<String>>(); 
-   List<Future> promises = [];
-
-   var passCount = 0;
-   var updateCount = 0;
    for( var tup in todos ) {
       PEQAction pact = tup.item1;
       PEQ       peq  = tup.item2;
@@ -76,34 +72,14 @@ Future updateCEUID( appState, todos, context, container ) async {
       }
       
       // Ignore CEGrantorId.  Must already be signed up to authorize PEQ, so all IDs will already be correct.
-      
-      // Update PEQ, if there is one.. original logic would not allow multiple ingest-changes to a non-accr peq
-      // if( peq.id != "-1" && origHIDLen == 0 && peq.ceHolderId.length != 0 ) {
+      // Update PEQ, if there is one
       if( peq.id != "-1" ) {
-         passCount++;
-         if( !lastCEUID.containsKey( peq.id ) || !listEq( lastCEUID[ peq.id ], peq.ceHolderId )){
-            lastCEUID[ peq.id ] = peq.ceHolderId;
-
-            // print( lastCEUID.toString() );
-            // print( peq.ceHolderId );
-            // print( "-----------------------------" );
-            
-            var postData = {};
-            postData['PEQId']       = peq.id;
-            postData['CEHolderId']  = peq.ceHolderId;
-            var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
-            
-            // Do await, processPEQs needs holders
-            promises.add( updateDynamo( context, container, json.encode( pd ), "UpdatePEQ" ) );
-
-            updateCount++;
-            // Give aws a chance to breathe
-            if( updateCount % 50 == 49 ) { await Future.delayed(Duration(milliseconds: 250)); }
-         }
-      }
+         var peqData            = {};
+         peqData['id']          = peq.id;
+         peqData['ceHolderId']  = peq.ceHolderId;
+         _addMod( context, container, peq, peqData, peqMods );   
+      }      
    }
-   print( "UpdateCEUID todos pass dynamo " + todos.length.toString() + " " + passCount.toString() + " " + updateCount.toString() );
-   await Future.wait( promises );   
 }
 
 // XXX may be able to kill categoryBase
@@ -431,6 +407,7 @@ Future updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    }
 }
 
+/*
 // No need to clear appState.ingestUpdates - updateDynamo does that.
 // XXX Could, maybe, be more picky about releasing once the specific peq.id reaches 0
 // void checkPendingUpdates( appState, dynamo, peqId ) async {
@@ -441,6 +418,7 @@ Future checkPendingUpdates( appState, dynamo, peqId ) async {
       dynamo.clear();
    }
 }
+*/
 
 // Mods will be entire peqs.  Could instead save individual attributes, but very little gain
 void _addMod( context, container, peq, postData, peqMods ) {
@@ -449,16 +427,14 @@ void _addMod( context, container, peq, postData, peqMods ) {
    if( !peqMods.containsKey( peq.id )) {
       peqMods[ peq.id ] = peq;
    }
-   // print( "before " + peqMods[ peq.id ].toString() );
 
    for( String attr in postData.keys.toList() ) {
       // print( "updating attr " + attr + " to " + postData[ attr ].toString() );
       peqMods[peq.id].set( attr, postData[attr] );
    }
-   // print( "after " + peqMods[ peq.id ].toString() );
 }
 
-Future _accrue( context, container, pact, peq, dynamo, peqMods, assignees, assigneeShare, Allocation? sourceAlloc, subBase ) async {
+Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare, Allocation? sourceAlloc, subBase ) async {
    // Once see action accrue, should have already seen peqType.pending
    final appState = container.state;
    vPrint( appState, "Accrue PAct " + enumToStr( pact.action ) + " " + enumToStr( pact.verb ));
@@ -544,9 +520,6 @@ Future _accrue( context, container, pact, peq, dynamo, peqMods, assignees, assig
    if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) { vPrint( appState, "_accrue changing psub to "        + peqData['hostProjectSub'].toString() ); }
 
    print( "Accrue updating with "  + peqData["peqType"] + " " + peq.peqType.toString() );
-   // var pd = { "Endpoint": "UpdatePEQ", "pLink": postData };
-   // await checkPendingUpdates( appState, dynamo, peq.id );
-   // dynamo.add( updateDynamo( context, container, json.encode( pd ), "UpdatePEQ", peqId: peq.id ));
    _addMod( context, container, peq, peqData, peqMods );
    print( "MILLI accr " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
    
@@ -556,7 +529,7 @@ Future _accrue( context, container, pact, peq, dynamo, peqMods, assignees, assig
 // Delete proj/col with no peqs?  Don't care.
 // Delete proj/col with peqs?     issues remain, series of del card/label are sent.  
 // Delete proj/col with ACCR?     ACCR are relocated
-void _delete( appState, pact, peq, List<Future> dynamo, assignees, assigneeShare, ka ) {
+void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
    // This can be called as part of a transfer out, in which this is a no-op, handled in _relo.
    if( ka != null ) {
       if( pact.note != "Transfer out" ) {  // XXX formalize
@@ -589,7 +562,7 @@ void _delete( appState, pact, peq, List<Future> dynamo, assignees, assigneeShare
 //       then unlabeled (untracked), then re-tracked.  In this case, the PEQ is re-created, with the correct column of "In Prog".
 //       From ingest point of view, In Prog === Planned, so no difference in operation.
 
-Future _add( context, container, pact, peq, dynamo, peqMods, assignees, assigneeShare, subBase ) async {
+Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, subBase ) async {
    // When adding, will only see peqType alloc or plan
    List<String> peqLoc = [];
    final appState = container.state;
@@ -641,9 +614,6 @@ Future _add( context, container, pact, peq, dynamo, peqMods, assignees, assignee
    if( !listEq( peqData['hostHolderId'],   peq.hostHolderId ))   { vPrint( appState, "_add changing assignees to "   + peqData['hostHolderId'].toString() ); }
    if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) { vPrint( appState, "_add changing psub to "        + peqData['hostProjectSub'].toString() ); }
    
-   // var pd = { "Endpoint": "UpdatePEQ", "pLink": postData }; 
-   // await checkPendingUpdates( appState, dynamo, peq.id );
-   // dynamo.add( updateDynamo( context, container, json.encode( pd ), "UpdatePEQ", peqId: peq.id ));
    _addMod( context, container, peq, peqData, peqMods );   
    print( "MILLI add " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
 }
@@ -653,7 +623,7 @@ Future _add( context, container, pact, peq, dynamo, peqMods, assignees, assignee
 // Note.  There is a rare race condition in ceServer that may reorder when recordPeqs arrive.  Specifically, psub
 //        may be unclaimed when expect otherwise.  Relo must then deal with it.
 // Note.  Once an allocation is in Accr, relo will no longer touch it.
-Future _relo( context, container, pact, peq, dynamo, peqMods, assignees, assigneeShare, ka, pending, subBase ) async {
+Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, ka, pending, subBase ) async {
 
    final startPPA = DateTime.now();
 
@@ -826,9 +796,6 @@ Future _relo( context, container, pact, peq, dynamo, peqMods, assignees, assigne
       
       if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) {
          vPrint( appState, "_relo changing psub to "        + peqData['hostProjectSub'].toString() );
-         // var pd = { "Endpoint": "UpdatePEQ", "pLink": postData };
-         // await checkPendingUpdates( appState, dynamo, peq.id );
-         // dynamo.add( updateDynamo( context, container, json.encode( pd ), "UpdatePEQ", peqId: peq.id ));
          _addMod( context, container, peq, peqData, peqMods );   
       }
    }
@@ -839,7 +806,7 @@ Future _relo( context, container, pact, peq, dynamo, peqMods, assignees, assigne
 //      Ingest needs to track all the changes in the middle
 // XXX If add assignee that is already present, expect to remove all, then re-add all allocs.
 //     this is slow, can cause n separate useless ingest steps - blast, n = #assignees
-Future _change( context, container, pact, peq, dynamo, peqMods, assignees, assigneeShare, ka, pending ) async {
+Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare, ka, pending ) async {
    final appState = container.state;
    assert( ka != null || pact.note == "Column rename" || pact.note == "Project rename" );
    final startPPA = DateTime.now();
@@ -995,31 +962,37 @@ Future _change( context, container, pact, peq, dynamo, peqMods, assignees, assig
       
    }
    else if( pact.note == "Column rename" ) {    // XXX formalize this
+      // XXX REVISIT once this is possible again
       // These arrive as viable pact, and -1 as peq.  Pact subject is [ colId, oldName, newName ]
       // ceServer handles locs in dynamo.  myHostLinks.locations is current.
+      // This has the potential to impact any future operation on peqs. wait.
+      await updateColumnName( context, container, pact.subject );
       vPrint( appState, "Column rename handled at start of todo processing" );
-      dynamo.add( updateColumnName( context, container, pact.subject ) );
-      // This has the potential to impact any future operation on peqs.  Rather than look for each, wait for all.
-      vPrint( appState, "Waiting on column name update in dynamo" );
-      await Future.wait( dynamo );
-      dynamo.clear();
+      vPrint( appState, "Done waiting on column name update" );
       return; 
    }
    else if( pact.note == "Project rename" ) {    // XXX formalize this
+      // XXX REVISIT once this is possible again
       // These arrive as viable pact, and -1 as peq.  Pact subject is [ projId, oldName, newName ]
       // ceServer handles locs in dynamo.  myHostLinks.locations is current.
+      await updateProjectName( context, container, pact.subject );
+      // This has the potential to impact any future operation on peqs. wait.
       vPrint( appState, "Project rename handled at start of todo processing" );
-      dynamo.add( updateProjectName( context, container, pact.subject ) );
-      // This has the potential to impact any future operation on peqs.  Rather than look for each, wait for all.
-      vPrint( appState, "Waiting on project name update in dynamo" );
-      await Future.wait( dynamo );
-      dynamo.clear();
+      vPrint( appState, "Done waiting on project name update" );
       return;
    }
 
+   List<String> ceHolders = [];
+   if( !listEq( newAssign, ["Unassigned" ] )) {
+      newAssign.forEach( (hostHolder) {
+            assert( appState.idMapHost.containsKey( hostHolder ) );
+            ceHolders.add( appState.idMapHost[ hostHolder ]['ceUID'] ); 
+         });
+   }
    var peqData = {};
-   peqData['id']          = peq.id;
+   peqData['id']             = peq.id;
    peqData['hostHolderId']   = listEq( newAssign, ["Unassigned"] ) ? [] : newAssign;
+   peqData['ceHolderId'  ]   = ceHolders;
    peqData['amount']         = ( newShareAmount * newAssign.length ).toInt();
    peqData['hostIssueTitle'] = newTitle;
 
@@ -1027,9 +1000,6 @@ Future _change( context, container, pact, peq, dynamo, peqMods, assignees, assig
    if( peqData['Amount']         != peq.amount )             { vPrint( appState, "_change changing amount to "      + peqData['amount'].toString() ); }
    if( peqData['HostIssueTitle'] != peq.hostIssueTitle )     { vPrint( appState, "_change changing title to "       + peqData['hostIssueTitle'] ); }
    
-   // var pd = { "Endpoint": "UpdatePEQ", "pLink": postData };
-   // await checkPendingUpdates( appState, dynamo, peq.id );
-   // dynamo.add( updateDynamo( context, container, json.encode( pd ), "UpdatePEQ", peqId: peq.id ));
    _addMod( context, container, peq, peqData, peqMods );      
    print( "MILLI Change " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
 }
@@ -1090,7 +1060,7 @@ note:  [DAcWeodOvb, 13302090, 15978796]
 //    modify peq.HostProjectSub after first relo from unclaimed to initial home
 //    set assignees only if issue existed before it was PEQ (pacts wont see this assignment)
 // ---------------
-Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, context, container, pending, peqMods ) async {
+Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending, peqMods ) async {
 
    PEQAction pact = tup.item1;
    PEQ       peq  = tup.item2;
@@ -1138,11 +1108,11 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, List<Future> dynamo, contex
 
    // XXX switch
    // propose accrue == pending.   confirm accrue == grant.  others are plan.  end?
-   if     ( pact.action == PActAction.accrue )                                    { await _accrue( context, container, pact, peq, dynamo, peqMods, assignees, assigneeShare, ka, subBase ); }
-   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete )   { _delete(                 appState, pact, peq, dynamo,          assignees, assigneeShare, ka      ); }
-   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add )      { await _add(    context, container, pact, peq, dynamo, peqMods, assignees, assigneeShare, subBase ); }
-   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate ) { await _relo(   context, container, pact, peq, dynamo, peqMods, assignees, assigneeShare, ka, pending, subBase ); }
-   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.change )   { await _change( context, container, pact, peq, dynamo, peqMods, assignees, assigneeShare, ka, pending ); }
+   if     ( pact.action == PActAction.accrue )                                    { await _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare, ka, subBase ); }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete )   { _delete(                 appState, pact, peq,          assignees, assigneeShare, ka      ); }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.add )      { await _add(    context, container, pact, peq, peqMods, assignees, assigneeShare, subBase ); }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.relocate ) { await _relo(   context, container, pact, peq, peqMods, assignees, assigneeShare, ka, pending, subBase ); }
+   else if( pact.verb == PActVerb.confirm && pact.action == PActAction.change )   { await _change( context, container, pact, peq, peqMods, assignees, assigneeShare, ka, pending ); }
    else if( pact.verb == PActVerb.confirm && pact.action == PActAction.notice )   { _notice( appState ); }
    else { notYetImplemented( context ); }
    
@@ -1278,64 +1248,58 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    
    await updateHostNames( todos, appState );
 
-   List<Future> dynamo = [];
    var pending = {};
 
-   await updateCEUID( appState, todos, context, container );
+   Map<String, PEQ> peqMods = new Map<String, PEQ>();
+   await updateCEUID( appState, todos, context, container, peqMods );
    vPrint( appState, "... done (ceuid)" );
 
-   // 18s 2s
    print( "TIME CEUID, hostnames " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    // Create, if need to
    if( appState.myPEQSummary == null && todos.length > 0) {
-      String pid = randAlpha(10);
-      vPrint( appState, "Create new appstate PSum " + pid + "\n" );
-      appState.myPEQSummary = new PEQSummary( id: pid, ceProjectId: todos[0].item2.ceProjectId,
+      vPrint( appState, "Create new appstate PSum " + todos[0].item2.ceProjectId + "\n" );
+      appState.myPEQSummary = new PEQSummary( ceProjectId: ceProjId, 
                                               targetType: "repo", targetId: todos[0].item2.hostRepoId, lastMod: getToday(), allocations: {}, jsonAllocs: [] );
    }
    
-   appState.ingestUpdates.clear();
-   Map<String, PEQ> peqMods = new Map<String, PEQ>();
+   // appState.ingestUpdates.clear();
    for( var tup in todos ) {
-      await processPEQAction( tup, dynamo, context, container, pending, peqMods );
+      await processPEQAction( tup, context, container, pending, peqMods );
    }
-   // 19s  1s
    print( "TIME PPA " + DateTime.now().difference(startUPA).inSeconds.toString() );
+   vPrint( appState, "Finishing updating PPA..." );
 
-   vPrint( appState, "Finishing updating Dynamo..." );
-   await Future.wait( dynamo );
-
+   List<Future> dynamo = [];
    // send up peqMods
    if( peqMods.length > 0 ) {
       String pmods = json.encode( peqMods );
-      String postData = '{ "Endpoint": "PutPeqMods", "PeqMods": $pmods }';
-      await updateDynamoPeqMods( context, container, postData, "PutPeqMods");
+      String postData = '{ "Endpoint": "PutPeqMods", "CEProjectId": "$ceProjId", "PeqMods": $pmods }';
+      dynamo.add( updateDynamoPeqMods( context, container, postData, "PutPeqMods") );
    }
    
    vPrint( appState, "... done (dynamo)" );
-   // 36s 17s
    print( "TIME Finish initial dynamo actions " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    
    print( "Ingest todos finished processing.  Update Dynamo." );
+   // NOTE: summary_frame:_buildAllocTree is called after ingest completes, with getAllAlloc, which sorts.
    // XXX Skip this if no change (say, on a series of notices).
    if( appState.myPEQSummary != null ) {
       appState.myPEQSummary.lastMod = getToday();
       String psum = json.encode( appState.myPEQSummary );
       String postData = '{ "Endpoint": "PutPSum", "NewPSum": $psum }';
-      await updateDynamo( context, container, postData, "PutPSum" );
+      dynamo.add( updateDynamo( context, container, postData, "PutPSum" ) );
    }
-   // 36s 0s
    print( "TIME update dynamo peq summary " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    // unlock, set ingested
    if( pactIds.length > 0 ) {
       String newPIDs = json.encode( pactIds );
-      final status = await updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
+      dynamo.add( updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" ) );
    }
-   // 46s 10s
-   // tot: 91s 82s  46s(!)
+
+   await Future.wait( dynamo ); 
    print( "TIME Ingested " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
 }

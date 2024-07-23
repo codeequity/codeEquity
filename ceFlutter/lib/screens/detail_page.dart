@@ -120,6 +120,7 @@ class _CEDetailState extends State<CEDetailPage> {
          var peqCount = 0;
          // XXX save anything here?  
          for( final peq in selectedPeqs ) {
+            // print( "pact list peq: " + peq.hostIssueTitle + " " + peq.id);
             pactList.add( _makePeq( peq ) );
 
             var pactCount = 0;

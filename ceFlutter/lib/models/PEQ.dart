@@ -37,7 +37,7 @@ class PEQ {
    dynamic toJson() => {'PEQId': id, 'CEProjectId': ceProjectId, 'CEHolderId': ceHolderId, 'HostHolderId': hostHolderId, 'CEGrantorId': ceGrantorId,
                            'PeqType': enumToStr(peqType), 'Amount': amount, 'AccrualDate': accrualDate, 'VestedPerc': vestedPerc,
                            'HostProjectSub': hostProjectSub, 'HostRepoId': hostRepoId, 'HostIssueId': hostIssueId,
-                           'HostIssueTitle': hostIssueTitle, 'Active': active };
+                              'HostIssueTitle': hostIssueTitle, 'Active': active ? "true" : "false" };
 
    
    // No PEQ found.  return empty peq.

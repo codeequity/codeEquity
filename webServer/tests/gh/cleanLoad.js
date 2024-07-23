@@ -30,7 +30,7 @@ async function clearIngested( authData, td ) {
 }
 
 async function clearSummary( authData, td ) {
-    const sums = await awsUtils.getSummaries( authData, { "CEProjectId": td.ceProjectId });
+    const sums = await awsUtils.getSummaries( authData, { "PEQSummaryId": td.ceProjectId });
     if( sums != -1 ) {
 	const sumIds = sums.map( summary => [summary.PEQSummaryId] );    
 	console.log( "Clearing summaries for", sumIds );

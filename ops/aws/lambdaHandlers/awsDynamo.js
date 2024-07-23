@@ -93,7 +93,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
-    else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods ); }
+    else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
     else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
@@ -271,15 +271,19 @@ function buildConjScanParams( obj, props ) {
     return [filterExpr, attrVals];
 }
 
-async function setLock( pactId, lockVal ) {
-    console.log( "Locking", pactId, lockVal );
+async function setLock( table, keyName, keyVal, lockVal ) {
+    console.log( "Locking", table, keyName, keyVal, lockVal );
 
+    let keyPhrase = {};
+    keyPhrase[keyName] = keyVal;
     const params = {
-	TableName: 'CEPEQActions',
-	Key: {"PEQActionId": pactId },
+	TableName: table,
+	Key: keyPhrase,
 	UpdateExpression: 'set Locked = :lockVal',
 	ExpressionAttributeValues: { ':lockVal': lockVal }};
 
+    console.log( "SLParams", params );
+    
     const updateCmd = new UpdateCommand( params );
     return bsdb.send( updateCmd ).then(() => success( true ));
 }
@@ -313,7 +317,7 @@ async function getEntry( tableName, query ) {
 	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary":
-	props = [ "CEProjectId" ];
+	props = [ "PEQSummaryId" ];
 	break;
     case "CELinkage":
 	props = [ "CEProjectId" ];
@@ -365,7 +369,7 @@ async function getEntries( tableName, query ) {
 	props = [ "CEProjectId" ];
 	break;
     case "CEPEQSummary": 
-	props = [ "CEProjectId" ];
+	props = [ "PEQSummaryId" ];
 	break;
     default:
 	console.log( "*"+tableName+"*", "not found" );
@@ -842,7 +846,7 @@ async function getUnPActions( ceProjId ) {
 	    
 	    // XXX Fire these off, consider waiting, with Promises.all
 	    //     would be expensive for multiple uningested.  where oh where is updateWhere
-	    pacts.forEach( function(pact) { setLock( pact.PEQActionId, "true" );   });
+	    pacts.forEach( function(pact) { setLock( "CEPEQActions", "PEQActionId", pact.PEQActionId, "true" );   });
 	    return pacts;
 	})
 	.then(( pacts ) => {
@@ -1162,6 +1166,7 @@ async function updateColProj( update ) {
 // XXX Due to https://github.com/flutter/flutter/issues/67090, if repo exists already but with different id, don't write.
 async function putPSum( psum ) {
 
+    /*
     // XXX START workaround: Remove this once issue 67090 is resolved
     const params = {
         TableName: 'CEPEQSummary',
@@ -1184,18 +1189,19 @@ async function putPSum( psum ) {
     });
     if( skip ) { return success( true ); }
     // XXX END
-
-    console.log( "PEQSummary put", psum.id.toString());
+    */
+    
+    console.log( "PEQSummary put", psum.ceProjectId.toString());
 
     const paramsP = {
         TableName: 'CEPEQSummary',
 	Item: {
-	    "PEQSummaryId": psum.id, 
-	    "CEProjectId":  psum.ceProjectId,
+	    "PEQSummaryId": psum.ceProjectId,
 	    "TargetType":   psum.targetType,
 	    "TargetId":     psum.targetId,
 	    "LastMod":      psum.lastMod,
-	    "Allocations":  psum.allocations
+	    "Allocations":  psum.allocations,
+	    "Locked":       typeof psum.locked == 'undefined' ? "false" : "true"
 	}
     };
     const putCmd = new PutCommand( paramsP );
@@ -1203,14 +1209,47 @@ async function putPSum( psum ) {
     return bsdb.send( putCmd ).then(() => success( true ));
 }
 
-async function putPeqMods( pmods ) {
+async function putPeqMods( pmods, ceProjId ) {
 
     console.log( "PEQMods put" );
     let promises = [];
 
+    // XXX START workaround: Remove this once issue 67090 is resolved
+    const params = {
+        TableName: 'CEPEQSummary',
+        FilterExpression: 'PEQSummaryId = :cpid',
+        ExpressionAttributeValues: { ":cpid": ceProjId },
+	Limit: 99,
+    };
+    let gPromise = paginatedScan( params );
+    let skip = false;
+    await gPromise.then((ps) => {
+	console.log( "ppm psum", ps );
+	if( ps.length == 0 ) {
+	    console.log( "No peq summary yet, creating a blank", ceProjId );
+	    let psum = {"ceProjectId": ceProjId, "locked": true, "targetType": "", "targetId": "", "lastMod": "", "allocations": [] };
+	    putPSum( psum );
+	    console.log( "created psum" );
+	}
+	else {
+	    assert( ps.length == 1 );
+	    console.log( "peq summary exists.." );
+	    if( typeof ps[0].Locked != 'undefined' && ps[0].Locked == "true" ) {
+		// Oops.  headless integration test is writing peqMods already.
+		console.log( "Found duplicate ceProj peqMods, will not write current.", ceProjId, pmods.length );
+		skip = true;
+	    }
+	    else {
+		setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "true" );
+	    }
+	}
+    });
+    if( skip ) { return success( true ); }
+    // XXX END
+    
     Object.keys( pmods ).forEach( pid => promises.push( putPeq( pmods[pid] ))); 
 
-    return await Promise.all( promises )
+    let retVal = await Promise.all( promises )
 	.then(( results ) => {
 	    console.log( "...promises done" );
 	    let res = true;
@@ -1218,6 +1257,9 @@ async function putPeqMods( pmods ) {
 	    if( res ) { return success( res ); }
 	    else      { return BAD_SEMANTICS; }
 	});
+
+    await setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "false" );
+    return retVal;
 }
 
 
@@ -1363,7 +1405,7 @@ async function getHostA( uid ) {
 	// hostAcc.ceProjs = ceps.map( cep => cep == -1 ? "false" : "true" );
 
 	hostAcc.ceProjects = await getProjectStatus( hostAcc.CEProjectIds );
-	console.log( "...working with ", hostAcc.ceProjs );
+	console.log( "...working with ", hostAcc.ceProjects );
     }
     return success( hostAccs );
 }
