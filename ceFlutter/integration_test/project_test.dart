@@ -9,6 +9,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'package:ceFlutter/utils_load.dart';
 import 'utils.dart';
 
 /*
@@ -1007,7 +1008,7 @@ void main() {
    report( 'Project', group:true );
 
    testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
-         // testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+         //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -1036,7 +1037,7 @@ void main() {
 
    // NOTE: testCEFlutter.py always runs 'npm clean' before this if override is set
    //       it is possible to depend on process_run and run from here, but that clutters deps
-   // testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
+   //testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
    testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
@@ -1074,6 +1075,7 @@ void main() {
       });
 
    testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
+         //testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -1176,7 +1178,8 @@ void main() {
       });
 
    print( "DETAIL" );
-   testWidgets('Project Detail Page', skip:false, (WidgetTester tester) async {
+   //testWidgets('Project Detail Page', skip:true, (WidgetTester tester) async {
+   testWidgets('Project Detail Page', skip:skip, (WidgetTester tester) async {
          
          await restart( tester );
          await login( tester, true );
@@ -1199,6 +1202,11 @@ void main() {
          await logout( tester );         
 
          report( 'Project Detail Page' );
+      });
+
+   await logout( tester );         
+
+         report( 'Post-ingest PEQS in aws' );
       });
 
 
