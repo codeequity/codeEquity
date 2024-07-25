@@ -1204,12 +1204,5 @@ void main() {
          report( 'Project Detail Page' );
       });
 
-   await logout( tester );         
-
-         report( 'Post-ingest PEQS in aws' );
-      });
-
-
-   // Next test: detail pages
 }
      

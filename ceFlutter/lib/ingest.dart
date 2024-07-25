@@ -1271,6 +1271,13 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    vPrint( appState, "Finishing updating PPA..." );
 
    List<Future> dynamo = [];
+   // First, make sure locking mechanism for peqMods and headless integration tests have a home
+   if( peqMods.length > 0 ) {
+      assert( appState.myPEQSummary != null );  // make sure we update psum below.
+      String postData = '{ "Endpoint": "AddPSumLock", "ceProjId": "$ceProjId" }';
+      await updateDynamo( context, container, postData, "AddPSumLock" );
+   }
+   
    // send up peqMods
    if( peqMods.length > 0 ) {
       String pmods = json.encode( peqMods );

@@ -93,6 +93,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
+    else if( endPoint == "AddPSumLock")    { resultPromise = addPSumLock( rb.ceProjId ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
     else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
@@ -1163,34 +1164,8 @@ async function updateColProj( update ) {
 
 
 // Overwrites any existing record by ID.
-// XXX Due to https://github.com/flutter/flutter/issues/67090, if repo exists already but with different id, don't write.
 async function putPSum( psum ) {
 
-    /*
-    // XXX START workaround: Remove this once issue 67090 is resolved
-    const params = {
-        TableName: 'CEPEQSummary',
-        FilterExpression: 'CEProjectId = :hostr',
-        ExpressionAttributeValues: { ":hostr": psum.ceProjectId },
-	Limit: 99,
-    };
-    let gPromise = paginatedScan( params );
-    let skip = false;
-    await gPromise.then((ps) => {
-	for( const eps of ps ) {
-	    if( eps.PEQSummaryId != psum.id ) {
-		// Oops.  We have an existing summary for ceProj with a different ID.  Don't write this new, second copy.
-		assert( eps.Allocations.length == psum.allocations.length );
-		console.log( "Found duplicate ceProj, will not write current.", eps.PEQSummaryId.toString(), psum.id, psum.ceProjectId, eps.Allocations.length.toString() );
-		skip = true;
-	    }
-	    
-	}
-    });
-    if( skip ) { return success( true ); }
-    // XXX END
-    */
-    
     console.log( "PEQSummary put", psum.ceProjectId.toString());
 
     const paramsP = {
@@ -1201,12 +1176,43 @@ async function putPSum( psum ) {
 	    "TargetId":     psum.targetId,
 	    "LastMod":      psum.lastMod,
 	    "Allocations":  psum.allocations,
-	    "Locked":       typeof psum.locked == 'undefined' ? "false" : "true"
+	    "Locked":       typeof psum.locked == 'undefined' ? "false" : psum.locked
 	}
     };
+
     const putCmd = new PutCommand( paramsP );
 
     return bsdb.send( putCmd ).then(() => success( true ));
+}
+
+// This supports putPeqMods, which requires a psum entry with a Locked column 
+async function addPSumLock( ceProjId ) {
+
+    console.log( "Add peq summary lock", ceProjId );
+
+    const params = {
+        TableName: 'CEPEQSummary',
+        FilterExpression: 'PEQSummaryId = :cpid',
+        ExpressionAttributeValues: { ":cpid": ceProjId },
+	Limit: 99,
+    };
+
+    let ps = await paginatedScan( params );
+    if( ps.length == 0 ) {
+	console.log( "No peq summary yet, creating a blank", ceProjId );
+	let psum = {"ceProjectId": ceProjId, "locked": "false", "targetType": "", "targetId": "", "lastMod": "", "allocations": [] };
+	await putPSum( psum );
+	console.log( "created psum" );
+    }
+    else {
+	assert( ps.length == 1 );
+	console.log( "peq summary exists.." );
+	if( typeof ps[0].Locked === 'undefined' || ps[0].Locked == "true" ) {
+	    await setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "false" );
+	    console.log( "..unlocked" );
+	}
+    }
+    return success( true );
 }
 
 async function putPeqMods( pmods, ceProjId ) {
@@ -1224,24 +1230,15 @@ async function putPeqMods( pmods, ceProjId ) {
     let gPromise = paginatedScan( params );
     let skip = false;
     await gPromise.then((ps) => {
-	console.log( "ppm psum", ps );
-	if( ps.length == 0 ) {
-	    console.log( "No peq summary yet, creating a blank", ceProjId );
-	    let psum = {"ceProjectId": ceProjId, "locked": true, "targetType": "", "targetId": "", "lastMod": "", "allocations": [] };
-	    putPSum( psum );
-	    console.log( "created psum" );
+	assert( ps.length == 1 );  // guaranteed when use addPSumLock 
+	console.log( "peq summary exists.." );
+	if( typeof ps[0].Locked != 'undefined' && ps[0].Locked == "true" ) {
+	    // Oops.  headless integration test is writing peqMods already.
+	    console.log( "Found duplicate ceProj peqMods, will not write current.", ceProjId, pmods.length );
+	    skip = true;
 	}
 	else {
-	    assert( ps.length == 1 );
-	    console.log( "peq summary exists.." );
-	    if( typeof ps[0].Locked != 'undefined' && ps[0].Locked == "true" ) {
-		// Oops.  headless integration test is writing peqMods already.
-		console.log( "Found duplicate ceProj peqMods, will not write current.", ceProjId, pmods.length );
-		skip = true;
-	    }
-	    else {
-		setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "true" );
-	    }
+	    setLock( "CEPEQSummary", "PEQSummaryId", ceProjId, "true" );
 	}
     });
     if( skip ) { return success( true ); }
