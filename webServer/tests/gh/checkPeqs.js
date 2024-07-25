@@ -92,6 +92,7 @@ const _p15 = { title: "IR Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
               peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+// Note close open also exists in pre-existing
 const _p16 = { title: "Close Open test", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
 	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
               peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
@@ -122,6 +123,11 @@ const _p22 = { title: "Alloc accr", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg
 	      ceHolderId: [], hostHolderId:[], 
               peqType: "allocation", amount: 1000000, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+const _p29 = { title: "Situated Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
+	      ceHolderId: [], hostHolderId:[], 
+              peqType: "plan", amount: 1000, accrualDate: "---", vestedPerc: 0,
+              hostProjectSub:["Software Contributions", "Github Operations Flut", "Planned"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+
 
 // CROSS PROJ
 // Note these two start in ariAlt, then xfer to flut and to serv.  So there are two active peqs here, different ceprojs
@@ -137,6 +143,22 @@ const _p24 = { title: "CT Blast X", id: "-1", ceProjectId: "CE_ServTest_usda23k4
 
 
 // UNCLAIMED
+const _p25 = { title: "Blast 1", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
+	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
+              peqType: "plan", amount: 604, accrualDate: "---", vestedPerc: 0,
+              hostProjectSub:["UnClaimed", "UnClaimed"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+const _p26 = { title: "Blast 2", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
+	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
+              peqType: "plan", amount: 604, accrualDate: "---", vestedPerc: 0,
+              hostProjectSub:["UnClaimed", "UnClaimed"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+const _p27 = { title: "Blast 6", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
+	      ceHolderId: [], hostHolderId:[], 
+              peqType: "plan", amount: 604, accrualDate: "---", vestedPerc: 0,
+              hostProjectSub:["UnClaimed", "UnClaimed"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+const _p28 = { title: "Interleave 3", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
+              ceHolderId: ["AHLjVaSIlH", "yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBLisTg", "U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
+              peqType: "plan", amount: 903, accrualDate: "---", vestedPerc: 0,
+              hostProjectSub:["UnClaimed", "UnClaimed"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 
 // GH CLOSED
@@ -155,6 +177,7 @@ const _ip2 = { title: "CT Blast", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42
 
 
 const PEQS_GOLD = [ _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16, _p17, _p18, _p19, _p20, _p21, _p22, _p23, _p24,
+		    _p25, _p26, _p27, _p28, _p29,
 		    _ip1, _ip2 ];
 
 
@@ -165,8 +188,9 @@ const _np2 = { title: "Rosemary", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42
 const _np3 = { title: "Parsley", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 const _np4 = { title: "Carded Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 const _np5 = { title: "Carded Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
+const _np6 = { title: "LM Newborn", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 
-const NO_PEQS_GOLD = [ _np1, _np2, _np3, _np4, _np5 ];
+const NO_PEQS_GOLD = [ _np1, _np2, _np3, _np4, _np5, _np6 ];
 
 
 
@@ -189,7 +213,7 @@ function report( gp, ap ) {
 
 async function checkPEQs( authData, cepid, cepidX, cepidM ) {
     
-    let goodGold = true;
+    let allPass = true;
     let awsPeqs = await awsUtils.getPEQs( authData, { "CEProjectId": cepid } );
     awsPeqs = awsPeqs.concat( await awsUtils.getPEQs( authData, { "CEProjectId": cepidX } ));
     awsPeqs = awsPeqs.concat( await awsUtils.getPEQs( authData, { "CEProjectId": cepidM } ));
@@ -203,6 +227,7 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	
     // For accrual date, this changes nightly.  One option is to set a 'last ingested' date.  For now, just check if a date exists or not.
     for( const gp of PEQS_GOLD ) {
+	let goodGold = true;
 	let active = gp.active == "true" ? "active" : "inactive";
 	let ap = awsPeqs.find( p => p.CEProjectId == gp.ceProjectId && p.HostIssueTitle == gp.title && utils.arrayEquals( p.HostProjectSub, gp.hostProjectSub ));
 	if( typeof ap === 'undefined' ) {
@@ -210,7 +235,7 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	    goodGold = false;
 	}
 	else {
-	    console.log( "Checking", active, gp.title );
+	    console.log( "Checking", active, gp.title, goodGold );
 	    goodGold = goodGold && ( gp.title == ap.HostIssueTitle);
 	    goodGold = goodGold && ( gp.ceProjectId == ap.CEProjectId );
 	    goodGold = goodGold && ( utils.arrayEquals( gp.ceHolderId, ap.CEHolderId ));
@@ -219,7 +244,9 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	    
 	    goodGold = goodGold && ( gp.peqType == ap.PeqType );
 	    goodGold = goodGold && ( gp.amount == ap.Amount );
-	    goodGold = goodGold && gp.accrualDate == -1 ? ( ap.AccrualDate != "---" ) : (ap.AccrualDate == "---"); 
+	    console.log( "    JOI?", active, gp.title, goodGold );
+	    goodGold = goodGold && (gp.accrualDate == -1 ? ( ap.AccrualDate != "---" ) : (ap.AccrualDate == "---")); 
+	    console.log( "    KOI?", active, gp.title, goodGold );
 	    goodGold = goodGold && ( gp.vestedPerc == ap.VestedPerc);
 	    
 	    goodGold = goodGold && ( utils.arrayEquals( gp.hostProjectSub, ap.HostProjectSub ));
@@ -231,9 +258,11 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 		report( gp, ap );
 	    }
 	}
+	allPass = allPass && goodGold;
     }
 
     for( const gp of NO_PEQS_GOLD ) {
+	let goodGold = true;
 	console.log( "Checking", "no peq", gp.title );
 	let ap = awsPeqs.find( p => p.CEProjectId == gp.ceProjectId && p.HostIssueTitle == gp.title && utils.arrayEquals( p.HostProjectSub, gp.hostProjectSub ));
 	if( typeof ap !== 'undefined' ) {
@@ -241,10 +270,11 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	    report( gp, ap );
 	    goodGold = false;
 	}
+	allPass = allPass && goodGold;
     }
 
-    if( goodGold ) { console.log( "Peq Gold Image testing Passed" ); }
-    return goodGold;
+    if( allPass ) { console.log( "Peq Gold Image testing Passed" ); }
+    return allPass;
 }
 
 async function runTests() {

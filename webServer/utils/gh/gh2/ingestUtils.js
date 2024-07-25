@@ -146,6 +146,7 @@ async function rejectCard( authData, ghLinks, pd, card, rejectLoc, msg, track ) 
 
 async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, splitTag, doNotTrack, rebase ) {
     let origIssueId = pd.issueId;
+    if( !utils.validField( issue, "allocation" )) { issue.allocation = false; }
     let issueData   = await ghV2.rebuildIssue( authData, pd.repoId, pd.projectId, issue, "", splitTag );
     assert( issueData[2] != -1 );
     
@@ -185,7 +186,8 @@ async function splitIssue( authData, ghLinks, link, hostUtility, pd, issue, spli
 
 	// Add assignees to pd, so recordPD pushes them to aws.  hostUserName.  Should be present as we are splitting a GH issue here.
 	// Without this, during ingest for ceFlutter, split issues will never see assignees.
-	pd.assignees = issue.assignees; 
+	// assignees are not relevant for allocations.  ignore to stay consistent with issueHandler
+	pd.assignees = issue.allocation ? [] : issue.assignees; 
 	awsUtils.recordPEQData(authData, pd, false, specials );
     }
     let success = await movePromise;
