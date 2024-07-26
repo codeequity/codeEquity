@@ -60,7 +60,7 @@ const _p9 = { title: "IR Plan split", id: "-1", ceProjectId: "CE_FlutTest_ks8asd
               hostProjectSub:["A Pre-Existing Project Flut", "Bacon"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
 const _p10 = { title: "IR Alloc split", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: ["yxsklawdpc"], hostHolderId:["U_kgDOBqJgmQ"], 
+	      ceHolderId: [], hostHolderId:[], 
               peqType: "allocation", amount: 125000, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["A Pre-Existing Project Flut", "Bacon"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
@@ -72,7 +72,7 @@ const _p11 = { title: "LabelTest Carded", id: "-1", ceProjectId: "CE_FlutTest_ks
 // Github Operations
 
 const _p12 = { title: "Component Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: ["yxsklawdpc"], hostHolderId:["U_kgDOBqJgmQ"], 
+	      ceHolderId: [], hostHolderId:[], 
               peqType: "allocation", amount: 1000000, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
@@ -81,10 +81,10 @@ const _p12 = { title: "Component Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8
 const _p13 = { title: "CT Blast", id: "-1", ceProjectId: "CE_AltTest_hakeld80a2", ceGrantorId:"---",
               ceHolderId: [], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOH8VRDg", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations", "Stripes"], hostRepoId: "R_kgDOH8VRDg", hostIssueId: "-1", active: "true" };
 
 const _p14 = { title: "IR Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: ["yxsklawdpc"], hostHolderId:["U_kgDOBqJgmQ"], 
+	      ceHolderId: [], hostHolderId:[], 
               peqType: "allocation", amount: 125000, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Stars"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
@@ -102,11 +102,11 @@ const _p17 = { title: "LM Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg
               peqType: "grant", amount: 501, accrualDate: -1, vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
-const _p18 = { title: "IR Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
+const _p18 = { title: "IR Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "pending", amount: 1000, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
-const _p19 = { title: "LM Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
+const _p19 = { title: "LM Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "pending", amount: 105, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
@@ -132,12 +132,13 @@ const _p29 = { title: "Situated Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks
 // CROSS PROJ
 // Note these two start in ariAlt, then xfer to flut and to serv.  So there are two active peqs here, different ceprojs
 const _p23 = { title: "CT Blast X", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
+	      ceHolderId: ["eaeIqcqqdp", "yxsklawdpc" ], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Cross Proj", "Cross Col"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 
+// no ingest, so no ceHolder
 const _p24 = { title: "CT Blast X", id: "-1", ceProjectId: "CE_ServTest_usda23k425", ceGrantorId:"---",
-	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
+              ceHolderId: [], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Cross Proj", "Cross Col"], hostRepoId: "R_kgDOIiH6sg", hostIssueId: "-1", active: "true" };
 
@@ -148,7 +149,7 @@ const _p25 = { title: "Blast 1", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42"
               peqType: "plan", amount: 604, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["UnClaimed", "UnClaimed"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 const _p26 = { title: "Blast 2", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
-	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
+              ceHolderId: ["eaeIqcqqdp", "yxsklawdpc"], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 604, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["UnClaimed", "UnClaimed"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
 const _p27 = { title: "Blast 6", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
@@ -235,6 +236,7 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	    goodGold = false;
 	}
 	else {
+	    console.log( "" );
 	    console.log( "Checking", active, gp.title, goodGold );
 	    goodGold = goodGold && ( gp.title == ap.HostIssueTitle);
 	    goodGold = goodGold && ( gp.ceProjectId == ap.CEProjectId );
@@ -244,9 +246,7 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	    
 	    goodGold = goodGold && ( gp.peqType == ap.PeqType );
 	    goodGold = goodGold && ( gp.amount == ap.Amount );
-	    console.log( "    JOI?", active, gp.title, goodGold );
 	    goodGold = goodGold && (gp.accrualDate == -1 ? ( ap.AccrualDate != "---" ) : (ap.AccrualDate == "---")); 
-	    console.log( "    KOI?", active, gp.title, goodGold );
 	    goodGold = goodGold && ( gp.vestedPerc == ap.VestedPerc);
 	    
 	    goodGold = goodGold && ( utils.arrayEquals( gp.hostProjectSub, ap.HostProjectSub ));
@@ -263,6 +263,7 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 
     for( const gp of NO_PEQS_GOLD ) {
 	let goodGold = true;
+	console.log( "" );
 	console.log( "Checking", "no peq", gp.title );
 	let ap = awsPeqs.find( p => p.CEProjectId == gp.ceProjectId && p.HostIssueTitle == gp.title && utils.arrayEquals( p.HostProjectSub, gp.hostProjectSub ));
 	if( typeof ap !== 'undefined' ) {
@@ -279,6 +280,7 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 
 async function runTests() {
     console.log( "Gold image test for AWS Peqs after ingest" );
+    console.log( "Don't forget to run ingest first!" );
 
 
     let authData     = new authDataC.AuthData();

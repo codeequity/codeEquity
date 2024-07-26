@@ -1866,7 +1866,8 @@ async function checkAllocSplit( authData, testLinks, td, issDat, origLoc, newLoc
 	    let specials = { awsVal: awsVal, splitVal: splitVal, lblCount: labelCnt };
 	    testStatus = await checkAlloc( authData, testLinks, td, origLoc, issDat, card, testStatus, specials );
 	    specials.awsVal = splitVal;
-	    specials.assignees = issAssignCnt; 
+	    // no.. allocs do not get assignees
+	    // specials.assignees = issAssignCnt; 
 	    testStatus = await checkAlloc( authData, testLinks, td, newLoc,  splitDat, splitCard, testStatus, specials );
 	}
 	

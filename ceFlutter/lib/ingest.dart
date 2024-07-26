@@ -85,9 +85,12 @@ Future updateCEUID( appState, todos, context, container, peqMods ) async {
 // XXX may be able to kill categoryBase
 
 // One allocation per category.. i.e. project:column:pallocCat or project:column:assignee.  Could also be project:project is first is the master proj
-void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmount, PeqType peqType, {Allocation? source = null, String pid = ""} ) {
+void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmt, PeqType peqType, {Allocation? source = null, String pid = ""} ) {
    
    assert( appState.myPEQSummary.allocations != null );
+
+   // splitAmt arrives as double to avoid huge rounding errors when calculating assignee shares.  Drop remainder here
+   int splitAmount = splitAmt.toInt();
    
    // subCat is either assignee, or palloc title (if peqType is alloc)
    List<String> suba = new List<String>.from( cat );
@@ -444,7 +447,7 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
       print( "WARNING.  Must have assignees in order to accrue!" );
       return;
    }
-
+   
    List<String> subProp = new List<String>.from( subBase ); subProp.last = "Pending PEQ Approval";  // XXX Where does this name come from in ceFlutter?
    List<String> subAccr = new List<String>.from( subBase ); subAccr.last = "Accrued";  // XXX 
    
@@ -509,7 +512,8 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
       peqData['ceGrantorId'] = peq.ceGrantorId;
    }
    
-   peqData['amount'] = ( assigneeShare * assignees.length ).toInt();
+   // peqData['amount'] = ( assigneeShare * assignees.length ).toInt();
+   peqData['amount'] = ( assigneeShare * assignees.length ).round();
    peqData['hostProjectSub'] = peqLoc;
 
    if( peqData['peqType']      != peq.peqType )              { vPrint( appState, "_accrue changing peqType to "     + peqData['peqType'] ); }
@@ -815,7 +819,7 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    var baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
 
    List<String> newAssign = assignees;
-   int newShareAmount     = assigneeShare;
+   double newShareAmount  = assigneeShare;  
    String newTitle        = peq.hostIssueTitle;
    String pactLast        = _convertNameToId( appState, pact.subject.last );  // if peqValUpdate, this will be an int, but won't be used.
 
@@ -830,18 +834,17 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
          if( assign != "Unassigned" && !curAssign.contains( assign ) ) { curAssign.add( assign ); }   // XXX formalize this            
       }
       
-      var curSplitAmount = ( assigneeShare * assignees.length / curAssign.length ).floor();
-      newAssign      = curAssign;
-      newShareAmount = curSplitAmount;
-      
+      newAssign          = curAssign;
+      newShareAmount     = (assigneeShare * assignees.length).round() / curAssign.length;
+   
       // Remove all old, add all current with new assigneeShares
       for( var assign in assignees ) {
-         vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
+         vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
          adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
       }
       for( var assign in curAssign ) {
-         vPrint( appState, "Add " + assign + " " + curSplitAmount.toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, curSplitAmount, sourceType );
+         vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+         adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
       }
    }
    else if( pact.note == "remove assignee" ) {    // XXX formalize this
@@ -854,7 +857,7 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
       
       // Remove all old allocs
       for( var assign in assignees ) {
-         vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
+         vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
          adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
       }
       
@@ -862,13 +865,12 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
       assignees.remove( pactLast );
       if( assignees.length == 0 ) { assignees.add( "Unassigned" ); }// XXX formalize this
       
-      var curSplitAmount = ( assigneeShare * originalSize / assignees.length ).floor();  
-      newAssign      = assignees;
-      newShareAmount = curSplitAmount;
+      newAssign          = assignees;
+      newShareAmount     = (assigneeShare * originalSize).round() / assignees.length;
       
       for( var assign in assignees ) {
-         vPrint( appState, "Add " + assign + " " + curSplitAmount.toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, curSplitAmount, sourceType );
+         vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+         adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
       }
    }
    else if( pact.note == "peq val update" ) { // XXX formalize this
@@ -877,30 +879,28 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
       if( ka.allocType != PeqType.allocation ) {
          // Remove all old allocs
          for( var assign in assignees ) {
-            vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
+            vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
             adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
          }
          
-         var curSplitAmount = ( int.parse( pact.subject.last ) / assignees.length ).floor();  
-         newShareAmount = curSplitAmount;
+         newShareAmount = int.parse( pact.subject.last ) / assignees.length;
          
          for( var assign in assignees ) {
-            vPrint( appState, "Add " + assign + " " + curSplitAmount.toString() );
-            adjustSummaryAlloc( appState, peq.id, baseCat, assign, curSplitAmount, sourceType );
+            vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+            adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
          }
       }
       else {
          // Remove old alloc
          String aTitle = ka.category.last;
-         vPrint( appState, "Remove " + baseCat.toString() + " " + aTitle + " " + assigneeShare.toString() );
+         vPrint( appState, "Remove " + baseCat.toString() + " " + aTitle + " " + assigneeShare.floor().toString() );
          adjustSummaryAlloc( appState, peq.id, baseCat, aTitle, -1 * assigneeShare, sourceType );
 
          var divisor = assignees.length == 0 ? 1 : assignees.length;   // might have assignees, might have none
-         var curSplitAmount = ( int.parse( pact.subject.last ) / divisor ).floor();  
-         newShareAmount = curSplitAmount;
+         newShareAmount = int.parse( pact.subject.last ) / divisor;
          
-         vPrint( appState, "Add " + aTitle + " " + curSplitAmount.toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, aTitle, curSplitAmount, sourceType );
+         vPrint( appState, "Add " + aTitle + " " + newShareAmount.floor().toString() );
+         adjustSummaryAlloc( appState, peq.id, baseCat, aTitle, newShareAmount, sourceType );
       }
       
    }
@@ -919,7 +919,7 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
       
       // Remove old allocs for peq
       for( var assign in assignees ) {
-         vPrint( appState, "Remove " + peq.id + " in " + baseCat.toString() + " " + assign + " " + assigneeShare.toString() );
+         vPrint( appState, "Remove " + peq.id + " in " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
          adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
       }
 
@@ -929,7 +929,7 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
       // We need assignees for accrued, and in particular need to retain assignees for accrued issues.
       // Add back here, then ignore subsequent add.
       for( var assign in assignees ) {
-         vPrint( appState, "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.toString() );
+         vPrint( appState, "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.floor().toString() );
          adjustSummaryAlloc( appState, pact.subject[1], ["UnClaimed", "Accrued" ], assign, assigneeShare, sourceType ); // XXX formalize
       }
 
@@ -947,10 +947,10 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
          // Remove old alloc
          assert( assignees.length == 1 );
          String oldTitle = ka.category.last;
-         vPrint( appState, "Remove " + baseCat.toString() + " " + oldTitle + " " + assigneeShare.toString() );
+         vPrint( appState, "Remove " + baseCat.toString() + " " + oldTitle + " " + assigneeShare.floor().toString() );
          adjustSummaryAlloc( appState, peq.id, baseCat, oldTitle, -1 * assigneeShare, sourceType );
          
-         vPrint( appState, "Add " + newTitle + " " + assigneeShare.toString() );
+         vPrint( appState, "Add " + newTitle + " " + assigneeShare.floor().toString() );
          adjustSummaryAlloc( appState, peq.id, baseCat, newTitle, assigneeShare, sourceType );
 
          // inform pending _relos, if any
@@ -993,7 +993,7 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    peqData['id']             = peq.id;
    peqData['hostHolderId']   = listEq( newAssign, ["Unassigned"] ) ? [] : newAssign;
    peqData['ceHolderId'  ]   = ceHolders;
-   peqData['amount']         = ( newShareAmount * newAssign.length ).toInt();
+   peqData['amount']         = ( newShareAmount * newAssign.length ).round();
    peqData['hostIssueTitle'] = newTitle;
 
    if( !listEq( peqData['hostHolderId'], peq.hostHolderId )) { vPrint( appState, "_change changing assignees to "   + peqData['hostHolderId'].toString() ); }
@@ -1098,13 +1098,16 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
          assignees = hids;
       }
    }
-
+   // NOTE: assignees can be [] at this point, if ka is not null
+   if( assignees.length == 0 ) { assignees = [ "Unassigned" ]; }  // XXX Formalize
+       
    assert( ka == null || ka.categoryBase       != null );
    assert( ka == null || ka.sourcePeq          != null );
    assert( ka == null || ka.sourcePeq![peq.id] != null );
    
    List<String> subBase = ka == null ? peq.hostProjectSub                      : ka.categoryBase!; 
-   int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.sourcePeq![ peq.id ]!;
+   // int assigneeShare    = ka == null ? (peq.amount / assignees.length).floor() : ka.sourcePeq![ peq.id ]!;
+   double assigneeShare    = ( ka == null ? (peq.amount / assignees.length) : ka.sourcePeq![ peq.id ]! ).toDouble();
 
    // XXX switch
    // propose accrue == pending.   confirm accrue == grant.  others are plan.  end?
