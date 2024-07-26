@@ -6,6 +6,7 @@
         "start": "node ./bin/www",
         "testMain": "node ./tests/gh/testMain.js",
         "testFlutter": "node ./tests/gh/testMain.js ceFlutter",
+        "checkPeqs": "node ./tests/gh/checkPeqs.js",
         "sanityCheck": "node ./tests/sanityCheck.js",
         "cleanFlutter": "node ./tests/gh/cleanLoad.js",
         "testSetup": "node ./tests/gh/testSetup.js",

@@ -172,7 +172,13 @@ async function settleWithVal( fname, func, ...params ) {
     return retVal;
 }
 
-
+// NOTE: works if members of a and b are primitives
+function arrayEquals(a, b) {
+    return Array.isArray(a) &&
+        Array.isArray(b) &&
+        a.length === b.length &&
+        a.every((val, index) => val === b[index]);
+}
 
 
 
@@ -211,6 +217,7 @@ exports.getMillis     = getMillis;
 exports.millisDiff    = millisDiff;
 exports.getToday      = getToday;
 exports.settleWithVal = settleWithVal;
+exports.arrayEquals   = arrayEquals;
 
 exports.getProjectSubs = getProjectSubs;
 
