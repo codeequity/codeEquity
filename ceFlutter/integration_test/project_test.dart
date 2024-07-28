@@ -9,7 +9,6 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:ceFlutter/utils_load.dart';
 import 'utils.dart';
 
 /*
@@ -1074,8 +1073,8 @@ void main() {
          report( 'Project contents, ingest' );
       });
 
+   //testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
    testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
-         //testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );

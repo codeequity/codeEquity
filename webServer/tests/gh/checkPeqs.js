@@ -78,10 +78,11 @@ const _p12 = { title: "Component Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8
 
 // this shows up in inactive as well.  this is a transferred peq, note the different cepid, psub, repo
 // note this one is in a different ceproj.  it has not been ingested, so no ceholderids
+// NOTE: If genFlutData did not run, this will have a ceServer psub, i.e: ["Github Operations", "Stripes"]
 const _p13 = { title: "CT Blast", id: "-1", ceProjectId: "CE_AltTest_hakeld80a2", ceGrantorId:"---",
               ceHolderId: [], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Github Operations", "Stripes"], hostRepoId: "R_kgDOH8VRDg", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOH8VRDg", hostIssueId: "-1", active: "true" };
 
 const _p14 = { title: "IR Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: [], hostHolderId:[], 
@@ -232,16 +233,17 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	let active = gp.active == "true" ? "active" : "inactive";
 	let ap = awsPeqs.find( p => p.CEProjectId == gp.ceProjectId && p.HostIssueTitle == gp.title && utils.arrayEquals( p.HostProjectSub, gp.hostProjectSub ));
 	if( typeof ap === 'undefined' ) {
-	    console.log( "ERROR.  Gold image PEQ is not found in dynamo", gp.title );
+	    console.log( "ERROR.  Gold image PEQ is not found in dynamo", gp.ceProjectId, gp.title, gp.hostProjectSub );
 	    goodGold = false;
 	}
 	else {
 	    console.log( "" );
 	    console.log( "Checking", active, gp.title, goodGold );
+
 	    goodGold = goodGold && ( gp.title == ap.HostIssueTitle);
 	    goodGold = goodGold && ( gp.ceProjectId == ap.CEProjectId );
-	    goodGold = goodGold && ( utils.arrayEquals( gp.ceHolderId, ap.CEHolderId ));
-	    goodGold = goodGold && ( utils.arrayEquals( gp.hostHolderId, ap.HostHolderId ));
+	    goodGold = goodGold && ( utils.arrayEquals( gp.ceHolderId.sort(), ap.CEHolderId.sort() ));
+	    goodGold = goodGold && ( utils.arrayEquals( gp.hostHolderId.sort(), ap.HostHolderId.sort() ));
 	    goodGold = goodGold && ( gp.ceGrantorId == ap.CEGrantorId );
 	    
 	    goodGold = goodGold && ( gp.peqType == ap.PeqType );
