@@ -881,6 +881,12 @@ Future<bool> validateAri27( WidgetTester tester ) async {
 Future<bool> validateAlloc44( WidgetTester tester ) async {
    await expandAllocs( tester, 4, 4 );  // soft comp
    await expandAllocs( tester, 6, 6 );  // gho
+
+   // avoid missing this if screen is short
+   final listFinder   = find.byType( ListView );         
+   await tester.drag( listFinder, Offset(0.0, -200.0) );
+   print( "DOWN" );
+   
    await expandAllocs( tester, 12, 12 ); // stripes
    await checkOffsetAlloc( tester, 13, "Component Alloc 42" );
 
@@ -902,6 +908,11 @@ Future<bool> validateAlloc44( WidgetTester tester ) async {
    
    expect( await backToSummary( tester ), true );
    await toggleTableEntry( tester, 12, "" );
+
+   // back up
+   await tester.drag( listFinder, Offset(0.0, 200.0) );
+   print( "UP" );
+   
    await toggleTableEntry( tester, 6, "" );
    await toggleTableEntry( tester, 4, "" );
    

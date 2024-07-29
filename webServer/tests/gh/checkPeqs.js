@@ -107,6 +107,8 @@ const _p18 = { title: "IR Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "pending", amount: 1000, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+
+// Note, ceServer version of this has 501 peq not 105.  Ingest is not run for ceServer testing.
 const _p19 = { title: "LM Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "pending", amount: 105, accrualDate: "---", vestedPerc: 0,
@@ -177,10 +179,15 @@ const _ip2 = { title: "CT Blast", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
 
+const _ip3 = { title: "Situated Accrued card1st", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
+	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
+              peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
+              hostProjectSub:["Software Contributions", "Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
+
 
 const PEQS_GOLD = [ _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16, _p17, _p18, _p19, _p20, _p21, _p22, _p23, _p24,
 		    _p25, _p26, _p27, _p28, _p29,
-		    _ip1, _ip2 ];
+		    _ip1, _ip2, _ip3 ];
 
 
 // NO PEQS
@@ -191,8 +198,9 @@ const _np3 = { title: "Parsley", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42"
 const _np4 = { title: "Carded Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 const _np5 = { title: "Carded Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 const _np6 = { title: "LM Newborn", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
+const _np7 = { title: "Situated Accrued iss1st", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 
-const NO_PEQS_GOLD = [ _np1, _np2, _np3, _np4, _np5, _np6 ];
+const NO_PEQS_GOLD = [ _np1, _np2, _np3, _np4, _np5, _np6, _np7 ];
 
 
 
