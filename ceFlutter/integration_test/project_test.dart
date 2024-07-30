@@ -50,7 +50,7 @@ const Map<String,List<String>> ALLOCS_GOLD =
             "ariCETester 12":       ["Category, Cross Proj, Cross Col, ariCETester", "0", "352", "0", "0", "---"],
             "builderCE 13":         ["Category, Cross Proj, Cross Col, builderCE", "0", "352", "0", "0", "---"],
 
-      "Software Contributions 14":  ["Category, Software Contributions", "5,500,000", "3,455", "1,354", "6,501", "5,488,294"],
+      "Software Contributions 14":  ["Category, Software Contributions", "7,125,000", "3,455", "1,354", "6,501", "7,113,690"],
       
       "Data Security Flut 15":      ["Category, Software Contributions, Data Security Flut", "1,000,000", "500", "250", "4,000", "995,250"],
          "Accrued 16":              ["Category, Software Contributions, Data Security Flut, Accrued", "0", "0", "0", "4,000", "---"],
@@ -63,7 +63,7 @@ const Map<String,List<String>> ALLOCS_GOLD =
             "IR Alloc split 23":    ["Category, Software Contributions, Data Security Flut, Planned, IR Alloc split", "500,000", "0", "0", "0", "500,000"],
             "builderCE 24":         ["Category, Software Contributions, Data Security Flut, Planned, builderCE", "0", "500", "0", "0", "---"],
 
-      "Github Operations Flut 25":  ["Category, Software Contributions, Github Operations Flut", "1,500,000", "2,955", "1,104", "2,501", "1,493,044"],
+      "Github Operations Flut 25":  ["Category, Software Contributions, Github Operations Flut", "3,125,000", "2,955", "1,104", "2,501", "3,118,440"],
          "Accrued 26":              ["Category, Software Contributions, Github Operations Flut, Accrued", "0", "0", "0", "2,501", "---"],
             "ariCETester 27":       ["Category, Software Contributions, Github Operations Flut, Accrued, ariCETester", "0", "0", "0", "2,000", "---"],
             "builderCE 28":         ["Category, Software Contributions, Github Operations Flut, Accrued, builderCE", "0", "0", "0", "501", "---"],
@@ -817,6 +817,7 @@ Future<bool> validateAri27( WidgetTester tester ) async {
 
    String issue = "Situated Accrued iss1st";  // peq 0
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
+
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "0 0 confirm add" ),      true );
    expect( await validatePass(          tester,                         "1 0 confirm relocate" ), true );
    expect( await validateAssign(        tester, repo, issue, "ariCETester", "2 0 confirm change" ),   true );
@@ -857,6 +858,7 @@ Future<bool> validateAri27( WidgetTester tester ) async {
    expect( await validateConfirmAccrue( tester, repo,                "12 2 confirm accrue" ),   true );
 
    await tester.drag( listFinder, Offset(0.0, -300.0) );
+   await pumpSettle( tester, 2 );
    
    issue  = "IR Accrued";              // peq 3
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
@@ -1017,8 +1019,8 @@ void main() {
    
    report( 'Project', group:true );
 
-   testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
-         //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+   // testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
+   testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -1047,8 +1049,8 @@ void main() {
 
    // NOTE: testCEFlutter.py always runs 'npm clean' before this if override is set
    //       it is possible to depend on process_run and run from here, but that clutters deps
-   //testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
-   testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
+   testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
+         //testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -1084,8 +1086,8 @@ void main() {
          report( 'Project contents, ingest' );
       });
 
-   //testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
-   testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
+   testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
+         //testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -1204,10 +1206,19 @@ void main() {
          expect( await peqSummaryTabFraming( tester ),   true );
 
          expect( await validateBuilder30( tester ), true );
+         print( "Validated builder30" );
+
          expect( await validateAri27( tester ), true );
+         print( "Validated ari27" );
+
          expect( await validateAlloc44( tester ), true );
+         print( "Validated alloc44" );
+
          expect( await validateUnAlloc45( tester ), true );
+         print( "Validated unalloc45" );
+
          expect( await validateUnAssign51( tester ), true );
+         print( "Validated unassign51" );
          
          await logout( tester );         
 

@@ -39,6 +39,8 @@ class Leaf extends StatelessWidget implements Tree {
    int getPendingAmount() { return pendingAmount; }
    @override
    int getAccrueAmount() { return accrueAmount; }
+   @override
+   int getChildSurplusAmount() { return max( 0, allocAmount - planAmount - pendingAmount - accrueAmount ); }
    
    @override
    Tree? findNode( String target ) { return null; }
@@ -72,13 +74,13 @@ class Leaf extends StatelessWidget implements Tree {
       int planInt  = getPlanAmount();
       int pendInt  = getPendingAmount();
       int accrInt  = getAccrueAmount();
-      int unallocInt = max( 0, allocInt - planInt - pendInt - accrInt );
+      int surplusInt = getChildSurplusAmount();
       
       String alloc   = addCommas( allocInt );
       String plan    = addCommas( planInt );
       String pending = addCommas( pendInt );
       String accrue  = addCommas( accrInt );
-      String unalloc = unallocInt == 0 ? "" : addCommas( unallocInt );
+      String surplus = surplusInt == 0 ? "" : addCommas( surplusInt );
       
       List<Widget> anode = [];
       // anode.add( this );
@@ -87,7 +89,7 @@ class Leaf extends StatelessWidget implements Tree {
       anode.add( makeTableText( appState!, plan,    numWidth, height, false, 1 ) );
       anode.add( makeTableText( appState!, pending, numWidth, height, false, 1 ) );
       anode.add( makeTableText( appState!, accrue,  numWidth, height, false, 1 ) );
-      anode.add( makeTableText( appState!, unalloc, numWidth, height, false, 1 ) );      
+      anode.add( makeTableText( appState!, surplus, numWidth, height, false, 1 ) );      
       nodes.add( anode );
 
       return nodes;
