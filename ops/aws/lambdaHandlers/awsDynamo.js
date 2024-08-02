@@ -1047,7 +1047,7 @@ async function updatePEQ( pLink ) {
 	spinCount++;
 	await sleep( SPIN_DELAY );
     }
-    if( spinCount >= MAX_SPIN ) { return LOCKED; }
+    if( spinCount >= MAX_SPIN ) { console.log( "Error locking timeout" ); return LOCKED; }
 
     
     // Only props that get updated

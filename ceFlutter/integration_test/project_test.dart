@@ -1019,8 +1019,8 @@ void main() {
    
    report( 'Project', group:true );
 
-   // testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
-   testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+   testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
+         //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -1049,8 +1049,8 @@ void main() {
 
    // NOTE: testCEFlutter.py always runs 'npm clean' before this if override is set
    //       it is possible to depend on process_run and run from here, but that clutters deps
-   testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
-         //testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
+   // testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
+   testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
@@ -1086,8 +1086,8 @@ void main() {
          report( 'Project contents, ingest' );
       });
 
-   testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
-         //testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
+   //testWidgets('Project frame coherence', skip:true, (WidgetTester tester) async {
+   testWidgets('Project frame coherence', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
