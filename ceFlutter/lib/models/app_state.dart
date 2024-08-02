@@ -62,6 +62,7 @@ class AppState {
    Node? allocTree;
    late bool  updateAllocTree;
    late bool  expansionChanged;
+   late bool  updateEquityPlan; 
 
    late HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
    
@@ -108,6 +109,7 @@ class AppState {
       allocTree        = null;
       updateAllocTree  = false;
       expansionChanged = false;
+      updateEquityPlan = false;
 
       allocExpanded = HashMap<String, bool>();
 

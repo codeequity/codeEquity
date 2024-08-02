@@ -88,14 +88,35 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       List<List<Widget>> catList = [];
 
-      assert( appState.equityPlan != null );
-      
-      for( int i = 0; i < appState.equityPlan!.categories.length; i++ ) {
-         List<String> cat = appState.equityPlan!.categories[i];
-         int          amt = appState.equityPlan!.amounts[i];
-         catList.add( _getTile( cat.sublist(0, cat.length-1), cat.last, amt, width, cat.length ) ); 
+      if( appState.updateEquityPlan ) {
+         
+         print( "Getting Widgets!" );
+         
+         assert( appState.equityPlan != null );
+         
+         for( int i = 0; i < appState.equityPlan!.categories.length; i++ ) {
+            List<String> cat = appState.equityPlan!.categories[i];
+            int          amt = appState.equityPlan!.amounts[i];
+            catList.add( _getTile( cat.sublist(0, cat.length-1), cat.last, amt, width, cat.length ) ); 
+         }
+         appState.updateEquityPlan = false;
       }
       return catList;
+   }
+
+   void _updateListItems( oldIndex, newIndex ) {
+      assert( appState.equityPlan != null );
+
+      // When moving an item up (i.e. oldIndex > newIndex), all is as expected.
+      // When moving an item down, then newIndex is +1.
+      // For example, 3 items.  move middle to 0th position gives (1 -> 0)
+      //                        move middle to last position gives (1 -> 3)
+
+      if( oldIndex < newIndex ) { newIndex = newIndex - 1; }
+      print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
+      appState.equityPlan!.move( oldIndex, newIndex );
+
+      setState(() => appState.updateEquityPlan = true );      
    }
    
    Widget getEquityPlan( context ) {
@@ -122,6 +143,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          final ScrollController controller = ScrollController();
 
+
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),
             child: SingleChildScrollView(
@@ -129,7 +151,9 @@ class _CEEquityState extends State<CEEquityFrame> {
                child: SizedBox(
                   height: svHeight,
                   width: svWidth,
-                  child: ListView(
+                  child: ReorderableListView(
+                     onReorder: (oldIndex, newIndex) { _updateListItems(oldIndex, newIndex); ; },
+                     header: Text( "Oi!" ),
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
@@ -138,7 +162,6 @@ class _CEEquityState extends State<CEEquityFrame> {
                               categoryWidth,
                               (indexY) => categories[indexX][indexY] )))
                         ))));
-         
       }
    }
    

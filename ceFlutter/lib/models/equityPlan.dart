@@ -1,3 +1,5 @@
+import 'dart:math';
+
 // ceFlutter use only
 
 class EquityPlan {
@@ -22,6 +24,32 @@ class EquityPlan {
          );
    }
 
+   // Moving down?  all between move up.
+   void move( int oldIndex, int newIndex ) {
+      assert( categories.length == amounts.length );
+      assert( oldIndex < categories.length );
+      assert( newIndex < categories.length );
+
+      var tmpCat = categories[oldIndex];
+      var tmpAmt = amounts[oldIndex];
+
+      if( oldIndex < newIndex ) {  // move in-betweens up
+         for( int i = oldIndex + 1; i <= newIndex; i++ ) {
+            categories[i-1] = categories[i];
+            amounts[i-1]    = amounts[i];
+         }
+      }
+      else { // move in-betweens down
+         for( int i = oldIndex; i > newIndex; i-- ) {
+            categories[i] = categories[i-1];
+            amounts[i]    = amounts[i-1];
+         }
+      }
+
+      categories[newIndex] = tmpCat;
+      amounts[newIndex]    = tmpAmt;
+   }
+   
    String toString() {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;
       for( int i = 0; i < categories.length; i++ ) {

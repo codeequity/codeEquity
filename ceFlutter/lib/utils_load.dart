@@ -594,6 +594,7 @@ Future<void> reloadRepo( context, container ) async {
    }
 
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
+   if( appState.equityPlan != null ) { appState.updateEquityPlan = true; }  // force equity plan update
 }
 
 
