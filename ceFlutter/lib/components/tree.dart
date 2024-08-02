@@ -7,6 +7,7 @@ abstract class Tree {
    int getPlanAmount();
    int getPendingAmount();
    int getAccrueAmount();
+   int getChildSurplusAmount();
 
    Tree? findNode( String target ); 
    

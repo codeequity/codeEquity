@@ -10,6 +10,7 @@ import 'package:ceFlutter/cognitoUserService.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
+import 'package:ceFlutter/models/equityPlan.dart';
 import 'package:ceFlutter/models/hostAccount.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 
@@ -48,10 +49,11 @@ class AppState {
 
    late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, hostUserName
    
-   late List<PEQ>       myPEQs;                // ??? XXX
-   late List<PEQAction> myPEQActions;          // ??? XXX
-   late PEQSummary?     myPEQSummary;          // Summary info for the selectedCEProject
-   late Linkage?        myHostLinks;           // Current project/column disposition per ceProject
+   late List<PEQ>         myPEQs;                // ??? XXX
+   late List<PEQAction>   myPEQActions;          // ??? XXX
+   late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
+   late Linkage?          myHostLinks;           // Current project/column disposition per ceProject
+   late EquityPlan?       equityPlan;            // Equity plan for the selectedCEProject
    late bool peqUpdated;
 
    late List<HostAccount> myHostAccounts;   
@@ -60,6 +62,7 @@ class AppState {
    Node? allocTree;
    late bool  updateAllocTree;
    late bool  expansionChanged;
+   late bool  updateEquityPlan; 
 
    late HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
    
@@ -97,6 +100,7 @@ class AppState {
       myPEQActions = [];
       myPEQSummary = null;
       peqUpdated   = false;
+      equityPlan   = null;
 
       myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
       myHostLinks    = null;
@@ -105,6 +109,7 @@ class AppState {
       allocTree        = null;
       updateAllocTree  = false;
       expansionChanged = false;
+      updateEquityPlan = false;
 
       allocExpanded = HashMap<String, bool>();
 
@@ -120,7 +125,7 @@ class AppState {
    init() {
       screenHeight = -1;
       screenWidth  = -1;
-      verbose      = 1;
+      verbose      = 2;
       
       // Cognito values
       authRetryCount = 0;

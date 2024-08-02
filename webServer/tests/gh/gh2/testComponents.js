@@ -906,7 +906,7 @@ async function testLabelMods( authData, testLinks, td ) {
 	testStatus = await gh2tu.checkNewlyAccruedIssue( authData, testLinks, td, ghoAccr, issAccrDat, cardAccr, testStatus, {label: 501, lblCount: 2} );	
 	tu.testReport( testStatus, "Label mods G" );
 
-	// 8. Make partial peq label.  Three will be unlabeled (can't have 2 peq labels), one will remain.
+	// 8. Make partial peq label.  Three will be unlabeled (can't have 2 peq labels), one will remain.  Changed labNP1 from newName to 105P
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
 

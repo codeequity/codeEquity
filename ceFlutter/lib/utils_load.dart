@@ -24,6 +24,7 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
+import 'package:ceFlutter/models/equityPlan.dart';
 import 'package:ceFlutter/models/PEQRaw.dart';
 import 'package:ceFlutter/models/person.dart';
 import 'package:ceFlutter/models/hostAccount.dart';
@@ -185,6 +186,8 @@ Future<http.Response> postIt( String shortName, postData, container ) async {
          body: postData
          );
 
+   if (response.statusCode != 201) { print( "Error.  aws post error " + shortName + " " + postData ); }
+   
    return response;
 }
 
@@ -573,6 +576,11 @@ Future<void> reloadRepo( context, container ) async {
    postDataPS['PEQSummaryId'] = ceProj;
    var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
    appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
+
+   // XXXXXXX
+   var cats = [ ["Software Contributions", "Data Security" ], ["A Pre-Existing Project"], ["Software Contributions"] ];
+   var amts = [ 2000000, 3000000, 7000000 ];
+   appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: cats, amounts: amts, lastMod: "" );
    
    // Get linkage
    var postDataL = {};
@@ -586,6 +594,7 @@ Future<void> reloadRepo( context, container ) async {
    }
 
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
+   if( appState.equityPlan != null ) { appState.updateEquityPlan = true; }  // force equity plan update
 }
 
 

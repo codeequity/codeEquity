@@ -98,6 +98,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    }
    
    // XXX this could easily be made iterative
+   // BuildAllocTree creates the linkages between nodes.  Node actually controls most the the view for each element.
    // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
    // header      alloc                   sub alloc                 plan
    _buildAllocationTree() {
@@ -112,6 +113,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       }
 
       // These were built during ingest
+      // Per allocation, walk the current tree (curNode) by stepping through the alloc.category chain to see where this alloc belongs
       for( var alloc in appState.myPEQSummary!.getAllAllocs() ) {
 
          assert( appState.allocTree != null );
@@ -173,7 +175,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   (childNode as Node).addAlloc( alloc.amount! );
                }
             }
-            else { print( "XXX BAD" ); }
+            else { assert( false ); }
          }
       }
       appState.updateAllocTree = false;

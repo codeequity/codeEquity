@@ -89,10 +89,10 @@ class Node extends StatelessWidget implements Tree {
      // Unlike the other amounts, which are independently summed, allocations are dependent in a top-down hierarchy.
      // For example, if githubOps is allocated 2m, and a child card (say, testing) is allocated 500k, the top level allocation is 2m.
      //              This is because the child card allocation is meant to be a part of the overall alloc for githubOps.
-    var sum = allocAmount;
-    if( sum > 0 ) { return sum; }
-    leaves.forEach((Tree leaf) => sum += leaf.getAllocAmount());
-    return sum;
+    var psum = allocAmount;
+    var csum = 0;
+    leaves.forEach((Tree leaf) => csum += leaf.getAllocAmount());
+    return max( psum, csum );
   }
 
   @override
@@ -111,6 +111,12 @@ class Node extends StatelessWidget implements Tree {
   int getAccrueAmount() {
     var sum = 0;
     leaves.forEach((Tree leaf) => sum += leaf.getAccrueAmount());
+    return sum;
+  }
+  @override
+  int getChildSurplusAmount() {
+    var sum = 0;
+    leaves.forEach((Tree leaf) => sum += leaf.getChildSurplusAmount());
     return sum;
   }
 
@@ -162,24 +168,30 @@ class Node extends StatelessWidget implements Tree {
 
      if( !isVisible ) { return nodes; }
 
-     int allocInt = getAllocAmount();
-     int planInt  = getPlanAmount();
-     int pendInt  = getPendingAmount();
-     int accrInt  = getAccrueAmount();
-     int unallocInt = max( 0, allocInt - planInt - pendInt - accrInt );
+     int allocInt        = getAllocAmount();
+     int planInt         = getPlanAmount();
+     int pendInt         = getPendingAmount();
+     int accrInt         = getAccrueAmount();
+     int childSurplusInt = getChildSurplusAmount();
+     int surplusInt = max( 0, allocInt - planInt - pendInt - accrInt );
 
+     // XXX ignore for now
+     // Parent surplus >= children surplus in valid cases.
+     // if( surplusInt < childSurplusInt ) { print( "XXX XXX XXX" + surplusInt.toString() + " " + childSurplusInt.toString() ); }
+     
      String alloc   = addCommas( allocInt );
      String plan    = addCommas( planInt );
      String pending = addCommas( pendInt );
      String accrue  = addCommas( accrInt );
-     String unalloc = unallocInt == 0 || currentDepth > 2 ? "" : addCommas( unallocInt );
+     // String surplus = surplusInt == 0 || currentDepth > 2 ? "" : addCommas( surplusInt );
+     String surplus = surplusInt == 0  ? "" : addCommas( surplusInt );
         
      if( header ) {
         alloc   = "Allocation";
         plan    = "Planned";
         pending = "Pending";
         accrue  = "Accrued";
-        unalloc = "Surplus";
+        surplus = "Surplus";
      }
 
      // Path is known here.  Make _tileExpanded consistent with path state, in case we have paged back into an active summary page
@@ -199,7 +211,7 @@ class Node extends StatelessWidget implements Tree {
      anode.add( makeTableText( appState!, plan, numWidth, height, false, 1 ) );
      anode.add( makeTableText( appState!, pending, numWidth, height, false, 1 ) );
      anode.add( makeTableText( appState!, accrue, numWidth, height, false, 1 ) );
-     anode.add( makeTableText( appState!, unalloc, numWidth, height, false, 1 ) );
+     anode.add( makeTableText( appState!, surplus, numWidth, height, false, 1 ) );
      nodes.add( anode );
 
      if( firstPass & isInitiallyExpanded ) {

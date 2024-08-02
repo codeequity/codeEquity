@@ -174,7 +174,8 @@ class _AppStateContainerState extends State<AppStateContainer> {
      await getAPIBasePath();
      if( !newUser ) {
         await reloadMyProjects( context, this );
-        state.updateAllocTree = true;                 // forces buildAllocationTree
+        state.updateAllocTree = true;                 // forces buildAllocationTree upon loading page first time
+        state.updateEquityPlan = true;                
      }
      return true;
   }

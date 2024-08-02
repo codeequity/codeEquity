@@ -78,10 +78,11 @@ const _p12 = { title: "Component Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8
 
 // this shows up in inactive as well.  this is a transferred peq, note the different cepid, psub, repo
 // note this one is in a different ceproj.  it has not been ingested, so no ceholderids
+// NOTE: If genFlutData did not run, this will have a ceServer psub, i.e: ["Github Operations", "Stripes"]
 const _p13 = { title: "CT Blast", id: "-1", ceProjectId: "CE_AltTest_hakeld80a2", ceGrantorId:"---",
               ceHolderId: [], hostHolderId:["U_kgDOBP2eEw", "U_kgDOBqJgmQ"], 
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
-              hostProjectSub:["Github Operations", "Stripes"], hostRepoId: "R_kgDOH8VRDg", hostIssueId: "-1", active: "true" };
+              hostProjectSub:["Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOH8VRDg", hostIssueId: "-1", active: "true" };
 
 const _p14 = { title: "IR Alloc", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: [], hostHolderId:[], 
@@ -106,6 +107,8 @@ const _p18 = { title: "IR Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "pending", amount: 1000, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Pending PEQ Approval"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "true" };
+
+// Note, ceServer version of this has 501 peq not 105.  Ingest is not run for ceServer testing.
 const _p19 = { title: "LM Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"---",
 	      ceHolderId: ["yxsklawdpc", "eaeIqcqqdp"], hostHolderId:["U_kgDOBqJgmQ","U_kgDOBP2eEw"], 
               peqType: "pending", amount: 105, accrualDate: "---", vestedPerc: 0,
@@ -176,10 +179,15 @@ const _ip2 = { title: "CT Blast", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42
               peqType: "plan", amount: 704, accrualDate: "---", vestedPerc: 0,
               hostProjectSub:["Software Contributions", "Github Operations Flut", "Stripes"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
 
+const _ip3 = { title: "Situated Accrued card1st", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42", ceGrantorId:"eaeIqcqqdp",
+	      ceHolderId: ["eaeIqcqqdp"], hostHolderId:["U_kgDOBP2eEw"], 
+              peqType: "grant", amount: 1000, accrualDate: -1, vestedPerc: 0,
+              hostProjectSub:["Software Contributions", "Github Operations Flut", "Accrued"], hostRepoId: "R_kgDOLlZyUw", hostIssueId: "-1", active: "false" };
+
 
 const PEQS_GOLD = [ _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16, _p17, _p18, _p19, _p20, _p21, _p22, _p23, _p24,
 		    _p25, _p26, _p27, _p28, _p29,
-		    _ip1, _ip2 ];
+		    _ip1, _ip2, _ip3 ];
 
 
 // NO PEQS
@@ -190,8 +198,9 @@ const _np3 = { title: "Parsley", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42"
 const _np4 = { title: "Carded Pending", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 const _np5 = { title: "Carded Accrued", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 const _np6 = { title: "LM Newborn", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
+const _np7 = { title: "Situated Accrued iss1st", id: "-1", ceProjectId: "CE_FlutTest_ks8asdlg42" }
 
-const NO_PEQS_GOLD = [ _np1, _np2, _np3, _np4, _np5, _np6 ];
+const NO_PEQS_GOLD = [ _np1, _np2, _np3, _np4, _np5, _np6, _np7 ];
 
 
 
@@ -232,16 +241,17 @@ async function checkPEQs( authData, cepid, cepidX, cepidM ) {
 	let active = gp.active == "true" ? "active" : "inactive";
 	let ap = awsPeqs.find( p => p.CEProjectId == gp.ceProjectId && p.HostIssueTitle == gp.title && utils.arrayEquals( p.HostProjectSub, gp.hostProjectSub ));
 	if( typeof ap === 'undefined' ) {
-	    console.log( "ERROR.  Gold image PEQ is not found in dynamo", gp.title );
+	    console.log( "ERROR.  Gold image PEQ is not found in dynamo", gp.ceProjectId, gp.title, gp.hostProjectSub );
 	    goodGold = false;
 	}
 	else {
 	    console.log( "" );
 	    console.log( "Checking", active, gp.title, goodGold );
+
 	    goodGold = goodGold && ( gp.title == ap.HostIssueTitle);
 	    goodGold = goodGold && ( gp.ceProjectId == ap.CEProjectId );
-	    goodGold = goodGold && ( utils.arrayEquals( gp.ceHolderId, ap.CEHolderId ));
-	    goodGold = goodGold && ( utils.arrayEquals( gp.hostHolderId, ap.HostHolderId ));
+	    goodGold = goodGold && ( utils.arrayEquals( gp.ceHolderId.sort(), ap.CEHolderId.sort() ));
+	    goodGold = goodGold && ( utils.arrayEquals( gp.hostHolderId.sort(), ap.HostHolderId.sort() ));
 	    goodGold = goodGold && ( gp.ceGrantorId == ap.CEGrantorId );
 	    
 	    goodGold = goodGold && ( gp.peqType == ap.PeqType );
