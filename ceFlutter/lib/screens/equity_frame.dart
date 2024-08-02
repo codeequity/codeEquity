@@ -67,25 +67,66 @@ class _CEEquityState extends State<CEEquityFrame> {
    void dispose() {
       super.dispose();
       if( appState.verbose >= 2 ) { print( "EquityFrame Disposessed!" ); }
+
+      // XXX NOTE This should be cheap.  If not, save state as with allocTree in summary_frame
+      // This avoids loss of catList when switch tabs.
+      appState.updateEquityPlan = true;
    }
 
    
-   List<Widget> _getTile( path, convertedName, amtInt, width, depthM1 ) {
+   List<Widget> _getTile( path, convertedName, amtInt, index, width, depthM1 ) {
       assert( appState != null );
+      
+      Widget fgd = GestureDetector(
+         onTap: () async 
+         {
+            print( "Forward!" );
+         },
+         child: Icon( Icons.arrow_right )
+         );
+
+      Widget bgd = GestureDetector(
+         onTap: () async 
+         {
+            print( "back!" );
+         },
+         child: Icon( Icons.arrow_left )
+         );
+
       
       final  numWidth = width / 3.0;      
       final  height   = appState!.CELL_HEIGHT;
       String amount   = addCommas( amtInt );
       Widget amountW  = makeTableText( appState!, amount, numWidth, height, false, 1 );      
       Widget cat      = makeTableText( appState, convertedName, width, height, false, 1, mux: (depthM1+1) * .5 );
+      Widget forward  = fgd;
+      Widget back     = bgd;
+      Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ) ); 
+
+      Widget c        = Container( width: numWidth, height: 1 );
+      Widget catCont  = Container( width: width, height: height, child: cat );
       
-      return [cat, amountW];
+      Widget tile = Container(
+         width: width * 2,
+         height: height,
+         child: ListTileTheme(
+            dense: true,
+            child: ListTile(
+               trailing:  Wrap(
+                  spacing: 0,
+                  children: <Widget>[ c, bgd, drag, fgd ],
+                  ),
+               title: amountW
+               )));
+      
+      return [catCont, tile];
+
    }
    
    List<List<Widget>> _getCategoryWidgets() {
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       var c = Container( width: 1, height: 1 );
-      
+
       List<List<Widget>> catList = [];
 
       if( appState.updateEquityPlan ) {
@@ -97,7 +138,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          for( int i = 0; i < appState.equityPlan!.categories.length; i++ ) {
             List<String> cat = appState.equityPlan!.categories[i];
             int          amt = appState.equityPlan!.amounts[i];
-            catList.add( _getTile( cat.sublist(0, cat.length-1), cat.last, amt, width, cat.length ) ); 
+            catList.add( _getTile( cat.sublist(0, cat.length-1), cat.last, amt, i, width, cat.length ) ); 
          }
          appState.updateEquityPlan = false;
       }
@@ -152,12 +193,14 @@ class _CEEquityState extends State<CEEquityFrame> {
                   height: svHeight,
                   width: svWidth,
                   child: ReorderableListView(
+                     buildDefaultDragHandles: false,
                      onReorder: (oldIndex, newIndex) { _updateListItems(oldIndex, newIndex); ; },
                      header: Text( "Oi!" ),
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
-                           key: Key( 'equityTable ' + indexX.toString() ),                           
+                           key: Key( 'equityTable ' + indexX.toString() ),
+                           mainAxisSize: MainAxisSize.min,
                            children: List.generate( 
                               categoryWidth,
                               (indexY) => categories[indexX][indexY] )))

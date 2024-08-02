@@ -25,6 +25,7 @@ class EquityPlan {
    }
 
    // Moving down?  all between move up.
+   // XXX Hmm... or use 'removeAt' and 'insert'
    void move( int oldIndex, int newIndex ) {
       assert( categories.length == amounts.length );
       assert( oldIndex < categories.length );
