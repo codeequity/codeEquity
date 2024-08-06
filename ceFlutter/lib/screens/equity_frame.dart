@@ -98,7 +98,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             print( "back! from " + index.toString() );
 
             assert( appState.equityPlan != null );
-            appState.equityPlan!.unindent( index );
+            appState.equityPlan!.unindent( index, 0 );
                
             setState(() => appState.updateEquityPlan = true );                  
          },
@@ -152,6 +152,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             int          amt = appState.equityPlan!.amounts[i];
             catList.add( _getTile( cat.sublist(0, cat.length-1), cat.last, amt, i, width, cat.length ) ); 
          }
+         print( appState.equityPlan.toString() );
          appState.updateEquityPlan = false;
       }
       return catList;
@@ -161,7 +162,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       assert( appState.equityPlan != null );
 
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
-      appState.equityPlan!.move( oldIndex, newIndex );
+      appState.equityPlan!.move( oldIndex, newIndex, 0 );
 
       setState(() => appState.updateEquityPlan = true );      
    }
