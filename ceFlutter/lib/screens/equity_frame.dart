@@ -76,19 +76,31 @@ class _CEEquityState extends State<CEEquityFrame> {
    
    List<Widget> _getTile( path, convertedName, amtInt, index, width, depthM1 ) {
       assert( appState != null );
-      
+
+      // indent
       Widget fgd = GestureDetector(
          onTap: () async 
          {
-            print( "Forward!" );
+            print( "Forward! Currently at " + index.toString() );
+
+            assert( appState.equityPlan != null );
+            appState.equityPlan!.indent( index );
+               
+            setState(() => appState.updateEquityPlan = true );                  
          },
          child: Icon( Icons.arrow_right )
          );
 
+      // unindent
       Widget bgd = GestureDetector(
          onTap: () async 
          {
-            print( "back!" );
+            print( "back! from " + index.toString() );
+
+            assert( appState.equityPlan != null );
+            appState.equityPlan!.unindent( index );
+               
+            setState(() => appState.updateEquityPlan = true );                  
          },
          child: Icon( Icons.arrow_left )
          );
@@ -148,12 +160,6 @@ class _CEEquityState extends State<CEEquityFrame> {
    void _updateListItems( oldIndex, newIndex ) {
       assert( appState.equityPlan != null );
 
-      // When moving an item up (i.e. oldIndex > newIndex), all is as expected.
-      // When moving an item down, then newIndex is +1.
-      // For example, 3 items.  move middle to 0th position gives (1 -> 0)
-      //                        move middle to last position gives (1 -> 3)
-
-      if( oldIndex < newIndex ) { newIndex = newIndex - 1; }
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
       appState.equityPlan!.move( oldIndex, newIndex );
 

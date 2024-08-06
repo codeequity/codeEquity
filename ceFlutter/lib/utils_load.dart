@@ -578,8 +578,8 @@ Future<void> reloadRepo( context, container ) async {
    appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
 
    // XXXXXXX
-   var cats = [ ["Software Contributions", "Data Security" ], ["A Pre-Existing Project"], ["Software Contributions"] ];
-   var amts = [ 2000000, 3000000, 7000000 ];
+   var cats = [ ["A Pre-Existing Project"], ["A Pre-Existing Project", "Bacon"], ["A Pre-Existing Project", "Eggs"], ["Software Contributions"], ["Software Contributions", "Data Security" ],  ];
+   var amts = [ 2000000, 3000000, 7000000, 4000, 6000000 ];
    appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: cats, amounts: amts, lastMod: "" );
    
    // Get linkage
