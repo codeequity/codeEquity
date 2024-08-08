@@ -8,15 +8,11 @@ import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
+import 'package:ceFlutter/models/equity.dart';
 
-import 'package:ceFlutter/models/allocation.dart';
-import 'package:ceFlutter/models/PEQ.dart';
-
-import 'package:ceFlutter/components/tree.dart';
-import 'package:ceFlutter/components/node.dart';
-import 'package:ceFlutter/components/leaf.dart';
-
-import 'package:ceFlutter/screens/detail_page.dart';
+import 'package:ceFlutter/components/equityTree.dart';
+import 'package:ceFlutter/components/equityNode.dart';
+import 'package:ceFlutter/components/equityLeaf.dart';
 
 // Workaround breaking change 5/2021
 // https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
@@ -74,9 +70,10 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
 
    
-   List<Widget> _getTile( path, convertedName, amtInt, index, width, depthM1 ) {
+   List<Widget> _getTile( path, convertedName, amtInt, index, width ) {
       assert( appState != null );
 
+      int depthM1 = path.length + 1;
       // indent
       Widget fgd = GestureDetector(
          onTap: () async 
@@ -134,6 +131,110 @@ class _CEEquityState extends State<CEEquityFrame> {
       return [catCont, tile];
 
    }
+
+   // XXX search.. no alloc
+   // BuildEquityTree creates the linkages between nodes.  EquityNode controls most of the the view for each element.
+   _buildEquityTree() {
+      if( appState.verbose >= 1 ) { print( "Build Equity tree" ); }
+      final width = frameMinWidth - 2*appState.FAT_PAD;  
+
+      List<Widget> htile  = _getTile( [], "Category", 0, 0, width );
+      appState.equityTree = EquityNode( "Category", 0, htile, null, width, widget.pageStamp, header: true );
+      
+      if( appState.equityPlan == null ) {
+         appState.updateEquityPlan = false;
+         return;
+      }
+
+      // Per equity line, walk the current tree (curNode) by stepping through the categories chain to see where this line belongs
+      // Can't depend on walk tree here .. no tree yet!
+      // In this construction, each eqLine is either a leaf or convertNode.  Can not directly step to a node - every line has at least 1 parent
+      int ithLine = 0;
+      for( Equity eqLine in appState.equityPlan!.initializeEquity( ) ) {
+         ithLine += 1;
+         assert( appState.equityTree != null );
+         assert( eqLine.amount != null );
+         
+         EquityTree curNode = appState.equityTree!;
+         print( "Making " + eqLine.toString() );
+         
+         // when eqLines are created, they are leaves. Down the road, they become nodes
+         List<String> cat = eqLine.category;
+         List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width );
+            
+         EquityTree? childNode   = curNode.findNode( eqLine.category );
+         EquityTree? childParent = curNode.findNode( eqLine.category.sublist(0, eqLine.category.length - 1 ) );
+
+         if( childParent is EquityLeaf  ) {
+            print( "... leaf in middle - convert" );
+            curNode = (curNode as EquityNode).convertToNode( childParent, widget.pageStamp );
+         }
+         if( childNode != null ) {
+            print( "OI!! " + childNode.toStr() );
+            assert( childNode == null );
+         }
+         EquityLeaf tmpLeaf = EquityLeaf( eqLine.category.last, eqLine.amount, tile, curNode, width ); 
+         (curNode as EquityNode).addLeaf( tmpLeaf );
+
+         // print( appState.equityTree!.toStr() );          
+      }
+
+      /*
+      // for( Equity eqLine in appState.equityPlan!.getAllEquity( appState.equityTree ) ) {
+      for( Equity eqLine in appState.equityPlan!.initializeEquity( ) ) {
+         ithLine += 1;
+         assert( appState.equityTree != null );
+         
+         EquityTree curNode = appState.equityTree!;
+         
+         // when eqLines are created, they are leaves. Down the road, they become nodes
+         for( int i = 0; i < eqLine.category.length; i++ ) {
+            List<String> cat = eqLine.category;
+            List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width );
+            
+            // if( appState.verbose >= 1 ) { print( "working on " + eqLine.category[i] ); }
+            assert( eqLine.amount != null );
+            
+            bool lastCat = false;
+            if( i == eqLine.category.length - 1 ) { lastCat = true; }
+            EquityTree? childNode = curNode.findNode( eqLine.category[i] );
+            
+            if( childNode is EquityLeaf && !lastCat ) {
+               // print( "... leaf in middle - convert" );
+               curNode = (curNode as EquityNode).convertToNode( childNode, widget.pageStamp );
+            }
+            else if( childNode == null ) {
+               if( !lastCat ) {
+                  // if( appState.verbose >= 1 ) { print( "... nothing - add node" ); }
+                  EquityNode tmpNode = EquityNode( eqLine.category[i], 0, tile, curNode, width, widget.pageStamp );
+                  (curNode as EquityNode).addLeaf( tmpNode );
+                  curNode = tmpNode;
+               }
+               else {
+                  // leaf.  
+                  // if( appState.verbose >= 1 ) { print( "... nothing found, last cat, add leaf" ); }
+                  EquityLeaf tmpLeaf = EquityLeaf( eqLine.category[i], eqLine.amount, tile, curNode, width ); 
+                  (curNode as EquityNode).addLeaf( tmpLeaf );
+               }
+            }
+            else if( childNode is EquityNode ) {
+               if( !lastCat ) {
+                  // if( appState.verbose >= 1 ) { print( "... found - move on" ); }
+                  curNode = childNode;
+               }
+               else {
+                  // print( "... eqLine part of existing chain" );
+               }
+            }
+            else { assert( false ); }
+         }
+      }
+      */
+      appState.updateEquityPlan = false;
+
+      if( appState.equityTree != null ) {  print( appState.equityTree!.toStr() ); }
+   }
+   
    
    List<List<Widget>> _getCategoryWidgets() {
       final width = frameMinWidth - 2*appState.FAT_PAD;        
@@ -141,6 +242,24 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       List<List<Widget>> catList = [];
 
+      if( appState.updateEquityPlan ) { _buildEquityTree(); }
+
+      // When node expansion changes, callback sets state on equityExpanded, which changes node, which changes here, which causes project_page rebuild
+      if( appState.equityPlan != null )
+      {
+         if( appState.equityPlan!.ceProjectId == appState.selectedCEProject ) {
+            assert( appState.equityTree != null );
+            if( appState.equityPlan!.getAllEquity( appState.equityTree ).length == 0 ) { return []; }
+            if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
+           catList.addAll( appState.equityTree!.getCurrent( container ) );
+
+            //print( appState.equityTree.toStr() );
+         }
+      }
+      else { return []; }
+
+
+      /*
       if( appState.updateEquityPlan ) {
          
          print( "Getting Widgets!" );
@@ -155,6 +274,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          print( appState.equityPlan.toString() );
          appState.updateEquityPlan = false;
       }
+      */
       return catList;
    }
 
@@ -162,7 +282,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       assert( appState.equityPlan != null );
 
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
-      appState.equityPlan!.move( oldIndex, newIndex, 0 );
+      appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
 
       setState(() => appState.updateEquityPlan = true );      
    }

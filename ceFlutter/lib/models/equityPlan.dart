@@ -1,11 +1,99 @@
 import 'dart:math';
 import 'package:collection/collection.dart';      // list equals, firstwhereornull
 
+import 'package:ceFlutter/models/equity.dart';
+
+import 'package:ceFlutter/components/equityTree.dart';
+import 'package:ceFlutter/components/equityNode.dart';
+import 'package:ceFlutter/components/equityLeaf.dart';
+
 Function listEq = const ListEquality().equals;
 
 // ceFlutter use only
 
+
+// XXX need walkTree to rebuild cat, amounts.  do this in getAll
+
 class EquityPlan {
+
+   final String              ceProjectId;   // Summaries are per ceProject.. this is the pkey
+   final List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]
+   final List<int>           amounts;       // e.g. [ 1000000, ... ]  
+   final String              lastMod;
+
+   EquityPlan({ required this.ceProjectId, required this.categories, required this.amounts, required this.lastMod }) {
+      assert( categories.length == amounts.length );
+   }
+
+   dynamic toJson() => { 'ceProjectId': ceProjectId, 'categories': categories, 'amounts': amounts, 'lastMod': lastMod };
+   
+   factory EquityPlan.fromJson(Map<String, dynamic> json) {
+
+      return EquityPlan(
+         ceProjectId:   json['CEProjectId'],
+         categories:    json['Categories'],
+         amounts:       json['Amounts'],
+         lastMod:       json['LastMod'],
+         );
+   }
+
+   // Meant for use ONLY when first building tree
+   List<Equity> initializeEquity( ) {
+
+      List<Equity> res = [];
+      for( int i = 0; i < categories.length; i++ ) {
+         Equity eq = new Equity( category: categories[i], amount: amounts[i] );
+         res.add( eq );
+      }
+      return res;
+
+   }
+
+   List<Equity> getAllEquity( EquityTree? tree ) {
+      List<Equity> res = [];
+      if( tree == null ) { return res; }
+
+      List<EquityTree> treeList = tree.depthFirstWalk( [] );
+      // treeList.forEach((t) => res.add( new Equity( category: t.getPath(), amount: t.getAmount() )) );
+
+      for( int i = 0; i < treeList.length; i++ ) {
+         List<String> p = [];
+         EquityTree t = treeList[i];
+         
+         if( t is EquityNode )      { p = (t as EquityNode).getPath( t.parent, t.getTitle() ); }
+         else if( t is EquityLeaf ) { p = (t as EquityLeaf).getPath( t.parent, t.getTitle() ); }
+         
+         res.add( new Equity( category: p, amount: treeList[i].getAmount() ));
+      }
+      
+      return res;
+   }
+
+   void indent( int myIndex ) {
+      print( "Indent." );
+   }
+
+   List<int> unindent( int myIndex, int removeCount, {String parent = "", int newHomeIndex = -1} ) {
+      print( "Unindent." );
+      return [-1,-1];
+   }
+
+   List<int> move( int oldIndex, int newIndex, EquityTree tree ) {
+      print( "move from " + oldIndex.toString() + " to " + newIndex.toString() );
+
+      // Account for header
+      oldIndex -= 1;
+      newIndex -= 1;
+
+      EquityTree? target = tree.findNode( categories[oldIndex] ); 
+      if( target != null ) {  print( "Found: " + target!.toStr() ); }
+      
+      return [-1,-1];
+   }
+
+   
+   /*
+   
    final String              ceProjectId;   // Summaries are per ceProject.. this is the pkey
    final List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]
    final List<int>           amounts;       // e.g. [ 1000000, ... ]  
@@ -199,6 +287,8 @@ class EquityPlan {
 
       return [newIndex,removeCount];
    }
+   */
+
    
    String toString() {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;

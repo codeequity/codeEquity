@@ -77,7 +77,6 @@ class _CEProjectState extends State<CEProjectPage> {
       setState(() => appState.peqUpdated = true );
    }
 
-   // XXX is expansionChanged still useful?
    _allocExpansionCallback( expansionVal, path ) {
       print( ".. summary change allocExpanded $path $expansionVal" );
       // causes node to update internal tile expansion state, which updates trailing icons
