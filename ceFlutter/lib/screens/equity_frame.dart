@@ -67,7 +67,81 @@ class _CEEquityState extends State<CEEquityFrame> {
       appState.updateEquityPlan = true;
    }
 
-   
+
+   List<List<Widget>> _getTiles( width ) {
+      assert( appState.equityTree != null );
+      List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
+      
+      List<List<Widget>> nodes = [];
+      for( int index = 0; index < treeList.length; index++ ) {
+
+         // indent
+         Widget fgd = GestureDetector(
+            onTap: () async 
+            {
+               print( "Forward! Currently at " + index.toString() );
+               
+               assert( appState.equityPlan != null );
+               appState.equityPlan!.indent( index );
+               
+               setState(() => appState.updateEquityPlan = true );                  
+            },
+            child: Icon( Icons.arrow_right )
+            );
+         
+         // unindent
+         Widget bgd = GestureDetector(
+            onTap: () async 
+            {
+               print( "back! from " + index.toString() );
+               
+               assert( appState.equityPlan != null );
+               appState.equityPlan!.unindent( index, 0 );
+               
+               setState(() => appState.updateEquityPlan = true );                  
+            },
+            child: Icon( Icons.arrow_left )
+            );
+         
+         EquityTree t = treeList[index];
+
+         int depth = 0;
+         if( t is EquityNode )      { depth = (t as EquityNode).getPath( t.getParent(), t.getTitle() ).length + 1; }
+         else if( t is EquityLeaf ) { depth = (t as EquityLeaf).getPath( t.getParent(), t.getTitle() ).length + 1; }
+     
+         final  numWidth = width / 3.0;      
+         final  height   = appState!.CELL_HEIGHT;
+         Widget amountW  = makeTableText( appState!, addCommas( t.getAmount() ), numWidth, height, false, 1 );      
+         Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
+         Widget forward  = fgd;
+         Widget back     = bgd;
+         Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ) ); 
+         
+         Widget c        = Container( width: numWidth, height: 1 );
+         Widget catCont  = Container( width: width, height: height, child: cat );
+         
+         Widget tile = Container(
+            width: width * 2,
+            height: height,
+            child: ListTileTheme(
+               dense: true,
+               child: ListTile(
+                  trailing:  Wrap(
+                     spacing: 0,
+                     // key: new PageStorageKey(getPathName() + getTitle() + stamp),
+                     children: <Widget>[ c, bgd, drag, fgd ],
+                     ),
+                  title: amountW
+                  )));
+         
+         print( "Get currentNode adding " + t.getTitle() );
+         
+         nodes.add( [ catCont, tile ] );
+      }
+      return nodes;
+   }
+      
+      /*   
    List<Widget> _getTile( path, convertedName, amtInt, index, width, stamp ) {
       assert( appState != null );
 
@@ -132,7 +206,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       return [catCont, tile];
 
    }
-
+   */
+   
    // XXX search.. no alloc
    // BuildEquityTree creates the linkages between nodes.  EquityNode controls most of the the view for each element.
    _buildEquityTree() {
@@ -142,8 +217,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       print( "Resetting PageStorageKey stamps" );
       String pageStamp = DateTime.now().millisecondsSinceEpoch.toString();
 
-      List<Widget> htile  = _getTile( [], "Category", 0, 0, width, pageStamp );
-      appState.equityTree = EquityNode( "Category", 0, htile, null, width, header: true );
+      // List<Widget> htile  = _getTile( [], "Category", 0, 0, width, pageStamp );
+      appState.equityTree = EquityNode( "Category", 0, null, width, header: true );
       
       if( appState.equityPlan == null ) {
          appState.updateEquityPlan = false;
@@ -164,7 +239,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          // when eqLines are created, they are leaves. Down the road, they become nodes
          List<String> cat = eqLine.category;
-         List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width, pageStamp );
+         // List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width, pageStamp );
             
          EquityTree? childNode   = curNode.findNode( eqLine.category );
          EquityTree? childParent = curNode.findNode( eqLine.category.sublist(0, eqLine.category.length - 1 ) );
@@ -178,63 +253,11 @@ class _CEEquityState extends State<CEEquityFrame> {
             curNode = childParent;   
          }
 
-         EquityLeaf tmpLeaf = EquityLeaf( eqLine.category.last, eqLine.amount, tile, curNode, width ); 
+         EquityLeaf tmpLeaf = EquityLeaf( eqLine.category.last, eqLine.amount, curNode, width ); 
          (curNode as EquityNode).addLeaf( tmpLeaf );
 
          // print( appState.equityTree!.toStr() );          
       }
-
-      /*
-      // for( Equity eqLine in appState.equityPlan!.getAllEquity( appState.equityTree ) ) {
-      for( Equity eqLine in appState.equityPlan!.initializeEquity( ) ) {
-         ithLine += 1;
-         assert( appState.equityTree != null );
-         
-         EquityTree curNode = appState.equityTree!;
-         
-         // when eqLines are created, they are leaves. Down the road, they become nodes
-         for( int i = 0; i < eqLine.category.length; i++ ) {
-            List<String> cat = eqLine.category;
-            List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width );
-            
-            // if( appState.verbose >= 1 ) { print( "working on " + eqLine.category[i] ); }
-            assert( eqLine.amount != null );
-            
-            bool lastCat = false;
-            if( i == eqLine.category.length - 1 ) { lastCat = true; }
-            EquityTree? childNode = curNode.findNode( eqLine.category[i] );
-            
-            if( childNode is EquityLeaf && !lastCat ) {
-               // print( "... leaf in middle - convert" );
-               curNode = (curNode as EquityNode).convertToNode( childNode );
-            }
-            else if( childNode == null ) {
-               if( !lastCat ) {
-                  // if( appState.verbose >= 1 ) { print( "... nothing - add node" ); }
-                  EquityNode tmpNode = EquityNode( eqLine.category[i], 0, tile, curNode, width );
-                  (curNode as EquityNode).addLeaf( tmpNode );
-                  curNode = tmpNode;
-               }
-               else {
-                  // leaf.  
-                  // if( appState.verbose >= 1 ) { print( "... nothing found, last cat, add leaf" ); }
-                  EquityLeaf tmpLeaf = EquityLeaf( eqLine.category[i], eqLine.amount, tile, curNode, width ); 
-                  (curNode as EquityNode).addLeaf( tmpLeaf );
-               }
-            }
-            else if( childNode is EquityNode ) {
-               if( !lastCat ) {
-                  // if( appState.verbose >= 1 ) { print( "... found - move on" ); }
-                  curNode = childNode;
-               }
-               else {
-                  // print( "... eqLine part of existing chain" );
-               }
-            }
-            else { assert( false ); }
-         }
-      }
-      */
       appState.updateEquityPlan = false;
 
       if( appState.equityTree != null ) {  print( appState.equityTree!.toStr() ); }
@@ -260,7 +283,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                if( appState.equityPlan!.categories.length == 0 ) { return []; }
                
                if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
-               catList.addAll( appState.equityTree!.getCurrent( container ) );
+               catList.addAll( _getTiles( width ) ); 
                
                //print( appState.equityTree.toStr() );
             }

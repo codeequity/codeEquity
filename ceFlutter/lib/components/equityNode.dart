@@ -15,7 +15,6 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
    final String title;
    int amount;
 
-   final List<Widget> tile;
    final double width;
    final bool header;
    int  currentDepth;   // for indentation
@@ -27,7 +26,7 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
    
    AppState? appState;
    
-   EquityNode(this.title, this.amount, this.tile, this.parent, this.width, {this.header = false, this.currentDepth = 0} ) {
+   EquityNode(this.title, this.amount, this.parent, this.width, {this.header = false, this.currentDepth = 0} ) {
       path = "";
    }
    
@@ -76,7 +75,7 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
    EquityTree convertToNode( EquityTree child ) {
      if( child is EquityNode ) { return child; }
      
-     EquityNode newNode = EquityNode( child.getTitle(), child.getAmount(), child.getTile(), (child as EquityLeaf).parent, (child as EquityLeaf).width );
+     EquityNode newNode = EquityNode( child.getTitle(), child.getAmount(), (child as EquityLeaf).parent, (child as EquityLeaf).width );
      bool converted = false;
      
      // find and replace in list
@@ -120,51 +119,70 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
 
      return res;
   }
-  
+
+     /*
   @override
-  List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} ) {
+  // Ignore category
+  List<List<Widget>> getCurrent( container, fgd, bgd, {index = 0, first = true} ) {
      appState    = container.state;
      assert( appState != null );
 
-     final numWidth = width / 3.0;
-     final height   = appState!.CELL_HEIGHT;
+     int depth = getPath( parent, getTitle() ).length + 1;
      
-     currentDepth = treeDepth;
-     path         = ancestors + "/" + title;
-
-     List<List<Widget>> nodes = [];
-
-     int amountInt  = getAmount();
-     String amt     = addCommas( amountInt );
-        
-     if( header ) {
-        amt   = "Amount";
-     }
-
+     final  numWidth = width / 3.0;      
+     final  height   = appState!.CELL_HEIGHT;
+     Widget amountW  = makeTableText( appState!, addCommas( amount ), numWidth, height, false, 1 );      
+     Widget cat      = makeTableText( appState, getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
+     Widget forward  = fgd;
+     Widget back     = bgd;
+     Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ) ); 
+     
+     Widget c        = Container( width: numWidth, height: 1 );
+     Widget catCont  = Container( width: width, height: height, child: cat );
+     
+     Widget tile = Container(
+        width: width * 2,
+        height: height,
+        child: ListTileTheme(
+           dense: true,
+           child: ListTile(
+              trailing:  Wrap(
+                 spacing: 0,
+                 // key: new PageStorageKey(getPathName() + getTitle() + stamp),
+                 children: <Widget>[ c, bgd, drag, fgd ],
+                 ),
+              title: amountW
+              )));
+     
 
      print( "Get currentNode adding " + getTitle() );
-     
-     List<Widget> anode = [];
-     anode.addAll( getTile( ) );
-     nodes.add( anode );
 
-     leaves.forEach( ((EquityTree child) {
-              nodes.addAll( child.getCurrent(container, treeDepth: treeDepth + 1, ancestors: path ));
-           }));
+     List<List<Widget>> nodes = [];
+     nodes.add( [ catCont, tile ] );
+
+     if( first ) {
+        // One place to walk the tree
+        List<EquityTree> treeList = depthFirstWalk( [] );
+        
+        treeList.forEach( ((EquityTree child) {
+                 index += 1;
+                 nodes.addAll( child.getCurrent(container, fgd, bgd, index: index, first: false ));
+              }));
+     }
 
      return nodes;
   }
-
-  @override
-  List<Widget> getTile() {
-     return tile;
-  }
+     */
   
   @override
   Widget build(BuildContext context) {
 
-     return Container(
-        child: Row( children: getTile() )
+     return Container( width: 1, height: 1 );
+
+     /*
+     return Container( 
+        child: Row( children: getCurrent() )
         );
+     */
   }
 }

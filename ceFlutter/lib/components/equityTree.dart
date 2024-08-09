@@ -15,9 +15,8 @@ abstract class EquityTree {
    double getWidth();
    String toStr();
 
-   List<List<Widget>> getCurrent( container, {treeDepth = 0, ancestors = ""} );
+   // List<List<Widget>> getCurrent( container, fgd, bgd, {index=0, first:true} );
 
-   List<Widget> getTile();
 }
 
 mixin treeUtils {
@@ -64,7 +63,7 @@ mixin treeUtils {
         // Get new parent.  
         if( destNext == null ) {
            if( destParent.parent == null ) { newParent = tot; }   // should not occur?
-           else                            { newParent = destNext.parent; }
+           else                            { newParent = destParent.parent; }
         }
         else { newParent = destNext.parent; }
         assert( newParent != null );
