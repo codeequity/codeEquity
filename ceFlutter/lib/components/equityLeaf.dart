@@ -10,24 +10,32 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/components/equityTree.dart';
 
 // Leave room for icons for later - may help to clarify equity tables
-class EquityLeaf extends StatelessWidget with paths implements EquityTree {
+class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    final String title;
    final int    amount;
    final List<Widget> tile ;
-   final EquityTree parent;
+   EquityTree parent;
       
    final double width;
 
    AppState? appState;
    
    EquityLeaf(this.title, this.amount, this.tile, this.parent, this.width){}
-
+     
    @override
    String getTitle() { return title; }
    
    @override
    int getAmount()  { return amount; }
 
+   @override
+   EquityTree? getParent() { return parent; }
+   @override
+   double getWidth() { return width; }
+   @override
+   List<EquityTree> getLeaves() { assert(false); return [];}
+   @override
+   void insertLeaf( target, index ) { assert(false);  }
 
    @override
    EquityTree? findNode( List<String> target ) {
@@ -40,7 +48,8 @@ class EquityLeaf extends StatelessWidget with paths implements EquityTree {
       treeList.add( this );
       return treeList;
    }
-     
+
+      
    @override
    String toStr() {
       String res = "";
@@ -65,6 +74,8 @@ class EquityLeaf extends StatelessWidget with paths implements EquityTree {
       List<Widget> anode = [];
       anode.addAll( getTile() );
       nodes.add( anode );
+
+      print( "Get currentLeaf adding " + getTitle() );
 
       return nodes;
    }

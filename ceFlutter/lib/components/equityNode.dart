@@ -10,7 +10,7 @@ import 'package:ceFlutter/components/equityTree.dart';
 import 'package:ceFlutter/components/equityLeaf.dart';
 
 
-class EquityNode extends StatelessWidget with paths implements EquityTree {
+class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
       
    final String title;
    int amount;
@@ -20,23 +20,30 @@ class EquityNode extends StatelessWidget with paths implements EquityTree {
    final bool header;
    int  currentDepth;   // for indentation
  
-   final stamp; 
    late String path;
 
    final List<EquityTree> leaves = [];
-   final EquityTree? parent; 
+   EquityTree? parent; 
    
    AppState? appState;
    
-   EquityNode(this.title, this.amount, this.tile, this.parent, this.width, this.stamp, {this.header = false, this.currentDepth = 0} ) {
+   EquityNode(this.title, this.amount, this.tile, this.parent, this.width, {this.header = false, this.currentDepth = 0} ) {
       path = "";
-  }
+   }
    
   void addLeaf(EquityTree leaf ) {
     leaves.add( leaf );
   }
 
-
+  @override
+  EquityTree? getParent() { return parent; }
+  @override
+  double getWidth() { return width; }
+  @override
+  List<EquityTree> getLeaves() { return leaves; }
+  @override
+  void insertLeaf( target, int index ) { leaves.insert( index, target );  }
+     
   @override
   EquityTree? findNode( List<String> target ) {
      EquityTree? res = null;
@@ -64,9 +71,12 @@ class EquityNode extends StatelessWidget with paths implements EquityTree {
      return treeList;
   }
 
+
      
-  EquityTree convertToNode( EquityLeaf child, stamp ) {
-     EquityNode newNode = EquityNode( child.getTitle(), child.getAmount(), child.getTile(), child.parent, child.width, stamp );
+   EquityTree convertToNode( EquityTree child ) {
+     if( child is EquityNode ) { return child; }
+     
+     EquityNode newNode = EquityNode( child.getTitle(), child.getAmount(), child.getTile(), (child as EquityLeaf).parent, (child as EquityLeaf).width );
      bool converted = false;
      
      // find and replace in list
@@ -103,6 +113,9 @@ class EquityNode extends StatelessWidget with paths implements EquityTree {
      res += "\n   has " + leaves.length.toString() + " leaves";
      res += "\n   with amount: " + addCommas( getAmount() ) ;
 
+     // res += "\n";
+     // leaves.forEach( (l) => res += l.getTitle() + " " );
+     
      leaves.forEach((EquityTree leaf ) => res += leaf.toStr() );
 
      return res;
@@ -128,6 +141,9 @@ class EquityNode extends StatelessWidget with paths implements EquityTree {
         amt   = "Amount";
      }
 
+
+     print( "Get currentNode adding " + getTitle() );
+     
      List<Widget> anode = [];
      anode.addAll( getTile( ) );
      nodes.add( anode );

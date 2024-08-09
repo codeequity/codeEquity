@@ -16,10 +16,10 @@ Function listEq = const ListEquality().equals;
 
 class EquityPlan {
 
-   final String              ceProjectId;   // Summaries are per ceProject.. this is the pkey
-   final List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]
-   final List<int>           amounts;       // e.g. [ 1000000, ... ]  
-   final String              lastMod;
+   final String        ceProjectId;   // Summaries are per ceProject.. this is the pkey
+   List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]
+   List<int>           amounts;       // e.g. [ 1000000, ... ]  
+   String              lastMod;       // XXX unused.
 
    EquityPlan({ required this.ceProjectId, required this.categories, required this.amounts, required this.lastMod }) {
       assert( categories.length == amounts.length );
@@ -49,24 +49,27 @@ class EquityPlan {
 
    }
 
-   List<Equity> getAllEquity( EquityTree? tree ) {
-      List<Equity> res = [];
-      if( tree == null ) { return res; }
+   // rebuild categories based on dfs walk of tree.
+   void updateEquity( EquityTree? tree ) {
+      if( tree == null ) { return; }
 
       List<EquityTree> treeList = tree.depthFirstWalk( [] );
-      // treeList.forEach((t) => res.add( new Equity( category: t.getPath(), amount: t.getAmount() )) );
+
+      categories = [];
+      amounts = [];
 
       for( int i = 0; i < treeList.length; i++ ) {
-         List<String> p = [];
          EquityTree t = treeList[i];
-         
-         if( t is EquityNode )      { p = (t as EquityNode).getPath( t.parent, t.getTitle() ); }
-         else if( t is EquityLeaf ) { p = (t as EquityLeaf).getPath( t.parent, t.getTitle() ); }
-         
-         res.add( new Equity( category: p, amount: treeList[i].getAmount() ));
+         if( t.getTitle() != "Category" ) { // XXX formalize
+            if( t is EquityNode)      { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
+            else if( t is EquityLeaf) { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
+            
+            amounts.add( t.getAmount() );
+         }
       }
+
+      print( "updateEquity done" + categories.toString() );
       
-      return res;
    }
 
    void indent( int myIndex ) {
@@ -78,17 +81,31 @@ class EquityPlan {
       return [-1,-1];
    }
 
-   List<int> move( int oldIndex, int newIndex, EquityTree tree ) {
+   // Move between parent and child?  Become a child of index - 1.
+   // Move elsewhere?  Become a sibling of index - 1.
+   void move( int oldIndex, int newIndex, EquityTree tree ) {
+      assert( categories.length == amounts.length );
+      assert( oldIndex < categories.length );
+
       print( "move from " + oldIndex.toString() + " to " + newIndex.toString() );
 
-      // Account for header
+      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
       oldIndex -= 1;
       newIndex -= 1;
+      assert( newIndex <= categories.length );
 
-      EquityTree? target = tree.findNode( categories[oldIndex] ); 
-      if( target != null ) {  print( "Found: " + target!.toStr() ); }
+      // Get major elements here.  Tree/node/leaf should not see index.
+      EquityTree? target = tree.findNode( categories[oldIndex] );
+      assert( target != null );
+
+      EquityTree? destParent = null;
+      EquityTree? destNext   = null;
+      if( newIndex > 0 )                 { destParent = tree.findNode( categories[newIndex-1] ); }
+      if( newIndex < categories.length ) { destNext   = tree.findNode( categories[newIndex] ); }
+
       
-      return [-1,-1];
+      (tree as EquityNode).moveTo( target!, tree!, destParent, destNext );
+      
    }
 
    

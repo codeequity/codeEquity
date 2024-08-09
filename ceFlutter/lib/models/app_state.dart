@@ -65,7 +65,8 @@ class AppState {
    late HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
 
    EquityNode? equityTree;
-   late bool   updateEquityPlan; 
+   late bool   updateEquityPlan;        // updated the tree, with moves, indents, etc
+   late bool   updateEquityView;        // updated the viewable list, with dynamo, or newly updated tree
 
    late String                          selectedRepo;
    late String                          selectedCEProject;
@@ -112,6 +113,7 @@ class AppState {
 
       equityTree         = null;
       updateEquityPlan   = false;
+      updateEquityView   = false;
 
       selectedRepo = "";
       selectedCEProject = "";

@@ -29,12 +29,10 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
 class CEEquityFrame extends StatefulWidget {
    final frameHeightUsed;
    var   appContainer;
-   final pageStamp;
 
    CEEquityFrame(
       {Key? key,
             this.appContainer,
-            this.pageStamp,
             this.frameHeightUsed,
             } ) : super(key: key);
 
@@ -70,7 +68,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
 
    
-   List<Widget> _getTile( path, convertedName, amtInt, index, width ) {
+   List<Widget> _getTile( path, convertedName, amtInt, index, width, stamp ) {
       assert( appState != null );
 
       int depthM1 = path.length + 1;
@@ -114,6 +112,8 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       Widget c        = Container( width: numWidth, height: 1 );
       Widget catCont  = Container( width: width, height: height, child: cat );
+
+      print( "new tile with " + path.toString() + convertedName + stamp );
       
       Widget tile = Container(
          width: width * 2,
@@ -123,6 +123,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             child: ListTile(
                trailing:  Wrap(
                   spacing: 0,
+                  key: new PageStorageKey(path.toString() + convertedName + stamp),
                   children: <Widget>[ c, bgd, drag, fgd ],
                   ),
                title: amountW
@@ -138,8 +139,11 @@ class _CEEquityState extends State<CEEquityFrame> {
       if( appState.verbose >= 1 ) { print( "Build Equity tree" ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;  
 
-      List<Widget> htile  = _getTile( [], "Category", 0, 0, width );
-      appState.equityTree = EquityNode( "Category", 0, htile, null, width, widget.pageStamp, header: true );
+      print( "Resetting PageStorageKey stamps" );
+      String pageStamp = DateTime.now().millisecondsSinceEpoch.toString();
+
+      List<Widget> htile  = _getTile( [], "Category", 0, 0, width, pageStamp );
+      appState.equityTree = EquityNode( "Category", 0, htile, null, width, header: true );
       
       if( appState.equityPlan == null ) {
          appState.updateEquityPlan = false;
@@ -160,19 +164,20 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          // when eqLines are created, they are leaves. Down the road, they become nodes
          List<String> cat = eqLine.category;
-         List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width );
+         List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width, pageStamp );
             
          EquityTree? childNode   = curNode.findNode( eqLine.category );
          EquityTree? childParent = curNode.findNode( eqLine.category.sublist(0, eqLine.category.length - 1 ) );
+         assert( childNode == null );
 
          if( childParent is EquityLeaf  ) {
-            print( "... leaf in middle - convert" );
-            curNode = (curNode as EquityNode).convertToNode( childParent, widget.pageStamp );
+            print( "... leaf upgraded to node" );
+            curNode = (curNode as EquityNode).convertToNode( childParent );
          }
-         if( childNode != null ) {
-            print( "OI!! " + childNode.toStr() );
-            assert( childNode == null );
+         else if( childParent is EquityNode ) { 
+            curNode = childParent;   
          }
+
          EquityLeaf tmpLeaf = EquityLeaf( eqLine.category.last, eqLine.amount, tile, curNode, width ); 
          (curNode as EquityNode).addLeaf( tmpLeaf );
 
@@ -201,12 +206,12 @@ class _CEEquityState extends State<CEEquityFrame> {
             
             if( childNode is EquityLeaf && !lastCat ) {
                // print( "... leaf in middle - convert" );
-               curNode = (curNode as EquityNode).convertToNode( childNode, widget.pageStamp );
+               curNode = (curNode as EquityNode).convertToNode( childNode );
             }
             else if( childNode == null ) {
                if( !lastCat ) {
                   // if( appState.verbose >= 1 ) { print( "... nothing - add node" ); }
-                  EquityNode tmpNode = EquityNode( eqLine.category[i], 0, tile, curNode, width, widget.pageStamp );
+                  EquityNode tmpNode = EquityNode( eqLine.category[i], 0, tile, curNode, width );
                   (curNode as EquityNode).addLeaf( tmpNode );
                   curNode = tmpNode;
                }
@@ -244,19 +249,25 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       if( appState.updateEquityPlan ) { _buildEquityTree(); }
 
-      // When node expansion changes, callback sets state on equityExpanded, which changes node, which changes here, which causes project_page rebuild
-      if( appState.equityPlan != null )
-      {
-         if( appState.equityPlan!.ceProjectId == appState.selectedCEProject ) {
-            assert( appState.equityTree != null );
-            if( appState.equityPlan!.getAllEquity( appState.equityTree ).length == 0 ) { return []; }
-            if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
-           catList.addAll( appState.equityTree!.getCurrent( container ) );
+      if( appState.updateEquityView ) {
+         catList = [];
+         if( appState.equityPlan != null )
+         {
+            if( appState.equityPlan!.ceProjectId == appState.selectedCEProject ) {
 
-            //print( appState.equityTree.toStr() );
+               assert( appState.equityTree != null );
+               appState.equityPlan!.updateEquity( appState.equityTree );
+               if( appState.equityPlan!.categories.length == 0 ) { return []; }
+               
+               if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
+               catList.addAll( appState.equityTree!.getCurrent( container ) );
+               
+               //print( appState.equityTree.toStr() );
+            }
+            else { return []; }
          }
+         appState.updateEquityView = false; 
       }
-      else { return []; }
 
 
       /*
@@ -284,11 +295,14 @@ class _CEEquityState extends State<CEEquityFrame> {
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
       appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
 
-      setState(() => appState.updateEquityPlan = true );      
+
+      // Tree changed. update viewable list, then update the view
+      appState.equityPlan!.updateEquity( appState.equityTree );
+      setState(() => appState.updateEquityView = true );
    }
    
    Widget getEquityPlan( context ) {
-      if( appState.verbose >= 2 ) { print( "EF: Remake equity plan" ); }
+      if( appState.verbose >= 1 ) { print( "EF: Remake equity plan" ); }
       final buttonWidth = 100;
       
       List<List<Widget>> categories = [];

@@ -593,8 +593,9 @@ Future<void> reloadRepo( context, container ) async {
       appState.myHostLinks == null ? print( "nope - no associated repo" ) : print( appState.myHostLinks.toString() );
    }
 
-   if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; }  // force alloc tree update
-   if( appState.equityPlan != null ) { appState.updateEquityPlan = true; }  // force equity plan update
+   if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; } // force alloc tree update
+   if( appState.equityPlan != null ) { appState.updateEquityPlan = true; }  // force equity tree update
+   if( appState.equityPlan != null ) { appState.updateEquityView = true; }  // force equity view creation on first pass
 }
 
 
