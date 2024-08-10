@@ -175,12 +175,17 @@ mixin treeUtils {
         }
         else {
            newParent = destNext.parent;
-           dpIndex = newParent!.getLeaves().indexOf( destPrev ) + 1; // go after destPrev
+           dpIndex = newParent!.getLeaves().indexOf( destNext ); // go before destNext
         }
 
         print( "Pre-repair index " + dpIndex.toString() + destPrev.parent.getTitle() );
         // If moving within same node, dpIndex can exceed leaf length.  repair.
-        dpIndex = dpIndex >= newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
+        if( self.parent == newParent ) {
+           dpIndex = dpIndex >= newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
+        }
+
+        assert( dpIndex <= newParent.getLeaves().length );
+        dpIndex = dpIndex > newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
         
         assert( newParent != null );
      }
@@ -202,6 +207,11 @@ mixin treeUtils {
      dpIndex = dpIndex == -1 ? 0 : dpIndex;
      print( "New parent " + newParent!.toStr() );
      print( "New index " + dpIndex.toString() + "\n" );
+
+     if( newParent == self ) {
+        print( "Can not become a child of yourself.  Umm.  Unless you try harder.  No-op." );
+        return;
+     }
      
      // Remove from old loc
      if( self.parent != null ) { self.parent.leaves.remove( self ); }
