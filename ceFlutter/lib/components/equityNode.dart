@@ -21,7 +21,7 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
  
    late String path;
 
-   final List<EquityTree> leaves = [];
+   List<EquityTree> leaves = [];
    EquityTree? parent; 
    
    AppState? appState;
@@ -70,27 +70,12 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
      return treeList;
   }
 
-
-     
-   EquityTree convertToNode( EquityTree child ) {
-     if( child is EquityNode ) { return child; }
-     
-     EquityNode newNode = EquityNode( child.getTitle(), child.getAmount(), (child as EquityLeaf).parent, (child as EquityLeaf).width );
-     bool converted = false;
-     
-     // find and replace in list
-     for( int i = 0; i < leaves.length; i++ )
-     {
-        if( leaves[i].getTitle() == child.getTitle() ) {
-           leaves[i] = newNode;
-           converted = true;
-           break;
-        }
-     }
-     assert( converted );
-     return newNode;
+  // Already a node.
+  @override
+  EquityTree convertToNode() {
+     return this;
   }
-
+     
   @override
   String getTitle() { return title; }
 
@@ -111,11 +96,12 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
      res += "\nNODE: " + title;
      res += "\n   has " + leaves.length.toString() + " leaves";
      res += "\n   with amount: " + addCommas( getAmount() ) ;
+     res += "\n   parent: " + ( parent == null ? "??" : parent!.getTitle() );
 
-     // res += "\n";
-     // leaves.forEach( (l) => res += l.getTitle() + " " );
+     res += "\n   leaves:";
+     leaves.forEach( (l) => res += l.getTitle() + " " );
      
-     leaves.forEach((EquityTree leaf ) => res += leaf.toStr() );
+     // leaves.forEach((EquityTree leaf ) => res += leaf.toStr() );
 
      return res;
   }

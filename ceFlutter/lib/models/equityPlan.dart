@@ -72,20 +72,52 @@ class EquityPlan {
       
    }
 
-   void indent( int myIndex ) {
+   // XXX indent, unindent, move are nearly identical.  Fix.
+   void indent( int myIndex, EquityTree tree ) {
       print( "Indent." );
+      assert( categories.length == amounts.length );
+
+      print( "Indent " + myIndex.toString() );
+
+      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
+      myIndex -= 1;
+      assert( myIndex < categories.length );
+
+      // Get major elements here.  Tree/node/leaf should not see index.
+      EquityTree? target = tree.findNode( categories[myIndex] );
+      assert( target != null );
+
+      EquityTree? destPrev = null;
+      if( myIndex > 0 ) { destPrev = tree.findNode( categories[myIndex-1] ); }
+      
+      (tree as EquityNode).indent( target!, tree!, destPrev );
    }
 
-   List<int> unindent( int myIndex, int removeCount, {String parent = "", int newHomeIndex = -1} ) {
+   void unindent( int myIndex, EquityTree tree ) {
       print( "Unindent." );
-      return [-1,-1];
+      assert( categories.length == amounts.length );
+
+      print( "Unindent " + myIndex.toString() );
+
+      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
+      myIndex -= 1;
+      assert( myIndex < categories.length );
+
+      // Get major elements here.  Tree/node/leaf should not see index.
+      EquityTree? target = tree.findNode( categories[myIndex] );
+      assert( target != null );
+
+      EquityTree? destPrev = null;
+      if( myIndex > 1 ) { destPrev = tree.findNode( categories[myIndex-1] ); }
+      
+      (tree as EquityNode).unindent( target!, tree!, destPrev );
    }
 
    // Move between parent and child?  Become a child of index - 1.
    // Move elsewhere?  Become a sibling of index - 1.
    void move( int oldIndex, int newIndex, EquityTree tree ) {
       assert( categories.length == amounts.length );
-      assert( oldIndex < categories.length );
+      assert( oldIndex <= categories.length );
 
       print( "move from " + oldIndex.toString() + " to " + newIndex.toString() );
 

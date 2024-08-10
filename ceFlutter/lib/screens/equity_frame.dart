@@ -83,9 +83,12 @@ class _CEEquityState extends State<CEEquityFrame> {
                print( "Forward! Currently at " + index.toString() );
                
                assert( appState.equityPlan != null );
-               appState.equityPlan!.indent( index );
+               assert( appState.equityTree != null );
+               appState.equityPlan!.indent( index, appState.equityTree! );
                
-               setState(() => appState.updateEquityPlan = true );                  
+               // Tree changed. update viewable list, then update the view
+               appState.equityPlan!.updateEquity( appState.equityTree );
+               setState(() => appState.updateEquityView = true );                  
             },
             child: Icon( Icons.arrow_right )
             );
@@ -97,9 +100,12 @@ class _CEEquityState extends State<CEEquityFrame> {
                print( "back! from " + index.toString() );
                
                assert( appState.equityPlan != null );
-               appState.equityPlan!.unindent( index, 0 );
+               assert( appState.equityTree != null );
+               appState.equityPlan!.unindent( index, appState.equityTree! );
                
-               setState(() => appState.updateEquityPlan = true );                  
+               // Tree changed. update viewable list, then update the view
+               appState.equityPlan!.updateEquity( appState.equityTree );
+               setState(() => appState.updateEquityView = true );                  
             },
             child: Icon( Icons.arrow_left )
             );
@@ -141,73 +147,6 @@ class _CEEquityState extends State<CEEquityFrame> {
       }
       return nodes;
    }
-      
-      /*   
-   List<Widget> _getTile( path, convertedName, amtInt, index, width, stamp ) {
-      assert( appState != null );
-
-      int depthM1 = path.length + 1;
-      // indent
-      Widget fgd = GestureDetector(
-         onTap: () async 
-         {
-            print( "Forward! Currently at " + index.toString() );
-
-            assert( appState.equityPlan != null );
-            appState.equityPlan!.indent( index );
-               
-            setState(() => appState.updateEquityPlan = true );                  
-         },
-         child: Icon( Icons.arrow_right )
-         );
-
-      // unindent
-      Widget bgd = GestureDetector(
-         onTap: () async 
-         {
-            print( "back! from " + index.toString() );
-
-            assert( appState.equityPlan != null );
-            appState.equityPlan!.unindent( index, 0 );
-               
-            setState(() => appState.updateEquityPlan = true );                  
-         },
-         child: Icon( Icons.arrow_left )
-         );
-
-      
-      final  numWidth = width / 3.0;      
-      final  height   = appState!.CELL_HEIGHT;
-      String amount   = addCommas( amtInt );
-      Widget amountW  = makeTableText( appState!, amount, numWidth, height, false, 1 );      
-      Widget cat      = makeTableText( appState, convertedName, width, height, false, 1, mux: (depthM1+1) * .5 );
-      Widget forward  = fgd;
-      Widget back     = bgd;
-      Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ) ); 
-
-      Widget c        = Container( width: numWidth, height: 1 );
-      Widget catCont  = Container( width: width, height: height, child: cat );
-
-      print( "new tile with " + path.toString() + convertedName + stamp );
-      
-      Widget tile = Container(
-         width: width * 2,
-         height: height,
-         child: ListTileTheme(
-            dense: true,
-            child: ListTile(
-               trailing:  Wrap(
-                  spacing: 0,
-                  key: new PageStorageKey(path.toString() + convertedName + stamp),
-                  children: <Widget>[ c, bgd, drag, fgd ],
-                  ),
-               title: amountW
-               )));
-      
-      return [catCont, tile];
-
-   }
-   */
    
    // XXX search.. no alloc
    // BuildEquityTree creates the linkages between nodes.  EquityNode controls most of the the view for each element.
@@ -248,7 +187,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          if( childParent is EquityLeaf  ) {
             print( "... leaf upgraded to node" );
-            curNode = (curNode as EquityNode).convertToNode( childParent );
+            curNode = childParent.convertToNode();
          }
          else if( childParent is EquityNode ) { 
             curNode = childParent;   
@@ -293,26 +232,10 @@ class _CEEquityState extends State<CEEquityFrame> {
          appState.updateEquityView = false; 
       }
 
-
-      /*
-      if( appState.updateEquityPlan ) {
-         
-         print( "Getting Widgets!" );
-         
-         assert( appState.equityPlan != null );
-         
-         for( int i = 0; i < appState.equityPlan!.categories.length; i++ ) {
-            List<String> cat = appState.equityPlan!.categories[i];
-            int          amt = appState.equityPlan!.amounts[i];
-            catList.add( _getTile( cat.sublist(0, cat.length-1), cat.last, amt, i, width, cat.length ) ); 
-         }
-         print( appState.equityPlan.toString() );
-         appState.updateEquityPlan = false;
-      }
-      */
       return catList;
    }
 
+   // sibling to fgd, bgd  .. this is managed by drag handle listener
    void _updateListItems( oldIndex, newIndex ) {
       assert( appState.equityPlan != null );
 

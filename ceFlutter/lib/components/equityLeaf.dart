@@ -8,6 +8,7 @@ import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/models/app_state.dart';
 
 import 'package:ceFlutter/components/equityTree.dart';
+import 'package:ceFlutter/components/equityNode.dart';
 
 // Leave room for icons for later - may help to clarify equity tables
 class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
@@ -53,8 +54,30 @@ class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    String toStr() {
       String res = "";
       res += "\n   LEAF: " + title + " with amount: " + addCommas( amount );
+      res += "\n   parent: " + parent.getTitle();
       return res;
    }
+
+   @override
+   EquityTree convertToNode() {
+     
+     EquityNode newNode = EquityNode( title, amount, parent, width );
+
+     bool converted = false;
+     
+     // find and replace in list
+     for( int i = 0; i < parent.getLeaves().length; i++ )
+     {
+        if( parent.getLeaves()[i].getTitle() == title ) {
+           (parent as EquityNode).leaves[i] = newNode;
+           converted = true;
+           break;
+        }
+     }
+     assert( converted );
+     return newNode;
+  }
+
 
       /*
    @override
