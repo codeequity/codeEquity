@@ -42,46 +42,65 @@ mixin treeUtils {
   }
 
   // progeny come along for free
-   void moveTo( self, tot, destParent, destNext ) {
+   void moveTo( self, tot, destPrev, destNext ) {
       print( self.getTitle() + " moveTo " + self.parent.getTitle() );
 
      int dpIndex = 0;
      EquityTree? newParent = null;
      
      // Move to beginning?  This becomes first leaf of TOT
-     if( destParent == null ) {
+     if( destPrev == null ) {
         print( "   null parent" );
         newParent = tot;
      }
-     // Move to end?  Same as Move as sibling to destParent
-     // Move as sibling?  i.e. destNext is not first child of destParent
+     // Move to end?  Same as Move as sibling to destPrev.parent
+     // Move as sibling?  i.e. destNext is not first child of destPrev?  move as sibling to destPrev.
      else if( destNext == null ||
-         destNext.parent != destParent || destParent.leaves.length <= 0 || destNext != destParent.leaves[0] ) {
-
+              destNext.parent != destPrev || destPrev.leaves.length <= 0 || destNext != destPrev.leaves[0] ) {
+        
         print( "Move as sibling" );
            
         // Get new parent.  
         if( destNext == null ) {
-           if( destParent.parent == null ) { newParent = tot; }   // should not occur?
-           else                            { newParent = destParent.parent; }
+           if( destPrev.parent == null ) {
+              newParent = tot;
+              dpIndex = newParent!.getLeaves().indexOf( destPrev ) + 1; 
+           }
+           else if( destPrev.parent.parent == null ) {
+              newParent = tot;
+              dpIndex = newParent!.getLeaves().indexOf( destPrev.parent ) + 1;
+           }
+           else {
+              newParent = destPrev.parent.parent;
+              dpIndex = newParent!.getLeaves().indexOf( destPrev.parent ) + 1;
+           }
         }
-        else { newParent = destNext.parent; }
+        else {
+           newParent = destNext.parent;
+           dpIndex = newParent!.getLeaves().indexOf( destPrev ) + 1; // go after destPrev
+        }
+        // If moving within same node, dpIndex can exceed leaf length.  correct.
+        dpIndex = dpIndex >= newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
+        
         assert( newParent != null );
-
-        // Make sure new parent is node, not leaf
-        { newParent = tot.convertToNode( newParent ); }
-
-        // Get new loc
-        dpIndex = newParent!.getLeaves().length > 0 ? newParent!.getLeaves().indexOf( destParent ) : 0;
      }
-     // Move as child?  i.e. destNext is the first child of destParent
+     // Move as child?  i.e. destNext is the first child of destPrev
      else {
         print( "Move as child" );
+        assert( destNext.parent == destPrev );
+
         // Get new parent
-        EquityTree? newParent = destNext.parent;
+        newParent = destPrev;
+
+        // Make sure new parent is node, not leaf
+        newParent = tot.convertToNode( newParent );
         assert( newParent != null );
         assert( newParent!.getLeaves().length > 0 );
      }
+
+     dpIndex = dpIndex == -1 ? 0 : dpIndex;
+     // print( "New parent " + newParent!.toStr() );
+     // print( "New index " + dpIndex.toString() + "\n" );
      
      // Remove from old loc
      if( self.parent != null ) { self.parent.leaves.remove( self ); }

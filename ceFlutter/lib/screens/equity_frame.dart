@@ -68,6 +68,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
 
 
+   // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
    List<List<Widget>> _getTiles( width ) {
       assert( appState.equityTree != null );
       List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
