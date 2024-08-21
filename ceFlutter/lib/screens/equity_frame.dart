@@ -76,6 +76,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       List<List<Widget>> nodes = [];
       for( int index = 0; index < treeList.length; index++ ) {
 
+         Widget empty = Container( width: 1, height: 1 );
+            
          // indent
          Widget fgd = GestureDetector(
             onTap: () async 
@@ -109,23 +111,35 @@ class _CEEquityState extends State<CEEquityFrame> {
             },
             child: Icon( Icons.arrow_left )
             );
-         
+
          EquityTree t = treeList[index];
 
          int depth = 0;
          if( t is EquityNode )      { depth = (t as EquityNode).getPath( t.getParent(), t.getTitle() ).length + 1; }
          else if( t is EquityLeaf ) { depth = (t as EquityLeaf).getPath( t.getParent(), t.getTitle() ).length + 1; }
-     
+         
          final  numWidth = width / 3.0;      
          final  height   = appState!.CELL_HEIGHT;
          Widget amountW  = makeTableText( appState!, addCommas( t.getAmount() ), numWidth, height, false, 1 );      
          Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
          Widget forward  = fgd;
          Widget back     = bgd;
-         Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ) ); 
+         Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle )); 
          
          Widget c        = Container( width: numWidth, height: 1 );
          Widget catCont  = Container( width: width, height: height, child: cat );
+
+         List<Widget> tileKids = [ c, bgd, drag, fgd ];
+         List<Widget> none = [ c  ];
+         tileKids = index == 0 ? none : tileKids;
+
+         // This is ugly.  It can work, but is not working well as is.  Probably nixable
+         /*
+         List<Widget> top =  [ c,  drag, fgd ];
+         List<Widget> bot =  [ c, bgd, drag ];
+         tileKids = t.getParent() == appState.equityTree ? top : tileKids;
+         if( index > 0 && t.getParent() == treeList[index - 1] ) { tileKids = bot; }
+         */
          
          Widget tile = Container(
             width: width * 2,
@@ -136,7 +150,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                   trailing:  Wrap(
                      spacing: 0,
                      // key: new PageStorageKey(getPathName() + getTitle() + stamp),
-                     children: <Widget>[ c, bgd, drag, fgd ],
+                     children: tileKids,
                      ),
                   title: amountW
                   )));
@@ -148,7 +162,6 @@ class _CEEquityState extends State<CEEquityFrame> {
       return nodes;
    }
    
-   // XXX search.. no alloc
    // BuildEquityTree creates the linkages between nodes.  EquityNode controls most of the the view for each element.
    _buildEquityTree() {
       if( appState.verbose >= 1 ) { print( "Build Equity tree" ); }

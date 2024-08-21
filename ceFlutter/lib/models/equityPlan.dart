@@ -99,11 +99,14 @@ class EquityPlan {
       assert( myIndex < categories.length );
 
       // Get major elements here.  Tree/node/leaf should not see index.
+      // print( "Categories " + categories.toString() );
+      // print( "Finding " + myIndex.toString() + " " + categories[myIndex].toString() );
       EquityTree? target = tree.findNode( categories[myIndex] );
       assert( target != null );
 
       EquityTree? destPrev = null;
-      if( myIndex > 1 ) { destPrev = tree.findNode( categories[myIndex-1] ); }
+      // print( "Finding " + (myIndex-1).toString() + " " +  categories[myIndex].toString() );
+      if( myIndex > 0 ) { destPrev = tree.findNode( categories[myIndex-1] ); }
       
       (tree as EquityNode).unindent( target!, tree!, destPrev );
    }

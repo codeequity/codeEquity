@@ -15,8 +15,6 @@ abstract class EquityTree {
    double getWidth();
    String toStr();
    EquityTree convertToNode();
-   
-   // List<List<Widget>> getCurrent( container, fgd, bgd, {index=0, first:true} );
 
 }
 
@@ -124,8 +122,16 @@ mixin treeUtils {
          }
          assert( newParent != null );
          
-         // Find insertion point
-         dpIndex = newParent!.getLeaves().length; 
+         // Find insertion point.  One after oldParent's position in leaves of newParent.
+         var npl = newParent!.getLeaves();
+         dpIndex = npl.length;
+         for( int i = 0; i < dpIndex; i++ ) {
+            if( npl[i].getTitle() == oldParent.getTitle() ) {
+               dpIndex = i+1;
+               // print( "Found new position at " + dpIndex.toString() );
+               break;
+            }
+         }
       }
 
       // Remove from old loc
