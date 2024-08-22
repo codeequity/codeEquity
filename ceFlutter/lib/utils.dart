@@ -130,6 +130,42 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
               });
 }
 
+void editRow( BuildContext context, appState, scrollHeader, List<TextEditingController> values, saveFunc, cancelFunc, deleteFunc ) {
+
+   List<Widget> editVals = [];
+   Widget c = Container( height: 1, width: appState.MID_PAD );
+   for( var val in values ) {
+      Widget text = makeInputField( appState, val.text, false, val);
+      Widget w = IntrinsicWidth( child: text );      
+      editVals.add( w );
+      editVals.add( c );
+   }
+
+   Widget scrollBody = Row(
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: editVals );
+
+   List<Widget> buttons = [];
+   buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: saveFunc ));
+
+   if( deleteFunc != null ) {
+      buttons.add( new TextButton( key: Key( 'Delete' ), child: new Text("Delete"), onPressed: deleteFunc ) );
+   }
+
+   buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
+   
+   showDialog(
+      context: context,
+      builder: (BuildContext context) {
+                 return AlertDialog(
+                    scrollable: true,
+                    title: new Text( scrollHeader ),
+                    content: scrollBody,
+                    actions: buttons);
+              });
+}
+
 void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {
    showDialog(
       context: context,

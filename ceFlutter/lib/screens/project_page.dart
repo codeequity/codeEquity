@@ -77,7 +77,6 @@ class _CEProjectState extends State<CEProjectPage> {
       setState(() => appState.peqUpdated = true );
    }
 
-   // XXX is expansionChanged still useful?
    _allocExpansionCallback( expansionVal, path ) {
       print( ".. summary change allocExpanded $path $expansionVal" );
       // causes node to update internal tile expansion state, which updates trailing icons
@@ -121,7 +120,6 @@ class _CEProjectState extends State<CEProjectPage> {
 
          Widget equityFrameWidget = CEEquityFrame(
             appContainer:           container,
-            pageStamp:              pageStamp,
             frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD );
 
          return Column(

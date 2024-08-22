@@ -147,7 +147,7 @@ Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
    await tester.pumpAndSettle();
 
-   expect( find.text( 'ZooBaDoo!' ), findsOneWidget );
+   expect( find.text( 'Category' ), findsOneWidget );
    return true;
 }
 

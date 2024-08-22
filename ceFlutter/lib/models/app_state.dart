@@ -15,6 +15,7 @@ import 'package:ceFlutter/models/hostAccount.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 
 import 'package:ceFlutter/components/node.dart';
+import 'package:ceFlutter/components/equityNode.dart';
 
 
 class AppState {
@@ -61,11 +62,11 @@ class AppState {
 
    Node? allocTree;
    late bool  updateAllocTree;
-   late bool  expansionChanged;
-   late bool  updateEquityPlan; 
-
    late HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
-   
+
+   EquityNode? equityTree;
+   late bool   updateEquityPlan;        // updated the tree, with moves, indents, etc
+   late bool   updateEquityView;        // updated the viewable list, with dynamo, or newly updated tree
 
    late String                          selectedRepo;
    late String                          selectedCEProject;
@@ -108,10 +109,11 @@ class AppState {
 
       allocTree        = null;
       updateAllocTree  = false;
-      expansionChanged = false;
-      updateEquityPlan = false;
+      allocExpanded    = HashMap<String, bool>();
 
-      allocExpanded = HashMap<String, bool>();
+      equityTree         = null;
+      updateEquityPlan   = false;
+      updateEquityView   = false;
 
       selectedRepo = "";
       selectedCEProject = "";
@@ -125,7 +127,7 @@ class AppState {
    init() {
       screenHeight = -1;
       screenWidth  = -1;
-      verbose      = 2;
+      verbose      = 1;
       
       // Cognito values
       authRetryCount = 0;
