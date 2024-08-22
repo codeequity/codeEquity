@@ -9,6 +9,7 @@ abstract class EquityTree {
 
    void setTitle( String newT ); 
    void setAmount( int newA ); 
+   void setParent( EquityTree newP ); 
    
    int    getAmount();
    String getTitle();
@@ -18,6 +19,8 @@ abstract class EquityTree {
    double getWidth();
    String toStr();
    EquityTree convertToNode();
+
+   void delete();
 
 }
 

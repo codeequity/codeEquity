@@ -38,6 +38,8 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
   void setTitle( String newT ) { title = newT; }
   @override
   void setAmount( int newA ) { amount = newA; }
+  @override
+  void setParent( EquityTree newP ) { parent = newP; }
 
   @override
   EquityTree? getParent() { return parent; }
@@ -111,7 +113,30 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
      return res;
   }
 
-  
+  @override
+  void delete() {
+
+     // Should not see this.
+     if( parent == null ) {
+        print( "Can not delete top of tree.  No-op." );
+        return;
+     }
+
+     int index = parent!.getLeaves().indexOf( this );
+     assert( index > -1 );
+     
+     // remove self from parent's leaves
+     parent!.getLeaves().remove( this );
+     
+     // reparent children
+     leaves.forEach( (l) {
+           parent!.insertLeaf( l, index );
+           index += 1;
+           l.setParent( parent! );            
+        });
+  }
+
+     
   @override
   Widget build(BuildContext context) {
 

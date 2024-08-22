@@ -32,6 +32,8 @@ class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    void setTitle( String newT ) { title = newT; }
    @override
    void setAmount( int newA ) { amount = newA; }
+   @override
+   void setParent( EquityTree newP ) { parent = newP; }
 
    @override
    EquityTree? getParent() { return parent; }
@@ -83,6 +85,18 @@ class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
      return newNode;
   }
 
+  @override
+  void delete() {
+
+     // Should not see this.
+     if( parent == null ) {
+        print( "Can not delete top of tree.  No-op." );
+        return;
+     }
+
+     // remove self from parent's leaves
+     parent!.getLeaves().remove( this );
+  }
 
   
   @override

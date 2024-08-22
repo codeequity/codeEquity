@@ -130,7 +130,7 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
               });
 }
 
-void editRow( BuildContext context, appState, scrollHeader, List<TextEditingController> values, saveFunc, cancelFunc ) {
+void editRow( BuildContext context, appState, scrollHeader, List<TextEditingController> values, saveFunc, cancelFunc, deleteFunc ) {
 
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
@@ -145,7 +145,16 @@ void editRow( BuildContext context, appState, scrollHeader, List<TextEditingCont
       mainAxisSize: MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: editVals );
-               
+
+   List<Widget> buttons = [];
+   buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: saveFunc ));
+
+   if( deleteFunc != null ) {
+      buttons.add( new TextButton( key: Key( 'Delete' ), child: new Text("Delete"), onPressed: deleteFunc ) );
+   }
+
+   buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
+   
    showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -153,16 +162,7 @@ void editRow( BuildContext context, appState, scrollHeader, List<TextEditingCont
                     scrollable: true,
                     title: new Text( scrollHeader ),
                     content: scrollBody,
-                    actions: <Widget>[
-                       new TextButton(
-                          key: Key( 'Save' ),
-                          child: new Text("Save"),
-                          onPressed: saveFunc ),
-                       new TextButton(
-                          key: Key( 'Cancel' ),
-                          child: new Text("Cancel"),
-                          onPressed: cancelFunc )
-                       ]);
+                    actions: buttons);
               });
 }
 

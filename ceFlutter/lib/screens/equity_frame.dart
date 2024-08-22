@@ -88,15 +88,44 @@ class _CEEquityState extends State<CEEquityFrame> {
       Navigator.of( context ).pop();
    }
 
+   void _delete( EquityTree t ) {
+      print( "Deleting " + t.getTitle() );
+      t.delete();
+
+      // Tree changed. update viewable list, then update the view
+      appState.equityPlan!.updateEquity( appState.equityTree );
+      setState(() => appState.updateEquityView = true );
+      
+      Navigator.of( context ).pop();
+   }
+
+   void _saveAdd( EquityTree tot, titleController, amountController) {
+      final width = frameMinWidth - 2*appState.FAT_PAD;
+      EquityTree t = EquityLeaf( titleController.text, int.parse( amountController.text ), tot, width );
+      (tot as EquityNode).addLeaf( t );
+      
+      // Tree changed. update viewable list, then update the view
+      appState.equityPlan!.updateEquity( appState.equityTree );
+      setState(() => appState.updateEquityView = true );                  
+
+      Navigator.of( context ).pop();
+   }
+   
+   void _add( EquityTree tot) {
+      print( "Add category " );
+      TextEditingController title = new TextEditingController( text: "new category" );
+      TextEditingController amt   = new TextEditingController( text: "0" );
+      editRow( context, appState, "Add new Category, Amount (without commas)", [title, amt], () => _saveAdd( tot, title, amt ), () => _cancelEdit(), null );
+   }
+
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
    List<List<Widget>> _getTiles( context, width ) {
       assert( appState.equityTree != null );
       List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
       
       List<List<Widget>> nodes = [];
+      Widget empty = Container( width: 1, height: 1 );
       for( int index = 0; index < treeList.length; index++ ) {
-
-         Widget empty = Container( width: 1, height: 1 );
             
          // indent
          Widget fgd = GestureDetector(
@@ -156,7 +185,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
                TextEditingController title = new TextEditingController( text: t.getTitle() );
                TextEditingController amt   = new TextEditingController( text: t.getAmount().toString() );
-               editRow( context, appState, "Edit Category, Amount (without commas)", [title, amt], () => _saveEdit( t, title, amt ), () => _cancelEdit() );
+               editRow( context, appState, "Edit Category, Amount (without commas)", [title, amt], () => _saveEdit( t, title, amt ), () => _cancelEdit(), () => _delete(t) );
             },
             child: cat
             );
@@ -194,6 +223,25 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          nodes.add( [ catCont, tile ] );
       }
+      
+      // add
+      Widget agd = GestureDetector(
+         onTap: () async 
+         {
+            print( "Add!" );
+            
+            assert( appState.equityPlan != null );
+            assert( appState.equityTree != null );
+            _add( appState.equityTree! );
+            
+            // Tree changed. update viewable list, then update the view
+            appState.equityPlan!.updateEquity( appState.equityTree );
+            setState(() => appState.updateEquityView = true );                  
+         },
+         child: Icon( Icons.add_box_outlined )
+         );
+
+      nodes.add( [agd, empty] );
       return nodes;
    }
    
@@ -306,8 +354,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       // categoryCount changes with each expand/contract
       // print( "getCategories, count: " + categories.length.toString() );
-      var categoryCount = min( categories.length, 30 );
-      var categoryWidth = categories[0].length;
+      var categoryCount = min( categories.length, 30 );                  // XXX formalize
+      var categoryWidth = categories.length == 0 ? 30 : categories[0].length;  // XXX formalize
 
       final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
       final svWidth  = maxPaneWidth;
