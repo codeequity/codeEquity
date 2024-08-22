@@ -12,7 +12,7 @@ import 'package:ceFlutter/components/equityLeaf.dart';
 
 class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
       
-   final String title;
+   String title;
    int amount;
 
    final double width;
@@ -33,6 +33,11 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
   void addLeaf(EquityTree leaf ) {
     leaves.add( leaf );
   }
+
+  @override
+  void setTitle( String newT ) { title = newT; }
+  @override
+  void setAmount( int newA ) { amount = newA; }
 
   @override
   EquityTree? getParent() { return parent; }

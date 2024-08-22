@@ -82,7 +82,7 @@ class EquityPlan {
       EquityTree? target = tree.findNode( categories[myIndex] );
       assert( target != null );
 
-      EquityTree? destPrev = null;
+      EquityTree? destPrev = tree;
       if( myIndex > 0 ) { destPrev = tree.findNode( categories[myIndex-1] ); }
       
       (tree as EquityNode).indent( target!, tree!, destPrev );

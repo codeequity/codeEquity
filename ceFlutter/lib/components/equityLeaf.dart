@@ -12,8 +12,8 @@ import 'package:ceFlutter/components/equityNode.dart';
 
 // Leave room for icons for later - may help to clarify equity tables
 class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
-   final String title;
-   final int    amount;
+   String title;
+   int    amount;
    EquityTree parent;
       
    final double width;
@@ -27,6 +27,11 @@ class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    
    @override
    int getAmount()  { return amount; }
+
+   @override
+   void setTitle( String newT ) { title = newT; }
+   @override
+   void setAmount( int newA ) { amount = newA; }
 
    @override
    EquityTree? getParent() { return parent; }

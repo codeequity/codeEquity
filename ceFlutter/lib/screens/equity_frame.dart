@@ -49,7 +49,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    static const maxPaneWidth = 950.0;
 
    // iphone 5
-   static const frameMinWidth  = 320.0;
+   static const frameMinWidth  = 320.0;     // XXX appState
    static const frameMinHeight = 300;       // 568.0;
    
    @override
@@ -64,12 +64,32 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       // XXX NOTE This should be cheap.  If not, save state as with allocTree in summary_frame
       // This avoids loss of catList when switch tabs.
-      appState.updateEquityPlan = true;
+      appState.updateEquityView = true;
    }
 
+   void _saveEdit( EquityTree t, titleController, amountController) {
+      print( "Save edit " + titleController.text + " " + amountController.text );
+      if( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() )
+      {
+         print( "Change detected" );
+         t.setTitle( titleController.text );
+         t.setAmount( int.parse( amountController.text ));
+
+         // Tree changed. update viewable list, then update the view
+         appState.equityPlan!.updateEquity( appState.equityTree );
+         setState(() => appState.updateEquityView = true );                  
+      }
+
+      Navigator.of( context ).pop();
+   }
+   
+   void _cancelEdit() {
+      print( "Cancel edit" );
+      Navigator.of( context ).pop();
+   }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
-   List<List<Widget>> _getTiles( width ) {
+   List<List<Widget>> _getTiles( context, width ) {
       assert( appState.equityTree != null );
       List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
       
@@ -124,10 +144,25 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
          Widget forward  = fgd;
          Widget back     = bgd;
-         Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle )); 
+         Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ));
+
+         Widget catEditable = GestureDetector(
+            onTap: () async 
+            {
+               print( "Edit! from " + index.toString() );
+               
+               assert( appState.equityPlan != null );
+               assert( appState.equityTree != null );
+
+               TextEditingController title = new TextEditingController( text: t.getTitle() );
+               TextEditingController amt   = new TextEditingController( text: t.getAmount().toString() );
+               editRow( context, appState, "Edit Category, Amount (without commas)", [title, amt], () => _saveEdit( t, title, amt ), () => _cancelEdit() );
+            },
+            child: cat
+            );
          
          Widget c        = Container( width: numWidth, height: 1 );
-         Widget catCont  = Container( width: width, height: height, child: cat );
+         Widget catCont  = Container( width: width, height: height, child: catEditable );
 
          List<Widget> tileKids = [ c, bgd, drag, fgd ];
          List<Widget> none = [ c  ];
@@ -217,7 +252,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
    
    
-   List<List<Widget>> _getCategoryWidgets() {
+   List<List<Widget>> _getCategoryWidgets( context ) {
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       var c = Container( width: 1, height: 1 );
 
@@ -236,7 +271,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                if( appState.equityPlan!.categories.length == 0 ) { return []; }
                
                if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
-               catList.addAll( _getTiles( width ) ); 
+               catList.addAll( _getTiles( context, width ) ); 
                
                //print( appState.equityTree.toStr() );
             }
@@ -267,7 +302,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       List<List<Widget>> categories = [];
 
-      categories.addAll( _getCategoryWidgets() );
+      categories.addAll( _getCategoryWidgets( context ) );
       
       // categoryCount changes with each expand/contract
       // print( "getCategories, count: " + categories.length.toString() );

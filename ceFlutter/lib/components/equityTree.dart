@@ -7,6 +7,9 @@ abstract class EquityTree {
    EquityTree?      findNode( List<String> target ); 
    List<EquityTree> depthFirstWalk( List<EquityTree> treeList );
 
+   void setTitle( String newT ); 
+   void setAmount( int newA ); 
+   
    int    getAmount();
    String getTitle();
    EquityTree? getParent();
