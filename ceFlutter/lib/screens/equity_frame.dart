@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:ui';    // pointerKinds
+import 'dart:convert';  // json encode/decode
+
+import 'package:flutter/material.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils.dart';
@@ -67,6 +69,16 @@ class _CEEquityState extends State<CEEquityFrame> {
       appState.updateEquityView = true;
    }
 
+   void writeEqPlan() async {
+      if( appState.equityPlan != null ) {
+         appState.equityPlan!.lastMod = getToday();
+         String eplan = json.encode( appState.equityPlan );
+         String postData = '{ "Endpoint": "PutEqPlan", "NewPlan": $eplan }';
+         updateDynamo( context, container, postData, "PutEqPlan" );
+      }
+   }
+   
+   
    void _saveEdit( EquityTree t, titleController, amountController) {
       print( "Save edit " + titleController.text + " " + amountController.text );
       if( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() )
@@ -80,6 +92,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          setState(() => appState.updateEquityView = true );                  
       }
 
+      writeEqPlan();
       Navigator.of( context ).pop();
    }
    
@@ -96,6 +109,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );
       
+      writeEqPlan();
       Navigator.of( context ).pop();
    }
 
@@ -108,6 +122,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );                  
 
+      writeEqPlan();
       Navigator.of( context ).pop();
    }
    
@@ -116,6 +131,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       TextEditingController title = new TextEditingController( text: "new category" );
       TextEditingController amt   = new TextEditingController( text: "0" );
       editRow( context, appState, "Add new Category, Amount (without commas)", [title, amt], () => _saveAdd( tot, title, amt ), () => _cancelEdit(), null );
+      writeEqPlan();
    }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.

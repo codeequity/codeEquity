@@ -910,6 +910,10 @@ async function testLabelMods( authData, testLinks, td ) {
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
 
+	// XXX 8/23/24
+	// GH has failed to send the following update notice several times.  The delete attempt above generates several hits,
+	// could that be the source of failing to send?  If notice fails again, remove this sleep.
+	await utils.sleep( 1500 );	
 	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
 	await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );
 

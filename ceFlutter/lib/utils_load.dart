@@ -475,6 +475,24 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    }
 }
 
+ Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
+   String shortName = "fetchEquityPlan";
+
+   final response = await postIt( shortName, json.encode( postData ), container );
+
+   if (response.statusCode == 201) {
+      final ep = json.decode(utf8.decode(response.bodyBytes));
+      EquityPlan equityPlan = EquityPlan.fromJson(ep);
+      return equityPlan;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no previous Equity Plan found" );
+      return null;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchEquityPlan( context, container, postData ); }
+   }
+}
+
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";
 
@@ -577,10 +595,10 @@ Future<void> reloadRepo( context, container ) async {
    var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
    appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
 
-   // XXXXXXX
-   var cats = [ ["A Pre-Existing Project"], ["A Pre-Existing Project", "Bacon"], ["A Pre-Existing Project", "Eggs"], ["Software Contributions"], ["Software Contributions", "Data Security" ],  ];
-   var amts = [ 2000000, 3000000, 7000000, 4000, 6000000 ];
-   appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: cats, amounts: amts, lastMod: "" );
+   postDataPS = {};
+   postDataPS['EquityPlanId'] = ceProj;
+   pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
+   appState.equityPlan = await fetchEquityPlan( context, container, pd );
    
    // Get linkage
    var postDataL = {};
@@ -593,9 +611,9 @@ Future<void> reloadRepo( context, container ) async {
       appState.myHostLinks == null ? print( "nope - no associated repo" ) : print( appState.myHostLinks.toString() );
    }
 
-   if( appState.myPEQSummary != null ) { appState.updateAllocTree = true; } // force alloc tree update
-   if( appState.equityPlan != null ) { appState.updateEquityPlan = true; }  // force equity tree update
-   if( appState.equityPlan != null ) { appState.updateEquityView = true; }  // force equity view creation on first pass
+   if( appState.myPEQSummary != null ) { appState.updateAllocTree = true;  } // force alloc tree update
+   if( appState.equityPlan != null )   { appState.updateEquityPlan = true; } // force equity tree update
+   if( appState.equityPlan != null )   { appState.updateEquityView = true; } // force equity view creation on first pass
 }
 
 

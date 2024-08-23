@@ -94,6 +94,14 @@ Resources:
         Name: PEQSummaryId
         Type: String
 
+  EquityPlanTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: CEEquityPlan
+      PrimaryKey:
+        Name: EquityPlanId
+        Type: String
+
   LinkageTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
@@ -191,6 +199,8 @@ Resources:
           TableName: !Ref PEQRawTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref PEQSummaryTable 
+       - DynamoDBCrudPolicy:
+          TableName: !Ref EquityPlanTable 
        - DynamoDBCrudPolicy:
           TableName: !Ref LinkageTable 
 
