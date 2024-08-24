@@ -279,8 +279,7 @@ def help() :
     logging.info( "python createCE.py deleteCEResources" )
     logging.info( "python createCE.py makeCEResources" )
     logging.info( "python createCE.py createTestDDBEntries" )
-    logging.info( "" )
-    logging.info( "Then to update asset files.." )
+    logging.info( "Then to update asset files (needed for cognito user pool info and etc).." )
     logging.info( "Build flutter web,        e.g. cd ../../ceFlutter; flutter build web" )
     logging.info( "Copy web app to ceServer, e.g. cd ../webServer/public_flutter; cp -r ../../ceFlutter/build/web/* ." )
 

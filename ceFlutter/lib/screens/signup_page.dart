@@ -133,6 +133,7 @@ class _CESignupState extends State<CESignupPage> {
                   await reloadMyProjects( context, container );
                   appState.updateAllocTree  = true; // forces buildAllocationTree
                   appState.updateEquityPlan = true; 
+                  appState.updateEquityView = true; 
                   appState.loaded = true;
                   
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());

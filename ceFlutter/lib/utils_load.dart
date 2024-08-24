@@ -186,7 +186,7 @@ Future<http.Response> postIt( String shortName, postData, container ) async {
          body: postData
          );
 
-   if (response.statusCode != 201) { print( "Error.  aws post error " + shortName + " " + postData ); }
+   if (response.statusCode != 201 && response.statusCode != 204) { print( "Error.  aws post error " + shortName + " " + postData ); }
    
    return response;
 }
@@ -599,6 +599,7 @@ Future<void> reloadRepo( context, container ) async {
    postDataPS['EquityPlanId'] = ceProj;
    pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
    appState.equityPlan = await fetchEquityPlan( context, container, pd );
+   if( appState.equityPlan == null ) { appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], lastMod: "" ); }
    
    // Get linkage
    var postDataL = {};

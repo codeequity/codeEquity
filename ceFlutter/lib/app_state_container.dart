@@ -176,6 +176,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
         await reloadMyProjects( context, this );
         state.updateAllocTree = true;                 // forces buildAllocationTree upon loading page first time
         state.updateEquityPlan = true;                
+        state.updateEquityView = true;                
      }
      return true;
   }

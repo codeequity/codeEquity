@@ -24,10 +24,17 @@ class EquityPlan {
    
    factory EquityPlan.fromJson(Map<String, dynamic> json) {
 
+      List<List<String>> cats = [];
+      var dynamicCat = json['Categories'];
+      dynamicCat.forEach( (c) {
+            List<String> acat = new List<String>.from( c );
+            cats.add( acat ); 
+         });
+      
       return EquityPlan(
-         ceProjectId:   json['CEProjectId'],
-         categories:    json['Categories'],
-         amounts:       json['Amounts'],
+         ceProjectId:   json['EquityPlanId'],
+         categories:    cats,
+         amounts:       new List<int>.from( json['Amounts'] ),
          lastMod:       json['LastMod'],
          );
    }
