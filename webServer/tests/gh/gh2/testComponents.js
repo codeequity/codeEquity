@@ -910,6 +910,9 @@ async function testLabelMods( authData, testLinks, td ) {
 	console.log( "Make partial peq label" );
 	const pl105 = "105 " + config.PEQ_LABEL;
 
+	// XXX 8/23/24
+	// GH has failed to send the following update notice several times.  
+	await utils.sleep( 1500 );	
 	labNP1 = await tu.settleWithVal( "Label mods newName", getLabHelp, authData, td, "newName" );
 	await gh2tu.updateLabel( authData, labNP1, {name: pl105, description: "newDesc"} );
 

@@ -8,6 +8,7 @@ import 'package:ceFlutter/components/equityNode.dart';
 import 'package:ceFlutter/components/equityLeaf.dart';
 
 Function listEq = const ListEquality().equals;
+Function deepEq = const DeepCollectionEquality().equals;
 
 class EquityPlan {
 
@@ -24,10 +25,17 @@ class EquityPlan {
    
    factory EquityPlan.fromJson(Map<String, dynamic> json) {
 
+      List<List<String>> cats = [];
+      var dynamicCat = json['Categories'];
+      dynamicCat.forEach( (c) {
+            List<String> acat = new List<String>.from( c );
+            cats.add( acat ); 
+         });
+      
       return EquityPlan(
-         ceProjectId:   json['CEProjectId'],
-         categories:    json['Categories'],
-         amounts:       json['Amounts'],
+         ceProjectId:   json['EquityPlanId'],
+         categories:    cats,
+         amounts:       new List<int>.from( json['Amounts'] ),
          lastMod:       json['LastMod'],
          );
    }
@@ -45,14 +53,16 @@ class EquityPlan {
    }
 
    // rebuild categories based on dfs walk of tree.
-   void updateEquity( EquityTree? tree ) {
-      if( tree == null ) { return; }
+   bool updateEquity( EquityTree? tree ) {
+      if( tree == null ) { return false; }
 
       List<EquityTree> treeList = tree.depthFirstWalk( [] );
 
+      List<List<String>> oldCat = new List<List<String>>.from( categories );
+      List<int>          oldAmt = new List<int>.from( amounts );
       categories = [];
       amounts = [];
-
+      
       for( int i = 0; i < treeList.length; i++ ) {
          EquityTree t = treeList[i];
          if( t.getTitle() != "Category" ) { // XXX formalize
@@ -63,8 +73,10 @@ class EquityPlan {
          }
       }
 
-      print( "updateEquity done" + categories.toString() );
+      bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt );
       
+      print( "updateEquity done.. changed? " + changed.toString() + " " + categories.toString() );
+      return changed;
    }
 
    // XXX indent, unindent, move are nearly identical.  Fix.

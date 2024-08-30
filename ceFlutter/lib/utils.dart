@@ -130,7 +130,7 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
               });
 }
 
-void editRow( BuildContext context, appState, scrollHeader, List<TextEditingController> values, saveFunc, cancelFunc, deleteFunc ) {
+Future<void> editRow( BuildContext context, appState, scrollHeader, List<TextEditingController> values, saveFunc, cancelFunc, deleteFunc ) async {
 
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
@@ -155,7 +155,7 @@ void editRow( BuildContext context, appState, scrollHeader, List<TextEditingCont
 
    buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
    
-   showDialog(
+   await showDialog(
       context: context,
       builder: (BuildContext context) {
                  return AlertDialog(
@@ -164,6 +164,7 @@ void editRow( BuildContext context, appState, scrollHeader, List<TextEditingCont
                     content: scrollBody,
                     actions: buttons);
               });
+   print( "Edit row finished" );
 }
 
 void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {

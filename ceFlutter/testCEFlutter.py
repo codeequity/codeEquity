@@ -130,10 +130,13 @@ def runCmd( cmd, filterExp ):
 def runTest( testName, override, noBuild = True, optimized = False ):
     logging.info( "" )
 
+    # timeout none does not help.  https://github.com/flutter/flutter/issues/105913
+    # trying @Timeout(Duration(minutes: 25))
     # Test by hand, i.e. python testCEFlutter.py
-    #cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    # cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     # Test by cronjob.. why?  this will drive 2 windows in by-hand case
     cmd = "flutter drive -d chrome --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+
 
     if optimized :
         cmd = cmd + " --release"
@@ -170,15 +173,17 @@ def runTests( override = False ):
         tsum = runTest( "home_test.dart", override, False, False )
         resultsSum  += tsum
 
-    # Focus area ------------------
-
-    # Always clean dynamo summaries and 'ingested' tags first for full tests
-    if override:
+        # Always clean dynamo summaries and 'ingested' tags first for full tests
         cmd = "npm run cleanFlutter --prefix ../webServer"
         npmRun = runCmd( cmd, [] )
         logging.info( npmRun )
 
-    tsum = runTest( "project_test.dart", override, False, False )
+        tsum = runTest( "project_test.dart", override, False, False )
+
+
+    # Focus area ------------------
+    
+    tsum = runTest( "equity_test.dart", override, False, False )    
     resultsSum  += tsum
 
 

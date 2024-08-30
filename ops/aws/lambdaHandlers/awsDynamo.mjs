@@ -94,6 +94,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
     else if( endPoint == "AddPSumLock")    { resultPromise = addPSumLock( rb.ceProjId ); }
+    else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
     else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
@@ -319,6 +320,9 @@ async function getEntry( tableName, query ) {
 	break;
     case "CEPEQSummary":
 	props = [ "PEQSummaryId" ];
+	break;
+    case "CEEquityPlan":
+	props = [ "EquityPlanId" ];
 	break;
     case "CELinkage":
 	props = [ "CEProjectId" ];
@@ -1213,6 +1217,26 @@ async function addPSumLock( ceProjId ) {
 	}
     }
     return success( true );
+}
+
+// Overwrites any existing record by ID.
+async function putEqPlan( eplan ) {
+
+    console.log( "EquityPlan put", eplan.ceProjectId.toString());
+
+    const paramsP = {
+        TableName: 'CEEquityPlan',
+	Item: {
+	    "EquityPlanId": eplan.ceProjectId,
+	    "Categories":   eplan.categories,
+	    "Amounts":      eplan.amounts,
+	    "LastMod":      eplan.lastMod
+	}
+    };
+
+    const putCmd = new PutCommand( paramsP );
+
+    return bsdb.send( putCmd ).then(() => success( true ));
 }
 
 async function putPeqMods( pmods, ceProjId ) {

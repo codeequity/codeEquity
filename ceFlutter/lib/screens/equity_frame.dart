@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:ui';    // pointerKinds
+import 'dart:convert';  // json encode/decode
+
+import 'package:flutter/material.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils.dart';
@@ -67,6 +69,16 @@ class _CEEquityState extends State<CEEquityFrame> {
       appState.updateEquityView = true;
    }
 
+   Future<void> writeEqPlan() async {
+      if( appState.equityPlan != null ) {
+         appState.equityPlan!.lastMod = getToday();
+         String eplan = json.encode( appState.equityPlan );
+         String postData = '{ "Endpoint": "PutEqPlan", "NewPlan": $eplan }';
+         updateDynamo( context, container, postData, "PutEqPlan" );
+      }
+   }
+   
+   
    void _saveEdit( EquityTree t, titleController, amountController) {
       print( "Save edit " + titleController.text + " " + amountController.text );
       if( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() )
@@ -76,7 +88,6 @@ class _CEEquityState extends State<CEEquityFrame> {
          t.setAmount( int.parse( amountController.text ));
 
          // Tree changed. update viewable list, then update the view
-         appState.equityPlan!.updateEquity( appState.equityTree );
          setState(() => appState.updateEquityView = true );                  
       }
 
@@ -93,7 +104,6 @@ class _CEEquityState extends State<CEEquityFrame> {
       t.delete();
 
       // Tree changed. update viewable list, then update the view
-      appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );
       
       Navigator.of( context ).pop();
@@ -104,18 +114,17 @@ class _CEEquityState extends State<CEEquityFrame> {
       EquityTree t = EquityLeaf( titleController.text, int.parse( amountController.text ), tot, width );
       (tot as EquityNode).addLeaf( t );
       
-      // Tree changed. update viewable list, then update the view
-      appState.equityPlan!.updateEquity( appState.equityTree );
+      // appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );                  
 
       Navigator.of( context ).pop();
    }
    
-   void _add( EquityTree tot) {
+   Future<void> _add( EquityTree tot) async {
       print( "Add category " );
       TextEditingController title = new TextEditingController( text: "new category" );
       TextEditingController amt   = new TextEditingController( text: "0" );
-      editRow( context, appState, "Add new Category, Amount (without commas)", [title, amt], () => _saveAdd( tot, title, amt ), () => _cancelEdit(), null );
+      await editRow( context, appState, "Add new Category, Amount (without commas)", [title, amt], () => _saveAdd( tot, title, amt ), () => _cancelEdit(), null );
    }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
@@ -125,7 +134,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       List<List<Widget>> nodes = [];
       Widget empty = Container( width: 1, height: 1 );
-      for( int index = 0; index < treeList.length; index++ ) {
+      // Skip TOT.. handled in headers below
+      for( int index = 1; index < treeList.length; index++ ) {
             
          // indent
          Widget fgd = GestureDetector(
@@ -138,8 +148,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                appState.equityPlan!.indent( index, appState.equityTree! );
                
                // Tree changed. update viewable list, then update the view
-               appState.equityPlan!.updateEquity( appState.equityTree );
-               setState(() => appState.updateEquityView = true );                  
+               setState(() => appState.updateEquityView = true );
             },
             child: Icon( Icons.arrow_right )
             );
@@ -155,7 +164,6 @@ class _CEEquityState extends State<CEEquityFrame> {
                appState.equityPlan!.unindent( index, appState.equityTree! );
                
                // Tree changed. update viewable list, then update the view
-               appState.equityPlan!.updateEquity( appState.equityTree );
                setState(() => appState.updateEquityView = true );                  
             },
             child: Icon( Icons.arrow_left )
@@ -169,8 +177,10 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          final  numWidth = width / 3.0;      
          final  height   = appState!.CELL_HEIGHT;
-         Widget amountW  = makeTableText( appState!, addCommas( t.getAmount() ), numWidth, height, false, 1 );      
-         Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
+         Widget amountW  = makeTableText( appState!, addCommas( t.getAmount() ), numWidth, height, false, 1 );
+         // XXX YYY
+         // Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
+         Widget cat      = makeTableText( appState, t.getTitle(), width, height - 20, false, 1, mux: (depth+1) * .5 );
          Widget forward  = fgd;
          Widget back     = bgd;
          Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ));
@@ -189,9 +199,11 @@ class _CEEquityState extends State<CEEquityFrame> {
             },
             child: cat
             );
-         
+
+         // XXX YYY XZZZ 20?
          Widget c        = Container( width: numWidth, height: 1 );
-         Widget catCont  = Container( width: width, height: height, child: catEditable );
+         // Widget catCont  = Container( width: width, height: height, child: catEditable );
+         Widget catCont  = Container( width: width, height: height - 20, child: catEditable );
 
          List<Widget> tileKids = [ c, bgd, drag, fgd ];
          List<Widget> none = [ c  ];
@@ -207,7 +219,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          Widget tile = Container(
             width: width * 2,
-            height: height,
+            // XXX YYY
+            // height: height,
+            height: height - 20,
             child: ListTileTheme(
                dense: true,
                child: ListTile(
@@ -224,24 +238,6 @@ class _CEEquityState extends State<CEEquityFrame> {
          nodes.add( [ catCont, tile ] );
       }
       
-      // add
-      Widget agd = GestureDetector(
-         onTap: () async 
-         {
-            print( "Add!" );
-            
-            assert( appState.equityPlan != null );
-            assert( appState.equityTree != null );
-            _add( appState.equityTree! );
-            
-            // Tree changed. update viewable list, then update the view
-            appState.equityPlan!.updateEquity( appState.equityTree );
-            setState(() => appState.updateEquityView = true );                  
-         },
-         child: Icon( Icons.add_box_outlined )
-         );
-
-      nodes.add( [agd, empty] );
       return nodes;
    }
    
@@ -302,7 +298,12 @@ class _CEEquityState extends State<CEEquityFrame> {
    
    List<List<Widget>> _getCategoryWidgets( context ) {
       final width = frameMinWidth - 2*appState.FAT_PAD;        
-      var c = Container( width: 1, height: 1 );
+      var empty = Container( width: 1, height: 1 );
+
+      if( appState.equityPlan != null && appState.equityPlan!.ceProjectId != appState.selectedCEProject ) {
+         print( "Error.  Equity plan is not for selected project." );
+         return [];
+      }
 
       List<List<Widget>> catList = [];
 
@@ -310,21 +311,39 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       if( appState.updateEquityView ) {
          catList = [];
+         Widget headerC = makeTableText( appState, "Category", width, appState!.CELL_HEIGHT, false, 1 );
+         Widget headerA = makeTableText( appState, "Amount",   width, appState!.CELL_HEIGHT, false, 1 );      
+         catList.add( [ headerC, headerA ] );
+         print( "Added headers" );
+         
          if( appState.equityPlan != null )
          {
-            if( appState.equityPlan!.ceProjectId == appState.selectedCEProject ) {
-
-               assert( appState.equityTree != null );
-               appState.equityPlan!.updateEquity( appState.equityTree );
-               if( appState.equityPlan!.categories.length == 0 ) { return []; }
-               
+            assert( appState.equityTree != null );
+            bool changed = appState.equityPlan!.updateEquity( appState.equityTree );
+            if( appState.equityPlan!.categories.length > 0 ) { 
                if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
-               catList.addAll( _getTiles( context, width ) ); 
-               
-               //print( appState.equityTree.toStr() );
+               catList.addAll( _getTiles( context, width ) );
             }
-            else { return []; }
+            if( changed ) { writeEqPlan(); }
          }
+
+         // add
+         Widget agd = GestureDetector(
+            onTap: () async 
+            {
+               print( "Add!" );
+               assert( appState.equityTree != null );
+
+               // add handles updating the plan, and the view if save is asked for
+               await _add( appState.equityTree! );
+            },
+            key: Key( 'add_icon_equity' ),
+            child: Icon( Icons.add_box_outlined )
+            );
+         
+         catList.add( [agd, empty] );
+         print( "Added Footers" );
+
          appState.updateEquityView = false; 
       }
 
@@ -335,12 +354,15 @@ class _CEEquityState extends State<CEEquityFrame> {
    void _updateListItems( oldIndex, newIndex ) {
       assert( appState.equityPlan != null );
 
+      if( newIndex == 0 ) {
+         print( "Can't move above Top of Tree.  No-op." );
+         return;
+      }
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
       appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
 
 
       // Tree changed. update viewable list, then update the view
-      appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );
    }
    
@@ -379,7 +401,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                   child: ReorderableListView(
                      buildDefaultDragHandles: false,
                      onReorder: (oldIndex, newIndex) { _updateListItems(oldIndex, newIndex); ; },
-                     header: Text( "Oi!" ),
+                     // header: Text( "Oi!" ),
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
