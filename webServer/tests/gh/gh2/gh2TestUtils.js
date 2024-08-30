@@ -856,6 +856,12 @@ async function updateLabel( authData, label, updates ) {
     let newDesc = updates.hasOwnProperty( "description" ) ? updates.description : label.description;
     
     await ghV2.updateLabel( authData, label.id, newName, newDesc, label.color );
+
+    // XXX
+    let locator = " " + config.HOST_GH + "/" + config.TEST_OWNER + "/" + config.TEST_ACTOR;    
+    let query = "label edited " + newName + locator;
+    await tu.settleWithVal( "update label", tu.findNotice, query );
+
     await utils.sleep( tu.MIN_DELAY );
 }
 

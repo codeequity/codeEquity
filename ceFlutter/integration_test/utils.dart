@@ -237,6 +237,20 @@ Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
    return true;
 }
 
+Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
+   expect( await verifyOnProjectPage( tester ), true );
+   final Finder tab = find.byKey( const Key('Equity Plan' ));
+   await tester.tap( tab );
+   await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
+   await tester.pumpAndSettle();
+
+   expect( find.text( 'Category' ), findsOneWidget );
+   expect( find.text( 'Amount' ), findsOneWidget );
+   expect( find.byKey( const Key( 'add_icon_equity' )), findsOneWidget );   
+
+   return true;
+}
+
 bool isPresent( Finder f ) {
    try {
       expect( f, findsOneWidget );

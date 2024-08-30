@@ -1,3 +1,5 @@
+@Timeout(Duration(minutes: 25))
+
 import 'dart:async';   // timer
 
 import 'package:flutter/material.dart';

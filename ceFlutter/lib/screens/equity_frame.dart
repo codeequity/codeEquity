@@ -88,11 +88,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          t.setAmount( int.parse( amountController.text ));
 
          // Tree changed. update viewable list, then update the view
-         // appState.equityPlan!.updateEquity( appState.equityTree );
          setState(() => appState.updateEquityView = true );                  
       }
 
-      writeEqPlan();
       Navigator.of( context ).pop();
    }
    
@@ -106,10 +104,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       t.delete();
 
       // Tree changed. update viewable list, then update the view
-      // appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );
       
-      writeEqPlan();
       Navigator.of( context ).pop();
    }
 
@@ -119,10 +115,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       (tot as EquityNode).addLeaf( t );
       
       // appState.equityPlan!.updateEquity( appState.equityTree );
-      // Tree changed.  Update the view
       setState(() => appState.updateEquityView = true );                  
 
-      writeEqPlan();
       Navigator.of( context ).pop();
    }
    
@@ -154,8 +148,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                appState.equityPlan!.indent( index, appState.equityTree! );
                
                // Tree changed. update viewable list, then update the view
-               // appState.equityPlan!.updateEquity( appState.equityTree );
-               setState(() => appState.updateEquityView = true );                  
+               setState(() => appState.updateEquityView = true );
             },
             child: Icon( Icons.arrow_right )
             );
@@ -171,7 +164,6 @@ class _CEEquityState extends State<CEEquityFrame> {
                appState.equityPlan!.unindent( index, appState.equityTree! );
                
                // Tree changed. update viewable list, then update the view
-               // appState.equityPlan!.updateEquity( appState.equityTree );
                setState(() => appState.updateEquityView = true );                  
             },
             child: Icon( Icons.arrow_left )
@@ -327,11 +319,12 @@ class _CEEquityState extends State<CEEquityFrame> {
          if( appState.equityPlan != null )
          {
             assert( appState.equityTree != null );
-            appState.equityPlan!.updateEquity( appState.equityTree );
+            bool changed = appState.equityPlan!.updateEquity( appState.equityTree );
             if( appState.equityPlan!.categories.length > 0 ) { 
                if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
                catList.addAll( _getTiles( context, width ) );
             }
+            if( changed ) { writeEqPlan(); }
          }
 
          // add
@@ -344,6 +337,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                // add handles updating the plan, and the view if save is asked for
                await _add( appState.equityTree! );
             },
+            key: Key( 'add_icon_equity' ),
             child: Icon( Icons.add_box_outlined )
             );
          
@@ -360,12 +354,15 @@ class _CEEquityState extends State<CEEquityFrame> {
    void _updateListItems( oldIndex, newIndex ) {
       assert( appState.equityPlan != null );
 
+      if( newIndex == 0 ) {
+         print( "Can't move above Top of Tree.  No-op." );
+         return;
+      }
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
       appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
 
 
       // Tree changed. update viewable list, then update the view
-      // appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );
    }
    
@@ -404,7 +401,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                   child: ReorderableListView(
                      buildDefaultDragHandles: false,
                      onReorder: (oldIndex, newIndex) { _updateListItems(oldIndex, newIndex); ; },
-                     header: Text( "Oi!" ),
+                     // header: Text( "Oi!" ),
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(

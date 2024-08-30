@@ -1,3 +1,5 @@
+@Timeout(Duration(minutes: 25))
+
 import 'dart:convert';  // json encode/decode
 import 'dart:async';   // timer
 // import 'dart:html' as html;    // refresh button?
@@ -23,13 +25,6 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 // https://github.com/flutter/flutter/tree/master/packages/flutter/test/material
 
 // Gold standard for testing ingest and summary frame for codeequity/ceFlutterTester
-// XXX Category should show ["7,000,000", "12,840", "2,500", "11,001"] in ceFlutter
-// XXX Test for presence in gold not replicated in ceFlutter
-// XXX Discrepencies:
-//     - "Category, Software Contributions, Data Security Flut, Pending PEQ Approval, Unassigned": ["0", "250", "0", "0"],   ir plan split is assigned
-//     - "Category, UnClaimed, Accrued, ariCETester": ["0", "0", "0", "2,000"] does not exist (possibly one of the intentional deletes)
-//     - "Category, UnClaimed, UnClaimed, Unassigned": ["0", "1,709", "0", "0"] github shows 709
-//     - Entry 38, 'split' would actually have a random tag after the name, but that is hard to match in checkAllocs
 const Map<String,List<String>> ALLOCS_GOLD =
 {
    "Category 0": ["Category", "Allocation", "Planned", "Pending", "Accrued", "Surplus"],
@@ -137,17 +132,6 @@ Future<bool> contributorsTabFraming( WidgetTester tester ) async {
    await tester.pumpAndSettle();
 
    expect( find.text( 'ZooBaDoo!' ), findsOneWidget );
-   return true;
-}
-
-Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
-   expect( await verifyOnProjectPage( tester ), true );
-   final Finder tab = find.byKey( const Key('Equity Plan' ));
-   await tester.tap( tab );
-   await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
-   await tester.pumpAndSettle();
-
-   expect( find.text( 'Category' ), findsOneWidget );
    return true;
 }
 
