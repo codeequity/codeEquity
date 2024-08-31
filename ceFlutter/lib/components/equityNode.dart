@@ -70,7 +70,7 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
      treeList.add( this );
      print( "DFSWalk " + getTitle() + " " + treeList.length.toString() );
      for( var leaf in leaves ) {
-        print( "  dfs leaf walk " + leaf.getTitle() );
+        // print( "  dfs leaf walk " + leaf.getTitle() );
         treeList = leaf.depthFirstWalk( treeList ); 
      }
         

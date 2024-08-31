@@ -52,13 +52,34 @@ String getFromMakeTableText( Widget elt ) {
    return retVal;
 }
 
+// Get depth by working out the mux passed in.
+// This looks nasty on the face of it, but it is the only way (currently) to ensure visual output is correct, showing hierarchy.
+// Actual ancesterage is worked out in checkEqs.
+int getDepthFromCat( Widget elt ) {
+   int depth = 1;
+   if( elt is Container && elt.child is GestureDetector ) {
+      var catEdit  = elt.child as GestureDetector;
+      final double gappad = 20.0; // app_state.GAP_PAD   XXX pull this in?  hmmm..
+
+      // mux: (depth+1) * .5 )
+      if( catEdit.child! is Padding ) {
+         var mtt       = catEdit.child as Padding;
+         var edgeInset = mtt.padding as EdgeInsets;
+
+         // ratio of 1.5 gives 3, but 2 of that is from depth+1 above
+         depth = ( ( edgeInset.left / gappad ) / 0.5 ).round() - 2; 
+         // print( "edgeInsetLeft " + edgeInset.left.toString() + " depth " + depth.toString() );
+      }
+
+   }
+   return depth;
+}
 
 String getCatFromTiles( Widget elt ) {
    String retVal = "";
    if( elt is Container && elt.child is GestureDetector ) {
       var catEdit  = elt.child as GestureDetector;
-      
-      retVal        = getFromMakeTableText( catEdit.child! );
+      retVal       = getFromMakeTableText( catEdit.child! );
    }
    return retVal;
 }
@@ -83,50 +104,97 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
 
    var equityRow = generatedEquityRow.evaluate().single.widget as Row;
    var eqs   = equityRow.children as List;
-
+   int depth = 0;
+   
    List<String> aRow = [];
    for( final elt in eqs ) {
       String t = getFromMakeTableText( elt );
       if( t != "" ) { aRow.add( t ); }
 
       t = getCatFromTiles( elt );
-      if( t != "" ) { aRow.add( t ); }
+      if( t != "" ) {
+         aRow.add( t );
+         depth = getDepthFromCat( elt );
+         // print( "Got Cat, depth " + t + " " + depth.toString() );
+      }
 
       t = getAmtFromTiles( elt );
       if( t != "" ) { aRow.add( t ); }
+
    }
 
+   aRow.add( depth.toString() );
    return aRow;
 }
 
 // XXX utils?
-// check gold image matches table
-Future<bool> checkEqs( WidgetTester tester, int min, int max ) async {
+// check gold image matches table.  min, max are onscreen order
+Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, int newDepth = -1} ) async {
 
-   print( "\n" );
    for( int i = min; i <= max; i++ ) {
 
-      print( "checking equityTable " + i.toString());  
+      // print( "checking equityTable " + i.toString() + " with gold table offset " + offset.toString() );  
       final Finder generatedEquityRow = find.byKey( Key( "equityTable " + i.toString() ));  
 
+      // eqs is [leaf, amount, depth]
       List<String> eqs = await getElt( tester, "equityTable " + i.toString() );
 
       // First elt in eqs is used as key for eqs_gold
       // eqs is from the displayed table in ceFlutter, has short title, then numbers.
       // eqs_gold is const above, is a map to a list<str> with long title, then numbers.
       
-      String agKey = eqs[0] + " " + i.toString();                 // offset helps avoid frontal expansions
+      String agKey = eqs[0] + " " + (i+offset).toString();                 
       print( "Got eqs " + eqs.toString() + " making agKey " + agKey );
 
       List<String> agVals  = EQS_GOLD[ agKey ] ?? [];
-      print( "  checking " + agKey + ": " + agVals.toString() );
+      // print( "  checking " + agKey + ": " + agVals.toString() );
 
-      // XXX this is skipping ancestors, indents, etc. bad.    count c's?
+      // depth is # commas, i.e. Soft Cont is depth 1 making TOT depth 0
+      int goldDepth = newDepth != -1 ? newDepth : ','.allMatches( agVals[0] ).length;
+      expect( goldDepth, int.parse( eqs[2] ) );
       for( var j = 1; j < 2; j++ ) { expect( eqs[j], agVals[j] ); }
    }
    return true;
 }
 
+Future<bool> validateDragAboveTOT( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag above TOT" );
+   String keyName         = "drag " + index.toString(); 
+   final Finder ceFlutter = find.byKey( Key( keyName ) );
+
+   await tester.drag(ceFlutter, Offset(0.0, 30.0 * spots ));
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 1 );   // give a small chance to see move
+
+   // Should be no impact, can not move above TOT
+   expect( await checkEqs( tester, 1, 11 ), true );
+
+   return true;
+}
+
+// XXX parentage of ceFlutter changed.  Now depth 1.  Gold table has it at depth 2.  
+Future<bool> validateDragAboveBusOp( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag above BusOp" );
+   String keyName         = "drag " + index.toString(); 
+   final Finder ceFlutter = find.byKey( Key( keyName ) );
+
+   await tester.drag(ceFlutter, Offset(0.0, 30.0 * spots ));
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 1 );   // give a small chance to see move
+
+   expect( await checkEqs( tester, 1,       1,     offset:  5, newDepth: 1  ), true );  // screen sees ceFlut in position1. add offset to get ceFlut in gold image.
+   expect( await checkEqs( tester, 2,       index, offset: -1               ), true );  // 2,6 need to look backwards in gold image
+   expect( await checkEqs( tester, index+1, 11                              ), true );  // all after ceFlutter not impacted
+
+   // Undo
+   keyName                   = "drag " + (index + spots).toString();   // new location
+   final Finder ceFlutterNew = find.byKey( Key( keyName ) );
+   await tester.drag(ceFlutterNew, Offset(0.0, 30.0 * (-1.0 * spots )));
+   await tester.pumpAndSettle();
+   await pumpSettle( tester, 1 );   // give a small chance to see move
+   
+   return true;
+}
 
 void main() {
 
@@ -163,6 +231,20 @@ void main() {
          // Check initial equity structure
          expect( await checkEqs( tester, 1, 11 ), true );
 
+         // Check basic drags for ceFlutter
+         await validateDragAboveTOT(   tester, 6, -6 );  // moving 6 spots up
+         await validateDragAboveBusOp( tester, 6, -5 );
+         /*
+         validateDragAboveSoftCont( tester );
+         validateDragAboveDataSec( tester );   // original home
+         validateDragToBottom( tester );
+         validateDragAboveDataSec( tester );   // original home
+         */
+         
+         // Check indents, unindents
+         // Check drags with heavy hierarchy
+         // Check Save, add, delete, cancel
+         
          await logout( tester );         
 
          report( 'Equity Mvmt Page' );

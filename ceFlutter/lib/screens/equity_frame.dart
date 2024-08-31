@@ -183,7 +183,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget cat      = makeTableText( appState, t.getTitle(), width, height - 20, false, 1, mux: (depth+1) * .5 );
          Widget forward  = fgd;
          Widget back     = bgd;
-         Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ));
+
+         // Listener sends index orig, new to first onReorder function in ancestor chain
+         Widget drag     = ReorderableDragStartListener( key: Key( "drag " + index.toString()),index: index, child: Icon( Icons.drag_handle ));
 
          Widget catEditable = GestureDetector(
             onTap: () async 
@@ -233,7 +235,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                   title: amountW
                   )));
          
-         print( "Get currentNode adding " + t.getTitle() );
+         // print( "Get currentNode adding " + t.getTitle() );
          
          nodes.add( [ catCont, tile ] );
       }
@@ -267,7 +269,6 @@ class _CEEquityState extends State<CEEquityFrame> {
          assert( eqLine.amount != null );
          
          EquityTree curNode = appState.equityTree!;
-         print( "Making " + eqLine.toString() );
          
          // when eqLines are created, they are leaves. Down the road, they become nodes
          List<String> cat = eqLine.category;
