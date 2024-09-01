@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:ui';    // pointerKinds
+import 'dart:ui';       // pointerKinds
 import 'dart:convert';  // json encode/decode
 
 import 'package:flutter/material.dart';
@@ -85,7 +85,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       {
          print( "Change detected" );
          t.setTitle( titleController.text );
-         t.setAmount( int.parse( amountController.text ));
+         String amt = amountController.text.replaceAll( ',', "" );         
+         t.setAmount( int.parse( amt ));
 
          // Tree changed. update viewable list, then update the view
          setState(() => appState.updateEquityView = true );                  
@@ -109,22 +110,24 @@ class _CEEquityState extends State<CEEquityFrame> {
       Navigator.of( context ).pop();
    }
 
-   void _saveAdd( EquityTree tot, titleController, amountController) {
+   void _saveAdd( EquityTree tot, TextEditingController title, TextEditingController amount) {
       final width = frameMinWidth - 2*appState.FAT_PAD;
-      EquityTree t = EquityLeaf( titleController.text, int.parse( amountController.text ), tot, width );
+
+      String amt = amount.text.replaceAll( ',', "" );
+      EquityTree t = EquityLeaf( title.text, int.parse( amt ), tot, width );
       (tot as EquityNode).addLeaf( t );
       
-      // appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );                  
 
       Navigator.of( context ).pop();
    }
    
    Future<void> _add( EquityTree tot) async {
-      print( "Add category " );
-      TextEditingController title = new TextEditingController( text: "new category" );
-      TextEditingController amt   = new TextEditingController( text: "0" );
-      await editRow( context, appState, "Add new Category, Amount (without commas)", [title, amt], () => _saveAdd( tot, title, amt ), () => _cancelEdit(), null );
+      String title = "Category";
+      String amt   = "Amount";
+      TextEditingController tc = new TextEditingController();
+      TextEditingController ac = new TextEditingController();
+      await editRow( context, appState, "Add new Category, Amount (without commas)", [tc, ac], [title, amt], () => _saveAdd( tot, tc, ac ), () => _cancelEdit(), null );
    }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
@@ -137,6 +140,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       // Skip TOT.. handled in headers below
       for( int index = 1; index < treeList.length; index++ ) {
             
+         EquityTree t = treeList[index];
+
          // indent
          Widget fgd = GestureDetector(
             onTap: () async 
@@ -150,6 +155,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                // Tree changed. update viewable list, then update the view
                setState(() => appState.updateEquityView = true );
             },
+            key: Key( 'indent ' + index.toString()),
             child: Icon( Icons.arrow_right )
             );
          
@@ -166,10 +172,9 @@ class _CEEquityState extends State<CEEquityFrame> {
                // Tree changed. update viewable list, then update the view
                setState(() => appState.updateEquityView = true );                  
             },
+            key: Key( 'unindent ' + index.toString() ),
             child: Icon( Icons.arrow_left )
             );
-
-         EquityTree t = treeList[index];
 
          int depth = 0;
          if( t is EquityNode )      { depth = (t as EquityNode).getPath( t.getParent(), t.getTitle() ).length + 1; }
@@ -195,10 +200,13 @@ class _CEEquityState extends State<CEEquityFrame> {
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
 
-               TextEditingController title = new TextEditingController( text: t.getTitle() );
-               TextEditingController amt   = new TextEditingController( text: t.getAmount().toString() );
-               editRow( context, appState, "Edit Category, Amount (without commas)", [title, amt], () => _saveEdit( t, title, amt ), () => _cancelEdit(), () => _delete(t) );
+               String title = t.getTitle();
+               String amt   = t.getAmount().toString();
+               TextEditingController tc = new TextEditingController();
+               TextEditingController ac = new TextEditingController();
+               editRow( context, appState, "Edit Category, Amount (without commas)", [tc, ac], [title, amt], () => _saveEdit( t, tc, ac ), () => _cancelEdit(), () => _delete(t) );
             },
+            key: Key( 'catEditable ' + index.toString() ),
             child: cat
             );
 
@@ -272,11 +280,21 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          // when eqLines are created, they are leaves. Down the road, they become nodes
          List<String> cat = eqLine.category;
-         // List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width, pageStamp );
-            
-         EquityTree? childNode   = curNode.findNode( eqLine.category );
-         EquityTree? childParent = curNode.findNode( eqLine.category.sublist(0, eqLine.category.length - 1 ) );
-         assert( childNode == null );
+         print( " ... " + cat.toString() );
+         
+         EquityTree? childNode   = curNode.findNode( cat );
+         EquityTree? childParent = curNode.findNode( cat.sublist(0, cat.length - 1 ) );
+
+         // XXX any need to push this to AWS?
+         // This is too harsh.  There can be identical categories, especially during editing, rebuilding, deleting.
+         // Rename instead to separate.
+         // assert( childNode == null );
+         if( childNode != null ) {
+            print( "Found identically named child.  Adding random tag to avoid this" );
+            cat[ cat.length - 1] = cat[ cat.length - 1] + " " + randAlpha( 10 );
+            childNode   = curNode.findNode( cat );
+            assert( childNode == null );
+         }
 
          if( childParent is EquityLeaf  ) {
             print( "... leaf upgraded to node" );
@@ -293,7 +311,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       }
       appState.updateEquityPlan = false;
 
-      if( appState.equityTree != null ) {  print( appState.equityTree!.toStr() ); }
+      // if( appState.equityTree != null ) {  print( appState.equityTree!.toStr() ); }
    }
    
    
@@ -359,6 +377,8 @@ class _CEEquityState extends State<CEEquityFrame> {
          print( "Can't move above Top of Tree.  No-op." );
          return;
       }
+      // item is removed from oldIndex first, meaning newIndex is off by 1
+      if( newIndex > oldIndex ) { newIndex -= 1;  }
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
       appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
 

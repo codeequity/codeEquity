@@ -130,12 +130,13 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
               });
 }
 
-Future<void> editRow( BuildContext context, appState, scrollHeader, List<TextEditingController> values, saveFunc, cancelFunc, deleteFunc ) async {
+Future<void> editRow( BuildContext context, appState, scrollHeader, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc ) async {
 
+   assert( controllers.length == values.length );
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
-   for( var val in values ) {
-      Widget text = makeInputField( appState, val.text, false, val);
+   for( int i = 0; i < values.length; i++ ) {
+      Widget text = makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i]);
       Widget w = IntrinsicWidth( child: text );      
       editVals.add( w );
       editVals.add( c );
@@ -331,10 +332,11 @@ Widget makeBodyText( appState, title, width, wrap, lines, { keyTxt = "" } ) {
 }
 
       
-Widget makeInputField( appState, hintText, obscure, controller ) {
+Widget makeInputField( appState, hintText, obscure, controller, {keyName = ""} ) {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
+   if( keyName == "" ) { keyName = hintText; }
    return TextField(
-      key: Key( hintText ),
+      key: Key( keyName ),
       obscureText: obscure,
       style: style,
       decoration: InputDecoration(

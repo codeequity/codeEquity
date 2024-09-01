@@ -28,7 +28,7 @@ const Map<String,List<String>> EQS_GOLD =
       "Business Operations Flut 1":        ["Category, Business Operations Flut", "1,000,000"],
       "Software Contributions Flut 2":     ["Category, Software Contributions Flut", "11,000,000"],
         "AWS Operations 3":                ["Category, Software Contributions Flut, AWS Operations", "1,000,000"],
-        "Github Operations Flut 4":        ["Category, Software Contributions Flut, Github Operations", "1,000,000"],
+        "Github Operations Flut 4":        ["Category, Software Contributions Flut, Github Operations Flut", "1,000,000"],
         "CEServer 5":                      ["Category, Software Contributions Flut, CEServer", "3,000,000"],
         "CEFlutter 6":                     ["Category, Software Contributions Flut, CEFlutter", "2,000,000"],
         "Data Security Flut 7":            ["Category, Software Contributions Flut, Data Security Flut", "1,000,000"],
@@ -96,6 +96,21 @@ String getAmtFromTiles( Widget elt ) {
    return retVal;
 }
 
+Widget getGD( WidgetTester tester, Finder generatedEquityRow ) {
+   expect( generatedEquityRow, findsOneWidget );
+
+   Widget empty = GestureDetector( child: Container( width: 1, height: 1 ) );
+      
+   var equityRow = generatedEquityRow.evaluate().single.widget as Row;
+   var eqs   = equityRow.children as List;
+   assert( eqs.length > 0 );
+
+   var elt = eqs[0];
+   if( !(elt is Container) || !(elt.child is GestureDetector)) { return empty; }
+
+   print( "getGD2 " + elt.child.toString() );
+   return elt.child as GestureDetector;
+}
 
 // XXX utils?
 Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
@@ -133,10 +148,8 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
 
    for( int i = min; i <= max; i++ ) {
 
-      // print( "checking equityTable " + i.toString() + " with gold table offset " + offset.toString() );  
-      final Finder generatedEquityRow = find.byKey( Key( "equityTable " + i.toString() ));  
-
       // eqs is [leaf, amount, depth]
+      // print( "checking equityTable " + i.toString() + " with gold table offset " + offset.toString() + " depth " + newDepth.toString());  
       List<String> eqs = await getElt( tester, "equityTable " + i.toString() );
 
       // First elt in eqs is used as key for eqs_gold
@@ -144,7 +157,7 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       // eqs_gold is const above, is a map to a list<str> with long title, then numbers.
       
       String agKey = eqs[0] + " " + (i+offset).toString();                 
-      print( "Got eqs " + eqs.toString() + " making agKey " + agKey );
+      print( "Got eqs " + eqs.toString() + " making agKey *" + agKey + "*");
 
       List<String> agVals  = EQS_GOLD[ agKey ] ?? [];
       // print( "  checking " + agKey + ": " + agVals.toString() );
@@ -156,6 +169,95 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
    }
    return true;
 }
+
+Future<void> deleteEq ( WidgetTester tester ) async {
+   final Finder cat = find.byKey( Key( 'catEditable 1' ));
+   expect( cat, findsOneWidget );
+   await tester.tap( cat );
+   //    await pumpSettle( tester, 1, verbose: true );
+   await tester.pumpAndSettle();
+
+   final Finder delButton = find.byKey( Key( 'Delete' ) );
+   expect( delButton, findsOneWidget );
+   await tester.tap( delButton );
+   // await pumpSettle( tester, 1, verbose: true );
+   await tester.pumpAndSettle();
+}
+
+Future<void> addEq( WidgetTester tester, k, v ) async {
+   assert( v.length == 2 );  // cat, amount
+
+   print( "Adding " + k );
+   
+   final Finder addButton = find.byKey( Key( 'add_icon_equity' ));
+   expect( addButton, findsOneWidget );
+   await tester.tap( addButton );
+   await tester.pumpAndSettle();
+   
+   // Add dialog has popped up.  Find text controllers
+   final Finder editCat = find.byKey( Key( 'editRow Category' )); 
+   final Finder editAmt = find.byKey( Key( 'editRow Amount' ));   
+   expect( editCat, findsOneWidget );
+   expect( editAmt, findsOneWidget );
+
+   // Add values
+   List<String> cats = v[0].split(', '); // gold table delimits with ', '
+   await tester.enterText( editCat, cats[ cats.length - 1 ] );
+   await tester.pumpAndSettle();
+   await tester.enterText( editAmt, v[1] );
+   await tester.pumpAndSettle();
+   
+   final Finder saveButton = find.byKey( Key( 'Save' ) );
+   expect( saveButton, findsOneWidget );
+   await tester.tap( saveButton );
+   // await pumpSettle( tester, 1, verbose: true );
+   await tester.pumpAndSettle();
+   
+   // Need to indent.. num of indents is length of cats - 2 (everything starts indented to TOT, TOT is part of every cat)
+   // keys: contain all we need.. i.e. "CEServer 5"
+   List<String> goldKey = k.split(' ');   
+   final Finder cat = find.byKey( Key( 'indent ' + goldKey[ goldKey.length - 1 ].toString() )); 
+   for( int i = 0; i < cats.length - 2; i++ ) {
+      await tester.tap( cat );
+      await tester.pumpAndSettle();
+      // await pumpSettle( tester, 1, verbose: true );
+   }
+}
+
+Future<bool> rebuildEquityTable ( WidgetTester tester ) async {
+   // Clear
+   print( "\nRebuild Equity Table" );
+   Finder generatedEquityRow = find.byKey( Key( "equityTable 1" ));
+   while( tester.widgetList<Row>( generatedEquityRow ).length > 0 ) {
+      var eqGD  = getGD( tester, generatedEquityRow ) as GestureDetector; 
+      
+      if( eqGD == null || eqGD.child == null || eqGD.child is Container ) { break; }
+      String title = getFromMakeTableText( eqGD.child! );
+
+      print( "Deleting " + title );
+      await deleteEq( tester ); 
+   }
+   await pumpSettle( tester, 3 );
+
+   // Add
+   // await Future.forEach([1, 2, 3], (num) async {
+   // await asyncTwo(num);
+   // });
+
+   /*
+   // EQS_GOLD.forEach( (k, v) => addEq( tester, k, v ) );
+   await Future.forEach( EQS_GOLD, (k, v) async
+                         {
+                            await addEq( tester, k, v );
+                         });
+   */
+   print( "\nAdd Gold image back" );
+   for( final key in EQS_GOLD.keys ) {
+      if( key != "Category 0" ) { await addEq( tester, key, EQS_GOLD[key] ); }
+   }
+   return true;
+}
+
 
 Future<bool> validateDragAboveTOT( WidgetTester tester, int index, int spots ) async {
    print( "\nDrag above TOT" );
@@ -228,6 +330,9 @@ void main() {
 
          expect( await equityPlanTabFraming( tester ),   true );
 
+         // Start fresh
+         expect( await rebuildEquityTable( tester ), true );
+         
          // Check initial equity structure
          expect( await checkEqs( tester, 1, 11 ), true );
 
