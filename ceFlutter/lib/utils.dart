@@ -165,7 +165,7 @@ Future<void> editRow( BuildContext context, appState, scrollHeader, List<TextEdi
                     content: scrollBody,
                     actions: buttons);
               });
-   print( "Edit row finished" );
+   // print( "Edit row finished" );
 }
 
 void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {

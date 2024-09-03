@@ -75,13 +75,12 @@ class EquityPlan {
 
       bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt );
       
-      print( "updateEquity done.. changed? " + changed.toString() + " " + categories.toString() );
+      print( "updateEquity done.. changed? " + changed.toString() );
       return changed;
    }
 
    // XXX indent, unindent, move are nearly identical.  Fix.
    void indent( int myIndex, EquityTree tree ) {
-      print( "Indent." );
       assert( categories.length == amounts.length );
 
       print( "Indent " + myIndex.toString() );
@@ -101,7 +100,6 @@ class EquityPlan {
    }
 
    void unindent( int myIndex, EquityTree tree ) {
-      print( "Unindent." );
       assert( categories.length == amounts.length );
 
       print( "Unindent " + myIndex.toString() );

@@ -144,7 +144,7 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
 
 // XXX utils?
 // check gold image matches table.  min, max are onscreen order
-Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, int newDepth = -1} ) async {
+Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, int newDepth = -1, String newAmt = "-1"} ) async {
 
    for( int i = min; i <= max; i++ ) {
 
@@ -165,7 +165,10 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       // depth is # commas, i.e. Soft Cont is depth 1 making TOT depth 0
       int goldDepth = newDepth != -1 ? newDepth : ','.allMatches( agVals[0] ).length;
       expect( goldDepth, int.parse( eqs[2] ) );
-      for( var j = 1; j < 2; j++ ) { expect( eqs[j], agVals[j] ); }
+      // amt
+      String amt = newAmt == "-1" ? agVals[1] : newAmt; 
+      expect( eqs[1], amt );
+
    }
    return true;
 }
@@ -240,17 +243,6 @@ Future<bool> rebuildEquityTable ( WidgetTester tester ) async {
    await pumpSettle( tester, 3 );
 
    // Add
-   // await Future.forEach([1, 2, 3], (num) async {
-   // await asyncTwo(num);
-   // });
-
-   /*
-   // EQS_GOLD.forEach( (k, v) => addEq( tester, k, v ) );
-   await Future.forEach( EQS_GOLD, (k, v) async
-                         {
-                            await addEq( tester, k, v );
-                         });
-   */
    print( "\nAdd Gold image back" );
    for( final key in EQS_GOLD.keys ) {
       if( key != "Category 0" ) { await addEq( tester, key, EQS_GOLD[key] ); }
@@ -258,45 +250,187 @@ Future<bool> rebuildEquityTable ( WidgetTester tester ) async {
    return true;
 }
 
-
-Future<bool> validateDragAboveTOT( WidgetTester tester, int index, int spots ) async {
-   print( "\nDrag above TOT" );
+// Undo has a plus 1 - insertion point counts gaps with 0th being above Category, 1 for self if self is above insertion.
+// Undo is unmodified if insertion point is above self - no need to remove self from index
+Future<bool> drag( WidgetTester tester, int index, int spots ) async {
    String keyName         = "drag " + index.toString(); 
    final Finder ceFlutter = find.byKey( Key( keyName ) );
 
-   await tester.drag(ceFlutter, Offset(0.0, 30.0 * spots ));
+   // XXX ??? 
+   double fudge = (index == 6 && spots >= 2) ? 30.0 : 0.0;
+   double dy = 30.0 * spots + fudge;
+   print( "Drag " + index.toString() + " " + spots.toString() + " dy: " + dy.toString() );
+   
+   await tester.drag(ceFlutter, Offset(0.0, dy )); 
    await tester.pumpAndSettle();
    await pumpSettle( tester, 1 );   // give a small chance to see move
+   return true;
+}
 
+
+
+Future<bool> validateDragAboveTOT( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag above TOT" );
+   await drag( tester, index, spots );
+      
    // Should be no impact, can not move above TOT
    expect( await checkEqs( tester, 1, 11 ), true );
 
    return true;
 }
 
-// XXX parentage of ceFlutter changed.  Now depth 1.  Gold table has it at depth 2.  
+// Note: parentage of ceFlutter changes.  Now depth 1.  Gold table has it at depth 2.  
 Future<bool> validateDragAboveBusOp( WidgetTester tester, int index, int spots ) async {
    print( "\nDrag above BusOp" );
-   String keyName         = "drag " + index.toString(); 
-   final Finder ceFlutter = find.byKey( Key( keyName ) );
-
-   await tester.drag(ceFlutter, Offset(0.0, 30.0 * spots ));
-   await tester.pumpAndSettle();
-   await pumpSettle( tester, 1 );   // give a small chance to see move
-
+   await drag( tester, index, spots );
+   
    expect( await checkEqs( tester, 1,       1,     offset:  5, newDepth: 1  ), true );  // screen sees ceFlut in position1. add offset to get ceFlut in gold image.
    expect( await checkEqs( tester, 2,       index, offset: -1               ), true );  // 2,6 need to look backwards in gold image
    expect( await checkEqs( tester, index+1, 11                              ), true );  // all after ceFlutter not impacted
 
    // Undo
-   keyName                   = "drag " + (index + spots).toString();   // new location
-   final Finder ceFlutterNew = find.byKey( Key( keyName ) );
-   await tester.drag(ceFlutterNew, Offset(0.0, 30.0 * (-1.0 * spots )));
-   await tester.pumpAndSettle();
-   await pumpSettle( tester, 1 );   // give a small chance to see move
+   await drag( tester, index + spots, -1 * spots + 1 );
    
    return true;
 }
+
+Future<bool> validateDragAboveSoftCont( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag above SoftCont" );
+   await drag( tester, index, spots );
+   
+   expect( await checkEqs( tester, 1,       1 ), true );                              // Bus ops as usual on screen
+   expect( await checkEqs( tester, 2,       2, offset: -1*spots, newDepth: 1 ), true );  // new ceFlut pos and depth
+   expect( await checkEqs( tester, 3,       index, offset: -1                ), true );  // 3,6 need to look backwards in gold image
+   expect( await checkEqs( tester, index+1, 11                               ), true );  // all after ceFlutter not impacted
+
+   // Undo
+   await drag( tester, index + spots, -1 * spots + 1 );
+   return true;
+}
+
+Future<bool> validateDragAboveAWS( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag above AWS" );
+   await drag( tester, index, spots );
+   
+   expect( await checkEqs( tester, 1,       2 ), true );                    // No change
+   expect( await checkEqs( tester, 3,       3, offset: -1*spots ), true );  // new ceFlut pos, same depth as gold
+   expect( await checkEqs( tester, 4,       index, offset: -1   ), true );  // 4,6 need to look backwards in gold image
+   expect( await checkEqs( tester, index+1, 11                  ), true );  // all after ceFlutter not impacted
+
+   // Undo
+   await drag( tester, index + spots, -1 * spots + 1 );
+   return true;
+}
+
+Future<bool> validateDragAboveServer( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag above Server" );
+   await drag( tester, index, spots );
+   
+   expect( await checkEqs( tester, 1,       4 ), true );                    // No change
+   expect( await checkEqs( tester, 5,       5, offset: -1*spots ), true );  // new ceFlut pos, same depth as gold
+   expect( await checkEqs( tester, 6,       index, offset: -1   ), true );  // need to look backwards in gold image
+   expect( await checkEqs( tester, index+1, 11                  ), true );  // all after ceFlutter not impacted
+
+   // Undo
+   await drag( tester, index + spots, -1 * spots + 1 );
+   return true;
+}
+Future<bool> validateDragBelowDatSec( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag below Data Sec" );
+   await drag( tester, index, spots );
+   
+   expect( await checkEqs( tester, 1,       5                                 ), true );  // No change
+   expect( await checkEqs( tester, index,   6, offset:  1                     ), true );  // need to look forwards in gold image
+   expect( await checkEqs( tester, index+spots, index+spots, offset: -1*spots ), true );  // new ceFlut pos, same depth as gold
+   expect( await checkEqs( tester, index+spots+1, 11                          ), true );  // all after ceFlutter not impacted
+
+   // Undo
+   await drag( tester, index + spots, -1 * spots );
+   return true;
+}
+Future<bool> validateDragAboveCross( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag above Cross" );
+   await drag( tester, index, spots );
+   
+   expect( await checkEqs( tester, 1,       5                                                ), true );  // No change
+   expect( await checkEqs( tester, index,       index+spots-1, offset:  1                    ), true );  // need to look forwards in gold image
+   expect( await checkEqs( tester, index+spots, index+spots,   offset: -1*spots, newDepth: 1 ), true );  // new ceFlut pos, new depth
+   expect( await checkEqs( tester, index+spots+1, 11                                         ), true );  // all after ceFlutter not impacted
+
+   // Undo
+   await drag( tester, index + spots, -1 * spots );
+   return true;
+}
+Future<bool> validateDragAbovePre( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag above Pre" );
+   await drag( tester, index, spots );
+   
+   expect( await checkEqs( tester, 1,       5                                                ), true );  // No change
+   expect( await checkEqs( tester, index,       index+spots-1, offset:  1                    ), true );  // need to look forwards in gold image
+   expect( await checkEqs( tester, index+spots, index+spots,   offset: -1*spots, newDepth: 1 ), true );  // new ceFlut pos, new depth
+   expect( await checkEqs( tester, index+spots+1, 11                                         ), true );  // all after ceFlutter not impacted
+
+   // Undo
+   await drag( tester, index + spots, -1 * spots );
+   return true;
+}
+Future<bool> validateDragToBottom( WidgetTester tester, int index, int spots ) async {
+   print( "\nDrag to Bottom" );
+   await drag( tester, index, spots );
+   
+   expect( await checkEqs( tester, 1,       5                                                ), true );  // No change
+   expect( await checkEqs( tester, index,       index+spots-1, offset:  1                    ), true );  // need to look forwards in gold image
+   expect( await checkEqs( tester, index+spots, index+spots,   offset: -1*spots, newDepth: 1 ), true );  // new ceFlut pos, new depth
+
+   // Undo
+   await drag( tester, index + spots, -1 * spots );
+   return true;
+}
+// start with startIndex, run up to index1, indent, continue til no change
+Future<bool> validateDeepIndent( tester, startIndex ) async {
+   bool changed = true; 
+   while( changed ) {
+      changed = false;
+      for( int i = startIndex; i >= 1; i-- ) {
+         List<String> eqs = await getElt( tester, "equityTable " + i.toString() );
+         String oldDepth = eqs[2];
+         
+         Finder cat = find.byKey( Key( 'indent ' + i.toString() ));
+         await tester.tap( cat );
+         await tester.pumpAndSettle();
+
+         eqs = await getElt( tester, "equityTable " + i.toString() );
+         String newDepth = eqs[2];
+         if( oldDepth != newDepth ) { changed = true; }
+      }
+   }
+   // XXX erm.. startindex?
+   expect( await checkEqs( tester, 1, 1,              newAmt: "11,000,000" ), true );  
+   expect( await checkEqs( tester, 2, 2, newDepth: 2, newAmt: "11,000,000" ), true );  
+   expect( await checkEqs( tester, 3, 3, newDepth: 3, newAmt: "3,000,000"  ), true );  
+   expect( await checkEqs( tester, 4, 4, newDepth: 4, newAmt: "3,000,000"  ), true );  
+   expect( await checkEqs( tester, 5, 5, newDepth: 5, newAmt: "3,000,000"  ), true );  
+   expect( await checkEqs( tester, 6, 6, newDepth: 6, newAmt: "3,000,000"  ), true );  
+   expect( await checkEqs( tester, 7, 7, newDepth: 7, newAmt: "3,000,000"  ), true );  
+   expect( await checkEqs( tester, 8, 8, newDepth: 8, newAmt: "3,000,000"  ), true );  
+   expect( await checkEqs( tester, 9, 9              ), true );  
+
+   return true;
+}
+// unindent target as far as it goes
+Future<bool> validateDeepUnindent( tester, target, startDepth ) async {
+
+   final Finder cat = find.byKey( Key( 'unindent ' + target.toString() ));
+
+   for( int i = startDepth-1; i >= 1; i-- ) {
+      await tester.tap( cat );
+      await tester.pumpAndSettle();
+      expect( await checkEqs( tester, target, target, newDepth: i, newAmt: "3,000,000" ), true );         // XXX
+   }
+
+   return true;
+}
+
 
 void main() {
 
@@ -336,17 +470,23 @@ void main() {
          // Check initial equity structure
          expect( await checkEqs( tester, 1, 11 ), true );
 
-         // Check basic drags for ceFlutter
-         await validateDragAboveTOT(   tester, 6, -6 );  // moving 6 spots up
-         await validateDragAboveBusOp( tester, 6, -5 );
          /*
-         validateDragAboveSoftCont( tester );
-         validateDragAboveDataSec( tester );   // original home
-         validateDragToBottom( tester );
-         validateDragAboveDataSec( tester );   // original home
+         // Check basic drags for ceFlutter
+         await validateDragAboveTOT(      tester, 6, -6 );  // moving item 6 6 spots up
+         await validateDragAboveBusOp(    tester, 6, -5 );  // moving item 6 5 spots up
+         await validateDragAboveSoftCont( tester, 6, -4 );
+         await validateDragAboveAWS(      tester, 6, -3 );
+         await validateDragAboveServer(   tester, 6, -1 );
+         await validateDragBelowDatSec(   tester, 6,  1 );
+         await validateDragAboveCross(    tester, 6,  2 );
+         await validateDragAbovePre(      tester, 6,  3 );
+         await validateDragToBottom(      tester, 6,  5 );
          */
          
          // Check indents, unindents
+         await validateDeepIndent( tester, 8 );
+         await validateDeepUnindent( tester, 8, 8 );
+         
          // Check drags with heavy hierarchy
          // Check Save, add, delete, cancel
          

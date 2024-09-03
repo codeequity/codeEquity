@@ -127,7 +127,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       String amt   = "Amount";
       TextEditingController tc = new TextEditingController();
       TextEditingController ac = new TextEditingController();
-      await editRow( context, appState, "Add new Category, Amount (without commas)", [tc, ac], [title, amt], () => _saveAdd( tot, tc, ac ), () => _cancelEdit(), null );
+      await editRow( context, appState, "Add new Category, Amount", [tc, ac], [title, amt], () => _saveAdd( tot, tc, ac ), () => _cancelEdit(), null );
    }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
@@ -146,7 +146,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget fgd = GestureDetector(
             onTap: () async 
             {
-               print( "Forward! Currently at " + index.toString() );
+               // print( "Forward! Currently at " + index.toString() );
                
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
@@ -163,7 +163,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget bgd = GestureDetector(
             onTap: () async 
             {
-               print( "back! from " + index.toString() );
+               // print( "back! from " + index.toString() );
                
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
@@ -204,7 +204,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                String amt   = t.getAmount().toString();
                TextEditingController tc = new TextEditingController();
                TextEditingController ac = new TextEditingController();
-               editRow( context, appState, "Edit Category, Amount (without commas)", [tc, ac], [title, amt], () => _saveEdit( t, tc, ac ), () => _cancelEdit(), () => _delete(t) );
+               editRow( context, appState, "Edit Category, Amount", [tc, ac], [title, amt], () => _saveEdit( t, tc, ac ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + index.toString() ),
             child: cat
@@ -316,6 +316,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    
    
    List<List<Widget>> _getCategoryWidgets( context ) {
+      print( "Getting equity table widgets" );
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       var empty = Container( width: 1, height: 1 );
 
@@ -333,7 +334,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget headerC = makeTableText( appState, "Category", width, appState!.CELL_HEIGHT, false, 1 );
          Widget headerA = makeTableText( appState, "Amount",   width, appState!.CELL_HEIGHT, false, 1 );      
          catList.add( [ headerC, headerA ] );
-         print( "Added headers" );
+         // print( "Added headers" );
          
          if( appState.equityPlan != null )
          {
@@ -361,8 +362,8 @@ class _CEEquityState extends State<CEEquityFrame> {
             );
          
          catList.add( [agd, empty] );
-         print( "Added Footers" );
-
+         // print( "Added Footers" );
+         
          appState.updateEquityView = false; 
       }
 
@@ -370,15 +371,13 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
 
    // sibling to fgd, bgd  .. this is managed by drag handle listener
-   void _updateListItems( oldIndex, newIndex ) {
+   void _initiateDrag( oldIndex, newIndex ) {
       assert( appState.equityPlan != null );
 
       if( newIndex == 0 ) {
          print( "Can't move above Top of Tree.  No-op." );
          return;
       }
-      // item is removed from oldIndex first, meaning newIndex is off by 1
-      if( newIndex > oldIndex ) { newIndex -= 1;  }
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
       appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
 
@@ -421,7 +420,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                   width: svWidth,
                   child: ReorderableListView(
                      buildDefaultDragHandles: false,
-                     onReorder: (oldIndex, newIndex) { _updateListItems(oldIndex, newIndex); ; },
+                     onReorder: (oldIndex, newIndex) { _initiateDrag(oldIndex, newIndex); ; },
                      // header: Text( "Oi!" ),
                      children: List.generate(
                         itemCount,

@@ -49,8 +49,8 @@ mixin treeUtils {
    void indent( self, tot, destPrev ) {
       print( self.getTitle() + " indent" );
 
-      print( "self " + self.toStr() );
-      print( "prev " + destPrev.toStr() );
+      // print( "self " + self.toStr() );
+      // print( "prev " + destPrev.toStr() );
       
       // indent 0th leaf of TOT?  No-op.
       // indent when destPrev is already parent?  No-op.
@@ -80,7 +80,7 @@ mixin treeUtils {
             }
          }
          assert( newParent != null );
-         print( "newParent " + newParent!.toStr() );
+         // print( "newParent " + newParent!.toStr() );
          
          // Remove from old loc
          if( self.parent != null ) { self.parent.leaves.remove( self ); }
@@ -190,12 +190,15 @@ mixin treeUtils {
            dpIndex = newParent!.getLeaves().indexOf( destNext ); // go before destNext
         }
 
-        print( "Pre-repair index " + dpIndex.toString() + destPrev.parent.getTitle() );
+        print( "Pre-repair index into children of new parent: " + dpIndex.toString() + destPrev.parent.getTitle() );
         // If moving within same node, dpIndex can exceed leaf length.  repair.
+        // also, if was already in front of destNext, index will overshoot by 1
         if( self.parent == newParent ) {
            dpIndex = dpIndex >= newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
+           int selfIndex = newParent!.getLeaves().indexOf( self );
+           if( selfIndex <= dpIndex ) { dpIndex -= 1; }
         }
-
+        
         assert( dpIndex <= newParent.getLeaves().length );
         dpIndex = dpIndex > newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
         
@@ -217,8 +220,8 @@ mixin treeUtils {
      }
 
      dpIndex = dpIndex == -1 ? 0 : dpIndex;
-     print( "New parent " + newParent!.toStr() );
-     print( "New index " + dpIndex.toString() + "\n" );
+     // print( "New parent " + newParent!.toStr() );
+     // print( "New index " + dpIndex.toString() + "\n" );
 
      if( newParent == self ) {
         print( "Can not become a child of yourself.  Umm.  Unless you try harder.  No-op." );
