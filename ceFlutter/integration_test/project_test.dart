@@ -996,10 +996,14 @@ void main() {
 
    // bool skip = true;
    bool skip = false;
+   bool detailSkip = true;
 
    // override?  Run it.
-   var override = const String.fromEnvironment('override');
-   if( override == "True" ) { skip = false; }
+   var override      = const String.fromEnvironment('override');
+   var projectDetail = const String.fromEnvironment('projectDetail');
+
+   if( override == "True" && projectDetail == "False" ) { skip = false; }
+   if( override == "True" && projectDetail == "True" )  { skip = true; detailSkip = false; }
    
    report( 'Project', group:true );
 
@@ -1175,7 +1179,7 @@ void main() {
 
    print( "DETAIL" );
    //testWidgets('Project Detail Page', skip:true, (WidgetTester tester) async {
-   testWidgets('Project Detail Page', skip:skip, (WidgetTester tester) async {
+   testWidgets('Project Detail Page', skip:detailSkip, (WidgetTester tester) async {
          
          await restart( tester );
          await login( tester, true );

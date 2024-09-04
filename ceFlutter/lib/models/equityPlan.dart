@@ -148,6 +148,8 @@ class EquityPlan {
       
    }
 
+   int getSize() { return categories.length; }
+
    
    String toString() {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;

@@ -83,9 +83,12 @@ class _CEEquityState extends State<CEEquityFrame> {
       print( "Save edit " + titleController.text + " " + amountController.text );
       if( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() )
       {
-         print( "Change detected" );
-         t.setTitle( titleController.text );
-         String amt = amountController.text.replaceAll( ',', "" );         
+         print( "Change detected " );
+         String title = titleController.text;
+         if( title == "" ) { title = "NOT YET NAMED"; }
+         t.setTitle( title );
+         String amt = amountController.text.replaceAll( ',', "" );
+         if( amt == "" ) { amt = "0"; }
          t.setAmount( int.parse( amt ));
 
          // Tree changed. update viewable list, then update the view
@@ -143,7 +146,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          EquityTree t = treeList[index];
 
          // indent
-         Widget fgd = GestureDetector(
+         Widget forward = GestureDetector(
             onTap: () async 
             {
                // print( "Forward! Currently at " + index.toString() );
@@ -160,7 +163,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             );
          
          // unindent
-         Widget bgd = GestureDetector(
+         Widget back = GestureDetector(
             onTap: () async 
             {
                // print( "back! from " + index.toString() );
@@ -169,8 +172,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                assert( appState.equityTree != null );
                appState.equityPlan!.unindent( index, appState.equityTree! );
                
-               // Tree changed. update viewable list, then update the view
-               setState(() => appState.updateEquityView = true );                  
+               setState(() => appState.updateEquityView = true );
             },
             key: Key( 'unindent ' + index.toString() ),
             child: Icon( Icons.arrow_left )
@@ -186,8 +188,6 @@ class _CEEquityState extends State<CEEquityFrame> {
          // XXX YYY
          // Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
          Widget cat      = makeTableText( appState, t.getTitle(), width, height - 20, false, 1, mux: (depth+1) * .5 );
-         Widget forward  = fgd;
-         Widget back     = bgd;
 
          // Listener sends index orig, new to first onReorder function in ancestor chain
          Widget drag     = ReorderableDragStartListener( key: Key( "drag " + index.toString()),index: index, child: Icon( Icons.drag_handle ));
@@ -215,14 +215,14 @@ class _CEEquityState extends State<CEEquityFrame> {
          // Widget catCont  = Container( width: width, height: height, child: catEditable );
          Widget catCont  = Container( width: width, height: height - 20, child: catEditable );
 
-         List<Widget> tileKids = [ c, bgd, drag, fgd ];
+         List<Widget> tileKids = [ c, back, drag, forward ];
          List<Widget> none = [ c  ];
          tileKids = index == 0 ? none : tileKids;
 
          // This is ugly.  It can work, but is not working well as is.  Probably nixable
          /*
-         List<Widget> top =  [ c,  drag, fgd ];
-         List<Widget> bot =  [ c, bgd, drag ];
+         List<Widget> top =  [ c,  drag, forward ];
+         List<Widget> bot =  [ c, back, drag ];
          tileKids = t.getParent() == appState.equityTree ? top : tileKids;
          if( index > 0 && t.getParent() == treeList[index - 1] ) { tileKids = bot; }
          */
@@ -370,13 +370,17 @@ class _CEEquityState extends State<CEEquityFrame> {
       return catList;
    }
 
-   // sibling to fgd, bgd  .. this is managed by drag handle listener
+   // sibling to forward, back  .. this is managed by drag handle listener
    void _initiateDrag( oldIndex, newIndex ) {
       assert( appState.equityPlan != null );
 
       if( newIndex == 0 ) {
          print( "Can't move above Top of Tree.  No-op." );
          return;
+      }
+      if( newIndex > appState.equityPlan!.getSize()+1 ) {
+         print( "Can't move lower than the bottom.  Setting length to bottom." );
+         newIndex = appState.equityPlan!.getSize()+1;
       }
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
       appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
