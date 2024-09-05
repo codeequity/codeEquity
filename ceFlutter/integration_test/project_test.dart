@@ -1000,15 +1000,18 @@ void main() {
 
    // override?  Run it.
    var override      = const String.fromEnvironment('override');
-   var projectDetail = const String.fromEnvironment('projectDetail');
+   var projectDetail = const String.fromEnvironment('overrideWithDetail');
 
-   if( override == "True" && projectDetail == "False" ) { skip = false; }
-   if( override == "True" && projectDetail == "True" )  { skip = true; detailSkip = false; }
+   if( override == "True" )      { skip = false; }
+   if( projectDetail == "True" ) { skip = true; detailSkip = false; }
+
+   print( "override: " + override.toString() + " projectDetail: " + projectDetail.toString() );
+   print( "Skip: " + skip.toString() + " detailSkip: " + detailSkip.toString() );
    
    report( 'Project', group:true );
 
+   //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
    testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
-         //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
 
          await restart( tester );
          await login( tester, true );
