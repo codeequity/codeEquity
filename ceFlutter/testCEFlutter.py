@@ -127,7 +127,7 @@ def runCmd( cmd, filterExp ):
 
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
 # Hmm.  Running in release mode does not work well.  Basic entering text fails..
-def runTest( testName, override, noBuild = True, optimized = False ):
+def runTest( testName, override, withDetail = False, noBuild = True, optimized = False ):
     logging.info( "" )
 
     # timeout none does not help.  https://github.com/flutter/flutter/issues/105913
@@ -135,13 +135,17 @@ def runTest( testName, override, noBuild = True, optimized = False ):
     # Test by hand, i.e. python testCEFlutter.py
     # cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     # Test by cronjob.. why?  this will drive 2 windows in by-hand case
-    cmd = "flutter drive -d chrome --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    # browser dim controls the window being driven by tester.  The height does not match physical screen height, but is stable.
+    cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
 
     if optimized :
         cmd = cmd + " --release"
 
-    if override :
+    # withDetail is only relevant to project_test
+    if( override and withDetail ) :
+        cmd = cmd + " --dart-define overrideWithDetail=True"
+    elif( override and not withDetail ) :
         cmd = cmd + " --dart-define override=True"
 
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
@@ -159,18 +163,18 @@ Common failure modes:
    Uncomment selenium and driver-related lines, rerun, relink, good to go.  Yes, this could be automated.
 
 """
-def runTests( override = False ):
+def runTests( override = False, projectDetail = False ):
 
     #os.chdir( "./" )
 
     resultsSum = ""
 
     # Nightly, only area ---------
-    if override:
-        tsum = runTest( "launch_test.dart", override, False, False )
+    if( override and not projectDetail ):
+        tsum = runTest( "launch_test.dart", override, False, False, False )
         resultsSum  += tsum
 
-        tsum = runTest( "home_test.dart", override, False, False )
+        tsum = runTest( "home_test.dart", override, False, False, False )
         resultsSum  += tsum
 
         # Always clean dynamo summaries and 'ingested' tags first for full tests
@@ -178,12 +182,13 @@ def runTests( override = False ):
         npmRun = runCmd( cmd, [] )
         logging.info( npmRun )
 
-        tsum = runTest( "project_test.dart", override, False, False )
-
-
+        tsum = runTest( "project_test.dart", override, False, False, False )
+    elif( override and projectDetail ):
+        tsum = runTest( "project_test.dart", override, True, False, False )
+                
     # Focus area ------------------
     
-    tsum = runTest( "equity_test.dart", override, False, False )    
+    tsum = runTest( "equity_test.dart", override, False, False, False )    
     resultsSum  += tsum
 
 
@@ -229,7 +234,8 @@ def main( cmd ):
 
     summary = ""
     if( cmd == "" ) : summary = runTests()
-    elif( cmd == "overrideAllOn" ) : summary = runTests( override = True )
+    elif( cmd == "overrideNoDetail" ) : summary = runTests( override = True, projectDetail = False )
+    elif( cmd == "overrideDetailOnly" ) : summary = runTests( override = True, projectDetail = True )
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()

@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:ui';    // pointerKinds
+import 'dart:ui';       // pointerKinds
 import 'dart:convert';  // json encode/decode
 
 import 'package:flutter/material.dart';
@@ -83,9 +83,13 @@ class _CEEquityState extends State<CEEquityFrame> {
       print( "Save edit " + titleController.text + " " + amountController.text );
       if( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() )
       {
-         print( "Change detected" );
-         t.setTitle( titleController.text );
-         t.setAmount( int.parse( amountController.text ));
+         print( "Change detected " );
+         String title = titleController.text;
+         if( title == "" ) { title = "NOT YET NAMED"; }
+         t.setTitle( title );
+         String amt = amountController.text.replaceAll( ',', "" );
+         if( amt == "" ) { amt = "0"; }
+         t.setAmount( int.parse( amt ));
 
          // Tree changed. update viewable list, then update the view
          setState(() => appState.updateEquityView = true );                  
@@ -109,22 +113,24 @@ class _CEEquityState extends State<CEEquityFrame> {
       Navigator.of( context ).pop();
    }
 
-   void _saveAdd( EquityTree tot, titleController, amountController) {
+   void _saveAdd( EquityTree tot, TextEditingController title, TextEditingController amount) {
       final width = frameMinWidth - 2*appState.FAT_PAD;
-      EquityTree t = EquityLeaf( titleController.text, int.parse( amountController.text ), tot, width );
+
+      String amt = amount.text.replaceAll( ',', "" );
+      EquityTree t = EquityLeaf( title.text, int.parse( amt ), tot, width );
       (tot as EquityNode).addLeaf( t );
       
-      // appState.equityPlan!.updateEquity( appState.equityTree );
       setState(() => appState.updateEquityView = true );                  
 
       Navigator.of( context ).pop();
    }
    
    Future<void> _add( EquityTree tot) async {
-      print( "Add category " );
-      TextEditingController title = new TextEditingController( text: "new category" );
-      TextEditingController amt   = new TextEditingController( text: "0" );
-      await editRow( context, appState, "Add new Category, Amount (without commas)", [title, amt], () => _saveAdd( tot, title, amt ), () => _cancelEdit(), null );
+      String title = "Category";
+      String amt   = "Amount";
+      TextEditingController tc = new TextEditingController();
+      TextEditingController ac = new TextEditingController();
+      await editRow( context, appState, "Add new Category, Amount", [tc, ac], [title, amt], () => _saveAdd( tot, tc, ac ), () => _cancelEdit(), null );
    }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
@@ -137,11 +143,13 @@ class _CEEquityState extends State<CEEquityFrame> {
       // Skip TOT.. handled in headers below
       for( int index = 1; index < treeList.length; index++ ) {
             
+         EquityTree t = treeList[index];
+
          // indent
-         Widget fgd = GestureDetector(
+         Widget forward = GestureDetector(
             onTap: () async 
             {
-               print( "Forward! Currently at " + index.toString() );
+               // print( "Forward! Currently at " + index.toString() );
                
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
@@ -150,26 +158,25 @@ class _CEEquityState extends State<CEEquityFrame> {
                // Tree changed. update viewable list, then update the view
                setState(() => appState.updateEquityView = true );
             },
+            key: Key( 'indent ' + index.toString()),
             child: Icon( Icons.arrow_right )
             );
          
          // unindent
-         Widget bgd = GestureDetector(
+         Widget back = GestureDetector(
             onTap: () async 
             {
-               print( "back! from " + index.toString() );
+               // print( "back! from " + index.toString() );
                
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
                appState.equityPlan!.unindent( index, appState.equityTree! );
                
-               // Tree changed. update viewable list, then update the view
-               setState(() => appState.updateEquityView = true );                  
+               setState(() => appState.updateEquityView = true );
             },
+            key: Key( 'unindent ' + index.toString() ),
             child: Icon( Icons.arrow_left )
             );
-
-         EquityTree t = treeList[index];
 
          int depth = 0;
          if( t is EquityNode )      { depth = (t as EquityNode).getPath( t.getParent(), t.getTitle() ).length + 1; }
@@ -181,9 +188,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          // XXX YYY
          // Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
          Widget cat      = makeTableText( appState, t.getTitle(), width, height - 20, false, 1, mux: (depth+1) * .5 );
-         Widget forward  = fgd;
-         Widget back     = bgd;
-         Widget drag     = ReorderableDragStartListener( index: index, child: Icon( Icons.drag_handle ));
+
+         // Listener sends index orig, new to first onReorder function in ancestor chain
+         Widget drag     = ReorderableDragStartListener( key: Key( "drag " + index.toString()),index: index, child: Icon( Icons.drag_handle ));
 
          Widget catEditable = GestureDetector(
             onTap: () async 
@@ -193,10 +200,13 @@ class _CEEquityState extends State<CEEquityFrame> {
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
 
-               TextEditingController title = new TextEditingController( text: t.getTitle() );
-               TextEditingController amt   = new TextEditingController( text: t.getAmount().toString() );
-               editRow( context, appState, "Edit Category, Amount (without commas)", [title, amt], () => _saveEdit( t, title, amt ), () => _cancelEdit(), () => _delete(t) );
+               String title = t.getTitle();
+               String amt   = t.getAmount().toString();
+               TextEditingController tc = new TextEditingController();
+               TextEditingController ac = new TextEditingController();
+               editRow( context, appState, "Edit Category, Amount", [tc, ac], [title, amt], () => _saveEdit( t, tc, ac ), () => _cancelEdit(), () => _delete(t) );
             },
+            key: Key( 'catEditable ' + index.toString() ),
             child: cat
             );
 
@@ -205,14 +215,14 @@ class _CEEquityState extends State<CEEquityFrame> {
          // Widget catCont  = Container( width: width, height: height, child: catEditable );
          Widget catCont  = Container( width: width, height: height - 20, child: catEditable );
 
-         List<Widget> tileKids = [ c, bgd, drag, fgd ];
+         List<Widget> tileKids = [ c, back, drag, forward ];
          List<Widget> none = [ c  ];
          tileKids = index == 0 ? none : tileKids;
 
          // This is ugly.  It can work, but is not working well as is.  Probably nixable
          /*
-         List<Widget> top =  [ c,  drag, fgd ];
-         List<Widget> bot =  [ c, bgd, drag ];
+         List<Widget> top =  [ c,  drag, forward ];
+         List<Widget> bot =  [ c, back, drag ];
          tileKids = t.getParent() == appState.equityTree ? top : tileKids;
          if( index > 0 && t.getParent() == treeList[index - 1] ) { tileKids = bot; }
          */
@@ -233,7 +243,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                   title: amountW
                   )));
          
-         print( "Get currentNode adding " + t.getTitle() );
+         // print( "Get currentNode adding " + t.getTitle() );
          
          nodes.add( [ catCont, tile ] );
       }
@@ -267,15 +277,24 @@ class _CEEquityState extends State<CEEquityFrame> {
          assert( eqLine.amount != null );
          
          EquityTree curNode = appState.equityTree!;
-         print( "Making " + eqLine.toString() );
          
          // when eqLines are created, they are leaves. Down the road, they become nodes
          List<String> cat = eqLine.category;
-         // List<Widget> tile  = _getTile( cat.sublist(0, cat.length-1), cat.last, eqLine.amount, ithLine, width, pageStamp );
-            
-         EquityTree? childNode   = curNode.findNode( eqLine.category );
-         EquityTree? childParent = curNode.findNode( eqLine.category.sublist(0, eqLine.category.length - 1 ) );
-         assert( childNode == null );
+         print( " ... " + cat.toString() );
+         
+         EquityTree? childNode   = curNode.findNode( cat );
+         EquityTree? childParent = curNode.findNode( cat.sublist(0, cat.length - 1 ) );
+
+         // XXX any need to push this to AWS?
+         // This is too harsh.  There can be identical categories, especially during editing, rebuilding, deleting.
+         // Rename instead to separate.
+         // assert( childNode == null );
+         if( childNode != null ) {
+            print( "Found identically named child.  Adding random tag to avoid this" );
+            cat[ cat.length - 1] = cat[ cat.length - 1] + " " + randAlpha( 10 );
+            childNode   = curNode.findNode( cat );
+            assert( childNode == null );
+         }
 
          if( childParent is EquityLeaf  ) {
             print( "... leaf upgraded to node" );
@@ -292,11 +311,12 @@ class _CEEquityState extends State<CEEquityFrame> {
       }
       appState.updateEquityPlan = false;
 
-      if( appState.equityTree != null ) {  print( appState.equityTree!.toStr() ); }
+      // if( appState.equityTree != null ) {  print( appState.equityTree!.toStr() ); }
    }
    
    
    List<List<Widget>> _getCategoryWidgets( context ) {
+      print( "Getting equity table widgets" );
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       var empty = Container( width: 1, height: 1 );
 
@@ -314,7 +334,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget headerC = makeTableText( appState, "Category", width, appState!.CELL_HEIGHT, false, 1 );
          Widget headerA = makeTableText( appState, "Amount",   width, appState!.CELL_HEIGHT, false, 1 );      
          catList.add( [ headerC, headerA ] );
-         print( "Added headers" );
+         // print( "Added headers" );
          
          if( appState.equityPlan != null )
          {
@@ -342,21 +362,25 @@ class _CEEquityState extends State<CEEquityFrame> {
             );
          
          catList.add( [agd, empty] );
-         print( "Added Footers" );
-
+         // print( "Added Footers" );
+         
          appState.updateEquityView = false; 
       }
 
       return catList;
    }
 
-   // sibling to fgd, bgd  .. this is managed by drag handle listener
-   void _updateListItems( oldIndex, newIndex ) {
+   // sibling to forward, back  .. this is managed by drag handle listener
+   void _initiateDrag( oldIndex, newIndex ) {
       assert( appState.equityPlan != null );
 
       if( newIndex == 0 ) {
          print( "Can't move above Top of Tree.  No-op." );
          return;
+      }
+      if( newIndex > appState.equityPlan!.getSize()+1 ) {
+         print( "Can't move lower than the bottom.  Setting length to bottom." );
+         newIndex = appState.equityPlan!.getSize()+1;
       }
       print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
       appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
@@ -390,7 +414,6 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          final ScrollController controller = ScrollController();
 
-
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),
             child: SingleChildScrollView(
@@ -400,18 +423,19 @@ class _CEEquityState extends State<CEEquityFrame> {
                   width: svWidth,
                   child: ReorderableListView(
                      buildDefaultDragHandles: false,
-                     onReorder: (oldIndex, newIndex) { _updateListItems(oldIndex, newIndex); ; },
+                     onReorder: (oldIndex, newIndex) { _initiateDrag(oldIndex, newIndex); ; },
                      // header: Text( "Oi!" ),
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
+                           // key: Key( 'equityTable ' + indexX.toString() ),
                            key: Key( 'equityTable ' + indexX.toString() ),
                            mainAxisSize: MainAxisSize.min,
                            children: List.generate( 
                               categoryWidth,
                               (indexY) => categories[indexX][indexY] )))
                         ))));
-      }
+       }
    }
    
    
@@ -423,7 +447,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       assert( appState != null );
      
       if( appState.verbose >= 2 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
-
+      
+      
       return getEquityPlan( context );
       
  }

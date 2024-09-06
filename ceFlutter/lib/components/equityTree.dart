@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:ceFlutter/utils.dart';
+
 // modeled after composition pattern here:
 // https://medium.com/flutter-community/flutter-design-patterns-4-composite-23473cccf2b3
 abstract class EquityTree {
@@ -49,8 +51,8 @@ mixin treeUtils {
    void indent( self, tot, destPrev ) {
       print( self.getTitle() + " indent" );
 
-      print( "self " + self.toStr() );
-      print( "prev " + destPrev.toStr() );
+      // print( "self " + self.toStr() );
+      // print( "prev " + destPrev.toStr() );
       
       // indent 0th leaf of TOT?  No-op.
       // indent when destPrev is already parent?  No-op.
@@ -80,7 +82,7 @@ mixin treeUtils {
             }
          }
          assert( newParent != null );
-         print( "newParent " + newParent!.toStr() );
+         // print( "newParent " + newParent!.toStr() );
          
          // Remove from old loc
          if( self.parent != null ) { self.parent.leaves.remove( self ); }
@@ -97,7 +99,7 @@ mixin treeUtils {
       int dpIndex           = 0;
       
       // unindent leaf of TOT? No-op.
-      if( destPrev == null || destPrev == tot ) {
+      if( destPrev == null || destPrev == tot || self.parent == tot) {
          print( "Can't replace top of tree.  No-op." );
          return;
       }
@@ -135,6 +137,16 @@ mixin treeUtils {
             if( npl[i].getTitle() == oldParent.getTitle() ) {
                dpIndex = i+1;
                // print( "Found new position at " + dpIndex.toString() );
+               break;
+            }
+         }
+
+         // Rename if new siblings have identically named one.
+         for( int i = 0; i < npl.length; i++ ) {
+            // print( " .... checking " + npl[i].getTitle() + " " + self.getTitle() );
+            if( npl[i].getTitle() == self.getTitle() ) {
+               print( "Found identically named child.  Adding random tag to avoid this" );
+               npl[i].setTitle( npl[i].getTitle() + " " + randAlpha( 10 ));
                break;
             }
          }
@@ -177,8 +189,9 @@ mixin treeUtils {
               dpIndex = newParent!.getLeaves().indexOf( destPrev ) + 1; 
            }
            else if( destPrev.parent == tot ) {
+              // Bottom of the list
               newParent = tot;
-              dpIndex = newParent!.getLeaves().indexOf( destPrev ) + 1;
+              dpIndex = newParent!.getLeaves().length;
            }
            else {
               newParent = destPrev.parent;
@@ -190,12 +203,15 @@ mixin treeUtils {
            dpIndex = newParent!.getLeaves().indexOf( destNext ); // go before destNext
         }
 
-        print( "Pre-repair index " + dpIndex.toString() + destPrev.parent.getTitle() );
+        print( "Pre-repair index into children of new parent: " + dpIndex.toString() + destPrev.parent.getTitle() );
         // If moving within same node, dpIndex can exceed leaf length.  repair.
+        // also, if was already in front of destNext, index will overshoot by 1
         if( self.parent == newParent ) {
-           dpIndex = dpIndex >= newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
+           dpIndex = dpIndex > newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
+           int selfIndex = newParent!.getLeaves().indexOf( self );
+           if( selfIndex <= dpIndex ) { dpIndex -= 1; }
         }
-
+        
         assert( dpIndex <= newParent.getLeaves().length );
         dpIndex = dpIndex > newParent.getLeaves().length ? dpIndex - 1 : dpIndex;
         
@@ -203,9 +219,18 @@ mixin treeUtils {
      }
      // Move as child?  i.e. destNext is the first child of destPrev
      else {
-        print( "Move as child" );
+        print( "Move as child " );
         assert( destNext.parent == destPrev );
 
+        // Can't move into your own progeny... path includes self - remove it
+        List<String> path = getPath( destPrev.parent, self.getTitle() );
+        if( path.length > 0 ) { path.removeLast(); }
+        if( path.contains( self.getTitle() )) {
+           print( "oi??  " + self.getTitle() + " " + path.toString() );
+           print( "Can not become a child of your progeny.  Reincarnation is NYI.  No-op." );
+           return;
+        }
+        
         // Get new parent
         newParent = destPrev;
         assert( newParent != null );
@@ -217,8 +242,8 @@ mixin treeUtils {
      }
 
      dpIndex = dpIndex == -1 ? 0 : dpIndex;
-     print( "New parent " + newParent!.toStr() );
-     print( "New index " + dpIndex.toString() + "\n" );
+     // print( "New parent " + newParent!.toStr() );
+     // print( "New index " + dpIndex.toString() + "\n" );
 
      if( newParent == self ) {
         print( "Can not become a child of yourself.  Umm.  Unless you try harder.  No-op." );
