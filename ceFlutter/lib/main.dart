@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:html';   // screen size
 
 import 'package:flutter/material.dart';
 
@@ -22,29 +23,6 @@ void main() {
    runApp( new AppStateContainer( child: new CEApp(), state: new AppState() ));
 }
 
-/*
-class CEApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-     // note: primarySwatch takes a set of colors (color + shade value), not an individual color.
-     return MaterialApp(
-        title: 'CodeEquity',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-           primarySwatch: Colors.green,
-           appBarTheme: AppBarTheme(
-              color: Colors.grey[200],
-              // title is deprecated 1.13, but as of 2/20 headline6 has not yet made it to the stable release
-              // textTheme: TextTheme( headline6: TextStyle( color: Colors.black )),
-              //textTheme: TextTheme( title: TextStyle( color: Colors.black )),
-              titleTextStyle: Theme.of(context).textTheme.headline6?.copyWith( color: Colors.black ),
-              iconTheme: IconThemeData( color: Colors.black ) ),
-           bottomAppBarColor: Colors.grey[200] ),
-        home:  CESplashPage( title: 'CodeEquity'),
-        );
-  }
-}
-*/
 
 class CEApp extends StatelessWidget {
   @override
@@ -142,8 +120,9 @@ class _CESplashPageState extends State<CESplashPage> {
      final devHeight = MediaQuery.of(context).size.height;
      appState!.screenHeight = devHeight;
      appState!.screenWidth = devWidth;
-     print( "Main recalc screen size" );
-
+     print( "Main get current window size w:" + devWidth.toString() + " h:" + devHeight.toString() );
+     print( "Physical screen size: " + window.screen!.width.toString() + " " + window.screen!.height.toString() );
+     
        return Scaffold(
           body: Center(
              child: Stack(

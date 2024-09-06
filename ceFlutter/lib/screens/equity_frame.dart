@@ -414,7 +414,6 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          final ScrollController controller = ScrollController();
 
-
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),
             child: SingleChildScrollView(
@@ -429,13 +428,14 @@ class _CEEquityState extends State<CEEquityFrame> {
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
+                           // key: Key( 'equityTable ' + indexX.toString() ),
                            key: Key( 'equityTable ' + indexX.toString() ),
                            mainAxisSize: MainAxisSize.min,
                            children: List.generate( 
                               categoryWidth,
                               (indexY) => categories[indexX][indexY] )))
                         ))));
-      }
+       }
    }
    
    
@@ -447,7 +447,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       assert( appState != null );
      
       if( appState.verbose >= 2 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
-
+      
+      
       return getEquityPlan( context );
       
  }
