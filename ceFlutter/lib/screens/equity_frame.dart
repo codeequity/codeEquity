@@ -10,8 +10,6 @@ import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
-import 'package:ceFlutter/models/equity.dart';
-
 import 'package:ceFlutter/components/equityTree.dart';
 import 'package:ceFlutter/components/equityNode.dart';
 import 'package:ceFlutter/components/equityLeaf.dart';
@@ -271,15 +269,15 @@ class _CEEquityState extends State<CEEquityFrame> {
       // Can't depend on walk tree here .. no tree yet!
       // In this construction, each eqLine is either a leaf or convertNode.  Can not directly step to a node - every line has at least 1 parent
       int ithLine = 0;
-      for( Equity eqLine in appState.equityPlan!.initializeEquity( ) ) {
+      for( var eqLine in appState.equityPlan!.initializeEquity( ) ) {
          ithLine += 1;
          assert( appState.equityTree != null );
-         assert( eqLine.amount != null );
+         assert( eqLine["amount"] != null );
          
          EquityTree curNode = appState.equityTree!;
          
          // when eqLines are created, they are leaves. Down the road, they become nodes
-         List<String> cat = eqLine.category;
+         List<String> cat = new List<String>.from( eqLine["category"] );
          print( " ... " + cat.toString() );
          
          EquityTree? childNode   = curNode.findNode( cat );
@@ -304,7 +302,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             curNode = childParent;   
          }
 
-         EquityLeaf tmpLeaf = EquityLeaf( eqLine.category.last, eqLine.amount, curNode, width ); 
+         EquityLeaf tmpLeaf = EquityLeaf( cat.last, eqLine["amount"], curNode, width ); 
          (curNode as EquityNode).addLeaf( tmpLeaf );
 
          // print( appState.equityTree!.toStr() );          

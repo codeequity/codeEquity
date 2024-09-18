@@ -1230,6 +1230,7 @@ async function putEqPlan( eplan ) {
 	    "EquityPlanId": eplan.ceProjectId,
 	    "Categories":   eplan.categories,
 	    "Amounts":      eplan.amounts,
+	    "HostNames":    eplan.hostNames,
 	    "LastMod":      eplan.lastMod
 	}
     };
