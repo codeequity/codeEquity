@@ -271,7 +271,8 @@ Future<bool> drag( WidgetTester tester, int index, int spots ) async {
    String keyName         = "drag " + index.toString(); 
    final Finder ceFlutter = find.byKey( Key( keyName ) );
 
-   // XXX ??? 
+   // XXX This depends on size of window being controlled by flutter driver (integration test fwk).  Fix this,
+   //     then fix the browser-dimension when launch test, then don't touch
    double fudge = (index == 6 && spots >= 2) ? 30.0 : 0.0;
    double dy = 30.0 * spots + fudge;
    print( "Drag " + index.toString() + " " + spots.toString() + " dy: " + dy.toString() );
@@ -633,7 +634,19 @@ Future<bool> validateEditCancel( tester ) async {
 
    return true;
 }
-   
+
+
+
+/* 
+   This type of test has significant pros and cons.
+   Good: test what user sees.  this may be better than good - like critical.
+   Bad:  highly dependent on widget construction
+   Example: we test equity line drag and etc. with fixed offset drags.
+            these drags attempt to replicate what a user sees.
+            As currently implemented, if window size breaks, or row spacing changes, the offsets may break as well.
+   XXX We could check every drag against expectation, and add/subtract fudge until we land where expected
+*/
+
 void main() {
 
    String repo = "codeequity/ceFlutterTester";

@@ -1372,16 +1372,16 @@ async function getProjIdFromPeq ( authData, iid ) {
     let pid = -1;
     try {
 	await ghUtils.postGH( authData.pat, config.GQL_ENDPOINT, query, "getProjIdFromPeq" )
-	.then( async (raw) => {
-	    let cards = raw.data.node.projectItems;
-	    assert( cards.edges.length == 1 );
-
-	    let pv2 = cards.edges[0].node.project;
-	    pid = pv2.id; 
-	});
+	    .then( async (raw) => {
+		let cards = raw.data.node.projectItems;
+		assert( cards.edges.length == 1 );
+		
+		let pv2 = cards.edges[0].node.project;
+		pid = pv2.id; 
+	    });
     }
     catch( e ) {
-	console.log( "Didn't like", iid );
+	console.log( "Didn't like", iid, query );
 	return await ghUtils.errorHandler( "getProjIdFromPeq", e, getProjIdFromPeq, authData, iid );
     }
 

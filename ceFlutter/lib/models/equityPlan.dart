@@ -1,8 +1,6 @@
 import 'dart:math';
 import 'package:collection/collection.dart';      // list equals, firstwhereornull
 
-import 'package:ceFlutter/models/equity.dart';
-
 import 'package:ceFlutter/components/equityTree.dart';
 import 'package:ceFlutter/components/equityNode.dart';
 import 'package:ceFlutter/components/equityLeaf.dart';
@@ -14,14 +12,16 @@ class EquityPlan {
 
    final String        ceProjectId;   // Summaries are per ceProject.. this is the pkey
    List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]
-   List<int>           amounts;       // e.g. [ 1000000, ... ]  
+   List<int>           amounts;       // e.g. [ 1000000, ... ]
+   List<String>        hostNames;     // host project (name) this equity line is associated with
    String              lastMod;       // XXX unused.
 
-   EquityPlan({ required this.ceProjectId, required this.categories, required this.amounts, required this.lastMod }) {
+   EquityPlan({ required this.ceProjectId, required this.categories, required this.amounts, required this.hostNames, required this.lastMod }) {
       assert( categories.length == amounts.length );
+      assert( categories.length == hostNames.length );
    }
 
-   dynamic toJson() => { 'ceProjectId': ceProjectId, 'categories': categories, 'amounts': amounts, 'lastMod': lastMod };
+   dynamic toJson() => { 'ceProjectId': ceProjectId, 'categories': categories, 'amounts': amounts, 'hostNames': hostNames, 'lastMod': lastMod };
    
    factory EquityPlan.fromJson(Map<String, dynamic> json) {
 
@@ -36,20 +36,20 @@ class EquityPlan {
          ceProjectId:   json['EquityPlanId'],
          categories:    cats,
          amounts:       new List<int>.from( json['Amounts'] ),
+         hostNames:     new List<String>.from( json['HostNames'] ),
          lastMod:       json['LastMod'],
          );
    }
 
    // Meant for use ONLY when first building tree
-   List<Equity> initializeEquity( ) {
+   List<Map<String,dynamic>> initializeEquity( ) {
 
-      List<Equity> res = [];
+      List<Map<String, dynamic>> res = [];
       for( int i = 0; i < categories.length; i++ ) {
-         Equity eq = new Equity( category: categories[i], amount: amounts[i] );
-         res.add( eq );
+         res.add( {"category": categories[i], "amount": amounts[i]} );
       }
-      return res;
 
+      return res;
    }
 
    // rebuild categories based on dfs walk of tree.
@@ -60,8 +60,10 @@ class EquityPlan {
 
       List<List<String>> oldCat = new List<List<String>>.from( categories );
       List<int>          oldAmt = new List<int>.from( amounts );
+      List<String>       oldHN  = new List<String>.from( hostNames );
       categories = [];
-      amounts = [];
+      amounts    = [];
+      hostNames  = [];
       
       for( int i = 0; i < treeList.length; i++ ) {
          EquityTree t = treeList[i];
@@ -70,6 +72,9 @@ class EquityPlan {
             else if( t is EquityLeaf) { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
             
             amounts.add( t.getAmount() );
+
+            // XXX XXX
+            hostNames.add( "" );
          }
       }
 
@@ -154,7 +159,7 @@ class EquityPlan {
    String toString() {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;
       for( int i = 0; i < categories.length; i++ ) {
-         res += "   " + amounts[i].toString() + " " +  categories[i].toString() + "\n";
+         res += "   " + amounts[i].toString() + " " +  categories[i].toString() + " for hostProject: " + hostNames[i] + "\n";
       }
       return res;
    }

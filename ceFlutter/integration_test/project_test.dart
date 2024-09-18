@@ -1060,9 +1060,9 @@ void main() {
          final Finder updateButton = find.byKey( const Key( 'Update PEQ Summary?' ));
          expect( updateButton, findsOneWidget );
          await tester.tap( updateButton );
-         print( 'Waiting 60s');
-         await pumpSettle( tester, 60, verbose: true );
-         print( 'Done waiting 100s');
+         print( 'Waiting 70s');
+         await pumpSettle( tester, 70, verbose: true );
+         print( 'Done waiting 70s');
          await pumpSettle( tester, 4, verbose: true );
          await pumpSettle( tester, 2, verbose: true );
          print( "Update PEQ Summary Done" );

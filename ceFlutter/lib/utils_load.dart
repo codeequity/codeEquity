@@ -152,6 +152,7 @@ Future<http.Response> hostGet( url ) async {
 
 Future<http.Response> postGH( PAT, postData, name ) async {
 
+   print( "XXX Warning.  postGH fired. " + postData + " " + name );
    // XXX formalize
    final gatewayURL = Uri.parse( 'https://api.github.com/graphql' );
    
@@ -599,7 +600,7 @@ Future<void> reloadRepo( context, container ) async {
    postDataPS['EquityPlanId'] = ceProj;
    pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
    appState.equityPlan = await fetchEquityPlan( context, container, pd );
-   if( appState.equityPlan == null ) { appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], lastMod: "" ); }
+   if( appState.equityPlan == null ) { appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], lastMod: "" ); }
    
    // Get linkage
    var postDataL = {};
