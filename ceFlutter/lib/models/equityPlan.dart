@@ -46,7 +46,7 @@ class EquityPlan {
 
       List<Map<String, dynamic>> res = [];
       for( int i = 0; i < categories.length; i++ ) {
-         res.add( {"category": categories[i], "amount": amounts[i]} );
+         res.add( {"category": categories[i], "amount": amounts[i], "hostName": hostNames[i]} );
       }
 
       return res;
@@ -68,17 +68,16 @@ class EquityPlan {
       for( int i = 0; i < treeList.length; i++ ) {
          EquityTree t = treeList[i];
          if( t.getTitle() != "Category" ) { // XXX formalize
-            if( t is EquityNode)      { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
-            else if( t is EquityLeaf) { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
+            // if( t is EquityNode)      { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
+            // else if( t is EquityLeaf) { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
             
+            categories.add( t.getPath( t.getParent(), t.getTitle()) );
             amounts.add( t.getAmount() );
-
-            // XXX XXX
-            hostNames.add( "" );
+            hostNames.add( t.getHostName() );
          }
       }
 
-      bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt );
+      bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt ) || !listEq( hostNames, oldHN );
       
       print( "updateEquity done.. changed? " + changed.toString() );
       return changed;

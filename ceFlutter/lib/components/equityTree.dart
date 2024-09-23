@@ -4,7 +4,7 @@ import 'package:ceFlutter/utils.dart';
 
 // modeled after composition pattern here:
 // https://medium.com/flutter-community/flutter-design-patterns-4-composite-23473cccf2b3
-abstract class EquityTree {
+abstract class EquityTree with treeUtils {
 
    EquityTree?      findNode( List<String> target ); 
    List<EquityTree> depthFirstWalk( List<EquityTree> treeList );
@@ -12,10 +12,13 @@ abstract class EquityTree {
    void setTitle( String newT ); 
    void setAmount( int newA ); 
    void setParent( EquityTree newP ); 
+   void setHostName( String newHN );
    
    int    getAmount();
    String getTitle();
    EquityTree? getParent();
+   String getHostName();
+
    List<EquityTree> getLeaves();
    void insertLeaf( target, int index );
    double getWidth();

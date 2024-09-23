@@ -77,9 +77,9 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
    
    
-   void _saveEdit( EquityTree t, titleController, amountController) {
-      print( "Save edit " + titleController.text + " " + amountController.text );
-      if( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() )
+   void _saveEdit( EquityTree t, titleController, amountController, hpNameController) {
+      print( "Save edit " + titleController.text + " " + amountController.text + " " + hpNameController.text );
+      if( titleController.text != t.getTitle() || amountController.text != t.getAmount.toString() || t.getHostName() != hpNameController.text )
       {
          print( "Change detected " );
          String title = titleController.text;
@@ -88,6 +88,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          String amt = amountController.text.replaceAll( ',', "" );
          if( amt == "" ) { amt = "0"; }
          t.setAmount( int.parse( amt ));
+         String hpName = hpNameController.text;
+         if( hpName == "" ) { hpName = "NO PROJECT ASSOCIATION"; }
+         t.setHostName( hpName );
 
          // Tree changed. update viewable list, then update the view
          setState(() => appState.updateEquityView = true );                  
@@ -111,11 +114,17 @@ class _CEEquityState extends State<CEEquityFrame> {
       Navigator.of( context ).pop();
    }
 
-   void _saveAdd( EquityTree tot, TextEditingController title, TextEditingController amount) {
+   void _saveAdd( EquityTree tot, TextEditingController title, TextEditingController amount, TextEditingController hproj) {
       final width = frameMinWidth - 2*appState.FAT_PAD;
 
-      String amt = amount.text.replaceAll( ',', "" );
-      EquityTree t = EquityLeaf( title.text, int.parse( amt ), tot, width );
+      print( "SAVE ADD " + title.text + " " + title.value.toString() );
+
+      String tval = title.text == "" ? "NOT YET NAMED" : title.text;
+      String hval = hproj.text == "" ? "NOT YET IDENTIFIED" : hproj.text;
+      String amt  = amount.text.replaceAll( ',', "" );
+      int amtInt  = amt == "" ? 0 : int.parse( amt );
+      
+      EquityTree t = EquityLeaf( tval, amtInt, hval, tot, width );
       (tot as EquityNode).addLeaf( t );
       
       setState(() => appState.updateEquityView = true );                  
@@ -126,9 +135,13 @@ class _CEEquityState extends State<CEEquityFrame> {
    Future<void> _add( EquityTree tot) async {
       String title = "Category";
       String amt   = "Amount";
+      String hproj = "Host Project Name";
       TextEditingController tc = new TextEditingController();
       TextEditingController ac = new TextEditingController();
-      await editRow( context, appState, "Add new Category, Amount", [tc, ac], [title, amt], () => _saveAdd( tot, tc, ac ), () => _cancelEdit(), null );
+      TextEditingController hp = new TextEditingController();
+      List<String> listHeaders = ["Category", "Amount", "Associated host project name"];
+      String popupTitle = "Add new entry";      
+      await editList( context, appState, popupTitle, listHeaders, [tc, ac, hp], [title, amt, hproj], () => _saveAdd( tot, tc, ac, hp ), () => _cancelEdit(), null );
    }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
@@ -189,7 +202,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          // Listener sends index orig, new to first onReorder function in ancestor chain
          Widget drag     = ReorderableDragStartListener( key: Key( "drag " + index.toString()),index: index, child: Icon( Icons.drag_handle ));
-
+         
          Widget catEditable = GestureDetector(
             onTap: () async 
             {
@@ -200,9 +213,13 @@ class _CEEquityState extends State<CEEquityFrame> {
 
                String title = t.getTitle();
                String amt   = t.getAmount().toString();
+               String hproj = t.getHostName();
                TextEditingController tc = new TextEditingController();
                TextEditingController ac = new TextEditingController();
-               editRow( context, appState, "Edit Category, Amount", [tc, ac], [title, amt], () => _saveEdit( t, tc, ac ), () => _cancelEdit(), () => _delete(t) );
+               TextEditingController hp = new TextEditingController();
+               List<String> listHeaders = ["Category", "Amount", "Associated host project name"];
+               String popupTitle = "Edit existing entry";
+               editList( context, appState, popupTitle, listHeaders, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + index.toString() ),
             child: cat
@@ -258,7 +275,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       String pageStamp = DateTime.now().millisecondsSinceEpoch.toString();
 
       // List<Widget> htile  = _getTile( [], "Category", 0, 0, width, pageStamp );
-      appState.equityTree = EquityNode( "Category", 0, null, width, header: true );
+      appState.equityTree = EquityNode( "Category", 0, "", null, width, header: true );
       
       if( appState.equityPlan == null ) {
          appState.updateEquityPlan = false;
@@ -302,7 +319,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             curNode = childParent;   
          }
 
-         EquityLeaf tmpLeaf = EquityLeaf( cat.last, eqLine["amount"], curNode, width ); 
+         EquityLeaf tmpLeaf = EquityLeaf( cat.last, eqLine["amount"], eqLine["hostName"], curNode, width );
          (curNode as EquityNode).addLeaf( tmpLeaf );
 
          // print( appState.equityTree!.toStr() );          

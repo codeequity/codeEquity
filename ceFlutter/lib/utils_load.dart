@@ -261,7 +261,7 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
 Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
-   // print( "updateDynamo " + postData );
+   print( "updateDynamo " + postData );
 
    /*
    if( peqId != -1 ) {
@@ -271,6 +271,8 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
    
    final response = await postIt( shortName, postData, container );
    bool  res      = false;
+
+   if( response.statusCode != 201 ) { print( "XXX OI? " + response.toString() ); }
    
    if (response.statusCode == 201) { res = true; }
    else {
