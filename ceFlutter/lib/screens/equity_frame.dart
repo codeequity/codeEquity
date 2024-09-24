@@ -91,6 +91,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          String hpName = hpNameController.text;
          if( hpName == "" ) { hpName = "NO PROJECT ASSOCIATION"; }
          t.setHostName( hpName );
+         print( "... se: " + t.getTitle() + " HOI " + t.getHostName() );
 
          // Tree changed. update viewable list, then update the view
          setState(() => appState.updateEquityView = true );                  

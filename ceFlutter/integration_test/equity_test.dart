@@ -27,17 +27,17 @@ const Map<String,List<String>> EQS_GOLD =
 {
    "Category 0": ["Category", "Amount"],
       
-      "Business Operations Flut 1":        ["Category, Business Operations Flut", "1,000,000"],
-      "Software Contributions Flut 2":     ["Category, Software Contributions Flut", "11,000,000"],
-        "AWS Operations 3":                ["Category, Software Contributions Flut, AWS Operations", "1,000,000"],
-        "Github Operations Flut 4":        ["Category, Software Contributions Flut, Github Operations Flut", "1,000,000"],
-        "CEServer 5":                      ["Category, Software Contributions Flut, CEServer", "3,000,000"],
-        "CEFlutter 6":                     ["Category, Software Contributions Flut, CEFlutter", "2,000,000"],
-        "Data Security Flut 7":            ["Category, Software Contributions Flut, Data Security Flut", "1,000,000"],
-        "Unallocated 8":                   ["Category, Software Contributions Flut, Unallocated", "3,000,000"],
-      "Cross Proj 9":                      ["Category, Cross Proj", "0"],
-      "A Pre-Existing Project Flut 10":    ["Category, A Pre-Existing Project Flut", "0"],
-      "Unallocated 11":                    ["Category, Unallocated", "3,000,000"],
+      "Business Operations Flut 1":        ["Category, Business Operations Flut", "1,000,000", ""],
+      "Software Contributions Flut 2":     ["Category, Software Contributions Flut", "11,000,000", ""],
+        "AWS Operations 3":                ["Category, Software Contributions Flut, AWS Operations", "1,000,000", ""],
+        "Github Operations Flut 4":        ["Category, Software Contributions Flut, Github Operations Flut", "1,000,000", "Github Operations Flut"],
+        "CEServer 5":                      ["Category, Software Contributions Flut, CEServer", "3,000,000", ""],
+        "CEFlutter 6":                     ["Category, Software Contributions Flut, CEFlutter", "2,000,000", ""],
+        "Data Security Flut 7":            ["Category, Software Contributions Flut, Data Security Flut", "1,000,000", "Data Security Flut"],
+        "Unallocated 8":                   ["Category, Software Contributions Flut, Unallocated", "3,000,000", ""],
+      "Cross Proj 9":                      ["Category, Cross Proj", "0", "Cross Proj"],
+      "A Pre-Existing Project Flut 10":    ["Category, A Pre-Existing Project Flut", "0", "A Pre-Existing Project Flut"],
+      "Unallocated 11":                    ["Category, Unallocated", "3,000,000", ""],
 };
 
 
@@ -204,7 +204,7 @@ Future<void> deleteEq ( WidgetTester tester ) async {
 }
 
 Future<void> addEq( WidgetTester tester, k, v ) async {
-   assert( v.length == 2 );  // cat, amount
+   assert( v.length == 3 );  // cat, amount, host project name
 
    print( "Adding " + k );
    
@@ -216,14 +216,18 @@ Future<void> addEq( WidgetTester tester, k, v ) async {
    // Add dialog has popped up.  Find text controllers
    final Finder editCat = find.byKey( Key( 'editRow Category' )); 
    final Finder editAmt = find.byKey( Key( 'editRow Amount' ));   
+   final Finder editHPN = find.byKey( Key( 'editRow Host Project Name' ));   
    expect( editCat, findsOneWidget );
    expect( editAmt, findsOneWidget );
+   expect( editHPN, findsOneWidget );
 
    // Add values
    List<String> cats = v[0].split(', '); // gold table delimits with ', '
    await tester.enterText( editCat, cats[ cats.length - 1 ] );
    await tester.pumpAndSettle();
    await tester.enterText( editAmt, v[1] );
+   await tester.pumpAndSettle();
+   await tester.enterText( editHPN, v[2] );
    await tester.pumpAndSettle();
    
    final Finder saveButton = find.byKey( Key( 'Save' ) );
