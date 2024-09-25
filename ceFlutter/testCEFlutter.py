@@ -67,7 +67,7 @@ def verifyEmulator():
     goodConfig = True
     if( call("ps -efl | grep chromedriver | grep -v grep", shell=True) != 0 ) :
 
-        # Check if chromedriver needs updating
+        # Check if chromedriver needs updating.  Sleep to make sure we don't link before renaming.
         cdpv = "set `chromedriver --version`; set `echo $2 | cut -c1-3`; cd=$1;"
         gcpv = "set `google-chrome --version`; set `echo $3 | cut -c1-3`; gc=$1;"
         if( call( cdpv + gcpv + " [ $cd -eq $gc ]", shell=True) != 0 ) :
@@ -76,6 +76,7 @@ def verifyEmulator():
             if( call( "rm -rf chromedriverLin", shell=True) != 0 ) : print( "Error." )
             if( call( "npx @puppeteer/browsers install chromedriver@stable", shell=True) != 0 ) : print( "Error." )
             if( call( "mv chromedriver chromedriverLin", shell=True) != 0 ) : print( "Error." )
+            time.sleep(5)
             if( call( "ln -s */*/*/chromedriver", shell=True) != 0 ) : print( "Error." )
           
         call( "chromedriver --port=4444&", shell=True )

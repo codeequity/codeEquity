@@ -86,6 +86,7 @@ class Node extends StatelessWidget implements Tree {
 
   @override
   int getAllocAmount() {
+     /*
      // Unlike the other amounts, which are independently summed, allocations are dependent in a top-down hierarchy.
      // For example, if githubOps is allocated 2m, and a child card (say, testing) is allocated 500k, the top level allocation is 2m.
      //              This is because the child card allocation is meant to be a part of the overall alloc for githubOps.
@@ -93,6 +94,10 @@ class Node extends StatelessWidget implements Tree {
     var csum = 0;
     leaves.forEach((Tree leaf) => csum += leaf.getAllocAmount());
     return max( psum, csum );
+     */
+     // Now, allocations are declared directly in equity plan.
+     // Allocs within a project are ignored, completely. 
+     return allocAmount;
   }
 
   @override

@@ -117,21 +117,28 @@ class _CESummaryState extends State<CESummaryFrame> {
       for( var alloc in appState.myPEQSummary!.getAllAllocs() ) {
 
          assert( appState.allocTree != null );
+
+         // Re-site each alloc into it's new home.
+         // XXX get and use ep.allocation here.
+         List<dynamic> epRet = appState.equityPlan!.site( alloc.category );
+         List<String> sitedCat   = new List<String>.from( epRet[0] );
+         int          sitedAlloc = epRet[1];
+         print( "   ... sited as " + sitedCat.toString() + " " + sitedAlloc.toString() );
          
          Tree curNode = appState.allocTree!;
          
          // when allocs are created, they are leaves.
          // down the road, they become nodes
-         for( int i = 0; i < alloc.category.length; i++ ) {
+         for( int i = 0; i < sitedCat.length; i++ ) {
             
-            if( appState.verbose >= 2 ) { print( "working on " + alloc.category.toString() + " : " + alloc.category[i] ); }
+            if( appState.verbose >= 2 ) { print( "working on " + sitedCat.toString() + " : " + sitedCat[i] ); }
 
             // Overly aggressive assert?
             assert( alloc.amount != null );
             
             bool lastCat = false;
-            if( i == alloc.category.length - 1 ) { lastCat = true; }
-            Tree? childNode = curNode.findNode( alloc.category[i] );
+            if( i == sitedCat.length - 1 ) { lastCat = true; }
+            Tree? childNode = curNode.findNode( sitedCat[i] );
             
             if( childNode is Leaf && !lastCat ) {
                // allocation leaf, convert to a node to accomodate plan/accrue
@@ -140,8 +147,8 @@ class _CESummaryState extends State<CESummaryFrame> {
             }
             else if( childNode == null ) {
                if( !lastCat ) {
-                  if( appState.verbose >= 2 ) { print( "... nothing - add node" ); }
-                  Node tmpNode = Node( alloc.category[i], 0, null, width, widget.pageStamp, widget.allocExpansionCallback );
+                  if( appState.verbose >= 1 ) { print( "... nothing - add node .. XXX allocation? " + sitedCat[i] ); }
+                  Node tmpNode = Node( sitedCat[i], 0, null, width, widget.pageStamp, widget.allocExpansionCallback );
                   (curNode as Node).addLeaf( tmpNode );
                   curNode = tmpNode;
                }
@@ -149,13 +156,15 @@ class _CESummaryState extends State<CESummaryFrame> {
                   if( appState.verbose >= 2 ) { print( "... nothing found, last cat, add leaf" ); }
                   // leaf.  amounts stay at leaves
 
-                  int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount! : 0 );
+                  int allocAmount  = sitedAlloc;
+                  if( allocAmount < 0 ) { allocAmount = ( alloc.allocType == PeqType.allocation ? alloc.amount! : 0 ); }
+                  
                   int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount! : 0 );
                   int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount! : 0 );
                   int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount! : 0 );
 
                   // Everything starts as a leaf, so will often not have a mapping.  But if we do, use it, will be hostUserName instead of id
-                  String rowName = alloc.category[i];
+                  String rowName = sitedCat[i];
                   Map<String,String>? mapping = appState.idMapHost[ rowName ];
                   if( mapping != null ) { rowName = mapping!['hostUserName'] ?? rowName; }
 

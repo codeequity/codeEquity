@@ -52,6 +52,23 @@ class EquityPlan {
       return res;
    }
 
+   // Have a cat that is hostProj + col + assignee.  Add hierarchy.
+   // Have eqs that are hier + hier + hier + Proj.hostProj
+   List<dynamic> site( List<String> cat ) {
+      List<String> newCat = new List<String>.from( cat );
+      int newAlloc = -1;
+      assert( newCat.length >= 1 );
+      for( int i = 0; i < hostNames.length; i++ ) {
+         if( newCat[0] == hostNames[i] ) {
+            newCat = categories[i].sublist(0, categories[i].length - 1 ) + newCat;
+            newAlloc = amounts[i];
+            // print( "  resited " + cat.toString() + " into " + newCat.toString() );
+            break;
+         }
+      }
+      return [newCat, newAlloc];
+   }
+
    // rebuild categories based on dfs walk of tree.
    bool updateEquity( EquityTree? tree ) {
       if( tree == null ) { return false; }
@@ -154,7 +171,6 @@ class EquityPlan {
 
    int getSize() { return categories.length; }
 
-   
    String toString() {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;
       for( int i = 0; i < categories.length; i++ ) {

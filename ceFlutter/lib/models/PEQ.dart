@@ -28,12 +28,6 @@ class PEQ {
             required this.hostProjectSub, required this.hostRepoId, required this.hostIssueId, required this.hostIssueTitle,
             required this.active});
 
-   /*
-   dynamic toJson() => {'id': id, 'ceProjectId': ceProjectId, 'ceHolderId': ceHolderId, 'hostHolderId': hostHolderId, 'ceGrantorId': ceGrantorId,
-                           'peqType': enumToStr(peqType), 'amount': amount, 'accrualDate': accrualDate, 'vestedPerc': vestedPerc,
-                           'hostProjectSub': hostProjectSub, 'hostRepoId': hostRepoId, 'hostIssueId': hostIssueId,
-                           'hostIssueTitle': hostIssueTitle, 'active': active };
-   */
    dynamic toJson() => {'PEQId': id, 'CEProjectId': ceProjectId, 'CEHolderId': ceHolderId, 'HostHolderId': hostHolderId, 'CEGrantorId': ceGrantorId,
                            'PeqType': enumToStr(peqType), 'Amount': amount, 'AccrualDate': accrualDate, 'VestedPerc': vestedPerc,
                            'HostProjectSub': hostProjectSub, 'HostRepoId': hostRepoId, 'HostIssueId': hostIssueId,
@@ -69,6 +63,10 @@ class PEQ {
       var dynamicAssCE = json['CEHolderId']     ?? [];
       var dynamicAssHost = json['HostHolderId'] ?? [];
 
+      // XXX Modules Until work on ceServer can start again, strip everything to do with Software Contributions here
+      List<String> hps = new List<String>.from(dynamicSub);
+      hps.removeWhere( (cat) => cat == "Software Contributions" );
+      
       // DynamoDB is not camelCase
       return PEQ(
          id:            json['PEQId'],
@@ -82,7 +80,7 @@ class PEQ {
          accrualDate:   json['AccrualDate'],
          vestedPerc:    json['VestedPerc'],
 
-         hostProjectSub:  new List<String>.from(dynamicSub),
+         hostProjectSub:  hps,
          hostRepoId:      json['HostRepoId'],
          hostIssueId:     json['HostIssueId'],
          hostIssueTitle:  json['HostIssueTitle'],
@@ -102,7 +100,11 @@ class PEQ {
       case "amount":         this.amount = value;                                           break;
       case "accrualDate":    this.accrualDate = value;                                      break;
       case "vestedPerc":     this.vestedPerc = value;                                       break;
-      case "hostProjectSub": this.hostProjectSub = new List<String>.from( value );          break;
+      case "hostProjectSub":
+         this.hostProjectSub = new List<String>.from( value );
+         // XXX Modules Until work on ceServer can start again, strip everything to do with Software Contributions here
+         this.hostProjectSub.removeWhere( (cat) => cat == "Software Contributions" );
+         break;
       case "hostRepoId":     this.hostRepoId = value;                                       break;
       case "hostIssueId":    this.hostIssueId = value;                                      break;
       case "hostIssueTitle": this.hostIssueTitle = value;                                   break;

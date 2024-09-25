@@ -34,10 +34,10 @@ const Map<String,List<String>> EQS_GOLD =
         "CEServer 5":                      ["Category, Software Contributions Flut, CEServer", "3,000,000", ""],
         "CEFlutter 6":                     ["Category, Software Contributions Flut, CEFlutter", "2,000,000", ""],
         "Data Security Flut 7":            ["Category, Software Contributions Flut, Data Security Flut", "1,000,000", "Data Security Flut"],
-        "Unallocated 8":                   ["Category, Software Contributions Flut, Unallocated", "3,000,000", ""],
+        "Test Only 8":                     ["Category, Software Contributions Flut, Test Only", "3,000,000", "No Such Project"],
       "Cross Proj 9":                      ["Category, Cross Proj", "0", "Cross Proj"],
       "A Pre-Existing Project Flut 10":    ["Category, A Pre-Existing Project Flut", "0", "A Pre-Existing Project Flut"],
-      "Unallocated 11":                    ["Category, Unallocated", "3,000,000", ""],
+      "Test Only 11":                      ["Category, Test Only", "3,000,000", "Such A Project"],
 };
 
 
@@ -163,11 +163,11 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
 
       List<String> agVals  = EQS_GOLD[ agKey ] ?? [];
 
-      // Unallocated may have rand tag after it.  Check, strip
+      // Test Only may have rand tag after it.  Check, strip
       if( agVals.length == 0 ) {
          List<String> av = agKey.split(' ');
-         if( av[0] == "Unallocated" ) {
-            agKey = av[0] + " " + av[2];
+         if( av.length > 3 && (av[0] + " " + av[1]) == "Test Only" ) {
+            agKey = "Test Only " + av[3];
             print( "Rand alphaNum tag detected.  Remade agKey: " + agKey );
             agVals  = EQS_GOLD[ agKey ] ?? [];
          }
@@ -459,7 +459,7 @@ Future<bool> validateDeepUnindent( tester, target, startDepth ) async {
    // make sure 2nd unallocated was renamed
    await tester.pumpAndSettle();
    List<String> eqs = await getElt( tester, "equityTable 11" );
-   expect( eqs[0] != "Unallocated", true );
+   expect( eqs[0] != "Test Only", true );
 
    return true;
 }
@@ -718,6 +718,9 @@ void main() {
          
          // Check edit, cancel
          await validateEditCancel( tester );
+
+         // End fresh
+         expect( await rebuildEquityTable( tester ), true );
          
          await logout( tester );         
 

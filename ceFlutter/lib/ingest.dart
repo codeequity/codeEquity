@@ -1134,6 +1134,24 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
 }
 
 
+// XXX This method should go away once ceServer can be worked on again.  Don't bother speeding this up.
+void _reformPActs( List<PEQAction> todoPActs ) {
+   // current Modules Flut is projects_v2 id
+   final MF = "PVT_kwDOA8JELs4AfIcJ";
+   
+   List<String> mfPEQId = [];
+   // First pass, find relocates with modules flut id.  Get psub.0, which is the peqId
+   todoPActs.forEach( (p)
+                      { if( p.subject.contains( MF ) ) { mfPEQId.add( p.subject[0] ); }
+                      });
+   
+   print( "removing all pacts with peqId " + mfPEQId.toString() + " " + todoPActs.length.toString() );
+   
+   // Second pass, remove all with that peqId
+   todoPActs.removeWhere( (p) => p.subject.length > 0 && mfPEQId.contains( p.subject[0] ) );
+   print( "leaving " + todoPActs.length.toString() + " pacts" );
+}
+
 // XXX Note.  locking is sticky.
 // XXX sort by timestamp
 // Record all PEQ actions:add, delete, accrue, relocate, change, notice
@@ -1163,6 +1181,10 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
    if( todoPActions.length == 0 ) { return; }
 
+   // XXX Modules Until work on ceServer can start again, strip everything to do with Modules here
+   print( "Reform todoPActions to replicate what server will send" );
+   _reformPActs( todoPActions );
+   
    List<String> pactIds = [];
    List<String> peqIds = [];
 
@@ -1175,7 +1197,6 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       // Note: not all in peqIds are valid peqIds, even with non-zero subject
       pact.subject.length > 0 ? peqIds.add( pact.subject[0] ) : peqIds.add( "-1" );  
    }
-   // 13s  0s
    print( "TIME PeqPactPair " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
    // XXX peqIds - where do my -1's get disappeared?

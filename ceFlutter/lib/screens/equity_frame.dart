@@ -379,7 +379,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          catList.add( [agd, empty] );
          // print( "Added Footers" );
-         
+
+         // Updates to equity can impact peq summary view.  updateit.
+         setState(() => appState.updateAllocTree = true );                           
          appState.updateEquityView = false; 
       }
 
