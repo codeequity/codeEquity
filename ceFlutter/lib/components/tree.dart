@@ -9,6 +9,7 @@ abstract class Tree {
    int getPendingAmount();
    int getAccrueAmount();
    int getChildSurplusAmount();
+   int getChildDepth( int relDepth );
 
    Tree? findNode( String target ); 
    

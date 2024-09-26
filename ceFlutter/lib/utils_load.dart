@@ -261,7 +261,7 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
 Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1 } ) async {
    final appState  = container.state;
 
-   print( "updateDynamo " + postData );
+   // print( "updateDynamo " + postData );
 
    /*
    if( peqId != -1 ) {

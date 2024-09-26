@@ -430,13 +430,13 @@ Future<bool> validateDeepIndent( tester, startIndex ) async {
    }
    if( TEST ) { await pumpSettle( tester, 2 ); } // XXX integration testing framework hiccups 
 
-   expect( await checkEqs( tester, 1, 1,              newAmt: "11,000,000" ), true );  
+   expect( await checkEqs( tester, 1, 1,              newAmt: "1,000,000"  ), true );  
    expect( await checkEqs( tester, 2, 2, newDepth: 2, newAmt: "11,000,000" ), true );  
-   expect( await checkEqs( tester, 3, 3, newDepth: 3, newAmt: "3,000,000"  ), true );  
-   expect( await checkEqs( tester, 4, 4, newDepth: 4, newAmt: "3,000,000"  ), true );  
+   expect( await checkEqs( tester, 3, 3, newDepth: 3, newAmt: "1,000,000"  ), true );  
+   expect( await checkEqs( tester, 4, 4, newDepth: 4, newAmt: "1,000,000"  ), true );  
    expect( await checkEqs( tester, 5, 5, newDepth: 5, newAmt: "3,000,000"  ), true );  
-   expect( await checkEqs( tester, 6, 6, newDepth: 6, newAmt: "3,000,000"  ), true );  
-   expect( await checkEqs( tester, 7, 7, newDepth: 7, newAmt: "3,000,000"  ), true );  
+   expect( await checkEqs( tester, 6, 6, newDepth: 6, newAmt: "2,000,000"  ), true );  
+   expect( await checkEqs( tester, 7, 7, newDepth: 7, newAmt: "1,000,000"  ), true );  
    expect( await checkEqs( tester, 8, 8, newDepth: 8, newAmt: "3,000,000"  ), true );  
    expect( await checkEqs( tester, 9, 9              ), true );  
 
@@ -465,17 +465,16 @@ Future<bool> validateDeepUnindent( tester, target, startDepth ) async {
 }
 Future<bool> checkIndented( tester, bool inset ) async {
    int depthOffset = inset ? 1 : 0;
-   String cpAmount = inset ? "3,000,000" : "0";
    if( TEST ) { await pumpSettle( tester, 2 );} // XXX integration testing framework hiccups
    
-   expect( await checkEqs( tester, 1, 1,              newAmt: "11,000,000" ), true );  
+   expect( await checkEqs( tester, 1, 1,              newAmt: "1,000,000"  ), true );  
    expect( await checkEqs( tester, 2, 2, newDepth: 2, newAmt: "11,000,000" ), true );  
    expect( await checkEqs( tester, 3, 3, newDepth: 3, newAmt: "1,000,000"  ), true );
    
    expect( await checkEqs( tester, 4, 4, offset: 4,  newDepth: 1, newAmt: "3,000,000"  ), true );  // now unalloc.. 4 items moved
-   expect( await checkEqs( tester, 5, 5, offset: 4,               newAmt: cpAmount     ), true );  // now cross
+   expect( await checkEqs( tester, 5, 5, offset: 4,               newAmt: "0"          ), true );  // now cross
 
-   expect( await checkEqs( tester, 6, 6, offset: -2, newDepth: 1 + depthOffset, newAmt: "3,000,000"  ), true );  // now GHO
+   expect( await checkEqs( tester, 6, 6, offset: -2, newDepth: 1 + depthOffset, newAmt: "1,000,000"  ), true );  // now GHO
    expect( await checkEqs( tester, 7, 7, offset: -2, newDepth: 2 + depthOffset, newAmt: "3,000,000"  ), true );  // now server
    expect( await checkEqs( tester, 8, 8, offset: -2, newDepth: 3 + depthOffset, newAmt: "2,000,000"  ), true );  // now flutter
    expect( await checkEqs( tester, 9, 9, offset: -2, newDepth: 4 + depthOffset, newAmt: "1,000,000"  ), true );  // now datsec
@@ -524,31 +523,31 @@ Future<bool> validateReparentSubtree( tester ) async {
 }
 Future<bool> checkDragBottom( tester ) async {
    
-   expect( await checkEqs( tester, 1, 1,              newAmt: "11,000,000" ), true );  
-   expect( await checkEqs( tester, 2, 2, newDepth: 2, newAmt: "11,000,000" ), true );  
-   expect( await checkEqs( tester, 3, 3, newDepth: 3, newAmt: "1,000,000"  ), true );
+   expect( await checkEqs( tester, 1, 1              ), true );  
+   expect( await checkEqs( tester, 2, 2, newDepth: 2 ), true );  
+   expect( await checkEqs( tester, 3, 3, newDepth: 3 ), true );
 
-   expect( await checkEqs( tester, 4, 4, offset: 4, newDepth: 1, newAmt: "3,000,000"  ), true ); // unalloc
-   expect( await checkEqs( tester, 5, 5, offset: 4,              newAmt: "0"          ), true ); // cross
-   expect( await checkEqs( tester, 6, 6, offset: 4,              newAmt: "0"          ), true );  // now pre
-   expect( await checkEqs( tester, 7, 7, offset: 4,              newAmt: "3,000,000"  ), true );  // now unalloc 2
+   expect( await checkEqs( tester, 4, 4, offset: 4, newDepth: 1  ), true ); // unalloc
+   expect( await checkEqs( tester, 5, 5, offset: 4               ), true ); // cross
+   expect( await checkEqs( tester, 6, 6, offset: 4               ), true );  // now pre
+   expect( await checkEqs( tester, 7, 7, offset: 4               ), true );  // now unalloc 2
 
-   expect( await checkEqs( tester, 8, 8,   offset: -4, newDepth: 1, newAmt: "3,000,000"  ), true );  // now GHO
-   expect( await checkEqs( tester, 9, 9,   offset: -4, newDepth: 2, newAmt: "3,000,000"  ), true );  // now server
-   expect( await checkEqs( tester, 10, 10, offset: -4, newDepth: 3, newAmt: "2,000,000"  ), true );  // now flutter
-   expect( await checkEqs( tester, 11, 11, offset: -4, newDepth: 4, newAmt: "1,000,000"  ), true );  // now datsec
+   expect( await checkEqs( tester, 8, 8,   offset: -4, newDepth: 1 ), true );  // now GHO
+   expect( await checkEqs( tester, 9, 9,   offset: -4, newDepth: 2 ), true );  // now server
+   expect( await checkEqs( tester, 10, 10, offset: -4, newDepth: 3 ), true );  // now flutter
+   expect( await checkEqs( tester, 11, 11, offset: -4, newDepth: 4 ), true );  // now datsec
    return true;
 }
 Future<bool> checkDragTop( tester ) async {
    
-   expect( await checkEqs( tester, 1, 1, offset: 3, newDepth: 1, newAmt: "3,000,000"  ), true );  // now GHO
-   expect( await checkEqs( tester, 2, 2, offset: 3, newDepth: 2, newAmt: "3,000,000"  ), true );  // now server
-   expect( await checkEqs( tester, 3, 3, offset: 3, newDepth: 3, newAmt: "2,000,000"  ), true );  // now flutter
-   expect( await checkEqs( tester, 4, 4, offset: 3, newDepth: 4, newAmt: "1,000,000"  ), true );  // now datsec
+   expect( await checkEqs( tester, 1, 1, offset: 3, newDepth: 1 ), true );  // now GHO
+   expect( await checkEqs( tester, 2, 2, offset: 3, newDepth: 2 ), true );  // now server
+   expect( await checkEqs( tester, 3, 3, offset: 3, newDepth: 3 ), true );  // now flutter
+   expect( await checkEqs( tester, 4, 4, offset: 3, newDepth: 4 ), true );  // now datsec
 
-   expect( await checkEqs( tester, 5, 5, offset: -4,              newAmt: "11,000,000" ), true );  
-   expect( await checkEqs( tester, 6, 6, offset: -4, newDepth: 2, newAmt: "11,000,000" ), true );  
-   expect( await checkEqs( tester, 7, 7, offset: -4, newDepth: 3, newAmt: "1,000,000"  ), true );
+   expect( await checkEqs( tester, 5, 5, offset: -4              ), true );  
+   expect( await checkEqs( tester, 6, 6, offset: -4, newDepth: 2 ), true );  
+   expect( await checkEqs( tester, 7, 7, offset: -4, newDepth: 3 ), true );
 
    expect( await checkEqs( tester, 8, 8,    newDepth: 1 ), true ); // unalloc
    expect( await checkEqs( tester, 9, 9,                ), true ); // cross
@@ -558,16 +557,16 @@ Future<bool> checkDragTop( tester ) async {
    return true;
 }
 Future<bool> checkDragSub( tester ) async {
-   expect( await checkEqs( tester, 1, 1,              newAmt: "11,000,000" ), true );  
-   expect( await checkEqs( tester, 2, 2, newDepth: 2, newAmt: "11,000,000" ), true );  
-   expect( await checkEqs( tester, 3, 3, newDepth: 3, newAmt: "1,000,000"  ), true );
+   expect( await checkEqs( tester, 1, 1              ), true );  
+   expect( await checkEqs( tester, 2, 2, newDepth: 2 ), true );  
+   expect( await checkEqs( tester, 3, 3, newDepth: 3 ), true );
    
-   expect( await checkEqs( tester, 4, 4, newDepth: 1, newAmt: "3,000,000"  ), true );  // now GHO
-   expect( await checkEqs( tester, 5, 5, newDepth: 2, newAmt: "3,000,000"  ), true );  // now server
-   expect( await checkEqs( tester, 6, 6, newDepth: 3, newAmt: "2,000,000"  ), true );  // now flutter
-   expect( await checkEqs( tester, 7, 7, newDepth: 4, newAmt: "1,000,000"  ), true );  // now datsec
+   expect( await checkEqs( tester, 4, 4, newDepth: 1 ), true );  // now GHO
+   expect( await checkEqs( tester, 5, 5, newDepth: 2 ), true );  // now server
+   expect( await checkEqs( tester, 6, 6, newDepth: 3 ), true );  // now flutter
+   expect( await checkEqs( tester, 7, 7, newDepth: 4 ), true );  // now datsec
 
-   expect( await checkEqs( tester, 8, 8, newDepth: 1, newAmt: "3,000,000"  ), true );  // now unalloc
+   expect( await checkEqs( tester, 8, 8, newDepth: 1 ), true );  // now unalloc
    expect( await checkEqs( tester, 9, 9                                    ), true ); // now cross
    expect( await checkEqs( tester, 10, 10                                  ), true );  
    expect( await checkEqs( tester, 11, 11                                  ), true );
@@ -601,7 +600,7 @@ Future<bool> validateDragGHOExtremes( tester ) async {
 Future<bool> validateEditCancel( tester ) async {
    print( "\nDrag edit cancel" );
    
-   expect( await checkEqs( tester, 1, 1, newAmt: "11,000,000"  ), true );  // bus ops
+   expect( await checkEqs( tester, 1, 1  ), true );  // bus ops
 
    // Cancel an edit
    final Finder cat = find.byKey( Key( 'catEditable 1' ));
@@ -613,7 +612,7 @@ Future<bool> validateEditCancel( tester ) async {
    expect( cancelButton, findsOneWidget );
    await tester.tap( cancelButton );
    await tester.pumpAndSettle();
-   expect( await checkEqs( tester, 1, 1, newAmt: "11,000,000"  ), true );  // bus ops
+   expect( await checkEqs( tester, 1, 1 ), true );  // bus ops
 
    // This time, edit, save
    expect( cat, findsOneWidget );
@@ -633,7 +632,7 @@ Future<bool> validateEditCancel( tester ) async {
 
    List<String> eqs = await getElt( tester, "equityTable 1" );
    expect( eqs[0], "Goblins" );
-   expect( eqs[1], "11,000,000" );
+   expect( eqs[1], "1,000,000" );
    expect( eqs[2], "1" );
 
    return true;

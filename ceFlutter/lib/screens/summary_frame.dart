@@ -122,8 +122,8 @@ class _CESummaryState extends State<CESummaryFrame> {
          // XXX get and use ep.allocation here.
          List<dynamic> epRet = appState.equityPlan!.site( alloc.category );
          List<String> sitedCat   = new List<String>.from( epRet[0] );
-         int          sitedAlloc = epRet[1];
-         print( "   ... sited as " + sitedCat.toString() + " " + sitedAlloc.toString() );
+         // int          sitedAlloc = epRet[1];
+         // print( "   ... sited as " + sitedCat.toString() + " " + sitedAlloc.toString() );
          
          Tree curNode = appState.allocTree!;
          
@@ -147,8 +147,17 @@ class _CESummaryState extends State<CESummaryFrame> {
             }
             else if( childNode == null ) {
                if( !lastCat ) {
-                  if( appState.verbose >= 1 ) { print( "... nothing - add node .. XXX allocation? " + sitedCat[i] ); }
-                  Node tmpNode = Node( sitedCat[i], 0, null, width, widget.pageStamp, widget.allocExpansionCallback );
+                  int hAlloc = 0;
+
+                  // alloc: [hier ... hier  project column assignee]
+                  // alloc  |-may have ---| |-will have -----------|    equity plan has no info on last two.
+                  if( i < sitedCat.length - 2 ) {
+                     if( appState.verbose >= 2 ) { print( "... hierarchy - resite " + sitedCat[i] ); }
+                     List<dynamic> hier = appState.equityPlan!.site( [ sitedCat[i] ] );
+                     hAlloc = hier[1];
+                  }
+
+                  Node tmpNode = Node( sitedCat[i], hAlloc, null, width, widget.pageStamp, widget.allocExpansionCallback );
                   (curNode as Node).addLeaf( tmpNode );
                   curNode = tmpNode;
                }
@@ -156,8 +165,12 @@ class _CESummaryState extends State<CESummaryFrame> {
                   if( appState.verbose >= 2 ) { print( "... nothing found, last cat, add leaf" ); }
                   // leaf.  amounts stay at leaves
 
-                  int allocAmount  = sitedAlloc;
-                  if( allocAmount < 0 ) { allocAmount = ( alloc.allocType == PeqType.allocation ? alloc.amount! : 0 ); }
+                  // Hierarchy adds alloc amounts from equity plan in the case above.
+                  // Pure leaves should be alloc 0, as they will be assignees.
+                  // Projects and hierarchical elements can never be allocations on their own, will always show up in case above first.
+                  int allocAmount = 0;
+                  // int allocAmount  = sitedAlloc;
+                  // if( allocAmount < 0 ) { allocAmount = ( alloc.allocType == PeqType.allocation ? alloc.amount! : 0 ); }
                   
                   int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount! : 0 );
                   int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount! : 0 );

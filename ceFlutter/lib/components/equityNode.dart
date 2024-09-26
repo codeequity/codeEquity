@@ -97,9 +97,13 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
      // For example, if githubOps is allocated 2m, and a child card (say, testing) is allocated 500k, the top level allocation is 2m.
      //              This is because the child card allocation is meant to be a part of the overall alloc for githubOps.
     var psum = amount;
-    var csum = 0;
-    leaves.forEach((EquityTree leaf) => csum += leaf.getAmount());
-    return max( psum, csum );
+
+    // XXX Warn if sum of kids exceeds parent.  Displayed allocation will always be as entered by hand, or repaired when initiated by human hands.
+    // var csum = 0;
+    // leaves.forEach((EquityTree leaf) => csum += leaf.getAmount());
+    // return max( psum, csum );
+
+    return psum;
   }
 
   @override  // toString overrides diagnostic... blarg

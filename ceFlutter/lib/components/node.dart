@@ -125,6 +125,18 @@ class Node extends StatelessWidget implements Tree {
     return sum;
   }
 
+  @override
+  // get depth of deepest child
+  int getChildDepth( int relDepth ) {
+     var depth = relDepth;
+     List<int> childDepth = []; 
+     leaves.forEach((Tree leaf) => childDepth.add( leaf.getChildDepth( relDepth + 1 )) );
+     int cd = 0;
+     if( childDepth.length > 0 ) { cd = childDepth.reduce(max); }
+     return depth + cd;
+  }
+        
+     
   @override  // toString overrides diagnostic... blarg
   String toStr() {
      String res = "";
@@ -178,9 +190,12 @@ class Node extends StatelessWidget implements Tree {
      int pendInt         = getPendingAmount();
      int accrInt         = getAccrueAmount();
      int childSurplusInt = getChildSurplusAmount();
-     int surplusInt = max( 0, allocInt - planInt - pendInt - accrInt );
+     // Allow this to go negative.  Only show if child depth is at least 2.. i.e. only projects show surplus, not cols or assignees
+     // int surplusInt = max( 0, allocInt - planInt - pendInt - accrInt );
+     int surplusInt = allocInt - planInt - pendInt - accrInt;
+     if( getChildDepth( 0 ) <= 2 ) { surplusInt = 0; }
 
-     // XXX ignore for now
+     // XXX ignore for now.  will become a (!) warning
      // Parent surplus >= children surplus in valid cases.
      // if( surplusInt < childSurplusInt ) { print( "XXX XXX XXX" + surplusInt.toString() + " " + childSurplusInt.toString() ); }
      

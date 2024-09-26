@@ -62,10 +62,23 @@ class EquityPlan {
          if( newCat[0] == hostNames[i] ) {
             newCat = categories[i].sublist(0, categories[i].length - 1 ) + newCat;
             newAlloc = amounts[i];
-            // print( "  resited " + cat.toString() + " into " + newCat.toString() );
+            // print( "  resited " + cat.toString() + " into " + newCat.toString() + " with amount " + newAlloc.toString() );
             break;
          }
       }
+
+      // Host names are only present when there are host projects.  By definition, hierarchical elements do not have an associated host project.
+      // hierarch elements have been added during previous call to site.  Now, just need alloc amount.
+      if( newAlloc == -1 ) {
+         for( int i = 0; i < categories.length; i++ ) {
+            if( newCat[0] == categories[i].last ) {
+               newAlloc = amounts[i];
+               // print( "  hierarchical element found, amout:  " + newAlloc.toString() );
+               break;
+            }
+         }
+      }
+      
       return [newCat, newAlloc];
    }
 

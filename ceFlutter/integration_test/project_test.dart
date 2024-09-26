@@ -29,11 +29,10 @@ const Map<String,List<String>> ALLOCS_GOLD =
 {
    "Category 0": ["Category", "Allocation", "Planned", "Pending", "Accrued", "Surplus"],
       
-      "A Pre-Existing Project Flut 1":  ["Category, A Pre-Existing Project Flut", "125,000", "1,500", "0", "1,500", "122,000"],
+      "A Pre-Existing Project Flut 1":  ["Category, A Pre-Existing Project Flut", "0", "1,500", "0", "1,500", "-3,000"],
          "Accrued 2":               ["Category, A Pre-Existing Project Flut, Accrued", "0", "0", "0", "1,500", "---"],
             "ariCETester 3":        ["Category, A Pre-Existing Project Flut, Accrued, ariCETester", "0", "0", "0", "1,500", "---"],
          "Bacon 4":                 ["Category, A Pre-Existing Project Flut, Bacon", "125,000", "1,500", "0", "0", "123,500"],
-            "IR Alloc split 5":     ["Category, A Pre-Existing Project Flut, Bacon, IR Alloc split", "125,000", "0", "0", "0", "125,000"],
             "ariCETester 6":        ["Category, A Pre-Existing Project Flut, Bacon, ariCETester", "0", "500", "0", "0", "---"],
             "Unassigned 7":         ["Category, A Pre-Existing Project Flut, Bacon, Unassigned", "0", "1,000", "0", "0", "---"],
 

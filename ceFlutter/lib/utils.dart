@@ -210,6 +210,9 @@ Widget paddedLTRB( child, double L, double T, double R, double B ) {
 
 String addCommas( int amount ) {
    String res = "";
+   bool neg = amount < 0 ? true : false;
+   if( neg ) { amount = -1 * amount; }
+         
    String t = amount.toString();
 
    while( t.length > 3 ) {
@@ -217,6 +220,8 @@ String addCommas( int amount ) {
       t = t.substring( 0, t.length - 3 );
    }
    res = t + res;
+   
+   if( neg ) { res = "-" + res; }
    return res;
 }
 

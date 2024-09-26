@@ -1152,6 +1152,16 @@ void _reformPActs( List<PEQAction> todoPActs ) {
    print( "leaving " + todoPActs.length.toString() + " pacts" );
 }
 
+// XXX This method should go away once ceServer can be worked on again.  Don't bother speeding this up.
+void _removeAllocs( List<Tuple2<PEQAction, PEQ>> todos ) {
+   for( int i = todos.length-1; i >= 0; i-- ) {
+      PEQAction pact = todos[i].item1;
+      PEQ       peq  = todos[i].item2;
+      if( peq.peqType == PeqType.allocation ) { todos.removeAt( i ); }
+   }
+}
+
+
 // XXX Note.  locking is sticky.
 // XXX sort by timestamp
 // Record all PEQ actions:add, delete, accrue, relocate, change, notice
@@ -1249,7 +1259,6 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
    }
    // todos.sort((a, b) => a.item2.hostProjectSub.length.compareTo(b.item2.hostProjectSub.length));
    todos.sort((a, b) => a.item1.timeStamp.compareTo(b.item1.timeStamp));
-   // 16s 4s
    print( "TIME Sorted " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
    // XXX Probably want another pass to stack up all updateCEUIDs.  Most can lay ontop of one another.
@@ -1262,8 +1271,12 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
       i++;
    }
 
+   // XXX This should be removed once ceServer is updated to not send peqType:allocation pacts or peqs this way.
+   print( "Pre-Remove Allocs " + todos.length.toString());
+   _removeAllocs( todos );
+   print( "Post-Remove Allocs " + todos.length.toString());
+   
    vPrint( appState, "Pre order fix " + todos.length.toString());
-
    await fixOutOfOrder( todos, context, container );
    
    vPrint( appState, "Complete myLoc update " + todos.length.toString());
