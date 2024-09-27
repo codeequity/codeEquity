@@ -81,6 +81,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
    //     detail page..?
    _pactDetail( path, convertedName, width, depthM1, isAlloc ) {
+      // print( "Pact Detail looking for user " + path.toString() + " " + depthM1.toString() );
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
@@ -122,8 +123,6 @@ class _CESummaryState extends State<CESummaryFrame> {
          // XXX get and use ep.allocation here.
          List<dynamic> epRet = appState.equityPlan!.site( alloc.category );
          List<String> sitedCat   = new List<String>.from( epRet[0] );
-         // int          sitedAlloc = epRet[1];
-         // print( "   ... sited as " + sitedCat.toString() + " " + sitedAlloc.toString() );
          
          Tree curNode = appState.allocTree!;
          
@@ -181,7 +180,10 @@ class _CESummaryState extends State<CESummaryFrame> {
                   Map<String,String>? mapping = appState.idMapHost[ rowName ];
                   if( mapping != null ) { rowName = mapping!['hostUserName'] ?? rowName; }
 
-                  Widget details = _pactDetail( alloc.category, rowName, width, i, alloc.allocType == PeqType.allocation );
+                  // Pact details sit at the assignee level.  SitedCat can be any length, but assignee is always the last element.
+                  // We filter pacts by project subs in the PEQ model. Project subs are unsited.
+                  int assigneeLoc = alloc.category.length - 1;
+                  Widget details = _pactDetail( alloc.category, rowName, width, assigneeLoc, alloc.allocType == PeqType.allocation );
                   Leaf tmpLeaf   = Leaf( rowName, allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }

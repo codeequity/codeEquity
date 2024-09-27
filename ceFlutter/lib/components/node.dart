@@ -193,7 +193,8 @@ class Node extends StatelessWidget implements Tree {
      // Allow this to go negative.  Only show if child depth is at least 2.. i.e. only projects show surplus, not cols or assignees
      // int surplusInt = max( 0, allocInt - planInt - pendInt - accrInt );
      int surplusInt = allocInt - planInt - pendInt - accrInt;
-     if( getChildDepth( 0 ) <= 2 ) { surplusInt = 0; }
+     if( allocInt == -1 )          { surplusInt += 1; }  // -1 indicates a hostproject with a peq, but proj is not in equity.  it is not a numeric value.
+     if( getChildDepth( 0 ) <= 2 ) { surplusInt = 0; }   // do not show surplus for columns or assignees
 
      // XXX ignore for now.  will become a (!) warning
      // Parent surplus >= children surplus in valid cases.
