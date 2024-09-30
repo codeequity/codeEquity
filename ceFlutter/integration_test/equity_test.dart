@@ -25,7 +25,7 @@ const TEST = false;
 // Gold standard for testing ingest and summary frame for codeequity/ceFlutterTester
 const Map<String,List<String>> EQS_GOLD =
 {
-   "Category 0": ["Category", "Amount"],
+   "Category 0": ["Category", "Allocation"],
       
       "Business Operations Flut 1":        ["Category, Business Operations Flut", "1,000,000", ""],
       "Software Contributions Flut 2":     ["Category, Software Contributions Flut", "11,000,000", ""],
@@ -89,11 +89,9 @@ String getCatFromTiles( Widget elt ) {
 
 String getAmtFromTiles( Widget elt ) {
    String retVal = "";
-   if( elt is Container && elt.child is ListTileTheme ) {
-      var listTile  = elt.child as ListTileTheme;
-      var tile      = listTile.child as ListTile;
+   if( elt is Container && elt.child is Padding ) {
       
-      retVal        = getFromMakeTableText( tile.title! );
+      retVal        = getFromMakeTableText( elt.child! );
    }
    return retVal;
 }
@@ -159,7 +157,7 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       // eqs_gold is const above, is a map to a list<str> with long title, then numbers.
       
       String agKey = eqs[0] + " " + (i+offset).toString();                 
-      // print( "Got eqs " + eqs.toString() + " making agKey *" + agKey + "*");
+      print( "Got eqs " + eqs.toString() + " making agKey *" + agKey + "*");
 
       List<String> agVals  = EQS_GOLD[ agKey ] ?? [];
 
@@ -182,7 +180,7 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       
       // depth is # commas, i.e. Soft Cont is depth 1 making TOT depth 0
       int goldDepth = newDepth != -1 ? newDepth : ','.allMatches( agVals[0] ).length;
-      expect( goldDepth, int.parse( eqs[2] ) );
+      expect( goldDepth, int.parse( eqs[3] ) );
       // amt
       String amt = newAmt == "-1" ? agVals[1] : newAmt;
       expect( eqs[1], amt );
@@ -215,8 +213,8 @@ Future<void> addEq( WidgetTester tester, k, v ) async {
    
    // Add dialog has popped up.  Find text controllers
    final Finder editCat = find.byKey( Key( 'editRow Category' )); 
-   final Finder editAmt = find.byKey( Key( 'editRow Amount' ));   
-   final Finder editHPN = find.byKey( Key( 'editRow Host Project Name' ));   
+   final Finder editAmt = find.byKey( Key( 'editRow Allocation' ));   
+   final Finder editHPN = find.byKey( Key( 'editRow Associated host project name' ));   
    expect( editCat, findsOneWidget );
    expect( editAmt, findsOneWidget );
    expect( editHPN, findsOneWidget );
@@ -283,12 +281,14 @@ Future<bool> drag( WidgetTester tester, int index, int spots ) async {
    
    await tester.drag(ceFlutter, Offset(0.0, dy )); 
    await tester.pumpAndSettle();
-   // await pumpSettle( tester, 1 );   // give a small chance to see move
+   // await pumpSettle( tester, 2 );   // give a small chance to see move
    return true;
 }
 
 
 
+// XXX NOTE When driver window (i.e. not 'this window is controlled by automated software' gets too small,
+//     this test fails.  How do we set driver window size??
 Future<bool> validateDragAboveTOT( WidgetTester tester, int index, int spots ) async {
    print( "\nDrag above TOT" );
    await drag( tester, index, spots );
@@ -633,7 +633,7 @@ Future<bool> validateEditCancel( tester ) async {
    List<String> eqs = await getElt( tester, "equityTable 1" );
    expect( eqs[0], "Goblins" );
    expect( eqs[1], "1,000,000" );
-   expect( eqs[2], "1" );
+   expect( eqs[3], "1" );
 
    return true;
 }

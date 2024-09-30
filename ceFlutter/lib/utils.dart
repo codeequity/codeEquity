@@ -154,7 +154,7 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
       children: editVals );
    
    List<Widget> buttons = [];
-   buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: saveFunc ));
+   buttons.add( new TextButton( key: Key( 'Save' ), child: new Tooltip( child: new Text("Save"), message: "Oi!" ), onPressed: saveFunc ));
 
    if( deleteFunc != null ) {
       buttons.add( new TextButton( key: Key( 'Delete' ), child: new Text("Delete"), onPressed: deleteFunc ) );

@@ -135,7 +135,7 @@ Future<bool> agreementsTabFraming( WidgetTester tester ) async {
 
 Future<bool> ariSummaryFraming( WidgetTester tester ) async {
    expect( find.text( 'Category' ),               findsOneWidget );
-   expect( find.text( 'Software Contributions' ), findsOneWidget );
+   expect( find.text( 'Software Contributions Flut' ), findsOneWidget );
    expect( find.text( 'Business Operations' ),    findsOneWidget );
    expect( find.text( 'UnClaimed' ),              findsOneWidget );
    expect( find.text( 'A Pre-Existing Project Flut' ), findsOneWidget );

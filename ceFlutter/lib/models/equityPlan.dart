@@ -159,13 +159,15 @@ class EquityPlan {
    // Move elsewhere?  Become a sibling of index - 1.
    void move( int oldIndex, int newIndex, EquityTree tree ) {
       assert( categories.length == amounts.length );
-      assert( oldIndex <= categories.length );
+
+      // Account for header + XXX bar.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
+      oldIndex -= 1;
+      newIndex -= 1;
+
+      assert( oldIndex < categories.length );
 
       print( "move from " + oldIndex.toString() + " to " + newIndex.toString() );
 
-      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
-      oldIndex -= 1;
-      newIndex -= 1;
       assert( newIndex <= categories.length );
 
       // Get major elements here.  Tree/node/leaf should not see index.
@@ -177,6 +179,14 @@ class EquityPlan {
       if( newIndex > 0 )                 { destParent = tree.findNode( categories[newIndex-1] ); }
       if( newIndex < categories.length ) { destNext   = tree.findNode( categories[newIndex] ); }
 
+
+      print( "XXX " + categories.toString() );
+      print( categories[oldIndex] );
+      
+      print( "target, parent, next indices: " + oldIndex.toString() + " " + (newIndex-1).toString() + " " + newIndex.toString() );
+      if( target != null )     { print( "target " + target.getTitle() ); }
+      if( destParent != null ) { print( "parent " + destParent.getTitle() ); }
+      if( destNext != null )   { print( "next "   + destNext.getTitle() ); }
       
       (tree as EquityNode).moveTo( target!, tree!, destParent, destNext );
       

@@ -33,7 +33,7 @@ class CEEquityFrame extends StatefulWidget {
    CEEquityFrame(
       {Key? key,
             this.appContainer,
-            this.frameHeightUsed,
+            this.frameHeightUsed
             } ) : super(key: key);
 
   @override
@@ -47,6 +47,8 @@ class _CEEquityState extends State<CEEquityFrame> {
    late AppState appState;
 
    static const maxPaneWidth = 950.0;
+   final listHeaders = ["Category", "Allocation", "Associated host project name", "Rearrange"];
+   final lhInternal  = ["Category", "Allocation", "Associated host project name"] ;
 
    // iphone 5
    static const frameMinWidth  = 320.0;     // XXX appState
@@ -134,15 +136,11 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
    
    Future<void> _add( EquityTree tot) async {
-      String title = "Category";
-      String amt   = "Amount";
-      String hproj = "Host Project Name";
       TextEditingController tc = new TextEditingController();
       TextEditingController ac = new TextEditingController();
       TextEditingController hp = new TextEditingController();
-      List<String> listHeaders = ["Category", "Amount", "Associated host project name"];
       String popupTitle = "Add new entry";      
-      await editList( context, appState, popupTitle, listHeaders, [tc, ac, hp], [title, amt, hproj], () => _saveAdd( tot, tc, ac, hp ), () => _cancelEdit(), null );
+      await editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], lhInternal, () => _saveAdd( tot, tc, ac, hp ), () => _cancelEdit(), null );
    }
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
@@ -152,7 +150,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       List<List<Widget>> nodes = [];
       Widget empty = Container( width: 1, height: 1 );
-      // Skip TOT.. handled in headers below
+      // Skip TOT.. handled in headers below.  XXX Skip hdiv.
       for( int index = 1; index < treeList.length; index++ ) {
             
          EquityTree t = treeList[index];
@@ -194,15 +192,20 @@ class _CEEquityState extends State<CEEquityFrame> {
          if( t is EquityNode )      { depth = (t as EquityNode).getPath( t.getParent(), t.getTitle() ).length + 1; }
          else if( t is EquityLeaf ) { depth = (t as EquityLeaf).getPath( t.getParent(), t.getTitle() ).length + 1; }
          
-         final  numWidth = width / 3.0;      
+         final  numWidth = width / 2.5;        // formalize
          final  height   = appState!.CELL_HEIGHT;
-         Widget amountW  = makeTableText( appState!, addCommas( t.getAmount() ), numWidth, height, false, 1 );
          // XXX YYY
          // Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
          Widget cat      = makeTableText( appState, t.getTitle(), width, height - 20, false, 1, mux: (depth+1) * .5 );
+         Widget amountW  = makeTableText( appState, addCommas( t.getAmount() ), numWidth, height, false, 1 );
+         
+         String hpn = t.getHostName();
+         if( hpn == "NOT YET IDENTIFIED" ) { hpn = "---"; }
+         
+         Widget hostProj = Container( width: width, child: makeTableText( appState, hpn, width, height, false, 1 ) );
 
          // Listener sends index orig, new to first onReorder function in ancestor chain
-         Widget drag     = ReorderableDragStartListener( key: Key( "drag " + index.toString()),index: index, child: Icon( Icons.drag_handle ));
+         Widget drag     = ReorderableDragStartListener( key: Key( "drag " + index.toString()), index: index, child: Icon( Icons.drag_handle ));
          
          Widget catEditable = GestureDetector(
             onTap: () async 
@@ -218,9 +221,8 @@ class _CEEquityState extends State<CEEquityFrame> {
                TextEditingController tc = new TextEditingController();
                TextEditingController ac = new TextEditingController();
                TextEditingController hp = new TextEditingController();
-               List<String> listHeaders = ["Category", "Amount", "Associated host project name"];
                String popupTitle = "Edit existing entry";
-               editList( context, appState, popupTitle, listHeaders, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
+               editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + index.toString() ),
             child: cat
@@ -228,40 +230,17 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          // XXX YYY XZZZ 20?
          Widget c        = Container( width: numWidth, height: 1 );
+         Widget fp       = Container( width: appState.FAT_PAD, height: 1 );
+         Widget gp       = Container( width: appState.GAP_PAD*2.0, height: 1 );
          // Widget catCont  = Container( width: width, height: height, child: catEditable );
          Widget catCont  = Container( width: width, height: height - 20, child: catEditable );
+         Widget amtCont  = Container( width: numWidth, height: height - 20, child: amountW );
 
-         List<Widget> tileKids = [ c, back, drag, forward ];
+         List<Widget> tileKids = [ fp, back, drag, forward ];
          List<Widget> none = [ c  ];
          tileKids = index == 0 ? none : tileKids;
-
-         // This is ugly.  It can work, but is not working well as is.  Probably nixable
-         /*
-         List<Widget> top =  [ c,  drag, forward ];
-         List<Widget> bot =  [ c, back, drag ];
-         tileKids = t.getParent() == appState.equityTree ? top : tileKids;
-         if( index > 0 && t.getParent() == treeList[index - 1] ) { tileKids = bot; }
-         */
          
-         Widget tile = Container(
-            width: width * 2,
-            // XXX YYY
-            // height: height,
-            height: height - 20,
-            child: ListTileTheme(
-               dense: true,
-               child: ListTile(
-                  trailing:  Wrap(
-                     spacing: 0,
-                     // key: new PageStorageKey(getPathName() + getTitle() + stamp),
-                     children: tileKids,
-                     ),
-                  title: amountW
-                  )));
-         
-         // print( "Get currentNode adding " + t.getTitle() );
-         
-         nodes.add( [ catCont, tile ] );
+         nodes.add( [ catCont, amtCont, gp, hostProj, Wrap( spacing: 0, children: tileKids ) ] );
       }
       
       return nodes;
@@ -286,9 +265,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       // Per equity line, walk the current tree (curNode) by stepping through the categories chain to see where this line belongs
       // Can't depend on walk tree here .. no tree yet!
       // In this construction, each eqLine is either a leaf or convertNode.  Can not directly step to a node - every line has at least 1 parent
-      int ithLine = 0;
       for( var eqLine in appState.equityPlan!.initializeEquity( ) ) {
-         ithLine += 1;
          assert( appState.equityTree != null );
          assert( eqLine["amount"] != null );
          
@@ -335,7 +312,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       print( "Getting equity table widgets" );
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       var empty = Container( width: 1, height: 1 );
-
+      final  numWidth = width / 2.5;
+         
       if( appState.equityPlan != null && appState.equityPlan!.ceProjectId != appState.selectedCEProject ) {
          print( "Error.  Equity plan is not for selected project." );
          return [];
@@ -347,11 +325,16 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       if( appState.updateEquityView ) {
          catList = [];
-         Widget headerC = makeTableText( appState, "Category", width, appState!.CELL_HEIGHT, false, 1 );
-         Widget headerA = makeTableText( appState, "Amount",   width, appState!.CELL_HEIGHT, false, 1 );      
-         catList.add( [ headerC, headerA ] );
-         // print( "Added headers" );
-         
+         Widget headerCat = Container( width: width, child: makeTableText( appState, listHeaders[0], width, appState!.CELL_HEIGHT, false, 1 ) );
+         Widget headerAmt = Container( width: numWidth, child: makeTableText( appState, listHeaders[1], width, appState!.CELL_HEIGHT, false, 1 ) );      
+         Widget headerHPN = Container( width: width, child: makeTableText( appState, listHeaders[2],   width, appState!.CELL_HEIGHT, false, 1 ));      
+         Widget headerArr = Container( width: numWidth, child: makeTableText( appState, listHeaders[3], numWidth, appState!.CELL_HEIGHT, false, 1 ));
+         Widget gp        = Container( width: appState.GAP_PAD*2.0, height: 1 );
+         Widget fp        = Container( width: appState.FAT_PAD, height: 1 );
+         Widget hdiv      = Wrap( spacing: 0, children: [fp, makeHDivider( 2*width + 2*numWidth - appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD )] );
+         catList.add( [ headerCat, headerAmt, gp, headerHPN, headerArr ] );
+         // XXX catList.add( [ hdiv, empty, empty, empty, empty ] );
+   
          if( appState.equityPlan != null )
          {
             assert( appState.equityTree != null );
@@ -377,7 +360,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             child: Icon( Icons.add_box_outlined )
             );
          
-         catList.add( [agd, empty] );
+         catList.add( [agd, empty, empty, empty, empty] );
          // print( "Added Footers" );
 
          // Updates to equity can impact peq summary view.  updateit.
@@ -392,7 +375,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    void _initiateDrag( oldIndex, newIndex ) {
       assert( appState.equityPlan != null );
 
-      if( newIndex == 0 ) {
+      if( newIndex <= 0 ) {
          print( "Can't move above Top of Tree.  No-op." );
          return;
       }
@@ -416,7 +399,6 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       categories.addAll( _getCategoryWidgets( context ) );
       
-      // categoryCount changes with each expand/contract
       // print( "getCategories, count: " + categories.length.toString() );
       var categoryCount = min( categories.length, 30 );                  // XXX formalize
       var categoryWidth = categories.length == 0 ? 30 : categories[0].length;  // XXX formalize
@@ -446,7 +428,6 @@ class _CEEquityState extends State<CEEquityFrame> {
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
-                           // key: Key( 'equityTable ' + indexX.toString() ),
                            key: Key( 'equityTable ' + indexX.toString() ),
                            mainAxisSize: MainAxisSize.min,
                            children: List.generate( 
@@ -460,12 +441,11 @@ class _CEEquityState extends State<CEEquityFrame> {
    @override
    Widget build(BuildContext context) {
 
-      container   = widget.appContainer;   
-      appState    = container.state;
+      container = widget.appContainer;   
+      appState  = container.state;
       assert( appState != null );
      
       if( appState.verbose >= 2 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
-      
       
       return getEquityPlan( context );
       
