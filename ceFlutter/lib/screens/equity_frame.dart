@@ -325,16 +325,19 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       if( appState.updateEquityView ) {
          catList = [];
+         // Header
          Widget headerCat = Container( width: width, child: makeTableText( appState, listHeaders[0], width, appState!.CELL_HEIGHT, false, 1 ) );
          Widget headerAmt = Container( width: numWidth, child: makeTableText( appState, listHeaders[1], width, appState!.CELL_HEIGHT, false, 1 ) );      
          Widget headerHPN = Container( width: width, child: makeTableText( appState, listHeaders[2],   width, appState!.CELL_HEIGHT, false, 1 ));      
          Widget headerArr = Container( width: numWidth, child: makeTableText( appState, listHeaders[3], numWidth, appState!.CELL_HEIGHT, false, 1 ));
          Widget gp        = Container( width: appState.GAP_PAD*2.0, height: 1 );
          Widget fp        = Container( width: appState.FAT_PAD, height: 1 );
+         Widget mp        = Container( width: appState.MID_PAD, height: 1 );
          Widget hdiv      = Wrap( spacing: 0, children: [fp, makeHDivider( 2*width + 2*numWidth - appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD )] );
          catList.add( [ headerCat, headerAmt, gp, headerHPN, headerArr ] );
-         // XXX catList.add( [ hdiv, empty, empty, empty, empty ] );
-   
+         // catList.add( [ hdiv, empty, empty, empty, empty ] );
+
+         // Body
          if( appState.equityPlan != null )
          {
             assert( appState.equityTree != null );
@@ -346,7 +349,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             if( changed ) { writeEqPlan(); }
          }
 
-         // add
+         // Add
          Widget agd = GestureDetector(
             onTap: () async 
             {
@@ -360,9 +363,33 @@ class _CEEquityState extends State<CEEquityFrame> {
             child: Icon( Icons.add_box_outlined )
             );
          
-         catList.add( [agd, empty, empty, empty, empty] );
-         // print( "Added Footers" );
+         Widget fullP  = Container( width: width, height: 1 );
+         Widget numP   = Container( width: numWidth, height: 1 );
+         catList.add( [ fullP, numP, fullP, gp, Wrap( spacing:0, children: [ mp, fp, fp, agd] ) ] );
 
+         // Summaries
+         /*
+         assert( appState.equityTree != null );
+         List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
+         int sumW = 0;
+         int sumO = 0;
+         // XXX formalize
+         for( var t in treeList ) {
+            if( t.getHostName() == "NOT YET IDENTIFIED" ) { sumO += t.getAmount(); }
+            else                                          { sumW += t.getAmount(); }
+         }
+         catList.add( [ hdiv, empty, empty, empty, empty ] );
+         Widget sumTotW = Container( width: width, child: makeTableText( appState, "Total with associated Host Project:", width, appState!.CELL_HEIGHT, false, 1 ) );
+         Widget sumValW = Container( width: width, child: makeTableText( appState, addCommas( sumW ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
+         Widget sumTotO = Container( width: width, child: makeTableText( appState, "Total without:", width, appState!.CELL_HEIGHT, false, 1 ) );
+         Widget sumValO = Container( width: width, child: makeTableText( appState, addCommas( sumO ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
+         Widget sumTotF = Container( width: width, child: makeTableText( appState, "Overall Total:", width, appState!.CELL_HEIGHT, false, 1 ) );
+         Widget sumValF = Container( width: width, child: makeTableText( appState, addCommas( sumW+sumO ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
+         catList.add( [fullP, gp, sumTotW, sumValW, gp ] );
+         catList.add( [fullP, gp, sumTotO, sumValO, gp ] );
+         catList.add( [fullP, gp, sumTotF, sumValF, gp ] );
+         */
+         
          // Updates to equity can impact peq summary view.  updateit.
          setState(() => appState.updateAllocTree = true );                           
          appState.updateEquityView = false; 
