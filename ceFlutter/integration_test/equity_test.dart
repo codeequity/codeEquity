@@ -183,7 +183,7 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       expect( goldDepth, int.parse( eqs[3] ) );
       // amt
       String amt = newAmt == "-1" ? agVals[1] : newAmt;
-      expect( eqs[1], amt );
+      expect( eqs[2], amt );
 
    }
    return true;
@@ -275,8 +275,8 @@ Future<bool> drag( WidgetTester tester, int index, int spots ) async {
 
    // XXX This depends on size of window being controlled by flutter driver (integration test fwk).  Fix this,
    //     then fix the browser-dimension when launch test, then don't touch
-   double fudge = (index == 6 && spots >= 2) ? 30.0 : 0.0;
-   double dy = 30.0 * spots + fudge;
+   double fudge = (index == 6 && spots >= 2) ? 35.0 : 0.0;
+   double dy = 35.0 * spots + fudge;
    print( "Drag " + index.toString() + " " + spots.toString() + " dy: " + dy.toString() );
    
    await tester.drag(ceFlutter, Offset(0.0, dy )); 
@@ -417,14 +417,14 @@ Future<bool> validateDeepIndent( tester, startIndex ) async {
       changed = false;
       for( int i = startIndex; i >= 1; i-- ) {
          List<String> eqs = await getElt( tester, "equityTable " + i.toString() );
-         String oldDepth = eqs[2];
+         String oldDepth = eqs[3];
          
          Finder cat = find.byKey( Key( 'indent ' + i.toString() ));
          await tester.tap( cat );
          await tester.pumpAndSettle();
 
          eqs = await getElt( tester, "equityTable " + i.toString() );
-         String newDepth = eqs[2];
+         String newDepth = eqs[3];
          if( oldDepth != newDepth ) { changed = true; }
       }
    }
@@ -632,7 +632,7 @@ Future<bool> validateEditCancel( tester ) async {
 
    List<String> eqs = await getElt( tester, "equityTable 1" );
    expect( eqs[0], "Goblins" );
-   expect( eqs[1], "1,000,000" );
+   expect( eqs[2], "1,000,000" );
    expect( eqs[3], "1" );
 
    return true;

@@ -44,6 +44,7 @@ class CEEquityFrame extends StatefulWidget {
 
 // Equity_frame does all indexing translations between equityTree and equityPlan.
 // equityFrame: any change in view updates tree, then updates equity plan based on DFSWalk of tree.
+// All movement, rearrangement happens in equityTree, simply a matter of moving tree nodes around.  Then dfswalk is used in EP to remake list (i.e. indexes).
 //
 // equityPlan has body alone, and is aware of epIndexes.  All operations on epIndex are to get destNext and destParent.
 // equityTree has tree nodes and TOT, only.  The only indexes it tracks internally are for children of a node.  treeIndex is TOT, body.
@@ -63,8 +64,8 @@ class _CEEquityState extends State<CEEquityFrame> {
    late AppState appState;
 
    static const maxPaneWidth = 950.0;
-   final listHeaders = ["Category", "Allocation", "Associated host project name", "Rearrange"];
-   final lhInternal  = ["Category", "Allocation", "Associated host project name"] ;
+   final listHeaders = ["Category", "Associated host project name", "Allocation", "Rearrange"];
+   final lhInternal  = ["Category", "Allocation", "Associated host project name" ] ;
 
    // iphone 5
    static const frameMinWidth  = 320.0;     // XXX appState
@@ -72,6 +73,12 @@ class _CEEquityState extends State<CEEquityFrame> {
 
    // Keep size of headers for equity frame view.  This is used to mod indexes on the way in to equityPlan
    late int equityTop; 
+
+   // Common spacers
+   late Widget gapPad;
+   late Widget fatPad;
+   late Widget midPad;
+   late Widget empty;
    
    @override
    void initState() {
@@ -142,7 +149,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       print( "SAVE ADD " + title.text + " " + title.value.toString() );
 
       String tval = title.text == "" ? "NOT YET NAMED" : title.text;
-      String hval = hproj.text == "" ? "NOT YET IDENTIFIED" : hproj.text;
+      String hval = hproj.text == "" ? "---" : hproj.text;
       String amt  = amount.text.replaceAll( ',', "" );
       int amtInt  = amt == "" ? 0 : int.parse( amt );
       
@@ -168,7 +175,6 @@ class _CEEquityState extends State<CEEquityFrame> {
       List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
       
       List<List<Widget>> nodes = [];
-      Widget empty = Container( width: 1, height: 1 );
       // Skip TOT - tree does not carry hdivs or summaries - handled in headers below. 
       for( int treeIndex = 1; treeIndex < treeList.length; treeIndex++ ) {
             
@@ -209,14 +215,10 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          final  numWidth = width / 2.5;        // formalize
          final  height   = appState!.CELL_HEIGHT;
-         // XXX YYY
-         // Widget cat      = makeTableText( appState, t.getTitle(), width, height, false, 1, mux: (depth+1) * .5 );
-         Widget cat      = makeTableText( appState, t.getTitle(), width, height - 20, false, 1, mux: (depth+1) * .5 );
+         Widget cat      = makeTableText( appState, t.getTitle(), width, height - 15, false, 1, mux: (depth+1) * .5 );
          Widget amountW  = makeTableText( appState, addCommas( t.getAmount() ), numWidth, height, false, 1 );
          
          String hpn = t.getHostName();
-         if( hpn == "NOT YET IDENTIFIED" ) { hpn = "---"; }
-         
          Widget hostProj = Container( width: width, child: makeTableText( appState, hpn, width, height, false, 1 ) );
 
          // Listener index is interpreted in the view to select draggable item (i.e ReorderableListView).
@@ -244,19 +246,15 @@ class _CEEquityState extends State<CEEquityFrame> {
             child: cat
             );
 
-         // XXX YYY XZZZ 20?
          Widget c        = Container( width: numWidth, height: 1 );
-         Widget fp       = Container( width: appState.FAT_PAD, height: 1 );
-         Widget gp       = Container( width: appState.GAP_PAD*2.0, height: 1 );
-         // Widget catCont  = Container( width: width, height: height, child: catEditable );
-         Widget catCont  = Container( width: width, height: height - 20, child: catEditable );
-         Widget amtCont  = Container( width: numWidth, height: height - 20, child: amountW );
+         Widget catCont  = Container( width: width, height: height - 15, child: catEditable );
+         Widget amtCont  = Container( width: numWidth, height: height - 15, child: amountW );
 
-         List<Widget> tileKids = [ fp, back, drag, forward ];
+         List<Widget> tileKids = [ fatPad, back, drag, forward ];
          List<Widget> none = [ c  ];
          tileKids = treeIndex == 0 ? none : tileKids;
          
-         nodes.add( [ catCont, amtCont, gp, hostProj, Wrap( spacing: 0, children: tileKids ) ] );
+         nodes.add( [ catCont, hostProj, amtCont, gapPad, Wrap( spacing: 0, children: tileKids ) ] );
       }
       
       return nodes;
@@ -327,7 +325,6 @@ class _CEEquityState extends State<CEEquityFrame> {
    List<List<Widget>> _getCategoryWidgets( context ) {
       print( "Getting equity table widgets" );
       final width = frameMinWidth - 2*appState.FAT_PAD;        
-      var empty = Container( width: 1, height: 1 );
       final  numWidth = width / 2.5;
          
       if( appState.equityPlan != null && appState.equityPlan!.ceProjectId != appState.selectedCEProject ) {
@@ -341,19 +338,19 @@ class _CEEquityState extends State<CEEquityFrame> {
 
       if( appState.updateEquityView ) {
          // These must be kept up to date, and updated before _getTiles.
-         equityTop = 2;   // header + hdiv
+         equityTop = 3;   // spacer + header + hdiv
          
          catList = [];
          // Header
-         Widget headerCat = Container( width: width, child: makeTableText( appState, listHeaders[0], width, appState!.CELL_HEIGHT, false, 1 ) );
-         Widget headerAmt = Container( width: numWidth, child: makeTableText( appState, listHeaders[1], width, appState!.CELL_HEIGHT, false, 1 ) );      
-         Widget headerHPN = Container( width: width, child: makeTableText( appState, listHeaders[2],   width, appState!.CELL_HEIGHT, false, 1 ));      
+         Widget spacer    = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
+         Widget headerCat = Container( width: width,    child: makeTableText( appState, listHeaders[0],    width, appState!.CELL_HEIGHT, false, 1 ) );
+         Widget headerAmt = Container( width: width,    child: makeTableText( appState, listHeaders[1],    width, appState!.CELL_HEIGHT, false, 1 ) );      
+         Widget headerHPN = Container( width: numWidth, child: makeTableText( appState, listHeaders[2],    width, appState!.CELL_HEIGHT, false, 1 ));      
          Widget headerArr = Container( width: numWidth, child: makeTableText( appState, listHeaders[3], numWidth, appState!.CELL_HEIGHT, false, 1 ));
-         Widget gp        = Container( width: appState.GAP_PAD*2.0, height: 1 );
-         Widget fp        = Container( width: appState.FAT_PAD, height: 1 );
-         Widget mp        = Container( width: appState.MID_PAD, height: 1 );
-         Widget hdiv      = Wrap( spacing: 0, children: [fp, makeHDivider( 2*width + 2*numWidth - appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD )] );
-         catList.add( [ headerCat, headerAmt, gp, headerHPN, headerArr ] );
+         Widget hd        = makeHDivider( 2*width + 2*numWidth - appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD ); 
+         Widget hdiv      = Wrap( spacing: 0, children: [fatPad, hd] );
+         catList.add( [ spacer, spacer, spacer, spacer, spacer ] );
+         catList.add( [ headerCat, headerAmt, headerHPN, gapPad, headerArr ] );
          catList.add( [ hdiv, empty, empty, empty, empty ] );
 
          // Body
@@ -384,7 +381,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          Widget fullP  = Container( width: width, height: 1 );
          Widget numP   = Container( width: numWidth, height: 1 );
-         catList.add( [ fullP, numP, fullP, gp, Wrap( spacing:0, children: [ mp, fp, fp, agd] ) ] );
+         catList.add( [ fullP, numP, fullP, gapPad, Wrap( spacing:0, children: [ midPad, fatPad, fatPad, agd] ) ] );
 
          // Summaries
          assert( appState.equityTree != null );
@@ -393,8 +390,8 @@ class _CEEquityState extends State<CEEquityFrame> {
          int sumO = 0;
          // XXX formalize
          for( var t in treeList ) {
-            if( t.getHostName() == "NOT YET IDENTIFIED" ) { sumO += t.getAmount(); }
-            else                                          { sumW += t.getAmount(); }
+            if( t.getHostName() == "---" ) { sumO += t.getAmount(); }
+            else                           { sumW += t.getAmount(); }
          }
          catList.add( [ hdiv, empty, empty, empty, empty ] );
          Widget sumTotW = Container( width: width, child: makeTableText( appState, "Total with associated Host Project:", width, appState!.CELL_HEIGHT, false, 1 ) );
@@ -403,9 +400,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget sumValO = Container( width: width, child: makeTableText( appState, addCommas( sumO ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
          Widget sumTotF = Container( width: width, child: makeTableText( appState, "Overall Total:", width, appState!.CELL_HEIGHT, false, 1 ) );
          Widget sumValF = Container( width: width, child: makeTableText( appState, addCommas( sumW+sumO ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
-         catList.add( [fullP, gp, sumTotW, sumValW, gp ] );
-         catList.add( [fullP, gp, sumTotO, sumValO, gp ] );
-         catList.add( [fullP, gp, sumTotF, sumValF, gp ] );
+         catList.add( [sumTotW, fullP, sumValW, empty, empty ] );
+         catList.add( [sumTotO, fullP, sumValO, empty, empty ] );
+         catList.add( [sumTotF, fullP, sumValF, empty, empty ] );
          
          // Updates to equity can impact peq summary view.  updateit.
          setState(() => appState.updateAllocTree = true );                           
@@ -496,7 +493,12 @@ class _CEEquityState extends State<CEEquityFrame> {
       container = widget.appContainer;   
       appState  = container.state;
       assert( appState != null );
-     
+
+      gapPad    = Container( width: appState.GAP_PAD*2.0, height: 1 );
+      fatPad    = Container( width: appState.FAT_PAD, height: 1 );
+      midPad    = Container( width: appState.MID_PAD, height: 1 );
+      empty = Container( width: 1, height: 1 );
+      
       if( appState.verbose >= 2 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
       
       return getEquityPlan( context );

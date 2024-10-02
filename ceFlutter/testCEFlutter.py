@@ -189,8 +189,10 @@ def runTests( override = False, projectDetail = False ):
                 
     # Focus area ------------------
     
-    tsum = runTest( "equity_test.dart", override, False, False, False )    
+    tsum = runTest( "equity_test.dart", override, False, False, False )
+    # ND
     # tsum = runTest( "project_test.dart", override, False, False, False )
+    # WD
     # tsum = runTest( "project_test.dart", override, True, False, False )
     resultsSum  += tsum
 

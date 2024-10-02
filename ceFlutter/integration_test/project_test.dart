@@ -372,10 +372,10 @@ Future<bool> toggleTableEntry( WidgetTester tester, int flutterPos, String agKey
 Future<bool> closeAll( WidgetTester tester ) async {
 
    // Magic sequence
-   List<String> t = [ "allocsTable 2", "allocsTable 3", "allocsTable 1", "allocsTable 2", "allocsTable 4", "allocsTable 3"];
-   t = t +          [ "allocsTable 6", "allocsTable 7", "allocsTable 8", "allocsTable 5", "allocsTable 7"];
-   t = t +          [ "allocsTable 8", "allocsTable 9", "allocsTable 10", "allocsTable 11", "allocsTable 12"];
-   t = t +          [ "allocsTable 6", "allocsTable 9", "allocsTable 8", "allocsTable 4"];
+   List<String> t = [ "allocsTable 2", "allocsTable 3", "allocsTable 1", "allocsTable 3", "allocsTable 2"];  // pre, cross
+   t = t +          [ "allocsTable 5", "allocsTable 6", "allocsTable 7", "allocsTable 4"]; // datsec
+   t = t +          [ "allocsTable 6", "allocsTable 7", "allocsTable 8", "allocsTable 9", "allocsTable 10", "allocsTable 5", "allocsTable 3"]; // gho, softcont
+   t = t +          [ "allocsTable 5", "allocsTable 4"]; // uncl
 
    // Start from the top
    final listFinder   = find.byType( ListView );

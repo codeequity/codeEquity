@@ -273,6 +273,7 @@ class _CESummaryState extends State<CESummaryFrame> {
 
          final ScrollController controller = ScrollController();
 
+         // Key removes spacer index for compatibility with integration testing
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),
             child: SingleChildScrollView(
@@ -285,7 +286,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
-                           key: Key( 'allocsTable ' + indexX.toString() ),                           
+                           key: Key( 'allocsTable ' + ( indexX - 1).toString() ),                           
                            children: List.generate( 
                               allocWidth,
                               (indexY) => allocs[indexX][indexY] ))

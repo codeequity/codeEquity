@@ -140,7 +140,7 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
    for( int i = 0; i < values.length; i++ ) {
       Widget text = makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i], edit: edit);
       Widget w = IntrinsicWidth( child: text );
-      Widget h = IntrinsicWidth( stepWidth: 20, child: Text( itemHeaders[i] ));
+      Widget h = IntrinsicWidth( stepWidth: 40, child: Text( itemHeaders[i] ));
       editVals.add(
          Row( 
             mainAxisSize: MainAxisSize.max,
@@ -195,9 +195,9 @@ void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFu
 }
 
 // No border padding
-Widget makeHDivider( width, lgap, rgap) {
+Widget makeHDivider( width, lgap, rgap, {tgap=0, bgap=0}) {
    return Padding(
-      padding: EdgeInsets.fromLTRB(lgap, 0, rgap, 0),
+      padding: EdgeInsets.fromLTRB(lgap, tgap, rgap, bgap),
       child: Container( width: width, height: 2, color: Colors.grey[200] ));
 }
    

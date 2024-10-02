@@ -213,6 +213,8 @@ class Node extends StatelessWidget implements Tree {
         pending = "Pending";
         accrue  = "Accrued";
         surplus = "Surplus";
+        Widget spacer    = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
+        nodes.add( [spacer, spacer, spacer, spacer, spacer, spacer] );  
      }
 
      // Path is known here.  Make _tileExpanded consistent with path state, in case we have paged back into an active summary page
