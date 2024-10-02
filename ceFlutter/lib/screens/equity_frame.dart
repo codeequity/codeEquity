@@ -41,6 +41,22 @@ class CEEquityFrame extends StatefulWidget {
 
 }
 
+
+// Equity_frame does all indexing translations between equityTree and equityPlan.
+// equityFrame: any change in view updates tree, then updates equity plan based on DFSWalk of tree.
+//
+// equityPlan has body alone, and is aware of epIndexes.  All operations on epIndex are to get destNext and destParent.
+// equityTree has tree nodes and TOT, only.  The only indexes it tracks internally are for children of a node.  treeIndex is TOT, body.
+//
+// equityFrame populates a view, with a viewIndex.  Base index in EF is treeIndex, however:
+//    - ReorderableListView interprets drag widget index as a viewIndex (even tho it is constructed within treeIndex world).
+//    - ReorderableListView eq line keys are written in terms of treeIndex, to stay compatible with integration testing.
+//           TOT, hdiv, nodes, summaries
+//    tree:  y           y
+//    plan:              y
+//    view:  y    y      y      y
+
+
 class _CEEquityState extends State<CEEquityFrame> {
 
    late var      container;
@@ -53,6 +69,9 @@ class _CEEquityState extends State<CEEquityFrame> {
    // iphone 5
    static const frameMinWidth  = 320.0;     // XXX appState
    static const frameMinHeight = 300;       // 568.0;
+
+   // Keep size of headers for equity frame view.  This is used to mod indexes on the way in to equityPlan
+   late int equityTop; 
    
    @override
    void initState() {
@@ -150,25 +169,23 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       List<List<Widget>> nodes = [];
       Widget empty = Container( width: 1, height: 1 );
-      // Skip TOT.. handled in headers below.  XXX Skip hdiv.
-      for( int index = 1; index < treeList.length; index++ ) {
+      // Skip TOT - tree does not carry hdivs or summaries - handled in headers below. 
+      for( int treeIndex = 1; treeIndex < treeList.length; treeIndex++ ) {
             
-         EquityTree t = treeList[index];
+         EquityTree t = treeList[treeIndex];
 
          // indent
          Widget forward = GestureDetector(
             onTap: () async 
             {
-               // print( "Forward! Currently at " + index.toString() );
-               
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
-               appState.equityPlan!.indent( index, appState.equityTree! );
+               appState.equityPlan!.indent( treeIndex-1, appState.equityTree! );  // equity plan index is 1 off tree index (TOT)
                
                // Tree changed. update viewable list, then update the view
                setState(() => appState.updateEquityView = true );
             },
-            key: Key( 'indent ' + index.toString()),
+            key: Key( 'indent ' + treeIndex.toString()),                          // Keep key name in equityTree land.
             child: Icon( Icons.arrow_right )
             );
          
@@ -176,15 +193,13 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget back = GestureDetector(
             onTap: () async 
             {
-               // print( "back! from " + index.toString() );
-               
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
-               appState.equityPlan!.unindent( index, appState.equityTree! );
+               appState.equityPlan!.unindent( treeIndex-1, appState.equityTree! );  // equity plan index is 1 off tree index (TOT)
                
                setState(() => appState.updateEquityView = true );
             },
-            key: Key( 'unindent ' + index.toString() ),
+            key: Key( 'unindent ' + treeIndex.toString() ),                         // Keep index in equityTree land.
             child: Icon( Icons.arrow_left )
             );
 
@@ -204,13 +219,14 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          Widget hostProj = Container( width: width, child: makeTableText( appState, hpn, width, height, false, 1 ) );
 
-         // Listener sends index orig, new to first onReorder function in ancestor chain
-         Widget drag     = ReorderableDragStartListener( key: Key( "drag " + index.toString()), index: index, child: Icon( Icons.drag_handle ));
+         // Listener index is interpreted in the view to select draggable item (i.e ReorderableListView).
+         int viewIndex = treeIndex - 1 + equityTop; // tree - TOT is body, plus all headers
+         Widget drag  = ReorderableDragStartListener( key: Key( "drag " + treeIndex.toString()), index: viewIndex, child: Icon( Icons.drag_handle ));
          
          Widget catEditable = GestureDetector(
             onTap: () async 
             {
-               print( "Edit! from " + index.toString() );
+               print( "Edit! from " + treeIndex.toString() );
                
                assert( appState.equityPlan != null );
                assert( appState.equityTree != null );
@@ -224,7 +240,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                String popupTitle = "Edit existing entry";
                editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
             },
-            key: Key( 'catEditable ' + index.toString() ),
+            key: Key( 'catEditable ' + treeIndex.toString() ),
             child: cat
             );
 
@@ -238,7 +254,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          List<Widget> tileKids = [ fp, back, drag, forward ];
          List<Widget> none = [ c  ];
-         tileKids = index == 0 ? none : tileKids;
+         tileKids = treeIndex == 0 ? none : tileKids;
          
          nodes.add( [ catCont, amtCont, gp, hostProj, Wrap( spacing: 0, children: tileKids ) ] );
       }
@@ -324,6 +340,9 @@ class _CEEquityState extends State<CEEquityFrame> {
       if( appState.updateEquityPlan ) { _buildEquityTree(); }
 
       if( appState.updateEquityView ) {
+         // These must be kept up to date, and updated before _getTiles.
+         equityTop = 2;   // header + hdiv
+         
          catList = [];
          // Header
          Widget headerCat = Container( width: width, child: makeTableText( appState, listHeaders[0], width, appState!.CELL_HEIGHT, false, 1 ) );
@@ -335,7 +354,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget mp        = Container( width: appState.MID_PAD, height: 1 );
          Widget hdiv      = Wrap( spacing: 0, children: [fp, makeHDivider( 2*width + 2*numWidth - appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD )] );
          catList.add( [ headerCat, headerAmt, gp, headerHPN, headerArr ] );
-         // catList.add( [ hdiv, empty, empty, empty, empty ] );
+         catList.add( [ hdiv, empty, empty, empty, empty ] );
 
          // Body
          if( appState.equityPlan != null )
@@ -368,7 +387,6 @@ class _CEEquityState extends State<CEEquityFrame> {
          catList.add( [ fullP, numP, fullP, gp, Wrap( spacing:0, children: [ mp, fp, fp, agd] ) ] );
 
          // Summaries
-         /*
          assert( appState.equityTree != null );
          List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
          int sumW = 0;
@@ -388,7 +406,6 @@ class _CEEquityState extends State<CEEquityFrame> {
          catList.add( [fullP, gp, sumTotW, sumValW, gp ] );
          catList.add( [fullP, gp, sumTotO, sumValO, gp ] );
          catList.add( [fullP, gp, sumTotF, sumValF, gp ] );
-         */
          
          // Updates to equity can impact peq summary view.  updateit.
          setState(() => appState.updateAllocTree = true );                           
@@ -398,20 +415,27 @@ class _CEEquityState extends State<CEEquityFrame> {
       return catList;
    }
 
+   // NOTE: onReorder is sending a viewIndex for old, +/- offset for new.
    // sibling to forward, back  .. this is managed by drag handle listener
-   void _initiateDrag( oldIndex, newIndex ) {
+   void _initiateDrag( treeIndexOld, treeIndexNew ) {
       assert( appState.equityPlan != null );
 
-      if( newIndex <= 0 ) {
+      // Operations below are in equityPlan indexing, or epIndex
+      final epIndexOld = treeIndexOld-equityTop;  // viewIndex -> epIndex
+      int   epIndexNew = treeIndexNew-equityTop;  // viewIndex -> epIndex
+      final epSize     = appState.equityPlan!.getSize();
+      
+      if( epIndexNew < 0 ) {
          print( "Can't move above Top of Tree.  No-op." );
          return;
       }
-      if( newIndex > appState.equityPlan!.getSize()+1 ) {
+      if( epIndexNew > epSize ) {
          print( "Can't move lower than the bottom.  Setting length to bottom." );
-         newIndex = appState.equityPlan!.getSize()+1;
+         epIndexNew = epSize;
       }
-      print( "Moved from " + oldIndex.toString() + " to " + newIndex.toString() );
-      appState.equityPlan!.move( oldIndex, newIndex, appState.equityTree! );
+
+      print( "Moved from (treeIndex)" + epIndexOld.toString() + " to " + epIndexNew.toString() );
+      appState.equityPlan!.move( epIndexOld, epIndexNew, appState.equityTree! );
 
 
       // Tree changed. update viewable list, then update the view
@@ -441,6 +465,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          final ScrollController controller = ScrollController();
 
+         // Keep key in tree land, to stay compatible with equity test, i.e. viewIndex - headers + TOT
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),
             child: SingleChildScrollView(
@@ -455,7 +480,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
-                           key: Key( 'equityTable ' + indexX.toString() ),
+                           key: Key( 'equityTable ' + (indexX-equityTop+1).toString() ),
                            mainAxisSize: MainAxisSize.min,
                            children: List.generate( 
                               categoryWidth,

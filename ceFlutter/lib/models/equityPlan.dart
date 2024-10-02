@@ -119,8 +119,7 @@ class EquityPlan {
 
       print( "Indent " + myIndex.toString() );
 
-      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
-      myIndex -= 1;
+      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
       assert( myIndex < categories.length );
 
       // Get major elements here.  Tree/node/leaf should not see index.
@@ -138,8 +137,7 @@ class EquityPlan {
 
       print( "Unindent " + myIndex.toString() );
 
-      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
-      myIndex -= 1;
+      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
       assert( myIndex < categories.length );
 
       // Get major elements here.  Tree/node/leaf should not see index.
@@ -160,13 +158,10 @@ class EquityPlan {
    void move( int oldIndex, int newIndex, EquityTree tree ) {
       assert( categories.length == amounts.length );
 
-      // Account for header + XXX bar.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
-      oldIndex -= 1;
-      newIndex -= 1;
-
+      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
       assert( oldIndex < categories.length );
 
-      print( "move from " + oldIndex.toString() + " to " + newIndex.toString() );
+      print( "ep move from " + oldIndex.toString() + " to " + newIndex.toString() );
 
       assert( newIndex <= categories.length );
 
@@ -179,8 +174,7 @@ class EquityPlan {
       if( newIndex > 0 )                 { destParent = tree.findNode( categories[newIndex-1] ); }
       if( newIndex < categories.length ) { destNext   = tree.findNode( categories[newIndex] ); }
 
-
-      print( "XXX " + categories.toString() );
+      // print( "XXX " + categories.toString() );
       print( categories[oldIndex] );
       
       print( "target, parent, next indices: " + oldIndex.toString() + " " + (newIndex-1).toString() + " " + newIndex.toString() );
@@ -189,7 +183,6 @@ class EquityPlan {
       if( destNext != null )   { print( "next "   + destNext.getTitle() ); }
       
       (tree as EquityNode).moveTo( target!, tree!, destParent, destNext );
-      
    }
 
    int getSize() { return categories.length; }

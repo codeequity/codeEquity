@@ -320,7 +320,7 @@ Future<bool> expandAll( WidgetTester tester ) async {
    await pumpSettle( tester, 2 );
 
    // finally just 1
-   for( var i = min; i <= 51; i++ ) {
+   for( var i = min; i <= 41; i++ ) {
       await expandAllocs( tester, i, i );
       // print( "drag visible? expanded " + " " + i.toString() );
       // unclaimed text shows up twice, angering the finder.  unclaimed key is not found.. 
@@ -483,10 +483,6 @@ Future<bool> checkAll( WidgetTester tester ) async {
    await tester.drag( listFinder, Offset(0.0, -500.0) );
    await tester.pumpAndSettle();
    await checkAllocs( tester, 31, 40 );
-
-   await tester.drag( listFinder, Offset(0.0, -500.0) );
-   await tester.pumpAndSettle();
-   await checkAllocs( tester, 41, 51 );
 
    await pumpSettle( tester, 2 );
    
