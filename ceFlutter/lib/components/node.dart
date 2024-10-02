@@ -86,6 +86,7 @@ class Node extends StatelessWidget implements Tree {
 
   @override
   int getAllocAmount() {
+     /*
      // Unlike the other amounts, which are independently summed, allocations are dependent in a top-down hierarchy.
      // For example, if githubOps is allocated 2m, and a child card (say, testing) is allocated 500k, the top level allocation is 2m.
      //              This is because the child card allocation is meant to be a part of the overall alloc for githubOps.
@@ -93,6 +94,10 @@ class Node extends StatelessWidget implements Tree {
     var csum = 0;
     leaves.forEach((Tree leaf) => csum += leaf.getAllocAmount());
     return max( psum, csum );
+     */
+     // Now, allocations are declared directly in equity plan.
+     // Allocs within a project are ignored, completely. 
+     return allocAmount;
   }
 
   @override
@@ -120,6 +125,18 @@ class Node extends StatelessWidget implements Tree {
     return sum;
   }
 
+  @override
+  // get depth of deepest child
+  int getChildDepth( int relDepth ) {
+     var depth = relDepth;
+     List<int> childDepth = []; 
+     leaves.forEach((Tree leaf) => childDepth.add( leaf.getChildDepth( relDepth + 1 )) );
+     int cd = 0;
+     if( childDepth.length > 0 ) { cd = childDepth.reduce(max); }
+     return depth + cd;
+  }
+        
+     
   @override  // toString overrides diagnostic... blarg
   String toStr() {
      String res = "";
@@ -173,9 +190,13 @@ class Node extends StatelessWidget implements Tree {
      int pendInt         = getPendingAmount();
      int accrInt         = getAccrueAmount();
      int childSurplusInt = getChildSurplusAmount();
-     int surplusInt = max( 0, allocInt - planInt - pendInt - accrInt );
+     // Allow this to go negative.  Only show if child depth is at least 2.. i.e. only projects show surplus, not cols or assignees
+     // int surplusInt = max( 0, allocInt - planInt - pendInt - accrInt );
+     int surplusInt = allocInt - planInt - pendInt - accrInt;
+     if( allocInt == -1 )          { surplusInt += 1; }  // -1 indicates a hostproject with a peq, but proj is not in equity.  it is not a numeric value.
+     if( getChildDepth( 0 ) <= 2 ) { surplusInt = 0; }   // do not show surplus for columns or assignees
 
-     // XXX ignore for now
+     // XXX ignore for now.  will become a (!) warning
      // Parent surplus >= children surplus in valid cases.
      // if( surplusInt < childSurplusInt ) { print( "XXX XXX XXX" + surplusInt.toString() + " " + childSurplusInt.toString() ); }
      
@@ -192,6 +213,8 @@ class Node extends StatelessWidget implements Tree {
         pending = "Pending";
         accrue  = "Accrued";
         surplus = "Surplus";
+        Widget spacer    = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
+        nodes.add( [spacer, spacer, spacer, spacer, spacer, spacer] );  
      }
 
      // Path is known here.  Make _tileExpanded consistent with path state, in case we have paged back into an active summary page

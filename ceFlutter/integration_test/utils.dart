@@ -245,7 +245,7 @@ Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
    await tester.pumpAndSettle();
 
    expect( find.text( 'Category' ), findsOneWidget );
-   expect( find.text( 'Amount' ), findsOneWidget );
+   expect( find.text( 'Allocation' ), findsOneWidget );
    expect( find.byKey( const Key( 'add_icon_equity' )), findsOneWidget );   
 
    return true;

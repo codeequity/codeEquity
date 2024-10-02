@@ -11,13 +11,6 @@ from os import path
 from subprocess import call, check_output, Popen, PIPE, STDOUT
 import shlex
 
-# to keep chromedriver up to date(r)
-#pip install webdriver-manager
-#pip install selenium
-#from selenium import webdriver
-#from webdriver_manager.chrome import ChromeDriverManager
-
-
 from threading import Thread
 #import concurrent.futures
 
@@ -74,10 +67,18 @@ def verifyEmulator():
     goodConfig = True
     if( call("ps -efl | grep chromedriver | grep -v grep", shell=True) != 0 ) :
 
-        # hmm painful to run this in the background.
-        # old chromedriver?  run below, then: cd ~/bin; ln -s /home/musick/.wdm/drivers/chromedriver/linux64/100.0.4896.60/chromedriver
-        # old chromedriver?  run below, then: cd ~/bin; rm chromedriver; ln -s /home/musick/.wdm/drivers/chromedriver/linux64/102.0.5005.61/chromedriver
-        # driver = webdriver.Chrome(ChromeDriverManager().install())
+        # Check if chromedriver needs updating.  Sleep to make sure we don't link before renaming.
+        cdpv = "set `chromedriver --version`; set `echo $2 | cut -c1-3`; cd=$1;"
+        gcpv = "set `google-chrome --version`; set `echo $3 | cut -c1-3`; gc=$1;"
+        if( call( cdpv + gcpv + " [ $cd -eq $gc ]", shell=True) != 0 ) :
+            print( "Chrome Driver is out of date.  Attempting to update. ")
+            if( call( "rm chromedriver", shell=True) != 0 ) : print( "Error." )
+            if( call( "rm -rf chromedriverLin", shell=True) != 0 ) : print( "Error." )
+            if( call( "npx @puppeteer/browsers install chromedriver@stable", shell=True) != 0 ) : print( "Error." )
+            if( call( "mv chromedriver chromedriverLin", shell=True) != 0 ) : print( "Error." )
+            time.sleep(5)
+            if( call( "ln -s */*/*/chromedriver", shell=True) != 0 ) : print( "Error." )
+          
         call( "chromedriver --port=4444&", shell=True )
         
         # XXX Can we detect when this is ready?
@@ -188,7 +189,11 @@ def runTests( override = False, projectDetail = False ):
                 
     # Focus area ------------------
     
-    tsum = runTest( "equity_test.dart", override, False, False, False )    
+    tsum = runTest( "equity_test.dart", override, False, False, False )
+    # ND
+    # tsum = runTest( "project_test.dart", override, False, False, False )
+    # WD
+    # tsum = runTest( "project_test.dart", override, True, False, False )
     resultsSum  += tsum
 
 

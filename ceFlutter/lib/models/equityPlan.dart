@@ -46,10 +46,40 @@ class EquityPlan {
 
       List<Map<String, dynamic>> res = [];
       for( int i = 0; i < categories.length; i++ ) {
-         res.add( {"category": categories[i], "amount": amounts[i]} );
+         res.add( {"category": categories[i], "amount": amounts[i], "hostName": hostNames[i]} );
       }
 
       return res;
+   }
+
+   // Have a cat that is hostProj + col + assignee.  Add hierarchy.
+   // Have eqs that are hier + hier + hier + Proj.hostProj
+   List<dynamic> site( List<String> cat ) {
+      List<String> newCat = new List<String>.from( cat );
+      int newAlloc = -1;
+      assert( newCat.length >= 1 );
+      for( int i = 0; i < hostNames.length; i++ ) {
+         if( newCat[0] == hostNames[i] ) {
+            newCat = categories[i].sublist(0, categories[i].length - 1 ) + newCat;
+            newAlloc = amounts[i];
+            // print( "  resited " + cat.toString() + " into " + newCat.toString() + " with amount " + newAlloc.toString() );
+            break;
+         }
+      }
+
+      // Host names are only present when there are host projects.  By definition, hierarchical elements do not have an associated host project.
+      // hierarch elements have been added during previous call to site.  Now, just need alloc amount.
+      if( newAlloc == -1 ) {
+         for( int i = 0; i < categories.length; i++ ) {
+            if( newCat[0] == categories[i].last ) {
+               newAlloc = amounts[i];
+               // print( "  hierarchical element found, amout:  " + newAlloc.toString() );
+               break;
+            }
+         }
+      }
+      
+      return [newCat, newAlloc];
    }
 
    // rebuild categories based on dfs walk of tree.
@@ -68,17 +98,16 @@ class EquityPlan {
       for( int i = 0; i < treeList.length; i++ ) {
          EquityTree t = treeList[i];
          if( t.getTitle() != "Category" ) { // XXX formalize
-            if( t is EquityNode)      { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
-            else if( t is EquityLeaf) { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
+            // if( t is EquityNode)      { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
+            // else if( t is EquityLeaf) { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
             
+            categories.add( t.getPath( t.getParent(), t.getTitle()) );
             amounts.add( t.getAmount() );
-
-            // XXX XXX
-            hostNames.add( "" );
+            hostNames.add( t.getHostName() );
          }
       }
 
-      bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt );
+      bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt ) || !listEq( hostNames, oldHN );
       
       print( "updateEquity done.. changed? " + changed.toString() );
       return changed;
@@ -90,8 +119,7 @@ class EquityPlan {
 
       print( "Indent " + myIndex.toString() );
 
-      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
-      myIndex -= 1;
+      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
       assert( myIndex < categories.length );
 
       // Get major elements here.  Tree/node/leaf should not see index.
@@ -109,8 +137,7 @@ class EquityPlan {
 
       print( "Unindent " + myIndex.toString() );
 
-      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
-      myIndex -= 1;
+      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
       assert( myIndex < categories.length );
 
       // Get major elements here.  Tree/node/leaf should not see index.
@@ -130,13 +157,12 @@ class EquityPlan {
    // Move elsewhere?  Become a sibling of index - 1.
    void move( int oldIndex, int newIndex, EquityTree tree ) {
       assert( categories.length == amounts.length );
-      assert( oldIndex <= categories.length );
 
-      print( "move from " + oldIndex.toString() + " to " + newIndex.toString() );
+      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
+      assert( oldIndex < categories.length );
 
-      // Account for header.  Categories does not have Top of Tree (header).  Indexes come from UI, which does have header.
-      oldIndex -= 1;
-      newIndex -= 1;
+      print( "ep move from " + oldIndex.toString() + " to " + newIndex.toString() );
+
       assert( newIndex <= categories.length );
 
       // Get major elements here.  Tree/node/leaf should not see index.
@@ -148,14 +174,19 @@ class EquityPlan {
       if( newIndex > 0 )                 { destParent = tree.findNode( categories[newIndex-1] ); }
       if( newIndex < categories.length ) { destNext   = tree.findNode( categories[newIndex] ); }
 
+      // print( "XXX " + categories.toString() );
+      print( categories[oldIndex] );
+      
+      print( "target, parent, next indices: " + oldIndex.toString() + " " + (newIndex-1).toString() + " " + newIndex.toString() );
+      if( target != null )     { print( "target " + target.getTitle() ); }
+      if( destParent != null ) { print( "parent " + destParent.getTitle() ); }
+      if( destNext != null )   { print( "next "   + destNext.getTitle() ); }
       
       (tree as EquityNode).moveTo( target!, tree!, destParent, destNext );
-      
    }
 
    int getSize() { return categories.length; }
 
-   
    String toString() {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;
       for( int i = 0; i < categories.length; i++ ) {

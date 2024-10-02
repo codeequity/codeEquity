@@ -14,6 +14,7 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
       
    String title;
    int amount;
+   String hostName;
 
    final double width;
    final bool header;
@@ -26,8 +27,8 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
    
    AppState? appState;
    
-   EquityNode(this.title, this.amount, this.parent, this.width, {this.header = false, this.currentDepth = 0} ) {
-      path = "";
+   EquityNode(this.title, this.amount, this.hostName, this.parent, this.width, {this.header = false, this.currentDepth = 0} ) {
+   path = "";
    }
    
   void addLeaf(EquityTree leaf ) {
@@ -40,6 +41,8 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
   void setAmount( int newA ) { amount = newA; }
   @override
   void setParent( EquityTree newP ) { parent = newP; }
+  @override
+  void setHostName( String newHN ) { hostName = newHN; }
 
   @override
   EquityTree? getParent() { return parent; }
@@ -85,6 +88,8 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
      
   @override
   String getTitle() { return title; }
+  @override
+  String getHostName() { return hostName; }
 
   @override
   int getAmount() {
@@ -92,9 +97,13 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
      // For example, if githubOps is allocated 2m, and a child card (say, testing) is allocated 500k, the top level allocation is 2m.
      //              This is because the child card allocation is meant to be a part of the overall alloc for githubOps.
     var psum = amount;
-    var csum = 0;
-    leaves.forEach((EquityTree leaf) => csum += leaf.getAmount());
-    return max( psum, csum );
+
+    // XXX Warn if sum of kids exceeds parent.  Displayed allocation will always be as entered by hand, or repaired when initiated by human hands.
+    // var csum = 0;
+    // leaves.forEach((EquityTree leaf) => csum += leaf.getAmount());
+    // return max( psum, csum );
+
+    return psum;
   }
 
   @override  // toString overrides diagnostic... blarg

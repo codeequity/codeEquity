@@ -40,8 +40,10 @@ class Leaf extends StatelessWidget implements Tree {
    @override
    int getAccrueAmount() { return accrueAmount; }
    @override
-   int getChildSurplusAmount() { return max( 0, allocAmount - planAmount - pendingAmount - accrueAmount ); }
-   
+   int getChildSurplusAmount() { return 0; }  // leaves have no viable surplus
+   @override
+   int getChildDepth( int relDepth ) { return relDepth; }
+     
    @override
    Tree? findNode( String target ) { return null; }
    

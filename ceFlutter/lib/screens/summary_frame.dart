@@ -81,6 +81,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
    //     detail page..?
    _pactDetail( path, convertedName, width, depthM1, isAlloc ) {
+      // print( "Pact Detail looking for user " + path.toString() + " " + depthM1.toString() );
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
@@ -117,21 +118,26 @@ class _CESummaryState extends State<CESummaryFrame> {
       for( var alloc in appState.myPEQSummary!.getAllAllocs() ) {
 
          assert( appState.allocTree != null );
+
+         // Re-site each alloc into it's new home.
+         // XXX get and use ep.allocation here.
+         List<dynamic> epRet = appState.equityPlan!.site( alloc.category );
+         List<String> sitedCat   = new List<String>.from( epRet[0] );
          
          Tree curNode = appState.allocTree!;
          
          // when allocs are created, they are leaves.
          // down the road, they become nodes
-         for( int i = 0; i < alloc.category.length; i++ ) {
+         for( int i = 0; i < sitedCat.length; i++ ) {
             
-            if( appState.verbose >= 2 ) { print( "working on " + alloc.category.toString() + " : " + alloc.category[i] ); }
+            if( appState.verbose >= 2 ) { print( "working on " + sitedCat.toString() + " : " + sitedCat[i] ); }
 
             // Overly aggressive assert?
             assert( alloc.amount != null );
             
             bool lastCat = false;
-            if( i == alloc.category.length - 1 ) { lastCat = true; }
-            Tree? childNode = curNode.findNode( alloc.category[i] );
+            if( i == sitedCat.length - 1 ) { lastCat = true; }
+            Tree? childNode = curNode.findNode( sitedCat[i] );
             
             if( childNode is Leaf && !lastCat ) {
                // allocation leaf, convert to a node to accomodate plan/accrue
@@ -140,8 +146,17 @@ class _CESummaryState extends State<CESummaryFrame> {
             }
             else if( childNode == null ) {
                if( !lastCat ) {
-                  if( appState.verbose >= 2 ) { print( "... nothing - add node" ); }
-                  Node tmpNode = Node( alloc.category[i], 0, null, width, widget.pageStamp, widget.allocExpansionCallback );
+                  int hAlloc = 0;
+
+                  // alloc: [hier ... hier  project column assignee]
+                  // alloc  |-may have ---| |-will have -----------|    equity plan has no info on last two.
+                  if( i < sitedCat.length - 2 ) {
+                     if( appState.verbose >= 2 ) { print( "... hierarchy - resite " + sitedCat[i] ); }
+                     List<dynamic> hier = appState.equityPlan!.site( [ sitedCat[i] ] );
+                     hAlloc = hier[1];
+                  }
+
+                  Node tmpNode = Node( sitedCat[i], hAlloc, null, width, widget.pageStamp, widget.allocExpansionCallback );
                   (curNode as Node).addLeaf( tmpNode );
                   curNode = tmpNode;
                }
@@ -149,17 +164,26 @@ class _CESummaryState extends State<CESummaryFrame> {
                   if( appState.verbose >= 2 ) { print( "... nothing found, last cat, add leaf" ); }
                   // leaf.  amounts stay at leaves
 
-                  int allocAmount  = ( alloc.allocType == PeqType.allocation ? alloc.amount! : 0 );
+                  // Hierarchy adds alloc amounts from equity plan in the case above.
+                  // Pure leaves should be alloc 0, as they will be assignees.
+                  // Projects and hierarchical elements can never be allocations on their own, will always show up in case above first.
+                  int allocAmount = 0;
+                  // int allocAmount  = sitedAlloc;
+                  // if( allocAmount < 0 ) { allocAmount = ( alloc.allocType == PeqType.allocation ? alloc.amount! : 0 ); }
+                  
                   int planAmount   = ( alloc.allocType == PeqType.plan       ? alloc.amount! : 0 );
                   int pendAmount   = ( alloc.allocType == PeqType.pending    ? alloc.amount! : 0 );
                   int accrueAmount = ( alloc.allocType == PeqType.grant      ? alloc.amount! : 0 );
 
                   // Everything starts as a leaf, so will often not have a mapping.  But if we do, use it, will be hostUserName instead of id
-                  String rowName = alloc.category[i];
+                  String rowName = sitedCat[i];
                   Map<String,String>? mapping = appState.idMapHost[ rowName ];
                   if( mapping != null ) { rowName = mapping!['hostUserName'] ?? rowName; }
 
-                  Widget details = _pactDetail( alloc.category, rowName, width, i, alloc.allocType == PeqType.allocation );
+                  // Pact details sit at the assignee level.  SitedCat can be any length, but assignee is always the last element.
+                  // We filter pacts by project subs in the PEQ model. Project subs are unsited.
+                  int assigneeLoc = alloc.category.length - 1;
+                  Widget details = _pactDetail( alloc.category, rowName, width, assigneeLoc, alloc.allocType == PeqType.allocation );
                   Leaf tmpLeaf   = Leaf( rowName, allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }
@@ -249,6 +273,7 @@ class _CESummaryState extends State<CESummaryFrame> {
 
          final ScrollController controller = ScrollController();
 
+         // Key removes spacer index for compatibility with integration testing
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),
             child: SingleChildScrollView(
@@ -261,7 +286,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(
-                           key: Key( 'allocsTable ' + indexX.toString() ),                           
+                           key: Key( 'allocsTable ' + ( indexX - 1).toString() ),                           
                            children: List.generate( 
                               allocWidth,
                               (indexY) => allocs[indexX][indexY] ))

@@ -14,16 +14,20 @@ import 'package:ceFlutter/components/equityNode.dart';
 class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    String title;
    int    amount;
+   String hostName;
+      
    EquityTree parent;
       
    final double width;
 
    AppState? appState;
    
-   EquityLeaf(this.title, this.amount, this.parent, this.width){}
+   EquityLeaf(this.title, this.amount, this.hostName, this.parent, this.width){}
      
    @override
    String getTitle() { return title; }
+   @override
+   String getHostName() { return hostName; }
    
    @override
    int getAmount()  { return amount; }
@@ -34,6 +38,8 @@ class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    void setAmount( int newA ) { amount = newA; }
    @override
    void setParent( EquityTree newP ) { parent = newP; }
+   @override
+   void setHostName( String newHN ) { hostName = newHN; }
 
    @override
    EquityTree? getParent() { return parent; }
@@ -68,7 +74,7 @@ class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    @override
    EquityTree convertToNode() {
      
-     EquityNode newNode = EquityNode( title, amount, parent, width );
+     EquityNode newNode = EquityNode( title, amount, hostName, parent, width );
 
      bool converted = false;
      

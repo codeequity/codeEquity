@@ -130,25 +130,31 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
               });
 }
 
-Future<void> editRow( BuildContext context, appState, scrollHeader, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc ) async {
+Future<void> editList( BuildContext context, appState, scrollHeader,
+                       List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc ) async {
 
+   bool edit = scrollHeader.contains( "Edit" );
    assert( controllers.length == values.length );
    List<Widget> editVals = [];
    Widget c = Container( height: 1, width: appState.MID_PAD );
    for( int i = 0; i < values.length; i++ ) {
-      Widget text = makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i]);
-      Widget w = IntrinsicWidth( child: text );      
-      editVals.add( w );
-      editVals.add( c );
+      Widget text = makeInputField( appState, values[i], false, controllers[i], keyName: "editRow " + values[i], edit: edit);
+      Widget w = IntrinsicWidth( child: text );
+      Widget h = IntrinsicWidth( stepWidth: 40, child: Text( itemHeaders[i] ));
+      editVals.add(
+         Row( 
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [h, c, w, c] ) );
    }
 
-   Widget scrollBody = Row(
+   Widget scrollBody = Column(
       mainAxisSize: MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: editVals );
-
+   
    List<Widget> buttons = [];
-   buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: saveFunc ));
+   buttons.add( new TextButton( key: Key( 'Save' ), child: new Tooltip( child: new Text("Save"), message: "Oi!" ), onPressed: saveFunc ));
 
    if( deleteFunc != null ) {
       buttons.add( new TextButton( key: Key( 'Delete' ), child: new Text("Delete"), onPressed: deleteFunc ) );
@@ -189,9 +195,9 @@ void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFu
 }
 
 // No border padding
-Widget makeHDivider( width, lgap, rgap) {
+Widget makeHDivider( width, lgap, rgap, {tgap=0, bgap=0}) {
    return Padding(
-      padding: EdgeInsets.fromLTRB(lgap, 0, rgap, 0),
+      padding: EdgeInsets.fromLTRB(lgap, tgap, rgap, bgap),
       child: Container( width: width, height: 2, color: Colors.grey[200] ));
 }
    
@@ -204,6 +210,9 @@ Widget paddedLTRB( child, double L, double T, double R, double B ) {
 
 String addCommas( int amount ) {
    String res = "";
+   bool neg = amount < 0 ? true : false;
+   if( neg ) { amount = -1 * amount; }
+         
    String t = amount.toString();
 
    while( t.length > 3 ) {
@@ -211,6 +220,8 @@ String addCommas( int amount ) {
       t = t.substring( 0, t.length - 3 );
    }
    res = t + res;
+   
+   if( neg ) { res = "-" + res; }
    return res;
 }
 
@@ -332,9 +343,11 @@ Widget makeBodyText( appState, title, width, wrap, lines, { keyTxt = "" } ) {
 }
 
       
-Widget makeInputField( appState, hintText, obscure, controller, {keyName = ""} ) {
-   TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
+Widget makeInputField( appState, hintText, obscure, controller, {keyName = "", edit = false} ) {
+   TextStyle style     = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
+   TextStyle hintStyle = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0, fontStyle: FontStyle.italic);
    if( keyName == "" ) { keyName = hintText; }
+   if( edit ) { controller.text = hintText; };
    return TextField(
       key: Key( keyName ),
       obscureText: obscure,
@@ -342,6 +355,7 @@ Widget makeInputField( appState, hintText, obscure, controller, {keyName = ""} )
       decoration: InputDecoration(
          contentPadding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.FAT_PAD, appState.GAP_PAD, appState.FAT_PAD),
          hintText: hintText,
+         hintStyle: hintStyle,
          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0))),
       controller: controller
       );
