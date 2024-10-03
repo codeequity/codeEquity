@@ -192,7 +192,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                setState(() => appState.updateEquityView = true );
             },
             key: Key( 'indent ' + treeIndex.toString()),                          // Keep key name in equityTree land.
-            child: Icon( Icons.arrow_right )
+            child: makeToolTip( Icon( Icons.arrow_right ), "Indent", wait: true )
             );
          
          // unindent
@@ -206,24 +206,28 @@ class _CEEquityState extends State<CEEquityFrame> {
                setState(() => appState.updateEquityView = true );
             },
             key: Key( 'unindent ' + treeIndex.toString() ),                         // Keep index in equityTree land.
-            child: Icon( Icons.arrow_left )
+            child: makeToolTip( Icon( Icons.arrow_left ), "Unindent", wait: true )
             );
 
          int depth = 0;
          if( t is EquityNode )      { depth = (t as EquityNode).getPath( t.getParent(), t.getTitle() ).length + 1; }
          else if( t is EquityLeaf ) { depth = (t as EquityLeaf).getPath( t.getParent(), t.getTitle() ).length + 1; }
          
-         final  numWidth = width / 2.5;        // formalize
+         final  numWidth = width / 2.2;      // XXX formalize
+         final  warnWidth = 50;              // XXX formalize
          final  height   = appState!.CELL_HEIGHT;
          Widget cat      = makeTableText( appState, t.getTitle(), width, height - 15, false, 1, mux: (depth+1) * .5 );
-         Widget amountW  = makeTableText( appState, addCommas( t.getAmount() ), numWidth, height, false, 1 );
+         Widget amountW  = makeTableText( appState, addCommas( t.getAmount() ), numWidth-warnWidth, height, false, 1 );
+         bool kidsBigger = t.getChildrenAmount() > t.getAmount();
          
          String hpn = t.getHostName();
          Widget hostProj = Container( width: width, child: makeTableText( appState, hpn, width, height, false, 1 ) );
 
          // Listener index is interpreted in the view to select draggable item (i.e ReorderableListView).
          int viewIndex = treeIndex - 1 + equityTop; // tree - TOT is body, plus all headers
-         Widget drag  = ReorderableDragStartListener( key: Key( "drag " + treeIndex.toString()), index: viewIndex, child: Icon( Icons.drag_handle ));
+         Widget drag  = ReorderableDragStartListener( key: Key( "drag " + treeIndex.toString()),
+                                                      index: viewIndex,
+                                                      child: makeToolTip( Icon( Icons.drag_handle ), "Drag to relocate", wait: true ));
          
          Widget catEditable = GestureDetector(
             onTap: () async 
@@ -243,14 +247,16 @@ class _CEEquityState extends State<CEEquityFrame> {
                editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + treeIndex.toString() ),
-            child: cat
+            child: makeToolTip( cat, "Click to edit", wait: true )
             );
 
          Widget c        = Container( width: numWidth, height: 1 );
          Widget catCont  = Container( width: width, height: height - 15, child: catEditable );
-         Widget amtCont  = Container( width: numWidth, height: height - 15, child: amountW );
+         Widget oops     = makeToolTip(Icon( Icons.warning_amber, color: Colors.red.shade300 ), "Children allocations exceed parent's." );
+         Widget warn     = kidsBigger ? Wrap( spacing: 0, children: [amountW, oops]) : amountW;
+         Widget amtCont  = Container( width: numWidth, height: height - 15, child: warn );
 
-         List<Widget> tileKids = [ fatPad, back, drag, forward ];
+         List<Widget> tileKids = [ back, drag, forward ];
          List<Widget> none = [ c  ];
          tileKids = treeIndex == 0 ? none : tileKids;
          
@@ -269,7 +275,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       String pageStamp = DateTime.now().millisecondsSinceEpoch.toString();
 
       // List<Widget> htile  = _getTile( [], "Category", 0, 0, width, pageStamp );
-      appState.equityTree = EquityNode( "Category", 0, "", null, width, header: true );
+      appState.equityTree = EquityNode( "Category", 0, "", null, width, header: true, TOT: true );
       
       if( appState.equityPlan == null ) {
          appState.updateEquityPlan = false;
@@ -376,7 +382,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                await _add( appState.equityTree! );
             },
             key: Key( 'add_icon_equity' ),
-            child: Icon( Icons.add_box_outlined )
+            child: makeToolTip( Icon( Icons.add_box_outlined ), "Add new equity allocation" )
             );
          
          Widget fullP  = Container( width: width, height: 1 );
@@ -388,20 +394,23 @@ class _CEEquityState extends State<CEEquityFrame> {
          List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
          int sumW = 0;
          int sumO = 0;
+         int sumT = 0;
          // XXX formalize
+         // XXX hmm.. not sure that other sub totals are worthy.  more confusion than not.
          for( var t in treeList ) {
-            if( t.getHostName() == "---" ) { sumO += t.getAmount(); }
-            else                           { sumW += t.getAmount(); }
+            if( t.getParent() != null && t.getParent()!.getIsTOT() ) { sumT += t.getAmount(); }
+            // else if( t.getHostName() == "---" )                      { sumO += t.getAmount(); }
+            // else                                                     { sumW += t.getAmount(); }
          }
          catList.add( [ hdiv, empty, empty, empty, empty ] );
-         Widget sumTotW = Container( width: width, child: makeTableText( appState, "Total with associated Host Project:", width, appState!.CELL_HEIGHT, false, 1 ) );
-         Widget sumValW = Container( width: width, child: makeTableText( appState, addCommas( sumW ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
-         Widget sumTotO = Container( width: width, child: makeTableText( appState, "Total without:", width, appState!.CELL_HEIGHT, false, 1 ) );
-         Widget sumValO = Container( width: width, child: makeTableText( appState, addCommas( sumO ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
+         // Widget sumTotW = Container( width: width, child: makeTableText( appState, "Total subs with associated Host Project:", width, appState!.CELL_HEIGHT, false, 1 ) );
+         // Widget sumValW = Container( width: width, child: makeTableText( appState, addCommas( sumW ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
+         // Widget sumTotO = Container( width: width, child: makeTableText( appState, "Total without:", width, appState!.CELL_HEIGHT, false, 1 ) );
+         // Widget sumValO = Container( width: width, child: makeTableText( appState, addCommas( sumO ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
          Widget sumTotF = Container( width: width, child: makeTableText( appState, "Overall Total:", width, appState!.CELL_HEIGHT, false, 1 ) );
-         Widget sumValF = Container( width: width, child: makeTableText( appState, addCommas( sumW+sumO ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
-         catList.add( [sumTotW, fullP, sumValW, empty, empty ] );
-         catList.add( [sumTotO, fullP, sumValO, empty, empty ] );
+         Widget sumValF = Container( width: width, child: makeTableText( appState, addCommas( sumT ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
+         // catList.add( [sumTotW, fullP, sumValW, empty, empty ] );
+         // catList.add( [sumTotO, fullP, sumValO, empty, empty ] );
          catList.add( [sumTotF, fullP, sumValF, empty, empty ] );
          
          // Updates to equity can impact peq summary view.  updateit.

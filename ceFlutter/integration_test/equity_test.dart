@@ -174,7 +174,8 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
 
       // XXX
       if( agVals.length <= 0 ) {
-         await pumpSettle( tester, 5 );         
+         await pumpSettle( tester, 5 );
+         print( "  Found?? Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() );
       }
       assert( agVals.length > 0 );
       

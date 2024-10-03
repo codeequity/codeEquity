@@ -154,7 +154,7 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
       children: editVals );
    
    List<Widget> buttons = [];
-   buttons.add( new TextButton( key: Key( 'Save' ), child: new Tooltip( child: new Text("Save"), message: "Oi!" ), onPressed: saveFunc ));
+   buttons.add( new TextButton( key: Key( 'Save' ), child: new Text("Save"), onPressed: saveFunc ));
 
    if( deleteFunc != null ) {
       buttons.add( new TextButton( key: Key( 'Delete' ), child: new Text("Delete"), onPressed: deleteFunc ) );
@@ -299,6 +299,26 @@ Widget makeActionText( appState, title, width, wrap, lines ) {
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: 14, color: appState.BUTTON_COLOR, fontWeight: FontWeight.bold))));
+}
+
+Widget makeToolTip( child, message, {wait=false} ) {
+   final dengdeng = wait ? 2 : 0;
+   return new Tooltip(
+      child: child,
+      message: message,
+      preferBelow: true,
+      height: 50,
+      padding: const EdgeInsets.all(8.0),
+      textStyle: const TextStyle( fontSize: 16, color: Colors.blue ),
+      decoration: BoxDecoration(
+         // color: Colors.grey[100],
+         color: Colors.white,
+        border: Border.all( width: 2 ),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      showDuration: const Duration(seconds: 2),
+      waitDuration: Duration(seconds: dengdeng),
+      );
 }
 
 Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, keyTxt = "" } ) {
