@@ -88,7 +88,6 @@ class _CEEquityState extends State<CEEquityFrame> {
    @override
    void dispose() {
       super.dispose();
-      if( appState.verbose >= 2 ) { print( "EquityFrame Disposessed!" ); }
 
       // XXX NOTE This should be cheap.  If not, save state as with allocTree in summary_frame
       // This avoids loss of catList when switch tabs.
@@ -216,7 +215,24 @@ class _CEEquityState extends State<CEEquityFrame> {
          final  numWidth = width / 2.2;      // XXX formalize
          final  warnWidth = 50;              // XXX formalize
          final  height   = appState!.CELL_HEIGHT;
-         Widget cat      = makeTableText( appState, t.getTitle(), width, height - 15, false, 1, mux: (depth+1) * .5 );
+
+         
+         // Widget cat      = makeTableText( appState, t.getTitle(), width, height - 15, false, 1, mux: (depth+1) * .5 );
+         void _setTitle( PointerEvent event ) {
+            setState(() {
+                  appState.hoverChunk = t.getTitle();
+                  appState.updateEquityView = true;                  
+               });
+         }
+         void _unsetTitle( PointerEvent event ) {
+            setState(() {
+                  appState.hoverChunk = "";
+                  appState.updateEquityView = true;
+               });
+         }
+         Widget cat      = makeClickTableText( appState, t.getTitle(), _setTitle, _unsetTitle, width, height - 15, false, 1, mux: (depth+1) * .5 );
+
+         
          Widget amountW  = makeTableText( appState, addCommas( t.getAmount() ), numWidth-warnWidth, height, false, 1 );
          bool kidsBigger = t.getChildrenAmount() > t.getAmount();
          
@@ -247,7 +263,7 @@ class _CEEquityState extends State<CEEquityFrame> {
                editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + treeIndex.toString() ),
-            child: makeToolTip( cat, "Click to edit", wait: true )
+            child: cat
             );
 
          Widget c        = Container( width: numWidth, height: 1 );
@@ -329,7 +345,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    
    
    List<List<Widget>> _getCategoryWidgets( context ) {
-      print( "Getting equity table widgets" );
+      // print( "Getting equity table widgets" );
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       final  numWidth = width / 2.5;
          
@@ -341,7 +357,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       List<List<Widget>> catList = [];
 
       if( appState.updateEquityPlan ) { _buildEquityTree(); }
-
+      
       if( appState.updateEquityView ) {
          // These must be kept up to date, and updated before _getTiles.
          equityTop = 3;   // spacer + header + hdiv
@@ -399,18 +415,10 @@ class _CEEquityState extends State<CEEquityFrame> {
          // XXX hmm.. not sure that other sub totals are worthy.  more confusion than not.
          for( var t in treeList ) {
             if( t.getParent() != null && t.getParent()!.getIsTOT() ) { sumT += t.getAmount(); }
-            // else if( t.getHostName() == "---" )                      { sumO += t.getAmount(); }
-            // else                                                     { sumW += t.getAmount(); }
          }
          catList.add( [ hdiv, empty, empty, empty, empty ] );
-         // Widget sumTotW = Container( width: width, child: makeTableText( appState, "Total subs with associated Host Project:", width, appState!.CELL_HEIGHT, false, 1 ) );
-         // Widget sumValW = Container( width: width, child: makeTableText( appState, addCommas( sumW ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
-         // Widget sumTotO = Container( width: width, child: makeTableText( appState, "Total without:", width, appState!.CELL_HEIGHT, false, 1 ) );
-         // Widget sumValO = Container( width: width, child: makeTableText( appState, addCommas( sumO ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
          Widget sumTotF = Container( width: width, child: makeTableText( appState, "Overall Total:", width, appState!.CELL_HEIGHT, false, 1 ) );
          Widget sumValF = Container( width: width, child: makeTableText( appState, addCommas( sumT ), numWidth, appState!.CELL_HEIGHT, false, 1 ) );
-         // catList.add( [sumTotW, fullP, sumValW, empty, empty ] );
-         // catList.add( [sumTotO, fullP, sumValO, empty, empty ] );
          catList.add( [sumTotF, fullP, sumValF, empty, empty ] );
          
          // Updates to equity can impact peq summary view.  updateit.
@@ -449,7 +457,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
    
    Widget getEquityPlan( context ) {
-      if( appState.verbose >= 1 ) { print( "EF: Remake equity plan" ); }
+      if( appState.verbose >= 2 ) { print( "EF: Remake equity plan" ); }
       final buttonWidth = 100;
       
       List<List<Widget>> categories = [];

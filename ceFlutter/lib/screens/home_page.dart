@@ -33,7 +33,7 @@ class _CEHomeState extends State<CEHomePage> {
    static const rhsPaneMinWidth = 300.0;
    static const buttonWidth     =  80.0;
    static const vBarWidth       =   5.0;
-   
+
    @override
    void initState() {
       super.initState();
@@ -68,18 +68,28 @@ class _CEHomeState extends State<CEHomePage> {
          });
    }
 
-   
+
    // This GD opens and closes peqSummary.
    Widget _makeChunk( String itemName, { ceProj = false } ) {
       final textWidth = appState.screenWidth * .4;
       Widget itemTxt = Container( width: 1, height: 1 );
+
+      void _setTitle( PointerEvent event ) {
+         setState(() => appState.hoverChunk = itemName );
+      }
+      void _unsetTitle( PointerEvent event ) {
+         setState(() => appState.hoverChunk = "" );
+      }
+      
       if( ceProj ) {
-         print( "Chunking ceProj " + itemName );
-         itemTxt = makeActionText( appState, itemName, textWidth, false, 1 );
+         // print( "Chunking ceProj " + itemName );
+         itemTxt = Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+                                                  Container( width: buttonWidth, height: 1 ) ] );
       }
       else {
-         print( "Chunking repo " + itemName );
-         itemTxt = makeIndentedActionText( appState, itemName, textWidth, false, 1 );
+         // print( "Chunking repo " + itemName );
+         itemTxt = Wrap( spacing: 10, children: [ makeIndentedActionableText( appState, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+                                                  Container( width: buttonWidth, height: 1 ) ] );
       }
       
       return GestureDetector(
@@ -109,7 +119,7 @@ class _CEHomeState extends State<CEHomePage> {
    // XXX host-specific
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeRepos( hosta ) {
-      print( "MakeRepos" );
+      // print( "MakeRepos" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;              // 2*container + button + pad
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> repoChunks = [];
@@ -184,7 +194,7 @@ class _CEHomeState extends State<CEHomePage> {
    
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
    List<Widget> _makeCEProjs( hosta ) {
-      print( "MakeCEProj" );
+      // print( "MakeCEProj" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
       final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> chunks = [];
@@ -193,7 +203,7 @@ class _CEHomeState extends State<CEHomePage> {
       Widget _ceProjBar = Row(
          crossAxisAlignment: CrossAxisAlignment.center,
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( appState, "Code Equity Projects", textWidth, false, 1 ),
+         children: <Widget>[ makeTitleText( appState, "CodeEquity Projects", textWidth, false, 1 ),
                              Container( width: 10 ),
                              _newCEProjButton(),
                              Container( width: 10 ),
@@ -228,7 +238,7 @@ class _CEHomeState extends State<CEHomePage> {
       acctList.add( Container( height: appState.BASE_TXT_HEIGHT ) );
       runningLHSHeight += appState.BASE_TXT_HEIGHT;
       
-      print( "SHOW " + appState.hostUpdated.toString() );
+      // print( "SHOW " + appState.hostUpdated.toString() );
       if( appState.myHostAccounts != null || appState.hostUpdated ) {
 
          if( appState.myHostAccounts.length <= 0 ) {
@@ -242,7 +252,8 @@ class _CEHomeState extends State<CEHomePage> {
             }
          }
       }
-      
+
+
       appState.hostUpdated = false;
       final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
       final wrapPoint = lhsMaxWidth + vBarWidth + rhsPaneMinWidth;
@@ -256,7 +267,7 @@ class _CEHomeState extends State<CEHomePage> {
       return ConstrainedBox(
          constraints: new BoxConstraints(
             minHeight: appState.BASE_TXT_HEIGHT,
-            minWidth: lhsPaneMinWidth,
+            minWidth:  lhsPaneMinWidth,
             maxHeight: lhsHeight,
             maxWidth:  lhsMaxWidth
             ),

@@ -280,26 +280,62 @@ Widget makeActionButtonFixed( appState, buttonText, minWidth, fn ) {
       );
 }
 
+Widget makeClickTableText( appState, title, hov, nohov, width, height, wrap, lines, { fontSize = 14, mux = 1.0 } ) {
+   return MouseRegion(
+      onEnter: hov,
+      onExit: nohov,
+      cursor: SystemMouseCursors.click,
+      child: Padding(
+      padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+      child: Container( height: height - appState.GAP_PAD - appState.TINY_PAD,
+                        child: IntrinsicWidth(
+                           key: Key( title ),
+                           child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                       style: TextStyle(fontSize: fontSize,
+                                                        fontWeight: FontWeight.bold,
+                                                        color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                                        decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
+         ));
+}
 
-Widget makeIndentedActionText( appState, title, width, wrap, lines ) {
-   return Padding(
+
+Widget makeIndentedActionableText( appState, title, hov, nohov, width, wrap, lines ) {
+   return MouseRegion(
+      onEnter: hov,
+      onExit: nohov,
+      cursor: SystemMouseCursors.click,
+      child: Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD + appState.TINY_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
-      child: Container( width: width,
-                        height: appState.BASE_TXT_HEIGHT*lines,   
+      child: IntrinsicWidth(
                         key: Key( title ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 14, color: appState.BUTTON_COLOR, fontWeight: FontWeight.bold))));
+                                    style: TextStyle(fontSize: 14,
+                                                     color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                                     fontWeight: title == appState.hoverChunk ? FontWeight.bold : null,
+                                                     decoration: title == appState.hoverChunk ? TextDecoration.underline : null
+                                       )))
+         ));
 }
 
-Widget makeActionText( appState, title, width, wrap, lines ) {
-   return Padding(
-      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
-      child: Container( width: width,
-                        height: appState.BASE_TXT_HEIGHT*lines,   
-                        key: Key( title ),
-                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 14, color: appState.BUTTON_COLOR, fontWeight: FontWeight.bold))));
+Widget makeActionableText(  appState, title, hov, nohov, width, wrap, lines ) {
+   
+   return MouseRegion(
+      onEnter: hov,
+      onExit: nohov,
+      cursor: SystemMouseCursors.click,
+      child: Padding(
+         padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
+         child: IntrinsicWidth(
+            key: Key( title ),
+            child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14,
+                                         color: title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                         fontWeight: FontWeight.bold,
+                                         decoration: title == appState.hoverChunk ? TextDecoration.underline : null
+                           ))))
+      );
 }
+
 
 Widget makeToolTip( child, message, {wait=false} ) {
    final dengdeng = wait ? 2 : 0;
