@@ -54,6 +54,21 @@ String getFromMakeTableText( Widget elt ) {
    return retVal;
 }
 
+String getFromMouseRegion( Widget elt ) {
+   String retVal = "";
+   if( elt is Padding && (elt as Padding).child != null ) {
+      var cont = elt.child as Container;
+      if( cont is Container && cont.child != null ) {
+         var iw = cont.child as IntrinsicWidth; 
+         if( iw is IntrinsicWidth && iw.child != null ) {
+            var contText  = iw.child as Text; 
+            retVal        = contText.data ?? "";
+         }
+      }
+   }
+   return retVal;
+}
+
 // Get depth by working out the mux passed in.
 // This looks nasty on the face of it, but it is the only way (currently) to ensure visual output is correct, showing hierarchy.
 // Actual ancesterage is worked out in checkEqs.
@@ -63,14 +78,25 @@ int getDepthFromCat( Widget elt ) {
       var catEdit  = elt.child as GestureDetector;
       final double gappad = 20.0; // app_state.GAP_PAD   XXX pull this in?  hmmm..
 
+      var pad = null;
+      if( catEdit.child is MouseRegion ) {
+         pad = (catEdit.child! as MouseRegion).child!;
+      }
+      else{
+         pad = catEdit.child!;
+      }
+
       // mux: (depth+1) * .5 )
-      if( catEdit.child! is Padding ) {
-         var mtt       = catEdit.child as Padding;
+      if( pad! is Padding ) {
+         var mtt       = pad as Padding;
          var edgeInset = mtt.padding as EdgeInsets;
 
          // ratio of 1.5 gives 3, but 2 of that is from depth+1 above
          depth = ( ( edgeInset.left / gappad ) / 0.5 ).round() - 2; 
          // print( "edgeInsetLeft " + edgeInset.left.toString() + " depth " + depth.toString() );
+      }
+      else {
+         print( "Oi! Depth calc failed" );
       }
 
    }
@@ -80,8 +106,13 @@ int getDepthFromCat( Widget elt ) {
 String getCatFromTiles( Widget elt ) {
    String retVal = "";
    if( elt is Container && elt.child is GestureDetector ) {
-      var catEdit  = elt.child as GestureDetector;
-      retVal       = getFromMakeTableText( catEdit.child! );
+      var catEdit = elt.child as GestureDetector;
+      if( catEdit.child is MouseRegion ) {
+         retVal = getFromMouseRegion( (catEdit.child as MouseRegion).child! );
+      }
+      else {
+         retVal = getFromMakeTableText( catEdit.child! );
+      }
    }
    return retVal;
 }
@@ -123,14 +154,24 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
    
    List<String> aRow = [];
    for( final elt in eqs ) {
+      // e.g. amounts without warning
       String t = getFromMakeTableText( elt );
       if( t != "" ) { aRow.add( t ); }
 
+      // e.g. amounts with warning.
+      if( elt is Container && elt.child is Wrap ) {
+         var kids = (elt.child as Wrap).children;
+         if( kids != null && kids!.length > 0 ) {
+            t = getFromMakeTableText( kids![0] );
+            if( t != "" ) { aRow.add( t ); }
+         }
+      }
+      // Get category and depth
       t = getCatFromTiles( elt );
       if( t != "" ) {
          aRow.add( t );
          depth = getDepthFromCat( elt );
-         // print( "Got Cat, depth " + t + " " + depth.toString() );
+         print( "Got Cat, depth " + t + " " + depth.toString() );
       }
 
       t = getAmtFromTiles( elt );
@@ -174,7 +215,8 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
 
       // XXX
       if( agVals.length <= 0 ) {
-         await pumpSettle( tester, 5 );         
+         await pumpSettle( tester, 5 );
+         print( "  Found?? Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() );
       }
       assert( agVals.length > 0 );
       
@@ -417,6 +459,8 @@ Future<bool> validateDeepIndent( tester, startIndex ) async {
       changed = false;
       for( int i = startIndex; i >= 1; i-- ) {
          List<String> eqs = await getElt( tester, "equityTable " + i.toString() );
+         print( "Getting eqs for equityTable " + i.toString() + ".  Got: " + eqs.toString() );
+
          String oldDepth = eqs[3];
          
          Finder cat = find.byKey( Key( 'indent ' + i.toString() ));
@@ -686,6 +730,7 @@ void main() {
          expect( await rebuildEquityTable( tester ), true );
          
          // Check initial equity structure
+         print( "first rebuild done." );
          expect( await checkEqs( tester, 1, 11 ), true );
 
          // Add, save fully tested by rebuildEqTable

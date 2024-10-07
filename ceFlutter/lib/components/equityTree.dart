@@ -15,9 +15,12 @@ abstract class EquityTree with treeUtils {
    void setHostName( String newHN );
    
    int    getAmount();
+   int    getChildrenAmount();
    String getTitle();
    EquityTree? getParent();
    String getHostName();
+   bool getIsTOT();
+      
 
    List<EquityTree> getLeaves();
    void insertLeaf( target, int index );

@@ -109,65 +109,63 @@ class EquityPlan {
 
       bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt ) || !listEq( hostNames, oldHN );
       
-      print( "updateEquity done.. changed? " + changed.toString() );
+      // print( "updateEquity done.. changed? " + changed.toString() );
       return changed;
    }
 
-   // XXX indent, unindent, move are nearly identical.  Fix.
-   void indent( int myIndex, EquityTree tree ) {
+
+   EquityTree getTarg( int myIndex, EquityTree tree ) {
       assert( categories.length == amounts.length );
 
-      print( "Indent " + myIndex.toString() );
-
-      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
+      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Yay equity_frame!
       assert( myIndex < categories.length );
 
       // Get major elements here.  Tree/node/leaf should not see index.
       EquityTree? target = tree.findNode( categories[myIndex] );
       assert( target != null );
+      
+      return target!;
+   }
+
+   EquityTree? getDP( int myIndex, EquityTree tree ) {
+      assert( categories.length == amounts.length );
+
+      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Yay equity_frame!
+      assert( myIndex < categories.length );
 
       EquityTree? destPrev = tree;
       if( myIndex > 0 ) { destPrev = tree.findNode( categories[myIndex-1] ); }
       
-      (tree as EquityNode).indent( target!, tree!, destPrev );
+      return destPrev;
+   }
+
+   void indent( int myIndex, EquityTree tree ) {
+      print( "Indent " + myIndex.toString() );
+
+      EquityTree target   = getTarg( myIndex, tree );
+      EquityTree? destPrev = getDP( myIndex, tree );
+      
+      (tree as EquityNode).indent( target, tree, destPrev );
    }
 
    void unindent( int myIndex, EquityTree tree ) {
-      assert( categories.length == amounts.length );
-
       print( "Unindent " + myIndex.toString() );
 
-      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
-      assert( myIndex < categories.length );
-
-      // Get major elements here.  Tree/node/leaf should not see index.
-      // print( "Categories " + categories.toString() );
-      // print( "Finding " + myIndex.toString() + " " + categories[myIndex].toString() );
-      EquityTree? target = tree.findNode( categories[myIndex] );
-      assert( target != null );
-
-      EquityTree? destPrev = null;
-      // print( "Finding " + (myIndex-1).toString() + " " +  categories[myIndex].toString() );
-      if( myIndex > 0 ) { destPrev = tree.findNode( categories[myIndex-1] ); }
+      EquityTree target   = getTarg( myIndex, tree );
+      EquityTree? destPrev = getDP( myIndex, tree );
       
-      (tree as EquityNode).unindent( target!, tree!, destPrev );
+      (tree as EquityNode).unindent( target, tree, destPrev );
    }
 
    // Move between parent and child?  Become a child of index - 1.
    // Move elsewhere?  Become a sibling of index - 1.
    void move( int oldIndex, int newIndex, EquityTree tree ) {
       assert( categories.length == amounts.length );
-
-      // Equity Plan does not see treeIndex, or viewIndex.  Just equityPlanIndex.  Thanks equity_frame.
-      assert( oldIndex < categories.length );
+      assert( newIndex <= categories.length );
 
       print( "ep move from " + oldIndex.toString() + " to " + newIndex.toString() );
 
-      assert( newIndex <= categories.length );
-
-      // Get major elements here.  Tree/node/leaf should not see index.
-      EquityTree? target = tree.findNode( categories[oldIndex] );
-      assert( target != null );
+      EquityTree target = getTarg( oldIndex, tree );
 
       EquityTree? destParent = null;
       EquityTree? destNext   = null;

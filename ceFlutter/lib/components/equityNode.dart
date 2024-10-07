@@ -16,6 +16,7 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
    int amount;
    String hostName;
 
+   final bool TOT; 
    final double width;
    final bool header;
    int  currentDepth;   // for indentation
@@ -27,7 +28,7 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
    
    AppState? appState;
    
-   EquityNode(this.title, this.amount, this.hostName, this.parent, this.width, {this.header = false, this.currentDepth = 0} ) {
+   EquityNode(this.title, this.amount, this.hostName, this.parent, this.width, {this.header = false, this.currentDepth = 0, this.TOT = false} ) {
    path = "";
    }
    
@@ -44,6 +45,8 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
   @override
   void setHostName( String newHN ) { hostName = newHN; }
 
+  @override
+  bool getIsTOT() { return TOT; }
   @override
   EquityTree? getParent() { return parent; }
   @override
@@ -98,12 +101,15 @@ class EquityNode extends StatelessWidget with treeUtils implements EquityTree {
      //              This is because the child card allocation is meant to be a part of the overall alloc for githubOps.
     var psum = amount;
 
-    // XXX Warn if sum of kids exceeds parent.  Displayed allocation will always be as entered by hand, or repaired when initiated by human hands.
-    // var csum = 0;
-    // leaves.forEach((EquityTree leaf) => csum += leaf.getAmount());
-    // return max( psum, csum );
-
     return psum;
+  }
+     
+  @override
+  int getChildrenAmount() {
+     // Does not collect grandkids.. they will be checked when get amounts of kids separately.
+     var csum = 0;
+     leaves.forEach((EquityTree leaf) => csum += leaf.getAmount());
+     return csum;
   }
 
   @override  // toString overrides diagnostic... blarg

@@ -125,7 +125,7 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
 
    // framing
    expect( find.text( 'Activity' ),             findsOneWidget );
-   expect( find.text( 'Code Equity Projects' ), findsOneWidget );
+   expect( find.text( 'CodeEquity Projects' ), findsOneWidget );
    // expect( find.text( 'GitHub Repositories' ),  findsOneWidget );
    expect( find.byKey(const Key( 'New' )),      findsOneWidget );
    expect( find.byKey(const Key( 'Refresh Projects' )),      findsOneWidget );

@@ -31,6 +31,9 @@ class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    
    @override
    int getAmount()  { return amount; }
+      
+   @override
+   int getChildrenAmount()  { return 0; }
 
    @override
    void setTitle( String newT ) { title = newT; }
@@ -41,6 +44,8 @@ class EquityLeaf extends StatelessWidget with treeUtils implements EquityTree {
    @override
    void setHostName( String newHN ) { hostName = newHN; }
 
+   @override
+   bool getIsTOT() { return false; }
    @override
    EquityTree? getParent() { return parent; }
    @override
