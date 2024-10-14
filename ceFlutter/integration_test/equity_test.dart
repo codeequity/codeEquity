@@ -56,16 +56,21 @@ String getFromMakeTableText( Widget elt ) {
 
 String getFromMouseRegion( Widget elt ) {
    String retVal = "";
-   if( elt is Padding && (elt as Padding).child != null ) {
-      var cont = elt.child as Container;
-      if( cont is Container && cont.child != null ) {
-         var iw = cont.child as IntrinsicWidth; 
-         if( iw is IntrinsicWidth && iw.child != null ) {
-            var contText  = iw.child as Text; 
-            retVal        = contText.data ?? "";
-         }
-      }
-   }
+
+   if( !( elt is MouseRegion ) ) { return retVal; }
+   var eltMR = elt as MouseRegion;
+
+   if( !( eltMR.child is Padding ) ) { return retVal; }
+   var eltP = eltMR.child as Padding;
+
+   if( !( eltP.child is IntrinsicWidth ) ) { return retVal; }
+   var eltIR = eltP.child as IntrinsicWidth;
+
+   if( !( eltIR.child is Text ) ) { return retVal; }
+   var contText = eltIR.child as Text;
+
+   retVal = contText.data ?? "";
+
    return retVal;
 }
 
@@ -74,46 +79,35 @@ String getFromMouseRegion( Widget elt ) {
 // Actual ancesterage is worked out in checkEqs.
 int getDepthFromCat( Widget elt ) {
    int depth = 1;
-   if( elt is Container && elt.child is GestureDetector ) {
-      var catEdit  = elt.child as GestureDetector;
+
+   GestureDetector eqGD  = getGD( elt );
+   if( eqGD.child == null || ( eqGD.child is Container )) { return depth; }
+   
+   if( eqGD.child is MouseRegion ) {
       final double gappad = 20.0; // app_state.GAP_PAD   XXX pull this in?  hmmm..
 
-      var pad = null;
-      if( catEdit.child is MouseRegion ) {
-         pad = (catEdit.child! as MouseRegion).child!;
-      }
-      else{
-         pad = catEdit.child!;
-      }
+      var eltMR = eqGD.child as MouseRegion;
 
+      if( !( eltMR.child is Padding ) ) { return depth; }
+      Padding pad = eltMR.child as Padding;
+      
       // mux: (depth+1) * .5 )
-      if( pad! is Padding ) {
-         var mtt       = pad as Padding;
-         var edgeInset = mtt.padding as EdgeInsets;
-
-         // ratio of 1.5 gives 3, but 2 of that is from depth+1 above
-         depth = ( ( edgeInset.left / gappad ) / 0.5 ).round() - 2; 
-         // print( "edgeInsetLeft " + edgeInset.left.toString() + " depth " + depth.toString() );
-      }
-      else {
-         print( "Oi! Depth calc failed" );
-      }
-
+      var edgeInset = pad.padding as EdgeInsets;
+      
+      // ratio of 1.5 gives 3, but 2 of that is from depth+1 above
+      depth = ( ( edgeInset.left / gappad ) / 0.5 ).round() - 2; 
+      // print( "edgeInsetLeft " + edgeInset.left.toString() + " depth " + depth.toString() );
    }
    return depth;
 }
 
 String getCatFromTiles( Widget elt ) {
    String retVal = "";
-   if( elt is Container && elt.child is GestureDetector ) {
-      var catEdit = elt.child as GestureDetector;
-      if( catEdit.child is MouseRegion ) {
-         retVal = getFromMouseRegion( (catEdit.child as MouseRegion).child! );
-      }
-      else {
-         retVal = getFromMakeTableText( catEdit.child! );
-      }
-   }
+   GestureDetector eqGD  = getGD( elt );
+   if( eqGD.child == null || ( eqGD.child is Container )) { return retVal; }
+   
+   if( eqGD.child is MouseRegion ) { retVal = getFromMouseRegion( eqGD.child as MouseRegion );  }
+
    return retVal;
 }
 
@@ -127,20 +121,31 @@ String getAmtFromTiles( Widget elt ) {
    return retVal;
 }
 
-Widget getGD( WidgetTester tester, Finder generatedEquityRow ) {
+GestureDetector getGDFromRow( Finder generatedEquityRow ) {
    expect( generatedEquityRow, findsOneWidget );
 
-   Widget empty = GestureDetector( child: Container( width: 1, height: 1 ) );
-      
    var equityRow = generatedEquityRow.evaluate().single.widget as Row;
    var eqs   = equityRow.children as List;
    assert( eqs.length > 0 );
 
    var elt = eqs[0];
-   if( !(elt is Container) || !(elt.child is GestureDetector)) { return empty; }
+   return getGD( elt ); 
+}
 
-   print( "getGD2 " + elt.child.toString() );
-   return elt.child as GestureDetector;
+   
+GestureDetector getGD( Widget elt ) {
+   GestureDetector empty = GestureDetector( child: Container( width: 1, height: 1 ) );
+
+   if( !(elt is Container)) { return empty; }
+   var eltC = elt as Container;
+   if( !( eltC.child is Wrap)) { return empty; }
+   Wrap eltW = eltC.child as Wrap;
+
+   // print( "getGD2 " + eltW.toString() );
+   assert( eltW.children.length > 0 );
+   if( !(eltW.children[0] is GestureDetector )) { return empty; }   // for example, tileKids
+
+   return eltW.children[0] as GestureDetector;
 }
 
 // XXX utils?
@@ -232,8 +237,10 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
 }
 
 Future<void> deleteEq ( WidgetTester tester ) async {
+   print( "delete Testing, looking for catEditable 1" );
    final Finder cat = find.byKey( Key( 'catEditable 1' ));
    expect( cat, findsOneWidget );
+   // await tester.ensureVisible( cat );
    await tester.tap( cat );
    await tester.pumpAndSettle();
 
@@ -290,11 +297,10 @@ Future<bool> rebuildEquityTable ( WidgetTester tester ) async {
    print( "\nRebuild Equity Table" );
    Finder generatedEquityRow = find.byKey( Key( "equityTable 1" ));
    while( tester.widgetList<Row>( generatedEquityRow ).length > 0 ) {
-      var eqGD  = getGD( tester, generatedEquityRow ) as GestureDetector; 
+      GestureDetector eqGD  = getGDFromRow( generatedEquityRow );
+      if( eqGD.child == null || ( eqGD.child is Container )) { break; }
       
-      if( eqGD == null || eqGD.child == null || eqGD.child is Container ) { break; }
-      String title = getFromMakeTableText( eqGD.child! );
-
+      String title = getFromMouseRegion( eqGD.child as MouseRegion );
       print( "Deleting " + title );
       await deleteEq( tester ); 
    }

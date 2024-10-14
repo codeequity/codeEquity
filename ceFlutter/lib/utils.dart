@@ -287,17 +287,15 @@ Widget makeClickTableText( appState, title, hov, nohov, width, height, wrap, lin
       cursor: SystemMouseCursors.click,
       child: Padding(
       padding: EdgeInsets.fromLTRB(mux * appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-      child: Container( height: height - appState.GAP_PAD - appState.TINY_PAD,
-                        child: IntrinsicWidth(
-                           key: Key( title ),
-                           child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                       style: TextStyle(fontSize: fontSize,
-                                                        fontWeight: FontWeight.bold,
-                                                        color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
-                                                        decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
-         ));
+      child: IntrinsicWidth(
+         key: Key( title ),
+         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                     style: TextStyle(fontSize: fontSize,
+                                      fontWeight: FontWeight.bold,
+                                      color:      title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                      decoration: title == appState.hoverChunk ? TextDecoration.underline : null ))))
+         );
 }
-
 
 Widget makeIndentedActionableText( appState, title, hov, nohov, width, wrap, lines ) {
    return MouseRegion(

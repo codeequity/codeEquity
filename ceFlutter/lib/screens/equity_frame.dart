@@ -216,8 +216,6 @@ class _CEEquityState extends State<CEEquityFrame> {
          final  warnWidth = 50;              // XXX formalize
          final  height   = appState!.CELL_HEIGHT;
 
-         
-         // Widget cat      = makeTableText( appState, t.getTitle(), width, height - 15, false, 1, mux: (depth+1) * .5 );
          void _setTitle( PointerEvent event ) {
             setState(() {
                   appState.hoverChunk = t.getTitle();
@@ -230,8 +228,6 @@ class _CEEquityState extends State<CEEquityFrame> {
                   appState.updateEquityView = true;
                });
          }
-         Widget cat      = makeClickTableText( appState, t.getTitle(), _setTitle, _unsetTitle, width, height - 15, false, 1, mux: (depth+1) * .5 );
-
          
          Widget amountW  = makeTableText( appState, addCommas( t.getAmount() ), numWidth-warnWidth, height, false, 1 );
          bool kidsBigger = t.getChildrenAmount() > t.getAmount();
@@ -244,6 +240,15 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget drag  = ReorderableDragStartListener( key: Key( "drag " + treeIndex.toString()),
                                                       index: viewIndex,
                                                       child: makeToolTip( Icon( Icons.drag_handle ), "Drag to relocate", wait: true ));
+         
+         Widget c        = Container( width: numWidth, height: 1 );
+         Widget oops     = makeToolTip(Icon( Icons.warning_amber, color: Colors.red.shade300 ), "Children allocations exceed parent's." );
+         Widget warn     = kidsBigger ? Wrap( spacing: 0, children: [amountW, oops]) : amountW;
+         Widget amtCont  = Container( width: numWidth, height: height - 15, child: warn );
+
+         List<Widget> tileKids = [ back, drag, forward ];
+         List<Widget> none = [ c  ];
+         tileKids = treeIndex == 0 ? none : tileKids;
          
          Widget catEditable = GestureDetector(
             onTap: () async 
@@ -263,20 +268,13 @@ class _CEEquityState extends State<CEEquityFrame> {
                editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + treeIndex.toString() ),
-            child: cat
+            child: makeClickTableText( appState, t.getTitle(), _setTitle, _unsetTitle, width, height - 15, false, 1, mux: (depth+1) * .5 )
             );
 
-         Widget c        = Container( width: numWidth, height: 1 );
-         Widget catCont  = Container( width: width, height: height - 15, child: catEditable );
-         Widget oops     = makeToolTip(Icon( Icons.warning_amber, color: Colors.red.shade300 ), "Children allocations exceed parent's." );
-         Widget warn     = kidsBigger ? Wrap( spacing: 0, children: [amountW, oops]) : amountW;
-         Widget amtCont  = Container( width: numWidth, height: height - 15, child: warn );
+         // print( "Made GD with key: " + 'catEditable ' + treeIndex.toString() );
 
-         List<Widget> tileKids = [ back, drag, forward ];
-         List<Widget> none = [ c  ];
-         tileKids = treeIndex == 0 ? none : tileKids;
-         
-         nodes.add( [ catCont, hostProj, amtCont, gapPad, Wrap( spacing: 0, children: tileKids ) ] );
+         nodes.add( [ Container( width: width, child: Wrap( spacing: 0, children: [ catEditable, Container( width: numWidth, height: 1 ) ])),
+                      hostProj, amtCont, gapPad, Wrap( spacing: 0, children: tileKids ) ] );
       }
       
       return nodes;
