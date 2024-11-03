@@ -175,7 +175,7 @@ class EquityPlan {
       // print( "XXX " + categories.toString() );
       print( categories[oldIndex] );
       
-      print( "target, parent, next indices: " + oldIndex.toString() + " " + (newIndex-1).toString() + " " + newIndex.toString() );
+      // print( "target, parent, next indices: " + oldIndex.toString() + " " + (newIndex-1).toString() + " " + newIndex.toString() );
       if( target != null )     { print( "target " + target.getTitle() ); }
       if( destParent != null ) { print( "parent " + destParent.getTitle() ); }
       if( destNext != null )   { print( "next "   + destNext.getTitle() ); }

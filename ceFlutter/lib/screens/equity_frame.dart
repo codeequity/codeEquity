@@ -145,7 +145,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    void _saveAdd( EquityTree tot, TextEditingController title, TextEditingController amount, TextEditingController hproj) {
       final width = frameMinWidth - 2*appState.FAT_PAD;
 
-      print( "SAVE ADD " + title.text + " " + title.value.toString() );
+      // print( "SAVE ADD " + title.text + " " + title.value.toString() );
 
       String tval = title.text == "" ? "NOT YET NAMED" : title.text;
       String hval = hproj.text == "" ? "---" : hproj.text;
@@ -249,7 +249,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          List<Widget> tileKids = [ back, drag, forward ];
          List<Widget> none = [ c  ];
          tileKids = treeIndex == 0 ? none : tileKids;
-         
+
          Widget catEditable = GestureDetector(
             onTap: () async 
             {
@@ -272,7 +272,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             );
 
          // print( "Made GD with key: " + 'catEditable ' + treeIndex.toString() );
-
+         
          nodes.add( [ Container( width: width, child: Wrap( spacing: 0, children: [ catEditable, Container( width: numWidth, height: 1 ) ])),
                       hostProj, amtCont, gapPad, Wrap( spacing: 0, children: tileKids ) ] );
       }
@@ -446,7 +446,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          epIndexNew = epSize;
       }
 
-      print( "Moved from (treeIndex)" + epIndexOld.toString() + " to " + epIndexNew.toString() );
+      // print( "Moved from (treeIndex)" + epIndexOld.toString() + " to " + epIndexNew.toString() );
       appState.equityPlan!.move( epIndexOld, epIndexNew, appState.equityTree! );
 
 

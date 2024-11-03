@@ -209,7 +209,7 @@ mixin treeUtils {
            dpIndex = newParent!.getLeaves().indexOf( destNext ); // go before destNext
         }
 
-        print( "Pre-repair index into children of new parent: " + dpIndex.toString() + destPrev.parent.getTitle() );
+        // print( "Pre-repair index into children of new parent: " + dpIndex.toString() + destPrev.parent.getTitle() );
         // If moving within same node, dpIndex can exceed leaf length.  repair.
         // also, if was already in front of destNext, index will overshoot by 1
         if( self.parent == newParent ) {
@@ -232,7 +232,6 @@ mixin treeUtils {
         List<String> path = getPath( destPrev.parent, self.getTitle() );
         if( path.length > 0 ) { path.removeLast(); }
         if( path.contains( self.getTitle() )) {
-           print( "oi??  " + self.getTitle() + " " + path.toString() );
            print( "Can not become a child of your progeny.  Reincarnation is NYI.  No-op." );
            return;
         }

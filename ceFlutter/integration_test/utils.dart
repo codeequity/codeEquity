@@ -14,6 +14,7 @@ import 'package:ceFlutter/main.dart';
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
+// import 'package:http/http.dart' as http;  // XXX makeNote   
 
 const TESTER_NAME   = "ariCETester";
 const TESTER2_NAME  = "connieCE";     // READ ONLY account for these tests
@@ -29,6 +30,58 @@ const TESTER_PASSWD = "passWD123";
 //       final Finder loginButton = find.byWidgetPredicate((widget) => widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Login" ) ?? false ));
 //       ? indicates text could be null (otherwise contains compile-fails).
 //      ?? gives a default value if contains is null (else boolean compile-fails).
+
+
+
+
+
+/*
+// XXX XXX DANGER
+// Integration tests are cool.  As of 11/24:
+// if you drive them with: -d web-server --browser-name chrome
+//    while you do get a single window (which could mean no locking, 1/2 the hits to GH and AWS), this mode does not provide
+//    a stderr/stdout connection of any sort to home base.  This makes debugging, or even simple verification very challenging.
+// if you drive them with: -d chrome
+//    at least the driver window has i/o, so you can see most problems.
+// However, in some cases, the driven window is having issues.  You only get a tiny part of the stack, errors can be async, and there is no i/o.
+// Nightmare to debug.
+// This function is a desperation bid, uses aws as the 'debug console'.  Use as last resort, only in function in question.
+// NOTE, currently this overwrites constantly.  check log.
+Future<void> makeNote( String msg ) async {
+   var note = {};
+   note["ceProjectId"] = "DEBUGGING";
+   note["targetType"]  = "DEBUGGING";
+   note["targetId"]    = msg;
+   note["lastMod"]     = DateTime.now();
+   note["allocations"] = [];
+   String postData  = '{ "Endpoint": "PutPSum", "NewPSum": $note }';
+   await updateDynamoMN( postData, "PutPSum" );
+}
+
+// XXX XXX DANGER
+// Temporary support for integration testing.  No access to context/container, so required values hard-coded here.
+// XXX SHOULD NOT CHECK IN with hard-coded vals present.  Check GAT.
+// XXX Untested.
+Future<http.Response> updateDynamoMN( postData, shortName ) async {
+
+   final apiBasePath = "";
+   final idToken     = "";
+   
+   final gatewayURL = Uri.parse( apiBasePath + "/find" );
+
+   final response =
+      await http.post(
+         gatewayURL,
+         headers: {HttpHeaders.authorizationHeader: idToken},
+         body: postData
+         );
+   
+   // No reauth.  
+   if( response.statusCode != 201 ) { assert( false ); }
+   
+   return response;
+}
+*/
 
 
 Future<bool> restart( WidgetTester tester ) async {

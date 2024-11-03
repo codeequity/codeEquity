@@ -1,7 +1,7 @@
 @Timeout(Duration(minutes: 25))
 
 import 'dart:convert';  // json encode/decode
-import 'dart:async';   // timer
+import 'dart:async';    // timer
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
@@ -156,7 +156,7 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
    var equityRow = generatedEquityRow.evaluate().single.widget as Row;
    var eqs   = equityRow.children as List;
    int depth = 0;
-   
+
    List<String> aRow = [];
    for( final elt in eqs ) {
       // e.g. amounts without warning
@@ -176,7 +176,7 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
       if( t != "" ) {
          aRow.add( t );
          depth = getDepthFromCat( elt );
-         print( "Got Cat, depth " + t + " " + depth.toString() );
+         // print( "Got Cat, depth " + t + " " + depth.toString() );
       }
 
       t = getAmtFromTiles( elt );
@@ -190,8 +190,10 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
 
 // XXX utils?
 // check gold image matches table.  min, max are onscreen order
-Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, int newDepth = -1, String newAmt = "-1"} ) async {
+Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, int newDepth = -1, String newAmt = "-1", int tries = 0} ) async {
 
+   bool retVal = true;
+   // print( "enter checkeq " + min.toString() + " " + max.toString() );
    for( int i = min; i <= max; i++ ) {
 
       // eqs is [leaf, amount, depth]
@@ -203,7 +205,7 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       // eqs_gold is const above, is a map to a list<str> with long title, then numbers.
       
       String agKey = eqs[0] + " " + (i+offset).toString();                 
-      print( "Got eqs " + eqs.toString() + " making agKey *" + agKey + "*");
+      // print( "Got eqs " + eqs.toString() + " making agKey *" + agKey + "*");
 
       List<String> agVals  = EQS_GOLD[ agKey ] ?? [];
 
@@ -216,13 +218,17 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
             agVals  = EQS_GOLD[ agKey ] ?? [];
          }
       }
-      print( "  Found Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() );
+      // print( "  Found Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() );
 
-      // XXX
-      if( agVals.length <= 0 ) {
+      // Attempt fix possible race condition
+      while( tries < 5 && agVals.length <= 0 ) {
+         print( "  ?? No agvals, try again.  Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() + " " + tries.toString() );
          await pumpSettle( tester, 5 );
-         print( "  Found?? Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() );
+         tries += 1;
+         retVal = await checkEqs( tester, min, max, offset: offset, newDepth: newDepth, newAmt: newAmt, tries: tries );
+         return retVal;
       }
+      if( tries >= 5 ) { return false; }
       assert( agVals.length > 0 );
       
       // depth is # commas, i.e. Soft Cont is depth 1 making TOT depth 0
@@ -233,11 +239,12 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       expect( eqs[2], amt );
 
    }
-   return true;
+   // print( "Leaving checkeq "  + min.toString() + " " + max.toString() );
+   return retVal;
 }
 
 Future<void> deleteEq ( WidgetTester tester ) async {
-   print( "delete Testing, looking for catEditable 1" );
+   // print( "delete Testing, looking for catEditable 1" );
    final Finder cat = find.byKey( Key( 'catEditable 1' ));
    expect( cat, findsOneWidget );
    // await tester.ensureVisible( cat );
@@ -301,7 +308,7 @@ Future<bool> rebuildEquityTable ( WidgetTester tester ) async {
       if( eqGD.child == null || ( eqGD.child is Container )) { break; }
       
       String title = getFromMouseRegion( eqGD.child as MouseRegion );
-      print( "Deleting " + title );
+      print( "Deleting (in test) " + title );
       await deleteEq( tester ); 
    }
    await pumpSettle( tester, 3 );
@@ -321,11 +328,22 @@ Future<bool> drag( WidgetTester tester, int index, int spots ) async {
    String keyName         = "drag " + index.toString(); 
    final Finder ceFlutter = find.byKey( Key( keyName ) );
 
-   // XXX This depends on size of window being controlled by flutter driver (integration test fwk).  Fix this,
-   //     then fix the browser-dimension when launch test, then don't touch
-   double fudge = (index == 6 && spots >= 2) ? 35.0 : 0.0;
-   double dy = 35.0 * spots + fudge;
-   print( "Drag " + index.toString() + " " + spots.toString() + " dy: " + dy.toString() );
+
+   // Find gap size
+   final Finder f1 = find.byKey( Key( "drag 1" ) );
+   final Finder f2 = find.byKey( Key( "drag 2" ) );
+   RenderBox? box1 = f1.evaluate().single.renderObject! as RenderBox;
+   RenderBox? box2 = f2.evaluate().single.renderObject! as RenderBox;
+   assert( box1 != null && box2 != null );
+   final p1 = box1!.localToGlobal(Offset.zero);
+   final p2 = box2!.localToGlobal(Offset.zero);
+   final dragGap = p2.dy - p1.dy;
+   
+   // XXX This depends on size of window being controlled by flutter driver (integration test fwk).
+   //     Mysteriously, renderbox does not seem to get offset correctly with different window sizes.  Why is fudge needed???
+   double fudge = (index == 6 && spots >= 2) ? dragGap : 0.0;
+   double dy = dragGap * spots + fudge;
+   print( "Drag " + index.toString() + " " + spots.toString() + " dy: " + dy.toString() + " gap: " + dragGap.toString());
    
    await tester.drag(ceFlutter, Offset(0.0, dy )); 
    await tester.pumpAndSettle();
@@ -651,7 +669,7 @@ Future<bool> validateEditCancel( tester ) async {
    print( "\nDrag edit cancel" );
    
    expect( await checkEqs( tester, 1, 1  ), true );  // bus ops
-
+         
    // Cancel an edit
    final Finder cat = find.byKey( Key( 'catEditable 1' ));
    expect( cat, findsOneWidget );
@@ -662,6 +680,12 @@ Future<bool> validateEditCancel( tester ) async {
    expect( cancelButton, findsOneWidget );
    await tester.tap( cancelButton );
    await tester.pumpAndSettle();
+
+   // XXX
+   // This check fails on driven window, probably because subsequent rebuild is
+   // deleting entries.  tried to wait between the two tests, does not seem to help.  Mysterious.
+   // The failure in the driven window makes this very hard to debug.  Also, applying a lock
+   // here as with what happens in testing with AWS does not make sense.
    expect( await checkEqs( tester, 1, 1 ), true );  // bus ops
 
    // This time, edit, save
@@ -685,6 +709,7 @@ Future<bool> validateEditCancel( tester ) async {
    expect( eqs[2], "1,000,000" );
    expect( eqs[3], "1" );
 
+   print( "Exit Drag edit cancel" );
    return true;
 }
 
