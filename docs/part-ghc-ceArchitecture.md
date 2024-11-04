@@ -55,4 +55,3 @@ with a user pool.  Signed requests are sent to AWS Lambda functions via AWS Gate
 Their primary function is saving and retrieving data from a collection of AWS DynamoDB tables.
 
 All communication with the AWS Backend is encoded as JSON REST data.
-

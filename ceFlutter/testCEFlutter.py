@@ -137,8 +137,12 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     # Test by cronjob.. why?  this will drive 2 windows in by-hand case
     # browser dim controls the window being driven by tester.  The height does not match physical screen height, but is stable.
-    cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     # cmd = "flutter drive -d web-server --browser-name chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+
+    cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    # XXXX painful
+    if( testName == "equity_test.dart" ) : 
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1000 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if optimized :
         cmd = cmd + " --release"

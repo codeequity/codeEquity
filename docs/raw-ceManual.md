@@ -113,7 +113,9 @@ modified in any way by CE Server.
 
 Next, browse to www.codeequity.net, and sign up for CodeEquity.  Part of this process
 involves reading and signing the equity agreement that all contributors to your venture
-will sign, ensuring their fair share of provisional equity.
+will sign, ensuring their fair share of provisional equity.  The equity agreement is brief and
+easy to understand.   A key goal of the agreement is to legally equate founder equity with contributor equity both during
+and after a venture becomes a legal entity.
 
 The third and final step in the early thinking for any CodeEquity project is, well, thinking about the
 equity.  *How much total (provisional) equity will there be in the venture?*  *How much should each
@@ -130,6 +132,8 @@ time to convert PEQs into equity in a legal entity.  That percentage will develo
 So, your early choices here **are useful to start communications with contributors**, but beyond that,
 they are **neither major nor permanent**.
 
+(XXX revisit XXX) graphic equity structure
+
 The default equity structure authorizes 7 - 10 million shares of provisional equity (provisional stock) up front for
 software development, which is 30-50% of the overall provisional equity in the venture.  The default
 plan assumes three person-years of work for a typical small software venture to get the code in place to
@@ -137,113 +141,50 @@ make a run for it.  This works out to be, roughly:
    * 1,000 PEQs for tiny tasks, of maybe an hour or so,
    * 10,000 PEQs for one person-day of work,
    * 50,000 PEQs for one person-week of work.  
+The graphic shows 7 million PEQs have been authorized (or allocated)
+for software contributions, 3 million PEQs for business operations, and 5 million PEQs that are as of yet unallocated.
+Unallocated` entry is a handy way to inform
+CodeEquity that all unallocated equity can (for now) be summarized as a sibling of the software and bus-ops
+entries.  If you already have an equity plan in place, you will enter it here.  If not, use the default, and modify the equity structure
+as your venture fleshes out.
 
 ### Creating a CodeEquity Project Structure from Scratch
 
-A CodeEquity project can be converted into from an existing GitHub repository, or created from
+A CodeEquity project can be converted from an existing GitHub repository, or created from
 scratch.  This first example follows Connie creating a CodeEquity Project as a completely new
 project.  Connie is already a contributor to several repositories owned by other people and organizations, and is the
 owner of several others.  Connie is planning to start exploring a brewery
 simulation game as a CodeEquity Project, and Venture.  Connie has already created the GarlicBeer public
-repository, the GarlicBeer organization that owns it, and has a few files therein.  Connie has not yet started a GitHub project board.
+repository, the GarlicBeer organization that owns it, and has a few files therein.  Connie has not yet created a GitHub project board.
 
 Connie starts by [signing up](#common-lifecycle-examples) for CodeEquity, following the default
-installation for public repositories.  Connie also sticks with the default equity structure proposed
+installation for public repositories.  With two exceptions, Connie also sticks with the default equity structure proposed
 by the CodeEquity website, comfortable that as the project evolves, so can the equity structure for
-GarlicBeer.
+GarlicBeer.  The exceptions are that Connie has decided to further break Software Contributions down into front end
+and back end work.  Connie's equity structure is now:
+(XXX revisit XXX) graphic
 
 <br>
 
 #### GarlicBeer Project Structure
 
-A CodeEquity project can work with any collection of user-specified columns in GitHub projects.  Once
+A CodeEquity project can work with any collection of user-specified projects and columns in GitHub.  Once
 you start creating and manipulating PEQ issues in your project board, CE Server will create the two
-reserved columns **Pending PEQ Approval** and **Accrued** as needed.  CodeEquity projects also
-support a hierarchical project structure, which can make organization and reporting more cohesive.
+reserved columns **Pending PEQ Approval** and **Accrued** as needed.  Each GitHub project fits under one
+equity heading in the equity structure.  Any level of hierarchy in your equity structure can be populated
+by zero or more GitHub projects.  PEQ collection and reporting adheres to the hierarchy presented by in the
+equity structure.
+
+The GarlicBeer repo so far has no issues, and no related project boards.  Connie decides to create
+a handful of GitHub projects to help organize tasks in the GarlicBeer CodeEquity project.  
+
+Connie creates one GitHub project in the GarlicBeer repo for `Front End`, one for 'Back End', and a third
+for `Business Operations`.  GitHub projects are completely customizable, and start with no columns or issues.  
+While not a requirement, CodeEquity recommends choosing columns in these projects that support the natural
+flow of an issue in a CodeEquity project: planned, in progress, pending PEQ approval, and accrued.
+Connie decides to proceed with this recommendation, ending up with the following projects:
+
 (XXX revisit XXX)
-
-The GarlicBeer repo so far has no issues, and no related project boards.  Connie decides to adopt 
-CodeEquity's recommended hierarchical layout as a starting point.  In this approach, a user creates
-several GitHub projects to help organize tasks in the GarlicBeer CodeEquity project.  The top level
-project is named `Modules` (see [config.js](webServer/config.js) to modify names) by default.  The
-child projects are named after the cards in the columns of the `Modules` project.  In CE Flutter,
-PEQs for contributors and the overall venture can be 
-grouped and summarized by columns in the `Modules` project.
-
-Connie creates one column in `Modules` for `Software Contributions`, one for `Business
-Operations`, and a third for `Unallocated`.  The `Unallocated` column is a handy way to inform
-CodeEquity that all unallocated equity should be summarized as a sibling of the software and bus-ops
-columns.  
-
-(XXX revisit XXX) images have master not modules
-
-<p float="left">
-  <img src="images/garlicBeer0.png" />
-</p>
-
-In the **Software Contributions** column for `Modules`, Connie decides to start with very broad
-categories, each of which will be a GitHub project in its own right: *Front End*, *Back End* and another
-*Unallocated* card that serves as a placeholder for provisional equity for other work in **Software
-Contributions** down
-the road.  Unallocated cards in `Modules` should not be matched with a related project.
-As a side note, remember that CE Server enforces a 1:1 mapping between issues and cards.  As a
-consequence, each of these cards are based on actual issues that are members of the `Modules`
-project. 
-
-Connie starts by creating an allocation label in GitHub's label interface.  Connie gives the new label
-the name "2M AllocPEQ" and creates the label.  When creating labels, CE Server looks for
-any label name matching a digit followed by "AllocPEQ" or "PEQ", then reworks the label into a proper CodeEquity
-label for future use.  CE Server accepts numbers with or without commas, and "k" or "M" shortcuts to
-represent numbers.  For example these are all accepted: "1,000 PEQ", or "1000 PEQ", or "1k PEQ".
-Connie then creates a new *Back End* issue, assignes the new label, and adds the issue to
-the **Software Contributions** column of the `Modules` project.  
-
-When building the label, Connie types: 
-
-(XXX revisit XXX) now wrong
-<p float="left">
-  <img src="images/garlicBeer1Pre.png" />
-</p>
-
-
-Then Connie creates the new issue: 
-
-(XXX revisit XXX) now wrong
-<p float="left">
-  <img src="images/garlicBeer1Pre.png" />
-</p>
-
-which results in: 
-
-(XXX revisit XXX) now wrong
-<p float="left">
-  <img src="images/garlicBeer1Post.png" />
-</p>
-
-If you are familar with GitHub, you will notice that the result is a card linked to an open issue with
-the name `Back End`, and a label of `2M AllocPEQ`.  Using CodeEquity's default suggestion of
-`10,000 PEQ` for one person-day of work, this means Connie has made a rough allocation of 10
-person-months of work for the back end.  If this turns out to be wrong later (which is almost a
-certainty), that allocation can be adjusted in either direction with no bad consequences.
-
-Connie adds a few more high-level allocations in `Modules`, resulting in: 
-
-<p float="left">
-  <img src="images/garlicBeer2.png" />
-</p>
-
-At this point, Connie is done with high level allocations.  Connie's rough estimate is 
-that the front end and the back end will each need 2 million PEQs to complete, and has added a
-buffer of another 2 million PEQs for whatever comes up under **Software Contributions**.  Similarly,
-Connie has estimated a million PEQs for **Business Operations**.
-
-The `Modules` project is now done for now, the child projects are next.  There are two additional projects to
-create, one for each card in `Modules` that is not an *Unallocated* card, namely *Front End* and
-*Back End*.  While not a requirement, CodeEquity recommends choosing columns in these child projects that support the natural
-flow of an issue in a CodeEquity project: planned, in progress, pending PEQ approval, and accrued
-(or approved).  Connie decides to proceed with this recommendation, ending up with the following
-projects:
-
 <p float="left">
   <img src="images/garlicBeerProjects.png" />
 </p>
@@ -253,6 +194,35 @@ and the following column layout in each child project:
 <p float="left">
   <img src="images/garlicBeerChild.png" />
 </p>
+
+
+Connie then associates each GitHub project with the corresponding equity line in
+CE MD.  This association informs CodeEquity how the GitHub project views fit into Connie's overall equity plans for GarlicBeer.
+(XXX revisit XXX) 2 graphics.
+
+
+(XXX revisit XXX) images have master/modules
+
+<p float="left">
+  <img src="images/garlicBeer0.png" />
+</p>
+
+While on the equity screen in CE MD, Connie decides to set initial allocations for each large category of work as well.
+Connie starts by entering an allocation of 2 million PEQs for the `Front End` project on CE MD's equity screen.  
+Using CodeEquity's default suggestion of
+`10,000 PEQ` for one person-day of work, this means Connie has made a rough allocation of 10
+person-months of work for the front end.  If this turns out to be wrong later (which is almost a
+certainty), that allocation can be adjusted in either direction with no bad consequences.
+
+Connie adds a few more high-level allocations in CE MD resulting in: 
+
+(XXX revisit XXX) equity screen
+
+At this point, Connie is done with high level allocations.  Connie's rough estimate is 
+that the front end and the back end will each need 2 million PEQs to complete, and has added a
+buffer of another 3 million PEQs for whatever comes up under **Software Contributions**.  Similarly,
+Connie has estimated a million PEQs for **Business Operations**.  This completes Connie's initial equity
+structure, at least as far as it is currently known.
 
 <br>
 
@@ -369,10 +339,10 @@ cards in repositories that otherwise have no connection to the CodeEquity Projec
 After conversion, BookShare is now a valid CodeEquity project.  In the related GitHub project
 BookShareFE, all pre-existing columns are preserved, as
 well as all pre-existing cards, issues and labels.  This will be true no matter the related
-projects, althgou CE Server may create extra issues and cards
+projects, although CE Server may create extra issues and cards
 to preserve the 1:1 mapping.  The reserved columns **Pending PEQ Approval**
-and **Accrued** will be added as soon as a PEQ issue is closed.  The reserved PEQ and AllocPeq
-labels will be added as soon as a PEQ issue, or an allocation are added to the project.  From
+and **Accrued** will be added as soon as a PEQ issue is closed.  The reserved PEQ
+labels will be added as soon as a PEQ issue.  From
 this point on, all changes in BookShare maintain it's valid status as a CodeEquity Project.
 
 Jessie's BookShareFE GitHub project now looks identical to how it looked before becoming 
@@ -1341,4 +1311,3 @@ unplanned work.  If you want to have an assignee do the planning, then use a sta
 ## Developer
 ## Founder
 ## Collaborator
-

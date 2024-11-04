@@ -1,7 +1,7 @@
 ## CodeEquity Key Concepts
 
 Equity in a CodeEquity project is earned by making contributions to that project.  In a typical
-company, equity is granted once a year to a person privately based on the subjective
+company, equity is granted once a year to a person, privately, based on the subjective
 evaluation of that person's boss.  In contrast, equity in a CodeEquity project can be earned at any point during
 the year.  The equity value of any contribution is known to all, up front, and the accrual of equity
 is both objective and public.
@@ -79,4 +79,3 @@ CodeEquity ensures that once PEQs have accrued (i.e. provisional equity has
 been earned by a contributor), all characteristics of those PEQs are immutable.  For example, if
 Alex earned 1000 PEQs for implementing a new feature for BookShare, they can not be taken away or
 changed down the road.
-
