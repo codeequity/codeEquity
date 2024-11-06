@@ -209,7 +209,7 @@ class Node extends StatelessWidget implements Tree {
         
      if( header ) {
         alloc   = "Allocation";
-        plan    = "Planned";
+        plan    = "Planned";    // XXX Tie these to app state, but be ready to chop to size
         pending = "Pending";
         accrue  = "Accrued";
         surplus = "Surplus";

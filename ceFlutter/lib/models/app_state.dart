@@ -56,6 +56,7 @@ class AppState {
    late Linkage?          myHostLinks;           // Current project/column disposition per ceProject
    late EquityPlan?       equityPlan;            // Equity plan for the selectedCEProject
    late bool peqUpdated;
+   late String            funny;                 // placeholder in activity zone.
 
    late List<HostAccount> myHostAccounts;   
    late bool hostUpdated;
@@ -80,6 +81,7 @@ class AppState {
    // UI constants
    final double BASE_TXT_HEIGHT = 20.0;     // 14pt font is 19.2 px height
    final double CELL_HEIGHT     = 50.0;
+   final int    MAX_SCROLL_DEPTH = 30;
 
    final double TINY_PAD        =  6.0;     // minimal padding for text
    final double MID_PAD         =  9.0;     // robust padding for text
@@ -91,7 +93,15 @@ class AppState {
    final BACKGROUND             = Colors.grey[50];    // XXX
 
    final String ALLOC_USER      = "ilkjdiabaer alloc";    // for use in saving allocations for detail pages
-   final String UNASSIGN_USER   = "ksd98glkjwa unassign"; // for use in saving unassigned for detail pages
+   final String UNASSIGN_USER   = "ksd98glkjwa unassign"; // internal use in saving unassigned for detail pages
+
+   // hesitant to use js_interop to connect to ceServer internal vars.  Repeat a small handful here
+   // XXX a startup script would resolve this duplication
+   final UNCLAIMED = "UnClaimed";             // set this based on ceServer's config.js
+   final PEND      = "Pending PEQ Approval";  // set this based on ceServer's config.js
+   final ACCRUED   = "Accrued";               // set this based on ceServer's config.js
+   final UNASSIGN  = "Unassigned";            // peq assignee not set.  set this based on ceServer's config.js
+   
    
    initAppData() {
       loaded = false;
@@ -102,6 +112,7 @@ class AppState {
       myPEQActions = [];
       myPEQSummary = null;
       peqUpdated   = false;
+      funny        = "";
       equityPlan   = null;
 
       myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user

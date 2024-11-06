@@ -24,6 +24,17 @@ import 'package:ceFlutter/utils.dart';
 
 enum PActVerb   { confirm, propose, reject }
 enum PActAction { add, delete, notice, accrue, relocate, change }        // (add, delete, update), (grant, accrue), relocate, change
+Map<String,String> PActNotes = Map.unmodifiable( {
+      'addAssignee': "add assignee",
+      'transfer':    "Transferred",
+      'recreate':    "recreate",
+      'colRename':   "Column rename",
+      'transOut':    "Transfered out",  // XXX erm spelling
+      'projRename':  "Project rename", 
+      'remAssignee': "remove assignee", 
+      'titRename':   "Change title", 
+      'pvUpdate':    "peq val update"
+   });
 
 class PEQAction {
    final String  id;

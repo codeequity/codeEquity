@@ -170,6 +170,8 @@ class _CEEquityState extends State<CEEquityFrame> {
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
    List<List<Widget>> _getTiles( context, width ) {
+      final  numWidth = width / 2.2; 
+
       assert( appState.equityTree != null );
       List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
       
@@ -212,9 +214,8 @@ class _CEEquityState extends State<CEEquityFrame> {
          if( t is EquityNode )      { depth = (t as EquityNode).getPath( t.getParent(), t.getTitle() ).length + 1; }
          else if( t is EquityLeaf ) { depth = (t as EquityLeaf).getPath( t.getParent(), t.getTitle() ).length + 1; }
          
-         final  numWidth = width / 2.2;      // XXX formalize
-         final  warnWidth = 50;              // XXX formalize
-         final  height   = appState!.CELL_HEIGHT;
+         final  warnWidth = appState!.CELL_HEIGHT;
+         final  height    = appState!.CELL_HEIGHT;
 
          void _setTitle( PointerEvent event ) {
             setState(() {
@@ -345,7 +346,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    List<List<Widget>> _getCategoryWidgets( context ) {
       // print( "Getting equity table widgets" );
       final width = frameMinWidth - 2*appState.FAT_PAD;        
-      final  numWidth = width / 2.5;
+      final numWidth = width / 2.5;
          
       if( appState.equityPlan != null && appState.equityPlan!.ceProjectId != appState.selectedCEProject ) {
          print( "Error.  Equity plan is not for selected project." );
@@ -406,11 +407,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          // Summaries
          assert( appState.equityTree != null );
          List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
-         int sumW = 0;
-         int sumO = 0;
          int sumT = 0;
-         // XXX formalize
-         // XXX hmm.. not sure that other sub totals are worthy.  more confusion than not.
          for( var t in treeList ) {
             if( t.getParent() != null && t.getParent()!.getIsTOT() ) { sumT += t.getAmount(); }
          }
@@ -463,8 +460,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       categories.addAll( _getCategoryWidgets( context ) );
       
       // print( "getCategories, count: " + categories.length.toString() );
-      var categoryCount = min( categories.length, 30 );                  // XXX formalize
-      var categoryWidth = categories.length == 0 ? 30 : categories[0].length;  // XXX formalize
+      var categoryCount = min( categories.length, appState.MAX_SCROLL_DEPTH );
+      var categoryWidth = categories.length == 0 ? appState.MAX_SCROLL_DEPTH : categories[0].length; 
 
       final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
       final svWidth  = maxPaneWidth;

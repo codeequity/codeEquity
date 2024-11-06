@@ -45,7 +45,8 @@ mixin treeUtils {
       if( parent != null ) {
          res = parent!.getPath( parent.parent, parent.getTitle() ); 
       }
-      if( title != "Category" ) {  res.add( title ); }   // XXX formalize
+      // Category is used to denote Top of Tree.  This is not user-facing.  Should NOT use getIsTOT here, as we are not checking self.
+      if( title != "Category" ) {  res.add( title ); }   
       return res;
    }
      
