@@ -189,8 +189,8 @@ class _CEDetailState extends State<CEDetailPage> {
       if( appState.selectedUser == appState.ALLOC_USER ) {
          selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + [p.hostIssueTitle], category )).toList();
       }
-      else if(  appState.selectedUser == appState.UNASSIGN_USER ) { // XXX formalize
-         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + ["Unassigned"], category )).toList();
+      else if(  appState.selectedUser == appState.UNASSIGN_USER ) { 
+         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + [appState.UNASSIGN], category )).toList();
       }
       else {
          List<String> cat = category.sublist(0, category.length - 1 );

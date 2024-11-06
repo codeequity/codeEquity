@@ -41,32 +41,32 @@ const Map<String,List<String>> ALLOCS_GOLD =
             "ariCETester 9":       ["Category, Cross Proj, Cross Col, ariCETester", "0", "352", "0", "0", "---"],
             "builderCE 10":        ["Category, Cross Proj, Cross Col, builderCE",   "0", "352", "0", "0", "---"],
 
-      "Software Contributions Flut 11":  ["Category, Software Contributions", "11,000,000", "3,455", "1,354", "6,501", "10,988,690"],
+      "Software Contributions Flut 11":  ["Category, Software Contributions Flut", "11,000,000", "3,455", "1,354", "6,501", "10,988,690"],
       
-      "Data Security Flut 12":      ["Category, Software Contributions, Data Security Flut",                               "1,000,000", "500", "250", "4,000", "995,250"],
-         "Accrued 13":              ["Category, Software Contributions, Data Security Flut, Accrued",                      "0", "0", "0", "4,000", "---"],
-            "ariCETester 14":       ["Category, Software Contributions, Data Security Flut, Accrued, ariCETester",         "0", "0", "0", "3,000", "---"],
-            "builderCE 15":         ["Category, Software Contributions, Data Security Flut, Accrued, builderCE",           "0", "0", "0", "1,000", "---"],
-         "Pending PEQ Approval 16": ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval",         "0", "0", "250", "0", "---"],
-            "ariCETester 17":       ["Category, Software Contributions, Data Security Flut, Pending PEQ Approval, ariCETester", "0", "0", "250", "0", "---"],
-         "Planned 18":              ["Category, Software Contributions, Data Security Flut, Planned",                      "0", "500", "0", "0", "---"],
-            "builderCE 19":         ["Category, Software Contributions, Data Security Flut, Planned, builderCE",           "0", "500", "0", "0", "---"],
+      "Data Security Flut 12":      ["Category, Software Contributions Flut, Data Security Flut",                               "1,000,000", "500", "250", "4,000", "995,250"],
+         "Accrued 13":              ["Category, Software Contributions Flut, Data Security Flut, Accrued",                      "0", "0", "0", "4,000", "---"],
+            "ariCETester 14":       ["Category, Software Contributions Flut, Data Security Flut, Accrued, ariCETester",         "0", "0", "0", "3,000", "---"],
+            "builderCE 15":         ["Category, Software Contributions Flut, Data Security Flut, Accrued, builderCE",           "0", "0", "0", "1,000", "---"],
+         "Pending PEQ Approval 16": ["Category, Software Contributions Flut, Data Security Flut, Pending PEQ Approval",         "0", "0", "250", "0", "---"],
+            "ariCETester 17":       ["Category, Software Contributions Flut, Data Security Flut, Pending PEQ Approval, ariCETester", "0", "0", "250", "0", "---"],
+         "Planned 18":              ["Category, Software Contributions Flut, Data Security Flut, Planned",                      "0", "500", "0", "0", "---"],
+            "builderCE 19":         ["Category, Software Contributions Flut, Data Security Flut, Planned, builderCE",           "0", "500", "0", "0", "---"],
 
-      "Github Operations Flut 20":  ["Category, Software Contributions, Github Operations Flut",                        "1,000,000", "2,955", "1,104", "2,501", "993,440"],
-         "Accrued 21":              ["Category, Software Contributions, Github Operations Flut, Accrued",               "0", "0", "0", "2,501", "---"],
-            "ariCETester 22":       ["Category, Software Contributions, Github Operations Flut, Accrued, ariCETester",  "0", "0", "0", "2,000", "---"],
-            "builderCE 23":         ["Category, Software Contributions, Github Operations Flut, Accrued, builderCE",    "0", "0", "0", "501", "---"],
-         "In Progress 24":          ["Category, Software Contributions, Github Operations Flut, In Progress",           "0", "500", "0", "0", "---"],
-            "builderCE 25":         ["Category, Software Contributions, Github Operations Flut, In Progress, builderCE", "0", "500", "0", "0", "---"],
-         "Pending PEQ Approval 26": ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval",  "0", "0", "1,104", "0", "---"],
-            "ariCETester 27":       ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, ariCETester", "0", "0", "552", "0", "---"],
-            "builderCE 28":         ["Category, Software Contributions, Github Operations Flut, Pending PEQ Approval, builderCE",   "0", "0", "552", "0", "---"],
-         "Planned 29":              ["Category, Software Contributions, Github Operations Flut, Planned",               "0",  "1,751", "0", "0", "---"],
-            "ariCETester 30":       ["Category, Software Contributions, Github Operations Flut, Planned, ariCETester",  "0", "250", "0", "0", "---"],
-            "Unassigned 31":        ["Category, Software Contributions, Github Operations Flut, Planned, Unassigned",   "0", "1,501", "0", "0", "---"],
-         "Stripes 32":              ["Category, Software Contributions, Github Operations Flut, Stripes",               "0", "704", "0", "0", "---"],
-            "ariCETester 33":       ["Category, Software Contributions, Github Operations Flut, Stripes, ariCETester",  "0", "352", "0", "0", "---"],
-            "builderCE 34":         ["Category, Software Contributions, Github Operations Flut, Stripes, builderCE",    "0", "352", "0", "0", "---"],
+      "Github Operations Flut 20":  ["Category, Software Contributions Flut, Github Operations Flut",                        "1,000,000", "2,955", "1,104", "2,501", "993,440"],
+         "Accrued 21":              ["Category, Software Contributions Flut, Github Operations Flut, Accrued",               "0", "0", "0", "2,501", "---"],
+            "ariCETester 22":       ["Category, Software Contributions Flut, Github Operations Flut, Accrued, ariCETester",  "0", "0", "0", "2,000", "---"],
+            "builderCE 23":         ["Category, Software Contributions Flut, Github Operations Flut, Accrued, builderCE",    "0", "0", "0", "501", "---"],
+         "In Progress 24":          ["Category, Software Contributions Flut, Github Operations Flut, In Progress",           "0", "500", "0", "0", "---"],
+            "builderCE 25":         ["Category, Software Contributions Flut, Github Operations Flut, In Progress, builderCE", "0", "500", "0", "0", "---"],
+         "Pending PEQ Approval 26": ["Category, Software Contributions Flut, Github Operations Flut, Pending PEQ Approval",  "0", "0", "1,104", "0", "---"],
+            "ariCETester 27":       ["Category, Software Contributions Flut, Github Operations Flut, Pending PEQ Approval, ariCETester", "0", "0", "552", "0", "---"],
+            "builderCE 28":         ["Category, Software Contributions Flut, Github Operations Flut, Pending PEQ Approval, builderCE",   "0", "0", "552", "0", "---"],
+         "Planned 29":              ["Category, Software Contributions Flut, Github Operations Flut, Planned",               "0",  "1,751", "0", "0", "---"],
+            "ariCETester 30":       ["Category, Software Contributions Flut, Github Operations Flut, Planned, ariCETester",  "0", "250", "0", "0", "---"],
+            "Unassigned 31":        ["Category, Software Contributions Flut, Github Operations Flut, Planned, Unassigned",   "0", "1,501", "0", "0", "---"],
+         "Stripes 32":              ["Category, Software Contributions Flut, Github Operations Flut, Stripes",               "0", "704", "0", "0", "---"],
+            "ariCETester 33":       ["Category, Software Contributions Flut, Github Operations Flut, Stripes, ariCETester",  "0", "352", "0", "0", "---"],
+            "builderCE 34":         ["Category, Software Contributions Flut, Github Operations Flut, Stripes, builderCE",    "0", "352", "0", "0", "---"],
 
       "UnClaimed 35":               ["Category, UnClaimed",                         "-1", "7,234", "0", "0", "-7234"],
          "UnClaimed 36":            ["Category, UnClaimed, UnClaimed",              "0", "7,234", "0", "0", "---"],
@@ -982,15 +982,12 @@ void main() {
    bool skip = false;
    bool detailSkip = true;
 
-   // override?  Run it.
-   var override      = const String.fromEnvironment('override');
-   var projectDetail = const String.fromEnvironment('overrideWithDetail');
+   // Pact tests (detail)?  from flutter drive call params
+   var projectDetail = const String.fromEnvironment('withDetail');
 
-   if( override == "True" )      { skip = false; }
    if( projectDetail == "True" ) { skip = true; detailSkip = false; }
 
-   print( "override: " + override.toString() + " projectDetail: " + projectDetail.toString() );
-   print( "Skip: " + skip.toString() + " detailSkip: " + detailSkip.toString() );
+   print( "projectDetail: " + projectDetail.toString() + " Skip: " + skip.toString() + " detailSkip: " + detailSkip.toString() );
    
    report( 'Project', group:true );
 

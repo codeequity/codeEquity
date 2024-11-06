@@ -97,10 +97,8 @@ class EquityPlan {
       
       for( int i = 0; i < treeList.length; i++ ) {
          EquityTree t = treeList[i];
-         if( t.getTitle() != "Category" ) { // XXX formalize
-            // if( t is EquityNode)      { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
-            // else if( t is EquityLeaf) { categories.add( t.getPath( t.parent, t.getTitle() ) ); }
-            
+         // if( t.getTitle() != "Category" ) { // Category denotes top of tree, which is not user-facing
+         if( !t.getIsTOT() ) { 
             categories.add( t.getPath( t.getParent(), t.getTitle()) );
             amounts.add( t.getAmount() );
             hostNames.add( t.getHostName() );
@@ -175,7 +173,7 @@ class EquityPlan {
       // print( "XXX " + categories.toString() );
       print( categories[oldIndex] );
       
-      print( "target, parent, next indices: " + oldIndex.toString() + " " + (newIndex-1).toString() + " " + newIndex.toString() );
+      // print( "target, parent, next indices: " + oldIndex.toString() + " " + (newIndex-1).toString() + " " + newIndex.toString() );
       if( target != null )     { print( "target " + target.getTitle() ); }
       if( destParent != null ) { print( "parent " + destParent.getTitle() ); }
       if( destNext != null )   { print( "next "   + destNext.getTitle() ); }

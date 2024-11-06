@@ -1,7 +1,7 @@
 @Timeout(Duration(minutes: 25))
 
 import 'dart:convert';  // json encode/decode
-import 'dart:async';   // timer
+import 'dart:async';    // timer
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
@@ -56,16 +56,21 @@ String getFromMakeTableText( Widget elt ) {
 
 String getFromMouseRegion( Widget elt ) {
    String retVal = "";
-   if( elt is Padding && (elt as Padding).child != null ) {
-      var cont = elt.child as Container;
-      if( cont is Container && cont.child != null ) {
-         var iw = cont.child as IntrinsicWidth; 
-         if( iw is IntrinsicWidth && iw.child != null ) {
-            var contText  = iw.child as Text; 
-            retVal        = contText.data ?? "";
-         }
-      }
-   }
+
+   if( !( elt is MouseRegion ) ) { return retVal; }
+   var eltMR = elt as MouseRegion;
+
+   if( !( eltMR.child is Padding ) ) { return retVal; }
+   var eltP = eltMR.child as Padding;
+
+   if( !( eltP.child is IntrinsicWidth ) ) { return retVal; }
+   var eltIR = eltP.child as IntrinsicWidth;
+
+   if( !( eltIR.child is Text ) ) { return retVal; }
+   var contText = eltIR.child as Text;
+
+   retVal = contText.data ?? "";
+
    return retVal;
 }
 
@@ -74,46 +79,35 @@ String getFromMouseRegion( Widget elt ) {
 // Actual ancesterage is worked out in checkEqs.
 int getDepthFromCat( Widget elt ) {
    int depth = 1;
-   if( elt is Container && elt.child is GestureDetector ) {
-      var catEdit  = elt.child as GestureDetector;
+
+   GestureDetector eqGD  = getGD( elt );
+   if( eqGD.child == null || ( eqGD.child is Container )) { return depth; }
+   
+   if( eqGD.child is MouseRegion ) {
       final double gappad = 20.0; // app_state.GAP_PAD   XXX pull this in?  hmmm..
 
-      var pad = null;
-      if( catEdit.child is MouseRegion ) {
-         pad = (catEdit.child! as MouseRegion).child!;
-      }
-      else{
-         pad = catEdit.child!;
-      }
+      var eltMR = eqGD.child as MouseRegion;
 
+      if( !( eltMR.child is Padding ) ) { return depth; }
+      Padding pad = eltMR.child as Padding;
+      
       // mux: (depth+1) * .5 )
-      if( pad! is Padding ) {
-         var mtt       = pad as Padding;
-         var edgeInset = mtt.padding as EdgeInsets;
-
-         // ratio of 1.5 gives 3, but 2 of that is from depth+1 above
-         depth = ( ( edgeInset.left / gappad ) / 0.5 ).round() - 2; 
-         // print( "edgeInsetLeft " + edgeInset.left.toString() + " depth " + depth.toString() );
-      }
-      else {
-         print( "Oi! Depth calc failed" );
-      }
-
+      var edgeInset = pad.padding as EdgeInsets;
+      
+      // ratio of 1.5 gives 3, but 2 of that is from depth+1 above
+      depth = ( ( edgeInset.left / gappad ) / 0.5 ).round() - 2; 
+      // print( "edgeInsetLeft " + edgeInset.left.toString() + " depth " + depth.toString() );
    }
    return depth;
 }
 
 String getCatFromTiles( Widget elt ) {
    String retVal = "";
-   if( elt is Container && elt.child is GestureDetector ) {
-      var catEdit = elt.child as GestureDetector;
-      if( catEdit.child is MouseRegion ) {
-         retVal = getFromMouseRegion( (catEdit.child as MouseRegion).child! );
-      }
-      else {
-         retVal = getFromMakeTableText( catEdit.child! );
-      }
-   }
+   GestureDetector eqGD  = getGD( elt );
+   if( eqGD.child == null || ( eqGD.child is Container )) { return retVal; }
+   
+   if( eqGD.child is MouseRegion ) { retVal = getFromMouseRegion( eqGD.child as MouseRegion );  }
+
    return retVal;
 }
 
@@ -127,20 +121,31 @@ String getAmtFromTiles( Widget elt ) {
    return retVal;
 }
 
-Widget getGD( WidgetTester tester, Finder generatedEquityRow ) {
+GestureDetector getGDFromRow( Finder generatedEquityRow ) {
    expect( generatedEquityRow, findsOneWidget );
 
-   Widget empty = GestureDetector( child: Container( width: 1, height: 1 ) );
-      
    var equityRow = generatedEquityRow.evaluate().single.widget as Row;
    var eqs   = equityRow.children as List;
    assert( eqs.length > 0 );
 
    var elt = eqs[0];
-   if( !(elt is Container) || !(elt.child is GestureDetector)) { return empty; }
+   return getGD( elt ); 
+}
 
-   print( "getGD2 " + elt.child.toString() );
-   return elt.child as GestureDetector;
+   
+GestureDetector getGD( Widget elt ) {
+   GestureDetector empty = GestureDetector( child: Container( width: 1, height: 1 ) );
+
+   if( !(elt is Container)) { return empty; }
+   var eltC = elt as Container;
+   if( !( eltC.child is Wrap)) { return empty; }
+   Wrap eltW = eltC.child as Wrap;
+
+   // print( "getGD2 " + eltW.toString() );
+   assert( eltW.children.length > 0 );
+   if( !(eltW.children[0] is GestureDetector )) { return empty; }   // for example, tileKids
+
+   return eltW.children[0] as GestureDetector;
 }
 
 // XXX utils?
@@ -151,7 +156,7 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
    var equityRow = generatedEquityRow.evaluate().single.widget as Row;
    var eqs   = equityRow.children as List;
    int depth = 0;
-   
+
    List<String> aRow = [];
    for( final elt in eqs ) {
       // e.g. amounts without warning
@@ -171,7 +176,7 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
       if( t != "" ) {
          aRow.add( t );
          depth = getDepthFromCat( elt );
-         print( "Got Cat, depth " + t + " " + depth.toString() );
+         // print( "Got Cat, depth " + t + " " + depth.toString() );
       }
 
       t = getAmtFromTiles( elt );
@@ -185,8 +190,10 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
 
 // XXX utils?
 // check gold image matches table.  min, max are onscreen order
-Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, int newDepth = -1, String newAmt = "-1"} ) async {
+Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, int newDepth = -1, String newAmt = "-1", int tries = 0} ) async {
 
+   bool retVal = true;
+   // print( "enter checkeq " + min.toString() + " " + max.toString() );
    for( int i = min; i <= max; i++ ) {
 
       // eqs is [leaf, amount, depth]
@@ -198,7 +205,7 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       // eqs_gold is const above, is a map to a list<str> with long title, then numbers.
       
       String agKey = eqs[0] + " " + (i+offset).toString();                 
-      print( "Got eqs " + eqs.toString() + " making agKey *" + agKey + "*");
+      // print( "Got eqs " + eqs.toString() + " making agKey *" + agKey + "*");
 
       List<String> agVals  = EQS_GOLD[ agKey ] ?? [];
 
@@ -211,13 +218,17 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
             agVals  = EQS_GOLD[ agKey ] ?? [];
          }
       }
-      print( "  Found Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() );
+      // print( "  Found Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() );
 
-      // XXX
-      if( agVals.length <= 0 ) {
+      // Attempt fix possible race condition
+      while( tries < 5 && agVals.length <= 0 ) {
+         print( "  ?? No agvals, try again.  Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() + " " + tries.toString() );
          await pumpSettle( tester, 5 );
-         print( "  Found?? Gold vals for key " + agKey + ": " + agVals.toString() + " " + agVals.length.toString() );
+         tries += 1;
+         retVal = await checkEqs( tester, min, max, offset: offset, newDepth: newDepth, newAmt: newAmt, tries: tries );
+         return retVal;
       }
+      if( tries >= 5 ) { return false; }
       assert( agVals.length > 0 );
       
       // depth is # commas, i.e. Soft Cont is depth 1 making TOT depth 0
@@ -228,12 +239,15 @@ Future<bool> checkEqs( WidgetTester tester, int min, int max, {int offset = 0, i
       expect( eqs[2], amt );
 
    }
-   return true;
+   // print( "Leaving checkeq "  + min.toString() + " " + max.toString() );
+   return retVal;
 }
 
 Future<void> deleteEq ( WidgetTester tester ) async {
+   // print( "delete Testing, looking for catEditable 1" );
    final Finder cat = find.byKey( Key( 'catEditable 1' ));
    expect( cat, findsOneWidget );
+   // await tester.ensureVisible( cat );
    await tester.tap( cat );
    await tester.pumpAndSettle();
 
@@ -290,12 +304,11 @@ Future<bool> rebuildEquityTable ( WidgetTester tester ) async {
    print( "\nRebuild Equity Table" );
    Finder generatedEquityRow = find.byKey( Key( "equityTable 1" ));
    while( tester.widgetList<Row>( generatedEquityRow ).length > 0 ) {
-      var eqGD  = getGD( tester, generatedEquityRow ) as GestureDetector; 
+      GestureDetector eqGD  = getGDFromRow( generatedEquityRow );
+      if( eqGD.child == null || ( eqGD.child is Container )) { break; }
       
-      if( eqGD == null || eqGD.child == null || eqGD.child is Container ) { break; }
-      String title = getFromMakeTableText( eqGD.child! );
-
-      print( "Deleting " + title );
+      String title = getFromMouseRegion( eqGD.child as MouseRegion );
+      print( "Deleting (in test) " + title );
       await deleteEq( tester ); 
    }
    await pumpSettle( tester, 3 );
@@ -315,11 +328,22 @@ Future<bool> drag( WidgetTester tester, int index, int spots ) async {
    String keyName         = "drag " + index.toString(); 
    final Finder ceFlutter = find.byKey( Key( keyName ) );
 
-   // XXX This depends on size of window being controlled by flutter driver (integration test fwk).  Fix this,
-   //     then fix the browser-dimension when launch test, then don't touch
-   double fudge = (index == 6 && spots >= 2) ? 35.0 : 0.0;
-   double dy = 35.0 * spots + fudge;
-   print( "Drag " + index.toString() + " " + spots.toString() + " dy: " + dy.toString() );
+
+   // Find gap size
+   final Finder f1 = find.byKey( Key( "drag 1" ) );
+   final Finder f2 = find.byKey( Key( "drag 2" ) );
+   RenderBox? box1 = f1.evaluate().single.renderObject! as RenderBox;
+   RenderBox? box2 = f2.evaluate().single.renderObject! as RenderBox;
+   assert( box1 != null && box2 != null );
+   final p1 = box1!.localToGlobal(Offset.zero);
+   final p2 = box2!.localToGlobal(Offset.zero);
+   final dragGap = p2.dy - p1.dy;
+   
+   // XXX This depends on size of window being controlled by flutter driver (integration test fwk).
+   //     Mysteriously, renderbox does not seem to get offset correctly with different window sizes.  Why is fudge needed???
+   double fudge = (index == 6 && spots >= 2) ? dragGap : 0.0;
+   double dy = dragGap * spots + fudge;
+   print( "Drag " + index.toString() + " " + spots.toString() + " dy: " + dy.toString() + " gap: " + dragGap.toString());
    
    await tester.drag(ceFlutter, Offset(0.0, dy )); 
    await tester.pumpAndSettle();
@@ -645,7 +669,7 @@ Future<bool> validateEditCancel( tester ) async {
    print( "\nDrag edit cancel" );
    
    expect( await checkEqs( tester, 1, 1  ), true );  // bus ops
-
+         
    // Cancel an edit
    final Finder cat = find.byKey( Key( 'catEditable 1' ));
    expect( cat, findsOneWidget );
@@ -656,6 +680,12 @@ Future<bool> validateEditCancel( tester ) async {
    expect( cancelButton, findsOneWidget );
    await tester.tap( cancelButton );
    await tester.pumpAndSettle();
+
+   // XXX
+   // This check fails on driven window, probably because subsequent rebuild is
+   // deleting entries.  tried to wait between the two tests, does not seem to help.  Mysterious.
+   // The failure in the driven window makes this very hard to debug.  Also, applying a lock
+   // here as with what happens in testing with AWS does not make sense.
    expect( await checkEqs( tester, 1, 1 ), true );  // bus ops
 
    // This time, edit, save
@@ -679,6 +709,7 @@ Future<bool> validateEditCancel( tester ) async {
    expect( eqs[2], "1,000,000" );
    expect( eqs[3], "1" );
 
+   print( "Exit Drag edit cancel" );
    return true;
 }
 

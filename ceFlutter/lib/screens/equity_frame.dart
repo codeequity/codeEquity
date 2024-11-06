@@ -145,7 +145,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    void _saveAdd( EquityTree tot, TextEditingController title, TextEditingController amount, TextEditingController hproj) {
       final width = frameMinWidth - 2*appState.FAT_PAD;
 
-      print( "SAVE ADD " + title.text + " " + title.value.toString() );
+      // print( "SAVE ADD " + title.text + " " + title.value.toString() );
 
       String tval = title.text == "" ? "NOT YET NAMED" : title.text;
       String hval = hproj.text == "" ? "---" : hproj.text;
@@ -170,6 +170,8 @@ class _CEEquityState extends State<CEEquityFrame> {
 
    // Reorderable listener takes an index which much be reset and rebuilt every time a drag occurs.
    List<List<Widget>> _getTiles( context, width ) {
+      final  numWidth = width / 2.2; 
+
       assert( appState.equityTree != null );
       List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
       
@@ -212,12 +214,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          if( t is EquityNode )      { depth = (t as EquityNode).getPath( t.getParent(), t.getTitle() ).length + 1; }
          else if( t is EquityLeaf ) { depth = (t as EquityLeaf).getPath( t.getParent(), t.getTitle() ).length + 1; }
          
-         final  numWidth = width / 2.2;      // XXX formalize
-         final  warnWidth = 50;              // XXX formalize
-         final  height   = appState!.CELL_HEIGHT;
+         final  warnWidth = appState!.CELL_HEIGHT;
+         final  height    = appState!.CELL_HEIGHT;
 
-         
-         // Widget cat      = makeTableText( appState, t.getTitle(), width, height - 15, false, 1, mux: (depth+1) * .5 );
          void _setTitle( PointerEvent event ) {
             setState(() {
                   appState.hoverChunk = t.getTitle();
@@ -230,8 +229,6 @@ class _CEEquityState extends State<CEEquityFrame> {
                   appState.updateEquityView = true;
                });
          }
-         Widget cat      = makeClickTableText( appState, t.getTitle(), _setTitle, _unsetTitle, width, height - 15, false, 1, mux: (depth+1) * .5 );
-
          
          Widget amountW  = makeTableText( appState, addCommas( t.getAmount() ), numWidth-warnWidth, height, false, 1 );
          bool kidsBigger = t.getChildrenAmount() > t.getAmount();
@@ -245,6 +242,15 @@ class _CEEquityState extends State<CEEquityFrame> {
                                                       index: viewIndex,
                                                       child: makeToolTip( Icon( Icons.drag_handle ), "Drag to relocate", wait: true ));
          
+         Widget c        = Container( width: numWidth, height: 1 );
+         Widget oops     = makeToolTip(Icon( Icons.warning_amber, color: Colors.red.shade300 ), "Children allocations exceed parent's." );
+         Widget warn     = kidsBigger ? Wrap( spacing: 0, children: [amountW, oops]) : amountW;
+         Widget amtCont  = Container( width: numWidth, height: height - 15, child: warn );
+
+         List<Widget> tileKids = [ back, drag, forward ];
+         List<Widget> none = [ c  ];
+         tileKids = treeIndex == 0 ? none : tileKids;
+
          Widget catEditable = GestureDetector(
             onTap: () async 
             {
@@ -263,20 +269,13 @@ class _CEEquityState extends State<CEEquityFrame> {
                editList( context, appState, popupTitle, lhInternal, [tc, ac, hp], [title, amt, hproj], () => _saveEdit( t, tc, ac, hp ), () => _cancelEdit(), () => _delete(t) );
             },
             key: Key( 'catEditable ' + treeIndex.toString() ),
-            child: cat
+            child: makeClickTableText( appState, t.getTitle(), _setTitle, _unsetTitle, width, height - 15, false, 1, mux: (depth+1) * .5 )
             );
 
-         Widget c        = Container( width: numWidth, height: 1 );
-         Widget catCont  = Container( width: width, height: height - 15, child: catEditable );
-         Widget oops     = makeToolTip(Icon( Icons.warning_amber, color: Colors.red.shade300 ), "Children allocations exceed parent's." );
-         Widget warn     = kidsBigger ? Wrap( spacing: 0, children: [amountW, oops]) : amountW;
-         Widget amtCont  = Container( width: numWidth, height: height - 15, child: warn );
-
-         List<Widget> tileKids = [ back, drag, forward ];
-         List<Widget> none = [ c  ];
-         tileKids = treeIndex == 0 ? none : tileKids;
+         // print( "Made GD with key: " + 'catEditable ' + treeIndex.toString() );
          
-         nodes.add( [ catCont, hostProj, amtCont, gapPad, Wrap( spacing: 0, children: tileKids ) ] );
+         nodes.add( [ Container( width: width, child: Wrap( spacing: 0, children: [ catEditable, Container( width: numWidth, height: 1 ) ])),
+                      hostProj, amtCont, gapPad, Wrap( spacing: 0, children: tileKids ) ] );
       }
       
       return nodes;
@@ -347,7 +346,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    List<List<Widget>> _getCategoryWidgets( context ) {
       // print( "Getting equity table widgets" );
       final width = frameMinWidth - 2*appState.FAT_PAD;        
-      final  numWidth = width / 2.5;
+      final numWidth = width / 2.5;
          
       if( appState.equityPlan != null && appState.equityPlan!.ceProjectId != appState.selectedCEProject ) {
          print( "Error.  Equity plan is not for selected project." );
@@ -408,11 +407,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          // Summaries
          assert( appState.equityTree != null );
          List<EquityTree> treeList = appState.equityTree!.depthFirstWalk( [] );
-         int sumW = 0;
-         int sumO = 0;
          int sumT = 0;
-         // XXX formalize
-         // XXX hmm.. not sure that other sub totals are worthy.  more confusion than not.
          for( var t in treeList ) {
             if( t.getParent() != null && t.getParent()!.getIsTOT() ) { sumT += t.getAmount(); }
          }
@@ -448,7 +443,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          epIndexNew = epSize;
       }
 
-      print( "Moved from (treeIndex)" + epIndexOld.toString() + " to " + epIndexNew.toString() );
+      // print( "Moved from (treeIndex)" + epIndexOld.toString() + " to " + epIndexNew.toString() );
       appState.equityPlan!.move( epIndexOld, epIndexNew, appState.equityTree! );
 
 
@@ -465,8 +460,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       categories.addAll( _getCategoryWidgets( context ) );
       
       // print( "getCategories, count: " + categories.length.toString() );
-      var categoryCount = min( categories.length, 30 );                  // XXX formalize
-      var categoryWidth = categories.length == 0 ? 30 : categories[0].length;  // XXX formalize
+      var categoryCount = min( categories.length, appState.MAX_SCROLL_DEPTH );
+      var categoryWidth = categories.length == 0 ? appState.MAX_SCROLL_DEPTH : categories[0].length; 
 
       final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
       final svWidth  = maxPaneWidth;

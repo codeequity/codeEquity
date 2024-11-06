@@ -128,7 +128,7 @@ def runCmd( cmd, filterExp ):
 
 # NOTE using --no-build causes consequtive runs of flutter driver to connect to the same app, same state(!)
 # Hmm.  Running in release mode does not work well.  Basic entering text fails..
-def runTest( testName, override, withDetail = False, noBuild = True, optimized = False ):
+def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     logging.info( "" )
 
     # timeout none does not help.  https://github.com/flutter/flutter/issues/105913
@@ -137,20 +137,25 @@ def runTest( testName, override, withDetail = False, noBuild = True, optimized =
     # cmd = "flutter drive -d chrome --driver=test_driver/integration_test.dart --target=integration_test/" + testName
     # Test by cronjob.. why?  this will drive 2 windows in by-hand case
     # browser dim controls the window being driven by tester.  The height does not match physical screen height, but is stable.
-    cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    # cmd = "flutter drive -d web-server --browser-name chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
+    cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+    # XXXX painful
+    if( testName == "equity_test.dart" ) : 
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1000 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if optimized :
         cmd = cmd + " --release"
 
     # withDetail is only relevant to project_test
-    if( override and withDetail ) :
-        cmd = cmd + " --dart-define overrideWithDetail=True"
-    elif( override and not withDetail ) :
-        cmd = cmd + " --dart-define override=True"
+    if( withDetail ) :
+        cmd = cmd + " --dart-define withDetail=True"
 
     grepFilter = ['async/zone.dart','I/flutter', 'asynchronous gap', 'api/src/backend/', 'zone_specification', 'waitFor message is taking' ]
 
+    logging.info( "TestCEFlutter CMD " );
+    logging.info( cmd );
+    
     # poll for realtime stdout
     tmpSum  = "\n"
     tmpSum += runCmd( cmd, grepFilter )
@@ -164,18 +169,17 @@ Common failure modes:
    Uncomment selenium and driver-related lines, rerun, relink, good to go.  Yes, this could be automated.
 
 """
-def runTests( override = False, projectDetail = False ):
+def runTests( test = "focus" ):
 
     #os.chdir( "./" )
 
     resultsSum = ""
 
-    # Nightly, only area ---------
-    if( override and not projectDetail ):
-        tsum = runTest( "launch_test.dart", override, False, False, False )
+    if( test == "projectMain" ):
+        tsum = runTest( "launch_test.dart", False, False, False )
         resultsSum  += tsum
 
-        tsum = runTest( "home_test.dart", override, False, False, False )
+        tsum = runTest( "home_test.dart", False, False, False )
         resultsSum  += tsum
 
         # Always clean dynamo summaries and 'ingested' tags first for full tests
@@ -183,17 +187,13 @@ def runTests( override = False, projectDetail = False ):
         npmRun = runCmd( cmd, [] )
         logging.info( npmRun )
 
-        tsum = runTest( "project_test.dart", override, False, False, False )
-    elif( override and projectDetail ):
-        tsum = runTest( "project_test.dart", override, True, False, False )
-                
-    # Focus area ------------------
-    
-    tsum = runTest( "equity_test.dart", override, False, False, False )
-    # ND
-    # tsum = runTest( "project_test.dart", override, False, False, False )
-    # WD
-    # tsum = runTest( "project_test.dart", override, True, False, False )
+        tsum = runTest( "project_test.dart", False, False, False )
+    elif( test == "projectPact" ):
+        tsum = runTest( "project_test.dart", True, False, False )
+    elif( test == "equity" ):
+        tsum = runTest( "equity_test.dart", False, False, False )
+        
+
     resultsSum  += tsum
 
 
@@ -238,9 +238,10 @@ def main( cmd ):
     assert( verifyEmulator() )
 
     summary = ""
-    if( cmd == "" ) : summary = runTests()
-    elif( cmd == "overrideNoDetail" ) : summary = runTests( override = True, projectDetail = False )
-    elif( cmd == "overrideDetailOnly" ) : summary = runTests( override = True, projectDetail = True )
+    if( cmd == "" ) : summary = runTests( test = "equity" )  # FOCUS AREA
+    elif( cmd == "projectMain" ) : summary = runTests( test = "projectMain" )
+    elif( cmd == "projectPact" ) : summary = runTests( test = "projectPact" )
+    elif( cmd == "equity" ) : summary = runTests( test = "equity" )
     else :
         thread = Thread( target=globals()[cmd]( ) )
         thread.start()

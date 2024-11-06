@@ -9,6 +9,7 @@ import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/placeHolder.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
@@ -28,9 +29,11 @@ class _CEHomeState extends State<CEHomePage> {
    var      runningLHSHeight;
 
    // iphone 5: 320px X 568
+   static const maxPaneWidth    = 950.0;
    static const lhsPaneMinWidth = 250.0;
    static const lhsPaneMaxWidth = 300.0;
    static const rhsPaneMinWidth = 300.0;
+   static const rhsPaneMaxWidth = maxPaneWidth - lhsPaneMaxWidth;
    static const buttonWidth     =  80.0;
    static const vBarWidth       =   5.0;
 
@@ -278,13 +281,23 @@ class _CEHomeState extends State<CEHomePage> {
    }
    
    Widget _makeActivityZone() {
-      final w = rhsPaneMinWidth - appState.GAP_PAD - appState.TINY_PAD;
+      final w1 = rhsPaneMinWidth - appState.GAP_PAD - appState.TINY_PAD;
+      final w2 = rhsPaneMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+
+      // XXX Placeholder.
+      if( appState.funny == "" ) {
+         Funnies fun    = new Funnies();
+         appState.funny = fun.getOne();
+      }
+
       return Column( 
          crossAxisAlignment: CrossAxisAlignment.start,
          mainAxisAlignment: MainAxisAlignment.start,
          children: <Widget>[
-            Container( width: w, height: appState.GAP_PAD ),
-            makeTitleText( appState, "Activity", w, true, 1 )
+            Container( width: w1, height: appState.GAP_PAD ),
+            Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
+            Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
+            Container( color: Colors.white, child: makeBodyText( appState, appState.funny, w2, true, 1 ))
             ]);
    }
    
@@ -304,11 +317,7 @@ class _CEHomeState extends State<CEHomePage> {
                      endIndent: 0,
                      width: vBarWidth,
                      ),
-                  
-                  Container(
-                     color: appState.BACKGROUND,
-                     child: _makeActivityZone()
-                     )
+                  _makeActivityZone()
                   ]);
       }
       else {

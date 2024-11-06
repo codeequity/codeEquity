@@ -35,6 +35,7 @@ import 'package:ceFlutter/models/hostLoc.dart';
 // XXX strip context, container where not needed
 
 
+
 Future<void> logoutWait( context, container, appState ) async {
    final wrapper = (() async {
          try {
@@ -149,14 +150,12 @@ Future<http.Response> hostGet( url ) async {
    return response;
 }
 
-
+// Post request to GitHub
 Future<http.Response> postGH( PAT, postData, name ) async {
+   // print( "XXX Warning.  postGH fired. " + postData + " " + name );
 
-   print( "XXX Warning.  postGH fired. " + postData + " " + name );
-   // XXX formalize
    final gatewayURL = Uri.parse( 'https://api.github.com/graphql' );
    
-   // XXX formalize
    // Accept header is for label 'preview'.
    // next global id is to avoid getting old IDs that don't work in subsequent GQL queries.
    final response =
@@ -642,7 +641,7 @@ Future<void> reloadMyProjects( context, container ) async {
    print( appState.myHostAccounts );
 }
 
-// NOTE: GitHub-specific
+// XXX GitHub-specific.  Rename.
 // Build the association between ceProjects and github repos by finding all repos on github that user has auth on,
 // then associating those with known repos in aws:CEProjects.
 Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) async {
@@ -682,7 +681,6 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
       else { futProjs.add( repo ); }
    }
    
-   // XXX formalize 'GitHub'
    // XXX Chck if have U_*  if so, has been active on GH, right?
    
    // Do not have, can not get, the U_* user id from GH.  initially use login.
@@ -699,11 +697,10 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    await updateDynamo( context, container, postData, "PutHostA" );
 }
 
-// NOTE: GitHub-specific
+// XXX GitHub-specific.  Rename
 // Called upon refresh.. maybe someday on signin (via app_state_container:finalizeUser)
 // XXX This needs to check if PAT is known, query.
 // XXX update docs, pat-related
-// XXX formalize
 Future<void> updateProjects( context, container ) async {
    final appState  = container.state;
    
@@ -712,7 +709,6 @@ Future<void> updateProjects( context, container ) async {
 
       if( acct.hostPlatform == "GitHub" ) {
       
-         // XXX formalize GitHub
          // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
          var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "GitHub" } };
          final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
