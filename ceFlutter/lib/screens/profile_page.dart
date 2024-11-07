@@ -49,6 +49,7 @@ class _CEProfileState extends State<CEProfilePage> {
       appState = container.state;
       assert( appState != null );
 
+      print("Profile page");
       makeLogoutButton() {
          return makeActionButton( appState, 'Logout', _logout( context, container, appState) );
       }

@@ -576,10 +576,9 @@ Future<void> reloadRepo( context, container ) async {
    
    final appState  = container.state;
 
-   String ceProj = appState.selectedCEProject;
-   String hostRepo = appState.selectedRepo;
-   String uid    = appState.userId;
-   print( "Loading " + hostRepo + " for " + uid + "'s " + ceProj + " CodeEquity project." );
+   String ceProj   = appState.selectedCEProject;
+   String uid      = appState.userId;
+   print( "Loading " + uid + "'s " + ceProj + " CodeEquity project." );
 
    // XXX could be thousands... too much.  Just get uningested, most recent, etc.
    // Get all PEQ data related to the selected repo.  

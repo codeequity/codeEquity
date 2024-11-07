@@ -1174,7 +1174,7 @@ void _removeAllocs( List<Tuple2<PEQAction, PEQ>> todos ) {
 //   notice:'PEQ label delete attempt'
 //   notice:'PEQ label edit attempt'
 
-Future<void> updatePEQAllocations( repoName, context, container ) async {
+Future<void> updatePEQAllocations( context, container ) async {
    final appState  = container.state;
    final ceProjId  = appState.selectedCEProject;
    vPrint( appState, "Updating allocations for ceProjectId: " + ceProjId );

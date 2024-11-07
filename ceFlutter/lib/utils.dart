@@ -9,7 +9,8 @@ import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
-import 'package:ceFlutter/screens/detail_page.dart';
+// import 'package:ceFlutter/screens/detail_page.dart';
+import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
 
 import 'package:ceFlutter/customIcons.dart';
@@ -315,6 +316,18 @@ Widget makeIndentedActionableText( appState, title, hov, nohov, width, wrap, lin
          ));
 }
 
+Widget makeIndentedText( appState, title, width, wrap, lines ) {
+   return Padding(
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD + appState.TINY_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
+      child: Container( width: width,
+                        height: appState.BASE_TXT_HEIGHT*lines,   
+                        key: Key( title ),
+                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 14, color: Colors.black,
+                                                     // fontWeight: FontWeight.bold
+                                       ))));
+}
+
 Widget makeActionableText(  appState, title, hov, nohov, width, wrap, lines ) {
    
    return MouseRegion(
@@ -416,7 +429,7 @@ Widget makeInputField( appState, hintText, obscure, controller, {keyName = "", e
 }
 
 
-// XXX Partial
+// XXX Partial.  This needs full design, rebuild.
 PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
    final container   = AppStateContainer.of(context);
    final appState    = container.state;
@@ -439,12 +452,13 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
          title: Text( "CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 16 )),
          actions: <Widget>[
             IconButton(
-               icon: currentPage == "Detail" ? Icon(customIcons.loan_here) : Icon(customIcons.loan),
-               key:  currentPage == "Detail" ? Key( "loanHereIcon" ) : Key( "loanIcon" ),
+               icon: currentPage == "Project" ? Icon(customIcons.loan_here) : Icon(customIcons.loan),
+               key:  currentPage == "Project" ? Key( "loanHereIcon" ) : Key( "loanIcon" ),
                onPressed: ()
                {
-                  if( currentPage == "Detail" ) { return; }
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
+                  if( currentPage == "Project" ) { return; }
+                  // MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
                   Navigator.push( context, newPage);
                },
                iconSize: iconSize,

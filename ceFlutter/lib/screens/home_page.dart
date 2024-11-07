@@ -83,40 +83,32 @@ class _CEHomeState extends State<CEHomePage> {
       void _unsetTitle( PointerEvent event ) {
          setState(() => appState.hoverChunk = "" );
       }
-      
+
+
       if( ceProj ) {
          // print( "Chunking ceProj " + itemName );
          itemTxt = Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
                                                   Container( width: buttonWidth, height: 1 ) ] );
+         return GestureDetector(
+            onTap: () async
+            {
+               appState.selectedCEProject = itemName;
+               await reloadRepo( context, container );
+               
+               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
+               Navigator.push( context, newPage );
+            },
+            child: itemTxt
+            );
+         
       }
       else {
          // print( "Chunking repo " + itemName );
-         itemTxt = Wrap( spacing: 10, children: [ makeIndentedActionableText( appState, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+         itemTxt = Wrap( spacing: 10, children: [ makeIndentedText( appState, itemName, textWidth, false, 1 ),
                                                   Container( width: buttonWidth, height: 1 ) ] );
+         return itemTxt;
       }
       
-      return GestureDetector(
-         onTap: () async
-         {
-            appState.selectedRepo = itemName;
-            for( final hosta in appState.myHostAccounts ) {
-               for( final ceProj in hosta.ceProjectIds ) {
-                  for( final repo in hosta.ceProjRepos[ceProj] ?? [] ) {
-                     if( itemName == repo ) {
-                        appState.selectedCEProject = ceProj;
-                        break;
-                     }
-                  }
-               }
-            }
-
-            await reloadRepo( context, container );
-            
-            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
-            Navigator.push( context, newPage );
-         },
-         child: itemTxt
-         );
    }
 
    // XXX host-specific

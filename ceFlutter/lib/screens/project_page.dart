@@ -49,7 +49,7 @@ class _CEProjectState extends State<CEProjectPage> {
 
    Future<void> _updateCallback( ) async {
       appState.peqUpdated = false;
-      await updatePEQAllocations( appState.selectedRepo, context, container );
+      await updatePEQAllocations( context, container );
 
       // Reset tree state to ensure proper open/close with tree.getCurrent, else appState never set
       if( appState.myPEQSummary != null && appState.myPEQSummary!.ceProjectId == appState.selectedCEProject && appState.allocTree != null )
@@ -127,7 +127,7 @@ class _CEProjectState extends State<CEProjectPage> {
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
                
-               makeTitleText( appState, appState.selectedRepo, w*6, false, 1, fontSize: 18),
+               makeTitleText( appState, appState.selectedCEProject, w*6, false, 1, fontSize: 18),
                Container( height: appState.MID_PAD ),
                
                Expanded(
@@ -198,7 +198,7 @@ class _CEProjectState extends State<CEProjectPage> {
       if( appState.verbose >= 2 ) { print( "build project page" ); }
       
       return Scaffold(
-         appBar: makeTopAppBar( context, "Home" ),
+         appBar: makeTopAppBar( context, "Project" ),
          body: _makeBody( context )
          );
    }

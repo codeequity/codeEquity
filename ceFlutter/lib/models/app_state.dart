@@ -69,7 +69,6 @@ class AppState {
    late bool   updateEquityPlan;        // updated the tree, with moves, indents, etc
    late bool   updateEquityView;        // updated the viewable list, with dynamo, or newly updated tree
 
-   late String                          selectedRepo;
    late String                          selectedCEProject;
    late String                          selectedUser;    // Looking at details for this user, currently
    late Map< String, List<PEQAction> >  userPActs;       // hostUsers : pactions
@@ -127,7 +126,6 @@ class AppState {
       updateEquityPlan   = false;
       updateEquityView   = false;
 
-      selectedRepo = "";
       selectedCEProject = "";
       selectedUser = "";
       userPActs = new Map<String, List<PEQAction>>();
