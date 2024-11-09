@@ -36,7 +36,6 @@ class CESummaryFrame extends StatefulWidget {
    final pageStamp;
    final updateCallback;
    final detailCallback;
-   final updateCompleteCallback;
    final allocExpansionCallback;
 
    CESummaryFrame(
@@ -46,7 +45,6 @@ class CESummaryFrame extends StatefulWidget {
             this.frameHeightUsed,
             this.updateCallback,
             this.detailCallback,
-            this.updateCompleteCallback,
             this.allocExpansionCallback} ) : super(key: key);
 
   @override
@@ -203,7 +201,7 @@ class _CESummaryState extends State<CESummaryFrame> {
          }
       }
       appState.updateAllocTree = false;
-
+      
       // print( appState.allocTree.toStr() );
    }
    
@@ -241,8 +239,16 @@ class _CESummaryState extends State<CESummaryFrame> {
 
       var c = Container( width: 1, height: 1 );
 
+
+      List<List<Widget>> pallocs = appState.peqAllocsLoading ?
+                                   [[Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT, child: CircularProgressIndicator() )]] :
+                                   _showPAlloc();
+
+      
+      // List<List<Widget>> pallocs = _showPAlloc();
+
       // XXX Change number of cells?  change padding container 'c', and subtraction from tinypad.
-      allocs.addAll( _showPAlloc() );
+      allocs.addAll( pallocs );
       allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
@@ -250,6 +256,8 @@ class _CESummaryState extends State<CESummaryFrame> {
                         buttonWidth, 
                         () async
                         {
+                           // Not waiting here.. 
+                           setState(() => appState.peqAllocsLoading = true );
                            widget.updateCallback();
                         }),
                         c, c, c, c, c ]] );

@@ -93,7 +93,9 @@ class _CEHomeState extends State<CEHomePage> {
             onTap: () async
             {
                appState.selectedCEProject = itemName;
+               setState(() => appState.ceProjectLoading = true );
                await reloadRepo( context, container );
+               appState.ceProjectLoading = false;
                
                MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
                Navigator.push( context, newPage );
@@ -289,7 +291,9 @@ class _CEHomeState extends State<CEHomePage> {
             Container( width: w1, height: appState.GAP_PAD ),
             Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
             Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
-            Container( color: Colors.white, child: makeBodyText( appState, appState.funny, w2, true, 1 ))
+            appState.ceProjectLoading ?
+               Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) : 
+               Container( color: Colors.white, child: makeBodyText( appState, appState.funny, w2, true, 1 ))
             ]);
    }
    

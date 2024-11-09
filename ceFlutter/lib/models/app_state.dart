@@ -55,7 +55,6 @@ class AppState {
    late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
    late Linkage?          myHostLinks;           // Current project/column disposition per ceProject
    late EquityPlan?       equityPlan;            // Equity plan for the selectedCEProject
-   late bool peqUpdated;
    late String            funny;                 // placeholder in activity zone.
 
    late List<HostAccount> myHostAccounts;   
@@ -69,6 +68,9 @@ class AppState {
    late bool   updateEquityPlan;        // updated the tree, with moves, indents, etc
    late bool   updateEquityView;        // updated the viewable list, with dynamo, or newly updated tree
 
+   late bool   ceProjectLoading;        // allows spin while ceProject is being constructed from aws
+   late bool   peqAllocsLoading;         // allows spin while summary frame peq allocations are being constructed
+   
    late String                          selectedCEProject;
    late String                          selectedUser;    // Looking at details for this user, currently
    late Map< String, List<PEQAction> >  userPActs;       // hostUsers : pactions
@@ -110,7 +112,6 @@ class AppState {
       myPEQs       = [];
       myPEQActions = [];
       myPEQSummary = null;
-      peqUpdated   = false;
       funny        = "";
       equityPlan   = null;
 
@@ -125,6 +126,8 @@ class AppState {
       equityTree         = null;
       updateEquityPlan   = false;
       updateEquityView   = false;
+      ceProjectLoading   = false;
+      peqAllocsLoading   = false;
 
       selectedCEProject = "";
       selectedUser = "";

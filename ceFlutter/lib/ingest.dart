@@ -1183,7 +1183,6 @@ Future<void> updatePEQAllocations( context, container ) async {
    // First, update myHostLinks.locs, since ceFlutter may have been sitting in memory long enough to be out of date.
    vPrint( appState, "Start myLoc update" );
    Future myLocs = fetchHostLinkage( context, container, { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }} );
-   // 0s
    print( "TIME FetchHostLink " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
    vPrint( appState, "Start pact update" );

@@ -48,7 +48,6 @@ class _CEProjectState extends State<CEProjectPage> {
    // Must define here, since child widget state (like summaryFrame) is disposed of when clicking between frames
 
    Future<void> _updateCallback( ) async {
-      appState.peqUpdated = false;
       await updatePEQAllocations( context, container );
 
       // Reset tree state to ensure proper open/close with tree.getCurrent, else appState never set
@@ -64,19 +63,13 @@ class _CEProjectState extends State<CEProjectPage> {
       
       // causes buildAllocTree to fire
       setState(() => appState.updateAllocTree = true );
+      setState(() => appState.peqAllocsLoading = false );      
    }      
 
    Future<void> _detailCallback( List<String> category ) async {
       Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: category )));
    }
    
-   // XXX Is this used?  Also, peqUpdated?
-   _updateCompleteCallback() {
-      // causes summary_frame to update list of allocs in showPalloc
-      print( "UCC setstate" );
-      setState(() => appState.peqUpdated = true );
-   }
-
    _allocExpansionCallback( expansionVal, path ) {
       print( ".. summary change allocExpanded $path $expansionVal" );
       // causes node to update internal tile expansion state, which updates trailing icons
@@ -115,7 +108,6 @@ class _CEProjectState extends State<CEProjectPage> {
             frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
             updateCallback:         _updateCallback,
             detailCallback:         _detailCallback,
-            updateCompleteCallback: _updateCompleteCallback,
             allocExpansionCallback: _allocExpansionCallback );
 
          Widget equityFrameWidget = CEEquityFrame(
