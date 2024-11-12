@@ -1,4 +1,5 @@
-import 'package:ceFlutter/utils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
+
 import 'package:ceFlutter/models/PEQ.dart';
 
 // ceFlutter use only
@@ -14,13 +15,13 @@ class Allocation {
    final List<String> category;        // i.e. [founding], [Software Contributions, Data Security, Planned, Unassigned]
    final List<String>? categoryBase;   // i.e. category, minus "planned", assignee
    int?               amount;          // amount of provisional equity for this category
-   Map<String,int>?   sourcePeq;       // all peqId:value that make up the total for this category.
+   final Map<String,int>?  sourcePeq;  // all peqId:value that make up the total for this category.
    List<String>?      setInStone;      // all source peq ids that have confirm accrued.  These will not be further adjusted
    PeqType            allocType;
    final String?      ceUID;           // if Plan or Grant, who is it for
    final String?      hostUserName;    // hostUser associated with ceUID
    final String       hostUserId;      // hostUser associated with ceUID
-   double?            vestedPerc;      // granted or accrued
+   final double?      vestedPerc;      // granted or accrued
    final String?      notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
    final String?      hostProjectId;   // a fixed point that chains the category to a specific location in host
 

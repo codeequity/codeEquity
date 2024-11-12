@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
-import 'package:ceFlutter/utils.dart';
-import 'package:ceFlutter/utils_load.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/ghUtils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
+import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
-import 'package:ceFlutter/models/placeHolder.dart';
+import 'package:ceFlutter/models/PlaceHolder.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
@@ -83,40 +85,34 @@ class _CEHomeState extends State<CEHomePage> {
       void _unsetTitle( PointerEvent event ) {
          setState(() => appState.hoverChunk = "" );
       }
-      
+
+
       if( ceProj ) {
          // print( "Chunking ceProj " + itemName );
          itemTxt = Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
                                                   Container( width: buttonWidth, height: 1 ) ] );
+         return GestureDetector(
+            onTap: () async
+            {
+               appState.selectedCEProject = itemName;
+               setState(() => appState.ceProjectLoading = true );
+               await reloadRepo( context, container );
+               appState.ceProjectLoading = false;
+               
+               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
+               Navigator.push( context, newPage );
+            },
+            child: itemTxt
+            );
+         
       }
       else {
          // print( "Chunking repo " + itemName );
-         itemTxt = Wrap( spacing: 10, children: [ makeIndentedActionableText( appState, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+         itemTxt = Wrap( spacing: 10, children: [ makeIndentedText( appState, itemName, textWidth, false, 1 ),
                                                   Container( width: buttonWidth, height: 1 ) ] );
+         return itemTxt;
       }
       
-      return GestureDetector(
-         onTap: () async
-         {
-            appState.selectedRepo = itemName;
-            for( final hosta in appState.myHostAccounts ) {
-               for( final ceProj in hosta.ceProjectIds ) {
-                  for( final repo in hosta.ceProjRepos[ceProj] ?? [] ) {
-                     if( itemName == repo ) {
-                        appState.selectedCEProject = ceProj;
-                        break;
-                     }
-                  }
-               }
-            }
-
-            await reloadRepo( context, container );
-            
-            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
-            Navigator.push( context, newPage );
-         },
-         child: itemTxt
-         );
    }
 
    // XXX host-specific
@@ -297,7 +293,9 @@ class _CEHomeState extends State<CEHomePage> {
             Container( width: w1, height: appState.GAP_PAD ),
             Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
             Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
-            Container( color: Colors.white, child: makeBodyText( appState, appState.funny, w2, true, 1 ))
+            appState.ceProjectLoading ?
+               Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) : 
+               Container( color: Colors.white, child: makeBodyText( appState, appState.funny, w2, true, 1 ))
             ]);
    }
    

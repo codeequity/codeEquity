@@ -1,6 +1,6 @@
 import 'dart:collection';              // hashset
 
-import 'package:ceFlutter/models/allocation.dart';
+import 'package:ceFlutter/models/Allocation.dart';
 
 // ceFlutter use only
 
@@ -10,7 +10,7 @@ import 'package:ceFlutter/models/allocation.dart';
 class PEQSummary {
    final String           ceProjectId;   // Summaries are per ceProject.. this is the pkey
    final String           targetType;    // "ceProject", "repo", "contributor"   XXX currently unused.
-   final String           targetId;      // HostProjectId ... ?  or repo now?    XXX
+   final String           targetId;      // HostProjectId ... ?  or repo now?    XXX currently unused.
          String           lastMod;
    final Map<String, Allocation> allocations;   // gives fast lookup from category string to allocation
 

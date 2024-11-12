@@ -973,7 +973,8 @@ Future<bool> _checkHelper( tester ) async {
 
 void main() {
 
-   String repo = "codeequity/ceFlutterTester";
+   String repo   = "codeequity/ceFlutterTester";
+   String ceProj = "CE_FlutTest_ks8asdlg42";
    
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -997,7 +998,7 @@ void main() {
          await restart( tester );
          await login( tester, true );
 
-         final Finder ariLink = find.byKey( Key( repo ));
+         final Finder ariLink = find.byKey( Key( ceProj ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 5, verbose: true ); 
          await pumpSettle( tester, 3, verbose: true ); 
@@ -1030,7 +1031,7 @@ void main() {
          // Login checks for homepage, but verify this is Ari before testing contents
          expect( await verifyAriHome( tester ), true );         
 
-         final Finder ariLink = find.byKey( Key( repo ));
+         final Finder ariLink = find.byKey( Key( ceProj ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 5, verbose: true ); 
          await pumpSettle( tester, 3, verbose: true ); 
@@ -1067,7 +1068,7 @@ void main() {
          // Login checks for homepage, but verify this is Ari before testing contents
          expect( await verifyAriHome( tester ), true );         
 
-         final Finder ariLink = find.byKey( Key( repo ));
+         final Finder ariLink = find.byKey( Key( ceProj ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 5, verbose: true ); 
          await pumpSettle( tester, 3, verbose: true ); 
@@ -1170,7 +1171,7 @@ void main() {
 
          expect( await verifyAriHome( tester ), true );
          
-         final Finder ariLink = find.byKey( Key( repo ));
+         final Finder ariLink = find.byKey( Key( ceProj ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 2, verbose: true ); 
          await pumpSettle( tester, 2, verbose: true ); 

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
-import 'package:ceFlutter/utils.dart';
-import 'package:ceFlutter/utils_load.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
+//import 'package:ceFlutter/utils_load.dart';
+
 import 'package:ceFlutter/ingest.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
@@ -48,8 +49,7 @@ class _CEProjectState extends State<CEProjectPage> {
    // Must define here, since child widget state (like summaryFrame) is disposed of when clicking between frames
 
    Future<void> _updateCallback( ) async {
-      appState.peqUpdated = false;
-      await updatePEQAllocations( appState.selectedRepo, context, container );
+      await updatePEQAllocations( context, container );
 
       // Reset tree state to ensure proper open/close with tree.getCurrent, else appState never set
       if( appState.myPEQSummary != null && appState.myPEQSummary!.ceProjectId == appState.selectedCEProject && appState.allocTree != null )
@@ -64,19 +64,13 @@ class _CEProjectState extends State<CEProjectPage> {
       
       // causes buildAllocTree to fire
       setState(() => appState.updateAllocTree = true );
+      setState(() => appState.peqAllocsLoading = false );      
    }      
 
    Future<void> _detailCallback( List<String> category ) async {
       Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: category )));
    }
    
-   // XXX Is this used?  Also, peqUpdated?
-   _updateCompleteCallback() {
-      // causes summary_frame to update list of allocs in showPalloc
-      print( "UCC setstate" );
-      setState(() => appState.peqUpdated = true );
-   }
-
    _allocExpansionCallback( expansionVal, path ) {
       print( ".. summary change allocExpanded $path $expansionVal" );
       // causes node to update internal tile expansion state, which updates trailing icons
@@ -115,7 +109,6 @@ class _CEProjectState extends State<CEProjectPage> {
             frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
             updateCallback:         _updateCallback,
             detailCallback:         _detailCallback,
-            updateCompleteCallback: _updateCompleteCallback,
             allocExpansionCallback: _allocExpansionCallback );
 
          Widget equityFrameWidget = CEEquityFrame(
@@ -127,7 +120,7 @@ class _CEProjectState extends State<CEProjectPage> {
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
                
-               makeTitleText( appState, appState.selectedRepo, w*6, false, 1, fontSize: 18),
+               makeTitleText( appState, appState.selectedCEProject, w*6, false, 1, fontSize: 18),
                Container( height: appState.MID_PAD ),
                
                Expanded(
@@ -198,7 +191,7 @@ class _CEProjectState extends State<CEProjectPage> {
       if( appState.verbose >= 2 ) { print( "build project page" ); }
       
       return Scaffold(
-         appBar: makeTopAppBar( context, "Home" ),
+         appBar: makeTopAppBar( context, "Project" ),
          body: _makeBody( context )
          );
    }

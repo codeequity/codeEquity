@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:ceFlutter/utils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
 
 // modeled after composition pattern here:
 // https://medium.com/flutter-community/flutter-design-patterns-4-composite-23473cccf2b3

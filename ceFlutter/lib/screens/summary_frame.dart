@@ -3,13 +3,12 @@ import 'dart:math';
 import 'dart:ui';    // pointerKinds
 import 'package:ceFlutter/app_state_container.dart';
 
-import 'package:ceFlutter/utils.dart';
-import 'package:ceFlutter/utils_load.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
-
-import 'package:ceFlutter/models/allocation.dart';
+import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 
 import 'package:ceFlutter/components/tree.dart';
@@ -36,7 +35,6 @@ class CESummaryFrame extends StatefulWidget {
    final pageStamp;
    final updateCallback;
    final detailCallback;
-   final updateCompleteCallback;
    final allocExpansionCallback;
 
    CESummaryFrame(
@@ -46,7 +44,6 @@ class CESummaryFrame extends StatefulWidget {
             this.frameHeightUsed,
             this.updateCallback,
             this.detailCallback,
-            this.updateCompleteCallback,
             this.allocExpansionCallback} ) : super(key: key);
 
   @override
@@ -87,9 +84,9 @@ class _CESummaryState extends State<CESummaryFrame> {
          onTap: () async 
          {
             String hostUserLogin = path[ depthM1 ];
-            if( isAlloc )                                   { appState.selectedUser = appState.ALLOC_USER; }
-            else if( hostUserLogin == "appState.UNASSIGN" ) { appState.selectedUser = appState.UNASSIGN_USER; }
-            else                                            { appState.selectedUser = hostUserLogin; }
+            if( isAlloc )                                 { appState.selectedUser = appState.ALLOC_USER; }
+            else if( hostUserLogin == appState.UNASSIGN ) { appState.selectedUser = appState.UNASSIGN_USER; }
+            else                                          { appState.selectedUser = hostUserLogin; }
             appState.userPActUpdate = true;
             if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
             widget.detailCallback( path );
@@ -203,7 +200,7 @@ class _CESummaryState extends State<CESummaryFrame> {
          }
       }
       appState.updateAllocTree = false;
-
+      
       // print( appState.allocTree.toStr() );
    }
    
@@ -234,6 +231,8 @@ class _CESummaryState extends State<CESummaryFrame> {
    
 
    Widget getAllocation( context ) {
+      final w1 = 4 * appState.CELL_HEIGHT;
+      final spinSize = 1.8*appState.BASE_TXT_HEIGHT;
       if( appState.verbose >= 2 ) { print( "SF: Remake allocs" ); }
       final buttonWidth = 100;
       
@@ -241,8 +240,23 @@ class _CESummaryState extends State<CESummaryFrame> {
 
       var c = Container( width: 1, height: 1 );
 
-      // XXX Change number of cells?  change padding container 'c', and subtraction from tinypad.
-      allocs.addAll( _showPAlloc() );
+      // Spinny
+      if( appState.peqAllocsLoading ) {
+         Widget cpi = Wrap( spacing: 0, children: [
+                               Container( width: w1, height: spinSize ),
+                               Container( width: spinSize, height: spinSize, child: CircularProgressIndicator() ),
+                               makeTitleText( appState, "This can take a few minutes..", 6*appState.CELL_HEIGHT, false, 1, fontSize: 16)
+                               ]);
+         
+         // XXX Change number of cells?  change padding container 'c', and subtraction from tinypad.
+         allocs.addAll( [[ Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT ) ]] );
+         allocs.addAll( [[ cpi ]] );
+         allocs.addAll( [[ Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT ) ]] );
+      }
+      else {
+         allocs.addAll( _showPAlloc() );
+      }
+
       allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
@@ -250,6 +264,8 @@ class _CESummaryState extends State<CESummaryFrame> {
                         buttonWidth, 
                         () async
                         {
+                           // Not waiting here.. 
+                           setState(() => appState.peqAllocsLoading = true );
                            widget.updateCallback();
                         }),
                         c, c, c, c, c ]] );

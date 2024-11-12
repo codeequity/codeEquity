@@ -5,8 +5,9 @@ import 'dart:convert';  // json encode/decode
 import 'package:flutter/material.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
-import 'package:ceFlutter/utils.dart';
-import 'package:ceFlutter/utils_load.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
+import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
@@ -344,7 +345,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    
    
    List<List<Widget>> _getCategoryWidgets( context ) {
-      // print( "Getting equity table widgets" );
+      if( appState.verbose >= 2 ) { print( "Getting equity table widgets update tree/view: " + appState.updateEquityPlan.toString() + " " + appState.updateEquityView.toString() ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       final numWidth = width / 2.5;
          
@@ -361,7 +362,6 @@ class _CEEquityState extends State<CEEquityFrame> {
          // These must be kept up to date, and updated before _getTiles.
          equityTop = 3;   // spacer + header + hdiv
          
-         catList = [];
          // Header
          Widget spacer    = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
          Widget headerCat = Container( width: width,    child: makeTableText( appState, listHeaders[0],    width, appState!.CELL_HEIGHT, false, 1 ) );
@@ -512,6 +512,9 @@ class _CEEquityState extends State<CEEquityFrame> {
       empty = Container( width: 1, height: 1 );
       
       if( appState.verbose >= 2 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
+
+      // Set this here to update view if minimized, then recovered.
+      appState.updateEquityView = true;      
       
       return getEquityPlan( context );
       

@@ -1,15 +1,13 @@
 import 'dart:ui';
 import 'dart:typed_data';
-import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
-import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
-import 'package:ceFlutter/screens/detail_page.dart';
+import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
 
 import 'package:ceFlutter/customIcons.dart';
@@ -17,43 +15,6 @@ import 'package:ceFlutter/customIcons.dart';
 // XXX service?
 // app-wide constants.  Break this out if more than, say, 3
 const EMPTY = "---";
-
-
-// enum accessibility funcs
-// https://medium.com/@amir.n3t/advanced-enums-in-flutter-a8f2e2702ffd
-String enumToStr(Object? o) => (o ?? "").toString().split('.').last;
-
-T enumFromStr<T>(String key, List<T> values) => values.firstWhere((v) => key == enumToStr(v),
-                                                                  orElse: (() { print( "Warning " + key + " not found"); return values[values.length - 1]; }));
-
-
-
-String getToday() {
-   final now = new DateTime.now();
-   String date = "";
-
-   if( now.month < 10 ) { date += "0"; }
-   date = now.month.toString() + "/";
-
-   if( now.day < 10 ) { date += "0"; }
-   date += now.day.toString() + "/";
-   
-   date += now.year.toString();
-   return date;
-}
-
-String randAlpha(length) {
-   var result           = '';
-   var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-   var charactersLength = characters.length;
-   var rng = Random();
-   for ( var i = 0; i < length; i++ ) {
-      result += characters[ rng.nextInt( charactersLength ) ];
-   }
-   print( "Ralph returning " + result );
-   return result;
-}
-
 
 // XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {
@@ -208,23 +169,6 @@ Widget paddedLTRB( child, double L, double T, double R, double B ) {
       child: child );
 }
 
-String addCommas( int amount ) {
-   String res = "";
-   bool neg = amount < 0 ? true : false;
-   if( neg ) { amount = -1 * amount; }
-         
-   String t = amount.toString();
-
-   while( t.length > 3 ) {
-      res = "," + t.substring( t.length - 3 ) + res;
-      t = t.substring( 0, t.length - 3 );
-   }
-   res = t + res;
-   
-   if( neg ) { res = "-" + res; }
-   return res;
-}
-
 Widget makeActionButton( appState, buttonText, fn ) {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 14.0);
    return Material(
@@ -313,6 +257,18 @@ Widget makeIndentedActionableText( appState, title, hov, nohov, width, wrap, lin
                                                      decoration: title == appState.hoverChunk ? TextDecoration.underline : null
                                        )))
          ));
+}
+
+Widget makeIndentedText( appState, title, width, wrap, lines ) {
+   return Padding(
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD + appState.TINY_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
+      child: Container( width: width,
+                        height: appState.BASE_TXT_HEIGHT*lines,   
+                        key: Key( title ),
+                        child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 14, color: Colors.black,
+                                                     // fontWeight: FontWeight.bold
+                                       ))));
 }
 
 Widget makeActionableText(  appState, title, hov, nohov, width, wrap, lines ) {
@@ -416,7 +372,7 @@ Widget makeInputField( appState, hintText, obscure, controller, {keyName = "", e
 }
 
 
-// XXX Partial
+// XXX Partial.  This needs full design, rebuild.
 PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
    final container   = AppStateContainer.of(context);
    final appState    = container.state;
@@ -439,12 +395,13 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
          title: Text( "CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 16 )),
          actions: <Widget>[
             IconButton(
-               icon: currentPage == "Detail" ? Icon(customIcons.loan_here) : Icon(customIcons.loan),
-               key:  currentPage == "Detail" ? Key( "loanHereIcon" ) : Key( "loanIcon" ),
+               icon: currentPage == "Project" ? Icon(customIcons.loan_here) : Icon(customIcons.loan),
+               key:  currentPage == "Project" ? Key( "loanHereIcon" ) : Key( "loanIcon" ),
                onPressed: ()
                {
-                  if( currentPage == "Detail" ) { return; }
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
+                  if( currentPage == "Project" ) { return; }
+                  // MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
                   Navigator.push( context, newPage);
                },
                iconSize: iconSize,

@@ -6,14 +6,15 @@ import 'package:collection/collection.dart';      // list equals, firstwhereornu
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:tuple/tuple.dart';
 
-import 'package:ceFlutter/utils.dart';
-import 'package:ceFlutter/utils_load.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
+import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
-import 'package:ceFlutter/models/allocation.dart';
-import 'package:ceFlutter/models/hostLoc.dart';
+import 'package:ceFlutter/models/Allocation.dart';
+import 'package:ceFlutter/models/HostLoc.dart';
 
 Function listEq = const ListEquality().equals;
 
@@ -155,11 +156,11 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    assert( peqType != PeqType.end && splitAmount >= 0 );
    assert( source == null );
    assert( splitAmount > 0 );
-   assert( peqType == PeqType.allocation || suba.length >= 3 );
+   assert( suba.length >= 3 );
 
-   // depending on peqType, suba will be the base (allocation), or will have an extra "assignee" attached.
-   String assignee      = peqType == PeqType.allocation ? "" : subCat;
-   List<String> catBase = peqType == PeqType.allocation ? suba : suba.sublist(0, suba.length-1);
+   // suba will have an extra "assignee" attached.
+   String assignee      = subCat;
+   List<String> catBase = suba.sublist(0, suba.length-1);
    
    // Create allocs, if not already updated
    vPrint( appState, " ... adding new Allocation" );
@@ -539,22 +540,16 @@ void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
    // This can be called as part of a transfer out, in which this is a no-op, handled in _relo.
    if( ka != null ) {
       if( pact.note != PActNotes['transOut'] ) {
-         if( ka.allocType == PeqType.allocation ) {
-            vPrint( appState, "\n Delete allocation: " + ka.category.toString() );
-            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1*assigneeShare, PeqType.allocation, source: ka );
+         vPrint( appState, "\n Delete: " + ka.category.toString() );
+         List<Allocation> remAllocs = [];  // category, hostUserId, allocType
+         
+         // avoid concurrent mod of list
+         for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
+            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
+            remAllocs.add( miniAlloc );
          }
-         else {
-            vPrint( appState, "\n Delete: " + ka.category.toString() );
-            List<Allocation> remAllocs = [];  // category, hostUserId, allocType
-            
-            // avoid concurrent mod of list
-            for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-               Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
-               remAllocs.add( miniAlloc );
-            }
-            for( var remAlloc in remAllocs ) {
-               adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1*assigneeShare, ka.allocType, source: remAlloc );
-            }
+         for( var remAlloc in remAllocs ) {
+            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1*assigneeShare, ka.allocType, source: remAlloc );
          }
       }
 
@@ -569,20 +564,13 @@ void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
 //       From ingest point of view, In Prog === Planned, so no difference in operation.
 
 Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, subBase ) async {
-   // When adding, will only see peqType alloc or plan
+   // When adding, will only see peqType plan
    List<String> peqLoc = [];
    final appState = container.state;
 
    final startPPA = DateTime.now();
    
-   if( peq.peqType == PeqType.allocation ) {
-      vPrint( appState, "Alloc PEQ" );
-      // Note.. title will be set to future value here. Will create redundant 'change' in future ingest item
-      String pt = peq.hostIssueTitle;
-      adjustSummaryAlloc( appState, peq.id, peq.hostProjectSub, pt, peq.amount, PeqType.allocation );
-      peqLoc = peq.hostProjectSub;
-   }
-   else if( peq.peqType == PeqType.plan || peq.peqType == PeqType.pending ) {  // plan == prog in peqtype, aws
+   if( peq.peqType == PeqType.plan || peq.peqType == PeqType.pending ) {  // plan == prog in peqtype, aws
       vPrint( appState, "Normal PEQ" );
       
       // XXX Speed this up.  This is relevant 1/1000 times, but runs always.
@@ -652,25 +640,19 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       assert( sourceAlloc != -1 );
       assert( sourceAlloc.category.length >= 1 );
       
-      if( sourceAlloc.allocType == PeqType.allocation ) {
-         adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, sourceAlloc.allocType, source: sourceAlloc );
+      // Exactly one alloc per peq.id,assignee pair
+      List<Allocation> reloAlloc = [];  // category, hostUserId, allocType
+      
+      // avoid concurrent mod of list
+      for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
+         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
+         reloAlloc.add( miniAlloc );
       }
-      else
-      {
-         // Exactly one alloc per peq.id,assignee pair
-         List<Allocation> reloAlloc = [];  // category, hostUserId, allocType
-         
-         // avoid concurrent mod of list
-         for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
-            reloAlloc.add( miniAlloc );
-         }
-         
-         for( var remAlloc in reloAlloc ) {
-            assert( assignees.contains( remAlloc.hostUserId ));
-            vPrint( appState, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
-            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
-         }
+      
+      for( var remAlloc in reloAlloc ) {
+         assert( assignees.contains( remAlloc.hostUserId ));
+         vPrint( appState, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
+         adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
       }
 
       // As with delete, ceServer manages 'active' flag, no work here in dynamo.
@@ -703,94 +685,64 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       // If alloc.cat is unclaimed, ceServer will move across projects.  use psub.   Test col.  Will be stable even with multiple relos, since
       // psub is only overwritten the first time after unclaimed is claimed.
       // pallocs do not have assignees
-      if( sourceAlloc.allocType == PeqType.allocation ) {
-         // Remove it
-         adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, sourceAlloc.allocType, source: sourceAlloc );
-         
-         vPrint( appState, "  .. relocating to " + loc.toString() );
-         
-         if( sourceAlloc.category[0] == appState.UNCLAIMED ) {
-            // XXX Untested
-            // Here (hostIssueTitle) is the only dependency on peq that would require dynamo to have been updated.
-            // changeTitle would have to have occured in this ingest chunk.  Peq data is old, so use information in 'pending'.
-            // pending[peq.id] = [oldTitle, newTitle]
-            String newTitle = peq.hostIssueTitle;
-            if( pending.containsKey( peq.id ) ) {
-               assert( pending[peq.id].length == 2 );
-               newTitle = pending[peq.id][1];
-            }
-            peqLoc = peq.hostProjectSub;
-            adjustSummaryAlloc( appState, peq.id, peq.hostProjectSub, newTitle, assigneeShare, sourceAlloc.allocType, pid: loc.hostProjectId ); 
+
+      // Exactly one alloc per peq.id,assignee pair
+      List<Allocation> reloAlloc = [];  // category, hostUserId, allocType
+      
+      // avoid concurrent mod of list
+      for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
+         /*
+         // XXX speculative - accr weedout above may nullify this
+         if( sourceAlloc.allocType == PeqType.grant ) {
+         print( "Relo creation of ACCR allocation rejected." );
          }
          else {
-            // Have at least proj, col, title.
-            assert( sourceAlloc.category.length >= 2 );
-            List<String> suba = new List<String>.from( sourceAlloc.category.sublist(0, sourceAlloc.category.length-2) );
-            suba.add( loc.hostColumnName );
-            peqLoc = suba;
-            adjustSummaryAlloc( appState, peq.id, suba, sourceAlloc.category.last, assigneeShare, sourceAlloc.allocType, pid: loc.hostProjectId ); 
+         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
+         reloAlloc.add( miniAlloc );
          }
+         */
+         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
+         reloAlloc.add( miniAlloc );
       }
-      else
-      {
-         // Exactly one alloc per peq.id,assignee pair
-         List<Allocation> reloAlloc = [];  // category, hostUserId, allocType
+      
+      for( var remAlloc in reloAlloc ) {
+         assert( assignees.contains( remAlloc.hostUserId ));
+         vPrint( appState, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
+         adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.hostProjectId );
          
-         // avoid concurrent mod of list
-         for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-            /*
-            // XXX speculative - accr weedout above may nullify this
-            if( sourceAlloc.allocType == PeqType.grant ) {
-               print( "Relo creation of ACCR allocation rejected." );
-            }
-            else {
-               Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
-               reloAlloc.add( miniAlloc );
-            }
-            */
-            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
-            reloAlloc.add( miniAlloc );
-         }
-
-         for( var remAlloc in reloAlloc ) {
-            assert( assignees.contains( remAlloc.hostUserId ));
-            vPrint( appState, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
-            adjustSummaryAlloc( appState, peq.id, [], EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.hostProjectId );
-
-            // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
-            if( !baseCat.contains( loc.hostProjectName ) ) {
-               vPrint( appState, "  .. RELO is cross project!  Reconstituting category ");
-
-               Allocation? newSource = null;
-               // does not like firstwhereornull...
-               for( var ns in appState.myPEQSummary.getAllAllocs() ) {
-                  if( ns.category.contains( loc.hostProjectName )) {
-                     newSource = ns;
-                     break;
-                  }
+         // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
+         if( !baseCat.contains( loc.hostProjectName ) ) {
+            vPrint( appState, "  .. RELO is cross project!  Reconstituting category ");
+            
+            Allocation? newSource = null;
+            // does not like firstwhereornull...
+            for( var ns in appState.myPEQSummary.getAllAllocs() ) {
+               if( ns.category.contains( loc.hostProjectName )) {
+                  newSource = ns;
+                  break;
                }
-
-               if( newSource == null ) {
-                  // Possible if project name just changed.
-                  // XXX If proj of MasterCol.proj just changed, will no longer see masterCol.
-                  baseCat = [loc.hostProjectName];
-               }
-               else {
-                  List<String> sourceCat = newSource.category;
-                  baseCat = sourceCat.sublist( 0, sourceCat.indexOf( loc.hostProjectName ) + 1 );
-               }
-            }
-
-            // Moving into ACCR is handled by _accrue.  moving out of ACCR, for example by rejecting a propose ACCR, must update allocType here
-            if( remAlloc.allocType == PeqType.grant && loc.hostColumnName != appState.ACCRUED ) {
-               remAlloc.allocType = loc.hostColumnName == appState.PEND ? PeqType.pending : PeqType.plan;
-               vPrint( appState, "  .. Removed granted status, set to " + enumToStr(remAlloc.allocType) );
             }
             
-            vPrint( appState, "  .. relocating to " + loc.toString() );
-            peqLoc = baseCat + [loc.hostColumnName];
-            adjustSummaryAlloc( appState, peq.id, baseCat + [loc.hostColumnName], remAlloc.hostUserId, assigneeShare, remAlloc.allocType, pid: loc.hostProjectId );
+            if( newSource == null ) {
+               // Possible if project name just changed.
+               // XXX If proj of MasterCol.proj just changed, will no longer see masterCol.
+               baseCat = [loc.hostProjectName];
+            }
+            else {
+               List<String> sourceCat = newSource.category;
+               baseCat = sourceCat.sublist( 0, sourceCat.indexOf( loc.hostProjectName ) + 1 );
+            }
          }
+         
+         // Moving into ACCR is handled by _accrue.  moving out of ACCR, for example by rejecting a propose ACCR, must update allocType here
+         if( remAlloc.allocType == PeqType.grant && loc.hostColumnName != appState.ACCRUED ) {
+            remAlloc.allocType = loc.hostColumnName == appState.PEND ? PeqType.pending : PeqType.plan;
+            vPrint( appState, "  .. Removed granted status, set to " + enumToStr(remAlloc.allocType) );
+         }
+         
+         vPrint( appState, "  .. relocating to " + loc.toString() );
+         peqLoc = baseCat + [loc.hostColumnName];
+         adjustSummaryAlloc( appState, peq.id, baseCat + [loc.hostColumnName], remAlloc.hostUserId, assigneeShare, remAlloc.allocType, pid: loc.hostProjectId );
       }
 
 
@@ -807,7 +759,162 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
    }
    print( "MILLI Relo " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
 }   
+
+// Return newShareAmount.  Internally adjust newAssign.
+double _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast, newAssign ) {
+   final sourceType = ka == null ? "" : ka.allocType;
+   final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    
+   assert( ka.allocType != PeqType.allocation );
+   vPrint( appState, "Add assignee: " + pact.subject.last );
+   
+   List<String> curAssign = [ pactLast ];
+   
+   // Count the current assignees != unassigned.  readjust assigneeShare.  Ignore duplicate adds (blast).
+   for( String assign in assignees ) {
+      if( assign != appState.UNASSIGN && !curAssign.contains( assign ) ) { curAssign.add( assign ); }
+   }
+   newAssign            = curAssign;
+   final newShareAmount = (assigneeShare * assignees.length).round() / curAssign.length;
+   
+   // Remove all old, add all current with new assigneeShares
+   for( var assign in assignees ) {
+      vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+   }
+   for( var assign in curAssign ) {
+      vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
+   }
+
+   return newShareAmount;
+}
+
+// Return newShareAmount.  Internally adjust newAssign.
+double _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast, newAssign ) {
+   final sourceType = ka == null ? "" : ka.allocType;
+   final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
+
+   assert( ka.allocType != PeqType.allocation );
+   vPrint( appState, "Remove assignee: " + pact.subject.last );
+   
+   int originalSize = assignees.length;
+   
+   assert( assignees.contains( pactLast ));
+   
+   // Remove all old allocs
+   for( var assign in assignees ) {
+      vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+   }
+   
+   // Remove, then readjust assigneeShare
+   assignees.remove( pactLast );
+   if( assignees.length == 0 ) { assignees.add( appState.UNASSIGN ); }
+   
+   newAssign             = assignees;
+   final newShareAmount  = (assigneeShare * originalSize).round() / assignees.length;
+   
+   for( var assign in assignees ) {
+      vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
+   }
+
+   return newShareAmount;
+}
+
+double _pvUpdate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
+   final sourceType = ka == null ? "" : ka.allocType;
+   final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
+
+   vPrint( appState, "Peq val update, new val: " + pact.subject.last );
+   
+   // Remove all old allocs
+   for( var assign in assignees ) {
+      vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+   }
+   
+   final newShareAmount = int.parse( pact.subject.last ) / assignees.length;
+   
+   for( var assign in assignees ) {
+      vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
+   }
+
+   return newShareAmount;
+}
+
+void _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
+   final sourceType = ka == null ? "" : ka.allocType;
+   final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
+
+   // XXX revisit
+   assert( false );
+   // This is only issued when user deletes an accrued issue (for example, by deleting project), which ceServer then recreates in unclaimed.
+   // Note. After 8/2021, Github sends only partial issues in request body during issue delete.  Thanks GQL.
+   //       Assignees may be removed.. safest place to transfer them is here.
+   // This should be a rare event, seen after deleting an accrued issue.  ceServer rebuilds and saves a copy if the issue was removed first
+   assert( pact.subject.length == 2 );
+   vPrint( appState, "Recreate PEQ: " + pact.subject[0] + " --> " + pact.subject[1] );
+   
+   // peq is always subject0
+   assert( peq.id == pact.subject[0] );
+   
+   // Remove old allocs for peq
+   for( var assign in assignees ) {
+      vPrint( appState, "Remove " + peq.id + " in " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
+      adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
+   }
+   
+   // Do NOT Add for new peq, there is a follow-on 'add' pact that does the job
+   // The new peq is added in unclaimed:accrued with unassigned, as is correct.
+   // No.
+   // We need assignees for accrued, and in particular need to retain assignees for accrued issues.
+   // Add back here, then ignore subsequent add.
+   for( var assign in assignees ) {
+      vPrint( appState, "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.floor().toString() );
+      adjustSummaryAlloc( appState, pact.subject[1], [appState.UNCLAIMED, appState.ACCRUED ], assign, assigneeShare, sourceType );
+   }
+   
+   // In this case, active flag is managed by ceServer, as is new peq creation.
+   // ceServer creates the new peq with correct values for all but assignees, which was set properly above.
+}
+
+// no alloc-related work to be done here, allocs are not recorded by regular peq issue name.
+String _titRename( appState, pact, ka ) {
+   assert( ka != null );
+
+   // XXX untested
+   vPrint( appState, "Change title, new val: " + pact.subject.last );
+   
+   return pact.subject.last;
+}
+
+Future _colRename( context, container, pact ) async {
+   final appState = container.state;
+   // XXX REVISIT once this is possible again
+   // These arrive as viable pact, and -1 as peq.  Pact subject is [ colId, oldName, newName ]
+   // ceServer handles locs in dynamo.  myHostLinks.locations is current.
+   // This has the potential to impact any future operation on peqs. wait.
+   await updateColumnName( context, container, pact.subject );
+   vPrint( appState, "Column rename handled at start of todo processing" );
+   vPrint( appState, "Done waiting on column name update" );
+   return; 
+}
+
+Future _projRename( context, container, pact ) async {
+   final appState = container.state;
+   // XXX REVISIT once this is possible again
+   // These arrive as viable pact, and -1 as peq.  Pact subject is [ projId, oldName, newName ]
+   // ceServer handles locs in dynamo.  myHostLinks.locations is current.
+   await updateProjectName( context, container, pact.subject );
+   // This has the potential to impact any future operation on peqs. wait.
+   vPrint( appState, "Project rename handled at start of todo processing" );
+   vPrint( appState, "Done waiting on project name update" );
+   return;
+}
+
 // Note: peq.hostHolder will only inform us of the latest status, not all the changes in the middle.
 //      Ingest needs to track all the changes in the middle
 // XXX If add assignee that is already present, expect to remove all, then re-add all allocs.
@@ -817,6 +924,7 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    assert( ka != null || pact.note == PActNotes['colRename'] || pact.note == PActNotes['projRename'] );
    final startPPA = DateTime.now();
 
+   // XXX remove
    var sourceType = ka == null ? "" : ka.allocType;
    var baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
 
@@ -826,164 +934,27 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    String pactLast        = _convertNameToId( appState, pact.subject.last );  // if peqValUpdate, this will be an int, but won't be used.
 
    if( pact.note == PActNotes['addAssignee'] ) {
-      assert( ka.allocType != PeqType.allocation );
-      vPrint( appState, "Add assignee: " + pact.subject.last );
-      
-      List<String> curAssign = [ pactLast ];
-      
-      // Count the current assignees != unassigned.  readjust assigneeShare.  Ignore duplicate adds (blast).
-      for( String assign in assignees ) {
-         if( assign != appState.UNASSIGN && !curAssign.contains( assign ) ) { curAssign.add( assign ); }
-      }
-      
-      newAssign          = curAssign;
-      newShareAmount     = (assigneeShare * assignees.length).round() / curAssign.length;
-   
-      // Remove all old, add all current with new assigneeShares
-      for( var assign in assignees ) {
-         vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
-      }
-      for( var assign in curAssign ) {
-         vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
-      }
+      newShareAmount = _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast, newAssign ); 
    }
    else if( pact.note == PActNotes['remAssignee'] ) {
-      assert( ka.allocType != PeqType.allocation );
-      vPrint( appState, "Remove assignee: " + pact.subject.last );
-      
-      int originalSize = assignees.length;
-      
-      assert( assignees.contains( pactLast ));
-      
-      // Remove all old allocs
-      for( var assign in assignees ) {
-         vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
-      }
-      
-      // Remove, then readjust assigneeShare
-      assignees.remove( pactLast );
-      if( assignees.length == 0 ) { assignees.add( appState.UNASSIGN ); }
-      
-      newAssign          = assignees;
-      newShareAmount     = (assigneeShare * originalSize).round() / assignees.length;
-      
-      for( var assign in assignees ) {
-         vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
-      }
+      newShareAmount = _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast, newAssign ); 
    }
    else if( pact.note == PActNotes['pvUpdate'] ) {
-      vPrint( appState, "Peq val update, new val: " + pact.subject.last );
-
-      if( ka.allocType != PeqType.allocation ) {
-         // Remove all old allocs
-         for( var assign in assignees ) {
-            vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
-            adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
-         }
-         
-         newShareAmount = int.parse( pact.subject.last ) / assignees.length;
-         
-         for( var assign in assignees ) {
-            vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
-            adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
-         }
-      }
-      else {
-         // Remove old alloc
-         String aTitle = ka.category.last;
-         vPrint( appState, "Remove " + baseCat.toString() + " " + aTitle + " " + assigneeShare.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, aTitle, -1 * assigneeShare, sourceType );
-
-         var divisor = assignees.length == 0 ? 1 : assignees.length;   // might have assignees, might have none
-         newShareAmount = int.parse( pact.subject.last ) / divisor;
-         
-         vPrint( appState, "Add " + aTitle + " " + newShareAmount.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, aTitle, newShareAmount, sourceType );
-      }
-      
+      newShareAmount = _pvUpdate( appState, pact, peq, assignees, assigneeShare, ka, pactLast );
    }
    else if( pact.note == PActNotes['recreate'] ) {
-      assert( false );
-      // This is only issued when user deletes an accrued issue, which ceServer then recreates in unclaimed.
-      // Note. After 8/2021, Github sends only partial issues in request body during issue delete.  Thanks GQL.
-      //       Assignees may be removed.. safest place to transfer them is here.
-      // This should be a rare event, seen after deleting an accrued issue.  ceServer rebuilds and saves a copy if the issue was removed first
-      assert( ka.allocType != PeqType.allocation );
-      assert( pact.subject.length == 2 );
-      vPrint( appState, "Recreate PEQ: " + pact.subject[0] + " --> " + pact.subject[1] );
-
-      // peq is always subject0
-      assert( peq.id == pact.subject[0] );
-      
-      // Remove old allocs for peq
-      for( var assign in assignees ) {
-         vPrint( appState, "Remove " + peq.id + " in " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
-      }
-
-      // Do NOT Add for new peq, there is a follow-on 'add' pact that does the job
-      // The new peq is added in unclaimed:accrued with unassigned, as is correct.
-      // No.
-      // We need assignees for accrued, and in particular need to retain assignees for accrued issues.
-      // Add back here, then ignore subsequent add.
-      for( var assign in assignees ) {
-         vPrint( appState, "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.floor().toString() );
-         adjustSummaryAlloc( appState, pact.subject[1], [appState.UNCLAIMED, appState.ACCRUED ], assign, assigneeShare, sourceType );
-      }
-
-      // In this case, active flag is managed by ceServer, as is new peq creation.
-      // ceServer creates the new peq with correct values for all but assignees, which was set properly above.
+      _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast );
    }
    else if( pact.note == PActNotes['titRename'] ) {
-      // XXX untested
-      vPrint( appState, "Change title, new val: " + pact.subject.last );
-
-      assert( ka != null );
-      newTitle = pact.subject.last;
-      
-      if( ka.allocType == PeqType.allocation ) {
-         // Remove old alloc
-         assert( assignees.length == 1 );
-         String oldTitle = ka.category.last;
-         vPrint( appState, "Remove " + baseCat.toString() + " " + oldTitle + " " + assigneeShare.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, oldTitle, -1 * assigneeShare, sourceType );
-         
-         vPrint( appState, "Add " + newTitle + " " + assigneeShare.floor().toString() );
-         adjustSummaryAlloc( appState, peq.id, baseCat, newTitle, assigneeShare, sourceType );
-
-         // inform pending _relos, if any
-         pending[peq.id] = [oldTitle, newTitle];
-      }
-      else {
-         // no alloc-related work to be done here, allocs are not recorded by regular peq issue name.
-      }
-      
+      newTitle = _titRename( appState, pact, ka );
    }
    else if( pact.note == PActNotes['colRename']) {
-      // XXX REVISIT once this is possible again
-      // These arrive as viable pact, and -1 as peq.  Pact subject is [ colId, oldName, newName ]
-      // ceServer handles locs in dynamo.  myHostLinks.locations is current.
-      // This has the potential to impact any future operation on peqs. wait.
-      await updateColumnName( context, container, pact.subject );
-      vPrint( appState, "Column rename handled at start of todo processing" );
-      vPrint( appState, "Done waiting on column name update" );
-      return; 
+      _colRename( context, container, pact );
    }
    else if( pact.note == PActNotes['projRename']) {
-      // XXX REVISIT once this is possible again
-      // These arrive as viable pact, and -1 as peq.  Pact subject is [ projId, oldName, newName ]
-      // ceServer handles locs in dynamo.  myHostLinks.locations is current.
-      await updateProjectName( context, container, pact.subject );
-      // This has the potential to impact any future operation on peqs. wait.
-      vPrint( appState, "Project rename handled at start of todo processing" );
-      vPrint( appState, "Done waiting on project name update" );
-      return;
+      _projRename( context, container, pact );
    }
-
+   
    List<String> ceHolders = [];
    if( !listEq( newAssign, [appState.UNASSIGN ] )) {
       newAssign.forEach( (hostHolder) {
@@ -1137,7 +1108,7 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
 
 
 // XXX This method should go away once ceServer can be worked on again.  Don't bother speeding this up.
-void _reformPActs( List<PEQAction> todoPActs ) {
+void _reformPActs( context, container, List<PEQAction> todoPActs ) {
    // current Modules Flut is projects_v2 id
    final MF = "PVT_kwDOA8JELs4AfIcJ";
    
@@ -1148,19 +1119,46 @@ void _reformPActs( List<PEQAction> todoPActs ) {
                       });
    
    print( "removing all pacts with peqId " + mfPEQId.toString() + " " + todoPActs.length.toString() );
-   
-   // Second pass, remove all with that peqId
-   todoPActs.removeWhere( (p) => p.subject.length > 0 && mfPEQId.contains( p.subject[0] ) );
+
+   // todoPActs.removeWhere( (p) => p.subject.length > 0 && mfPEQId.contains( p.subject[0] ) );
+   // set ingested to true for these pacts, then remove.
+   List<String> markIds = [];
+   for( int i = todoPActs.length - 1; i >= 0; i-- ) {
+      var p = todoPActs[i];
+      if( p.subject.length > 0 && mfPEQId.contains( p.subject[0] )) {
+         markIds.add( p.id );
+         todoPActs.removeAt( i ); 
+      }
+   }
+
+   // unlock, set ingested
+   if( markIds.length > 0 ) {
+      String newPIDs = json.encode( markIds );
+      updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
+   }
+
    print( "leaving " + todoPActs.length.toString() + " pacts" );
+
 }
 
 // XXX This method should go away once ceServer can be worked on again.  Don't bother speeding this up.
-void _removeAllocs( List<Tuple2<PEQAction, PEQ>> todos ) {
+void _removeAllocs( context, container, List<Tuple2<PEQAction, PEQ>> todos ) {
+   List<String> markIds = [];
    for( int i = todos.length-1; i >= 0; i-- ) {
       PEQAction pact = todos[i].item1;
       PEQ       peq  = todos[i].item2;
-      if( peq.peqType == PeqType.allocation ) { todos.removeAt( i ); }
+      if( peq.peqType == PeqType.allocation ) {
+         markIds.add( pact.id );
+         todos.removeAt( i );
+      }
    }
+
+   // unlock, set ingested
+   if( markIds.length > 0 ) {
+      String newPIDs = json.encode( markIds );
+      updateDynamo( context, container,'{ "Endpoint": "UpdatePAct", "PactIds": $newPIDs }', "UpdatePAct" );
+   }
+
 }
 
 
@@ -1174,29 +1172,30 @@ void _removeAllocs( List<Tuple2<PEQAction, PEQ>> todos ) {
 //   notice:'PEQ label delete attempt'
 //   notice:'PEQ label edit attempt'
 
-Future<void> updatePEQAllocations( repoName, context, container ) async {
+Future<void> updatePEQAllocations( context, container ) async {
    final appState  = container.state;
    final ceProjId  = appState.selectedCEProject;
    vPrint( appState, "Updating allocations for ceProjectId: " + ceProjId );
    final startUPA = DateTime.now();
 
+   // XXX non-destructive, but expensive.  avoid if nothing to do.
    // First, update myHostLinks.locs, since ceFlutter may have been sitting in memory long enough to be out of date.
    vPrint( appState, "Start myLoc update" );
    Future myLocs = fetchHostLinkage( context, container, { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }} );
-   // 0s
    print( "TIME FetchHostLink " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
    vPrint( appState, "Start pact update" );
+   // Get all uningested pacts.
    final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "CEProjectId": "$ceProjId" }' );
    // 12s
    print( "TIME FetchPAct " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
-   if( todoPActions.length == 0 ) { return; }
-
    // XXX Modules Until work on ceServer can start again, strip everything to do with Modules here
    print( "Reform todoPActions to replicate what server will send" );
-   _reformPActs( todoPActions );
+   _reformPActs( context, container, todoPActions );
    
+   if( todoPActions.length == 0 ) { return; }
+
    List<String> pactIds = [];
    List<String> peqIds = [];
 
@@ -1275,7 +1274,7 @@ Future<void> updatePEQAllocations( repoName, context, container ) async {
 
    // XXX This should be removed once ceServer is updated to not send peqType:allocation pacts or peqs this way.
    print( "Pre-Remove Allocs " + todos.length.toString());
-   _removeAllocs( todos );
+   _removeAllocs( context, container, todos );
    print( "Post-Remove Allocs " + todos.length.toString());
    
    vPrint( appState, "Pre order fix " + todos.length.toString());

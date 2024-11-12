@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:ceFlutter/utils.dart';
-import 'package:ceFlutter/utils_load.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
+
 import 'package:ceFlutter/app_state_container.dart';
+
 import 'package:ceFlutter/models/app_state.dart';
 
 
@@ -49,6 +51,7 @@ class _CEProfileState extends State<CEProfilePage> {
       appState = container.state;
       assert( appState != null );
 
+      print("Profile page");
       makeLogoutButton() {
          return makeActionButton( appState, 'Logout', _logout( context, container, appState) );
       }

@@ -3,7 +3,8 @@ import 'dart:math';
 
 import 'package:ceFlutter/app_state_container.dart';
 
-import 'package:ceFlutter/utils.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 

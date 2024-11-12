@@ -9,10 +9,11 @@ import 'package:localstore/localstore.dart';
 // import 'package:flutter_cognito_plugin/flutter_cognito_plugin.dart';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 
-import 'package:ceFlutter/models/app_state.dart';
-import 'package:ceFlutter/utils_load.dart';
 import 'package:ceFlutter/cognitoUserService.dart';
 
+import 'package:ceFlutter/utils/ceUtils.dart';
+
+import 'package:ceFlutter/models/app_state.dart';
 
 class AppStateContainer extends StatefulWidget {
    

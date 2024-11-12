@@ -198,7 +198,7 @@ Future<bool> verifyAriHome( WidgetTester tester ) async {
    expect( find.byKey( const Key('CodeEquity_ycje7dk23f' )),  findsOneWidget );   
    
    //  Five GH Repositories
-   expect( find.byKey( const Key('codeequity/ceFlutterTester' )), findsOneWidget );
+   expect( find.byKey( const Key('CE_FlutTest_ks8asdlg42' )), findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterAri' )),      findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterConnie' )),   findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterAriAlt' )),   findsOneWidget );   
@@ -253,13 +253,13 @@ Future<bool> verifyOnAddGHPage( WidgetTester tester ) async {
 
 Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
    // Top bar
-   expect( find.byIcon( customIcons.home_here ), findsOneWidget );
-   expect( find.byIcon( customIcons.loan ),      findsOneWidget );   // XXX rename these icons!
+   expect( find.byIcon( customIcons.home ),      findsOneWidget );
+   expect( find.byIcon( customIcons.loan_here ), findsOneWidget );   // XXX rename these icons!
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
    expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 
    // framing
-   expect( find.text( 'codeequity/ceFlutterTester' ),     findsOneWidget );  
+   expect( find.text( 'CE_FlutTest_ks8asdlg42' ),          findsOneWidget );  
    expect( find.text( 'Approvals' ),                       findsOneWidget );  
    expect( find.text( 'PEQ Summary' ),                     findsOneWidget );  
    expect( find.text( 'Contributors' ),                    findsOneWidget );  
@@ -347,10 +347,13 @@ Future<String> checkNTap( WidgetTester tester, String keyName, {callCount = 0} )
    }
 }
 
+// XXX out of date reason
 // Currently flutter integration_test for web can not make use of browser back button, or refresh button.
 // Implement this with nav bar, for now.  If used popScope instead, would not help forward button.
 // XXX If more than, say, 3 of these bandages are needed, go to popScope.
 Future<bool> backToSummary( WidgetTester tester ) async {
+
+   String ceProj = "CE_FlutTest_ks8asdlg42";
 
    final Finder homeButton     = find.byKey( const Key( 'homeIcon' ) );
    if( isPresent( homeButton )) {
@@ -360,8 +363,7 @@ Future<bool> backToSummary( WidgetTester tester ) async {
 
    // XXX Does this belong here?
    expect( await verifyAriHome( tester ), true );
-   String repo = "codeequity/ceFlutterTester";
-   final Finder ariLink = find.byKey( Key( repo ));   
+   final Finder ariLink = find.byKey( Key( ceProj ));   
 
    await tester.tap( ariLink );
    await pumpSettle( tester, 2 );
