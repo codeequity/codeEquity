@@ -24,13 +24,13 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
-import 'package:ceFlutter/models/equityPlan.dart';
+import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/PEQRaw.dart';
-import 'package:ceFlutter/models/person.dart';
-import 'package:ceFlutter/models/hostAccount.dart';
-import 'package:ceFlutter/models/allocation.dart';
+import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
-import 'package:ceFlutter/models/hostLoc.dart';
+import 'package:ceFlutter/models/HostLoc.dart';
 
 // XXX strip context, container where not needed
 

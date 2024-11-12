@@ -11,7 +11,7 @@ import 'package:ceFlutter/cognitoUserService.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
 
-import 'package:ceFlutter/models/person.dart';
+import 'package:ceFlutter/models/Person.dart';
 
 class CESignupPage extends StatefulWidget {
   CESignupPage({Key? key}) : super(key: key);

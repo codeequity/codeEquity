@@ -10,8 +10,8 @@ import 'package:ceFlutter/cognitoUserService.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
-import 'package:ceFlutter/models/equityPlan.dart';
-import 'package:ceFlutter/models/hostAccount.dart';
+import 'package:ceFlutter/models/EquityPlan.dart';
+import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 
 import 'package:ceFlutter/components/node.dart';

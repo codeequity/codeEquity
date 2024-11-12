@@ -14,7 +14,7 @@ class EquityPlan {
    List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]
    List<int>           amounts;       // e.g. [ 1000000, ... ]
    List<String>        hostNames;     // host project (name) this equity line is associated with
-   String              lastMod;       // XXX unused.
+   String              lastMod;
 
    EquityPlan({ required this.ceProjectId, required this.categories, required this.amounts, required this.hostNames, required this.lastMod }) {
       assert( categories.length == amounts.length );

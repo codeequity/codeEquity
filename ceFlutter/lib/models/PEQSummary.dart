@@ -1,6 +1,6 @@
 import 'dart:collection';              // hashset
 
-import 'package:ceFlutter/models/allocation.dart';
+import 'package:ceFlutter/models/Allocation.dart';
 
 // ceFlutter use only
 

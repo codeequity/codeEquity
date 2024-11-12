@@ -8,8 +8,7 @@ import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
-
-import 'package:ceFlutter/models/allocation.dart';
+import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 
 import 'package:ceFlutter/components/tree.dart';
@@ -232,6 +231,8 @@ class _CESummaryState extends State<CESummaryFrame> {
    
 
    Widget getAllocation( context ) {
+      final w1 = 4 * appState.CELL_HEIGHT;
+      final spinSize = 1.8*appState.BASE_TXT_HEIGHT;
       if( appState.verbose >= 2 ) { print( "SF: Remake allocs" ); }
       final buttonWidth = 100;
       
@@ -239,16 +240,23 @@ class _CESummaryState extends State<CESummaryFrame> {
 
       var c = Container( width: 1, height: 1 );
 
+      // Spinny
+      if( appState.peqAllocsLoading ) {
+         Widget cpi = Wrap( spacing: 0, children: [
+                               Container( width: w1, height: spinSize ),
+                               Container( width: spinSize, height: spinSize, child: CircularProgressIndicator() ),
+                               makeTitleText( appState, "This can take a few minutes..", 6*appState.CELL_HEIGHT, false, 1, fontSize: 16)
+                               ]);
+         
+         // XXX Change number of cells?  change padding container 'c', and subtraction from tinypad.
+         allocs.addAll( [[ Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT ) ]] );
+         allocs.addAll( [[ cpi ]] );
+         allocs.addAll( [[ Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT ) ]] );
+      }
+      else {
+         allocs.addAll( _showPAlloc() );
+      }
 
-      List<List<Widget>> pallocs = appState.peqAllocsLoading ?
-                                   [[Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT, child: CircularProgressIndicator() )]] :
-                                   _showPAlloc();
-
-      
-      // List<List<Widget>> pallocs = _showPAlloc();
-
-      // XXX Change number of cells?  change padding container 'c', and subtraction from tinypad.
-      allocs.addAll( pallocs );
       allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,

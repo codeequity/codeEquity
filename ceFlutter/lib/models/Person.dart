@@ -9,9 +9,9 @@ class Person {
    String       lastName;
    String       userName;
    String       email;
-   bool         locked;
-   Uint8List?   imagePng;     // ONLY   use to, from and in dynamoDB
-   Image?       image;        // ALWAYS use elsewhere
+   bool               locked;
+   final Uint8List?   imagePng;     // ONLY   use to, from and in dynamoDB
+   final Image?       image;        // ALWAYS use elsewhere
 
    Person({required this.id, required this.firstName, required this.lastName, required this.userName,
             required this.email, required this.locked, required this.imagePng, required this.image});

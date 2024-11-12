@@ -9,7 +9,7 @@ import 'package:ceFlutter/utils.dart';
 import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
-import 'package:ceFlutter/models/placeHolder.dart';
+import 'package:ceFlutter/models/PlaceHolder.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';

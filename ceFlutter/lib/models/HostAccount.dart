@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 // Combines dynamo:CEHostUser with dynamo:CEProjects
 class HostAccount {
-   String         hostPlatform;
-   String         hostUserName;
-   String         ceUserId;
+   final String   hostPlatform;
+   final String   hostUserName;
+   final String   ceUserId;
    final String   hostUserId;
    List<String>   ceProjectIds;
-   List<String>   futureCEProjects;
-   Map<String, List<String>> ceProjRepos;
+   final List<String> futureCEProjects;
+   final Map<String, List<String>> ceProjRepos;
 
    HostAccount({required this.hostPlatform, required this.hostUserName, required this.ceUserId, required this.hostUserId,
             required this.ceProjectIds, required this.futureCEProjects, required this.ceProjRepos});
