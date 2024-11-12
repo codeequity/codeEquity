@@ -8,7 +8,7 @@ import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 
 import 'package:localstore/localstore.dart';
 
-import 'package:ceFlutter/utils.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/screens/launch_page.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 

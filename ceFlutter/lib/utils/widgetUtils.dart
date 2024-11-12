@@ -1,15 +1,12 @@
 import 'dart:ui';
 import 'dart:typed_data';
-import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
-import 'package:ceFlutter/utils_load.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
-// import 'package:ceFlutter/screens/detail_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
 
@@ -18,43 +15,6 @@ import 'package:ceFlutter/customIcons.dart';
 // XXX service?
 // app-wide constants.  Break this out if more than, say, 3
 const EMPTY = "---";
-
-
-// enum accessibility funcs
-// https://medium.com/@amir.n3t/advanced-enums-in-flutter-a8f2e2702ffd
-String enumToStr(Object? o) => (o ?? "").toString().split('.').last;
-
-T enumFromStr<T>(String key, List<T> values) => values.firstWhere((v) => key == enumToStr(v),
-                                                                  orElse: (() { print( "Warning " + key + " not found"); return values[values.length - 1]; }));
-
-
-
-String getToday() {
-   final now = new DateTime.now();
-   String date = "";
-
-   if( now.month < 10 ) { date += "0"; }
-   date = now.month.toString() + "/";
-
-   if( now.day < 10 ) { date += "0"; }
-   date += now.day.toString() + "/";
-   
-   date += now.year.toString();
-   return date;
-}
-
-String randAlpha(length) {
-   var result           = '';
-   var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-   var charactersLength = characters.length;
-   var rng = Random();
-   for ( var i = 0; i < length; i++ ) {
-      result += characters[ rng.nextInt( charactersLength ) ];
-   }
-   print( "Ralph returning " + result );
-   return result;
-}
-
 
 // XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {
@@ -207,23 +167,6 @@ Widget paddedLTRB( child, double L, double T, double R, double B ) {
    return Padding(
       padding: EdgeInsets.fromLTRB(L,T,R,B),
       child: child );
-}
-
-String addCommas( int amount ) {
-   String res = "";
-   bool neg = amount < 0 ? true : false;
-   if( neg ) { amount = -1 * amount; }
-         
-   String t = amount.toString();
-
-   while( t.length > 3 ) {
-      res = "," + t.substring( t.length - 3 ) + res;
-      t = t.substring( 0, t.length - 3 );
-   }
-   res = t + res;
-   
-   if( neg ) { res = "-" + res; }
-   return res;
 }
 
 Widget makeActionButton( appState, buttonText, fn ) {

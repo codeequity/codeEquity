@@ -1,4 +1,5 @@
-import 'package:ceFlutter/utils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
+
 import 'package:ceFlutter/models/PEQ.dart';
 
 // ceFlutter use only

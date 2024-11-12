@@ -4,8 +4,10 @@ import 'dart:convert';  // json encode/decode
 import 'package:flutter/material.dart';
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 
-import 'package:ceFlutter/utils.dart';
-import 'package:ceFlutter/utils_load.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
+
 import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/cognitoUserService.dart';
 
