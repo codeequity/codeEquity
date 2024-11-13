@@ -675,7 +675,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
          return;
       }
       
-      // Get name of new column home
+      // Get name of new column home.  Assume locations projectId.columnId are unique.
       assert( pact.subject.length == 3 );
       HostLoc loc = appState.myHostLinks.locations.firstWhere( (a) => a.hostProjectId == pact.subject[1] && a.hostColumnId == pact.subject[2] );
       assert( loc != null );
@@ -1181,7 +1181,8 @@ Future<void> updatePEQAllocations( context, container ) async {
    // XXX non-destructive, but expensive.  avoid if nothing to do.
    // First, update myHostLinks.locs, since ceFlutter may have been sitting in memory long enough to be out of date.
    vPrint( appState, "Start myLoc update" );
-   Future myLocs = fetchHostLinkage( context, container, { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }} );
+   var pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }};
+   Future myLocs = fetchHostLinkage( context, container, json.encode( pd ) );
    print( "TIME FetchHostLink " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
    vPrint( appState, "Start pact update" );

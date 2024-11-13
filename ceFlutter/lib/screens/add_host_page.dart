@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
-import 'package:ceFlutter/utils/ghUtils.dart';
+import 'package:ceFlutter/utils/ghUtils.dart';      // associateGH
 
 import 'package:ceFlutter/models/app_state.dart';
 
@@ -41,7 +41,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
 
    // XXX Deactivate this until PAT is in controller.
    // material button has no maxwidth, adopts parent box. Not co-operative with Container, BoxConstraints.
-   // XXX update materialbutton, remove w.
+   // XXX update materialbutton, remove w. (??)
    Widget _ghAssociateButton() {
       final bwidth = 180;
       final w = min( appState.screenWidth - bwidth, maxPaneWidth - bwidth );
@@ -71,12 +71,9 @@ class _CEAddHostState extends State<CEAddHostPage> {
    }
       
 
-   // NOTE:
-   // Down the road should split *GH* out, and connect alternate code host repositories
    Widget _makeAssociateGH() {
-
       // XXX This is not clearly true.  Need PAT each time refresh Host repos, since have to use listRepositories.
-      // XXX <Profile> should be clickable, take you to profile.
+      // XXX <Profile> (below in ghexplain) should be clickable, take you to profile. 
       String ghExplain   = "CodeEquity will authenticate your account with Github one time only.  ";
       ghExplain         += "You can undo this association at any time under <Profile>.  ";
       ghExplain         += "Your Personal Access Token allows CodeEquity to make a secure connection to GitHub.";
@@ -94,7 +91,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
                makeBodyText( appState, ghExplain, maxPaneWidth, true, 4 ),
 
                Container( height: appState.FAT_PAD ),
-               makeHDivider( maxPaneWidth, appState.GAP_PAD, appState.GAP_PAD ),
+               makeHDivider( appState, maxPaneWidth, appState.GAP_PAD, appState.GAP_PAD ),
                Container( height: appState.GAP_PAD ),
 
                Container( height: appState.GAP_PAD ),
@@ -102,7 +99,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
                makeBodyText( appState, patExplain, maxPaneWidth, true, 2 ),
 
                Container( height: appState.MID_PAD ),
-               makeHDivider( maxPaneWidth, appState.GAP_PAD, appState.GAP_PAD ),
+               makeHDivider( appState, maxPaneWidth, appState.GAP_PAD, appState.GAP_PAD ),
                Container( height: appState.MID_PAD ),
                
                _ghAssociateButton(),

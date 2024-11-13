@@ -77,16 +77,15 @@ class _CESummaryState extends State<CESummaryFrame> {
    // XXX hostUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
    // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
    //     detail page..?
-   _pactDetail( path, convertedName, width, depthM1, isAlloc ) {
+   _pactDetail( path, convertedName, width, depthM1 ) {
       // print( "Pact Detail looking for user " + path.toString() + " " + depthM1.toString() );
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
          {
             String hostUserLogin = path[ depthM1 ];
-            if( isAlloc )                                 { appState.selectedUser = appState.ALLOC_USER; }
-            else if( hostUserLogin == appState.UNASSIGN ) { appState.selectedUser = appState.UNASSIGN_USER; }
-            else                                          { appState.selectedUser = hostUserLogin; }
+            if( hostUserLogin == appState.UNASSIGN ) { appState.selectedUser = appState.UNASSIGN_USER; }
+            else                                     { appState.selectedUser = hostUserLogin; }
             appState.userPActUpdate = true;
             if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
             widget.detailCallback( path );
@@ -180,7 +179,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   // Pact details sit at the assignee level.  SitedCat can be any length, but assignee is always the last element.
                   // We filter pacts by project subs in the PEQ model. Project subs are unsited.
                   int assigneeLoc = alloc.category.length - 1;
-                  Widget details = _pactDetail( alloc.category, rowName, width, assigneeLoc, alloc.allocType == PeqType.allocation );
+                  Widget details = _pactDetail( alloc.category, rowName, width, assigneeLoc );
                   Leaf tmpLeaf   = Leaf( rowName, allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }
@@ -257,7 +256,7 @@ class _CESummaryState extends State<CESummaryFrame> {
          allocs.addAll( _showPAlloc() );
       }
 
-      allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
+      allocs.addAll( [[ makeHDivider( appState, maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
                         "Update PEQ Summary?",

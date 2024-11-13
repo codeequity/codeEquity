@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
-import 'package:ceFlutter/utils/ghUtils.dart';
+import 'package:ceFlutter/utils/ghUtils.dart';     // updateGHRepos
 import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 
@@ -153,7 +153,7 @@ class _CEHomeState extends State<CEHomePage> {
       }
       if( addedMore ) {
          repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-         repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+         repoChunks.add( makeHDivider( appState, textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
          repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
       }
       chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
@@ -172,7 +172,7 @@ class _CEHomeState extends State<CEHomePage> {
          textWidth,
          () async
          {
-            await updateProjects( context, container );
+            await updateGHRepos( context, container );
             setState(() => appState.hostUpdated = true );            
          }); 
       
@@ -221,7 +221,7 @@ class _CEHomeState extends State<CEHomePage> {
          }
       }
       chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      chunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+      chunks.add( makeHDivider( appState, textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
       chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
       chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
 

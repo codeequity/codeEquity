@@ -19,8 +19,8 @@ class Allocation {
    List<String>?      setInStone;      // all source peq ids that have confirm accrued.  These will not be further adjusted
    PeqType            allocType;
    final String?      ceUID;           // if Plan or Grant, who is it for
-   final String?      hostUserName;    // hostUser associated with ceUID
-   final String       hostUserId;      // hostUser associated with ceUID
+   final String?      hostUserName;    // hostUser associated with ceUID for this alloc
+   final String       hostUserId;      // hostUser associated with ceUID for this alloc
    final double?      vestedPerc;      // granted or accrued
    final String?      notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
    final String?      hostProjectId;   // a fixed point that chains the category to a specific location in host

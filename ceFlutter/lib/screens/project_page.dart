@@ -87,7 +87,7 @@ class _CEProjectState extends State<CEProjectPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
-               makeHDivider( appState.screenWidth, 0, 0 ),
+               makeHDivider( appState, appState.screenWidth, 0, 0 ),
                fn()
                ])
          );

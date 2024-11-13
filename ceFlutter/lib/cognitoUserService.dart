@@ -91,15 +91,19 @@ class UserService {
    Future<bool> init() async {
       final prefs = await SharedPreferences.getInstance();
       final storage = Storage(prefs);
+      print( "... .. cogUserService got storage" );
 
       assert( _userPool != null );
       _userPool!.storage = storage;
       
       _cognitoUser = await _userPool!.getCurrentUser();
+      print( "... .. cogUserService got currentUser" );
+
       if (_cognitoUser == null) {
          return false;
       }
       _session = await _cognitoUser!.getSession();
+      print( "... .. cogUserService got session" );
 
       assert( _session != null );
       return _session!.isValid();

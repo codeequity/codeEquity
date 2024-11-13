@@ -65,7 +65,7 @@ class _CEDetailState extends State<CEDetailPage> {
       final textWidth = appState.screenWidth * .6;
       String proj = "";
       for( var p in peq.hostProjectSub ) {
-         if( p == "Software Contributions" ) { p = "Software"; }  // XXX TEMP
+         if( p == "Software Contributions" ) { p = "Software"; }  // XXX TEMP   allow two lines in this bolded title.
          proj += p + "::";
       }
       if( proj.length > 2 ) { proj = proj.substring( 0,proj.length - 2 ); }
@@ -76,6 +76,7 @@ class _CEDetailState extends State<CEDetailPage> {
       return makeTitleText( appState, apeq, textWidth, false, 1, keyTxt: peq.hostIssueTitle );
    }
 
+   // NOTE: No way to ask for uningested pact - will not be available in summary frame.  This is a good thing, or at least not a harmful thing.
    // XXX rawbody -> prettier list of string
    Widget _makePAct( pact, peqCount, pactCount ) {
       final textWidth = appState.screenWidth * .6;
@@ -110,8 +111,6 @@ class _CEDetailState extends State<CEDetailPage> {
       
    }
 
-   // XXX peqPAct is new for each detailPage, i.e. for each selection.
-   //     information overlaps with selectedPeqs.. resolve
    // XXX don't circle if empty.  buuuut, for now, OK.
    Widget _showPActList() {
 
@@ -120,7 +119,6 @@ class _CEDetailState extends State<CEDetailPage> {
 
          pactList.clear();
          var peqCount = 0;
-         // XXX save anything here?  
          for( final peq in selectedPeqs ) {
             // print( "pact list peq: " + peq.hostIssueTitle + " " + peq.id);
             pactList.add( _makePeq( peq ) );
@@ -132,7 +130,7 @@ class _CEDetailState extends State<CEDetailPage> {
                pactCount++;
             }
             peqCount++;
-            pactList.add( makeHDivider( appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));            
+            pactList.add( makeHDivider( appState, appState.screenWidth * .8, 0.0, appState.screenWidth * .1 ));            
          }
 
          userPActUpdated = false;
@@ -181,17 +179,14 @@ class _CEDetailState extends State<CEDetailPage> {
       //print( "Selected user " + appState.selectedUser );
 
       // Get all peqs for user.  Then, pare the list down to match selection
-      // NOTE: allocations, unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.  XXX
+      // NOTE: unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.
       await updateUserPeqs( container, context );
 
       // print( "UserPeqs: " + appState.userPeqs[appState.selectedUser].toString() );
 
       // If ingest is not up to date, this filter breaks
       // if alloc, alloc name is made part of the category list, and is needed to distinguish allocs
-      if( appState.selectedUser == appState.ALLOC_USER ) {
-         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + [p.hostIssueTitle], category )).toList();
-      }
-      else if(  appState.selectedUser == appState.UNASSIGN_USER ) { 
+      if(  appState.selectedUser == appState.UNASSIGN_USER ) { 
          selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + [appState.UNASSIGN], category )).toList();
       }
       else {
@@ -232,7 +227,7 @@ class _CEDetailState extends State<CEDetailPage> {
       assert( appState != null );
       assert( category != null );
       
-      // print( "XXX Attempted to build category from routes: " + category.toString() );
+      // print( "Attempted to build category from routes: " + category.toString() );
 
       if( appState.verbose >= 3 ) { print( "BUILD DETAIL" ); }
       if( appState.verbose >= 3 ) { print( "is context null ? " + (context == null).toString() ); }

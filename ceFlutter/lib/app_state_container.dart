@@ -49,7 +49,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
         state.cogUserPool = CognitoUserPool( state.cogPoolId, state.cogAppClientId);
         print("... ... have user pool" );
 
-        state.cogUserService = UserService( state.cogUserPool );
+        state.cogUserService = await UserService( state.cogUserPool );
         assert( state.cogUserService != null ); 
 
         state.cogUser = User();

@@ -383,7 +383,7 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
 Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    String shortName = "fetchPEQSummary";
 
-   final response = await postIt( shortName, json.encode( postData ), container );
+   final response = await postIt( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final ps = json.decode(utf8.decode(response.bodyBytes));
@@ -401,7 +401,7 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
  Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    String shortName = "fetchEquityPlan";
 
-   final response = await postIt( shortName, json.encode( postData ), container );
+   final response = await postIt( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final ep = json.decode(utf8.decode(response.bodyBytes));
@@ -419,7 +419,7 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";
 
-   final response = await postIt( shortName, json.encode( postData ), container );
+   final response = await postIt( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final hostl = json.decode(utf8.decode(response.bodyBytes));

@@ -90,7 +90,7 @@ class _CEEquityState extends State<CEEquityFrame> {
    void dispose() {
       super.dispose();
 
-      // XXX NOTE This should be cheap.  If not, save state as with allocTree in summary_frame
+      // NOTE This should be cheap.  If not, save state as with allocTree in summary_frame
       // This avoids loss of catList when switch tabs.
       appState.updateEquityView = true;
    }
@@ -368,7 +368,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget headerAmt = Container( width: width,    child: makeTableText( appState, listHeaders[1],    width, appState!.CELL_HEIGHT, false, 1 ) );      
          Widget headerHPN = Container( width: numWidth, child: makeTableText( appState, listHeaders[2],    width, appState!.CELL_HEIGHT, false, 1 ));      
          Widget headerArr = Container( width: numWidth, child: makeTableText( appState, listHeaders[3], numWidth, appState!.CELL_HEIGHT, false, 1 ));
-         Widget hd        = makeHDivider( 2*width + 2*numWidth - appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD ); 
+         Widget hd        = makeHDivider( appState, 2*width + 2*numWidth - appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, tgap: appState.TINY_PAD, bgap: appState.TINY_PAD ); 
          Widget hdiv      = Wrap( spacing: 0, children: [fatPad, hd] );
          catList.add( [ spacer, spacer, spacer, spacer, spacer ] );
          catList.add( [ headerCat, headerAmt, headerHPN, gapPad, headerArr ] );

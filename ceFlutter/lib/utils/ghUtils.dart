@@ -12,7 +12,7 @@ import 'package:collection/collection.dart';  // firstWhereOrNull
 import 'package:github/github.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
-import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/utils/awsUtils.dart';    // fetchPAT
 import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/HostAccount.dart';
@@ -21,11 +21,12 @@ import 'package:ceFlutter/models/HostAccount.dart';
 
 
 // Post request to GitHub
-Future<http.Response> postGH( PAT, postData, name ) async {
+Future<http.Response> _postGH( PAT, postData, name ) async {
    // print( "XXX Warning.  postGH fired. " + postData + " " + name );
 
-   final gatewayURL = Uri.parse( 'https://api.github.com/graphql' );
-   
+   // final gatewayURL = Uri.parse( 'https://api.github.com/graphql' );
+   final gatewayURL = Uri.parse( "https://api.github.com/graphql" );
+                                                               
    // Accept header is for label 'preview'.
    // next global id is to avoid getting old IDs that don't work in subsequent GQL queries.
    final response =
@@ -34,11 +35,39 @@ Future<http.Response> postGH( PAT, postData, name ) async {
          headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json", 'X-Github-Next-Global-ID': '1' },
          body: postData
          );
-   
+                                 
    return response;
 }
 
-// XXX GitHub-specific.  Rename.
+// XXX error checking                      
+// This needs to work for both users and orgs
+Future<String> _getOwnerId( PAT, owner ) async {
+
+   Map<String, dynamic> query = {};
+   query["query"]     = "query (\$login: String!) { user(login: \$login) { id } organization(login: \$login) { id } }";
+   query["variables"] = {"login": owner };
+
+   final jsonEncoder = JsonEncoder();
+   final queryS = jsonEncoder.convert( query );
+   print( queryS );
+
+   var retId = "-1";
+
+   final response = await _postGH( PAT, queryS, "getOwnerId" );
+   print( response );
+
+   final huid = json.decode( utf8.decode( response.bodyBytes ) );
+   print( huid );
+
+   if( huid.containsKey( "data" )) {
+      if( huid["data"].containsKey( "user" ))              { retId = huid["data"]["user"]["id"]; }
+      else if( huid["data"].containsKey( "organization" )) { retId = huid["data"]["organization"]["id"]; }
+   }
+   
+   return retId;
+}
+
+// Called when click on assocGH, or refresh projects buttons.
 // Build the association between ceProjects and github repos by finding all repos on github that user has auth on,
 // then associating those with known repos in aws:CEProjects.
 Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) async {
@@ -82,7 +111,7 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    
    // Do not have, can not get, the U_* user id from GH.  initially use login.
    if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
-   String huid = await getOwnerId( PAT, hostLogin );
+   String huid = await _getOwnerId( PAT, hostLogin );
    print( "HOI! " + appState.userId + " " + huid );
    assert( huid != "-1" );
    HostAccount myHostAcct = new HostAccount( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.userId, hostUserId: huid, 
@@ -94,11 +123,12 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    await updateDynamo( context, container, postData, "PutHostA" );
 }
 
-// XXX GitHub-specific.  Rename
-// Called upon refresh.. maybe someday on signin (via app_state_container:finalizeUser)
+
+
+// Called upon refreshProjects button press.. maybe someday on signin (via app_state_container:finalizeUser)
 // XXX This needs to check if PAT is known, query.
 // XXX update docs, pat-related
-Future<void> updateProjects( context, container ) async {
+Future<void> updateGHRepos( context, container ) async {
    final appState  = container.state;
    
    // Iterate over all known HostAccounts.  One per host.
@@ -109,6 +139,8 @@ Future<void> updateProjects( context, container ) async {
          // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
          var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "GitHub" } };
          final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
+
+         print( "XXX UpdateGHRepo has PAT " + PAT.toString() );
          
          var github = await GitHub(auth: Authentication.withToken( PAT ));
          await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })
@@ -123,33 +155,6 @@ Future<void> updateProjects( context, container ) async {
 
    await reloadMyProjects( context, container );
    appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
-}
-
-// This needs to work for both users and orgs
-Future<String> getOwnerId( PAT, owner ) async {
-
-   Map<String, dynamic> query = {};
-   query["query"]     = "query (\$login: String!) { user(login: \$login) { id } organization(login: \$login) { id } }";
-   query["variables"] = {"login": owner };
-
-   final jsonEncoder = JsonEncoder();
-   final queryS = jsonEncoder.convert( query );
-   print( queryS );
-
-   var retId = "-1";
-
-   final response = await postGH( PAT, queryS, "getOwnerId" );
-   print( response );
-
-   final huid = json.decode( utf8.decode( response.bodyBytes ) );
-   print( huid );
-
-   if( huid.containsKey( "data" )) {
-      if( huid["data"].containsKey( "user" ))              { retId = huid["data"]["user"]["id"]; }
-      else if( huid["data"].containsKey( "organization" )) { retId = huid["data"]["organization"]["id"]; }
-   }
-   
-   return retId;
 }
 
 
@@ -191,3 +196,71 @@ Future<bool> associateGithub( context, container, PAT ) async {
    }
    return newAssoc;
 }
+
+
+
+// FLUTTER ROUTER   unfinished 
+/*
+
+// XXX naming convention, pls
+Future<http.Response> hostGet( url ) async {
+
+   final urlUri = Uri.parse( url );
+   
+   final response =
+      await http.get(
+         urlUri,
+         headers: {HttpHeaders.contentTypeHeader: 'application/json' },
+         );
+
+   return response;
+}
+
+// XXX Consider splitting utils_load to utils_async and githubUtils
+//     Attempt to limit access patterns as:  dyanmo from dart/user, and github from js/ceServer
+//     1 crossover for authorization
+
+Future<List<String>> getSubscriptions( container, subUrl ) async {
+   print( "Getting subs at " + subUrl );
+   final response = await hostGet( subUrl );
+   Iterable subs = json.decode(utf8.decode(response.bodyBytes));
+   List<String> fullNames = [];
+   subs.forEach((sub) => fullNames.add( sub['full_name'] ) );
+   
+   return fullNames;
+}
+
+Future<http.Response> localPost( String shortName, postData ) async {
+   print( shortName );
+   // https://stackoverflow.com/questions/43871637/no-access-control-allow-origin-header-is-present-on-the-requested-resource-whe
+   // https://medium.com/@alexishevia/using-cors-in-express-cac7e29b005b
+
+   // XXX
+   final gatewayURL = new Uri.http("127.0.0.1:3000", "/update/github");
+   
+   // need httpheaders app/json else body is empty
+   final response =
+      await http.post(
+         gatewayURL,
+         headers: {HttpHeaders.contentTypeHeader: 'application/json' },
+         body: postData
+         );
+   
+   return response;
+}
+
+Future<bool> associateGithub( context, container, postData ) async {
+   String shortName = "assocHost";
+   final response = await localPost( shortName, postData, container );
+                 
+   setState(() { addHostAcct = false; });
+
+   if (response.statusCode == 201) {
+      // print( response.body.toString() );         
+      return true;
+   } else {
+      return false;
+   }
+}
+*/
+ 

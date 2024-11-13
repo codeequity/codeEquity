@@ -156,10 +156,10 @@ void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFu
 }
 
 // No border padding
-Widget makeHDivider( width, lgap, rgap, {tgap=0, bgap=0}) {
+Widget makeHDivider( appState, width, lgap, rgap, {tgap=0, bgap=0}) {
    return Padding(
       padding: EdgeInsets.fromLTRB(lgap, tgap, rgap, bgap),
-      child: Container( width: width, height: 2, color: Colors.grey[200] ));
+      child: Container( width: width, height: 2, color: appState.DIV_BAR_COLOR ));
 }
    
 
@@ -174,7 +174,7 @@ Widget makeActionButton( appState, buttonText, fn ) {
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
-      color: Color(0xff01A0C7),
+      color: appState.BUTTON_COLOR,
       child: MaterialButton(
          key: Key( buttonText ),
          minWidth: appState.screenWidth - 2*appState.FAT_PAD,
@@ -193,7 +193,7 @@ Widget makeActionButtonSmall( appState, buttonText, fn ) {
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
-      color: Color(0xff01A0C7),
+      color: appState.BUTTON_COLOR,
       child: MaterialButton(
          key: Key( buttonText ),
          minWidth: appState.screenWidth * .20,
