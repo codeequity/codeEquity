@@ -100,7 +100,6 @@ class _CEProjectState extends State<CEProjectPage> {
 
          if( appState.verbose >= 2 ) { print( "PP ReBuild." ); }
 
-         // XXX container still useful?
          // XXX move standard pixel sizes to appstate, out of utils and elsewhere.
          // Rebuild summaryFrame upon peqUpdate, else previous pageStorageKeys don't match new allocs 
          Widget summaryFrameWidget = CESummaryFrame(

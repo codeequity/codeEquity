@@ -65,10 +65,10 @@ String addCommas( int amount ) {
    return res;
 }
 
-void logout( context, container, appState ) async {
+void logout( context, appState ) async {
    final wrapper = (() async {
 
-         await logoutWait(context, container, appState );
+         await logoutWait( appState );
             
          Navigator.pushAndRemoveUntil(
             context, 
@@ -141,7 +141,9 @@ Future<void> reloadMyProjects( context, container ) async {
 
 
 
-// XXX Only update if dirty.  Only dirty after updatePeq.
+// Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
+//        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.
+//        small beer.. 
 // NOTE this gets pacts for peqs held by selected user, not pacts that selected user was the actor for.
 Future<void> updateUserPActions( peqs, container, context ) async {
    final appState  = container.state;
@@ -152,7 +154,9 @@ Future<void> updateUserPActions( peqs, container, context ) async {
 }
 
  
-// XXX Only update if dirty.  Only dirty after updatePeq.
+// Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
+//        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.
+//        small beer.. 
 // Need both Active and Inactive (for accrued, only)
 Future<void> updateUserPeqs( container, context ) async {
    final appState  = container.state;

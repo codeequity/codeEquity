@@ -22,10 +22,8 @@ import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
 
-// XXX strip context, container where not needed
 
-
-Future<void> logoutWait( context, container, appState ) async {
+Future<void> logoutWait( appState ) async {
    final wrapper = (() async {
          try {
             appState.cogUser = await appState.cogUserService.signOut();
@@ -59,14 +57,13 @@ bool checkReauth( context, container ) {
    appState.authRetryCount += 1; 
    if( appState.authRetryCount > 100 ) {
       print( "Too many reauthorizations, please sign in again" );
-      logout( context, container, appState );
+      logout( context, appState );
       showToast( "Reauthorizing failed - your cloud authorization has expired.  Please re-login." ); 
       return false;
    }
    else { return true; }
 }
 
-// XXX useful?
 Future<bool> checkValidConfig( context ) async {
    print( "Validating configuration" );
 
@@ -81,7 +78,6 @@ Future<bool> checkValidConfig( context ) async {
 
    var url = Uri.parse( poolKeys );
    var response = await http.get( url );   
-   // var response = await http.get( poolKeys );
    var rbody = json.decode(utf8.decode(response.bodyBytes));
    print( "RESPONSE " + rbody.toString() );
 
@@ -90,8 +86,7 @@ Future<bool> checkValidConfig( context ) async {
 }
 
 
-// XXX awsPost
-Future<http.Response> postIt( String shortName, postData, container ) async {
+Future<http.Response> awsPost( String shortName, postData, container ) async {
 
    final appState  = container.state;
    if( appState.verbose >= 3 ) { print( shortName ); }  // pd is a string at this point
@@ -131,7 +126,7 @@ Future<bool> checkFailure( response, shortName, context, container ) async {
 
 
 Future<String> fetchPAT( context, container, postData, shortName ) async {
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    final failure = "-1";
    
    if (response.statusCode == 201) {
@@ -145,7 +140,7 @@ Future<String> fetchPAT( context, container, postData, shortName ) async {
 }
 
 Future<String> fetchString( context, container, postData, shortName ) async {
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       String s = json.decode(utf8.decode(response.bodyBytes));
@@ -164,7 +159,7 @@ Future<bool> updateDynamoPeqMods( context, container, postData, shortName ) asyn
    print( "updateDynamoPeqMods " );
 
    
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    bool  res      = false;
    
    if (response.statusCode == 201) { res = true; }
@@ -188,10 +183,10 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
    }
    */
    
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    bool  res      = false;
 
-   if( response.statusCode != 201 ) { print( "XXX OI? " + response.toString() ); }
+   if( response.statusCode != 201 ) { print( "OI? " + response.toString() ); }
    
    if (response.statusCode == 201) { res = true; }
    else {
@@ -215,7 +210,7 @@ Future<bool> updateDynamo( context, container, postData, shortName, { peqId = -1
 Future<bool> updateColumnName( context, container, guide ) async {
 
    print( "Update Column Name: " + guide.toString() );
-   // XXX Need to provide hostRepoId
+   // XXX Host can't do this yet.  Need to provide hostRepoId
    assert( false );  // NYI
    assert( guide.length == 3 );
 
@@ -237,7 +232,7 @@ Future<bool> updateColumnName( context, container, guide ) async {
    postData['Column']      = "true";
    var pd = { "Endpoint": shortName, "query": postData }; 
    
-   final response = await postIt( shortName, json.encode( pd ), container );
+   final response = await awsPost( shortName, json.encode( pd ), container );
    
    if (response.statusCode == 201) {
       return true;
@@ -252,7 +247,7 @@ Future<bool> updateColumnName( context, container, guide ) async {
 // Guide is [projId, oldName, newName]
 Future<bool> updateProjectName( context, container, guide ) async {
 
-   // XXX Need to provide hostRepoId
+   // XXX Host can't do this yet.  Need to provide hostRepoId
    assert( false ); 
 
 
@@ -271,7 +266,7 @@ Future<bool> updateProjectName( context, container, guide ) async {
    postData['Column']      = "false";
    var pd = { "Endpoint": shortName, "query": postData }; 
    
-   final response = await postIt( shortName, json.encode( pd ), container );
+   final response = await awsPost( shortName, json.encode( pd ), container );
    
    if (response.statusCode == 201) {
       return true;
@@ -285,7 +280,7 @@ Future<bool> updateProjectName( context, container, guide ) async {
 Future<List<CEProject>> fetchCEProjects( context, container ) async {
    String shortName = "fetchCEProjects";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEProjects", "query": { "empty": "" }}';
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
@@ -304,7 +299,7 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform ) async {
    String shortName = "fetchCEProjects";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable hu = json.decode(utf8.decode(response.bodyBytes));
@@ -330,7 +325,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
 
 Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
    String shortName = "fetchPEQs";
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
@@ -349,7 +344,7 @@ Future<List<PEQ>> fetchPEQs( context, container, postData ) async {
 /*
 Future<PEQ> fetchaPEQ( context, container, postData ) async {
    String shortName = "fetchaPEQ";
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       final js = json.decode(utf8.decode(response.bodyBytes));
@@ -364,7 +359,7 @@ Future<PEQ> fetchaPEQ( context, container, postData ) async {
 
 Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
    String shortName = "fetchPEQAction";
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
@@ -383,7 +378,7 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
 Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    String shortName = "fetchPEQSummary";
 
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final ps = json.decode(utf8.decode(response.bodyBytes));
@@ -401,7 +396,7 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
  Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    String shortName = "fetchEquityPlan";
 
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final ep = json.decode(utf8.decode(response.bodyBytes));
@@ -419,7 +414,7 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";
 
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
 
    if (response.statusCode == 201) {
       final hostl = json.decode(utf8.decode(response.bodyBytes));
@@ -436,7 +431,7 @@ Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
 
 Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
    String shortName = "fetchPEQRaw";
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       final ps = json.decode(utf8.decode(response.bodyBytes));
@@ -453,7 +448,7 @@ Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
 
 Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
    String shortName = "GetHostA";
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       print( "FetchHostAcct: " );
@@ -477,7 +472,7 @@ Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
 // Lock uningested PEQActions, then return for processing.
 Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async {
    String shortName = "lockFetchPAction";
-   final response = await postIt( shortName, postData, container );
+   final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
       Iterable pacts = json.decode(utf8.decode(response.bodyBytes));

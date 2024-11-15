@@ -12,10 +12,6 @@ import 'package:ceFlutter/screens/profile_page.dart';
 
 import 'package:ceFlutter/customIcons.dart';
 
-// XXX service?
-// app-wide constants.  Break this out if more than, say, 3
-const EMPTY = "---";
-
 // XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {
    Fluttertoast.showToast(
@@ -50,30 +46,6 @@ void showToast(String msg) {
       );
 }
 
-
-// XXX would like a listview - longstanding issue with listview in alertDialog.
-// https://github.com/flutter/flutter/issues/18108
-/*
-void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
-   showDialog(
-      context: context,
-      builder: (BuildContext context) {
-                 return AlertDialog(
-                    scrollable: true,
-                    title: new Text( scrollHeader ),
-                    content: Column(
-                       mainAxisSize: MainAxisSize.min,
-                       children: scrollBody
-                       ),
-                    actions: <Widget>[
-                       new FlatButton(
-                          key: Key( 'Dismiss' ),
-                          child: new Text("Dismiss"),
-                          onPressed: dismissFunc )
-                       ]);
-              });
-}
-*/
 void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
    showDialog(
       context: context,

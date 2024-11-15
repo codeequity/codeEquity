@@ -203,10 +203,10 @@ class Node extends StatelessWidget implements Tree {
      String accrue  = addCommas( accrInt );
      // String surplus = surplusInt == 0 || currentDepth > 2 ? "" : addCommas( surplusInt );
      String surplus = surplusInt == 0  ? "" : addCommas( surplusInt );
-        
+     
      if( header ) {
-        alloc   = "Allocation";
-        plan    = "Planned";    // XXX Tie these to app state, but be ready to chop to size
+        alloc   = "Allocation";  // These are designed names, do not link to app_state without pause.
+        plan    = "Planned";
         pending = "Pending";
         accrue  = "Accrued";
         surplus = "Surplus";

@@ -72,7 +72,7 @@ class _CEDetailState extends State<CEDetailPage> {
 
       String apeq =  peq.hostIssueTitle + " (" + proj + ") status: " + enumToStr( peq.peqType ) + " " + peq.amount.toString() + " PEQs";
       if( peq.hostHolderId.length > 0 ) { apeq += "  Holder(s): " + peq.hostHolderId.toString(); }
-      if( peq.ceGrantorId != EMPTY ) { apeq += "  Grantor: " + peq.ceGrantorId; }
+      if( peq.ceGrantorId != appState.EMPTY ) { apeq += "  Grantor: " + peq.ceGrantorId; }
       return makeTitleText( appState, apeq, textWidth, false, 1, keyTxt: peq.hostIssueTitle );
    }
 
@@ -111,12 +111,13 @@ class _CEDetailState extends State<CEDetailPage> {
       
    }
 
-   // XXX don't circle if empty.  buuuut, for now, OK.
    Widget _showPActList() {
-
+      bool toggled = false;
+      
+      final textWidth = appState.screenWidth * .4;
       if( userPActUpdated && appState.userPActs != null && appState.userPActs[ appState.selectedUser ] != null ) {
          print( "looking for pacts " + appState.selectedUser );
-
+         toggled = true;
          pactList.clear();
          var peqCount = 0;
          for( final peq in selectedPeqs ) {
@@ -150,8 +151,12 @@ class _CEDetailState extends State<CEDetailPage> {
                children: pactList
                ));
       }
-      else { 
+      else if( !toggled ) { 
          return CircularProgressIndicator();
+      }
+      else {
+         print( "Error.  PAct is recorded in summary frame, but no raw pactions were found." );
+         return makeTitleText( appState, "No PEQ Actions were found.", textWidth, false, 1 );
       }
       
    }

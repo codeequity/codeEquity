@@ -4,7 +4,7 @@ import 'package:ceFlutter/models/PEQ.dart';
 
 // ceFlutter use only
 
-// Baseline unit for representing an equity allocation.
+// Baseline unit for representing an equity allocation for an assignee specific to a project/column.  There may be 1 or more peqs involved.
 // PEQSummary collects these to present an overall provisional equity structure.
 // This is not intended to be independently stored in dynamo, only in association with PEQSummary
 

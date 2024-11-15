@@ -17,12 +17,10 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/HostAccount.dart';
 
-// XXX strip context, container where not needed
-
 
 // Post request to GitHub
 Future<http.Response> _postGH( PAT, postData, name ) async {
-   // print( "XXX Warning.  postGH fired. " + postData + " " + name );
+   // print( "Warning.  postGH fired. " + postData + " " + name );
 
    // final gatewayURL = Uri.parse( 'https://api.github.com/graphql' );
    final gatewayURL = Uri.parse( "https://api.github.com/graphql" );
@@ -39,7 +37,7 @@ Future<http.Response> _postGH( PAT, postData, name ) async {
    return response;
 }
 
-// XXX error checking                      
+// XXX error checking
 // This needs to work for both users and orgs
 Future<String> _getOwnerId( PAT, owner ) async {
 
@@ -73,7 +71,7 @@ Future<String> _getOwnerId( PAT, owner ) async {
 Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) async {
    final appState  = container.state;
 
-   // XXX useful?
+   // Are subscriptions useful?
    // String subUrl = "https://api.github.com/users/" + patLogin + "/subscriptions";
    // repos = await getSubscriptions( container, subUrl );
    
@@ -108,7 +106,6 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    }
    
    // XXX Chck if have U_*  if so, has been active on GH, right?
-   
    // Do not have, can not get, the U_* user id from GH.  initially use login.
    if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
    String huid = await _getOwnerId( PAT, hostLogin );
@@ -158,7 +155,7 @@ Future<void> updateGHRepos( context, container ) async {
 }
 
 
-// XXX rewrite any ceUID or ceHolderId in PEQ, PEQAction that look like: "HOSTUSER: $hostUserName"  XXXX erm?
+// XXX rewrite any ceUID or ceHolderId in PEQ, PEQAction that look like: "HOSTUSER: $hostUserName"  
 Future<bool> associateGithub( context, container, PAT ) async {
 
    final appState  = container.state;
@@ -202,7 +199,6 @@ Future<bool> associateGithub( context, container, PAT ) async {
 // FLUTTER ROUTER   unfinished 
 /*
 
-// XXX naming convention, pls
 Future<http.Response> hostGet( url ) async {
 
    final urlUri = Uri.parse( url );
@@ -216,7 +212,6 @@ Future<http.Response> hostGet( url ) async {
    return response;
 }
 
-// XXX Consider splitting utils_load to utils_async and githubUtils
 //     Attempt to limit access patterns as:  dyanmo from dart/user, and github from js/ceServer
 //     1 crossover for authorization
 
@@ -235,7 +230,7 @@ Future<http.Response> localPost( String shortName, postData ) async {
    // https://stackoverflow.com/questions/43871637/no-access-control-allow-origin-header-is-present-on-the-requested-resource-whe
    // https://medium.com/@alexishevia/using-cors-in-express-cac7e29b005b
 
-   // XXX
+   // oi?
    final gatewayURL = new Uri.http("127.0.0.1:3000", "/update/github");
    
    // need httpheaders app/json else body is empty

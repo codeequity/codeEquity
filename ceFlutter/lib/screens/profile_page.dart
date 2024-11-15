@@ -34,12 +34,9 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
   
-  Function _logout( context, container, appState) {
+  Function _logout( context, appState) {
      wrapper() async {
-        // XXX NYI
-        // This has to happen before logout, else can lose credentials too fast
-        // await unLock( context, container, '{ "Endpoint": "UnLock" }' );
-        logout( context, container, appState );
+        logout( context, appState );
      }
      return wrapper;
   }
@@ -53,7 +50,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
       print("Profile page");
       makeLogoutButton() {
-         return makeActionButton( appState, 'Logout', _logout( context, container, appState) );
+         return makeActionButton( appState, 'Logout', _logout( context, appState) );
       }
 
       

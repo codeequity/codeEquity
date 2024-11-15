@@ -89,7 +89,9 @@ class AppState {
    
    final DIV_BAR_COLOR          = Colors.grey[200];
    final BUTTON_COLOR           = Color(0xff01A0C7);
+   final BACKGROUND             = Colors.grey[50];
 
+   final String EMPTY           = "---";
    final String UNASSIGN_USER   = "ksd98glkjwa unassign"; // internal use in saving unassigned for detail pages
 
    // hesitant to use js_interop to connect to ceServer internal vars.  Repeat a small handful here

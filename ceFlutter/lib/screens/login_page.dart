@@ -80,6 +80,7 @@ class _CELoginState extends State<CELoginPage> {
      }
   }
 
+  // XXX oi?
   // Test runner specifies _1664.  Internal login will differ.
   Future<void> _switchToUnusedTester( container, appState ) async {
 
@@ -99,7 +100,7 @@ class _CELoginState extends State<CELoginPage> {
         
         // Catch this before signout kills it
         String freePass = appState.passwordController.text;
-        await logoutWait( context, container, appState );
+        await logoutWait( appState );
         // Similarly, cognito logout initiates a callback that we need to wait for
         _logoutLogin( freeName, freePass, 0, container, appState );
      }

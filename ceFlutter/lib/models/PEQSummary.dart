@@ -15,7 +15,7 @@ class PEQSummary {
    final Map<String, Allocation> allocations;   // gives fast lookup from category string to allocation
 
    final List<Allocation> jsonAllocs;           // AWS data.  need index to exist before converting to allocations. TRANSIENT
-   late  Map<String, HashSet<String>> peqIndex; // index from peqId to a has set of category string for allocs.     TRANSIENT
+   late  Map<String, HashSet<String>> peqIndex; // index from peqId to a hash set of category string for allocs.     TRANSIENT
 
    
    PEQSummary({ required this.ceProjectId, required this.targetType, required this.targetId, required this.lastMod, required this.allocations, required this.jsonAllocs }) {
@@ -83,7 +83,7 @@ class PEQSummary {
       assert( a.sourcePeq != null );
       for( final peqId in a.sourcePeq!.keys ) {
          assert( peqIndex[peqId] != null );
-         if( peqIndex[peqId]!.length == 1 ) { peqIndex.removeWhere((key, value) => key == peqId ); }  // XXX resolve just 1
+         if( peqIndex[peqId]!.length == 1 ) { peqIndex.removeWhere((key, value) => key == peqId ); }
          else                               { peqIndex[peqId]!.remove( cat ); }
       }
    }
