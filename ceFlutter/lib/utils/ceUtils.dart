@@ -65,10 +65,10 @@ String addCommas( int amount ) {
    return res;
 }
 
-void logout( context, container, appState ) async {
+void logout( context, appState ) async {
    final wrapper = (() async {
 
-         await logoutWait(context, container, appState );
+         await logoutWait( appState );
             
          Navigator.pushAndRemoveUntil(
             context, 
@@ -90,33 +90,22 @@ Future<void> reloadRepo( context, container ) async {
    String uid      = appState.userId;
    print( "Loading " + uid + "'s " + ceProj + " CodeEquity project." );
 
-   // XXX could be thousands... too much.  Just get uningested, most recent, etc.
-   // Get all PEQ data related to the selected repo.  
-   appState.myPEQs = await fetchPEQs( context, container,
-                                      '{ "Endpoint": "GetPEQ", "CEUID": "$uid", "HostUserId": "", "CEProjectId": "$ceProj" }' );
-   
-   // XXX Really just want mine?  Hmmmmmmmm.......no.  get all for peqs above.
-   // XXX could be thousands... too much.   Just get uningested, most recent, etc.
-   // To get here, user has both a CEUID and an association with hostUserLogin
-   // Any PEQActions recorded from github before the user had a CELogin will have been updated as soon as the linkage was created.
-   appState.myPEQActions = await fetchPEQActions( context, container,
-                                                  '{ "Endpoint": "GetPEQActions", "CEUID": "$uid", "HostUserName": "", "CEProjectId": "$ceProj" }' );
    var postDataPS = {};
    postDataPS['PEQSummaryId'] = ceProj;
    var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
-   appState.myPEQSummary  = await fetchPEQSummary( context, container, pd );
-
+   appState.myPEQSummary  = await fetchPEQSummary( context, container, json.encode( pd ) );
+   
    postDataPS = {};
    postDataPS['EquityPlanId'] = ceProj;
    pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
-   appState.equityPlan = await fetchEquityPlan( context, container, pd );
+   appState.equityPlan = await fetchEquityPlan( context, container, json.encode( pd ) );
    if( appState.equityPlan == null ) { appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], lastMod: "" ); }
    
    // Get linkage
    var postDataL = {};
    postDataL['CEProjectId'] = ceProj;
    pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postDataL };
-   appState.myHostLinks  = await fetchHostLinkage( context, container, pd );
+   appState.myHostLinks  = await fetchHostLinkage( context, container, json.encode( pd ) );
 
    if( appState.verbose >= 2 ) {
       print( "Got Links?" ); 
@@ -142,8 +131,7 @@ Future<void> reloadMyProjects( context, container ) async {
    // FetchHost sets hostAccounts.ceProjs
    appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "$uid"  }' );
 
-   // XXX This map should be limited to CEPs known by UID, no matter platform.  
-   // Set idMap to get from hostUID to hostUserName or ceUID easily
+   // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform, no CEPs.
    appState.idMapHost = await fetchHostMap( context, container, "GitHub" ); 
 
    print( "My CodeEquity Projects:" );
@@ -152,7 +140,9 @@ Future<void> reloadMyProjects( context, container ) async {
 
 
 
-// XXX Only update if dirty.  Only dirty after updatePeq.
+// Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
+//        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.
+//        small beer.. 
 // NOTE this gets pacts for peqs held by selected user, not pacts that selected user was the actor for.
 Future<void> updateUserPActions( peqs, container, context ) async {
    final appState  = container.state;
@@ -163,92 +153,24 @@ Future<void> updateUserPActions( peqs, container, context ) async {
 }
 
  
-// XXX Only update if dirty.  Only dirty after updatePeq.
+// Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
+//        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.
+//        small beer.. 
 // Need both Active and Inactive (for accrued, only)
 Future<void> updateUserPeqs( container, context ) async {
    final appState  = container.state;
 
    // SelectedUser will be adjusted if user clicks on an alloc (summaryFrame) or unassigned
    String uname = appState.selectedUser;
-   if( uname == appState.ALLOC_USER || uname == appState.UNASSIGN_USER ) { uname = ""; }
+   if( uname == appState.UNASSIGN_USER ) { uname = ""; }
    
    String cep   = appState.selectedCEProject;
    print( "Building detail data for " + uname + ":" + cep );
 
-   if( appState.selectedUser == appState.ALLOC_USER ) {
-      appState.userPeqs[appState.selectedUser] =
-         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "isAlloc": "true" }' );
-   }
-   else {
-      appState.userPeqs[appState.selectedUser] =
-         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
-   }
+   appState.userPeqs[appState.selectedUser] =
+      await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
 }
 
 
 
 
-// FLUTTER ROUTER   unfinished 
-/*
-
-// XXX naming convention, pls
-Future<http.Response> hostGet( url ) async {
-
-   final urlUri = Uri.parse( url );
-   
-   final response =
-      await http.get(
-         urlUri,
-         headers: {HttpHeaders.contentTypeHeader: 'application/json' },
-         );
-
-   return response;
-}
-
-// XXX Consider splitting utils_load to utils_async and githubUtils
-//     Attempt to limit access patterns as:  dyanmo from dart/user, and github from js/ceServer
-//     1 crossover for authorization
-
-Future<List<String>> getSubscriptions( container, subUrl ) async {
-   print( "Getting subs at " + subUrl );
-   final response = await hostGet( subUrl );
-   Iterable subs = json.decode(utf8.decode(response.bodyBytes));
-   List<String> fullNames = [];
-   subs.forEach((sub) => fullNames.add( sub['full_name'] ) );
-   
-   return fullNames;
-}
-
-Future<http.Response> localPost( String shortName, postData ) async {
-   print( shortName );
-   // https://stackoverflow.com/questions/43871637/no-access-control-allow-origin-header-is-present-on-the-requested-resource-whe
-   // https://medium.com/@alexishevia/using-cors-in-express-cac7e29b005b
-
-   // XXX
-   final gatewayURL = new Uri.http("127.0.0.1:3000", "/update/github");
-   
-   // need httpheaders app/json else body is empty
-   final response =
-      await http.post(
-         gatewayURL,
-         headers: {HttpHeaders.contentTypeHeader: 'application/json' },
-         body: postData
-         );
-   
-   return response;
-}
-
-Future<bool> associateGithub( context, container, postData ) async {
-   String shortName = "assocHost";
-   final response = await localPost( shortName, postData, container );
-                 
-   setState(() { addHostAcct = false; });
-
-   if (response.statusCode == 201) {
-      // print( response.body.toString() );         
-      return true;
-   } else {
-      return false;
-   }
-}
-*/

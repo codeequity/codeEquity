@@ -170,7 +170,6 @@ class EquityPlan {
       if( newIndex > 0 )                 { destParent = tree.findNode( categories[newIndex-1] ); }
       if( newIndex < categories.length ) { destNext   = tree.findNode( categories[newIndex] ); }
 
-      // print( "XXX " + categories.toString() );
       print( categories[oldIndex] );
       
       // print( "target, parent, next indices: " + oldIndex.toString() + " " + (newIndex-1).toString() + " " + newIndex.toString() );

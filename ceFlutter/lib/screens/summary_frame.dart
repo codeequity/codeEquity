@@ -74,19 +74,15 @@ class _CESummaryState extends State<CESummaryFrame> {
       if( appState.verbose >= 2 ) { print( "SummaryFrame Disposessed!" ); }
    }
 
-   // XXX hostUserLogin could be 'unallocated' or 'unassigned', which makes onTap bad
-   // XXX Wanted to push first, then update - more responsive.  But setState is only rebuilding homepage, not
-   //     detail page..?
-   _pactDetail( path, convertedName, width, depthM1, isAlloc ) {
+   _pactDetail( path, convertedName, width, depthM1 ) {
       // print( "Pact Detail looking for user " + path.toString() + " " + depthM1.toString() );
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
          {
             String hostUserLogin = path[ depthM1 ];
-            if( isAlloc )                                 { appState.selectedUser = appState.ALLOC_USER; }
-            else if( hostUserLogin == appState.UNASSIGN ) { appState.selectedUser = appState.UNASSIGN_USER; }
-            else                                          { appState.selectedUser = hostUserLogin; }
+            if( hostUserLogin == appState.UNASSIGN ) { appState.selectedUser = appState.UNASSIGN_USER; }
+            else                                     { appState.selectedUser = hostUserLogin; }
             appState.userPActUpdate = true;
             if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
             widget.detailCallback( path );
@@ -95,7 +91,7 @@ class _CESummaryState extends State<CESummaryFrame> {
          );
    }
    
-   // XXX this could easily be made iterative
+   // Note: this could easily be made iterative
    // BuildAllocTree creates the linkages between nodes.  Node actually controls most the the view for each element.
    // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
    // header      alloc                   sub alloc                 plan
@@ -117,7 +113,6 @@ class _CESummaryState extends State<CESummaryFrame> {
          assert( appState.allocTree != null );
 
          // Re-site each alloc into it's new home.
-         // XXX get and use ep.allocation here.
          List<dynamic> epRet = appState.equityPlan!.site( alloc.category );
          List<String> sitedCat   = new List<String>.from( epRet[0] );
          
@@ -180,7 +175,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   // Pact details sit at the assignee level.  SitedCat can be any length, but assignee is always the last element.
                   // We filter pacts by project subs in the PEQ model. Project subs are unsited.
                   int assigneeLoc = alloc.category.length - 1;
-                  Widget details = _pactDetail( alloc.category, rowName, width, assigneeLoc, alloc.allocType == PeqType.allocation );
+                  Widget details = _pactDetail( alloc.category, rowName, width, assigneeLoc );
                   Leaf tmpLeaf   = Leaf( rowName, allocAmount, planAmount, pendAmount, accrueAmount, null, width, details ); 
                   (curNode as Node).addLeaf( tmpLeaf );
                }
@@ -205,7 +200,6 @@ class _CESummaryState extends State<CESummaryFrame> {
    }
    
 
-   // XXX consider making peqSummary a list in appState
    // re-build alloc tree if updatePeq button triggers
    List<List<Widget>> _showPAlloc() {
       List<List<Widget>> allocList = [];
@@ -248,7 +242,6 @@ class _CESummaryState extends State<CESummaryFrame> {
                                makeTitleText( appState, "This can take a few minutes..", 6*appState.CELL_HEIGHT, false, 1, fontSize: 16)
                                ]);
          
-         // XXX Change number of cells?  change padding container 'c', and subtraction from tinypad.
          allocs.addAll( [[ Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT ) ]] );
          allocs.addAll( [[ cpi ]] );
          allocs.addAll( [[ Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT ) ]] );
@@ -257,7 +250,9 @@ class _CESummaryState extends State<CESummaryFrame> {
          allocs.addAll( _showPAlloc() );
       }
 
-      allocs.addAll( [[ makeHDivider( maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );  // XXX
+      // Note: Change number of cells?  change padding container 'c', and subtraction from tinypad.
+      //       Once add selectable cols, this approach will need a facelift.
+      allocs.addAll( [[ makeHDivider( appState, maxPaneWidth - 2*appState.TINY_PAD - 5, appState.TINY_PAD, appState.TINY_PAD ), c, c, c, c, c ]] );
       allocs.addAll( [[ makeActionButtonFixed(
                         appState,
                         "Update PEQ Summary?",
@@ -315,8 +310,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    @override
    Widget build(BuildContext context) {
 
-      // XXX appContainer still needed?
-      container   = widget.appContainer;   // Neat.  Access parameter in super.
+      container   = widget.appContainer;   // Neat.  Access parameter in super.  Alternative to AppStateContainer.of(context)
       appState    = container.state;
       assert( appState != null );
      

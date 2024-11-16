@@ -126,7 +126,6 @@ class _CELaunchPageState extends State<CELaunchPage> {
 
     // XXX should base 410 off computed height of left hand side.  410 lines bottoms up.
     // XXX should compute 504
-    final lhsWidth  = 504;
     final rhsWidth  = devWidth - 504 - devWidth * .06;
     var widthFactor = rhsWidth / 410.0;
     // set rhsWidth back to 1.0 when too small since wrap will move it

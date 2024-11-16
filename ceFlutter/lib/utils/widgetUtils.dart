@@ -12,10 +12,6 @@ import 'package:ceFlutter/screens/profile_page.dart';
 
 import 'package:ceFlutter/customIcons.dart';
 
-// XXX service?
-// app-wide constants.  Break this out if more than, say, 3
-const EMPTY = "---";
-
 // XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {
    Fluttertoast.showToast(
@@ -50,30 +46,6 @@ void showToast(String msg) {
       );
 }
 
-
-// XXX would like a listview - longstanding issue with listview in alertDialog.
-// https://github.com/flutter/flutter/issues/18108
-/*
-void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
-   showDialog(
-      context: context,
-      builder: (BuildContext context) {
-                 return AlertDialog(
-                    scrollable: true,
-                    title: new Text( scrollHeader ),
-                    content: Column(
-                       mainAxisSize: MainAxisSize.min,
-                       children: scrollBody
-                       ),
-                    actions: <Widget>[
-                       new FlatButton(
-                          key: Key( 'Dismiss' ),
-                          child: new Text("Dismiss"),
-                          onPressed: dismissFunc )
-                       ]);
-              });
-}
-*/
 void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
    showDialog(
       context: context,
@@ -156,10 +128,10 @@ void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFu
 }
 
 // No border padding
-Widget makeHDivider( width, lgap, rgap, {tgap=0, bgap=0}) {
+Widget makeHDivider( appState, width, lgap, rgap, {tgap=0, bgap=0}) {
    return Padding(
       padding: EdgeInsets.fromLTRB(lgap, tgap, rgap, bgap),
-      child: Container( width: width, height: 2, color: Colors.grey[200] ));
+      child: Container( width: width, height: 2, color: appState.DIV_BAR_COLOR ));
 }
    
 
@@ -174,7 +146,7 @@ Widget makeActionButton( appState, buttonText, fn ) {
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
-      color: Color(0xff01A0C7),
+      color: appState.BUTTON_COLOR,
       child: MaterialButton(
          key: Key( buttonText ),
          minWidth: appState.screenWidth - 2*appState.FAT_PAD,
@@ -193,7 +165,7 @@ Widget makeActionButtonSmall( appState, buttonText, fn ) {
    return Material(
       elevation: 5.0,
       borderRadius: BorderRadius.circular(10.0),
-      color: Color(0xff01A0C7),
+      color: appState.BUTTON_COLOR,
       child: MaterialButton(
          key: Key( buttonText ),
          minWidth: appState.screenWidth * .20,

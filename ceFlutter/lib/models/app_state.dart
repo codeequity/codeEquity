@@ -46,12 +46,10 @@ class AppState {
 
    // App logic   
    late bool loaded;                           // control expensive aspects of state initialization
-   late String userId;
+   late String userId;                         // ceuid
 
    late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, hostUserName
    
-   late List<PEQ>         myPEQs;                // ??? XXX
-   late List<PEQAction>   myPEQActions;          // ??? XXX
    late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
    late Linkage?          myHostLinks;           // Current project/column disposition per ceProject
    late EquityPlan?       equityPlan;            // Equity plan for the selectedCEProject
@@ -80,8 +78,12 @@ class AppState {
    // late Map< String, int >              ingestUpdates;   // These peqIds have n pending updates waiting to finish.
 
    // UI constants
-   final double BASE_TXT_HEIGHT = 20.0;     // 14pt font is 19.2 px height
-   final double CELL_HEIGHT     = 50.0;
+   final double MAX_PANE_WIDTH   = 950.0;
+   final double MIN_PANE_WIDTH   = 320.0; // iphone5, pixels
+   final double MIN_PANE_HEIGHT  = 568.0; // iphone5     
+
+   final double BASE_TXT_HEIGHT  = 20.0;     // 14pt font is 19.2 px height
+   final double CELL_HEIGHT      = 50.0;
    final int    MAX_SCROLL_DEPTH = 30;
 
    final double TINY_PAD        =  6.0;     // minimal padding for text
@@ -89,11 +91,11 @@ class AppState {
    final double FAT_PAD         = 15.0;     // Action button padding
    final double GAP_PAD         = 20.0;     // padding between objects
    
-   final DIV_BAR_COLOR          = Colors.grey[200];   // XXX use.  expand.
-   final BUTTON_COLOR           = Color(0xff01A0C7);  // XXX
-   final BACKGROUND             = Colors.grey[50];    // XXX
+   final DIV_BAR_COLOR          = Colors.grey[200];
+   final BUTTON_COLOR           = Color(0xff01A0C7);
+   final BACKGROUND             = Colors.grey[50];
 
-   final String ALLOC_USER      = "ilkjdiabaer alloc";    // for use in saving allocations for detail pages
+   final String EMPTY           = "---";
    final String UNASSIGN_USER   = "ksd98glkjwa unassign"; // internal use in saving unassigned for detail pages
 
    // hesitant to use js_interop to connect to ceServer internal vars.  Repeat a small handful here
@@ -109,15 +111,13 @@ class AppState {
 
       userId       = "";
       idMapHost    = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
-      myPEQs       = [];
-      myPEQActions = [];
       myPEQSummary = null;
       funny        = "";
       equityPlan   = null;
 
       myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
       myHostLinks    = null;
-      hostUpdated    = false;      // XXX not in use?
+      hostUpdated    = false;
 
       allocTree        = null;
       updateAllocTree  = false;

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
-import 'package:ceFlutter/utils/ghUtils.dart';
+import 'package:ceFlutter/utils/ghUtils.dart';     // updateGHRepos
 import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 
@@ -27,17 +27,16 @@ class _CEHomeState extends State<CEHomePage> {
 
    late var      container;
    late AppState appState;
-
+   
    var      runningLHSHeight;
 
-   // iphone 5: 320px X 568
-   static const maxPaneWidth    = 950.0;
-   static const lhsPaneMinWidth = 250.0;
-   static const lhsPaneMaxWidth = 300.0;
-   static const rhsPaneMinWidth = 300.0;
-   static const rhsPaneMaxWidth = maxPaneWidth - lhsPaneMaxWidth;
+   // Frames are screen-specific, fit inside Panes which are app-level.
+   static const lhsFrameMinWidth = 250.0;
+   static const lhsFrameMaxWidth = 300.0;
+   static const rhsFrameMinWidth = 300.0;
    static const buttonWidth     =  80.0;
    static const vBarWidth       =   5.0;
+   late double  rhsFrameMaxWidth;
 
    @override
    void initState() {
@@ -120,7 +119,7 @@ class _CEHomeState extends State<CEHomePage> {
    List<Widget> _makeRepos( hosta ) {
       // print( "MakeRepos" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;              // 2*container + button + pad
-      final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
+      final textWidth = min( lhsFrameMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> repoChunks = [];
       var chunkHeight = 0.0;
 
@@ -153,7 +152,7 @@ class _CEHomeState extends State<CEHomePage> {
       }
       if( addedMore ) {
          repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-         repoChunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+         repoChunks.add( makeHDivider( appState, textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
          repoChunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
       }
       chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
@@ -165,14 +164,14 @@ class _CEHomeState extends State<CEHomePage> {
    List<Widget> _makeRefresh() {
       List<Widget> refresh = [];
 
-      final textWidth = min( lhsPaneMaxWidth - (2*appState.FAT_PAD + appState.TINY_PAD), appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
+      final textWidth = min( lhsFrameMaxWidth - (2*appState.FAT_PAD + appState.TINY_PAD), appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       Widget button = makeActionButtonFixed(
          appState,
          "Refresh Projects",
          textWidth,
          () async
          {
-            await updateProjects( context, container );
+            await updateGHRepos( context, container );
             setState(() => appState.hostUpdated = true );            
          }); 
       
@@ -195,7 +194,7 @@ class _CEHomeState extends State<CEHomePage> {
    List<Widget> _makeCEProjs( hosta ) {
       // print( "MakeCEProj" );
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
-      final textWidth = min( lhsPaneMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
+      final textWidth = min( lhsFrameMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> chunks = [];
       var chunkHeight = 0.0;
 
@@ -221,7 +220,7 @@ class _CEHomeState extends State<CEHomePage> {
          }
       }
       chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      chunks.add( makeHDivider( textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
+      chunks.add( makeHDivider( appState, textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
       chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
       chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
 
@@ -254,10 +253,10 @@ class _CEHomeState extends State<CEHomePage> {
 
 
       appState.hostUpdated = false;
-      final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsPaneMinWidth), lhsPaneMaxWidth );  // i.e. vary between min and max.
-      final wrapPoint = lhsMaxWidth + vBarWidth + rhsPaneMinWidth;
+      final lhsMaxWidth  = min( max( appState.screenWidth * .3, lhsFrameMinWidth), lhsFrameMaxWidth );  // i.e. vary between min and max.
+      final wrapPoint = lhsMaxWidth + vBarWidth + rhsFrameMinWidth;
       
-      // Wrapped?  Reduce height to make room for rhsPane
+      // Wrapped?  Reduce height to make room for rhsFrame
       var lhsHeight = appState.screenHeight * .946; // room for top bar
       if( appState.screenWidth < wrapPoint ) {
          lhsHeight = min( lhsHeight, runningLHSHeight );
@@ -266,7 +265,7 @@ class _CEHomeState extends State<CEHomePage> {
       return ConstrainedBox(
          constraints: new BoxConstraints(
             minHeight: appState.BASE_TXT_HEIGHT,
-            minWidth:  lhsPaneMinWidth,
+            minWidth:  lhsFrameMinWidth,
             maxHeight: lhsHeight,
             maxWidth:  lhsMaxWidth
             ),
@@ -277,8 +276,8 @@ class _CEHomeState extends State<CEHomePage> {
    }
    
    Widget _makeActivityZone() {
-      final w1 = rhsPaneMinWidth - appState.GAP_PAD - appState.TINY_PAD;
-      final w2 = rhsPaneMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
+      final w1 = rhsFrameMinWidth - appState.GAP_PAD - appState.TINY_PAD;
+      final w2 = rhsFrameMaxWidth - appState.GAP_PAD - appState.TINY_PAD;
 
       // XXX Placeholder.
       if( appState.funny == "" ) {
@@ -329,6 +328,9 @@ class _CEHomeState extends State<CEHomePage> {
 
       container   = AppStateContainer.of(context);
       appState    = container.state;
+
+      rhsFrameMaxWidth = appState.MAX_PANE_WIDTH - lhsFrameMaxWidth;
+      
       assert( appState != null );
       
       // ListView horizontal messes with singleChildScroll (to prevent overflow on orientation change). only on this page.

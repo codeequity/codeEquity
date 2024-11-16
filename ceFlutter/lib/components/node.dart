@@ -197,20 +197,16 @@ class Node extends StatelessWidget implements Tree {
      if( allocInt == -1 )          { surplusInt += 1; }  // -1 indicates a hostproject with a peq, but proj is not in equity.  it is not a numeric value.
      if( getChildDepth( 0 ) <= 2 ) { surplusInt = 0; }   // do not show surplus for columns or assignees
 
-     // XXX ignore for now.  will become a (!) warning
-     // Parent surplus >= children surplus in valid cases.
-     // if( surplusInt < childSurplusInt ) { print( "XXX XXX XXX" + surplusInt.toString() + " " + childSurplusInt.toString() ); }
-     
      String alloc   = addCommas( allocInt );
      String plan    = addCommas( planInt );
      String pending = addCommas( pendInt );
      String accrue  = addCommas( accrInt );
      // String surplus = surplusInt == 0 || currentDepth > 2 ? "" : addCommas( surplusInt );
      String surplus = surplusInt == 0  ? "" : addCommas( surplusInt );
-        
+     
      if( header ) {
-        alloc   = "Allocation";
-        plan    = "Planned";    // XXX Tie these to app state, but be ready to chop to size
+        alloc   = "Allocation";  // These are designed names, do not link to app_state without pause.
+        plan    = "Planned";
         pending = "Pending";
         accrue  = "Accrued";
         surplus = "Surplus";
@@ -293,7 +289,6 @@ class Node extends StatelessWidget implements Tree {
 
      if( appState!.verbose >= 2 ) { print( "GT $title " + _tileExpanded.toString() ); }
      
-     // XXX consider using font for clickability?
      return Container(
         width: width,
         height: height,

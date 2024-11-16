@@ -28,10 +28,9 @@ class _CEProjectState extends State<CEProjectPage> {
 
    var pageStamp = "";
 
-   // XXX appState
    // iphone 5
-   static const frameMinWidth  = 320.0;
-   static const frameMinHeight = 568.0;
+   late double frameMinWidth;
+   late double frameMinHeight;
    
    @override
    void initState() {
@@ -87,7 +86,7 @@ class _CEProjectState extends State<CEProjectPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
-               makeHDivider( appState.screenWidth, 0, 0 ),
+               makeHDivider( appState, appState.screenWidth, 0, 0 ),
                fn()
                ])
          );
@@ -100,8 +99,6 @@ class _CEProjectState extends State<CEProjectPage> {
 
          if( appState.verbose >= 2 ) { print( "PP ReBuild." ); }
 
-         // XXX container still useful?
-         // XXX move standard pixel sizes to appstate, out of utils and elsewhere.
          // Rebuild summaryFrame upon peqUpdate, else previous pageStorageKeys don't match new allocs 
          Widget summaryFrameWidget = CESummaryFrame(
             appContainer:           container,
@@ -184,6 +181,10 @@ class _CEProjectState extends State<CEProjectPage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
       assert( appState != null );
+
+      frameMinWidth  = appState.MIN_PANE_WIDTH;
+      frameMinHeight = appState.MIN_PANE_HEIGHT;
+      
       
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;
