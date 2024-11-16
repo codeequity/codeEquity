@@ -64,13 +64,11 @@ class _CEEquityState extends State<CEEquityFrame> {
    late var      container;
    late AppState appState;
 
-   static const maxPaneWidth = 950.0;
    final listHeaders = ["Category", "Associated host project name", "Allocation", "Rearrange"];
    final lhInternal  = ["Category", "Allocation", "Associated host project name" ] ;
 
-   // iphone 5
-   static const frameMinWidth  = 320.0;     // XXX appState
-   static const frameMinHeight = 300;       // 568.0;
+   late double frameMinWidth;
+   static const frameMinHeight = 300;
 
    // Keep size of headers for equity frame view.  This is used to mod indexes on the way in to equityPlan
    late int equityTop; 
@@ -314,10 +312,10 @@ class _CEEquityState extends State<CEEquityFrame> {
          EquityTree? childNode   = curNode.findNode( cat );
          EquityTree? childParent = curNode.findNode( cat.sublist(0, cat.length - 1 ) );
 
-         // XXX any need to push this to AWS?
          // This is too harsh.  There can be identical categories, especially during editing, rebuilding, deleting.
-         // Rename instead to separate.
          // assert( childNode == null );
+
+         // Rename instead to separate.  This does get pushed to aws.
          if( childNode != null ) {
             print( "Found identically named child.  Adding random tag to avoid this" );
             cat[ cat.length - 1] = cat[ cat.length - 1] + " " + randAlpha( 10 );
@@ -464,7 +462,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       var categoryWidth = categories.length == 0 ? appState.MAX_SCROLL_DEPTH : categories[0].length; 
 
       final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
-      final svWidth  = maxPaneWidth;
+      final svWidth  = appState.MAX_PANE_WIDTH; 
 
       if( appState.screenHeight < frameMinHeight ) {
          return makeTitleText( appState, "Really?  Can't we be a little taller?", frameMinHeight, false, 1, fontSize: 18);
@@ -506,6 +504,8 @@ class _CEEquityState extends State<CEEquityFrame> {
       appState  = container.state;
       assert( appState != null );
 
+      frameMinWidth = appState.MIN_PANE_WIDTH;
+      
       gapPad    = Container( width: appState.GAP_PAD*2.0, height: 1 );
       fatPad    = Container( width: appState.FAT_PAD, height: 1 );
       midPad    = Container( width: appState.MID_PAD, height: 1 );

@@ -131,8 +131,7 @@ Future<void> reloadMyProjects( context, container ) async {
    // FetchHost sets hostAccounts.ceProjs
    appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "$uid"  }' );
 
-   // XXX This map should be limited to CEPs known by UID, no matter platform.  
-   // Set idMap to get from hostUID to hostUserName or ceUID easily
+   // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform, no CEPs.
    appState.idMapHost = await fetchHostMap( context, container, "GitHub" ); 
 
    print( "My CodeEquity Projects:" );

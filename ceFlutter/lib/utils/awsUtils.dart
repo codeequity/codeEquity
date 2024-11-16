@@ -297,7 +297,7 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
 }
 
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform ) async {
-   String shortName = "fetchCEProjects";
+   String shortName = "fetchHostMap";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
    final response = await awsPost( shortName, postData, container );
    

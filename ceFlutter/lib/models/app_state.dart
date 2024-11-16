@@ -46,7 +46,7 @@ class AppState {
 
    // App logic   
    late bool loaded;                           // control expensive aspects of state initialization
-   late String userId;
+   late String userId;                         // ceuid
 
    late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, hostUserName
    
@@ -78,8 +78,12 @@ class AppState {
    // late Map< String, int >              ingestUpdates;   // These peqIds have n pending updates waiting to finish.
 
    // UI constants
-   final double BASE_TXT_HEIGHT = 20.0;     // 14pt font is 19.2 px height
-   final double CELL_HEIGHT     = 50.0;
+   final double MAX_PANE_WIDTH   = 950.0;
+   final double MIN_PANE_WIDTH   = 320.0; // iphone5, pixels
+   final double MIN_PANE_HEIGHT  = 568.0; // iphone5     
+
+   final double BASE_TXT_HEIGHT  = 20.0;     // 14pt font is 19.2 px height
+   final double CELL_HEIGHT      = 50.0;
    final int    MAX_SCROLL_DEPTH = 30;
 
    final double TINY_PAD        =  6.0;     // minimal padding for text

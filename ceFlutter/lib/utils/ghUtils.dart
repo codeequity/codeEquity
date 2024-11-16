@@ -33,11 +33,12 @@ Future<http.Response> _postGH( PAT, postData, name ) async {
          headers: {'Authorization': 'bearer ' + PAT, 'Accept': "application/vnd.github.bane-preview+json", 'X-Github-Next-Global-ID': '1' },
          body: postData
          );
-                                 
+
+   if (response.statusCode != 201 && response.statusCode != 204) { print( "Error.  GH post error " + name + " " + postData ); }
+   
    return response;
 }
 
-// XXX error checking
 // This needs to work for both users and orgs
 Future<String> _getOwnerId( PAT, owner ) async {
 
@@ -137,7 +138,7 @@ Future<void> updateGHRepos( context, container ) async {
          var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "GitHub" } };
          final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
 
-         print( "XXX UpdateGHRepo has PAT " + PAT.toString() );
+         print( "UpdateGHRepo has PAT " + PAT.toString() );
          
          var github = await GitHub(auth: Authentication.withToken( PAT ));
          await github.users.getCurrentUser().then((final CurrentUser user) { assert( user.login == acct.hostUserName ); })

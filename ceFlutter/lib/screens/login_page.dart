@@ -80,11 +80,11 @@ class _CELoginState extends State<CELoginPage> {
      }
   }
 
-  // XXX oi?
+  /*
+  // rotating tester login support
   // Test runner specifies _1664.  Internal login will differ.
   Future<void> _switchToUnusedTester( container, appState ) async {
 
-     /*
      String userName = appState.usernameController.text;
      String postData = '{ "Endpoint": "GetFree", "UserName": "$userName" }';
      String freeName = await getFree( context, container, postData );
@@ -104,7 +104,6 @@ class _CELoginState extends State<CELoginPage> {
         // Similarly, cognito logout initiates a callback that we need to wait for
         _logoutLogin( freeName, freePass, 0, container, appState );
      }
-     */
   }
   
   
@@ -117,7 +116,7 @@ class _CELoginState extends State<CELoginPage> {
         _switchToUnusedTester( container, appState );
      }
      else {
-        // XXX unneeded now?
+        // unneeded now?
         // Wait for Cognito signin callback to finish executing
         Timer(Duration(seconds: duration), () {
               if( !appState.cogInitDone ) { _loginLogoutLogin( attempts + 1, container, appState ); }
@@ -125,6 +124,7 @@ class _CELoginState extends State<CELoginPage> {
            });
      }
   }
+  */
   
   
   @override
@@ -143,12 +143,14 @@ class _CELoginState extends State<CELoginPage> {
               String userName = usernameController.text;
               String userPassword = passwordController.text;
 
+              /*
+              // Currently unused.
               // Enable rotating tester logins
               // have to sign in first, in order to get auth tokens to check locked.
               // _1664 is auth account.  _1664_{0..9} are integration testing accounts.
               if( userName == "_ce_tester_1664" ) {
 
-                 // XXX can simplify now that cognito is not callback-based?
+                 // ??? can simplify now that cognito is not callback-based?
                  // await Cognito.signIn( userName, userPassword );
                  // cognito signin initiates a separate callback not attached to the signin process.
                  // Need to wait for that to finish.  This is ugly - may be able to rewrite app_state_container callback
@@ -157,8 +159,9 @@ class _CELoginState extends State<CELoginPage> {
               }
               else {
                  _signin( userName, userPassword, container, appState );
-                 
               }
+              */
+              _signin( userName, userPassword, container, appState );
            }));
 
      if( appState.verbose >= 2 ) { print( "build login page" ); }
