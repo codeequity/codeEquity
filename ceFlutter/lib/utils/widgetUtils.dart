@@ -367,8 +367,8 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
          title: Text( "CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 16 )),
          actions: <Widget>[
             IconButton(
-               icon: currentPage == "Project" ? Icon(customIcons.loan_here) : Icon(customIcons.loan),
-               key:  currentPage == "Project" ? Key( "loanHereIcon" ) : Key( "loanIcon" ),
+               icon: currentPage == "Project" ? Icon(customIcons.project_here) : Icon(customIcons.project),
+               key:  currentPage == "Project" ? Key( "projectHereIcon" ) : Key( "projectIcon" ),
                onPressed: ()
                {
                   if( currentPage == "Project" ) { return; }
