@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
+import 'package:ceFlutter/utils/search.dart';
 
 import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
 
 import 'package:ceFlutter/customIcons.dart';
+
 
 // XXX after update from 3.X to 7.X, move to web, background color is wrong
 void notYetImplemented(BuildContext context) {
@@ -344,11 +346,15 @@ Widget makeInputField( appState, hintText, obscure, controller, {keyName = "", e
 }
 
 
-// XXX Partial.  This needs full design, rebuild.
 PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
    final container   = AppStateContainer.of(context);
    final appState    = container.state;
    final iconSize    = appState.screenHeight*.0422;
+   final spacer      = Container( width: 2.0 * appState.GAP_PAD );
+   final miniSpace   = Container( width: appState.MID_PAD );
+   Widget search     = CESearch();
+   
+   TextEditingController tc = new TextEditingController();   
    return PreferredSize(
       preferredSize: Size.fromHeight( appState.screenHeight*.054 ),
       child: AppBar(
@@ -364,8 +370,10 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
             iconSize: iconSize,
             padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 2.0)
             ),
-         title: Text( "CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 16 )),
+         title: Wrap( spacing: 0, children: [ spacer, Text( "CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 18 )) ] ),
          actions: <Widget>[
+            Container( width: 12*appState.GAP_PAD, height: 0.5*appState.CELL_HEIGHT, child: search ), 
+            spacer,
             IconButton(
                icon: currentPage == "Project" ? Icon(customIcons.project_here) : Icon(customIcons.project),
                key:  currentPage == "Project" ? Key( "projectHereIcon" ) : Key( "projectIcon" ),
@@ -390,12 +398,25 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                iconSize: iconSize,
                padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 1.0)
                ),
+            miniSpace,
+            IconButton(
+               icon: currentPage == "Settings" ? Icon(customIcons.settings_here) : Icon(customIcons.settings),
+               key:  currentPage == "Settings" ? Key( "settingsHereIcon" ) : Key( "settingsIcon" ),
+               onPressed: ()
+               {
+                  if( currentPage == "Settings" ) { return; }
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage());  // XXX
+                  Navigator.push( context, newPage );
+               },
+               iconSize: iconSize,
+               padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 1.0)
+               ),
             ]));
 }
 
 
 
-// XXX Placeholder.. maybe not?
+/*
 Widget makeBotAppBar( BuildContext context, currentPage ) {
    final container   = AppStateContainer.of(context);
    final appState    = container.state;
@@ -440,4 +461,4 @@ Widget makeBotAppBar( BuildContext context, currentPage ) {
                      ])
                ])));
 }
-
+*/

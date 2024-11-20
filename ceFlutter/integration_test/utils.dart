@@ -172,7 +172,7 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    // Top bar
    await pumpSettle( tester, 1 );
    expect( find.byIcon( customIcons.home_here ), findsOneWidget );
-   expect( find.byIcon( customIcons.loan ),      findsOneWidget );
+   expect( find.byIcon( customIcons.project ),   findsOneWidget );
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
    expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 
@@ -224,7 +224,7 @@ Future<bool> verifyConnieHome( WidgetTester tester ) async {
 Future<bool> verifyOnProfilePage( WidgetTester tester ) async {
    // Top bar
    expect( find.byIcon( customIcons.home ),         findsOneWidget );
-   expect( find.byIcon( customIcons.loan ),         findsOneWidget );
+   expect( find.byIcon( customIcons.project ),      findsOneWidget );
    expect( find.byIcon( customIcons.profile_here ), findsOneWidget );
    expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 
@@ -237,7 +237,7 @@ Future<bool> verifyOnProfilePage( WidgetTester tester ) async {
 Future<bool> verifyOnAddGHPage( WidgetTester tester ) async {
    // Top bar
    expect( find.byIcon( customIcons.home_here ), findsOneWidget );
-   expect( find.byIcon( customIcons.loan ),      findsOneWidget );   // XXX rename these icons!
+   expect( find.byIcon( customIcons.project ),   findsOneWidget );   // XXX rename these icons!
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
    expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 
@@ -254,7 +254,7 @@ Future<bool> verifyOnAddGHPage( WidgetTester tester ) async {
 Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
    // Top bar
    expect( find.byIcon( customIcons.home ),      findsOneWidget );
-   expect( find.byIcon( customIcons.loan_here ), findsOneWidget );   // XXX rename these icons!
+   expect( find.byIcon( customIcons.project_here ), findsOneWidget );   // XXX rename these icons!
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
    expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
 

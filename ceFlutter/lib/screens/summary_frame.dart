@@ -56,7 +56,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    late var      container;
    late AppState appState;
 
-   static const maxPaneWidth = 950.0;
+   late double maxPaneWidth;
    // static const maxPaneWidth = 800.0;
 
    // iphone 5
@@ -313,6 +313,8 @@ class _CESummaryState extends State<CESummaryFrame> {
       container   = widget.appContainer;   // Neat.  Access parameter in super.  Alternative to AppStateContainer.of(context)
       appState    = container.state;
       assert( appState != null );
+
+      maxPaneWidth = appState.MAX_PANE_WIDTH;
      
       if( appState.verbose >= 2 ) { print( "SUMMARY BUILD. " + (appState == Null).toString()); }
 
