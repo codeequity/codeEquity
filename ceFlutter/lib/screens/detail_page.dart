@@ -42,8 +42,6 @@ class _CEDetailState extends State<CEDetailPage> {
    void initState() {
       peqPAct = new Map<String, List<PEQAction>>();
       userPActUpdated = false;
-      // selectedPeqs = new List<PEQ>();
-      // pactList = new List<Widget>();
       selectedPeqs = [];
       pactList     = [];
       
