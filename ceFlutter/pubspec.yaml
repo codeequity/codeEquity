@@ -84,6 +84,9 @@ flutter:
      - family: customIcons
        fonts:
         - asset: fonts/customIcons.ttf
+     - family: customLetters
+       fonts:
+        - asset: fonts/customLetters.ttf
 
   # example:
   # fonts:

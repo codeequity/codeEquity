@@ -10,6 +10,7 @@ import 'package:ceFlutter/utils/search.dart';
 import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
+import 'package:ceFlutter/screens/settings_page.dart';
 
 import 'package:ceFlutter/customIcons.dart';
 
@@ -405,7 +406,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                onPressed: ()
                {
                   if( currentPage == "Settings" ) { return; }
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage());  // XXX
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CESettingsPage());
                   Navigator.push( context, newPage );
                },
                iconSize: iconSize,
@@ -413,52 +414,3 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                ),
             ]));
 }
-
-
-
-/*
-Widget makeBotAppBar( BuildContext context, currentPage ) {
-   final container   = AppStateContainer.of(context);
-   final appState    = container.state;
-   final iconSize    = appState.screenHeight*.0422;
-   return SizedBox(
-      height: appState.screenHeight*.054, 
-      child: BottomAppBar(
-         child: Row(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-               IconButton(
-                  icon:  Icon(Icons.camera),
-                  key:   Key( "homeIcon" ),
-                  onPressed: ()
-                  {
-                  },
-                  iconSize: iconSize,
-                  padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 2.0)
-                  ),
-               Row(
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                     IconButton(
-                        icon: Icon(Icons.camera),
-                        key:  Key( "addProjectIcon" ),
-                        onPressed: ()
-                        {
-                        },
-                        iconSize: iconSize,
-                        padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 2.0)
-                        ),
-                     IconButton(
-                        icon: Icon(Icons.camera),
-                        key:  Key( "profileIcon" ),
-                        onPressed: ()
-                        {
-                        },
-                        iconSize: iconSize,
-                        padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 2.0)
-                        )
-                     ])
-               ])));
-}
-*/

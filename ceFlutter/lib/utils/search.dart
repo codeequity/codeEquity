@@ -38,9 +38,10 @@ class _CESearchState extends State<CESearch> {
       // XXX error handling?
       final Iterable<String> options = await _getPossibilities.search(_currentQuery!, container, context, appState );
       
-      // XXX useful?  correct?
+      // Hmmm... no detectable difference .... yet?  XXX
       // If another search happened while waiting for above, throw away these options.
-      if (_currentQuery != query) { return null; }
+      // if (_currentQuery != query) { print( "OI!" ); return null; }
+
       _currentQuery = null;
       
       return options;
@@ -159,13 +160,9 @@ class _getPossibilities {
       List<PEQ> ariPeqs = appState.userPeqs[ appState.selectedUser ]; 
       
       print( "We have " + ariPeqs.length.toString() + " ari items" );
-      print( ariPeqs.toString() );
       
       List<PEQ>? peqs = ariPeqs.where((PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
 
-      
-      print( "Search has " + (peqs ?? []).length.toString() + " items" );
-      
       // host projects
       // host repos
 
