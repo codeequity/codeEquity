@@ -36,12 +36,12 @@ class Person {
          imagePng =  Uint8List.fromList( dynamicImage.codeUnits );   // codeUnits gets Uint16List
          image = Image.memory( imagePng );
       }
-
+      
       return Person(
-         id:          json['PersonId'],
+         id:          json['CEUserId'],
          firstName:   json['First'],
          lastName:    json['Last'],
-         userName:    json['UserName'],
+         userName:    json['CEUserName'],
          email:       json['Email'],
          locked:      json['Locked'],
          imagePng:    imagePng,

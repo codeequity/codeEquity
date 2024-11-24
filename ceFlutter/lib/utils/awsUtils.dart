@@ -283,7 +283,7 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
    final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
-      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      final l = json.decode(utf8.decode(response.bodyBytes));
       List<CEProject> ceps = l.map( (sketch)=> sketch == -1 ? CEProject.empty() : CEProject.fromJson(sketch) ).toList();
       return ceps;
    } else if( response.statusCode == 204) {
@@ -294,6 +294,23 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
       if( didReauth ) { return await fetchCEProjects( context, container ); }
       else { return []; }
    }
+}
+
+// ce username comes from cert in idtoken on lambda side.
+Future<Person?> fetchSignedInPerson( context, container ) async {
+   String shortName = "fetchSignedInPerson";
+   final postData = '{ "Endpoint": "GetPerson" }';
+   final response = await awsPost( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      final p = json.decode(utf8.decode(response.bodyBytes));
+      Person cePerson = Person.fromJson( p );
+      return cePerson;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchSignedInPerson( context, container ); }
+   }
+   return null;
 }
 
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform ) async {

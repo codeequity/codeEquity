@@ -59,6 +59,7 @@ class Storage extends CognitoStorage {
 class User {
    String? email;
    String? name;
+   String? preferredUserName;
    String? password;
    bool confirmed = false;
    bool hasAccess = false;
@@ -73,8 +74,11 @@ class User {
                user.email = attribute.getValue();
             } else if (attribute.getName() == 'name') {
                user.name = attribute.getValue();
+            } else if (attribute.getName() == 'preferred_username') {
+               user.preferredUserName = attribute.getValue();
             }
          });
+      print( "XXX USER Attr " + attributes.toString() );
       return user;
    }
 }
@@ -98,13 +102,18 @@ class UserService {
       
       _cognitoUser = await _userPool!.getCurrentUser();
       print( "... .. cogUserService got currentUser" );
-
+      
       if (_cognitoUser == null) {
          return false;
       }
       _session = await _cognitoUser!.getSession();
       print( "... .. cogUserService got session" );
 
+      print( (_cognitoUser ?? "").toString() );
+      print( (_session ?? "").toString() );
+      print( (_userPool ?? "").toString() );
+      print( (credentials ?? "").toString() );
+      
       assert( _session != null );
       return _session!.isValid();
    }
@@ -217,7 +226,7 @@ class UserService {
    // XXX Note, user not being caught here - wait for confirmation code.  Could remove lower portion
    Future<User> signUp(String email, String password, String name) async {
       CognitoUserPoolData data;
-      final userAttributes = [ AttributeArg(name: 'email', value: email )];
+      final userAttributes = [ AttributeArg(name: 'email', value: email ), AttributeArg(name: 'preferred_username', value: name )];
 
       assert( _userPool != null );
       data = await _userPool!.signUp(name, password, userAttributes: userAttributes);

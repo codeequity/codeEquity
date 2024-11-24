@@ -204,7 +204,7 @@ def createTestAccounts( sam ) :
     unameBase = "_ce_tester_1664"
 
     # Test login switchboard, does very little work
-    tbase  = cmdBase + unameBase + " --user-attributes Name=email,Value=success@simulator.amazonses.com Name=email_verified,Value=true"
+    tbase  = cmdBase + unameBase + " --user-attributes Name=email,Value=success@simulator.amazonses.com Name=email_verified,Value=true Name=preferred_username,Value=" + unameBase
     tpBase = pwdBase + unameBase + " --password passWD123 --permanent"
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
@@ -213,18 +213,18 @@ def createTestAccounts( sam ) :
     username = ""
     for i in range(10):
         username = unameBase + "_" + str(i)
-        tbase  = cmdBase + username + " --user-attributes Name=email,Value=success@simulator.amazonses.com Name=email_verified,Value=true"
+        tbase  = cmdBase + username + " --user-attributes Name=email,Value=success@simulator.amazonses.com Name=email_verified,Value=true Name=preferred_username,Value=" + username
         tpBase = pwdBase + username + " --password passWD123 --permanent"
         if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
         if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
     # Add aspell and dbase accounts for by-hand testing
-    tbase  = cmdBase + "dbase --user-attributes Name=email,Value=success@simulator.amazonses.com Name=email_verified,Value=true"
+    tbase  = cmdBase + "dbase --user-attributes Name=email,Value=success@simulator.amazonses.com Name=email_verified,Value=true Name=preferred_username,Value=dbase"
     tpBase = pwdBase + "dbase --password passWD123 --permanent"
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
-    tbase  = cmdBase + "aspell --user-attributes Name=email,Value=success@simulator.amazonses.com Name=email_verified,Value=true"
+    tbase  = cmdBase + "aspell --user-attributes Name=email,Value=success@simulator.amazonses.com Name=email_verified,Value=true Name=preferred_username,Value=aspell"
     tpBase = pwdBase + "aspell --password passWD123 --permanent"
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
@@ -235,19 +235,19 @@ def createTestAccounts( sam ) :
         ceConfigData = json.load(read_file)
         
     server1 = ceConfigData['ceServer']
-    tbase  = cmdBase + server1['Username'] + " --user-attributes Name=email,Value=" + server1['Email'] + " Name=email_verified,Value=true"
+    tbase  = cmdBase + server1['Username'] + " --user-attributes Name=email,Value=" + server1['Email'] + " Name=email_verified,Value=true Name=preferred_username,Value=" + server1['Username']
     tpBase = pwdBase + server1['Username'] + " --password " + server1['Password'] + " --permanent"
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
     tester1 = ceConfigData['tester1']
-    tbase  = cmdBase + tester1['Username'] + " --user-attributes Name=email,Value=" + tester1['Email'] + " Name=email_verified,Value=true"
+    tbase  = cmdBase + tester1['Username'] + " --user-attributes Name=email,Value=" + tester1['Email'] + " Name=email_verified,Value=true Name=preferred_username,Value=" + tester1['Username']
     tpBase = pwdBase + tester1['Username'] + " --password " + tester1['Password'] + " --permanent"
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
     tester2 = ceConfigData['tester2']
-    tbase  = cmdBase + tester2['Username'] + " --user-attributes Name=email,Value=" + tester2['Email'] + " Name=email_verified,Value=true"
+    tbase  = cmdBase + tester2['Username'] + " --user-attributes Name=email,Value=" + tester2['Email'] + " Name=email_verified,Value=true Name=preferred_username,Value=" + tester2['Username']
     tpBase = pwdBase + tester2['Username'] + " --password " + tester2['Password'] + " --permanent"
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
