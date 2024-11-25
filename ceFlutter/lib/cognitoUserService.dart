@@ -78,7 +78,7 @@ class User {
                user.preferredUserName = attribute.getValue();
             }
          });
-      print( "XXX USER Attr " + attributes.toString() );
+      // print( "XXX USER Attr " + attributes.toString() );
       return user;
    }
 }

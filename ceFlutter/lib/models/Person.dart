@@ -49,6 +49,20 @@ class Person {
          );
    }
 
+   factory Person.from(p) {
+
+      return Person(
+         id:          p.id,
+         firstName:   p.firstName,
+         lastName:    p.lastName,
+         userName:    p.userName,
+         email:       p.email,
+         locked:      p.locked,
+         imagePng:    p.imagePng,
+         image:       p.image
+         );
+   }
+
    String toString() {
       firstName = firstName;
       lastName  = lastName;

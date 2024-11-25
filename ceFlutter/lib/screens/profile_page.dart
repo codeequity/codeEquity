@@ -1,4 +1,5 @@
 import 'dart:math';
+// import 'dart:async'; 
 import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
@@ -9,6 +10,7 @@ import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 
 import 'package:ceFlutter/customLetters.dart';
@@ -32,9 +34,9 @@ class _CEProfileState extends State<CEProfilePage> {
    late double lhsFrameMaxWidth;
    late double rhsFrameMinWidth;
    late Widget spacer;
-
      
-   late Person? myself; 
+   late Person? myself;
+   late List<CEProject> ceProjects;
    
   @override
       void initState() {
@@ -58,7 +60,14 @@ class _CEProfileState extends State<CEProfilePage> {
 
   void updatePerson( context, container ) async {
      if( appState.loadPerson ) {
-        myself = await fetchSignedInPerson( context, container );
+        var futs = await Future.wait([
+                                        fetchSignedInPerson( context, container ),
+                                        fetchCEProjects( context, container ).then( (p) => ceProjects = p )
+                                        ]);
+        
+        assert( futs.length == 2 );
+        myself = new Person.from( futs[0] );
+
         assert( myself != null );
         assert( appState.cogUser != null );
         if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "NOTE!  Profile is not for " + myself!.userName ); }
@@ -66,20 +75,31 @@ class _CEProfileState extends State<CEProfilePage> {
      }
   }
 
-
-  Widget _makeProjCard( context, String cep, textWidth ) {
+  Widget _makeProjCard( context, String cepId, textWidth ) {
      void _setTitle( PointerEvent event ) {
-        setState(() => appState.hoverChunk = cep );
+        setState(() => appState.hoverChunk = cepId );
      }
      void _unsetTitle( PointerEvent event ) {
         setState(() => appState.hoverChunk = "" );
      }
-     
+
+     CEProject cep = ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
+     final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
+          
      Widget card = Card.outlined(
         child: SizedBox(
            width: appState.MIN_PANE_WIDTH - appState.GAP_PAD,
            height: 2.0*appState.CELL_HEIGHT,
-           child: makeActionableText( appState, cep, _setTitle, _unsetTitle, textWidth, false, 1 ),
+           child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                 makeActionableText( appState, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+                 makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
+                 miniSpacer,
+                 makeTitleText( appState, cep.ceProjectComponent + ", " + cep.description, textWidth, false, 1, fontSize: 12 ),
+                 ]
+              )
            ),
         );
      return card;
@@ -88,7 +108,7 @@ class _CEProfileState extends State<CEProfilePage> {
   Widget _makeCEPs( context, HostAccount ha, textWidth ) {
      List<Widget> ceps = [];
      
-     print( "Making " + ha.ceProjectIds.toString() );
+     // print( "Making " + ha.ceProjectIds.toString() );
      for( int i = 0; i < ha.ceProjectIds.length; i += 2 ) {
         List<Widget> row = [];
         row.add( _makeProjCard( context, ha.ceProjectIds[i], textWidth ) );
@@ -122,12 +142,11 @@ class _CEProfileState extends State<CEProfilePage> {
 
      Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false, imagePng: null, image: null );
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
-     Widget              ceProjects = spacer;
+     Widget              cepWid     = spacer;
      
      if( !appState.loadPerson ) {
         assert( myself != null );
         cePeep = myself!;
-        // print( myself!.toString() );
         
         // CE Host User
         for( var ha in appState.myHostAccounts ) {
@@ -135,7 +154,7 @@ class _CEProfileState extends State<CEProfilePage> {
               if( ha.ceUserId == cePeep.id ) {
                  hostPeep["userName"] = ha.hostUserName;
                  hostPeep["id"]       = ha.hostUserId;
-                 ceProjects           = _makeCEPs( context, ha, textWidth ); 
+                 cepWid               = _makeCEPs( context, ha, textWidth ); 
               }
            }
         }
@@ -158,7 +177,8 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, cePeep.email, textWidth, false, 1 ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
-                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth, () async { notYetImplemented(context); }),
+                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async { notYetImplemented(context); }),
+                                   makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 2.0, _logout( context, appState) )                                                    
                           ]),
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "GitHub ID", textWidth, false, 1, fontSize: 18 ),
@@ -172,9 +192,9 @@ class _CEProfileState extends State<CEProfilePage> {
                  spacer,
                  makeTitleText( appState, cePeep.firstName + "'s CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
                  spacer,
-                 ceProjects,
+                 cepWid,
                  spacer,
-                 makeActionButtonSmall( appState, 'Signout', _logout( context, appState) )                 
+                 // makeActionButtonSmall( appState, 'Logout', _logout( context, appState) )                 
                  ]),
            ]
         );

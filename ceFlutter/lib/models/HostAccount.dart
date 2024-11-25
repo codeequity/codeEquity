@@ -21,7 +21,7 @@ class HostAccount {
 
    factory HostAccount.fromJson(Map<String, dynamic> json) {
 
-      print( "in fromJson" );
+      // print( "in fromJson" );
       var dynamicProjs = json['CEProjectIds'];
       var dynamicFuts  = json['FutureCEProjects'];
       var dynamicCEPs  = json['ceProjects'];

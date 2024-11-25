@@ -231,7 +231,7 @@ Future<bool> verifyOnProfilePage( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'CodeEquityTitle' )), findsOneWidget );
 
    // framing
-   expect( find.byKey(const Key( 'Signout' )),      findsOneWidget );
+   expect( find.byKey(const Key( 'Logout' )),      findsOneWidget );
 
    return true;
 }
@@ -454,7 +454,7 @@ Future<bool> logout( WidgetTester tester ) async {
 
    expect( await verifyOnProfilePage( tester ), true );
 
-   final Finder logoutButton = find.byKey( const Key('Signout'));
+   final Finder logoutButton = find.byKey( const Key('Logout'));
    expect( logoutButton, findsOneWidget );
    await tester.tap( logoutButton );
    await tester.pumpAndSettle();

@@ -63,6 +63,7 @@ class CEProject {
          repositories:       repos
          );
    }
+
    
    String toString() {
       String res = "\n" + ceProjectId + " " + ceProjectComponent + " " + description; 

@@ -283,7 +283,7 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
    final response = await awsPost( shortName, postData, container );
    
    if (response.statusCode == 201) {
-      final l = json.decode(utf8.decode(response.bodyBytes));
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
       List<CEProject> ceps = l.map( (sketch)=> sketch == -1 ? CEProject.empty() : CEProject.fromJson(sketch) ).toList();
       return ceps;
    } else if( response.statusCode == 204) {
