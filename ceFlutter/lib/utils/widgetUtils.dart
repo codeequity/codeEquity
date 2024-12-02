@@ -371,7 +371,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
             iconSize: iconSize,
             padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 2.0)
             ),
-         title: Wrap( spacing: 0, children: [ spacer, Text( "CodeEquity", style: new TextStyle( fontFamily: 'Mansalva', fontSize: 18 )) ] ),
+         title: Wrap( spacing: 0, children: [ spacer, Text( "CodeEquity", key: Key("CodeEquityTitle"), style: new TextStyle( fontFamily: 'Mansalva', fontSize: 18 )) ] ),
          actions: <Widget>[
             Container( width: 12*appState.GAP_PAD, height: 0.5*appState.CELL_HEIGHT, child: search ), 
             spacer,
@@ -393,7 +393,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                onPressed: ()
                {
                   if( currentPage == "Profile" ) { return; }
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage());
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: "" ));
                   Navigator.push( context, newPage );
                },
                iconSize: iconSize,

@@ -3,11 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
+import 'package:ceFlutter/models/PEQ.dart';
+import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/CEProject.dart';
+
 import 'package:ceFlutter/models/app_state.dart';
 
-import 'package:ceFlutter/models/PEQ.dart';
-
+import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
+
+import 'package:ceFlutter/screens/detail_page.dart';
+import 'package:ceFlutter/screens/profile_page.dart';
 
 const Duration debounceDuration = Duration(milliseconds: 200);
 
@@ -29,14 +36,57 @@ class _CESearchState extends State<CESearch> {
    // The most recent suggestions received from the API.
    late Iterable<Widget> _lastOptions = <Widget>[];
    
-   late final _Debounceable<Iterable<String>?, String, dynamic, dynamic, dynamic> _debouncedSearch;
+   late final _Debounceable<Iterable<Widget>?, String, dynamic, dynamic, dynamic> _debouncedSearch;
+
+   @override
+   void initState() {
+      super.initState();
+      _debouncedSearch = _debounce<Iterable<Widget>?, String, dynamic, dynamic, dynamic>(_search);
+   }
+
+   Widget _makeGD( context, appState, obj, objName ) {
+      final textWidth = appState.screenWidth * .4;
+      void _setTitle( PointerEvent event ) {
+         setState(() => appState.hoverChunk = objName );
+      }
+      void _unsetTitle( PointerEvent event ) {
+         setState(() => appState.hoverChunk = "" );
+      }
+      
+      return GestureDetector(
+         onTap: () async
+         {
+            MaterialPageRoute? newPage = null;
+            
+            if( obj is PEQ ) {
+               List<String> holders = (obj as PEQ).hostHolderId;
+               appState.selectedUser = ( holders.length > 0 ) ? holders[0] : appState.UNASSIGN_USER;
+               List<String> cat = (obj as PEQ).hostProjectSub;
+               cat.add( appState.selectedUser );
+               appState.userPActUpdate = true;               
+               newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: cat ));
+            }
+            else if( obj is Person )   {
+               appState.loadPerson = true;
+               newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: (obj as Person).id ));
+            }
+            else if( obj is CEProject) { newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: (obj as CEProject).ceProjectId )); }
+            else {
+               print( "Error.  Search object is not recognized. " );
+               assert( false );
+            }
+            Navigator.push( context, newPage! );
+         },
+         child: makeActionableText( appState, objName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+         );
+   }
    
    // Calls search API to search with the given query. Returns null when the call has been made obsolete.
-   Future<Iterable<String>?> _search(String query, container, context, appState ) async {
+   Future<Iterable<Widget>?> _search(String query, container, context, appState ) async {
       _currentQuery = query;
 
       // XXX error handling?
-      final Iterable<String> options = await _getPossibilities.search(_currentQuery!, container, context, appState );
+      final Iterable<Widget> options = await _getPossibilities.search(_currentQuery!, container, context, appState, _makeGD );
       
       // Hmmm... no detectable difference .... yet?  XXX
       // If another search happened while waiting for above, throw away these options.
@@ -47,11 +97,6 @@ class _CESearchState extends State<CESearch> {
       return options;
    }
 
-   @override
-   void initState() {
-      super.initState();
-      _debouncedSearch = _debounce<Iterable<String>?, String, dynamic, dynamic, dynamic>(_search);
-   }
 
    @override
    Widget build(BuildContext context) {
@@ -72,12 +117,12 @@ class _CESearchState extends State<CESearch> {
          },
          suggestionsBuilder: (BuildContext context, SearchController controller) async
          {
-            final List<String>? options = (await _debouncedSearch(controller.text, container, context, appState))?.toList();
+            final List<Widget>? options = (await _debouncedSearch(controller.text, container, context, appState))?.toList();
             if (options == null) { return _lastOptions; }
             _lastOptions = List<ListTile>.generate(options.length, (int index) {
-                  final String item = options[index];
+                  final Widget item = options[index];
                   return ListTile(
-                     title: Text(item),
+                     title: item,
                      onTap: () { debugPrint('You just selected $item'); },
                      );
                });
@@ -140,32 +185,50 @@ class _CancelException implements Exception {
 
 
 
-// XXX populate
+
+
+// XXX minor - search only guarantees finding things that were in place before logging in.
 class _getPossibilities {
 
-   static Future<Iterable<String>> search(String query, container, context, appState )  async
+   static Future<Iterable<Widget>> search(String query, container, context, appState, makeGD )  async
    {
 
-      if (query == '') { return const Iterable<String>.empty(); }
-      
-      // Profiles for users, ceps
-      // hosts
+      if (query == '') { return const Iterable<Widget>.empty(); }
 
-      // XXX oi
-      // peq issues 
-      // appState.selectedUser = "ariCETester";
-      appState.selectedUser = "U_kgDOBP2eEw";
-      await updateUserPeqs( container, context );  // XXX could probably skip this
-      
-      List<PEQ> ariPeqs = appState.userPeqs[ appState.selectedUser ]; 
-      
-      print( "We have " + ariPeqs.length.toString() + " ari items" );
-      
-      List<PEQ>? peqs = ariPeqs.where((PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      // XXX these expensive fetches should only happen once per login.
+      List<Person>    cePeeps    = [];
+      List<CEProject> ceProjects = [];
 
-      // host projects
-      // host repos
+      // XXX peq issues 
+      // XXX Allow search over all peqs for every user?  Expensive.  Limit to current user?  Limited.  Hmm...
+      //     peqs are not much data, just get every one?  probably.  Should get over all user ceProj's as well.
+      appState.selectedUser      = "U_kgDOBP2eEw";
+      appState.selectedCEProject = "CE_FlutTest_ks8asdlg42";
 
-      return (peqs ?? []).map( (p) => p.hostIssueTitle ); 
+
+      // Collect
+      var futs = await Future.wait([
+                                      fetchCEPeople( context, container ).then( (p) => cePeeps = p ),
+                                      fetchCEProjects( context, container ).then( (p) => ceProjects = p ),
+                                      updateUserPeqs( container, context )
+                                      ]);
+      List<PEQ>       ariPeqs    = appState.userPeqs[ appState.selectedUser ];  // XXX get all
+
+      // Filter
+      // XXX search should show first line where term shows up
+      List<Person>?    filteredCEPeeps = cePeeps.where( (Person p) => ( p.userName.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      List<PEQ>?       filteredPeqs    = ariPeqs.where( (PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      List<CEProject>? filteredCEProjs = ceProjects.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+
+
+      // Collate .. GD
+      List<Widget> res = [];
+
+      res.addAll( (filteredCEPeeps ?? []).map( (p) => makeGD( context, appState, p, p.userName )) );
+      res.addAll( (filteredCEProjs ?? []).map( (p) => makeGD( context, appState, p, p.ceProjectId )) );
+      res.addAll( (filteredPeqs    ?? []).map( (p) => makeGD( context, appState, p, p.hostIssueTitle )) );
+
+      
+      return res;
    }
 }

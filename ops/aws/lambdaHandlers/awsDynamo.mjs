@@ -72,7 +72,7 @@ export function handler( event, context, callback) {
 
     var endPoint = rb.Endpoint;
     var resultPromise;
-
+    
     // console.log( "User:", username, "Endpoint:", endPoint );
     if(      endPoint == "GetEntry")       { resultPromise = getEntry( rb.tableName, rb.query ); }
     else if( endPoint == "GetEntries")     { resultPromise = getEntries( rb.tableName, rb.query ); }
@@ -82,6 +82,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "RecordPEQ")      { resultPromise = putPeq( rb.newPEQ ); }
     else if( endPoint == "RecordPEQAction"){ resultPromise = putPAct( rb.newPAction ); }
     else if( endPoint == "CheckHostPop")   { resultPromise = checkHostPop( rb.CEProjectId, rb.RepoId ); }
+    else if( endPoint == "GetPerson")      { resultPromise = getPerson( username ); }
     else if( endPoint == "GetPEQ")         { resultPromise = getPeq( rb.CEUID, rb.HostUserName, rb.CEProjectId, rb.isAlloc, rb.allAccrued ); }
     else if( endPoint == "GetPEQsById")    { resultPromise = getPeqsById( rb.PeqIds ); }
     else if( endPoint == "GetPEQActions")  { resultPromise = getPeqActions( rb.CEUID, rb.HostUserName, rb.CEProjectId ); }
@@ -366,6 +367,9 @@ async function getEntries( tableName, query ) {
 	break;
     case "CEHostUser":
 	props = [ "HostPlatform" ];
+	break;
+    case "CEPeople":
+	props = ["CEUserId", "CEUserName", "Email", "First", "Last", "Locked"];
 	break;
     case "CEProjects":
 	props = [ "CEProjectId" ];
@@ -760,6 +764,10 @@ async function putPAct( newPAction ) {
     return bsdb.send( twCmd ).then(() =>success( newId ));
 }
 
+async function getPerson( username ) {
+  let origPerson = await getEntry( "CEPeople", { CEUserName: username } );
+  return origPerson;
+}
 
 // XXX used only by ceFlutter.  replace with getEntry?
 // XXX Slow

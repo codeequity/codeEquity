@@ -20,6 +20,24 @@ import 'package:ceFlutter/components/leaf.dart';
 
 Function eq = const ListEquality().equals;
 
+
+// possibily used by search as well (later)
+Future<void> _makePRawScroll( appState, context, container, pactId, textWidth, keyName ) async {
+   var postData = {};
+   postData['PEQRawId'] = pactId;
+   var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQRaw", "query": postData }; 
+   PEQRaw? pr = await fetchPEQRaw( context, container, json.encode( pd ));
+   assert( pr != null );
+   var encoder = new JsonEncoder.withIndent("  ");
+   var prj = json.decode( pr!.rawReqBody );
+   String prettyRaw = encoder.convert(prj);
+   
+   // Let makeBody handle the json
+   Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000, keyTxt: "RawPact"+keyName);
+   popScroll( context, "Raw Host Action:", prw, () => Navigator.of( context ).pop() );
+}
+
+
 class CEDetailPage extends StatefulWidget {
    CEDetailPage({Key? key}) : super(key: key);
 
@@ -53,12 +71,6 @@ class _CEDetailState extends State<CEDetailPage> {
       super.dispose();
    }
 
-
-   void _closeRaw() {
-      if( appState.verbose >= 2 ) { print( "closeRaw" ); }
-      Navigator.of( context ).pop(); 
-   }
-   
    Widget _makePeq( peq ) {
       final textWidth = appState.screenWidth * .6;
       String proj = "";
@@ -90,18 +102,7 @@ class _CEDetailState extends State<CEDetailPage> {
       return GestureDetector(
          onTap: () async
          {
-            var postData = {};
-            postData['PEQRawId'] = pact.id;
-            var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQRaw", "query": postData }; 
-            PEQRaw? pr = await fetchPEQRaw( context, container, json.encode( pd ));
-            assert( pr != null );
-            var encoder = new JsonEncoder.withIndent("  ");
-            var prj = json.decode( pr!.rawReqBody );
-            String prettyRaw = encoder.convert(prj);
-
-            // Let makeBody handle the json
-            Widget prw = makeBodyText( appState, prettyRaw, textWidth, true, 1000, keyTxt: "RawPact"+keyName);
-            popScroll( context, "Raw Github Action:", prw, () => _closeRaw() );            
+            await _makePRawScroll( appState, context, container, pact.id, textWidth, keyName );
          },
          child: makeBodyText( appState, apact, textWidth, false, 1, keyTxt: keyName )
          );

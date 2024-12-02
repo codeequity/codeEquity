@@ -277,6 +277,25 @@ Future<bool> updateProjectName( context, container, guide ) async {
    }
 }
 
+Future<List<Person>> fetchCEPeople( context, container ) async {
+   String shortName = "fetchCEPeople";
+   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEPeople", "query": { "empty": "" }}';
+   final response = await awsPost( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      List<Person> cePeeps = l.map( (sketch)=> sketch == -1 ? Person.empty() : Person.fromJson(sketch) ).toList();
+      return cePeeps;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no CEPeople found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchCEPeople( context, container ); }
+      else { return []; }
+   }
+}
+
 Future<List<CEProject>> fetchCEProjects( context, container ) async {
    String shortName = "fetchCEProjects";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEProjects", "query": { "empty": "" }}';
@@ -294,6 +313,23 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
       if( didReauth ) { return await fetchCEProjects( context, container ); }
       else { return []; }
    }
+}
+
+// ce username comes from cert in idtoken on lambda side.
+Future<Person?> fetchSignedInPerson( context, container ) async {
+   String shortName = "fetchSignedInPerson";
+   final postData = '{ "Endpoint": "GetPerson" }';
+   final response = await awsPost( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      final p = json.decode(utf8.decode(response.bodyBytes));
+      Person cePerson = Person.fromJson( p );
+      return cePerson;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchSignedInPerson( context, container ); }
+   }
+   return null;
 }
 
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform ) async {

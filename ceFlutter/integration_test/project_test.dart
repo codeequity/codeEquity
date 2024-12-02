@@ -531,7 +531,7 @@ Future<bool> validateAdd( WidgetTester tester, String repo, String issueTitle, S
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -551,7 +551,7 @@ Future<bool> validateConfirmDelete( WidgetTester tester, String repo, String iss
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -577,7 +577,7 @@ Future<bool> validatePass( WidgetTester tester, String detailName ) async {
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -591,7 +591,7 @@ Future<bool> validateCreateCard( WidgetTester tester, String detailName ) async 
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -608,7 +608,7 @@ Future<bool> validateAssign( WidgetTester tester, String repo, String issueTitle
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -629,7 +629,7 @@ Future<bool> validateUnAssign( WidgetTester tester, String repo, String issueTit
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -650,7 +650,7 @@ Future<bool> validateMove( WidgetTester tester, String detailName ) async {
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -672,7 +672,7 @@ Future<bool> validateProposeAccrue( WidgetTester tester, String repo, String iss
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -699,7 +699,7 @@ Future<bool> validateConfirmAccrue( WidgetTester tester, String repo, String det
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -719,7 +719,7 @@ Future<bool> validateRejectAccrue( WidgetTester tester, String repo, String issu
 
    // checkNTap returns the key it was able to find.
    detailName = await checkNTap( tester, detailName );
-   expect( find.text( "Raw Github Action:" ), findsOneWidget );
+   expect( find.text( "Raw Host Action:" ), findsOneWidget );
 
    final Map<String, dynamic> pmap = getPact( tester, detailName );
 
@@ -1130,7 +1130,6 @@ void main() {
          // OPEN 1st group
          await toggleTableEntry( tester, 8, "" );
          await _checkHelper( tester );
-         print( "C " );
          
          // scroll up down up, check
          // cell height is 50

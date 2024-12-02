@@ -55,7 +55,7 @@ class AppState {
    late EquityPlan?       equityPlan;            // Equity plan for the selectedCEProject
    late String            funny;                 // placeholder in activity zone.
 
-   late List<HostAccount> myHostAccounts;   
+   late List<HostAccount> myHostAccounts;        // all host accounts for current ceUser.
    late bool hostUpdated;
 
    Node? allocTree;
@@ -67,7 +67,10 @@ class AppState {
    late bool   updateEquityView;        // updated the viewable list, with dynamo, or newly updated tree
 
    late bool   ceProjectLoading;        // allows spin while ceProject is being constructed from aws
-   late bool   peqAllocsLoading;         // allows spin while summary frame peq allocations are being constructed
+   late bool   peqAllocsLoading;        // allows spin while summary frame peq allocations are being constructed
+   late bool   profilePerson;           // Load a new person for profile page
+   late bool   profileProject;          // Load a new ceProject for profile page
+
    
    late String                          selectedCEProject;
    late String                          selectedUser;    // Looking at details for this user, currently
@@ -128,6 +131,9 @@ class AppState {
       updateEquityView   = false;
       ceProjectLoading   = false;
       peqAllocsLoading   = false;
+
+      profilePerson      = true;
+      profileProject     = false;
 
       selectedCEProject = "";
       selectedUser = "";

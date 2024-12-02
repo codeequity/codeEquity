@@ -26,6 +26,20 @@ class Person {
                'locked': false, 'imagePng': String.fromCharCodes( imagePng! ) };
       }
    }
+
+   // No one found.  return empty 
+   factory Person.empty() {
+      return Person( 
+         id:         "-1",
+         firstName:  "", 
+         lastName:   "",
+         userName:   "",
+         email:      "",
+         locked:     false,
+         imagePng:   null,
+         image:      null
+         );
+   }
    
    factory Person.fromJson(Map<String, dynamic> json) {
 
@@ -36,16 +50,30 @@ class Person {
          imagePng =  Uint8List.fromList( dynamicImage.codeUnits );   // codeUnits gets Uint16List
          image = Image.memory( imagePng );
       }
-
+      
       return Person(
-         id:          json['PersonId'],
+         id:          json['CEUserId'],
          firstName:   json['First'],
          lastName:    json['Last'],
-         userName:    json['UserName'],
+         userName:    json['CEUserName'],
          email:       json['Email'],
          locked:      json['Locked'],
          imagePng:    imagePng,
          image:       image
+         );
+   }
+
+   factory Person.from(p) {
+
+      return Person(
+         id:          p.id,
+         firstName:   p.firstName,
+         lastName:    p.lastName,
+         userName:    p.userName,
+         email:       p.email,
+         locked:      p.locked,
+         imagePng:    p.imagePng,
+         image:       p.image
          );
    }
 

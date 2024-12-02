@@ -53,7 +53,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
         assert( state.cogUserService != null ); 
 
         state.cogUser = User();
-        print("... ... have cog user service" );
+        print("... ... have cog user service and user" );
 
         await state.cogUserService!.init();
         print("... user service init done." );

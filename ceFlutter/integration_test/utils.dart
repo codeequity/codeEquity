@@ -175,7 +175,7 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    expect( find.byIcon( customIcons.settings ),  findsOneWidget );
    expect( find.byIcon( customIcons.project ),   findsOneWidget );
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
-   expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
+   expect( find.byKey( const Key( 'CodeEquityTitle' )), findsOneWidget );
 
    // framing
    expect( find.text( 'Activity' ),             findsOneWidget );
@@ -228,7 +228,7 @@ Future<bool> verifyOnProfilePage( WidgetTester tester ) async {
    expect( find.byIcon( customIcons.settings ),      findsOneWidget );
    expect( find.byIcon( customIcons.project ),      findsOneWidget );
    expect( find.byIcon( customIcons.profile_here ), findsOneWidget );
-   expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
+   expect( find.byKey( const Key( 'CodeEquityTitle' )), findsOneWidget );
 
    // framing
    expect( find.byKey(const Key( 'Logout' )),      findsOneWidget );
@@ -242,7 +242,7 @@ Future<bool> verifyOnAddGHPage( WidgetTester tester ) async {
    expect( find.byIcon( customIcons.settings ),  findsOneWidget );
    expect( find.byIcon( customIcons.project ),   findsOneWidget );
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
-   expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
+   expect( find.byKey( const Key( 'CodeEquityTitle' )), findsOneWidget );
 
    // framing
    expect( find.text( 'Link CodeEquity to GitHub' ),                   findsOneWidget );  // XXX one name for Github GitHub GH
@@ -260,7 +260,7 @@ Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
    expect( find.byIcon( customIcons.project_here ), findsOneWidget );
    expect( find.byIcon( customIcons.settings ),  findsOneWidget );
    expect( find.byIcon( customIcons.profile ),   findsOneWidget );
-   expect( find.byWidgetPredicate((widget) => widget is AppBar && widget.title is Text && ((widget.title as Text).data?.contains( "CodeEquity" ) ?? false )), findsOneWidget );
+   expect( find.byKey( const Key( 'CodeEquityTitle' )), findsOneWidget );
 
    // framing
    expect( find.text( 'CE_FlutTest_ks8asdlg42' ),          findsOneWidget );  
