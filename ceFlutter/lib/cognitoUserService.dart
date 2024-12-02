@@ -93,6 +93,7 @@ class UserService {
 
    // Initiate user session from local storage if present
    Future<bool> init() async {
+      print( "cogUserService: Enter" );
       final prefs = await SharedPreferences.getInstance();
       final storage = Storage(prefs);
       print( "... .. cogUserService got storage" );
@@ -104,8 +105,11 @@ class UserService {
       print( "... .. cogUserService got currentUser" );
       
       if (_cognitoUser == null) {
+         print( "... .. No cognito user... yet" );
+         print( "cogUserService: Exit" );
          return false;
       }
+      print( "... .. before cogUserService getSession" );
       _session = await _cognitoUser!.getSession();
       print( "... .. cogUserService got session" );
 
@@ -115,6 +119,7 @@ class UserService {
       print( (credentials ?? "").toString() );
       
       assert( _session != null );
+      print( "cogUserService: Exit" );
       return _session!.isValid();
    }
    
@@ -150,6 +155,7 @@ class UserService {
    // Login user
    Future<User?> login(String name, String password) async {
       print( "Cog start login" );
+      print( "XXX Cog start login " + name +  " " + password);
       assert( _userPool != null );
       _cognitoUser = CognitoUser(name, _userPool!, storage: _userPool!.storage);
 

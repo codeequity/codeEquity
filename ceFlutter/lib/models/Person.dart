@@ -26,6 +26,20 @@ class Person {
                'locked': false, 'imagePng': String.fromCharCodes( imagePng! ) };
       }
    }
+
+   // No one found.  return empty 
+   factory Person.empty() {
+      return Person( 
+         id:         "-1",
+         firstName:  "", 
+         lastName:   "",
+         userName:   "",
+         email:      "",
+         locked:     false,
+         imagePng:   null,
+         image:      null
+         );
+   }
    
    factory Person.fromJson(Map<String, dynamic> json) {
 

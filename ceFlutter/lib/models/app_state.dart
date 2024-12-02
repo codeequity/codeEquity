@@ -68,7 +68,8 @@ class AppState {
 
    late bool   ceProjectLoading;        // allows spin while ceProject is being constructed from aws
    late bool   peqAllocsLoading;        // allows spin while summary frame peq allocations are being constructed
-   late bool   loadPerson;              // Load a new person for profile page
+   late bool   profilePerson;           // Load a new person for profile page
+   late bool   profileProject;          // Load a new ceProject for profile page
 
    
    late String                          selectedCEProject;
@@ -130,7 +131,9 @@ class AppState {
       updateEquityView   = false;
       ceProjectLoading   = false;
       peqAllocsLoading   = false;
-      loadPerson         = true;
+
+      profilePerson      = true;
+      profileProject     = false;
 
       selectedCEProject = "";
       selectedUser = "";

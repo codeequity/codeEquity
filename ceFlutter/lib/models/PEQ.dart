@@ -16,7 +16,7 @@ class PEQ {
    String        accrualDate;  // when accrued
    double        vestedPerc;   // as of accrual date
 
-   List<String>  hostProjectSub; // project subs, i.e. ["Master", "codeEquity web front end"]
+   List<String>  hostProjectSub; // project subs, i.e. ["Software Contributions", "codeEquity web front end"]
    String        hostRepoId;    
    String        hostIssueId;   
    String        hostIssueTitle; // actually, issue-or-card title.

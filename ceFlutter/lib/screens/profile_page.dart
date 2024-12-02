@@ -1,5 +1,4 @@
 import 'dart:math';
-// import 'dart:async'; 
 import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
@@ -27,6 +26,8 @@ class CEProfilePage extends StatefulWidget {
 class _CEProfileState extends State<CEProfilePage> {
 
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
+   late String selectedProfileId;   // set in navigator call
+   
    late var      container;
    late AppState appState; 
    
@@ -58,8 +59,10 @@ class _CEProfileState extends State<CEProfilePage> {
      return wrapper;
   }
 
+
+  // Need projects for full profile.
   void updatePerson( context, container ) async {
-     if( appState.loadPerson ) {
+     if( appState.profilePerson ) {
         var futs = await Future.wait([
                                         fetchSignedInPerson( context, container ),
                                         fetchCEProjects( context, container ).then( (p) => ceProjects = p )
@@ -67,11 +70,22 @@ class _CEProfileState extends State<CEProfilePage> {
         
         assert( futs.length == 2 );
         myself = new Person.from( futs[0] );
-
+	
         assert( myself != null );
         assert( appState.cogUser != null );
         if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "NOTE!  Profile is not for " + myself!.userName ); }
-        setState(() => appState.loadPerson = false );
+        setState(() => appState.profilePerson = false );
+     }
+  }
+
+  // XXX any public ceProject is possible.
+  void updateProjects( context, container ) async {
+     if( appState.profileProject ) {
+        ceProjects = await fetchCEProjects( context, container ).then( (p) => ceProjects = p );
+        
+        print( "profile for " + ceProjects.toString() );
+
+        setState(() => appState.profileProject = false );
      }
   }
 
@@ -144,7 +158,7 @@ class _CEProfileState extends State<CEProfilePage> {
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
      Widget              cepWid     = spacer;
      
-     if( !appState.loadPerson ) {
+     if( !appState.profilePerson ) {
         assert( myself != null );
         cePeep = myself!;
         
@@ -207,6 +221,8 @@ class _CEProfileState extends State<CEProfilePage> {
       container = AppStateContainer.of(context);
       appState  = container.state;
       assert( appState != null );
+      selectedProfileId = ModalRoute.of(context)!.settings.arguments as String;
+      print( "Selected Profile: " + selectedProfileId );
 
       lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
@@ -215,6 +231,7 @@ class _CEProfileState extends State<CEProfilePage> {
       
       // print("Profile page");
       updatePerson( context, container );
+      updateProjects( context, container );
       
       return Scaffold(
          appBar: makeTopAppBar( context, "Profile" ),
