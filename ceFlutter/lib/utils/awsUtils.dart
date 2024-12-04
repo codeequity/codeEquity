@@ -332,6 +332,52 @@ Future<Person?> fetchSignedInPerson( context, container ) async {
    return null;
 }
 
+// Get any public ce person
+Future<Person?> fetchAPerson( context, container, ceUserId ) async {
+   String shortName = "fetchAPerson";
+   var postDataQ = {};
+   postDataQ['CEUserId'] = ceUserId;
+   final postData = { "Endpoint": "GetEntry", "tableName": "CEPeople", "query": postDataQ };
+   final response = await awsPost( shortName, json.encode( postData ), container );
+   
+   if (response.statusCode == 201) {
+      final p = json.decode(utf8.decode(response.bodyBytes));
+      Person cePerson = Person.fromJson( p );
+      return cePerson;
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchSignedInPerson( context, container ); }
+   }
+   return null;
+}
+
+// Gets CEHostUser for a given platform
+Future<List<HostAccount>> fetchHostUser( context, container, hostPlatform ) async {
+   String shortName = "fetchHostUser";
+   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
+   final response = await awsPost( shortName, postData, container );
+   
+   if (response.statusCode == 201) {
+      List<HostAccount> res = [];
+      Iterable hu = json.decode(utf8.decode(response.bodyBytes));
+      for( var hostUser in hu ) {
+         print( "working on " + hostUser.toString() );
+         hostUser["ceProjects"] = [];
+         HostAccount ha = HostAccount.fromJson( hostUser );
+         res.add( ha );
+      }
+      return res;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no CEHostUsers found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchHostUser( context, container, hostPlatform ); }
+      else { return []; }
+   }
+}
+
+// Populates idHostMap
 Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform ) async {
    String shortName = "fetchHostMap";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
