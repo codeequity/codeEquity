@@ -1421,7 +1421,7 @@ async function getHostA( uid ) {
 	Limit: 99,
     };
 
-    console.log( "Host Account repos");
+    console.log( "Host Account repos", uid);
     let hostAccPromise = paginatedScan( paramsP );
 
     let hostAccs = await hostAccPromise;

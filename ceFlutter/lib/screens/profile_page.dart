@@ -40,7 +40,8 @@ class _CEProfileState extends State<CEProfilePage> {
    late List<CEProject>   ceProjects;
    late List<HostAccount> hostAccounts;  // specific to 1 user
    late List<HostAccount> hostUsers;     // specific to 1 platform
-
+   late List<Person>      cePeople;  
+   
    late bool screenOpened;
    
   @override
@@ -97,11 +98,10 @@ class _CEProfileState extends State<CEProfilePage> {
         await Future.wait([
                              
                              fetchCEProjects( context, container ).then( (p) => ceProjects = p ),
-                             fetchHostUser( context, container, "GitHub" ).then( (p) => hostUsers = p )
+                             fetchHostUser( context, container, "GitHub" ).then( (p) => hostUsers = p ),
+                             fetchCEPeople( context, container ).then( (p) => cePeople = p )
                              ]);
         
-        print( "profile for " + ceProjects.toString() );
-        print( hostUsers.toString() );
         // need setState to trigger makeBody else blank info
         setState(() => screenOpened = false );
      }
@@ -117,7 +117,18 @@ class _CEProfileState extends State<CEProfilePage> {
 
      CEProject cep = ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
-          
+
+     Widget cepLink = GestureDetector(
+        onTap: () async
+        {
+           Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
+           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+           Navigator.push( context, newPage );
+        },
+        child: makeActionableText( appState, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+        );
+
+     
      Widget card = Card.outlined(
         child: SizedBox(
            width: appState.MIN_PANE_WIDTH - appState.GAP_PAD,
@@ -126,7 +137,7 @@ class _CEProfileState extends State<CEProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                 makeActionableText( appState, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+                 cepLink,
                  makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
                  miniSpacer,
                  makeTitleText( appState, cep.ceProjectComponent + ", " + cep.description, textWidth, false, 1, fontSize: 12 ),
@@ -135,6 +146,56 @@ class _CEProfileState extends State<CEProfilePage> {
            ),
         );
      return card;
+  }
+
+  Widget _makeCollabCard( context, HostAccount ha, textWidth, maxProjCount ) {
+     String ceUserId = ha.ceUserId;
+     // print( ceUserId + " " + cePeople.toString() );
+     Person cePeep   = cePeople.firstWhere( (p) => p.id == ceUserId );
+     assert( cePeep != null );
+
+     String ceName = cePeep.firstName + " " + cePeep.lastName;
+     void _setTitle( PointerEvent event ) {
+        setState(() => appState.hoverChunk = ceName );
+     }
+     void _unsetTitle( PointerEvent event ) {
+        setState(() => appState.hoverChunk = "" );
+     }
+
+     Widget collabLink = GestureDetector(
+        onTap: () async
+        {
+           Map<String,String> screenArgs = {"id": ceUserId, "profType": "Person" };
+           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+           Navigator.push( context, newPage );
+        },
+        child: makeActionableText( appState, ceName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+        );
+
+     Widget ceProjs = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: ha.ceProjectIds.map( (cepId) => makeTitleText( appState, "   " + cepId, textWidth, false, 1 ) ).toList()
+        );
+     
+     Widget card = Card.outlined(
+        child: SizedBox(
+           width: appState.MIN_PANE_WIDTH - appState.GAP_PAD,
+           height: 2.0*appState.CELL_HEIGHT + (appState.BASE_TXT_HEIGHT + appState.TINY_PAD)  * maxProjCount,
+           child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                 collabLink,
+                 makeTitleText( appState, cePeep.userName + " (" + ceUserId + ")", textWidth, false, 1 ),
+                 makeTitleText( appState, "CE Project member: " , textWidth, false, 1 ),
+                 ceProjs,
+                 ]
+              )
+           ),
+        );
+     return card;
+
   }
   
   Widget _makeCEPs( context, HostAccount ha, textWidth ) {
@@ -157,8 +218,29 @@ class _CEProfileState extends State<CEProfilePage> {
      return frame;
   }
 
+  Widget _makeCollabs( context, List<HostAccount> hostAccs, textWidth ) {
+     List<Widget> ceps = [];
+
+     int maxProjCount = hostAccs.fold( 0, ( res, elt ) => max( res, elt.ceProjectIds.length ) );
+     for( int i = 0; i < hostAccs.length; i += 2 ) {
+        List<Widget> row = [];
+        row.add( _makeCollabCard( context, hostAccs[i], textWidth, maxProjCount ) );
+        if( hostAccs.length > i+1 ) { row.add( _makeCollabCard( context, hostAccs[i+1], textWidth, maxProjCount )); }
+        ceps.add( Wrap( spacing: appState.MID_PAD, children: row ) );
+        ceps.add( spacer );
+     }
+     Widget frame = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: ceps
+        );
+     
+     return frame;
+  }
+
+
   Widget _makeProjectBody( context ) {
-     final textWidth  = lhsFrameMaxWidth - 2*appState.GAP_PAD - appState.TINY_PAD;
+     final textWidth  = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
 
@@ -167,8 +249,6 @@ class _CEProfileState extends State<CEProfilePage> {
      CEProject cep = new CEProject( ceProjectId: "A", ceProjectComponent: "", description: "", hostPlatform: "", organization: "",
                                     ownerCategory: "", projectMgmtSys: "", repositories: [] );
      String cepName   = cep.ceProjectId;
-
-     print( cep.toString() );
         
      assert( cepName != null && cepName!.length > 0 );
      var profileImage = cepName![0].toLowerCase() + "Grad.png"; 
@@ -182,24 +262,20 @@ class _CEProfileState extends State<CEProfilePage> {
         
         // CEProject repos
         for( int i = 0; i < cep.repositories.length; i++ ) {
-           if( i == 0 ) { repoWid = [ makeTitleText( appState, cep.repositories[i], textWidth, false, 1 ) ]; }
-           else         { repoWid.add( makeTitleText( appState, cep.repositories[i], textWidth, false, 1 )); }
+           if( i == 0 ) { repoWid = [ makeTitleText( appState, "   " + cep.repositories[i], textWidth, false, 1 ) ]; }
+           else         { repoWid.add( makeTitleText( appState, "   " + cep.repositories[i], textWidth, false, 1 )); }
         }
 
         // CEProject Collabs
-        List<Widget> cWid = [];
+        List<HostAccount> collabs = [];
         for( int i = 0; i < hostUsers.length; i++ ) {
            HostAccount ha = hostUsers[i];
            if( ha.ceProjectIds.contains( cepName ) ) {
-              cWid.add( makeTitleText( appState, ha.hostUserName, textWidth, false, 1 ) );
+              collabs.add( ha );
            }
         }
-        collabWid = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: cWid
-        );
-        
+        collabWid = _makeCollabs( context, collabs, textWidth );
+
      }
      
      return Wrap(
@@ -214,13 +290,16 @@ class _CEProfileState extends State<CEProfilePage> {
                               width: lhsFrameMaxWidth,
                               color: Colors.grey.withOpacity(0.05),
                               colorBlendMode: BlendMode.darken ),
-                 makeTitleText( appState, cep.ceProjectId, textWidth, false, 1, fontSize: 24 ),
-                 makeTitleText( appState, cep.ceProjectComponent + " " + cep.description, textWidth, false, 1 ),
-                 makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1 ),
-                 makeTitleText( appState, "Host project management system: " + cep.projectMgmtSys, textWidth, false, 1 ),
+                 makeTitleText( appState, cep.ceProjectId, textWidth * 1.1, false, 1, fontSize: 24 ),
+                 makeTitleText( appState, cep.ceProjectComponent, textWidth, false, 1 ),
+                 makeTitleText( appState, cep.description, textWidth, false, 1 ),
+                 makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
                  miniSpacer,
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
-                 makeTitleText( appState, "Host Repositories:", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, "Project management system:" , textWidth, false, 1 ),
+                 makeTitleText( appState, "  " + cep.projectMgmtSys , textWidth, false, 1 ),
+                 makeTitleText( appState, "Repositories:", textWidth, false, 1 ),
                  Column( 
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -241,12 +320,16 @@ class _CEProfileState extends State<CEProfilePage> {
   }
      
   Widget _makePersonBody( context ) {
-     assert( appState.cogUser != null && appState.cogUser!.preferredUserName != null);
+     assert( appState.cogUser != null );
+
+     // aggressive, and without locking, failure for integration testing.
+     // assert( appState.cogUser!.preferredUserName != null);
+
      // final textWidth  = min( lhsFrameMaxWidth - 2*appState.GAP_PAD - appState.TINY_PAD, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
      final textWidth  = lhsFrameMaxWidth - 2*appState.GAP_PAD - appState.TINY_PAD;
      final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
-     final ceUserName = appState.cogUser!.preferredUserName!;
+     final ceUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
 
      assert( ceUserName != null && ceUserName!.length > 0 );
      var profileImage = ceUserName![0] + "Grad.png"; 
@@ -322,7 +405,6 @@ class _CEProfileState extends State<CEProfilePage> {
       appState  = container.state;
       assert( appState != null );
       screenArgs = ModalRoute.of(context)!.settings.arguments as Map<String,String>;
-      print( "Screen args: " + screenArgs.toString() );
 
       lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
