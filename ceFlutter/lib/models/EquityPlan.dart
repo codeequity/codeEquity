@@ -11,17 +11,18 @@ Function deepEq = const DeepCollectionEquality().equals;
 class EquityPlan {
 
    final String        ceProjectId;   // Summaries are per ceProject.. this is the pkey
-   List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]
-   List<int>           amounts;       // e.g. [ 1000000, ... ]
+   List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]         
+   List<int>           amounts;       // e.g. [ 1000000, ... ]                                         
    List<String>        hostNames;     // host project (name) this equity line is associated with
+   int                 totalAllocation; // overall allocation for this project
    String              lastMod;
 
-   EquityPlan({ required this.ceProjectId, required this.categories, required this.amounts, required this.hostNames, required this.lastMod }) {
+   EquityPlan({ required this.ceProjectId, required this.categories, required this.amounts, required this.hostNames, required this.totalAllocation, required this.lastMod }) {
       assert( categories.length == amounts.length );
       assert( categories.length == hostNames.length );
    }
 
-   dynamic toJson() => { 'ceProjectId': ceProjectId, 'categories': categories, 'amounts': amounts, 'hostNames': hostNames, 'lastMod': lastMod };
+   dynamic toJson() => { 'ceProjectId': ceProjectId, 'categories': categories, 'amounts': amounts, 'hostNames': hostNames, 'totalAllocation': totalAllocation, 'lastMod': lastMod };
    
    factory EquityPlan.fromJson(Map<String, dynamic> json) {
 
@@ -33,11 +34,12 @@ class EquityPlan {
          });
       
       return EquityPlan(
-         ceProjectId:   json['EquityPlanId'],
-         categories:    cats,
-         amounts:       new List<int>.from( json['Amounts'] ),
-         hostNames:     new List<String>.from( json['HostNames'] ),
-         lastMod:       json['LastMod'],
+         ceProjectId:     json['EquityPlanId'],
+         categories:      cats,
+         amounts:         new List<int>.from( json['Amounts'] ),
+         hostNames:       new List<String>.from( json['HostNames'] ),
+         totalAllocation: json['TotalAllocation'] ?? 0,
+         lastMod:         json['LastMod'],
          );
    }
 
@@ -91,9 +93,12 @@ class EquityPlan {
       List<List<String>> oldCat = new List<List<String>>.from( categories );
       List<int>          oldAmt = new List<int>.from( amounts );
       List<String>       oldHN  = new List<String>.from( hostNames );
+      int                oldTA  = totalAllocation;
+      
       categories = [];
       amounts    = [];
       hostNames  = [];
+      totalAllocation = 0;
       
       for( int i = 0; i < treeList.length; i++ ) {
          EquityTree t = treeList[i];
@@ -105,7 +110,12 @@ class EquityPlan {
          }
       }
 
-      bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt ) || !listEq( hostNames, oldHN );
+      for( var t in treeList ) {
+         if( t.getParent() != null && t.getParent()!.getIsTOT() ) { totalAllocation += t.getAmount(); }
+      }
+      
+      bool changed = !deepEq( categories, oldCat ) || !listEq( amounts, oldAmt ) || !listEq( hostNames, oldHN ) || ( oldTA != totalAllocation ) ;
+
       
       // print( "updateEquity done.. changed? " + changed.toString() );
       return changed;
@@ -186,6 +196,7 @@ class EquityPlan {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;
       for( int i = 0; i < categories.length; i++ ) {
          res += "   " + amounts[i].toString() + " " +  categories[i].toString() + " for hostProject: " + hostNames[i] + "\n";
+         res += "   " + "total allocation: " + totalAllocation.toString();
       }
       return res;
    }

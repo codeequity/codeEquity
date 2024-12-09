@@ -1188,6 +1188,8 @@ async function putPSum( psum ) {
 	    "TargetId":     psum.targetId,
 	    "LastMod":      psum.lastMod,
 	    "Allocations":  psum.allocations,
+	    "AccruedTotal": psum.accruedTot,
+	    "TaskedTotal":  psum.taskedTot,
 	    "Locked":       typeof psum.locked == 'undefined' ? "false" : psum.locked
 	}
     };
@@ -1235,11 +1237,12 @@ async function putEqPlan( eplan ) {
     const paramsP = {
         TableName: 'CEEquityPlan',
 	Item: {
-	    "EquityPlanId": eplan.ceProjectId,
-	    "Categories":   eplan.categories,
-	    "Amounts":      eplan.amounts,
-	    "HostNames":    eplan.hostNames,
-	    "LastMod":      eplan.lastMod
+	    "EquityPlanId":    eplan.ceProjectId,
+	    "Categories":      eplan.categories,
+	    "Amounts":         eplan.amounts,
+	    "HostNames":       eplan.hostNames,
+	    "TotalAllocation": eplan.totalAllocation,
+	    "LastMod":         eplan.lastMod
 	}
     };
 

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:convert';  // json encode/decode
 import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
@@ -11,6 +12,8 @@ import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/EquityPlan.dart';
+import 'package:ceFlutter/models/PEQSummary.dart';
 
 import 'package:ceFlutter/customLetters.dart';
 
@@ -41,6 +44,8 @@ class _CEProfileState extends State<CEProfilePage> {
    late List<HostAccount> hostAccounts;  // specific to 1 user
    late List<HostAccount> hostUsers;     // specific to 1 platform
    late List<Person>      cePeople;  
+   late EquityPlan?       equityPlan;
+   late PEQSummary?       peqSummary;
    
    late bool screenOpened;
    
@@ -93,13 +98,26 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
   // XXX Platform GitHub
+  // XXX there is no need to get all this data - can reduce amount xferred
   void updateProjects( context, container ) async {
+     
      if( screenOpened  && screenArgs["profType"] == "CEProject" ) {
+        assert( screenArgs["id"] != null );
+
+        var postDataPS = {};
+        postDataPS['EquityPlanId'] = screenArgs["id"];
+        final pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
+
+        postDataPS = {};
+        postDataPS['PEQSummaryId'] = screenArgs["id"];
+        final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
+        
         await Future.wait([
-                             
-                             fetchCEProjects( context, container ).then( (p) => ceProjects = p ),
-                             fetchHostUser( context, container, "GitHub" ).then( (p) => hostUsers = p ),
-                             fetchCEPeople( context, container ).then( (p) => cePeople = p )
+                             fetchCEProjects( context, container ).then(                    (p) => ceProjects = p ),
+                             fetchHostUser( context, container, "GitHub" ).then(            (p) => hostUsers = p ),
+                             fetchCEPeople( context, container ).then(                      (p) => cePeople = p ),
+                             fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => equityPlan = p ),
+                             fetchPEQSummary( context, container, json.encode( pdps )).then((p) => peqSummary = p ),
                              ]);
         
         // need setState to trigger makeBody else blank info
@@ -239,6 +257,7 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
 
+  // accrued, tasked out, untasked,total allocated
   Widget _makeProjectBody( context ) {
      final textWidth  = lhsFrameMaxWidth - 1.0*appState.GAP_PAD - appState.TINY_PAD;
      final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
@@ -246,20 +265,25 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> repoWid = [spacer];
      Widget collabWid     = spacer;
-     CEProject cep = new CEProject( ceProjectId: "A", ceProjectComponent: "", description: "", hostPlatform: "", organization: "",
-                                    ownerCategory: "", projectMgmtSys: "", repositories: [] );
-     String cepName   = cep.ceProjectId;
+     CEProject cep        = new CEProject( ceProjectId: "A", ceProjectComponent: "", description: "", hostPlatform: "", organization: "",
+                                           ownerCategory: "", projectMgmtSys: "", repositories: [] );
+     String cepName       = cep.ceProjectId;
+     EquityPlan ep        = new EquityPlan( ceProjectId: screenArgs["id"]!, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" );
+     PEQSummary psum      = new PEQSummary( ceProjectId: screenArgs["id"]!, targetType: "", targetId: "", lastMod: "",  accruedTot: 0, taskedTot: 0, allocations: {}, jsonAllocs: [] );
         
      assert( cepName != null && cepName!.length > 0 );
      var profileImage = cepName![0].toLowerCase() + "Grad.png"; 
 
      if( !screenOpened ) {
         assert( ceProjects != null );
-        cep  = ceProjects.firstWhere( (c) => c.ceProjectId == screenArgs["id"] );
+        cep = ceProjects.firstWhere( (c) => c.ceProjectId == screenArgs["id"] );
         assert( cep != null );
         cepName   = cep.ceProjectId;        
         profileImage = cepName![0].toLowerCase() + "Grad.png";         
         
+        if( equityPlan != null ) { ep = equityPlan!; }
+        if( peqSummary != null ) { psum = peqSummary!; }
+
         // CEProject repos
         for( int i = 0; i < cep.repositories.length; i++ ) {
            if( i == 0 ) { repoWid = [ makeTitleText( appState, "   " + cep.repositories[i], textWidth, false, 1 ) ]; }
@@ -277,7 +301,11 @@ class _CEProfileState extends State<CEProfilePage> {
         collabWid = _makeCollabs( context, collabs, textWidth );
 
      }
-     
+
+     double accr     = ep.totalAllocation > 0 ? ( 1.0 * psum.accruedTot ) / ep.totalAllocation : 0.0;
+     double tasked   = ep.totalAllocation > 0 ? ( 1.0 * psum.taskedTot  ) / ep.totalAllocation : 0.0;
+     double unTasked = ep.totalAllocation > 0 ? ( 1.0 - accr - tasked ) : 0.0;
+
      return Wrap(
         children: [
            spacer, 
@@ -294,8 +322,35 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, cep.ceProjectComponent, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
                  makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
+                 makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
+                 makeToolTip( makeTitleText( appState, "PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
+                 Table(
+                    defaultColumnWidth: FixedColumnWidth( 2.0 * textWidth / 3.0 ),
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: <TableRow>[
+                       TableRow(
+                          children: <Widget>[
+                             makeTitleText( appState, "    Accrued: ", textWidth, false, 1, fontSize: 14 ),
+                             makeTitleText( appState, makePercent( accr ), textWidth, false, 1, fontSize: 14 ),
+                             ]),
+                       TableRow(
+                          children: <Widget>[
+                             makeTitleText( appState, "    Tasked out:", textWidth, false, 1, fontSize: 14 ),
+                             makeTitleText( appState, makePercent( tasked ), textWidth, false, 1, fontSize: 14 ),
+                             ]),                       
+                       TableRow(
+                          children: <Widget>[
+                             makeTitleText( appState, "    Untasked:", textWidth, false, 1, fontSize: 14 ),
+                             makeTitleText( appState, makePercent( unTasked ), textWidth, false, 1, fontSize: 14 ),
+                             ]),                       
+                       TableRow(
+                          children: <Widget>[
+                             makeTitleText( appState, "    Total Allocated:", textWidth, false, 1, fontSize: 14 ),
+                             makeTitleText( appState, addCommas( ep.totalAllocation ), textWidth, false, 1, fontSize: 14 ),
+                             ]),                       
+                       ]),
                  miniSpacer,
-                 makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
+                 makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ),
                  makeTitleText( appState, "Project management system:" , textWidth, false, 1 ),
                  makeTitleText( appState, "  " + cep.projectMgmtSys , textWidth, false, 1 ),

@@ -95,6 +95,7 @@ class _CEEquityState extends State<CEEquityFrame> {
 
    Future<void> writeEqPlan() async {
       if( appState.equityPlan != null ) {
+         print( "WRITE EP " + appState.equityPlan!.totalAllocation.toString() );
          appState.equityPlan!.lastMod = getToday();
          String eplan = json.encode( appState.equityPlan );
          String postData = '{ "Endpoint": "PutEqPlan", "NewPlan": $eplan }';
