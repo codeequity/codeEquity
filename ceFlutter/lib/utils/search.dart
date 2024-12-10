@@ -83,7 +83,7 @@ class _CESearchState extends State<CESearch> {
             }
             Navigator.push( context, newPage! );
          },
-         child: makeActionableText( appState, objName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+         child: makeActionableText( appState, objName, objName, _setTitle, _unsetTitle, textWidth, false, 1 ),
          );
    }
    

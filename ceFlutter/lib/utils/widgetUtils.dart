@@ -246,9 +246,15 @@ Widget makeIndentedText( appState, title, width, wrap, lines ) {
                                        ))));
 }
 
-Widget makeActionableText(  appState, title, hov, nohov, width, wrap, lines ) {
-   
-   return MouseRegion(
+Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines ) {
+
+   String lead = "";
+   for( int i = 0; i < title.length; i++ ) {
+      if( title[i] == " " ) { lead += " "; }
+      else{ break; }
+   }
+
+   Widget mr = MouseRegion(
       onEnter: hov,
       onExit: nohov,
       cursor: SystemMouseCursors.click,
@@ -256,15 +262,17 @@ Widget makeActionableText(  appState, title, hov, nohov, width, wrap, lines ) {
          padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
          child: IntrinsicWidth(
             key: Key( title ),
-            child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+            child: Text(title.trim(), softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 14,
-                                         color: title == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
+                                         color: id == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
                                          fontWeight: FontWeight.bold,
-                                         decoration: title == appState.hoverChunk ? TextDecoration.underline : null
+                                         decoration: id == appState.hoverChunk ? TextDecoration.underline : null
                            ))))
       );
+   
+   if( lead.length <= 0 ) { return mr; }
+   else                   { return Wrap( spacing: 0, children: [ Text(lead ), mr ] );  }
 }
-
 
 Widget makeToolTip( child, message, {wait=false} ) {
    final dengdeng = wait ? 2 : 0;

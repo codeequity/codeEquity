@@ -143,7 +143,7 @@ class _CEProfileState extends State<CEProfilePage> {
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            Navigator.push( context, newPage );
         },
-        child: makeActionableText( appState, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+        child: makeActionableText( appState, cepId, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
         );
 
      
@@ -173,8 +173,9 @@ class _CEProfileState extends State<CEProfilePage> {
      assert( cePeep != null );
 
      String ceName = cePeep.firstName + " " + cePeep.lastName;
+     // Person
      void _setTitle( PointerEvent event ) {
-        setState(() => appState.hoverChunk = ceName );
+        setState(() => appState.hoverChunk = ceUserId );
      }
      void _unsetTitle( PointerEvent event ) {
         setState(() => appState.hoverChunk = "" );
@@ -187,33 +188,50 @@ class _CEProfileState extends State<CEProfilePage> {
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            Navigator.push( context, newPage );
         },
-        child: makeActionableText( appState, ceName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+        // If just use ceName, all same name collabs are highlighted.
+        child: makeActionableText( appState, ceName, ceUserId, _setTitle, _unsetTitle, textWidth, false, 1 ),
         );
+
+     Widget makeCEPLink( cepId ){
+        // Project
+        void _set( PointerEvent event ) {
+           setState(() => appState.hoverChunk = cepId+ceUserId );
+        }
+        void _unset( PointerEvent event ) {
+           setState(() => appState.hoverChunk = "" );
+        }
+        
+        return GestureDetector( 
+        onTap: () async
+        {
+           Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
+           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+           Navigator.push( context, newPage );
+        },
+        child: makeActionableText( appState, "   " + cepId, cepId+ceUserId, _set, _unset, textWidth, false, 1 ),
+        );
+     }
 
      Widget ceProjs = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.start,
-        children: ha.ceProjectIds.map( (cepId) => makeTitleText( appState, "   " + cepId, textWidth, false, 1 ) ).toList()
+        children: ha.ceProjectIds.map( (cepId) => makeCEPLink( cepId ) ).toList()
         );
-     
+
      Widget card = Card.outlined(
-        child: SizedBox(
-           width: appState.MIN_PANE_WIDTH - appState.GAP_PAD,
-           height: 2.0*appState.CELL_HEIGHT + (appState.BASE_TXT_HEIGHT + appState.TINY_PAD)  * maxProjCount,
-           child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
+        child: ConstrainedBox(
+           constraints: BoxConstraints( minHeight: 2.5*appState.CELL_HEIGHT, maxHeight: 3.2*appState.CELL_HEIGHT, maxWidth: appState.MIN_PANE_WIDTH - appState.GAP_PAD ),
+           child: ListView(
+              scrollDirection: Axis.vertical,
               children: [
                  collabLink,
                  makeTitleText( appState, cePeep.userName + " (" + ceUserId + ")", textWidth, false, 1 ),
                  makeTitleText( appState, "CE Project member: " , textWidth, false, 1 ),
                  ceProjs,
-                 ]
-              )
-           ),
-        );
-     return card;
+                 ])
+           ));
 
+     return card;
   }
   
   Widget _makeCEPs( context, HostAccount ha, textWidth ) {
@@ -322,6 +340,11 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, cep.ceProjectComponent, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
                  makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
+                 miniSpacer,
+                 Wrap( children: [ Container( width: appState.GAP_PAD ), 
+                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async { notYetImplemented(context); }),
+                                   Container( width: lhsFrameMaxWidth / 2.0 ), 
+                          ]),
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeToolTip( makeTitleText( appState, "PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
                  Table(

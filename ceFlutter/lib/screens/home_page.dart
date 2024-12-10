@@ -88,7 +88,7 @@ class _CEHomeState extends State<CEHomePage> {
 
       if( ceProj ) {
          // print( "Chunking ceProj " + itemName );
-         itemTxt = Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+         itemTxt = Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
                                                   Container( width: buttonWidth, height: 1 ) ] );
          return GestureDetector(
             onTap: () async
