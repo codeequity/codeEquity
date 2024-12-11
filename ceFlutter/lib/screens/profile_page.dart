@@ -8,6 +8,8 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/app_state_container.dart';
 
+import 'package:ceFlutter/screens/edit_page.dart';
+
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/CEProject.dart';
@@ -324,6 +326,7 @@ class _CEProfileState extends State<CEProfilePage> {
      double tasked   = ep.totalAllocation > 0 ? ( 1.0 * psum.taskedTot  ) / ep.totalAllocation : 0.0;
      double unTasked = ep.totalAllocation > 0 ? ( 1.0 - accr - tasked ) : 0.0;
 
+     
      return Wrap(
         children: [
            spacer, 
@@ -342,7 +345,10 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
-                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async { notYetImplemented(context); }),
+                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
+                                         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
+                                         Navigator.push( context, newPage);
+                                      }),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),

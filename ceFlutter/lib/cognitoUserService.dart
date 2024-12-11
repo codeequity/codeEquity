@@ -109,9 +109,16 @@ class UserService {
          print( "cogUserService: Exit" );
          return false;
       }
-      print( "... .. before cogUserService getSession" );
-      _session = await _cognitoUser!.getSession();
-      print( "... .. cogUserService got session" );
+      try {
+         print( "... .. before cogUserService getSession" );
+         _session = await _cognitoUser!.getSession();
+         print( "... .. cogUserService got session" );
+      } on CognitoClientException catch (e) {
+         if( e.code == "NotAuthorizedException" ) {
+            print( " XXX Expired refresh token? " + e.toString() );
+         }
+         rethrow;
+      }
 
       print( (_cognitoUser ?? "").toString() );
       print( (_session ?? "").toString() );
