@@ -57,6 +57,7 @@ class _CESearchState extends State<CESearch> {
          onTap: () async
          {
             MaterialPageRoute? newPage = null;
+            Map<String,String> screenArgs = {};
             
             if( obj is PEQ ) {
                List<String> holders = (obj as PEQ).hostHolderId;
@@ -67,17 +68,22 @@ class _CESearchState extends State<CESearch> {
                newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: cat ));
             }
             else if( obj is Person )   {
-               appState.loadPerson = true;
-               newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: (obj as Person).id ));
+               screenArgs["id"] = (obj as Person).id;
+               screenArgs["profType"] = "Person" ;
+               newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
             }
-            else if( obj is CEProject) { newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: (obj as CEProject).ceProjectId )); }
+            else if( obj is CEProject) {
+               screenArgs["id"] = (obj as CEProject).ceProjectId;
+               screenArgs["profType"] = "CEProject";
+               newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+            }
             else {
                print( "Error.  Search object is not recognized. " );
                assert( false );
             }
             Navigator.push( context, newPage! );
          },
-         child: makeActionableText( appState, objName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+         child: makeActionableText( appState, objName, objName, _setTitle, _unsetTitle, textWidth, false, 1 ),
          );
    }
    

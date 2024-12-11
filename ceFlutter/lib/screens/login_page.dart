@@ -56,7 +56,6 @@ class _CELoginState extends State<CELoginPage> {
            print('container.finalizeUser executed in ${stopwatch.elapsed}');           
            if( success ) {
               appState.loaded = true;
-              appState.profilePerson = true;
               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
               Navigator.push( context, newPage );
            }

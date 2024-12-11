@@ -65,6 +65,12 @@ String addCommas( int amount ) {
    return res;
 }
 
+String makePercent(double n) {
+   double v = n * 100.0;
+   String ret = v.toStringAsFixed(n.truncateToDouble() == v ? 0 : 2);
+   return ret + "%";
+}
+
 void logout( context, appState ) async {
    final wrapper = (() async {
 
@@ -99,7 +105,7 @@ Future<void> reloadRepo( context, container ) async {
    postDataPS['EquityPlanId'] = ceProj;
    pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
    appState.equityPlan = await fetchEquityPlan( context, container, json.encode( pd ) );
-   if( appState.equityPlan == null ) { appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], lastMod: "" ); }
+   if( appState.equityPlan == null ) { appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
    
    // Get linkage
    var postDataL = {};

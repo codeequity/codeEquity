@@ -1266,7 +1266,8 @@ Future<void> updatePEQAllocations( context, container ) async {
    if( appState.myPEQSummary == null && todos.length > 0) {
       vPrint( appState, "Create new appstate PSum " + todos[0].item2.ceProjectId + "\n" );
       appState.myPEQSummary = new PEQSummary( ceProjectId: ceProjId, 
-                                              targetType: "repo", targetId: todos[0].item2.hostRepoId, lastMod: getToday(), allocations: {}, jsonAllocs: [] );
+                                              targetType: "repo", targetId: todos[0].item2.hostRepoId, lastMod: getToday(),
+                                              accruedTot: 0, taskedTot: 0, allocations: {}, jsonAllocs: [] );
    }
    
    // appState.ingestUpdates.clear();

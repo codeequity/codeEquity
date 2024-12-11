@@ -1,6 +1,7 @@
 import 'dart:collection';              // hashset
 
 import 'package:ceFlutter/models/Allocation.dart';
+import 'package:ceFlutter/models/PEQ.dart';
 
 // ceFlutter use only
 
@@ -13,12 +14,15 @@ class PEQSummary {
    final String           targetId;      // HostProjectId ... ?  or repo now?    XXX currently unused.
          String           lastMod;
    final Map<String, Allocation> allocations;   // gives fast lookup from category string to allocation
-
+   int                    accruedTot;    // how many peqs have accrued
+   int                    taskedTot;     // how many peqs have been planned out (i.e. exist in PLAN, PROG, or PEND)
+   
    final List<Allocation> jsonAllocs;           // AWS data.  need index to exist before converting to allocations. TRANSIENT
    late  Map<String, HashSet<String>> peqIndex; // index from peqId to a hash set of category string for allocs.     TRANSIENT
 
    
-   PEQSummary({ required this.ceProjectId, required this.targetType, required this.targetId, required this.lastMod, required this.allocations, required this.jsonAllocs }) {
+   PEQSummary({ required this.ceProjectId, required this.targetType, required this.targetId, required this.lastMod, required this.allocations,
+            required this.accruedTot, required this.taskedTot, required this.jsonAllocs }) {
       peqIndex = new Map<String, HashSet<String>>();
       allocations.forEach( (key, val) => addAlloc( val ) );
       for( Allocation a in jsonAllocs ) { addAlloc( a, fromJson: true ); }
@@ -26,7 +30,7 @@ class PEQSummary {
    }
             
    dynamic toJson() => { 'ceProjectId': ceProjectId, 'targetType': targetType, 'targetId': targetId,
-                         'lastMod': lastMod, 'allocations': getAllAllocs() };
+         'lastMod': lastMod, 'allocations': getAllAllocs(), 'accruedTot': accruedTot, 'taskedTot': taskedTot};
    
    factory PEQSummary.fromJson(Map<String, dynamic> json) {
       // Allocations in dynamo is list<map<string>>
@@ -39,6 +43,8 @@ class PEQSummary {
          targetType:    json['TargetType'],
          targetId:      json['TargetId'],
          lastMod:       json['LastMod'],
+         accruedTot:    json['AccruedTot'] ?? 0,
+         taskedTot:     json['TaskedTot'] ?? 0,
          allocations:   new Map<String,Allocation>(),
          jsonAllocs:    allocs                // Can't process allocs as allocations until index exists
          );
@@ -50,6 +56,9 @@ class PEQSummary {
       assert( !allocations.containsKey( cat ) );
       allocations[cat] = a;
 
+      if( a.allocType == PeqType.grant )                                       { accruedTot += a.amount ?? 0; }
+      else if( a.allocType == PeqType.plan || a.allocType == PeqType.pending ) { taskedTot += a.amount ?? 0; }
+      
       // index
       if( fromJson ) {
          // There must be one or more source peqs.  add each to index.
@@ -76,6 +85,9 @@ class PEQSummary {
    removeAlloc( Allocation a ) {
       final String cat = a.category.toString();
 
+      if( a.allocType == PeqType.grant )                                       { accruedTot -= a.amount ?? 0; }
+      else if( a.allocType == PeqType.plan || a.allocType == PeqType.pending ) { taskedTot -= a.amount ?? 0; }
+      
       assert( allocations.containsKey( cat )); 
       allocations.removeWhere((key, value) => key == cat );
 
@@ -88,6 +100,7 @@ class PEQSummary {
       }
    }
 
+   // ingest handles modification of a.amount
    removeSourcePeq( Allocation a, String peqId ) {
       assert( a.sourcePeq!.containsKey( peqId ));
       
@@ -100,6 +113,7 @@ class PEQSummary {
       if( peqIndex[peqId]!.isEmpty ) { peqIndex.remove( peqId ); }  // XXX resolve just 1
    }
    
+   // ingest handles modification of a.amount.
    addSourcePeq( Allocation a, String peqId, int amount ) {
       assert( !a.sourcePeq!.containsKey( peqId ) );
       final String cat = a.category.toString();
@@ -162,6 +176,7 @@ class PEQSummary {
    String toString() {
       String res = "\n" + ceProjectId + " last modified: " + lastMod;
       res += "\n     Summary for " + targetType + ": " + targetId;
+      res += "\n     Accrued total: " + accruedTot.toString() + ", Tasked Total: " + taskedTot.toString();
       allocations.forEach((key, alloc) => res += "\n     " + alloc.toString() );
       return res;
    }
