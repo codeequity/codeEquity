@@ -133,7 +133,10 @@ Future<void> updateGHRepos( context, container ) async {
    for( HostAccount acct in appState.myHostAccounts ) {
 
       if( acct.hostPlatform == "GitHub" ) {
-      
+
+         // XXX
+         print( "XXX XXX Not yet storing PAT.  Not yet decided.  Skip" );
+         /*
          // Each hostUser (acct.hostUserName) has a unique PAT.  read from dynamo here, don't want to hold on to it.
          var pd = { "Endpoint": "GetEntry", "tableName": "CEHostUser", "query": { "HostUserName": acct.hostUserName, "HostPlatform": "GitHub" } };
          final PAT = await fetchPAT( context, container, json.encode( pd ), "GetEntry" );
@@ -148,6 +151,7 @@ Future<void> updateGHRepos( context, container ) async {
                });
          
          await _buildCEProjectRepos( context, container, PAT, github, acct.hostUserName );
+         */
       }
    }
 

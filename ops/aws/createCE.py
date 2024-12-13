@@ -116,6 +116,7 @@ def createTestDDBEntries( sam ) :
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEHostUser_latest.json", "CEHostUser" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCELinkage_latest.json", "CELinkage" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPeople_latest.json", "CEPeople" )
+    # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEProfileImage_latest.json", "CEProfileImage" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQActions_latest.json", "CEPEQActions" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQRaw_latest.json", "CEPEQRaw" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQs_latest.json", "CEPEQs" )
@@ -252,9 +253,10 @@ def createTestAccounts( sam ) :
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
+    # No longer do this automatically
     # Create corresponding baseline entries in CE tables.
-    cmd = "aws dynamodb batch-write-item --request-items file://baselineData/cePeople.json"
-    if( call(cmd, shell=True) != 0 ) : logging.warning( "Failed to write baseline data: CEPeople " )
+    # cmd = "aws dynamodb batch-write-item --request-items file://baselineData/cePeople.json"
+    # if( call(cmd, shell=True) != 0 ) : logging.warning( "Failed to write baseline data: CEPeople " )
     
 
 
