@@ -96,22 +96,18 @@ Future<void> reloadRepo( context, container ) async {
    String uid      = appState.userId;
    print( "Loading " + uid + "'s " + ceProj + " CodeEquity project." );
 
-   var postDataPS = {};
-   postDataPS['PEQSummaryId'] = ceProj;
-   var pd = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
-   appState.myPEQSummary  = await fetchPEQSummary( context, container, json.encode( pd ) );
-   
-   postDataPS = {};
-   postDataPS['EquityPlanId'] = ceProj;
-   pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
-   appState.equityPlan = await fetchEquityPlan( context, container, json.encode( pd ) );
+   var pdPS = json.encode( { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": {"PEQSummaryId": "$ceProj" }} );
+   var pdEP = json.encode( { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": {"EquityPlanId": "$ceProj"}} );
+   var pdHL = json.encode( { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": {"CEProjectId": "$ceProj" }} );
+
+   // Consider separting fPSummary, since summary is the first thing that pops up.
+   var futs = await Future.wait([
+                                   fetchPEQSummary( context, container,  pdPS ).then( (p) => appState.myPEQSummary = p ),
+                                   fetchEquityPlan( context, container,  pdEP ).then( (p) => appState.equityPlan = p ),
+                                   fetchHostLinkage( context, container, pdHL ).then( (p) => appState.myHostLinks = p ),
+                                   ]);
+                                
    if( appState.equityPlan == null ) { appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
-   
-   // Get linkage
-   var postDataL = {};
-   postDataL['CEProjectId'] = ceProj;
-   pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": postDataL };
-   appState.myHostLinks  = await fetchHostLinkage( context, container, json.encode( pd ) );
 
    if( appState.verbose >= 2 ) {
       print( "Got Links?" ); 
@@ -132,14 +128,19 @@ Future<void> reloadMyProjects( context, container ) async {
    appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
    print( "UID: " + appState.userId );
    assert( appState.userId != "" );
-   String uid   = appState.userId;
 
-   // FetchHost sets hostAccounts.ceProjs
-   appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "$uid"  }' );
+   String uid = appState.userId;
+   var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
+
+   var futs = await Future.wait([
+                                   fetchHostAcct( context, container, pdHA ).then( (p) => appState.myHostAccounts = p ),
+                                   fetchCEPeople( context, container ).then(       (p) => appState.cePeople = p ),
+                                   ]);
 
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform, no CEPs.
-   appState.idMapHost = await fetchHostMap( context, container, "GitHub" ); 
-
+   // Depends on cePeople.
+   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePeople );
+   
    print( "My CodeEquity Projects:" );
    print( appState.myHostAccounts );
 }

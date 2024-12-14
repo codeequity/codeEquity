@@ -253,6 +253,12 @@ def createTestAccounts( sam ) :
     if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
     if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
 
+    tester3 = ceConfigData['tester3']
+    tbase  = cmdBase + tester3['Username'] + " --user-attributes Name=email,Value=" + tester3['Email'] + " Name=email_verified,Value=true Name=preferred_username,Value=" + tester3['Username']
+    tpBase = pwdBase + tester3['Username'] + " --password " + tester3['Password'] + " --permanent"
+    if( call(tbase,  shell=True) != 0 ) : logging.warning( "Failed to create tester " )
+    if( call(tpBase, shell=True) != 0 ) : logging.warning( "Failed set password " )
+    
     # No longer do this automatically
     # Create corresponding baseline entries in CE tables.
     # cmd = "aws dynamodb batch-write-item --request-items file://baselineData/cePeople.json"

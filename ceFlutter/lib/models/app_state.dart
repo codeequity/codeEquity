@@ -11,6 +11,7 @@ import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
+import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 
@@ -48,7 +49,7 @@ class AppState {
    late bool loaded;                           // control expensive aspects of state initialization
    late String userId;                         // ceuid
 
-   late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, hostUserName
+   late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, ceUserName, hostUserName
    
    late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
    late Linkage?          myHostLinks;           // Current project/column disposition per ceProject
@@ -58,6 +59,9 @@ class AppState {
    late List<HostAccount> myHostAccounts;        // all host accounts for current ceUser.
    late bool hostUpdated;
 
+   // Needed for search, ingest, profile
+   late List<Person>      cePeople;              // all cePeople
+   
    Node? allocTree;
    late bool  updateAllocTree;
    late HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
@@ -111,11 +115,13 @@ class AppState {
       loaded = false;
 
       userId       = "";
-      idMapHost    = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
+      idMapHost    = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
       myPEQSummary = null;
       funny        = "";
       equityPlan   = null;
 
+      cePeople     = [];
+      
       myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
       myHostLinks    = null;
       hostUpdated    = false;

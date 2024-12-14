@@ -24,7 +24,7 @@ void vPrint( appState, String astring ) {
    if( appState.verbose >= 1 ) { print( astring ); }
 }
 
-// XXX This is silly.  Consider reverse map
+// XXX With move from Allocations stored with hostUserId, to ceUserId, uses of this should be reconsidered.
 String _convertNameToId( appState, String aname ) {
    String hostUserId = appState.idMapHost.keys.firstWhere( (k) => appState.idMapHost[k]['hostUserName'] == aname, orElse: () => aname );
    return hostUserId;
@@ -33,7 +33,7 @@ String _convertNameToId( appState, String aname ) {
 
 // XXX associateGithub has to update appState.idMapHost
 // PActions, PEQs are added by webServer, which does not have access to ceUID.
-// set CEUID by matching my peqAction:hostUserId to CEHostUser:HostUsernId, then writing that CEUserId
+// set CEUID by matching my peqAction:hostUserId to CEHostUser:HostUserId, then writing that CEUserId
 // if there is not yet a corresponding ceUID, use "HOSTUSER: $hostUserId" in it's place, to be fixed later by associateGitub XXX (done?)
 // NOTE: Expect multiple PActs for each PEQ.  For example, open, close, and accrue
 // NOTE: These are initial conditions, before todos are processed.
@@ -86,6 +86,7 @@ Future _updateCEUID( appState, todos, context, container, peqMods ) async {
    }
 }
 
+// This is the single location where a source allocation is added to the summary.
 // One allocation per category: project:column:assignee.  
 void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, splitAmt, PeqType peqType, {Allocation? source = null, String pid = ""} ) {
    
@@ -577,10 +578,10 @@ Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, s
          return;
       }
 
-      // iterate over assignees.  
+      // iterate over assignees, which are hostUserIds.
       for( var assignee in assignees ) {
 
-         String hostUserName = assignee;
+         String hostUserName = assignee; 
          if( appState.idMapHost.containsKey( assignee )) { hostUserName = appState.idMapHost[assignee]['hostUserName']; }
          
          vPrint( appState, "\n Assignee: " + assignee + " (" + hostUserName + ")" );
