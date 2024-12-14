@@ -170,7 +170,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   // Everything starts as a leaf, so will often not have a mapping.  But if we do, use it, will be hostUserName instead of id
                   String rowName = sitedCat[i];
                   Map<String,String>? mapping = appState.idMapHost[ rowName ];
-                  if( mapping != null ) { rowName = mapping!['hostUserName'] ?? rowName; }
+                  if( mapping != null ) { rowName = mapping!['ceUserName'] ?? rowName; }
 
                   // Pact details sit at the assignee level.  SitedCat can be any length, but assignee is always the last element.
                   // We filter pacts by project subs in the PEQ model. Project subs are unsited.

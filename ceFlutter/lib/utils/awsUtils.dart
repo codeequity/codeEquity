@@ -390,7 +390,7 @@ Future<List<HostAccount>> fetchHostUser( context, container, hostPlatform ) asyn
 }
 
 // Populates idHostMap
-Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform ) async {
+Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, List<Person> cePeople ) async {
    String shortName = "fetchHostMap";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
    final response = await awsPost( shortName, postData, context, container );
@@ -403,6 +403,11 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
          Map<String,String> vals = {};
          vals['ceUID']        = hostUser['CEUserId'];
          vals['hostUserName'] = hostUser['HostUserName'];
+         Person? peep = cePeople.firstWhereOrNull( (p) => p.id == vals['ceUID'] );
+         assert( peep != null );
+         if( peep != null ) {
+            vals['ceUserName']   = peep!.userName;
+         }
          t[ hostUser['HostUserId'] ] = vals;
       }
       return t;
@@ -411,7 +416,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
       return {};
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform ); }
+      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform, cePeople ); }
       else { return {}; }
    }
 }

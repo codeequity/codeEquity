@@ -143,7 +143,10 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     # XXXX painful
     if( testName == "equity_test.dart" ) : 
         #cmd = "flutter drive -d chrome --browser-dimension=1200,1000 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
-        cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        # This works for EQ for by-hand runs
+        #cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        # This works for EQ for crons.. ug.
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if optimized :
         cmd = cmd + " --release"

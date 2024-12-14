@@ -45,7 +45,7 @@ class _CEProfileState extends State<CEProfilePage> {
    late List<CEProject>   ceProjects;
    late List<HostAccount> hostAccounts;  // specific to 1 user
    late List<HostAccount> hostUsers;     // specific to 1 platform
-   late List<Person>      cePeople;  
+   // late List<Person>      cePeople;  
    late EquityPlan?       equityPlan;
    late PEQSummary?       peqSummary;
    
@@ -113,11 +113,11 @@ class _CEProfileState extends State<CEProfilePage> {
         postDataPS = {};
         postDataPS['PEQSummaryId'] = screenArgs["id"];
         final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
-        
+
         await Future.wait([
                              fetchCEProjects( context, container ).then(                    (p) => ceProjects = p ),
                              fetchHostUser( context, container, "GitHub" ).then(            (p) => hostUsers = p ),
-                             fetchCEPeople( context, container ).then(                      (p) => cePeople = p ),
+                             // fetchCEPeople( context, container ).then(                      (p) => cePeople = p ),
                              fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => equityPlan = p ),
                              fetchPEQSummary( context, container, json.encode( pdps )).then((p) => peqSummary = p ),
                              ]);
@@ -170,8 +170,8 @@ class _CEProfileState extends State<CEProfilePage> {
 
   Widget _makeCollabCard( context, HostAccount ha, textWidth, maxProjCount ) {
      String ceUserId = ha.ceUserId;
-     // print( ceUserId + " " + cePeople.toString() );
-     Person cePeep   = cePeople.firstWhere( (p) => p.id == ceUserId );
+     print( ceUserId + " " + appState.cePeople.toString() );
+     Person cePeep   = appState.cePeople.firstWhere( (p) => p.id == ceUserId );
      assert( cePeep != null );
 
      String ceName = cePeep.firstName + " " + cePeep.lastName;

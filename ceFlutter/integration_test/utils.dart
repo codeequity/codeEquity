@@ -16,8 +16,8 @@ import 'package:ceFlutter/app_state_container.dart';
 
 // import 'package:http/http.dart' as http;  // XXX makeNote   
 
-const TESTER_NAME   = "ariCETester";
-const TESTER2_NAME  = "connieCE";     // READ ONLY account for these tests
+const TESTER_NAME   = "ariTester";
+const TESTER2_NAME  = "connieTester";     // READ ONLY account for these tests
 const TESTER_PASSWD = "passWD123";
 
 
