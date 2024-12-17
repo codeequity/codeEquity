@@ -344,6 +344,24 @@ Future<Person?> fetchSignedInPerson( context, container ) async {
    return null;
 }
 
+Future<Image?> fetchProfileImage( context, container, query ) async {
+   String shortName = "fetchProfileImage";
+   final response = await awsPost( shortName, query, context, container );
+   
+   if (response.statusCode == 201) {
+      final p = json.decode(utf8.decode(response.bodyBytes));
+      return p;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no Profile Image found" );
+      return null;
+   }
+   else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchProfileImage( context, container, query ); }
+   }
+   return null;
+}
+
 // Get any public ce person
 Future<Person?> fetchAPerson( context, container, ceUserId ) async {
    String shortName = "fetchAPerson";

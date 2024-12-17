@@ -114,10 +114,31 @@ class _CEEditState extends State<CEEditPage> {
       }
    }
 
-   // Need to update dynamo.  else, how can person1 see person2 image?  
+   // Need to update dynamo.  else, how can person1 see person2 image?
+   // ceprofimage. add title to 
    Future<void> _updateProfile( appState ) async {
       print( "Oh yea, new image: " + selectedImage + " for " + screenArgs.toString() );
-      // XXX update CEProfileImage table.   id, type (person, project), image.
+
+      final lhsFrameMaxWidth = appState.MIN_PANE_WIDTH - appState.GAP_PAD;
+
+      Image pi = Image.asset( selectedImage, 
+                              width: lhsFrameMaxWidth,
+                              color: Colors.grey.withOpacity(0.05),
+                              colorBlendMode: BlendMode.darken );
+      print( pi.toString() );
+      print( "\n" );
+
+      // oi.  dart.ui:image has toByteData.  widgets:image does not
+      // Can load byte data directly.
+      // print( pi.toByteData().toString() );
+      final ByteData assetImageByteData = await rootBundle.load( selectedImage );
+      // this gives me a list size 36k (same as file) 
+      final x = assetImageByteData.buffer.asUint8List();
+      // print( "XXX " + x.toString() );
+      print( "XXX " + x.runtimeType.toString() + "  " + x.length.toString() );
+      // then image.memory
+      
+      
    }
    
    Widget _makeBody( appState ) {

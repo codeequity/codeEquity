@@ -786,9 +786,9 @@ Future<bool> validateAri22( WidgetTester tester ) async {
 
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "0 0 confirm add" ),      true );
    expect( await validatePass(          tester,                         "1 0 confirm relocate" ), true );
-   expect( await validateAssign(        tester, repo, issue, "ariTester", "2 0 confirm change" ),   true );
-   expect( await validatePass(          tester,                         "3 0 confirm relocate" ), true );     // XXX order 
-   expect( await validateCreateCard(    tester,                         "4 0 confirm add" ),      true );     // XXX order 
+   expect( await validateAssign(        tester, repo, issue, "ariCETester", "2 0 confirm change" ),   true );  // raw pacts are stored with GH identities
+   expect( await validatePass(          tester,                         "3 0 confirm relocate" ), true );      // XXX order 
+   expect( await validateCreateCard(    tester,                         "4 0 confirm add" ),      true );      // XXX order 
    expect( await validateProposeAccrue( tester, repo, issue,            "5 0 propose accrue", action: "edited" ),   true );
    expect( await validateConfirmAccrue( tester, repo,                   "6 0 confirm accrue" ),   true );
    expect( await validateConfirmDelete( tester, repo, issue,            "7 0 confirm delete", issue: true ),   true );
@@ -797,7 +797,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(           tester, repo, issue, "1k PEQ",  "0 1 confirm add" ),      true );
    expect( await validatePass(          tester,                         "1 1 confirm relocate" ), true );
-   expect( await validateAssign(        tester, repo, issue, "ariTester", "2 1 confirm change" ),   true );
+   expect( await validateAssign(        tester, repo, issue, "ariCETester", "2 1 confirm change" ),   true );
    expect( await validateCreateCard(    tester,                         "3 1 confirm add" ),      true );
    expect( await validatePass(          tester,                         "4 1 confirm relocate" ), true );
    expect( await validateProposeAccrue( tester, repo, issue,            "5 1 propose accrue", action: "edited" ),   true );
@@ -814,7 +814,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    expect( await validateCreateCard( tester,                         "2 2 confirm add" ),      true );
    expect( await validatePass(       tester,                         "3 2 confirm relocate" ), true );
    expect( await validateMove(       tester,                         "4 2 confirm relocate" ), true );
-   expect( await validateAssign(     tester, repo, issue, "ariTester", "5 2 confirm change" ),   true );
+   expect( await validateAssign(     tester, repo, issue, "ariCETester", "5 2 confirm change" ),   true );
    expect( await validateProposeAccrue( tester, repo, issue,         "6 2 propose accrue" ),   true );
    expect( await validateRejectAccrue(  tester, repo, issue,         "7 2 reject accrue" ),    true );
    expect( await validateMove(       tester,                         "8 2 confirm relocate" ), true );
@@ -830,7 +830,7 @@ Future<bool> validateAri22( WidgetTester tester ) async {
    expect( find.byKey( Key( issue ) ),  findsOneWidget );
    expect( await validateAdd(        tester, repo, issue, "1k PEQ",      "0 3 confirm add" ),      true );
    expect( await validatePass(       tester,                             "1 3 confirm relocate" ), true );
-   expect( await validateAssign(     tester, repo, issue, "ariTester", "2 3 confirm change" ),   true );   
+   expect( await validateAssign(     tester, repo, issue, "ariCETester", "2 3 confirm change" ),   true );   
    expect( await validateCreateCard( tester,                             "3 3 confirm add" ),      true );
    expect( await validatePass(       tester,                             "4 3 confirm relocate" ), true );
    expect( await validateMove(       tester,                             "5 3 confirm relocate" ), true );

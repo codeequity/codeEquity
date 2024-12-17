@@ -94,6 +94,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
+    else if( endPoint == "PutProfImg")     { resultPromise = putProfileImage( rb.NewPSum ); }
     else if( endPoint == "AddPSumLock")    { resultPromise = addPSumLock( rb.ceProjId ); }
     else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
@@ -306,6 +307,9 @@ async function getEntry( tableName, query ) {
 	break;
     case "CEHostUser":
 	props = ["HostUserName", "HostPlatform"];
+	break;
+    case "CEProfileImage":
+	props = ["CEProfileId"];
 	break;
     case "CEPEQs":
 	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "CEProjectId", "HostRepoId", "HostIssueId", "HostIssueTitle" ];
@@ -1173,7 +1177,21 @@ async function updateColProj( update ) {
 	});
 }
 
+async function putProfileImage( psum ) {
+    console.log( "profileImage put ", psum.ceProfileId);
 
+    const paramsP = {
+        TableName: 'CEProfileImage',
+	Item: {
+	    "CEProfileId": psum.ceProfileId,
+	    "ByteData":    psum.uint8List,
+	}
+    };
+
+    const putCmd = new PutCommand( paramsP );
+
+    return bsdb.send( putCmd ).then(() => success( true ));
+}
 
 // Overwrites any existing record by ID.
 async function putPSum( psum ) {
