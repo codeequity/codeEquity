@@ -119,6 +119,8 @@ class _CEProfileState extends State<CEProfilePage> {
         final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
 
         final pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$pid" }}';
+
+        Map<String,dynamic> rawPITable = {};
         
         await Future.wait([
                              fetchCEProjects( context, container ).then(                    (p) => ceProjects = p ),
@@ -126,18 +128,22 @@ class _CEProfileState extends State<CEProfilePage> {
                              // fetchCEPeople( context, container ).then(                      (p) => cePeople = p ),
                              fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => equityPlan = p ),
                              fetchPEQSummary( context, container, json.encode( pdps )).then((p) => peqSummary = p ),
-                             fetchProfileImage( context, container, pdpi ).then(            (p) => profileImage = p ),
+                             // fetchProfileImage( context, container, pdpi ).then(            (p) => profileImage = p ),
+                             fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ),
                              ]);
 
-        /*
-        // This works, loads.  Last possible issue - too big in dynamo?
-        final ByteData assetImageByteData = await rootBundle.load( "images/xGrad.jpg" );
-        final x = assetImageByteData.buffer.asUint8List();
-        profileImage = Image.memory( x, width: lhsFrameMaxWidth );
-        final xx = json.encode( {"CEProfileId": pid, "ByteData": x });
-        // XXX hrmmm.  try with smaller thang in non-repeat zone
-        updateDynamo( context, container, '{ "Endpoint": "putProfImg", "NewPSum": "$xx" }', "putProfImg" );
-        */
+        if( rawPITable.keys.length > 0 ) {
+           print( rawPITable.keys.toString() );
+           print( rawPITable["CEProfileId"]);
+           print( rawPITable["ByteData"].length.toString());
+           // final ByteData assetImageByteData = await rootBundle.load( rawPITable["ByteData"] );
+           // final x = assetImageByteData.buffer.asUint8List();
+           Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
+           profileImage = Image.memory( bytes, width: lhsFrameMaxWidth );
+        }
+        else {
+           profileImage = null;
+        }
         
         // need setState to trigger makeBody else blank info
         setState(() => screenOpened = false );

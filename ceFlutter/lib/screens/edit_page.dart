@@ -1,13 +1,15 @@
 import 'dart:ui';
+import 'dart:convert';  // json encode/decode
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';                 // imageGrid
-import 'package:path/path.dart';                        // imageGrid 
-import 'package:path_provider/path_provider.dart';      // imageGrid
+import 'package:flutter/services.dart';  // imageGrid, bytedata
+//import 'package:path/path.dart';                      
+//import 'package:path_provider/path_provider.dart';  
 
 import 'package:ceFlutter/app_state_container.dart';
 
+import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/widgetUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
@@ -128,16 +130,21 @@ class _CEEditState extends State<CEEditPage> {
       print( pi.toString() );
       print( "\n" );
 
-      // oi.  dart.ui:image has toByteData.  widgets:image does not
-      // Can load byte data directly.
-      // print( pi.toByteData().toString() );
+      // This works, loads.  Last possible issue - too big in dynamo?
+      final ByteData assetImageByteData = await rootBundle.load( selectedImage );
+      final x = assetImageByteData.buffer.asUint8List();
+
+      final pdpi = { "Endpoint": "PutProfImg", "NewPSum": {"ceProfileId": screenArgs["id"], "uint8List": x } };
+      updateDynamo( context, container, json.encode( pdpi ), "PutProfImg" );
+
+      /*
       final ByteData assetImageByteData = await rootBundle.load( selectedImage );
       // this gives me a list size 36k (same as file) 
       final x = assetImageByteData.buffer.asUint8List();
       // print( "XXX " + x.toString() );
       print( "XXX " + x.runtimeType.toString() + "  " + x.length.toString() );
       // then image.memory
-      
+      */
       
    }
    

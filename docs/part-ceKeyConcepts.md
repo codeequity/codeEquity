@@ -11,11 +11,10 @@ the manual concise and understandable.  These introductions are for common refer
 binding definitions and details, refer to the **CodeEquity Venture Equity Agreement**.
 
 
-### CodeEquity Ventures & Projects
+### CodeEquity Venture
 
 A CodeEquity Venture is analogous to a company.  Equity within a company is separate and distinct
-from equity within a second company.  A CodeEquity Project is analogous to a project, or part of a
-project within a company.  Equity within a company may be earmarked for different projects or
+from equity within a second company.  Equity within a company is usually earmarked for different projects or
 purposes within that company.
 
 For example, Jessie has a great idea for an app that allows people within a community to browse,
@@ -23,7 +22,8 @@ borrow, and loan books with each-other, and has decided to pursue this idea with
 framework.  Jessie is calling the app "BookShare".  To simplify planning, Jessie decides to break the app's
 development tasks into several smaller projects: *BookShare frontend*, *BookShare backend*, and *BookShare
 operations*.  In this example, the CodeEquity Venture is BookShare.  The Venture is made up of three
-CodeEquity Projects: *BookShare frontend*, *BookShare backend*, and *BookShare operations*.
+smaller projects: *BookShare frontend*, *BookShare backend*, and *BookShare operations*, each of which have
+separate equity allocations.
 CodeEquity will track and collate provisional equity across the three projects and report it within
 the umbrella of the Venture: BookShare.  Jessie could have chosen a different way to structure
 BookShare within the CodeEquity framework, but this breakdown is simple and functional.
@@ -48,7 +48,7 @@ For simplicity of reference throughout CodeEquity, one provisional stock option 
 or *one share of provisional equity*.
 
 
-### PEQ Issues
+### PEQ Issue
 
 A CodeEquity Project will normally be planned and tracked with a collection of *issues* managed 
 with project management software, such as GitHub repositories and project boards.  Common issues
@@ -58,6 +58,18 @@ A PEQ issue is any issue that has a PEQ value attached to it.  For example, the 
 project might have an issue: "Add book detail page".  Without an associated PEQ value, this is not a
 PEQ issue.  Once Jessie adds, say, a "1000 PEQ" label to the issue, it becomes a PEQ issue and will
 be subsequently tracked by CodeEquity software.
+
+
+### CodeEquity Project
+
+A CodeEquity Project is a host repository, along with all of it's related content and views (such as issues, labels and projects),
+that has been identified as belonging to a CodeEquity Venture, and is under the active custodianship or care of CodeEquity.  The CodeEquity
+server guarantees that every CodeEquity Project is in a valid state at all times.  For example, CodeEquity Projects will never have
+an issue that has more than 1 PEQ label in it, whereas a host repository that is not a CodeEquity Project will often not place
+or enforce any restrictions on the labels applied to an issue.
+A CodeEquity Project can belong to exactly 1 CodeEquity Venture (which may own multiple CodeEquity Projects).
+Note that at times when it is clear, we refer to a CodeEquity project in the more general sense of a project (or startup, or even an idea)
+that has embraced the CodeEquity approach.  
 
 
 ### CodeEquity Software Framework Mandate

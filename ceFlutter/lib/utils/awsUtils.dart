@@ -55,7 +55,7 @@ bool checkReauth( context, container ) {
    showToast( "Cloud tokens expired, reauthorizing.." );
    
    appState.authRetryCount += 1; 
-   if( appState.authRetryCount > 100 ) {
+   if( appState.authRetryCount > 5 ) {
       print( "Too many reauthorizations, please sign in again" );
       logout( context, appState );
       showToast( "Reauthorizing failed - your cloud authorization has expired.  Please re-login." ); 
@@ -105,6 +105,7 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
          );
    } catch( e, stacktrace ) {
       print( e );
+      // XXX No status code?.. some errors are not auth
       String msg = e.toString();  // can't seem to cast as ClientException, the runtimeType, which has a message property
       if( msg.contains( "ClientException: XMLHttpRequest error.," ) && msg.contains( "amazonaws.com/prod/find" )) {
          print( "XML http request error, likely auth expired " + shortName + postData );
@@ -344,22 +345,23 @@ Future<Person?> fetchSignedInPerson( context, container ) async {
    return null;
 }
 
-Future<Image?> fetchProfileImage( context, container, query ) async {
+Future<Map<String, dynamic>> fetchProfileImage( context, container, query ) async {
    String shortName = "fetchProfileImage";
    final response = await awsPost( shortName, query, context, container );
    
    if (response.statusCode == 201) {
       final p = json.decode(utf8.decode(response.bodyBytes));
+      print( p.runtimeType.toString() );
       return p;
    } else if( response.statusCode == 204) {
       print( "Fetch: no Profile Image found" );
-      return null;
+      return {};
    }
    else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchProfileImage( context, container, query ); }
    }
-   return null;
+   return {};
 }
 
 // Get any public ce person
