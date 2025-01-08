@@ -46,7 +46,6 @@ class _CEProfileState extends State<CEProfilePage> {
    late Person?           myself;
    late List<HostAccount> hostAccounts;  // specific to 1 user
    late List<HostAccount> hostUsers;     // specific to 1 platform
-   // late List<Person>      cePeople;  
    late EquityPlan?       equityPlan;
    late PEQSummary?       peqSummary;
    late Image?            profileImage;
@@ -82,26 +81,25 @@ class _CEProfileState extends State<CEProfilePage> {
      if( screenOpened && screenArgs["profType"] == "Person" ) {
         assert( screenArgs["id"] != null );
         String profId = screenArgs["id"]!;
-        print( "selected profile is signed in? " + ( profId == "" ).toString() );
+        // Signed in user?  
+        if( profId == "" ) { profId = appState.ceUserId; }
+        print( "Getting stuff (maybe) for " + profId );
         String query = '{ "Endpoint": "GetHostA", "CEUserId": "$profId" }';
-        var futs = [];
 
-        if( appState.ceHostAccounts[profId] == null ) {
-           print( "Load newbie" );
-           futs = await Future.wait([
-                                       profId == "" ? fetchSignedInPerson( context, container ) : fetchAPerson( context, container, profId ),
-                                       fetchHostAcct( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p )
-                                       ]);
-        }
-        else {
-           print( "Don't Load newbie" );
-           futs = await Future.wait([
-                                       profId == "" ? fetchSignedInPerson( context, container ) : fetchAPerson( context, container, profId ),
-                                       ]);
-        }
-        assert( futs.length >= 1 );
+        var futs = await Future.wait([
+                                        (appState.cePersons[profId] == null ? 
+                                         fetchAPerson( context, container, profId ).then( (p) => appState.cePersons[profId] = p ) :
+                                         new Future<bool>.value(true) ),
+                                        
+                                        (appState.ceHostAccounts[profId] == null ? 
+                                         fetchHostAcct( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p ) :
+                                         new Future<bool>.value(true) ),
+                                        
+                                        ]);
+        assert( appState.cePersons[profId] != null );
+        myself = appState.cePersons[profId]!;
+
         assert( appState.ceHostAccounts[profId] != null );
-        myself = new Person.from( futs[0] );
         hostAccounts = appState.ceHostAccounts[profId]!;
         
         assert( myself != null );
@@ -134,11 +132,20 @@ class _CEProfileState extends State<CEProfilePage> {
         
         await Future.wait([
                              fetchHostUser( context, container, "GitHub" ).then(            (p) => hostUsers = p ),
-                             fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => equityPlan = p ),
-                             fetchPEQSummary( context, container, json.encode( pdps )).then((p) => peqSummary = p ),
+                             
+                             (appState.cePEQSummaries[pid] == null ?
+                              fetchPEQSummary( context, container, json.encode( pdps )).then((p) => appState.cePEQSummaries[pid] = p ) :
+                              new Future<bool>.value(true) ),
+
+                             (appState.ceEquityPlans[pid] == null ? 
+                              fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => appState.ceEquityPlans[pid] = p ) :
+                              new Future<bool>.value(true) ),
+                             
                              fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ),
                              ]);
-
+        peqSummary = appState.cePEQSummaries[pid];
+        equityPlan = appState.ceEquityPlans[pid];
+           
         if( rawPITable.keys.length > 0 ) {
            print( rawPITable.keys.toString() );
            print( rawPITable["CEProfileId"]);
@@ -202,7 +209,6 @@ class _CEProfileState extends State<CEProfilePage> {
      String ceUserId = ha.ceUserId;
      // print( ceUserId + " " + appState.cePeople.toString() );
      Person cePeep   = appState.cePeople.firstWhere( (p) => p.id == ceUserId );
-     assert( cePeep != null );
 
      String ceName = cePeep.firstName + " " + cePeep.lastName;
      // Person

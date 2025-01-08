@@ -47,7 +47,7 @@ class AppState {
 
    // App logic   
    late bool loaded;                           // control expensive aspects of state initialization
-   late String userId;                         // ceuid
+   late String ceUserId;                       // set during signup, login, refresh, etc.
 
    late String                          selectedCEProject;
    late String                          selectedUser;    // Looking at details for this user, currently
@@ -60,10 +60,11 @@ class AppState {
    late List<Person>                     cePeople;        // all cePeople
    late Map< String, List<PEQAction> >   userPActs;       // hostUser  : pactions                          
    late Map< String, List<PEQ> >         userPeqs;        // hostUser  : peqs where user was pact actor
-   late Map< String, List<HostAccount> > ceHostAccounts;  // hostUser  : HostAccount
-   late Map< String, List<PEQSummary> >  cePeqSummaries;  // ceProject : PEQSummary
-   late Map< String, List<Linkage> >     ceHostLinks;     // ceProject : Linkage
-   late Map< String, List<EquityPlan> >  ceEquityPlans;   // ceProject : EquityPlan
+   late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount
+   late Map< String, Person? >           cePersons;       // ceUser    : Person
+   late Map< String, PEQSummary? >       cePEQSummaries;  // ceProject : PEQSummary
+   late Map< String, Linkage? >          ceHostLinks;     // ceProject : Linkage
+   late Map< String, EquityPlan? >       ceEquityPlans;   // ceProject : EquityPlan
    
    // Pointers into Core data
    late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
@@ -122,13 +123,10 @@ class AppState {
    initAppData() {
       loaded = false;
 
-      userId       = "";
+      ceUserId     = "";
       idMapHost    = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
       funny        = "";
 
-      ceProjects   = [];
-      cePeople     = [];
-      
       hostUpdated    = false;
 
       allocTree        = null;
@@ -144,12 +142,16 @@ class AppState {
       selectedCEProject = "";
       selectedUser = "";
       
+      ceProjects   = [];
+      cePeople     = [];
+
       userPActs      = new Map<String, List<PEQAction>>();
       userPeqs       = new Map<String, List<PEQ>>();
       ceHostAccounts = new Map<String, List<HostAccount>>();
-      cePeqSummaries = new Map<String, List<PEQSummary>>();
-      ceHostLinks    = new Map<String, List<Linkage>>();
-      ceEquityPlans  = new Map<String, List<EquityPlan>>();
+      cePersons      = new Map<String, Person?>();
+      cePEQSummaries = new Map<String, PEQSummary?>();
+      ceHostLinks    = new Map<String, Linkage?>();
+      ceEquityPlans  = new Map<String, EquityPlan?>();
 
       myPEQSummary   = null;
       myEquityPlan   = null;

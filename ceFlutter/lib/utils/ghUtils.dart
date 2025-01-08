@@ -108,11 +108,11 @@ Future<void> _buildCEProjectRepos( context, container, PAT, github, hostLogin ) 
    
    // XXX Chck if have U_*  if so, has been active on GH, right?
    // Do not have, can not get, the U_* user id from GH.  initially use login.
-   if( appState.userId == "" ) { appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
+   if( appState.ceUserId == "" ) { appState.ceUserId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" ); }
    String huid = await _getOwnerId( PAT, hostLogin );
-   print( "HOI! " + appState.userId + " " + huid );
+   print( "HOI! " + appState.ceUserId + " " + huid );
    assert( huid != "-1" );
-   HostAccount myHostAcct = new HostAccount( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.userId, hostUserId: huid, 
+   HostAccount myHostAcct = new HostAccount( hostPlatform: "GitHub", hostUserName: hostLogin, ceUserId: appState.ceUserId, hostUserId: huid, 
                                              ceProjectIds: ceProjs, futureCEProjects: futProjs, ceProjRepos: ceProjRepos );
    
    String newHostA = json.encode( myHostAcct );
@@ -156,7 +156,7 @@ Future<void> updateGHRepos( context, container ) async {
    }
 
    await initMDState( context, container );
-   // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
+   // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.ceUserId}"  }' );
 }
 
 
@@ -193,7 +193,7 @@ Future<bool> associateGithub( context, container, PAT ) async {
          await _buildCEProjectRepos( context, container, PAT, github, patLogin! );
          
          await initMDState( context, container );
-         // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
+         // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.ceUserId}"  }' );
       }
    }
    return newAssoc;

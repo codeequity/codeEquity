@@ -328,6 +328,7 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
    }
 }
 
+// XXX deprecated
 // ce username comes from cert in idtoken on lambda side.
 Future<Person?> fetchSignedInPerson( context, container ) async {
    String shortName = "fetchSignedInPerson";
@@ -367,6 +368,7 @@ Future<Map<String, dynamic>> fetchProfileImage( context, container, query ) asyn
 // Get any public ce person
 Future<Person?> fetchAPerson( context, container, ceUserId ) async {
    String shortName = "fetchAPerson";
+   print( "FETCH APERSON" );
    var postDataQ = {};
    postDataQ['CEUserId'] = ceUserId;
    final postData = { "Endpoint": "GetEntry", "tableName": "CEPeople", "query": postDataQ };
@@ -378,7 +380,7 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
       return cePerson;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchSignedInPerson( context, container ); }
+      if( didReauth ) { return await fetchAPerson( context, container, ceUserId ); }
    }
    return null;
 }
@@ -496,7 +498,7 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
 
 Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    String shortName = "fetchPEQSummary";
-
+   print("FETCH PEQSUM" );
    final response = await awsPost( shortName, postData, context, container );
 
    if (response.statusCode == 201) {
@@ -514,7 +516,8 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
 
  Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    String shortName = "fetchEquityPlan";
-
+   print("FETCH EQPLAN" );
+   
    final response = await awsPost( shortName, postData, context, container );
 
    if (response.statusCode == 201) {
@@ -532,7 +535,8 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
 
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";
-
+   print( "FETCH HOSTLINK" );
+   
    final response = await awsPost( shortName, postData, context, container );
 
    if (response.statusCode == 201) {
@@ -568,6 +572,7 @@ Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
 Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
    String shortName = "GetHostA";
    final response = await awsPost( shortName, postData, context, container );
+   print( "FETCH HOSTACC" );
    
    if (response.statusCode == 201) {
       print( "FetchHostAcct: " );

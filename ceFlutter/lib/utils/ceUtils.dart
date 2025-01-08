@@ -93,7 +93,7 @@ Future<void> reloadCEProject( context, container ) async {
    final appState  = container.state;
 
    String ceProj   = appState.selectedCEProject;
-   String uid      = appState.userId;
+   String uid      = appState.ceUserId;
    print( "Loading " + uid + "'s " + ceProj + " CodeEquity project." );
 
    var pdPS = json.encode( { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": {"PEQSummaryId": "$ceProj" }} );
@@ -102,11 +102,23 @@ Future<void> reloadCEProject( context, container ) async {
 
    // Consider separting fPSummary, since summary is the first thing that pops up.
    var futs = await Future.wait([
-                                   fetchPEQSummary( context, container,  pdPS ).then( (p) => appState.myPEQSummary = p ),
-                                   fetchEquityPlan( context, container,  pdEP ).then( (p) => appState.myEquityPlan = p ),
-                                   fetchHostLinkage( context, container, pdHL ).then( (p) => appState.myHostLinks = p ),
+                                   (appState.cePEQSummaries[ceProj] == null ?
+                                    fetchPEQSummary( context, container,  pdPS ).then( (p) => appState.cePEQSummaries[ceProj] = p ) :
+                                    new Future<bool>.value(true) ),
+                                   
+                                   (appState.ceEquityPlans[ceProj] == null ?
+                                    fetchEquityPlan( context, container,  pdEP ).then( (p) => appState.ceEquityPlans[ceProj] = p ) :
+                                    new Future<bool>.value(true) ),
+
+                                   (appState.ceHostLinks[ceProj] == null ?
+                                    fetchHostLinkage( context, container, pdHL ).then( (p) => appState.ceHostLinks[ceProj] = p ) :
+                                    new Future<bool>.value(true) ),
+                                   
                                    ]);
-                                
+   appState.myPEQSummary = appState.cePEQSummaries[ceProj];
+   appState.myEquityPlan = appState.ceEquityPlans[ceProj];
+   appState.myHostLinks  = appState.ceHostLinks[ceProj];
+   
    if( appState.myEquityPlan == null ) { appState.myEquityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
 
    if( appState.verbose >= 2 ) {
@@ -125,16 +137,20 @@ Future<void> initMDState( context, container ) async {
    print( "initMDState" );
    final appState  = container.state;
 
-   appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
-   String uid = appState.userId;
+   appState.ceUserId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
+   String uid = appState.ceUserId;
    assert( uid != "" );
    print( "UID: " + uid );
 
    var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
 
    var futs = await Future.wait([
-                                   fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
+                                   (appState.ceHostAccounts[uid] == null ? 
+                                    fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
+                                    new Future<bool>.value(true) ),
+                                   
                                    fetchCEPeople( context, container ).then(       (p) => appState.cePeople = p ),
+                                   
                                    fetchCEProjects( context, container ).then(     (p) => appState.ceProjects = p ),                                   
                                    ]);
    appState.myHostAccounts = appState.ceHostAccounts[uid];

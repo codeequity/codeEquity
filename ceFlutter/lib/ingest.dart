@@ -1168,6 +1168,7 @@ Future<void> updatePEQAllocations( context, container ) async {
 
 
    // First, update myHostLinks.locs, since ceFlutter may have been sitting in memory long enough to be out of date.
+   // These MUST be up to date.
    vPrint( appState, "Start myLoc update" );
    var pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }};
    Future myLocs = fetchHostLinkage( context, container, json.encode( pd ) );
@@ -1256,7 +1257,8 @@ Future<void> updatePEQAllocations( context, container ) async {
    await fixOutOfOrder( todos, context, container );
    
    vPrint( appState, "Complete myLoc update " + todos.length.toString());
-   appState.myHostLinks  = await myLocs;
+   appState.ceHostLinks[ceProjId] = await myLocs;
+   appState.myHostLinks = appState.ceHostLinks[ceProjId];
    if( appState.myHostLinks == null ) { return; }
    
    await _updateHostNames( todos, appState );
