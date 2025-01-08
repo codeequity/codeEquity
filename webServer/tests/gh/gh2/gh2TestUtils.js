@@ -11,8 +11,10 @@ const ghV2     = require( '../../../utils/gh/gh2/ghV2Utils' );
 
 const tu       = require( '../../ceTestUtils' );
 
-// Make up for rest variance, and GH slowness.  Expect 500-1000    Faster is in-person
+// Make up for rest variance, and GH slowness.  Expect 500-1000 top speed for human given net delays for updates
 // Server is fast enough for sub 1s, but GH struggles.
+// DELAYs have some merit - CE is built for human hands, and hands + native github delay means human
+// operations are far slower than the test execution.  Need to keep things just faster than what GH+human allows.
 const GH_DELAY = 400;  // No point to dip below 400 - GH interface does not even support this speed
 
 // Had to add a small sleep in each make* - GH seems to get confused if requests come in too fast

@@ -155,8 +155,8 @@ Future<void> updateGHRepos( context, container ) async {
       }
    }
 
-   await reloadMyProjects( context, container );
-   appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
+   await initMDState( context, container );
+   // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
 }
 
 
@@ -192,8 +192,8 @@ Future<bool> associateGithub( context, container, PAT ) async {
 
          await _buildCEProjectRepos( context, container, PAT, github, patLogin! );
          
-         await reloadMyProjects( context, container );
-         appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
+         await initMDState( context, container );
+         // appState.myHostAccounts = await fetchHostAcct( context, container, '{ "Endpoint": "GetHostA", "CEUserId": "${appState.userId}"  }' );
       }
    }
    return newAssoc;

@@ -88,7 +88,7 @@ void logout( context, appState ) async {
 
 
 // Called each time click different repo on homepage
-Future<void> reloadRepo( context, container ) async {
+Future<void> reloadCEProject( context, container ) async {
    
    final appState  = container.state;
 
@@ -98,16 +98,16 @@ Future<void> reloadRepo( context, container ) async {
 
    var pdPS = json.encode( { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": {"PEQSummaryId": "$ceProj" }} );
    var pdEP = json.encode( { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": {"EquityPlanId": "$ceProj"}} );
-   var pdHL = json.encode( { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": {"CEProjectId": "$ceProj" }} );
+   var pdHL = json.encode( { "Endpoint": "GetEntry", "tableName": "CELinkage",    "query": {"CEProjectId": "$ceProj" }} );
 
    // Consider separting fPSummary, since summary is the first thing that pops up.
    var futs = await Future.wait([
                                    fetchPEQSummary( context, container,  pdPS ).then( (p) => appState.myPEQSummary = p ),
-                                   fetchEquityPlan( context, container,  pdEP ).then( (p) => appState.equityPlan = p ),
+                                   fetchEquityPlan( context, container,  pdEP ).then( (p) => appState.myEquityPlan = p ),
                                    fetchHostLinkage( context, container, pdHL ).then( (p) => appState.myHostLinks = p ),
                                    ]);
                                 
-   if( appState.equityPlan == null ) { appState.equityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
+   if( appState.myEquityPlan == null ) { appState.myEquityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
 
    if( appState.verbose >= 2 ) {
       print( "Got Links?" ); 
@@ -115,27 +115,29 @@ Future<void> reloadRepo( context, container ) async {
    }
 
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true;  } // force alloc tree update
-   if( appState.equityPlan != null )   { appState.updateEquityPlan = true; } // force equity tree update
-   if( appState.equityPlan != null )   { appState.updateEquityView = true; } // force equity view creation on first pass
+   if( appState.myEquityPlan != null ) { appState.updateEquityPlan = true; } // force equity tree update
+   if( appState.myEquityPlan != null ) { appState.updateEquityView = true; } // force equity view creation on first pass
 }
 
 
-// Called on signin
-Future<void> reloadMyProjects( context, container ) async {
-   print( "reloadMyProjects" );
+// Called on login, signup, refreshProjects
+Future<void> initMDState( context, container ) async {
+   print( "initMDState" );
    final appState  = container.state;
 
    appState.userId = await fetchString( context, container, '{ "Endpoint": "GetID" }', "GetID" );
-   print( "UID: " + appState.userId );
-   assert( appState.userId != "" );
-
    String uid = appState.userId;
+   assert( uid != "" );
+   print( "UID: " + uid );
+
    var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
 
    var futs = await Future.wait([
-                                   fetchHostAcct( context, container, pdHA ).then( (p) => appState.myHostAccounts = p ),
+                                   fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ),
                                    fetchCEPeople( context, container ).then(       (p) => appState.cePeople = p ),
+                                   fetchCEProjects( context, container ).then(     (p) => appState.ceProjects = p ),                                   
                                    ]);
+   appState.myHostAccounts = appState.ceHostAccounts[uid];
 
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform, no CEPs.
    // Depends on cePeople.

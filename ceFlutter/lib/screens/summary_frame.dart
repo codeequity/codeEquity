@@ -113,7 +113,7 @@ class _CESummaryState extends State<CESummaryFrame> {
          assert( appState.allocTree != null );
 
          // Re-site each alloc into it's new home.
-         List<dynamic> epRet = appState.equityPlan!.site( alloc.category );
+         List<dynamic> epRet = appState.myEquityPlan!.site( alloc.category );
          List<String> sitedCat   = new List<String>.from( epRet[0] );
          
          Tree curNode = appState.allocTree!;
@@ -144,7 +144,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   // alloc  |-may have ---| |-will have -----------|    equity plan has no info on last two.
                   if( i < sitedCat.length - 2 ) {
                      if( appState.verbose >= 2 ) { print( "... hierarchy - resite " + sitedCat[i] ); }
-                     List<dynamic> hier = appState.equityPlan!.site( [ sitedCat[i] ] );
+                     List<dynamic> hier = appState.myEquityPlan!.site( [ sitedCat[i] ] );
                      hAlloc = hier[1];
                   }
 

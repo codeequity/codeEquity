@@ -11,6 +11,7 @@ import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
+import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/Linkage.dart';
@@ -38,7 +39,6 @@ class AppState {
 
    // Dev aid
    late int verbose;                           // controls how much is printed to terminal. 0 hardly anything. 3 everything.
-   
    late bool newUser;                          // signup: newuser creating a login has some special requirements during setup
    
    late String apiBasePath;                    // where to find lambda interface to aws
@@ -49,39 +49,47 @@ class AppState {
    late bool loaded;                           // control expensive aspects of state initialization
    late String userId;                         // ceuid
 
-   late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, ceUserName, hostUserName
-   
-   late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
-   late Linkage?          myHostLinks;           // Current project/column disposition per ceProject
-   late EquityPlan?       equityPlan;            // Equity plan for the selectedCEProject
-   late String            funny;                 // placeholder in activity zone.
+   late String                          selectedCEProject;
+   late String                          selectedUser;    // Looking at details for this user, currently
 
+   late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, ceUserName, hostUserName
+
+
+   // Core data, fetched as needed
+   late List<CEProject>                  ceProjects;      // all ceProjects
+   late List<Person>                     cePeople;        // all cePeople
+   late Map< String, List<PEQAction> >   userPActs;       // hostUser  : pactions                          
+   late Map< String, List<PEQ> >         userPeqs;        // hostUser  : peqs where user was pact actor
+   late Map< String, List<HostAccount> > ceHostAccounts;  // hostUser  : HostAccount
+   late Map< String, List<PEQSummary> >  cePeqSummaries;  // ceProject : PEQSummary
+   late Map< String, List<Linkage> >     ceHostLinks;     // ceProject : Linkage
+   late Map< String, List<EquityPlan> >  ceEquityPlans;   // ceProject : EquityPlan
+   
+   // Pointers into Core data
+   late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
+   late Linkage?          myHostLinks;           // Current project/column disposition for the selectedCEProject
+   late EquityPlan?       myEquityPlan;          // Equity plan for the selectedCEProject
    late List<HostAccount> myHostAccounts;        // all host accounts for current ceUser.
+   
    late bool hostUpdated;
 
-   // Needed for search, ingest, profile
-   late List<Person>      cePeople;              // all cePeople
-   
-   Node? allocTree;
-   late bool  updateAllocTree;
+   late String funny;                 // placeholder in activity zone.
+   Node?       allocTree;
+   EquityNode? equityTree;
+
    late HashMap<String, bool> allocExpanded;   // hashmap indicating if allocation node is expanded in summary page.
 
-   EquityNode? equityTree;
+   late bool   updateAllocTree;
    late bool   updateEquityPlan;        // updated the tree, with moves, indents, etc
    late bool   updateEquityView;        // updated the viewable list, with dynamo, or newly updated tree
 
    late bool   ceProjectLoading;        // allows spin while ceProject is being constructed from aws
    late bool   peqAllocsLoading;        // allows spin while summary frame peq allocations are being constructed
 
-   
-   late String                          selectedCEProject;
-   late String                          selectedUser;    // Looking at details for this user, currently
-   late Map< String, List<PEQAction> >  userPActs;       // hostUsers : pactions
-   late Map< String, List<PEQ> >        userPeqs;        // hostUsers : peqs where user was pact actor
-   late bool                            userPActUpdate;  // need to upate pact list
-   late String                          hoverChunk;      // For hover highlighting
-   // late Map< String, int >              ingestUpdates;   // These peqIds have n pending updates waiting to finish.
+   late bool   userPActUpdate;  // need to upate pact list
+   late String hoverChunk;      // For hover highlighting
 
+   
    // UI constants
    final double MAX_PANE_WIDTH   = 950.0;
    final double MIN_PANE_WIDTH   = 320.0; // iphone5, pixels
@@ -116,14 +124,11 @@ class AppState {
 
       userId       = "";
       idMapHost    = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
-      myPEQSummary = null;
       funny        = "";
-      equityPlan   = null;
 
+      ceProjects   = [];
       cePeople     = [];
       
-      myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
-      myHostLinks    = null;
       hostUpdated    = false;
 
       allocTree        = null;
@@ -138,8 +143,19 @@ class AppState {
 
       selectedCEProject = "";
       selectedUser = "";
-      userPActs = new Map<String, List<PEQAction>>();
-      userPeqs = new Map<String, List<PEQ>>();
+      
+      userPActs      = new Map<String, List<PEQAction>>();
+      userPeqs       = new Map<String, List<PEQ>>();
+      ceHostAccounts = new Map<String, List<HostAccount>>();
+      cePeqSummaries = new Map<String, List<PEQSummary>>();
+      ceHostLinks    = new Map<String, List<Linkage>>();
+      ceEquityPlans  = new Map<String, List<EquityPlan>>();
+
+      myPEQSummary   = null;
+      myEquityPlan   = null;
+      myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
+      myHostLinks    = null;
+
       userPActUpdate = false;
       hoverChunk = "";
       // ingestUpdates = new Map<String, int>();

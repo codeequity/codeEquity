@@ -44,7 +44,6 @@ class _CEProfileState extends State<CEProfilePage> {
    late Widget spacer;
      
    late Person?           myself;
-   late List<CEProject>   ceProjects;
    late List<HostAccount> hostAccounts;  // specific to 1 user
    late List<HostAccount> hostUsers;     // specific to 1 platform
    // late List<Person>      cePeople;  
@@ -85,14 +84,25 @@ class _CEProfileState extends State<CEProfilePage> {
         String profId = screenArgs["id"]!;
         print( "selected profile is signed in? " + ( profId == "" ).toString() );
         String query = '{ "Endpoint": "GetHostA", "CEUserId": "$profId" }';
-        var futs = await Future.wait([
-                                        profId == "" ? fetchSignedInPerson( context, container ) : fetchAPerson( context, container, profId ),
-                                        fetchCEProjects( context, container ).then( (p) => ceProjects = p ),
-                                        fetchHostAcct( context, container, query ).then( (p) => hostAccounts = p )
-                                        ]);
-        print( "Done fetching" );
-        assert( futs.length == 3 );
+        var futs = [];
+
+        if( appState.ceHostAccounts[profId] == null ) {
+           print( "Load newbie" );
+           futs = await Future.wait([
+                                       profId == "" ? fetchSignedInPerson( context, container ) : fetchAPerson( context, container, profId ),
+                                       fetchHostAcct( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p )
+                                       ]);
+        }
+        else {
+           print( "Don't Load newbie" );
+           futs = await Future.wait([
+                                       profId == "" ? fetchSignedInPerson( context, container ) : fetchAPerson( context, container, profId ),
+                                       ]);
+        }
+        assert( futs.length >= 1 );
+        assert( appState.ceHostAccounts[profId] != null );
         myself = new Person.from( futs[0] );
+        hostAccounts = appState.ceHostAccounts[profId]!;
         
         assert( myself != null );
         assert( appState.cogUser != null );
@@ -111,11 +121,11 @@ class _CEProfileState extends State<CEProfilePage> {
         String pid = screenArgs["id"]!;
 
         var postDataPS = {};
-        postDataPS['EquityPlanId'] = screenArgs["id"];
+        postDataPS['EquityPlanId'] = pid;
         final pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
 
         postDataPS = {};
-        postDataPS['PEQSummaryId'] = screenArgs["id"];
+        postDataPS['PEQSummaryId'] = pid;
         final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
 
         final pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$pid" }}';
@@ -123,12 +133,9 @@ class _CEProfileState extends State<CEProfilePage> {
         Map<String,dynamic> rawPITable = {};
         
         await Future.wait([
-                             fetchCEProjects( context, container ).then(                    (p) => ceProjects = p ),
                              fetchHostUser( context, container, "GitHub" ).then(            (p) => hostUsers = p ),
-                             // fetchCEPeople( context, container ).then(                      (p) => cePeople = p ),
                              fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => equityPlan = p ),
                              fetchPEQSummary( context, container, json.encode( pdps )).then((p) => peqSummary = p ),
-                             // fetchProfileImage( context, container, pdpi ).then(            (p) => profileImage = p ),
                              fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ),
                              ]);
 
@@ -158,7 +165,7 @@ class _CEProfileState extends State<CEProfilePage> {
         setState(() => appState.hoverChunk = "" );
      }
 
-     CEProject cep = ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
+     CEProject cep = appState.ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
 
      Widget cepLink = GestureDetector(
@@ -316,8 +323,8 @@ class _CEProfileState extends State<CEProfilePage> {
      PEQSummary psum      = new PEQSummary( ceProjectId: screenArgs["id"]!, targetType: "", targetId: "", lastMod: "",  accruedTot: 0, taskedTot: 0, allocations: {}, jsonAllocs: [] );
         
      if( !screenOpened ) {
-        assert( ceProjects != null );
-        cep = ceProjects.firstWhere( (c) => c.ceProjectId == screenArgs["id"] );
+        assert( appState.ceProjects != [] );
+        cep = appState.ceProjects.firstWhere( (c) => c.ceProjectId == screenArgs["id"] );
         assert( cep != null );
         cepName   = cep.ceProjectId;
         

@@ -131,7 +131,7 @@ class _CESignupState extends State<CESignupPage> {
                   await updateDynamo( context, container, ppostData, "PutPerson" );
                   
                   appState.newUser = false;
-                  await reloadMyProjects( context, container );
+                  await initMDState( context, container );
                   appState.updateAllocTree  = true; // forces buildAllocationTree
                   appState.updateEquityPlan = true; 
                   appState.updateEquityView = true; 
