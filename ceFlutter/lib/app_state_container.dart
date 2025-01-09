@@ -174,7 +174,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
      print( "Finalizing user token and project setup" );
      await getAPIBasePath();
      if( !newUser ) {
-        await reloadMyProjects( context, this );
+        await initMDState( context, this );
         state.updateAllocTree = true;                 // forces buildAllocationTree upon loading page first time
         state.updateEquityPlan = true;                
         state.updateEquityView = true;                

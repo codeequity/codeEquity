@@ -2,6 +2,8 @@ import 'dart:math';
 import 'dart:convert';  // json encode/decode
 import 'package:flutter/material.dart';
 
+import 'package:flutter/services.dart';                 // byte data
+
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
@@ -42,13 +44,10 @@ class _CEProfileState extends State<CEProfilePage> {
    late Widget spacer;
      
    late Person?           myself;
-   late List<CEProject>   ceProjects;
-   late List<HostAccount> hostAccounts;  // specific to 1 user
-   late List<HostAccount> hostUsers;     // specific to 1 platform
-   // late List<Person>      cePeople;  
    late EquityPlan?       equityPlan;
    late PEQSummary?       peqSummary;
-   
+   late Image?            profileImage;
+      
    late bool screenOpened;
    
   @override
@@ -80,18 +79,36 @@ class _CEProfileState extends State<CEProfilePage> {
      if( screenOpened && screenArgs["profType"] == "Person" ) {
         assert( screenArgs["id"] != null );
         String profId = screenArgs["id"]!;
-        print( "selected profile is signed in? " + ( profId == "" ).toString() );
+        // Signed in user?  
+        if( profId == "" ) { profId = appState.ceUserId; }
+        print( "Getting stuff (maybe) for " + profId );
         String query = '{ "Endpoint": "GetHostA", "CEUserId": "$profId" }';
+
+        late Person? newp;
         var futs = await Future.wait([
-                                        profId == "" ? fetchSignedInPerson( context, container ) : fetchAPerson( context, container, profId ),
-                                        fetchCEProjects( context, container ).then( (p) => ceProjects = p ),
-                                        fetchHostAcct( context, container, query ).then( (p) => hostAccounts = p )
+                                        (appState.cePersons[profId] == null ? 
+                                         fetchAPerson( context, container, profId ).then( (p) => newp = p ) :
+                                         new Future<bool>.value(true) ),
+                                        
+                                        (appState.ceHostAccounts[profId] == null ? 
+                                         fetchHostAcct( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p ) :
+                                         new Future<bool>.value(true) ),
+                                        
                                         ]);
-        print( "Done fetching" );
-        assert( futs.length == 3 );
-        myself = new Person.from( futs[0] );
-        
+
+        // Keep cePersons index pointing at cePeople, if new person found.  Rare.
+        if( appState.cePersons[profId] == null ) {
+           print( "XXX Found a new addition! " + profId );
+           assert( newp != null );
+           appState.cePeople.add( newp! );
+           appState.cePersons[profId] = appState.cePeople[appState.cePeople.length - 1];
+           assert( profId == appState.cePersons[profId]!.id );
+        }
+        myself = appState.cePersons[profId]!;
         assert( myself != null );
+
+        assert( appState.ceHostAccounts[profId] != null );
+        
         assert( appState.cogUser != null );
         if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "NOTE!  Profile is not for " + myself!.userName ); }
          // need setState to trigger makeBody else blank info
@@ -105,22 +122,59 @@ class _CEProfileState extends State<CEProfilePage> {
      
      if( screenOpened  && screenArgs["profType"] == "CEProject" ) {
         assert( screenArgs["id"] != null );
+        String pid = screenArgs["id"]!;
 
         var postDataPS = {};
-        postDataPS['EquityPlanId'] = screenArgs["id"];
+        postDataPS['EquityPlanId'] = pid;
         final pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
 
         postDataPS = {};
-        postDataPS['PEQSummaryId'] = screenArgs["id"];
+        postDataPS['PEQSummaryId'] = pid;
         final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
 
+        final pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$pid" }}';
+
+        final pdpa = '{ "Endpoint": "GetHostA", "HostPlatform": "GitHub"  }'; // XXX 
+        
+        Map<String,dynamic> rawPITable = {};
+        List<HostAccount>   haccts     = [];
+
         await Future.wait([
-                             fetchCEProjects( context, container ).then(                    (p) => ceProjects = p ),
-                             fetchHostUser( context, container, "GitHub" ).then(            (p) => hostUsers = p ),
-                             // fetchCEPeople( context, container ).then(                      (p) => cePeople = p ),
-                             fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => equityPlan = p ),
-                             fetchPEQSummary( context, container, json.encode( pdps )).then((p) => peqSummary = p ),
+                             (!appState.hostPlatformsLoaded.contains( "GitHub" ) ? 
+                              fetchHostAcct( context, container, pdpa ).then(                 (p) => haccts = p ) : 
+                              new Future<bool>.value(true) ),
+                             
+                             (appState.cePEQSummaries[pid] == null ?
+                              fetchPEQSummary( context, container, json.encode( pdps )).then((p) => appState.cePEQSummaries[pid] = p ) :
+                              new Future<bool>.value(true) ),
+
+                             (appState.ceEquityPlans[pid] == null ? 
+                              fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => appState.ceEquityPlans[pid] = p ) :
+                              new Future<bool>.value(true) ),
+                             
+                             (appState.ceImages[pid] == null ? 
+                              fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ) :
+                              new Future<bool>.value(true) ),
+                             
                              ]);
+        peqSummary = appState.cePEQSummaries[pid];
+        equityPlan = appState.ceEquityPlans[pid];
+
+        if( !appState.hostPlatformsLoaded.contains( "GitHub" ) ) { appState.hostPlatformsLoaded.add( "GitHub" ); }
+        // One ha per platform, list length is 1
+        for( HostAccount ha in haccts ) { appState.ceHostAccounts[ha.ceUserId] = [ha]; }
+           
+        if( rawPITable.keys.length > 0 ) {
+           print( rawPITable.keys.toString() );
+           print( rawPITable["CEProfileId"]);
+           print( rawPITable["ByteData"].length.toString());
+           // final ByteData assetImageByteData = await rootBundle.load( rawPITable["ByteData"] );
+           // final x = assetImageByteData.buffer.asUint8List();
+           Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
+           appState.ceImages[pid] = Image.memory( bytes, width: lhsFrameMaxWidth );
+        }
+        assert( appState.ceImages[pid] != null );
+        profileImage = appState.ceImages[pid];
         
         // need setState to trigger makeBody else blank info
         setState(() => screenOpened = false );
@@ -135,7 +189,7 @@ class _CEProfileState extends State<CEProfilePage> {
         setState(() => appState.hoverChunk = "" );
      }
 
-     CEProject cep = ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
+     CEProject cep = appState.ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
 
      Widget cepLink = GestureDetector(
@@ -170,9 +224,9 @@ class _CEProfileState extends State<CEProfilePage> {
 
   Widget _makeCollabCard( context, HostAccount ha, textWidth, maxProjCount ) {
      String ceUserId = ha.ceUserId;
-     print( ceUserId + " " + appState.cePeople.toString() );
-     Person cePeep   = appState.cePeople.firstWhere( (p) => p.id == ceUserId );
-     assert( cePeep != null );
+     // print( ceUserId + " " + appState.cePeople.toString() );
+     assert( appState.cePersons[ ceUserId ] != null );
+     Person cePeep = appState.cePersons[ ceUserId ]!;
 
      String ceName = cePeep.firstName + " " + cePeep.lastName;
      // Person
@@ -285,24 +339,22 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> repoWid = [spacer];
      Widget collabWid     = spacer;
+     Image? pi            = null;
      CEProject cep        = new CEProject( ceProjectId: "A", ceProjectComponent: "", description: "", hostPlatform: "", organization: "",
                                            ownerCategory: "", projectMgmtSys: "", repositories: [] );
      String cepName       = cep.ceProjectId;
      EquityPlan ep        = new EquityPlan( ceProjectId: screenArgs["id"]!, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" );
      PEQSummary psum      = new PEQSummary( ceProjectId: screenArgs["id"]!, targetType: "", targetId: "", lastMod: "",  accruedTot: 0, taskedTot: 0, allocations: {}, jsonAllocs: [] );
         
-     assert( cepName != null && cepName!.length > 0 );
-     var profileImage = cepName![0].toLowerCase() + "Grad.png"; 
-
      if( !screenOpened ) {
-        assert( ceProjects != null );
-        cep = ceProjects.firstWhere( (c) => c.ceProjectId == screenArgs["id"] );
+        assert( appState.ceProjects != [] );
+        cep = appState.ceProjects.firstWhere( (c) => c.ceProjectId == screenArgs["id"] );
         assert( cep != null );
-        cepName   = cep.ceProjectId;        
-        profileImage = cepName![0].toLowerCase() + "Grad.png";         
+        cepName   = cep.ceProjectId;
         
-        if( equityPlan != null ) { ep = equityPlan!; }
-        if( peqSummary != null ) { psum = peqSummary!; }
+        if( profileImage != null ) { pi   = profileImage!; }
+        if( equityPlan != null )   { ep   = equityPlan!; }
+        if( peqSummary != null )   { psum = peqSummary!; }
 
         // CEProject repos
         for( int i = 0; i < cep.repositories.length; i++ ) {
@@ -312,20 +364,28 @@ class _CEProfileState extends State<CEProfilePage> {
 
         // CEProject Collabs
         List<HostAccount> collabs = [];
-        for( int i = 0; i < hostUsers.length; i++ ) {
-           HostAccount ha = hostUsers[i];
-           if( ha.ceProjectIds.contains( cepName ) ) {
-              collabs.add( ha );
+        for( String ceuid in appState.ceHostAccounts.keys ) {
+           assert( appState.ceHostAccounts[ceuid] != null );
+           List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
+           for( HostAccount ha in has ) {
+              if( ha.hostPlatform == cep.hostPlatform && ha.ceProjectIds.contains( cepName ) ) {
+                 collabs.add( ha );
+              }
            }
         }
         collabWid = _makeCollabs( context, collabs, textWidth );
+     }
 
+     if( pi == null ) {
+        pi = Image.asset( "images/"+cepName![0].toLowerCase() + "Grad.jpg",
+                          width: lhsFrameMaxWidth,
+                          color: Colors.grey.withOpacity(0.05),
+                          colorBlendMode: BlendMode.darken );
      }
 
      double accr     = ep.totalAllocation > 0 ? ( 1.0 * psum.accruedTot ) / ep.totalAllocation : 0.0;
      double tasked   = ep.totalAllocation > 0 ? ( 1.0 * psum.taskedTot  ) / ep.totalAllocation : 0.0;
      double unTasked = ep.totalAllocation > 0 ? ( 1.0 - accr - tasked ) : 0.0;
-
      
      return Wrap(
         children: [
@@ -335,10 +395,7 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                  spacer, 
-                 Image.asset( "images/"+profileImage,
-                              width: lhsFrameMaxWidth,
-                              color: Colors.grey.withOpacity(0.05),
-                              colorBlendMode: BlendMode.darken ),
+                 pi,
                  makeTitleText( appState, cep.ceProjectId, textWidth * 1.1, false, 1, fontSize: 24 ),
                  makeTitleText( appState, cep.ceProjectComponent, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
@@ -416,7 +473,7 @@ class _CEProfileState extends State<CEProfilePage> {
      final ceUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
 
      assert( ceUserName != null && ceUserName!.length > 0 );
-     var profileImage = ceUserName![0] + "Grad.png"; 
+     var profileImage = ceUserName![0] + "Grad.jpg"; 
 
      Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false, imagePng: null, image: null );
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
@@ -426,8 +483,8 @@ class _CEProfileState extends State<CEProfilePage> {
      if( !screenOpened ) {
         assert( myself != null );
         cePeep = myself!;
-        profileImage = cePeep.userName[0].toLowerCase() + "Grad.png";         
-        hostAccs = screenArgs["id"] == "" ? appState.myHostAccounts : hostAccounts;
+        profileImage = cePeep.userName[0].toLowerCase() + "Grad.jpg";         
+        hostAccs = screenArgs["id"] == "" ? appState.myHostAccounts : ( appState.ceHostAccounts[ screenArgs["id"] ] ?? [] );
         
         // CE Host User
         for( var ha in hostAccs ) {

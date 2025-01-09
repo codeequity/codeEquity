@@ -203,7 +203,7 @@ class _getPossibilities {
 
       // XXX these expensive fetches should only happen once per login.
       List<Person>    cePeeps    = [];
-      List<CEProject> ceProjects = [];
+      assert( appState.ceProjects != [] );
 
       // XXX peq issues 
       // XXX Allow search over all peqs for every user?  Expensive.  Limit to current user?  Limited.  Hmm...
@@ -215,7 +215,6 @@ class _getPossibilities {
       // Collect
       var futs = await Future.wait([
                                       fetchCEPeople( context, container ).then( (p) => cePeeps = p ),
-                                      fetchCEProjects( context, container ).then( (p) => ceProjects = p ),
                                       updateUserPeqs( container, context )
                                       ]);
       List<PEQ>       ariPeqs    = appState.userPeqs[ appState.selectedUser ];  // XXX get all
@@ -224,7 +223,7 @@ class _getPossibilities {
       // XXX search should show first line where term shows up
       List<Person>?    filteredCEPeeps = cePeeps.where( (Person p) => ( p.userName.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
       List<PEQ>?       filteredPeqs    = ariPeqs.where( (PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
-      List<CEProject>? filteredCEProjs = ceProjects.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      List<CEProject>? filteredCEProjs = appState.ceProjects.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
 
 
       // Collate .. GD

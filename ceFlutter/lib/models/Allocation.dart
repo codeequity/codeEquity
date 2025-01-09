@@ -8,6 +8,11 @@ import 'package:ceFlutter/models/PEQ.dart';
 // PEQSummary collects these to present an overall provisional equity structure.
 // This is not intended to be independently stored in dynamo, only in association with PEQSummary
 
+// NOTE Allocs are operated on/with heavily during ingest, and are meaningful and viewed often in ceFlutter.
+// They are a meeting point between the host world (all ingest operations are in host world, i.e. hostUser not ceUser), and CE world.
+// Forcing Allocs completely into 1 or the other causes a lot of conversion and chance for error.  Instead, they are truth in both
+// worlds.  Every alloc has a CEUID, and a matching a HostUID.  Both category and category base are in host world, i.e. assignees are host user ids.
+
 // 1 Alloc per project/{project}/column/assignee .. so 1 peq      : m allocations  where m = number of assignees.
 //                                                     1 assignee : n allocations where n = number of peqs for assignee
 
@@ -18,15 +23,15 @@ class Allocation {
    final Map<String,int>?  sourcePeq;  // all peqId:value that make up the total for this category.
    List<String>?      setInStone;      // all source peq ids that have confirm accrued.  These will not be further adjusted
    PeqType            allocType;
-   final String?      ceUID;           // if Plan or Grant, who is it for
-   final String?      hostUserName;    // hostUser associated with ceUID for this alloc
+   final String       ceUID;           // who is this allocation for
    final String       hostUserId;      // hostUser associated with ceUID for this alloc
+   final String?      hostUserName;    // hostUser associated with ceUID for this alloc
    final double?      vestedPerc;      // granted or accrued
    final String?      notes;           // any details on category contents, i.e.: sam, lambda, cognito, dynamo
    final String?      hostProjectId;   // a fixed point that chains the category to a specific location in host
 
    Allocation({required this.category, this.categoryBase, this.amount, this.sourcePeq, this.setInStone,
-            required this.allocType, this.ceUID, this.hostUserName, required this.hostUserId, this.vestedPerc, this.notes, this.hostProjectId });
+            required this.allocType, required this.ceUID, this.hostUserName, required this.hostUserId, this.vestedPerc, this.notes, this.hostProjectId });
 
    // Not explicitly constructed in lambda handler - watch caps
    dynamic toJson() => {'Category': category, 'CategoryBase': categoryBase, 'Amount': amount, 'SourcePEQ': sourcePeq, 'SetInStone': setInStone, 'AllocType': enumToStr(allocType),
@@ -36,6 +41,9 @@ class Allocation {
    factory Allocation.fromJson(Map<String, dynamic> json) {
 
       assert( json != null );
+
+      assert( json['CEUID'] != "" );
+      assert( json['HostUserID'] != "" );
       
       var dynamicCat     = json['Category'];
       var dynamicCatBase = json['CategoryBase'];
@@ -56,7 +64,7 @@ class Allocation {
          allocType:     enumFromStr<PeqType>( json['AllocType'], PeqType.values ),
          ceUID:         json['CEUID'],
          hostUserName:  json['HostUserName'] ?? "",
-         hostUserId:    json['HostUserId'] ?? "",
+         hostUserId:    json['HostUserId'],
          vestedPerc:    json['Vested'],
          notes:         json['Notes'],
          hostProjectId: json['HostProjectId']
@@ -65,7 +73,7 @@ class Allocation {
    
    String toString() {
       String res = "\n" + category.toString() + "  " + (hostProjectId ?? "");
-      res += "\n    " + enumToStr( allocType ) + " ceUID and hostUserName: " + (ceUID ?? "") + " " + (hostUserName ?? "") + " " + (hostUserId ?? "");
+      res += "\n    " + enumToStr( allocType ) + " ceUID and hostUserName: " + ceUID + " " + (hostUserName ?? "") + " " + hostUserId;
       res += "\n    Amount: "+ (amount ?? -1).toString() + " of which vested %: " + (vestedPerc ?? 0.0).toString();
       res += "\n    Source PEQs: " + (sourcePeq ?? []).toString();
       res += "\n    Set in stone: " + (setInStone ?? []).toString();

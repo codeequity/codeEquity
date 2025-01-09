@@ -95,7 +95,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    // splitAmt arrives as double to avoid huge rounding errors when calculating assignee shares.  Drop remainder here
    int splitAmount = splitAmt.toInt();
    
-   // subCat is assignee
+   // subCat is assignee, hostUID.
    List<String> suba = new List<String>.from( cat );
    if( source == null ) {
       assert( subCat != appState.EMPTY );
@@ -105,6 +105,12 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
       suba   = source.category;
       subCat = source.category.last;
    }
+
+   // XXX review.  we could leave ceUID blank.. any benefit?
+   String ceUID = ( appState.idMapHost[subCat] == null || appState.idMapHost[subCat]["ceUserId"] == null )
+                  ? appState.UNASSIGN_USER
+                  : appState.idMapHost[subCat]["ceUserId"];
+   
 
    if( splitAmount > 0 ) { vPrint( appState, "Adjust up   summary allocation " + suba.toString() ); }
    else                  { vPrint( appState, "Adjust down summary allocation " + suba.toString() ); }
@@ -165,7 +171,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    // Create allocs, if not already updated
    vPrint( appState, " ... adding new Allocation" );
    Allocation newAlloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: {peqId: splitAmount}, allocType: peqType,
-                                      ceUID: appState.EMPTY, hostUserId: assignee, vestedPerc: 0.0, notes: "", hostProjectId: pid );
+                                      ceUID: ceUID, hostUserId: assignee, vestedPerc: 0.0, notes: "", hostProjectId: pid );
 
    appState.myPEQSummary.addAlloc( newAlloc );
 }
@@ -541,7 +547,7 @@ void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
          
          // avoid concurrent mod of list
          for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
+            Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId, ceUID: sourceAlloc.ceUID );
             remAllocs.add( miniAlloc );
          }
          for( var remAlloc in remAllocs ) {
@@ -641,7 +647,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       
       // avoid concurrent mod of list
       for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
+         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId, ceUID: sourceAlloc.ceUID );
          reloAlloc.add( miniAlloc );
       }
       
@@ -687,7 +693,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       
       // avoid concurrent mod of list
       for( Allocation sourceAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
-         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId );
+         Allocation miniAlloc = new Allocation( category: sourceAlloc.category, allocType: sourceAlloc.allocType, hostUserId: sourceAlloc.hostUserId, ceUID: sourceAlloc.ceUID );
          reloAlloc.add( miniAlloc );
       }
       
@@ -1162,6 +1168,7 @@ Future<void> updatePEQAllocations( context, container ) async {
 
 
    // First, update myHostLinks.locs, since ceFlutter may have been sitting in memory long enough to be out of date.
+   // These MUST be up to date.
    vPrint( appState, "Start myLoc update" );
    var pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }};
    Future myLocs = fetchHostLinkage( context, container, json.encode( pd ) );
@@ -1250,7 +1257,8 @@ Future<void> updatePEQAllocations( context, container ) async {
    await fixOutOfOrder( todos, context, container );
    
    vPrint( appState, "Complete myLoc update " + todos.length.toString());
-   appState.myHostLinks  = await myLocs;
+   appState.ceHostLinks[ceProjId] = await myLocs;
+   appState.myHostLinks = appState.ceHostLinks[ceProjId];
    if( appState.myHostLinks == null ) { return; }
    
    await _updateHostNames( todos, appState );

@@ -121,7 +121,7 @@ class _CESignupState extends State<CESignupPage> {
                if( success ) {
 
                   String pid = randAlpha(10);
-                  appState.userId = pid;
+                  appState.ceUserId = pid;
                   
                   Person user = new Person( id: pid, firstName: "Marion", lastName: "Star", userName: usernameController.text,
                                             email: attributeController.text, locked: false, imagePng: null, image: null );
@@ -131,7 +131,7 @@ class _CESignupState extends State<CESignupPage> {
                   await updateDynamo( context, container, ppostData, "PutPerson" );
                   
                   appState.newUser = false;
-                  await reloadMyProjects( context, container );
+                  await initMDState( context, container );
                   appState.updateAllocTree  = true; // forces buildAllocationTree
                   appState.updateEquityPlan = true; 
                   appState.updateEquityView = true; 

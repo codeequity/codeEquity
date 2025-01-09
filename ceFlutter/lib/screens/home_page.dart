@@ -95,7 +95,7 @@ class _CEHomeState extends State<CEHomePage> {
             {
                appState.selectedCEProject = itemName;
                setState(() => appState.ceProjectLoading = true );
-               await reloadRepo( context, container );
+               await reloadCEProject( context, container );
                appState.ceProjectLoading = false;
                
                MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());

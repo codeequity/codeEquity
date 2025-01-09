@@ -94,10 +94,10 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
 
    Future<void> writeEqPlan() async {
-      if( appState.equityPlan != null ) {
-         print( "WRITE EP " + appState.equityPlan!.totalAllocation.toString() );
-         appState.equityPlan!.lastMod = getToday();
-         String eplan = json.encode( appState.equityPlan );
+      if( appState.myEquityPlan != null ) {
+         print( "WRITE EP " + appState.myEquityPlan!.totalAllocation.toString() );
+         appState.myEquityPlan!.lastMod = getToday();
+         String eplan = json.encode( appState.myEquityPlan );
          String postData = '{ "Endpoint": "PutEqPlan", "NewPlan": $eplan }';
          updateDynamo( context, container, postData, "PutEqPlan" );
       }
@@ -185,9 +185,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget forward = GestureDetector(
             onTap: () async 
             {
-               assert( appState.equityPlan != null );
+               assert( appState.myEquityPlan != null );
                assert( appState.equityTree != null );
-               appState.equityPlan!.indent( treeIndex-1, appState.equityTree! );  // equity plan index is 1 off tree index (TOT)
+               appState.myEquityPlan!.indent( treeIndex-1, appState.equityTree! );  // equity plan index is 1 off tree index (TOT)
                
                // Tree changed. update viewable list, then update the view
                setState(() => appState.updateEquityView = true );
@@ -200,9 +200,9 @@ class _CEEquityState extends State<CEEquityFrame> {
          Widget back = GestureDetector(
             onTap: () async 
             {
-               assert( appState.equityPlan != null );
+               assert( appState.myEquityPlan != null );
                assert( appState.equityTree != null );
-               appState.equityPlan!.unindent( treeIndex-1, appState.equityTree! );  // equity plan index is 1 off tree index (TOT)
+               appState.myEquityPlan!.unindent( treeIndex-1, appState.equityTree! );  // equity plan index is 1 off tree index (TOT)
                
                setState(() => appState.updateEquityView = true );
             },
@@ -256,7 +256,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             {
                print( "Edit! from " + treeIndex.toString() );
                
-               assert( appState.equityPlan != null );
+               assert( appState.myEquityPlan != null );
                assert( appState.equityTree != null );
 
                String title = t.getTitle();
@@ -292,7 +292,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       // List<Widget> htile  = _getTile( [], "Category", 0, 0, width, pageStamp );
       appState.equityTree = EquityNode( "Category", 0, "", null, width, header: true, TOT: true );
       
-      if( appState.equityPlan == null ) {
+      if( appState.myEquityPlan == null ) {
          appState.updateEquityPlan = false;
          return;
       }
@@ -300,7 +300,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       // Per equity line, walk the current tree (curNode) by stepping through the categories chain to see where this line belongs
       // Can't depend on walk tree here .. no tree yet!
       // In this construction, each eqLine is either a leaf or convertNode.  Can not directly step to a node - every line has at least 1 parent
-      for( var eqLine in appState.equityPlan!.initializeEquity( ) ) {
+      for( var eqLine in appState.myEquityPlan!.initializeEquity( ) ) {
          assert( appState.equityTree != null );
          assert( eqLine["amount"] != null );
          
@@ -348,7 +348,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       final numWidth = width / 2.5;
          
-      if( appState.equityPlan != null && appState.equityPlan!.ceProjectId != appState.selectedCEProject ) {
+      if( appState.myEquityPlan != null && appState.myEquityPlan!.ceProjectId != appState.selectedCEProject ) {
          print( "Error.  Equity plan is not for selected project." );
          return [];
       }
@@ -374,11 +374,11 @@ class _CEEquityState extends State<CEEquityFrame> {
          catList.add( [ hdiv, empty, empty, empty, empty ] );
 
          // Body
-         if( appState.equityPlan != null )
+         if( appState.myEquityPlan != null )
          {
             assert( appState.equityTree != null );
-            bool changed = appState.equityPlan!.updateEquity( appState.equityTree );
-            if( appState.equityPlan!.categories.length > 0 ) { 
+            bool changed = appState.myEquityPlan!.updateEquity( appState.equityTree );
+            if( appState.myEquityPlan!.categories.length > 0 ) { 
                if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
                catList.addAll( _getTiles( context, width ) );
             }
@@ -426,12 +426,12 @@ class _CEEquityState extends State<CEEquityFrame> {
    // NOTE: onReorder is sending a viewIndex for old, +/- offset for new.
    // sibling to forward, back  .. this is managed by drag handle listener
    void _initiateDrag( treeIndexOld, treeIndexNew ) {
-      assert( appState.equityPlan != null );
+      assert( appState.myEquityPlan != null );
 
       // Operations below are in equityPlan indexing, or epIndex
       final epIndexOld = treeIndexOld-equityTop;  // viewIndex -> epIndex
       int   epIndexNew = treeIndexNew-equityTop;  // viewIndex -> epIndex
-      final epSize     = appState.equityPlan!.getSize();
+      final epSize     = appState.myEquityPlan!.getSize();
       
       if( epIndexNew < 0 ) {
          print( "Can't move above Top of Tree.  No-op." );
@@ -443,7 +443,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       }
 
       // print( "Moved from (treeIndex)" + epIndexOld.toString() + " to " + epIndexNew.toString() );
-      appState.equityPlan!.move( epIndexOld, epIndexNew, appState.equityTree! );
+      appState.myEquityPlan!.move( epIndexOld, epIndexNew, appState.equityTree! );
 
 
       // Tree changed. update viewable list, then update the view

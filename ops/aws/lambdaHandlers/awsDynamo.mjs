@@ -94,10 +94,11 @@ export function handler( event, context, callback) {
     else if( endPoint == "putPActCEUID")   { resultPromise = updatePActCE( rb.CEUID, rb.PEQActionId); }
     else if( endPoint == "UpdateColProj")  { resultPromise = updateColProj( rb.query ); }
     else if( endPoint == "PutPSum")        { resultPromise = putPSum( rb.NewPSum ); }
+    else if( endPoint == "PutProfImg")     { resultPromise = putProfileImage( rb.NewPSum ); }
     else if( endPoint == "AddPSumLock")    { resultPromise = addPSumLock( rb.ceProjId ); }
     else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
-    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId ); }
+    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
@@ -306,6 +307,9 @@ async function getEntry( tableName, query ) {
 	break;
     case "CEHostUser":
 	props = ["HostUserName", "HostPlatform"];
+	break;
+    case "CEProfileImage":
+	props = ["CEProfileId"];
 	break;
     case "CEPEQs":
 	props = [ "PEQId", "Active", "CEGrantorId", "PeqType", "Amount", "CEProjectId", "HostRepoId", "HostIssueId", "HostIssueTitle" ];
@@ -1173,7 +1177,21 @@ async function updateColProj( update ) {
 	});
 }
 
+async function putProfileImage( psum ) {
+    console.log( "profileImage put ", psum.ceProfileId);
 
+    const paramsP = {
+        TableName: 'CEProfileImage',
+	Item: {
+	    "CEProfileId": psum.ceProfileId,
+	    "ByteData":    psum.uint8List,
+	}
+    };
+
+    const putCmd = new PutCommand( paramsP );
+
+    return bsdb.send( putCmd ).then(() => success( true ));
+}
 
 // Overwrites any existing record by ID.
 async function putPSum( psum ) {
@@ -1416,15 +1434,23 @@ async function getProjectStatus( repos ) {
 	});
 }
 
-async function getHostA( uid ) {
-    const paramsP = {
+async function getHostA( uid, plat ) {
+    var paramsP = typeof uid !== 'undefined' ? 
+    {
         TableName: 'CEHostUser',
         FilterExpression: 'CEUserId = :ceid',
         ExpressionAttributeValues: { ":ceid": uid },
 	Limit: 99,
+    } :
+    {
+        TableName: 'CEHostUser',
+        FilterExpression: 'HostPlatform = :plat',
+        ExpressionAttributeValues: { ":plat": plat },
+	Limit: 99,
     };
-
-    console.log( "Host Account repos", uid);
+    
+    
+    console.log( "Host Account repos", uid, plat);
     let hostAccPromise = paginatedScan( paramsP );
 
     let hostAccs = await hostAccPromise;

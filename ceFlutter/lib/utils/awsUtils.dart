@@ -55,7 +55,7 @@ bool checkReauth( context, container ) {
    showToast( "Cloud tokens expired, reauthorizing.." );
    
    appState.authRetryCount += 1; 
-   if( appState.authRetryCount > 100 ) {
+   if( appState.authRetryCount > 5 ) {
       print( "Too many reauthorizations, please sign in again" );
       logout( context, appState );
       showToast( "Reauthorizing failed - your cloud authorization has expired.  Please re-login." ); 
@@ -105,6 +105,7 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
          );
    } catch( e, stacktrace ) {
       print( e );
+      // XXX No status code?.. some errors are not auth
       String msg = e.toString();  // can't seem to cast as ClientException, the runtimeType, which has a message property
       if( msg.contains( "ClientException: XMLHttpRequest error.," ) && msg.contains( "amazonaws.com/prod/find" )) {
          print( "XML http request error, likely auth expired " + shortName + postData );
@@ -327,6 +328,7 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
    }
 }
 
+// XXX deprecated
 // ce username comes from cert in idtoken on lambda side.
 Future<Person?> fetchSignedInPerson( context, container ) async {
    String shortName = "fetchSignedInPerson";
@@ -344,9 +346,28 @@ Future<Person?> fetchSignedInPerson( context, container ) async {
    return null;
 }
 
+Future<Map<String, dynamic>> fetchProfileImage( context, container, query ) async {
+   String shortName = "fetchProfileImage";
+   final response = await awsPost( shortName, query, context, container );
+   
+   if (response.statusCode == 201) {
+      final p = json.decode(utf8.decode(response.bodyBytes));
+      return p;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no Profile Image found" );
+      return {};
+   }
+   else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchProfileImage( context, container, query ); }
+   }
+   return {};
+}
+
 // Get any public ce person
 Future<Person?> fetchAPerson( context, container, ceUserId ) async {
    String shortName = "fetchAPerson";
+   print( "FETCH APERSON" );
    var postDataQ = {};
    postDataQ['CEUserId'] = ceUserId;
    final postData = { "Endpoint": "GetEntry", "tableName": "CEPeople", "query": postDataQ };
@@ -358,39 +379,14 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
       return cePerson;
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchSignedInPerson( context, container ); }
+      if( didReauth ) { return await fetchAPerson( context, container, ceUserId ); }
    }
    return null;
 }
 
-// Gets CEHostUser for a given platform
-Future<List<HostAccount>> fetchHostUser( context, container, hostPlatform ) async {
-   String shortName = "fetchHostUser";
-   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
-   final response = await awsPost( shortName, postData, context, container );
-   
-   if (response.statusCode == 201) {
-      List<HostAccount> res = [];
-      Iterable hu = json.decode(utf8.decode(response.bodyBytes));
-      for( var hostUser in hu ) {
-         print( "working on " + hostUser.toString() );
-         hostUser["ceProjects"] = [];
-         HostAccount ha = HostAccount.fromJson( hostUser );
-         res.add( ha );
-      }
-      return res;
-   } else if( response.statusCode == 204) {
-      print( "Fetch: no CEHostUsers found" );
-      return [];
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchHostUser( context, container, hostPlatform ); }
-      else { return []; }
-   }
-}
 
 // Populates idHostMap
-Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, List<Person> cePeople ) async {
+Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person?> cePersons ) async {
    String shortName = "fetchHostMap";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
    final response = await awsPost( shortName, postData, context, container );
@@ -399,15 +395,13 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
       Iterable hu = json.decode(utf8.decode(response.bodyBytes));
       Map<String, Map<String,String>> t = new Map<String, Map<String, String>>();
       for( final hostUser in hu ) {
-         print( "working on " + hostUser.toString() );
+         print( "fhm working on " + hostUser.toString() );
          Map<String,String> vals = {};
          vals['ceUID']        = hostUser['CEUserId'];
          vals['hostUserName'] = hostUser['HostUserName'];
-         Person? peep = cePeople.firstWhereOrNull( (p) => p.id == vals['ceUID'] );
+         Person? peep = cePersons[ vals['ceUID'] ];
          assert( peep != null );
-         if( peep != null ) {
-            vals['ceUserName']   = peep!.userName;
-         }
+         vals['ceUserName']   = peep!.userName;
          t[ hostUser['HostUserId'] ] = vals;
       }
       return t;
@@ -416,7 +410,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
       return {};
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform, cePeople ); }
+      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform, cePersons ); }
       else { return {}; }
    }
 }
@@ -476,7 +470,7 @@ Future<List<PEQAction>> fetchPEQActions( context, container, postData ) async {
 
 Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
    String shortName = "fetchPEQSummary";
-
+   print("FETCH PEQSUM" );
    final response = await awsPost( shortName, postData, context, container );
 
    if (response.statusCode == 201) {
@@ -494,7 +488,8 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
 
  Future<EquityPlan?> fetchEquityPlan( context, container, postData ) async {
    String shortName = "fetchEquityPlan";
-
+   print("FETCH EQPLAN" );
+   
    final response = await awsPost( shortName, postData, context, container );
 
    if (response.statusCode == 201) {
@@ -512,7 +507,8 @@ Future<PEQSummary?> fetchPEQSummary( context, container, postData ) async {
 
 Future<Linkage?> fetchHostLinkage( context, container, postData ) async {
    String shortName = "fetchHostLinkage";
-
+   print( "FETCH HOSTLINK" );
+   
    final response = await awsPost( shortName, postData, context, container );
 
    if (response.statusCode == 201) {
@@ -545,12 +541,13 @@ Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
    }
 }
 
+// Associates hostrepos with CEP.  single uid, or all for given platform
 Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
    String shortName = "GetHostA";
    final response = await awsPost( shortName, postData, context, container );
+   print( "FETCH HOSTACC" );
    
    if (response.statusCode == 201) {
-      print( "FetchHostAcct: " );
       Iterable ha = json.decode(utf8.decode(response.bodyBytes));
       List<HostAccount> hostAccounts = ha.map((acct) => HostAccount.fromJson(acct)).toList();
       assert( hostAccounts.length > 0);
@@ -566,7 +563,6 @@ Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
       else{ return []; }
    }
 }
-
 
 // Lock uningested PEQActions, then return for processing.
 Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async {
