@@ -98,7 +98,7 @@ export function handler( event, context, callback) {
     else if( endPoint == "AddPSumLock")    { resultPromise = addPSumLock( rb.ceProjId ); }
     else if( endPoint == "PutEqPlan")      { resultPromise = putEqPlan( rb.NewPlan ); }
     else if( endPoint == "PutPeqMods")     { resultPromise = putPeqMods( rb.PeqMods, rb.CEProjectId ); }
-    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId ); }
+    else if( endPoint == "GetHostA")       { resultPromise = getHostA( rb.CEUserId, rb.HostPlatform ); }
     else if( endPoint == "PutHostA")       { resultPromise = putHostA( rb.NewHostA, rb.update, rb.pat ); }
     else if( endPoint == "PutPerson")      { resultPromise = putPerson( rb.NewPerson ); }
     else if( endPoint == "RecordLinkage")  { resultPromise = putLinkage( rb.summary ); }
@@ -1434,15 +1434,23 @@ async function getProjectStatus( repos ) {
 	});
 }
 
-async function getHostA( uid ) {
-    const paramsP = {
+async function getHostA( uid, plat ) {
+    var paramsP = typeof uid !== 'undefined' ? 
+    {
         TableName: 'CEHostUser',
         FilterExpression: 'CEUserId = :ceid',
         ExpressionAttributeValues: { ":ceid": uid },
 	Limit: 99,
+    } :
+    {
+        TableName: 'CEHostUser',
+        FilterExpression: 'HostPlatform = :plat',
+        ExpressionAttributeValues: { ":plat": plat },
+	Limit: 99,
     };
-
-    console.log( "Host Account repos", uid);
+    
+    
+    console.log( "Host Account repos", uid, plat);
     let hostAccPromise = paginatedScan( paramsP );
 
     let hostAccs = await hostAccPromise;

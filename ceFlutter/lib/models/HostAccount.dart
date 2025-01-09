@@ -40,7 +40,7 @@ class HostAccount {
             }
          }
       }
-      
+
       return HostAccount(
          hostPlatform:     json['HostPlatform'], 
          hostUserName:     json['HostUserName'],

@@ -352,7 +352,6 @@ Future<Map<String, dynamic>> fetchProfileImage( context, container, query ) asyn
    
    if (response.statusCode == 201) {
       final p = json.decode(utf8.decode(response.bodyBytes));
-      print( p.runtimeType.toString() );
       return p;
    } else if( response.statusCode == 204) {
       print( "Fetch: no Profile Image found" );
@@ -385,34 +384,9 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
    return null;
 }
 
-// Gets CEHostUser for a given platform
-Future<List<HostAccount>> fetchHostUser( context, container, hostPlatform ) async {
-   String shortName = "fetchHostUser";
-   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
-   final response = await awsPost( shortName, postData, context, container );
-   
-   if (response.statusCode == 201) {
-      List<HostAccount> res = [];
-      Iterable hu = json.decode(utf8.decode(response.bodyBytes));
-      for( var hostUser in hu ) {
-         print( "working on " + hostUser.toString() );
-         hostUser["ceProjects"] = [];
-         HostAccount ha = HostAccount.fromJson( hostUser );
-         res.add( ha );
-      }
-      return res;
-   } else if( response.statusCode == 204) {
-      print( "Fetch: no CEHostUsers found" );
-      return [];
-   } else {
-      bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchHostUser( context, container, hostPlatform ); }
-      else { return []; }
-   }
-}
 
 // Populates idHostMap
-Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, List<Person> cePeople ) async {
+Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person?> cePersons ) async {
    String shortName = "fetchHostMap";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
    final response = await awsPost( shortName, postData, context, container );
@@ -421,15 +395,13 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
       Iterable hu = json.decode(utf8.decode(response.bodyBytes));
       Map<String, Map<String,String>> t = new Map<String, Map<String, String>>();
       for( final hostUser in hu ) {
-         print( "working on " + hostUser.toString() );
+         print( "fhm working on " + hostUser.toString() );
          Map<String,String> vals = {};
          vals['ceUID']        = hostUser['CEUserId'];
          vals['hostUserName'] = hostUser['HostUserName'];
-         Person? peep = cePeople.firstWhereOrNull( (p) => p.id == vals['ceUID'] );
+         Person? peep = cePersons[ vals['ceUID'] ];
          assert( peep != null );
-         if( peep != null ) {
-            vals['ceUserName']   = peep!.userName;
-         }
+         vals['ceUserName']   = peep!.userName;
          t[ hostUser['HostUserId'] ] = vals;
       }
       return t;
@@ -438,7 +410,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
       return {};
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform, cePeople ); }
+      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform, cePersons ); }
       else { return {}; }
    }
 }
@@ -569,13 +541,13 @@ Future<PEQRaw?> fetchPEQRaw( context, container, postData ) async {
    }
 }
 
+// Associates hostrepos with CEP.  single uid, or all for given platform
 Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
    String shortName = "GetHostA";
    final response = await awsPost( shortName, postData, context, container );
    print( "FETCH HOSTACC" );
    
    if (response.statusCode == 201) {
-      print( "FetchHostAcct: " );
       Iterable ha = json.decode(utf8.decode(response.bodyBytes));
       List<HostAccount> hostAccounts = ha.map((acct) => HostAccount.fromJson(acct)).toList();
       assert( hostAccounts.length > 0);
@@ -591,7 +563,6 @@ Future<List<HostAccount>> fetchHostAcct( context, container, postData ) async {
       else{ return []; }
    }
 }
-
 
 // Lock uningested PEQActions, then return for processing.
 Future<List<PEQAction>> lockFetchPActions( context, container, postData ) async {

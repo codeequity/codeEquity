@@ -10,6 +10,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 import 'package:ceFlutter/screens/launch_page.dart';
 
 import 'package:ceFlutter/models/EquityPlan.dart';
+import 'package:ceFlutter/models/Person.dart';
 
 
 // enum accessibility funcs
@@ -144,6 +145,8 @@ Future<void> initMDState( context, container ) async {
 
    var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
 
+   // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
+   //      a list of cep-specific names then fetching that is likely to provide minimal gains, if any.  Leave it here.
    var futs = await Future.wait([
                                    (appState.ceHostAccounts[uid] == null ? 
                                     fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
@@ -155,9 +158,14 @@ Future<void> initMDState( context, container ) async {
                                    ]);
    appState.myHostAccounts = appState.ceHostAccounts[uid];
 
-   // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform, no CEPs.
-   // Depends on cePeople.
-   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePeople );
+   // Load cePersons 'index'
+   // XXX Scales poorly - could do this in the background, force wait when build idMapHost
+   for( Person p in appState.cePeople ) { appState.cePersons[p.id] = p;  }
+
+   // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.
+   // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
+   //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.
+   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePersons );
    
    print( "My CodeEquity Projects:" );
    print( appState.myHostAccounts );

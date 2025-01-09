@@ -53,18 +53,19 @@ class AppState {
    late String                          selectedUser;    // Looking at details for this user, currently
 
    late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, ceUserName, hostUserName
-
+   late List< String>                      hostPlatformsLoaded;  // Which platform's users have already been bulk-loaded
 
    // Core data, fetched as needed
    late List<CEProject>                  ceProjects;      // all ceProjects
    late List<Person>                     cePeople;        // all cePeople
    late Map< String, List<PEQAction> >   userPActs;       // hostUser  : pactions                          
    late Map< String, List<PEQ> >         userPeqs;        // hostUser  : peqs where user was pact actor
-   late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount
-   late Map< String, Person? >           cePersons;       // ceUser    : Person
+   late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount (list with 1 HA per platform)
+   late Map< String, Person? >           cePersons;       // ceUser    : points at Person in cePeople
    late Map< String, PEQSummary? >       cePEQSummaries;  // ceProject : PEQSummary
    late Map< String, Linkage? >          ceHostLinks;     // ceProject : Linkage
    late Map< String, EquityPlan? >       ceEquityPlans;   // ceProject : EquityPlan
+   late Map< String, Image? >            ceImages;        // ceUser or ceProject : image
    
    // Pointers into Core data
    late PEQSummary?       myPEQSummary;          // Summary info for the selectedCEProject
@@ -123,9 +124,10 @@ class AppState {
    initAppData() {
       loaded = false;
 
-      ceUserId     = "";
-      idMapHost    = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
-      funny        = "";
+      ceUserId            = "";
+      idMapHost           = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
+      funny               = "";
+      hostPlatformsLoaded = [];
 
       hostUpdated    = false;
 
@@ -145,14 +147,15 @@ class AppState {
       ceProjects   = [];
       cePeople     = [];
 
-      userPActs      = new Map<String, List<PEQAction>>();
-      userPeqs       = new Map<String, List<PEQ>>();
-      ceHostAccounts = new Map<String, List<HostAccount>>();
-      cePersons      = new Map<String, Person?>();
-      cePEQSummaries = new Map<String, PEQSummary?>();
-      ceHostLinks    = new Map<String, Linkage?>();
-      ceEquityPlans  = new Map<String, EquityPlan?>();
-
+      userPActs       = new Map<String, List<PEQAction>>();
+      userPeqs        = new Map<String, List<PEQ>>();
+      ceHostAccounts  = new Map<String, List<HostAccount>>();
+      cePersons       = new Map<String, Person?>();
+      cePEQSummaries  = new Map<String, PEQSummary?>();
+      ceHostLinks     = new Map<String, Linkage?>();
+      ceEquityPlans   = new Map<String, EquityPlan?>();
+      ceImages        = new Map<String, Image?>();          // XXX this needs to hook into platform cache 
+      
       myPEQSummary   = null;
       myEquityPlan   = null;
       myHostAccounts = [];         // ceUID+hUID: ceProjects, ceProj.repos for current logged in user
