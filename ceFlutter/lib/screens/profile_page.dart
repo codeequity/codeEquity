@@ -83,7 +83,9 @@ class _CEProfileState extends State<CEProfilePage> {
         if( profId == "" ) { profId = appState.ceUserId; }
         print( "Getting stuff (maybe) for " + profId );
         String query = '{ "Endpoint": "GetHostA", "CEUserId": "$profId" }';
-
+        String pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$profId" }}';
+        
+        Map<String,dynamic> rawPITable = {};
         late Person? newp;
         var futs = await Future.wait([
                                         (appState.cePersons[profId] == null ? 
@@ -92,6 +94,10 @@ class _CEProfileState extends State<CEProfilePage> {
                                         
                                         (appState.ceHostAccounts[profId] == null ? 
                                          fetchHostAcct( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p ) :
+                                         new Future<bool>.value(true) ),
+
+                                        (appState.ceImages[profId] == null ? 
+                                         fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ) :
                                          new Future<bool>.value(true) ),
                                         
                                         ]);
@@ -111,7 +117,15 @@ class _CEProfileState extends State<CEProfilePage> {
         
         assert( appState.cogUser != null );
         if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "NOTE!  Profile is not for " + myself!.userName ); }
-         // need setState to trigger makeBody else blank info
+        
+        if( rawPITable.keys.length > 0 ) {
+           print( rawPITable["CEProfileId"] + " " + rawPITable["ByteData"].length.toString() );
+           Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
+           appState.ceImages[profId] = Image.memory( bytes, width: lhsFrameMaxWidth );
+           assert( appState.ceImages[profId] != null );
+        }
+        profileImage = appState.ceImages[profId];
+
          setState(() => screenOpened = false );
      }
   }
@@ -172,8 +186,8 @@ class _CEProfileState extends State<CEProfilePage> {
            // final x = assetImageByteData.buffer.asUint8List();
            Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
            appState.ceImages[pid] = Image.memory( bytes, width: lhsFrameMaxWidth );
+           assert( appState.ceImages[pid] != null );
         }
-        assert( appState.ceImages[pid] != null );
         profileImage = appState.ceImages[pid];
         
         // need setState to trigger makeBody else blank info
@@ -471,9 +485,9 @@ class _CEProfileState extends State<CEProfilePage> {
      final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
      final ceUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
+     Image? pi        = null;
 
      assert( ceUserName != null && ceUserName!.length > 0 );
-     var profileImage = ceUserName![0] + "Grad.jpg"; 
 
      Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false, imagePng: null, image: null );
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
@@ -483,7 +497,8 @@ class _CEProfileState extends State<CEProfilePage> {
      if( !screenOpened ) {
         assert( myself != null );
         cePeep = myself!;
-        profileImage = cePeep.userName[0].toLowerCase() + "Grad.jpg";         
+
+        if( profileImage != null ) { pi   = profileImage!; }        
         hostAccs = screenArgs["id"] == "" ? appState.myHostAccounts : ( appState.ceHostAccounts[ screenArgs["id"] ] ?? [] );
         
         // CE Host User
@@ -497,6 +512,14 @@ class _CEProfileState extends State<CEProfilePage> {
            }
         }
      }
+
+     if( pi == null ) {
+        String uname = cePeep.userName.length > 0 ? cePeep.userName : ceUserName;
+        pi = Image.asset( "images/"+uname[0].toLowerCase() + "Grad.jpg",
+                          width: lhsFrameMaxWidth,
+                          color: Colors.grey.withOpacity(0.05),
+                          colorBlendMode: BlendMode.darken );
+     }
      
      return Wrap(
         children: [
@@ -506,16 +529,16 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                  spacer, 
-                 Image.asset( "images/"+profileImage,
-                              width: lhsFrameMaxWidth,
-                              color: Colors.grey.withOpacity(0.05),
-                              colorBlendMode: BlendMode.darken ),
+                 pi,
                  makeTitleText( appState, cePeep.firstName + " " + cePeep.lastName, textWidth, false, 1, fontSize: 24 ),
                  makeTitleText( appState, cePeep.userName + " (" + cePeep.id + ")", textWidth, false, 1 ),
                  makeTitleText( appState, cePeep.email, textWidth, false, 1 ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
-                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async { notYetImplemented(context); }),
+                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
+                                         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
+                                         Navigator.push( context, newPage);
+                                      }),
                                    makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 2.0, _logout( context, appState) )                                                    
                           ]),
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
