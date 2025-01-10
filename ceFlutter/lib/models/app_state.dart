@@ -85,7 +85,6 @@ class AppState {
    late bool   updateEquityPlan;        // updated the tree, with moves, indents, etc
    late bool   updateEquityView;        // updated the viewable list, with dynamo, or newly updated tree
 
-   late bool   ceProjectLoading;        // allows spin while ceProject is being constructed from aws
    late bool   peqAllocsLoading;        // allows spin while summary frame peq allocations are being constructed
 
    late bool   userPActUpdate;  // need to upate pact list
@@ -138,7 +137,6 @@ class AppState {
       equityTree         = null;
       updateEquityPlan   = false;
       updateEquityView   = false;
-      ceProjectLoading   = false;
       peqAllocsLoading   = false;
 
       selectedCEProject = "";

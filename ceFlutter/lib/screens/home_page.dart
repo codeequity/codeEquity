@@ -27,6 +27,7 @@ class _CEHomeState extends State<CEHomePage> {
 
    late var      container;
    late AppState appState;
+   late bool     ceProjectLoading;
    
    var      runningLHSHeight;
 
@@ -41,6 +42,7 @@ class _CEHomeState extends State<CEHomePage> {
    @override
    void initState() {
       super.initState();
+      ceProjectLoading = false;
    }
 
    @override
@@ -94,9 +96,9 @@ class _CEHomeState extends State<CEHomePage> {
             onTap: () async
             {
                appState.selectedCEProject = itemName;
-               setState(() => appState.ceProjectLoading = true );
+               setState(() => ceProjectLoading = true );
                await reloadCEProject( context, container );
-               appState.ceProjectLoading = false;
+               ceProjectLoading = false;
                
                MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
                Navigator.push( context, newPage );
@@ -292,7 +294,7 @@ class _CEHomeState extends State<CEHomePage> {
             Container( width: w1, height: appState.GAP_PAD ),
             Container( color: appState.BACKGROUND, child: makeTitleText( appState, "Activity", w1, true, 1 )),
             Container( width: w1, height: 1.5 * appState.CELL_HEIGHT ),
-            appState.ceProjectLoading ?
+            ceProjectLoading ?
                Wrap( spacing: 0, children: [ Container( width: w1, height: 2.0 * appState.CELL_HEIGHT ), CircularProgressIndicator() ] ) : 
                Container( color: Colors.white, child: makeBodyText( appState, appState.funny, w2, true, 1 ))
             ]);

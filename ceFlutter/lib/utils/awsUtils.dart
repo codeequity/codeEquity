@@ -22,7 +22,7 @@ import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
 
-
+/*
 Future<void> logoutWait( appState ) async {
    final wrapper = (() async {
          try {
@@ -36,8 +36,8 @@ Future<void> logoutWait( appState ) async {
       });
    wrapper();
 }      
-
-bool checkReauth( context, container ) {
+*/
+Future<bool> checkReauth( context, container ) async {
    final appState  = container.state;
    print( "" );
    print( "" );
@@ -57,7 +57,7 @@ bool checkReauth( context, container ) {
    appState.authRetryCount += 1; 
    if( appState.authRetryCount > 5 ) {
       print( "Too many reauthorizations, please sign in again" );
-      logout( context, appState );
+      await logout( context, appState );
       showToast( "Reauthorizing failed - your cloud authorization has expired.  Please re-login." ); 
       return false;
    }
@@ -109,7 +109,7 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
       String msg = e.toString();  // can't seem to cast as ClientException, the runtimeType, which has a message property
       if( msg.contains( "ClientException: XMLHttpRequest error.," ) && msg.contains( "amazonaws.com/prod/find" )) {
          print( "XML http request error, likely auth expired " + shortName + postData );
-         checkReauth( context, container );
+         await checkReauth( context, container );
          await container.getAuthTokens( true );
          return await awsPost( shortName, postData, context, container, reauth: "true" );
       }
@@ -123,8 +123,9 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
 // If failure is authorization, we can reauthorize to fix it, usually
 Future<bool> checkFailure( response, shortName, context, container ) async {
    bool retval = false;
-   if (response.statusCode == 401 ) {  
-      if( checkReauth( context, container ) ) {
+   if (response.statusCode == 401 ) {
+      bool gotit = await checkReauth( context, container ); 
+      if( gotit ) {
          await container.getAuthTokens( true );
          retval = true;
       }

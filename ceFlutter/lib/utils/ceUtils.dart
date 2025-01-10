@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
 
 import 'package:ceFlutter/screens/launch_page.dart';
 
@@ -72,6 +73,24 @@ String makePercent(double n) {
    return ret + "%";
 }
 
+Future<void> logout( context, appState ) async {
+
+   try {
+      appState.cogUser = await appState.cogUserService.signOut();
+   } catch(e, stacktrace) {
+      print(e);
+      print(stacktrace);
+      showToast( e.toString() );
+   }           
+   
+   Navigator.pushAndRemoveUntil(
+      context, 
+      MaterialPageRoute(builder: (context) => CELaunchPage()),
+      ModalRoute.withName("CESplashPage")
+      );
+}
+
+/*
 void logout( context, appState ) async {
    final wrapper = (() async {
 
@@ -85,7 +104,7 @@ void logout( context, appState ) async {
       });
    wrapper();
 }      
-
+*/
 
 
 // Called each time click different repo on homepage
