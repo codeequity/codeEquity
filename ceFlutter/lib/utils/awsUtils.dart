@@ -108,8 +108,10 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
       // XXX No status code?.. some errors are not auth
       String msg = e.toString();  // can't seem to cast as ClientException, the runtimeType, which has a message property
       if( msg.contains( "ClientException: XMLHttpRequest error.," ) && msg.contains( "amazonaws.com/prod/find" )) {
-         print( "XML http request error, likely auth expired " + shortName + postData );
-         await checkReauth( context, container );
+         var now = DateTime.now();
+         print( now.minute.toString() + " " + now.second.toString() + " " + now.millisecond.toString() + " XML http request error, likely auth expired " + shortName + postData );
+         bool authOk = await checkReauth( context, container );
+         if( !authOk ) { return response; }
          await container.getAuthTokens( true );
          return await awsPost( shortName, postData, context, container, reauth: "true" );
       }
@@ -122,6 +124,7 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
 
 // If failure is authorization, we can reauthorize to fix it, usually
 Future<bool> checkFailure( response, shortName, context, container ) async {
+   print( "checkFailure.. " + response.statusCode.toString() + " " + json.decode(utf8.decode(response.bodyBytes)).toString());
    bool retval = false;
    if (response.statusCode == 401 ) {
       bool gotit = await checkReauth( context, container ); 
@@ -396,7 +399,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
       Iterable hu = json.decode(utf8.decode(response.bodyBytes));
       Map<String, Map<String,String>> t = new Map<String, Map<String, String>>();
       for( final hostUser in hu ) {
-         print( "fhm working on " + hostUser.toString() );
+         // print( "fhm working on " + hostUser.toString() );
          Map<String,String> vals = {};
          vals['ceUID']        = hostUser['CEUserId'];
          vals['hostUserName'] = hostUser['HostUserName'];

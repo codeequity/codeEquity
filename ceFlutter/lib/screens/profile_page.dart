@@ -126,7 +126,7 @@ class _CEProfileState extends State<CEProfilePage> {
         }
         profileImage = appState.ceImages[profId];
 
-         setState(() => screenOpened = false );
+        setState(() => screenOpened = false );
      }
   }
 
@@ -353,7 +353,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> repoWid = [spacer];
      Widget collabWid     = spacer;
-     Image? pi            = null;
+     Widget? pi            = null;
      CEProject cep        = new CEProject( ceProjectId: "A", ceProjectComponent: "", description: "", hostPlatform: "", organization: "",
                                            ownerCategory: "", projectMgmtSys: "", repositories: [] );
      String cepName       = cep.ceProjectId;
@@ -391,10 +391,19 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      if( pi == null ) {
-        pi = Image.asset( "images/"+cepName![0].toLowerCase() + "Grad.jpg",
-                          width: lhsFrameMaxWidth,
-                          color: Colors.grey.withOpacity(0.05),
-                          colorBlendMode: BlendMode.darken );
+        if( cepName == "A" ) {
+           double gap = lhsFrameMaxWidth / 3.0;
+           pi = Padding(
+              padding: EdgeInsets.fromLTRB(gap, gap/2.0, gap, gap/2.0),
+              child: Container( width: gap, height: gap, child: CircularProgressIndicator() )
+              );
+        }
+        else {
+           pi = Image.asset( "images/"+cepName![0].toLowerCase() + "Grad.jpg",
+                             width: lhsFrameMaxWidth,
+                             color: Colors.grey.withOpacity(0.05),
+                             colorBlendMode: BlendMode.darken );
+        }
      }
 
      double accr     = ep.totalAllocation > 0 ? ( 1.0 * psum.accruedTot ) / ep.totalAllocation : 0.0;
@@ -410,7 +419,7 @@ class _CEProfileState extends State<CEProfilePage> {
               children: <Widget>[
                  spacer, 
                  pi,
-                 makeTitleText( appState, cep.ceProjectId, textWidth * 1.1, false, 1, fontSize: 24 ),
+                 makeTitleText( appState, cep.ceProjectId == "A" ? "" : cep.ceProjectId, textWidth * 1.1, false, 1, fontSize: 24 ),
                  makeTitleText( appState, cep.ceProjectComponent, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
                  makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
@@ -485,11 +494,11 @@ class _CEProfileState extends State<CEProfilePage> {
      final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
      final ceUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
-     Image? pi        = null;
+     Widget? pi        = null;
 
      assert( ceUserName != null && ceUserName!.length > 0 );
 
-     Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false, imagePng: null, image: null );
+     Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false );
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
      List<HostAccount>   hostAccs   = [];
      Widget              cepWid     = spacer;
@@ -514,13 +523,24 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      if( pi == null ) {
-        String uname = cePeep.userName.length > 0 ? cePeep.userName : ceUserName;
-        pi = Image.asset( "images/"+uname[0].toLowerCase() + "Grad.jpg",
-                          width: lhsFrameMaxWidth,
-                          color: Colors.grey.withOpacity(0.05),
-                          colorBlendMode: BlendMode.darken );
+        if( cePeep.userName == "" ) {
+           double gap = lhsFrameMaxWidth / 3.0;
+           pi = Padding(
+              padding: EdgeInsets.fromLTRB(gap, gap/2.0, gap, gap/2.0),
+              child: Container( width: gap, height: gap, child: CircularProgressIndicator() )
+              );
+        }
+        else {
+           String uname = cePeep.userName.length > 0 ? cePeep.userName : ceUserName;
+           pi = Image.asset( "images/"+uname[0].toLowerCase() + "Grad.jpg",
+                             width: lhsFrameMaxWidth,
+                             color: Colors.grey.withOpacity(0.05),
+                             colorBlendMode: BlendMode.darken );
+        }
      }
-     
+
+     String hname = hostPeep["userName"] == "" ? "" : hostPeep["userName"]! + " (" + hostPeep["id"]! + ")";
+     String cname = cePeep.userName == "" ? "" : cePeep.userName + " (" + cePeep.id + ")";
      return Wrap(
         children: [
            spacer, 
@@ -531,7 +551,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  spacer, 
                  pi,
                  makeTitleText( appState, cePeep.firstName + " " + cePeep.lastName, textWidth, false, 1, fontSize: 24 ),
-                 makeTitleText( appState, cePeep.userName + " (" + cePeep.id + ")", textWidth, false, 1 ),
+                 makeTitleText( appState, cname, textWidth, false, 1 ),
                  makeTitleText( appState, cePeep.email, textWidth, false, 1 ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
@@ -543,7 +563,7 @@ class _CEProfileState extends State<CEProfilePage> {
                           ]),
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "GitHub ID", textWidth, false, 1, fontSize: 18 ),
-                 makeTitleText( appState, hostPeep["userName"]! + " (" + hostPeep["id"]! + ")", textWidth, false, 1 ),
+                 makeTitleText( appState, hname, textWidth, false, 1 ),
                  ]),
            spacer,            
            Column( 
@@ -551,7 +571,7 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                  spacer,
-                 makeTitleText( appState, cePeep.firstName + "'s CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, cePeep.firstName + (cePeep.firstName == "" ? " " : "'s ") + "CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
                  spacer,
                  cepWid,
                  spacer,

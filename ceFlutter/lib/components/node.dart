@@ -222,7 +222,7 @@ class Node extends StatelessWidget implements Tree {
 
      final priorExpansionState = _tileExpanded;
 
-     if( appState!.verbose >= 2 ) { print( "Before GT expanded? " + _tileExpanded.toString() ); }
+     if( appState!.verbose >= 3 ) { print( "Before GT expanded? " + _tileExpanded.toString() ); }
      List<Widget> anode = [];
      // anode.add( this );
      anode.add( getTile( ) );
@@ -287,7 +287,7 @@ class Node extends StatelessWidget implements Tree {
         if( appState!.verbose >= 3 ) { print( "NRENDER $title tileExpanded CHANGES(!!) to: $_tileExpanded" ); }
      }
 
-     if( appState!.verbose >= 2 ) { print( "GT $title " + _tileExpanded.toString() ); }
+     if( appState!.verbose >= 3 ) { print( "GT $title " + _tileExpanded.toString() ); }
      
      return Container(
         width: width,

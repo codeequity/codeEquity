@@ -451,6 +451,8 @@ Future<bool> logout( WidgetTester tester ) async {
    expect( profilePage,   findsOneWidget );
    await tester.tap( profilePage );
    await pumpSettle( tester, 2 );
+   // load/create image takes time now.
+   await pumpSettle( tester, 4 );
 
    expect( await verifyOnProfilePage( tester ), true );
 

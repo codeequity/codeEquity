@@ -162,7 +162,7 @@ class UserService {
    // Login user
    Future<User?> login(String name, String password) async {
       print( "Cog start login" );
-      print( "XXX Cog start login " + name +  " " + password);
+      // print( "XXX Cog start login " + name +  " " + password);
       assert( _userPool != null );
       _cognitoUser = CognitoUser(name, _userPool!, storage: _userPool!.storage);
 

@@ -167,7 +167,7 @@ class AppState {
    init() {
       screenHeight = -1;
       screenWidth  = -1;
-      verbose      = 1;
+      verbose      = 2;  
       
       // Cognito values
       authRetryCount = 0;

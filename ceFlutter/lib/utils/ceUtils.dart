@@ -141,7 +141,7 @@ Future<void> reloadCEProject( context, container ) async {
    
    if( appState.myEquityPlan == null ) { appState.myEquityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
 
-   if( appState.verbose >= 2 ) {
+   if( appState.verbose >= 3 ) {
       print( "Got Links?" ); 
       appState.myHostLinks == null ? print( "nope - no associated repo" ) : print( appState.myHostLinks.toString() );
    }
@@ -184,10 +184,10 @@ Future<void> initMDState( context, container ) async {
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
    //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.
-   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePersons );
+   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePersons ); // XXX gh
    
-   print( "My CodeEquity Projects:" );
-   print( appState.myHostAccounts );
+   // print( "My CodeEquity Projects:" );
+   // print( appState.myHostAccounts );
 }
 
 
