@@ -66,6 +66,7 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
               });
 }
 
+
 Future<void> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc ) async {
 
@@ -246,20 +247,21 @@ Widget makeIndentedText( appState, title, width, wrap, lines ) {
                                        ))));
 }
 
-Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines ) {
+Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {lgap = -1, tgap=-1, bgap=0} ) {
 
    String lead = "";
    for( int i = 0; i < title.length; i++ ) {
       if( title[i] == " " ) { lead += " "; }
       else{ break; }
    }
-
+   lgap = lgap == -1 ? appState.GAP_PAD : lgap;
+   tgap = tgap == -1 ? appState.MID_PAD : tgap;
    Widget mr = MouseRegion(
       onEnter: hov,
       onExit: nohov,
       cursor: SystemMouseCursors.click,
       child: Padding(
-         padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
+         padding: EdgeInsets.fromLTRB(lgap, tgap, appState.TINY_PAD, bgap),
          child: IntrinsicWidth(
             key: Key( title ),
             child: Text(title.trim(), softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
