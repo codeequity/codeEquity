@@ -124,7 +124,7 @@ class _CESignupState extends State<CESignupPage> {
                   appState.ceUserId = pid;
                   
                   Person user = new Person( id: pid, firstName: "Marion", lastName: "Star", userName: usernameController.text,
-                                            email: attributeController.text, locked: false, imagePng: null, image: null );
+                                            email: attributeController.text, locked: false );
                   
                   String newUser = json.encode( user );
                   String ppostData = '{ "Endpoint": "PutPerson", "NewPerson": $newUser }';

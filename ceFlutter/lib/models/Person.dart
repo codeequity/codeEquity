@@ -9,22 +9,13 @@ class Person {
    String       lastName;
    String       userName;
    String       email;
-   bool               locked;
-   final Uint8List?   imagePng;     // ONLY   use to, from and in dynamoDB
-   final Image?       image;        // ALWAYS use elsewhere
+   bool         locked;
 
    Person({required this.id, required this.firstName, required this.lastName, required this.userName,
-            required this.email, required this.locked, required this.imagePng, required this.image});
+            required this.email, required this.locked});
    
    dynamic toJson() {
-      if( imagePng == null ) {
-         return { 'id': id, 'firstName': firstName, 'lastName': lastName, 'userName': userName, 'email': email,
-               'locked': false, 'imagePng': null }; 
-
-      } else {
-         return { 'id': id, 'firstName': firstName, 'lastName': lastName, 'userName': userName, 'email': email, 
-               'locked': false, 'imagePng': String.fromCharCodes( imagePng! ) };
-      }
+      return { 'id': id, 'firstName': firstName, 'lastName': lastName, 'userName': userName, 'email': email, 'locked': false }; 
    }
 
    // No one found.  return empty 
@@ -36,21 +27,11 @@ class Person {
          userName:   "",
          email:      "",
          locked:     false,
-         imagePng:   null,
-         image:      null
          );
    }
    
    factory Person.fromJson(Map<String, dynamic> json) {
 
-      var imagePng;
-      var image;
-      final dynamicImage = json['ImagePng'];   // string rep of bytes
-      if( dynamicImage != null ) {
-         imagePng =  Uint8List.fromList( dynamicImage.codeUnits );   // codeUnits gets Uint16List
-         image = Image.memory( imagePng );
-      }
-      
       return Person(
          id:          json['CEUserId'],
          firstName:   json['First'],
@@ -58,8 +39,6 @@ class Person {
          userName:    json['CEUserName'],
          email:       json['Email'],
          locked:      json['Locked'],
-         imagePng:    imagePng,
-         image:       image
          );
    }
 
@@ -72,8 +51,6 @@ class Person {
          userName:    p.userName,
          email:       p.email,
          locked:      p.locked,
-         imagePng:    p.imagePng,
-         image:       p.image
          );
    }
 
@@ -87,7 +64,6 @@ class Person {
       res += "\n   userName: " + userName;
       res += "\n   email: " + email;
       res += "\n   id: " + id;
-      if( image != null ) { res += "\n   there is an image"; }
 
       return res;
    }

@@ -129,6 +129,57 @@ class UserService {
       print( "cogUserService: Exit" );
       return _session!.isValid();
    }
+
+
+   bool checkTokenValidity(String token) {
+      if (DateTime.now().add(Duration(minutes: 1)).isBefore(tokenExpiration(token))) {
+         return true;
+      }
+      return false;
+   }
+   
+   
+   // https://github.com/furaiev/amazon-cognito-identity-dart-2/issues/97
+   DateTime tokenExpiration(String token) {
+      final parts = token.split('.');
+      
+      if (parts.length != 3) {
+         print( "Bad length" );
+         assert( false );
+         // throw InvalidTokenException();
+      }
+      
+      final payloadMap = json.decode(_decodeBase64(parts[1]));
+      
+      if (payloadMap is! Map<String, dynamic>) {
+         print( "bad payload" );
+         assert( false );
+         // throw InvalidPayloadException();
+      }
+      
+      return DateTime.fromMillisecondsSinceEpoch(payloadMap['exp'] * 1000);
+   }
+   
+   String _decodeBase64(String str) {
+      var output = str.replaceAll('-', '+').replaceAll('_', '/');
+      
+      switch (output.length % 4) {
+      case 0:
+         break;
+      case 2:
+         output += '==';
+         break;
+      case 3:
+         output += '=';
+         break;
+      default:
+         print( "bad base64" );
+         assert( false );
+         // throw InvalidBase64Exception();
+      }
+      
+      return utf8.decode(base64Url.decode(output));
+   }
    
    // Get existing user from session with his/her attributes
    Future<User?> getCurrentUser() async {
@@ -158,11 +209,30 @@ class UserService {
       // await _session.getAwsCredentials(_session.getIdToken().getJwtToken());
       return _session!.getIdToken().getJwtToken();
    }
+
+   // id Token is a base64 string that can be decoded and inspected.  It contains name, username, email, time it will expire, is used to authenticate user w/out password.
+   // access token is similar, but is used to identify scopes available to user.
+   // refresh token is an encrypted black box, can not look into it.
+   // Default expirations for all tokens are part of the cognito user pool app settings, set upon construction and modifiable.
+   // When the id token expires, refresh token can be used to update it.   Ha.  What really happens is you use the refresh token to
+   // refresh the session, from which you can then acquire new id and access tokens.
+   Future<void> refresh() async {
+      if (_cognitoUser == null || _session == null) {
+         print( "Uh oh.. null doodies" );
+      }
+      else {
+         CognitoRefreshToken? sr = _session!.refreshToken;
+         assert( sr != null );
+         
+         _session = await _cognitoUser!.refreshSession( sr! );
+         assert( _session != null );
+      }
+   }
    
    // Login user
    Future<User?> login(String name, String password) async {
       print( "Cog start login" );
-      print( "XXX Cog start login " + name +  " " + password);
+      // print( "XXX Cog start login " + name +  " " + password);
       assert( _userPool != null );
       _cognitoUser = CognitoUser(name, _userPool!, storage: _userPool!.storage);
 
@@ -229,7 +299,8 @@ class UserService {
    }
    
    // Check if user's current session is valid
-   Future<bool> checkAuthenticated() async {
+   //    Future<bool> checkAuthenticated() async {
+   bool checkAuthenticated() {
       if (_cognitoUser == null || _session == null) {
          return false;
       }

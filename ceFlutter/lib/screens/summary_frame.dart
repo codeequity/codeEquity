@@ -17,6 +17,11 @@ import 'package:ceFlutter/components/leaf.dart';
 
 import 'package:ceFlutter/screens/detail_page.dart';
 
+
+void _vPrint( appState, v, String astring ) {
+   if( v >= appState.verbose ) { print( astring ); }
+}
+
 // Workaround breaking change 5/2021
 // https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
@@ -71,11 +76,11 @@ class _CESummaryState extends State<CESummaryFrame> {
    @override
    void dispose() {
       super.dispose();
-      if( appState.verbose >= 2 ) { print( "SummaryFrame Disposessed!" ); }
+      _vPrint( appState, 4, "SummaryFrame Disposessed!" );
    }
 
    _pactDetail( path, convertedName, width, depthM1 ) {
-      // print( "Pact Detail looking for user " + path.toString() + " " + depthM1.toString() );
+      // _vPrint( appState, 4,  "Pact Detail looking for user " + path.toString() + " " + depthM1.toString() );
       final height = appState.CELL_HEIGHT;
       return GestureDetector(
          onTap: () async 
@@ -84,7 +89,7 @@ class _CESummaryState extends State<CESummaryFrame> {
             if( hostUserLogin == appState.UNASSIGN ) { appState.selectedUser = appState.UNASSIGN_USER; }
             else                                     { appState.selectedUser = hostUserLogin; }
             appState.userPActUpdate = true;
-            if( appState.verbose >= 1 ) { print( "pactDetail fired for: " + path.toString() ); }
+            _vPrint( appState, 4, "pactDetail fired for: " + path.toString() );
             widget.detailCallback( path );
          },
          child: makeTableText( appState, convertedName, width, height, false, 1, mux: (depthM1+1) * .5 )
@@ -96,7 +101,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    // Categories: Software Contributions: codeEquity web front end: Planned: unassigned:
    // header      alloc                   sub alloc                 plan
    _buildAllocationTree() {
-      if( appState.verbose >= 1 ) { print( "Build allocation tree" ); }
+      _vPrint( appState, 4, "Build allocation tree" );
       final width = frameMinWidth - 2*appState.FAT_PAD;  
       
       appState.allocTree = Node( "Category", 0, null, width, widget.pageStamp, widget.allocExpansionCallback, isInitiallyExpanded:true, header: true );
@@ -122,7 +127,7 @@ class _CESummaryState extends State<CESummaryFrame> {
          // down the road, they become nodes
          for( int i = 0; i < sitedCat.length; i++ ) {
             
-            if( appState.verbose >= 2 ) { print( "working on " + sitedCat.toString() + " : " + sitedCat[i] ); }
+            _vPrint( appState, 1, "working on " + sitedCat.toString() + " : " + sitedCat[i] );
 
             // Overly aggressive assert?
             assert( alloc.amount != null );
@@ -133,7 +138,7 @@ class _CESummaryState extends State<CESummaryFrame> {
             
             if( childNode is Leaf && !lastCat ) {
                // allocation leaf, convert to a node to accomodate plan/accrue
-               print( "... leaf in middle - convert" );
+               _vPrint( appState, 1, "... leaf in middle - convert" );
                curNode = (curNode as Node).convertToNode( childNode, widget.pageStamp );
             }
             else if( childNode == null ) {
@@ -143,7 +148,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   // alloc: [hier ... hier  project column assignee]
                   // alloc  |-may have ---| |-will have -----------|    equity plan has no info on last two.
                   if( i < sitedCat.length - 2 ) {
-                     if( appState.verbose >= 2 ) { print( "... hierarchy - resite " + sitedCat[i] ); }
+                     _vPrint( appState, 1, "... hierarchy - resite " + sitedCat[i] );
                      List<dynamic> hier = appState.myEquityPlan!.site( [ sitedCat[i] ] );
                      hAlloc = hier[1];
                   }
@@ -153,7 +158,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                   curNode = tmpNode;
                }
                else {
-                  if( appState.verbose >= 2 ) { print( "... nothing found, last cat, add leaf" ); }
+                  _vPrint( appState, 1, "... nothing found, last cat, add leaf" );
                   // leaf.  amounts stay at leaves
 
                   // Hierarchy adds alloc amounts from equity plan in the case above.
@@ -182,11 +187,11 @@ class _CESummaryState extends State<CESummaryFrame> {
             }
             else if( childNode is Node ) {
                if( !lastCat ) {
-                  if( appState.verbose >= 2 ) { print( "... found - move on" ); }
+                  _vPrint( appState, 1, "... found - move on" );
                   curNode = childNode;
                }
                else {
-                  print( "... alloc adding into existing chain" );
+                  _vPrint( appState, 1, "... alloc adding into existing chain" );
                   assert( alloc.allocType == PeqType.allocation );
                   (childNode as Node).addAlloc( alloc.amount! );
                }
@@ -196,7 +201,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       }
       appState.updateAllocTree = false;
       
-      // print( appState.allocTree.toStr() );
+      // _vPrint( appState, 4, appState.allocTree.toStr() );
    }
    
 
@@ -212,10 +217,10 @@ class _CESummaryState extends State<CESummaryFrame> {
          if( appState.myPEQSummary!.ceProjectId == appState.selectedCEProject ) {
             assert( appState.allocTree != null );
             if( appState.myPEQSummary!.getAllAllocs().length == 0 ) { return []; }
-            if( appState.verbose >= 2 ) { print( "_showPalloc Update alloc" ); }
+            _vPrint( appState, 4, "_showPalloc Update alloc" );
             allocList.addAll( appState.allocTree!.getCurrent( container ) );
 
-            //print( appState.allocTree.toStr() );
+            //_vPrint( appState, 4, appState.allocTree.toStr() );
          }
       }
       else { return []; }
@@ -227,7 +232,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    Widget getAllocation( context ) {
       final w1 = 4 * appState.CELL_HEIGHT;
       final spinSize = 1.8*appState.BASE_TXT_HEIGHT;
-      if( appState.verbose >= 2 ) { print( "SF: Remake allocs" ); }
+      _vPrint( appState, 4, "SF: Remake allocs" );
       final buttonWidth = 100;
       
       List<List<Widget>> allocs = [];
@@ -266,7 +271,7 @@ class _CESummaryState extends State<CESummaryFrame> {
                         c, c, c, c, c ]] );
       
       // allocCount changes with each expand/contract
-      // print( "getAllocs, count: " + allocs.length.toString() );
+      // _vPrint( appState, 4, "getAllocs, count: " + allocs.length.toString() );
       var allocCount = min( allocs.length, 30 );
       var allocWidth = allocs[0].length;
 
@@ -316,7 +321,7 @@ class _CESummaryState extends State<CESummaryFrame> {
 
       maxPaneWidth = appState.MAX_PANE_WIDTH;
      
-      if( appState.verbose >= 2 ) { print( "SUMMARY BUILD. " + (appState == Null).toString()); }
+      _vPrint( appState, 4, "SUMMARY BUILD. " + (appState == Null).toString());
 
       return getAllocation( context );
       

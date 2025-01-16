@@ -22,7 +22,7 @@ import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
 
-
+/*
 Future<void> logoutWait( appState ) async {
    final wrapper = (() async {
          try {
@@ -36,32 +36,36 @@ Future<void> logoutWait( appState ) async {
       });
    wrapper();
 }      
+*/
 
-bool checkReauth( context, container ) {
+Future<bool> checkReauth( context, container ) async {
    final appState  = container.state;
-   print( "" );
-   print( "" );
-   print( "" );
    print (" !!! !!! !!!" );
    print (" !!! !!!" );
    print (" !!!" );
-   print( "Refreshing tokens.." );
+   print( "Refreshing tokens.. " + appState.authRetryCount.toString() + " attempt(s)" );
    print (" !!!" );
    print (" !!! !!!" );
    print (" !!! !!! !!!" );
-   print( "" );
-   print( "" );
    print( "" );
    showToast( "Cloud tokens expired, reauthorizing.." );
+
+   var retVal = false;
+   final MAX_ATTEMPTS = 5;
+   appState.authRetryCount += 1;
    
-   appState.authRetryCount += 1; 
-   if( appState.authRetryCount > 5 ) {
+   if ( appState.authRetryCount < MAX_ATTEMPTS ) { retVal = true; }
+   else if( appState.authRetryCount == MAX_ATTEMPTS ) {
       print( "Too many reauthorizations, please sign in again" );
-      logout( context, appState );
+      // This is useless.. if, say, reloadCEProject fails, caller (say, homepage) will still push project page..
+      // unless protect every nav.push...
+      assert( appState.cogUser != null );
+      print( "Before logout valid? " + appState.cogUser!.confirmed.toString() );
+      await logout( context, appState );
+      print( "After logout valid? " + appState.cogUser!.confirmed.toString() );
       showToast( "Reauthorizing failed - your cloud authorization has expired.  Please re-login." ); 
-      return false;
    }
-   else { return true; }
+   return retVal;
 }
 
 Future<bool> checkValidConfig( context ) async {
@@ -87,16 +91,29 @@ Future<bool> checkValidConfig( context ) async {
 
 
 Future<http.Response> awsPost( String shortName, postData, context, container, {reauth = false} ) async {
-
+   
    final appState  = container.state;
    if( appState.verbose >= 3 ) { print( shortName ); }  // pd is a string at this point
-
+   
    final gatewayURL = Uri.parse( appState.apiBasePath + "/find" );
-
+   
    if( appState.idToken == "" ) { print( "Access token appears to be empty!"); }
 
    var response;
 
+   if( appState.verbose >= 3 ) {
+      var now = DateTime.now();
+      var expire = appState.cogUserService.tokenExpiration( appState.idToken );
+      print( "awsPost reauthbusy? " + appState.reauthBusy.toString()  + shortName + " " + now.hour.toString() + " " + now.minute.toString() + " " + now.second.toString() );
+      print( "token expires " + " " + expire.hour.toString() + " " + expire.minute.toString() + " " + expire.second.toString());
+      print( "Time to expire: " + expire.difference( now ).inMinutes.toString() + " minutes." );
+   }
+   
+   while( appState.reauthBusy ) {
+      print( "awsPost for " + shortName + " waiting for reauth to finish" );
+      await Future.delayed(Duration(seconds: 2));      
+   }
+   
    try {
       response = await http.post(
          gatewayURL,
@@ -104,28 +121,50 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
          body: postData
          );
    } catch( e, stacktrace ) {
+      print( "\n" );
       print( e );
-      // XXX No status code?.. some errors are not auth
       String msg = e.toString();  // can't seem to cast as ClientException, the runtimeType, which has a message property
       if( msg.contains( "ClientException: XMLHttpRequest error.," ) && msg.contains( "amazonaws.com/prod/find" )) {
-         print( "XML http request error, likely auth expired " + shortName + postData );
-         checkReauth( context, container );
-         await container.getAuthTokens( true );
-         return await awsPost( shortName, postData, context, container, reauth: "true" );
+         // no response.  construct empty.
+         http.Response err = new http.Response("blat", 401 );
+         return err;
       }
    }
 
-   if (response.statusCode != 201 && response.statusCode != 204) { print( "Error.  aws post error " + shortName + " " + postData ); }
+   if( response.statusCode != 201 && response.statusCode != 204) { print( "Error.  aws post error " + shortName + " " + postData ); }
    
    return response;
 }
 
 // If failure is authorization, we can reauthorize to fix it, usually
 Future<bool> checkFailure( response, shortName, context, container ) async {
-   bool retval = false;
-   if (response.statusCode == 401 ) {  
-      if( checkReauth( context, container ) ) {
-         await container.getAuthTokens( true );
+   print( "checkFailure.. " + shortName + " " + response.statusCode.toString() );
+   final appState  = container.state;
+   bool retval     = false;
+
+   if( response.statusCode == 401 ) {
+      if( !appState.reauthBusy ) {
+         bool gotit = await checkReauth( context, container ); 
+         if( gotit ) {
+
+            appState.reauthBusy = true;
+
+            await container.getAuthTokens( true );
+            await Future.delayed(Duration(seconds: appState.authRetryCount - 1)); 
+
+            retval = true;
+            appState.reauthBusy = false;
+         }
+         else {
+            print( "Reauth failed: " + shortName );
+         }
+      }
+      else {
+         // if multiple requests arrive during refresh, wait a bit then retry original call.
+         // for example, click on projects, get future.wait with multiple async posts.  One will refresh, others use new idtoken.
+         // delay is OK - by definition, future.wait will wait for all in group to complete before moving on.
+         print( "Busy with reauth.. will retry request for: " + shortName );
+         await Future.delayed(Duration(seconds: appState.authRetryCount - 1 ));
          retval = true;
       }
    }
@@ -395,7 +434,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
       Iterable hu = json.decode(utf8.decode(response.bodyBytes));
       Map<String, Map<String,String>> t = new Map<String, Map<String, String>>();
       for( final hostUser in hu ) {
-         print( "fhm working on " + hostUser.toString() );
+         // print( "fhm working on " + hostUser.toString() );
          Map<String,String> vals = {};
          vals['ceUID']        = hostUser['CEUserId'];
          vals['hostUserName'] = hostUser['HostUserName'];

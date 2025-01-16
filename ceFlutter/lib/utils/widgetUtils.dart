@@ -7,6 +7,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/utils/search.dart';
 
+import 'package:ceFlutter/utils/ceUtils.dart';
+
 import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
@@ -65,6 +67,7 @@ void popScroll( BuildContext context, scrollHeader, scrollBody, dismissFunc ) {
                        ]);
               });
 }
+
 
 Future<void> editList( BuildContext context, appState, scrollHeader,
                        List<String> itemHeaders, List<TextEditingController> controllers, List<String> values, saveFunc, cancelFunc, deleteFunc ) async {
@@ -246,20 +249,21 @@ Widget makeIndentedText( appState, title, width, wrap, lines ) {
                                        ))));
 }
 
-Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines ) {
+Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {lgap = -1, tgap=-1, bgap=0} ) {
 
    String lead = "";
    for( int i = 0; i < title.length; i++ ) {
       if( title[i] == " " ) { lead += " "; }
       else{ break; }
    }
-
+   lgap = lgap == -1 ? appState.GAP_PAD : lgap;
+   tgap = tgap == -1 ? appState.MID_PAD : tgap;
    Widget mr = MouseRegion(
       onEnter: hov,
       onExit: nohov,
       cursor: SystemMouseCursors.click,
       child: Padding(
-         padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
+         padding: EdgeInsets.fromLTRB(lgap, tgap, appState.TINY_PAD, bgap),
          child: IntrinsicWidth(
             key: Key( title ),
             child: Text(title.trim(), softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
@@ -374,7 +378,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
             {
                if( currentPage == "Home" ) { return; }
                MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
-               Navigator.push( context, newPage );
+               confirmedNav( context, container, newPage );
             },
             iconSize: iconSize,
             padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 2.0)
@@ -391,7 +395,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                   if( currentPage == "Project" ) { return; }
                   // MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
-                  Navigator.push( context, newPage);
+                  confirmedNav( context, container, newPage );
                },
                iconSize: iconSize,
                ),
@@ -402,7 +406,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                {
                   if( currentPage == "Profile" ) { return; }
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: {"id": "", "profType": "Person"} ));
-                  Navigator.push( context, newPage );
+                  confirmedNav( context, container, newPage );
                },
                iconSize: iconSize,
                padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 1.0)
@@ -415,7 +419,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                {
                   if( currentPage == "Settings" ) { return; }
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CESettingsPage());
-                  Navigator.push( context, newPage );
+                  confirmedNav( context, container, newPage );
                },
                iconSize: iconSize,
                padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 1.0)

@@ -5,6 +5,7 @@ import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ghUtils.dart';      // associateGH
+import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
@@ -57,8 +58,7 @@ class _CEAddHostState extends State<CEAddHostPage> {
                {
                   bool associated = await associateGithub( context, container, pat.text );
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
-                  Navigator.push( context, newPage );
-                  
+                  confirmedNav( context, container, newPage );
                }),
             Container( width: w ),
             ]);

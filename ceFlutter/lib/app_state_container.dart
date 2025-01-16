@@ -59,7 +59,7 @@ class _AppStateContainerState extends State<AppStateContainer> {
         print("... user service init done." );
         
         // XXX Inactive.  Useful for cookies?
-        bool isAuthenticated = await state.cogUserService!.checkAuthenticated();
+        bool isAuthenticated = state.cogUserService!.checkAuthenticated();
         print( "... auth done: " + isAuthenticated.toString() );
         if( isAuthenticated ) {
            state.cogUser = await state.cogUserService!.getCurrentUser();
@@ -96,15 +96,24 @@ class _AppStateContainerState extends State<AppStateContainer> {
   }
 
   Future<void> getAuthTokens( override ) async {
-     print( "GAT, with " + state.idToken );
-     if( state.accessToken == "" || state.idToken == "" || override == true) {
+     // print( "GAT, with " + state.idToken );
+     if( state.accessToken == "" || state.idToken == "" || override ) {
 
         // May not need accessToken, or refreshToken
         assert( state.cogUserService != null );         
-        String credentials = ( await state.cogUserService!.getCredentials() ) ?? "";
+        String credentials = "";
+
+        if( override ) {
+           print( "REFRESHING" );
+           await state.cogUserService!.refresh();
+           state.authRetryCount = 0;
+        }
+
+        credentials = ( await state.cogUserService!.getCredentials() ) ?? "";
         if( credentials == "" ) { print( "Warning.  Empty credentials." ); }
 
-        assert( state.cogUser != null );         
+        assert( state.cogUser != null );
+        // print( "GAT, new " + credentials );
         print( "GAT set: " + (state.cogUser!.email ?? ""));
         _db.collection('userNames').doc('userName').set({
            'uname': state.cogUser!.email,

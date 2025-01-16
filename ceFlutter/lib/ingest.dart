@@ -20,8 +20,9 @@ Function listEq = const ListEquality().equals;
 
 final CEUID_PLACEHOLDER = "HostUSER";
 
-void vPrint( appState, String astring ) {
-   if( appState.verbose >= 1 ) { print( astring ); }
+// So lower values harder to print
+void _vPrint( appState, v, String astring ) {
+   if( v >= appState.verbose ) { print( astring ); }
 }
 
 // XXX With move from Allocations stored with hostUserId, to ceUserId, uses of this should be reconsidered.
@@ -39,7 +40,7 @@ String _convertNameToId( appState, String aname ) {
 // NOTE: These are initial conditions, before todos are processed.
 Future _updateCEUID( appState, todos, context, container, peqMods ) async {
 
-   vPrint( appState, "Updating CE UIDs" );
+   _vPrint( appState, 4, "Updating CE UIDs" );
 
    for( var tup in todos ) {
       PEQAction pact = tup.item1;
@@ -112,8 +113,8 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
                   : appState.idMapHost[subCat]["ceUserId"];
    
 
-   if( splitAmount > 0 ) { vPrint( appState, "Adjust up   summary allocation " + suba.toString() ); }
-   else                  { vPrint( appState, "Adjust down summary allocation " + suba.toString() ); }
+   if( splitAmount > 0 ) { _vPrint( appState, 1, "Adjust up   summary allocation " + suba.toString() ); }
+   else                  { _vPrint( appState, 1, "Adjust down summary allocation " + suba.toString() ); }
 
    // Update, if already in place
    Allocation? alloc = appState.myPEQSummary.getByCategory( suba.toString() ) ?? null;
@@ -169,7 +170,7 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
    List<String> catBase = suba.sublist(0, suba.length-1);
    
    // Create allocs, if not already updated
-   vPrint( appState, " ... adding new Allocation" );
+   _vPrint( appState, 1, " ... adding new Allocation" );
    Allocation newAlloc = new Allocation( category: suba, categoryBase: catBase, amount: splitAmount, sourcePeq: {peqId: splitAmount}, allocType: peqType,
                                       ceUID: ceUID, hostUserId: assignee, vestedPerc: 0.0, notes: "", hostProjectId: pid );
 
@@ -221,7 +222,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
       kp = kp.toSet().toList();  // if this way to remove duplicates turns out to be slow, use hashmap
    }
 
-   vPrint( appState, "Initial known peq-allocs: " + kp.toString() );
+   _vPrint( appState, 4, "Initial known peq-allocs: " + kp.toString() );
 
    // XXX verify no longer seeing note:recreate
    // Case 1.  Fairly generic - if operation depends on peq, but haven't added it yet, swap the operation with the following confirm.add
@@ -231,7 +232,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
       PEQAction pact = todos[i].item1;
       PEQ       peq  = todos[i].item2;
 
-      vPrint( appState, i.toString() + ": Working on " + peq.hostIssueTitle + ": " + peq.id );
+      _vPrint( appState, 1, i.toString() + ": Working on " + peq.hostIssueTitle + ": " + peq.id );
 
       if( peq.id == "-1" ) { continue; }
       bool deleted = false;
@@ -248,28 +249,28 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
             assert( !ip.contains( peq.id ) );
             ip.add( peq.id );
             ignored = true;
-            vPrint( appState, "   Ignoring 2nd add of peq " + peq.hostIssueTitle + " " + peq.id );            
+            _vPrint( appState, 2, "   Ignoring 2nd add of peq " + peq.hostIssueTitle + " " + peq.id );            
          }
          else {
             kp.add( peq.id );
-            vPrint( appState, "   Adding known peq " + peq.hostIssueTitle + " " + peq.id );
+            _vPrint( appState, 1, "   Adding known peq " + peq.hostIssueTitle + " " + peq.id );
          }
       }
       else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete && pact.note != PActNotes['transfer'] ) {  
          assert( kp.contains( peq.id ) );
          kp.remove( peq.id );
          deleted = true;
-         vPrint( appState, "   Removing known peq " + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
+         _vPrint( appState, 1, "   Removing known peq " + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
       }
       else if( pact.verb == PActVerb.confirm && pact.action == PActAction.delete && pact.note == PActNotes['transfer'] ) {
-         vPrint( appState, "   Ignoring delete for relocated peq" + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
+         _vPrint( appState, 2, "   Ignoring delete for relocated peq" + peq.hostIssueTitle + " " + peq.id + " " + peq.active.toString());
          it.add( i );
          ignored = true;
       }
       else if ( pact.note == PActNotes['recreate'] ) {
          assert( pact.subject.length == 2 );   // pact.subject[0] --> pact.subject[1]
          if( kp.contains( pact.subject[1] )) {
-            vPrint( appState, "Add occured before recreate - swapping." );
+            _vPrint( appState, 2, "Add occured before recreate - swapping." );
             int kpIndex = -1;
             for( int j = 0; j < i; j++ ) {
                if( todos[j].item1.verb == PActVerb.confirm && todos[j].item1.action == PActAction.add ) {
@@ -298,21 +299,21 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
             // sort is lowest to highest.  Keep swapping current todo up the chain in reverse order, has the effect of pushing all down.
             int confirmAdd = i;
             for( int j = dp[peq.id]!.length-1; j >= 0; j-- ) {
-               vPrint( appState, "   swapping todo at position:" + confirmAdd.toString() + " to position:" + dp[peq.id]![j].toString() );
+               _vPrint( appState, 2, "   swapping todo at position:" + confirmAdd.toString() + " to position:" + dp[peq.id]![j].toString() );
                _swap( todos, dp[peq.id]![j], confirmAdd );
                confirmAdd--;
                assert( confirmAdd >= 0 );
             }
             
             dp.remove( peq.id );
-            vPrint( appState, "   peq: " + peq.hostIssueTitle + " " + peq.id + " UN-demoted." );
+            _vPrint( appState, 2, "   peq: " + peq.hostIssueTitle + " " + peq.id + " UN-demoted." );
          }
          // demote if needed.  Attempting to work (non-add, non-delete) on peq that hasn't been added yet.  Can be more actions here than 1.
          // Note: in some cases, demotion can occur on, say, a relo that has happened after delete.  Demotion does not hurt here, but certainly doesn't help
          else if( !kp.contains( peq.id ) && !deleted ) {
             if( !dp.containsKey( peq.id ) ) { dp[peq.id] = []; }
             dp[peq.id]!.add( i );  
-            vPrint( appState, "   demoting peq: " + peq.hostIssueTitle + " " + peq.id );
+            _vPrint( appState, 2, "   demoting peq: " + peq.hostIssueTitle + " " + peq.id );
          }
       }
    }
@@ -338,7 +339,7 @@ Future fixOutOfOrder( List<Tuple2<PEQAction, PEQ>> todos, context, container ) a
 // The only adds without relos are for unclaimed:unclaimed, which should be name-protected.
 // updateHostNames will update all allocs to cProj, leaving todo's alone as above.
 Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
-   vPrint( appState, "Updating Host Names in appAllocs ");
+   _vPrint( appState, 4, "Updating Host Names in appAllocs ");
 
    List<HostLoc> colRenames  = [];
    List<HostLoc> projRenames = [];
@@ -364,7 +365,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             assert( loc != null );
             colRenames.add( new HostLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: loc!.hostProjectId, hostProjectName: loc.hostProjectName,
                                        hostColumnId: pact.subject[0], hostColumnName: pact.subject[1], active: loc.active ) );
-            vPrint( appState, "... col rename " + pact.subject[1] );
+            _vPrint( appState, 2, "... col rename " + pact.subject[1] );
          }
          else if( pact.note == PActNotes['projRename'] ) {
             assert( pact.subject.length == 3 );
@@ -372,7 +373,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             assert( loc != null );
             projRenames.add( new HostLoc( ceProjectId: "-1", hostUtility: "-1", hostProjectId: pact.subject[0], hostColumnId: "-1", hostProjectName: pact.subject[1],
                                         hostColumnName: loc!.hostColumnName, active: loc.active ) );
-            vPrint( appState, "... proj rename " + pact.subject[1] );            
+            _vPrint( appState, 2, "... proj rename " + pact.subject[1] );            
          }
       }
    }
@@ -380,7 +381,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
    // Note: this could be sped up, but any value?
    // XXX Untested
    // Update allocations.
-   vPrint( appState, "... allocations size: " + appAllocs.length.toString() + " " + colRenames.length.toString() + " " + projRenames.length.toString() );
+   _vPrint( appState, 4, "... allocations size: " + appAllocs.length.toString() + " " + colRenames.length.toString() + " " + projRenames.length.toString() );
    for( Allocation alloc in appAllocs ) {
       assert( alloc.categoryBase != null );
       assert( false ); // XXX need to rebuild PEQSummary:catIndex
@@ -388,7 +389,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
          if( alloc.hostProjectId == proj.hostProjectId ) {
             HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostProjectId == proj.hostProjectId );
             assert( loc != null );
-            vPrint( appState, " .. found project name update: " + proj.hostProjectName  + " => " + loc!.hostProjectName );
+            _vPrint( appState, 4, " .. found project name update: " + proj.hostProjectName  + " => " + loc!.hostProjectName );
 
             // pindex can be -1 when there are multiple renames in this ingest stream.  myHostLinks will skip to the final.
             int pindex = alloc.category.indexOf( proj.hostProjectName );
@@ -403,7 +404,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
             
             HostLoc? loc = appLocs.firstWhereOrNull( (a) => a.hostColumnId == col.hostColumnId );
             assert( loc != null );
-            vPrint( appState, " .. found Column name update: " + col.hostColumnName + " => " + loc!.hostColumnName );
+            _vPrint( appState, 4, " .. found Column name update: " + col.hostColumnName + " => " + loc!.hostColumnName );
 
             int pindex = alloc.category.indexOf( col.hostColumnName );
             if( pindex >= 0 ) { alloc.category[pindex] = loc.hostColumnName; }
@@ -421,7 +422,7 @@ Future _updateHostNames( List<Tuple2<PEQAction, PEQ>> todos, appState ) async {
 // void checkPendingUpdates( appState, dynamo, peqId ) async {
 Future checkPendingUpdates( appState, dynamo, peqId ) async {
    if( appState.ingestUpdates.containsKey( peqId ) && appState.ingestUpdates[peqId] > 0 ) {
-      vPrint( appState, "peq " + peqId + " has pending updates to dynamo.  Waiting." );
+      _vPrint( appState, "peq " + peqId + " has pending updates to dynamo.  Waiting." );
       await Future.wait( dynamo );
       dynamo.clear();
    }
@@ -445,7 +446,7 @@ void _addMod( context, container, peq, postData, peqMods ) {
 Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare, Allocation? sourceAlloc, subBase ) async {
    // Once see action accrue, should have already seen peqType.pending
    final appState = container.state;
-   vPrint( appState, "Accrue PAct " + enumToStr( pact.action ) + " " + enumToStr( pact.verb ));
+   _vPrint( appState, 1, "Accrue PAct " + enumToStr( pact.action ) + " " + enumToStr( pact.verb ));
    final startPPA = DateTime.now();
    
    if( assignees.length == 1 && assignees[0] == appState.UNASSIGN ) {
@@ -460,7 +461,7 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
    String       newType = "";
    List<String> peqLoc  = [];
    for( var assignee in assignees ) {
-      vPrint( appState, "\n Assignee: " + assignee );
+      _vPrint( appState, 1, "\n Assignee: " + assignee );
       
       if( pact.verb == PActVerb.propose ) {
          // add propose, rem plan
@@ -521,12 +522,12 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
    peqData['amount'] = ( assigneeShare * assignees.length ).round();
    peqData['hostProjectSub'] = peqLoc;
 
-   if( peqData['peqType']      != peq.peqType )              { vPrint( appState, "_accrue changing peqType to "     + peqData['peqType'] ); }
-   if( peqData['accrualDate']  != peq.accrualDate )          { vPrint( appState, "_accrue changing accrualDate to " + peqData['accrualDate'] ); }
-   if( peqData['amount']       != peq.amount )               { vPrint( appState, "_accrue changing amount to "      + peqData['amount'].toString() ); }
-   if( peqData['ceGrantorId']  != peq.ceGrantorId )          { vPrint( appState, "_accrue changing grantor to "     + peqData['ceGrantorId'] ); }
-   if( !listEq( peqData['hostHolderId'],   peq.hostHolderId ))   { vPrint( appState, "_accrue changing assignees to "   + peqData['hostHolderId'].toString() ); }
-   if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) { vPrint( appState, "_accrue changing psub to "        + peqData['hostProjectSub'].toString() ); }
+   if( peqData['peqType']      != peq.peqType )                  { _vPrint( appState, 1, "_accrue changing peqType to "     + peqData['peqType'] ); }
+   if( peqData['accrualDate']  != peq.accrualDate )              { _vPrint( appState, 1, "_accrue changing accrualDate to " + peqData['accrualDate'] ); }
+   if( peqData['amount']       != peq.amount )                   { _vPrint( appState, 1, "_accrue changing amount to "      + peqData['amount'].toString() ); }
+   if( peqData['ceGrantorId']  != peq.ceGrantorId )              { _vPrint( appState, 1, "_accrue changing grantor to "     + peqData['ceGrantorId'] ); }
+   if( !listEq( peqData['hostHolderId'],   peq.hostHolderId ))   { _vPrint( appState, 1, "_accrue changing assignees to "   + peqData['hostHolderId'].toString() ); }
+   if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) { _vPrint( appState, 1, "_accrue changing psub to "        + peqData['hostProjectSub'].toString() ); }
 
    print( "Accrue updating with "  + peqData["peqType"] + " " + peq.peqType.toString() );
    _addMod( context, container, peq, peqData, peqMods );
@@ -542,7 +543,7 @@ void _delete( appState, pact, peq, assignees, assigneeShare, ka ) {
    // This can be called as part of a transfer out, in which this is a no-op, handled in _relo.
    if( ka != null ) {
       if( pact.note != PActNotes['transOut'] ) {
-         vPrint( appState, "\n Delete: " + ka.category.toString() );
+         _vPrint( appState, 1, "\n Delete: " + ka.category.toString() );
          List<Allocation> remAllocs = [];  // category, hostUserId, allocType
          
          // avoid concurrent mod of list
@@ -573,14 +574,14 @@ Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, s
    final startPPA = DateTime.now();
    
    if( peq.peqType == PeqType.plan || peq.peqType == PeqType.pending ) {  // plan == prog in peqtype, aws
-      vPrint( appState, "Normal PEQ" );
+      _vPrint( appState, 1, "Normal PEQ" );
       
       // XXX Speed this up.  This is relevant 1/1000 times, but runs always.
       //     Don't convert to preprocessing which depends on both recreate and add showing up in same ingest chunk - can fail.
       // Generated as part of 'recreate'?  If so, check location then ignore it.
       for( Allocation anAlloc in appState.myPEQSummary.getByPeqId( peq.id ) ) {
          assert( listEq( subBase, [appState.UNCLAIMED, appState.ACCRUED ] ));
-         vPrint( appState, "Skipping Add, which was generated as part of Recreate, which was already handled." );
+         _vPrint( appState, 2, "Skipping Add, which was generated as part of Recreate, which was already handled." );
          return;
       }
 
@@ -590,7 +591,7 @@ Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, s
          String hostUserName = assignee; 
          if( appState.idMapHost.containsKey( assignee )) { hostUserName = appState.idMapHost[assignee]['hostUserName']; }
          
-         vPrint( appState, "\n Assignee: " + assignee + " (" + hostUserName + ")" );
+         _vPrint( appState, 1, "\n Assignee: " + assignee + " (" + hostUserName + ")" );
          peqLoc = subBase;
          adjustSummaryAlloc( appState, peq.id, subBase, assignee, assigneeShare, peq.peqType );
       }
@@ -607,8 +608,8 @@ Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, s
    peqData['hostHolderId']   = listEq( assignees, [appState.UNASSIGN] ) ? [] : assignees;
    peqData['hostProjectSub'] = peqLoc;
 
-   if( !listEq( peqData['hostHolderId'],   peq.hostHolderId ))   { vPrint( appState, "_add changing assignees to "   + peqData['hostHolderId'].toString() ); }
-   if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) { vPrint( appState, "_add changing psub to "        + peqData['hostProjectSub'].toString() ); }
+   if( !listEq( peqData['hostHolderId'],   peq.hostHolderId ))   { _vPrint( appState, 1, "_add changing assignees to "   + peqData['hostHolderId'].toString() ); }
+   if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) { _vPrint( appState, 1, "_add changing psub to "        + peqData['hostProjectSub'].toString() ); }
    
    _addMod( context, container, peq, peqData, peqMods );   
    print( "MILLI add " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
@@ -627,12 +628,12 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
    var baseCat                = subBase.sublist( 0, subBase.length-1 );  // remove old column
    List<String> peqLoc        = [];
    
-   // vPrint( appState, "subBase: " + subBase.toString() );
-   // vPrint( appState, "baseCat: " + baseCat.toString() );
+   // _vPrint( appState, "subBase: " + subBase.toString() );
+   // _vPrint( appState, "baseCat: " + baseCat.toString() );
 
    // Delete only.
    if( pact.note == PActNotes['transOut'] ) {
-      vPrint( appState, "Transfer out of repository" );
+      _vPrint( appState, 4, "Transfer out of repository" );
       // Note.  Transfer out is basically a delete, so no update of PID in dynamo PEQ table.
       //        Transfer in, issue comes in as newborn, so no PEQ to update.
       // XXX Should inform participants.  Otherwise, this just disappears.
@@ -653,7 +654,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       
       for( var remAlloc in reloAlloc ) {
          assert( assignees.contains( remAlloc.hostUserId ));
-         vPrint( appState, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
+         _vPrint( appState, 1, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
          adjustSummaryAlloc( appState, peq.id, [], appState.EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc );
       }
 
@@ -661,7 +662,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       return;
    }
    else {
-      vPrint( appState, "Relo PEQ" );
+      _vPrint( appState, 1, "Relo PEQ" );
       
       Allocation sourceAlloc = ka != null ? ka : -1;
       assert( sourceAlloc != -1 );
@@ -699,12 +700,12 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       
       for( var remAlloc in reloAlloc ) {
          assert( assignees.contains( remAlloc.hostUserId ));
-         vPrint( appState, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
+         _vPrint( appState, 1, "\n Assignee: " + (remAlloc.hostUserName ?? "") + "(" + remAlloc.hostUserId + ")" );
          adjustSummaryAlloc( appState, peq.id, [], appState.EMPTY, -1 * assigneeShare, remAlloc.allocType, source: remAlloc, pid: loc.hostProjectId );
          
          // Check to see if relo contains new information (new proj name, or new location if recordPeqData race condition).  If so, get category from existing allocs.
          if( !baseCat.contains( loc.hostProjectName ) ) {
-            vPrint( appState, "  .. RELO is cross project!  Reconstituting category ");
+            _vPrint( appState, 2, "  .. RELO is cross project!  Reconstituting category ");
             
             Allocation? newSource = null;
             // does not like firstwhereornull...
@@ -728,10 +729,10 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
          // Moving into ACCR is handled by _accrue.  moving out of ACCR, for example by rejecting a propose ACCR, must update allocType here
          if( remAlloc.allocType == PeqType.grant && loc.hostColumnName != appState.ACCRUED ) {
             remAlloc.allocType = loc.hostColumnName == appState.PEND ? PeqType.pending : PeqType.plan;
-            vPrint( appState, "  .. Removed granted status, set to " + enumToStr(remAlloc.allocType) );
+            _vPrint( appState, 4, "  .. Removed granted status, set to " + enumToStr(remAlloc.allocType) );
          }
          
-         vPrint( appState, "  .. relocating to " + loc.toString() );
+         _vPrint( appState, 1, "  .. relocating to " + loc.toString() );
          peqLoc = baseCat + [loc.hostColumnName];
          adjustSummaryAlloc( appState, peq.id, baseCat + [loc.hostColumnName], remAlloc.hostUserId, assigneeShare, remAlloc.allocType, pid: loc.hostProjectId );
       }
@@ -744,7 +745,7 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
       peqData['hostProjectSub'] = peqLoc;
       
       if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) {
-         vPrint( appState, "_relo changing psub to "        + peqData['hostProjectSub'].toString() );
+         _vPrint( appState, 1, "_relo changing psub to "        + peqData['hostProjectSub'].toString() );
          _addMod( context, container, peq, peqData, peqMods );   
       }
    }
@@ -757,7 +758,7 @@ double _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    
    assert( ka.allocType != PeqType.allocation );
-   vPrint( appState, "Add assignee: " + pact.subject.last );
+   _vPrint( appState, 1, "Add assignee: " + pact.subject.last );
    
    List<String> curAssign = [ pactLast ];
    
@@ -770,11 +771,11 @@ double _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast
    
    // Remove all old, add all current with new assigneeShares
    for( var assign in assignees ) {
-      vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
+      _vPrint( appState, 1, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
    }
    for( var assign in curAssign ) {
-      vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+      _vPrint( appState, 1, "Add " + assign + " " + newShareAmount.floor().toString() );
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
    }
 
@@ -787,7 +788,7 @@ double _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
 
    assert( ka.allocType != PeqType.allocation );
-   vPrint( appState, "Remove assignee: " + pact.subject.last );
+   _vPrint( appState, 1, "Remove assignee: " + pact.subject.last );
    
    int originalSize = assignees.length;
    
@@ -795,7 +796,7 @@ double _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast
    
    // Remove all old allocs
    for( var assign in assignees ) {
-      vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
+      _vPrint( appState, 1, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
    }
    
@@ -807,7 +808,7 @@ double _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast
    final newShareAmount  = (assigneeShare * originalSize).round() / assignees.length;
    
    for( var assign in assignees ) {
-      vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+      _vPrint( appState, 1, "Add " + assign + " " + newShareAmount.floor().toString() );
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
    }
 
@@ -818,18 +819,18 @@ double _pvUpdate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) 
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
 
-   vPrint( appState, "Peq val update, new val: " + pact.subject.last );
+   _vPrint( appState, 1, "Peq val update, new val: " + pact.subject.last );
    
    // Remove all old allocs
    for( var assign in assignees ) {
-      vPrint( appState, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
+      _vPrint( appState, 1, "Remove " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
    }
    
    final newShareAmount = int.parse( pact.subject.last ) / assignees.length;
    
    for( var assign in assignees ) {
-      vPrint( appState, "Add " + assign + " " + newShareAmount.floor().toString() );
+      _vPrint( appState, 1, "Add " + assign + " " + newShareAmount.floor().toString() );
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
    }
 
@@ -847,14 +848,14 @@ void _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    //       Assignees may be removed.. safest place to transfer them is here.
    // This should be a rare event, seen after deleting an accrued issue.  ceServer rebuilds and saves a copy if the issue was removed first
    assert( pact.subject.length == 2 );
-   vPrint( appState, "Recreate PEQ: " + pact.subject[0] + " --> " + pact.subject[1] );
+   _vPrint( appState, 4, "Recreate PEQ: " + pact.subject[0] + " --> " + pact.subject[1] );
    
    // peq is always subject0
    assert( peq.id == pact.subject[0] );
    
    // Remove old allocs for peq
    for( var assign in assignees ) {
-      vPrint( appState, "Remove " + peq.id + " in " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
+      _vPrint( appState, 4, "Remove " + peq.id + " in " + baseCat.toString() + " " + assign + " " + assigneeShare.floor().toString() );
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, -1 * assigneeShare, sourceType );
    }
    
@@ -864,7 +865,7 @@ void _recreate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    // We need assignees for accrued, and in particular need to retain assignees for accrued issues.
    // Add back here, then ignore subsequent add.
    for( var assign in assignees ) {
-      vPrint( appState, "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.floor().toString() );
+      _vPrint( appState, 4, "Add " + pact.subject[1] + " for " + assign + " " + assigneeShare.floor().toString() );
       adjustSummaryAlloc( appState, pact.subject[1], [appState.UNCLAIMED, appState.ACCRUED ], assign, assigneeShare, sourceType );
    }
    
@@ -877,7 +878,7 @@ String _titRename( appState, pact, ka ) {
    assert( ka != null );
 
    // XXX untested
-   vPrint( appState, "Change title, new val: " + pact.subject.last );
+   _vPrint( appState, 1, "Change title, new val: " + pact.subject.last );
    
    return pact.subject.last;
 }
@@ -889,8 +890,8 @@ Future _colRename( context, container, pact ) async {
    // ceServer handles locs in dynamo.  myHostLinks.locations is current.
    // This has the potential to impact any future operation on peqs. wait.
    await updateColumnName( context, container, pact.subject );
-   vPrint( appState, "Column rename handled at start of todo processing" );
-   vPrint( appState, "Done waiting on column name update" );
+   _vPrint( appState, 1, "Column rename handled at start of todo processing" );
+   _vPrint( appState, 1, "Done waiting on column name update" );
    return; 
 }
 
@@ -901,8 +902,8 @@ Future _projRename( context, container, pact ) async {
    // ceServer handles locs in dynamo.  myHostLinks.locations is current.
    await updateProjectName( context, container, pact.subject );
    // This has the potential to impact any future operation on peqs. wait.
-   vPrint( appState, "Project rename handled at start of todo processing" );
-   vPrint( appState, "Done waiting on project name update" );
+   _vPrint( appState, 1, "Project rename handled at start of todo processing" );
+   _vPrint( appState, 1, "Done waiting on project name update" );
    return;
 }
 
@@ -954,16 +955,16 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    peqData['amount']         = ( newShareAmount * newAssign.length ).round();
    peqData['hostIssueTitle'] = newTitle;
 
-   if( !listEq( peqData['hostHolderId'], peq.hostHolderId )) { vPrint( appState, "_change changing assignees to "   + peqData['hostHolderId'].toString() ); }
-   if( peqData['Amount']         != peq.amount )             { vPrint( appState, "_change changing amount to "      + peqData['amount'].toString() ); }
-   if( peqData['HostIssueTitle'] != peq.hostIssueTitle )     { vPrint( appState, "_change changing title to "       + peqData['hostIssueTitle'] ); }
+   if( !listEq( peqData['hostHolderId'], peq.hostHolderId )) { _vPrint( appState, 1, "_change changing assignees to "   + peqData['hostHolderId'].toString() ); }
+   if( peqData['Amount']         != peq.amount )             { _vPrint( appState, 1, "_change changing amount to "      + peqData['amount'].toString() ); }
+   if( peqData['HostIssueTitle'] != peq.hostIssueTitle )     { _vPrint( appState, 1, "_change changing title to "       + peqData['hostIssueTitle'] ); }
    
    _addMod( context, container, peq, peqData, peqMods );      
    print( "MILLI Change " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
 }
 
 void _notice( appState ) {
-   vPrint( appState, "Notice actions are no-ops" );
+   _vPrint( appState, 1, "Notice actions are no-ops" );
 }
 
 
@@ -1017,11 +1018,11 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    PEQ       peq  = tup.item2;
    
    final appState = container.state;
-   vPrint( appState, "\n-------------------------------" );
-   print( " processing " + enumToStr(pact.verb) + " " + enumToStr(pact.action) + ", " + enumToStr(peq.peqType) + " for " + peq.amount.toString() + ", " + peq.hostIssueTitle );
+   _vPrint( appState, 1, "\n-------------------------------" );
+   _vPrint( appState, 1, " processing " + enumToStr(pact.verb) + " " + enumToStr(pact.action) + ", " + enumToStr(peq.peqType) + " for " + peq.amount.toString() + ", " + peq.hostIssueTitle );
 
-   vPrint( appState, pact.toString() );
-   vPrint( appState, peq.toString() );
+   _vPrint( appState, 1, pact.toString() );
+   _vPrint( appState, 1, peq.toString() );
 
    // is PEQ already a Known Alloc?  Always use it when possible - is the most accurate current view during ingest.
    // remember, issue:card is 1:1.  1 allocation is proj/{proj}/column/assignee with a set of member peqId:peqValues
@@ -1075,11 +1076,11 @@ Future processPEQAction( Tuple2<PEQAction, PEQ> tup, context, container, pending
    //       furthermore, trip begins and ends as unclaimed:accr, which is good.  in the middle it replicates the journey, which is fine.
    // NOTE: in all cases, if ingest is halted in the middle, it should be accurate as of last todo, just not necessarily up to date.
    if( subBase.length > 0 ) {  // notices have no subs
-      vPrint( appState, "current allocs" );
+      _vPrint( appState, 1, "current allocs" );
       for( var alloc in appState.myPEQSummary.getAllAllocs() ) {
          // if( subBase[0] == alloc.category[0] ) { print( alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() ); }
          // print( alloc.hostProjectId + " " + alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
-         vPrint( appState, alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
+         _vPrint( appState, 1, alloc.category.toString() + " " + alloc.amount.toString() + " " + alloc.sourcePeq.toString() );
       }
    }
 }
@@ -1152,10 +1153,10 @@ void _removeAllocs( context, container, List<Tuple2<PEQAction, PEQ>> todos ) {
 Future<void> updatePEQAllocations( context, container ) async {
    final appState  = container.state;
    final ceProjId  = appState.selectedCEProject;
-   vPrint( appState, "Updating allocations for ceProjectId: " + ceProjId );
+   _vPrint( appState, 4, "Updating allocations for ceProjectId: " + ceProjId );
    final startUPA = DateTime.now();
    
-   vPrint( appState, "Get uningested PActs." );
+   _vPrint( appState, 4, "Get uningested PActs." );
    // Get all uningested pacts.
    final todoPActions = await lockFetchPActions( context, container, '{ "Endpoint": "GetUnPAct", "CEProjectId": "$ceProjId" }' );
    print( "TIME FetchPAct " + DateTime.now().difference(startUPA).inSeconds.toString() );
@@ -1169,7 +1170,7 @@ Future<void> updatePEQAllocations( context, container ) async {
 
    // First, update myHostLinks.locs, since ceFlutter may have been sitting in memory long enough to be out of date.
    // These MUST be up to date.
-   vPrint( appState, "Start myLoc update" );
+   _vPrint( appState, 4, "Start myLoc update" );
    var pd = { "Endpoint": "GetEntry", "tableName": "CELinkage", "query": { "CEProjectId": "$ceProjId" }};
    Future myLocs = fetchHostLinkage( context, container, json.encode( pd ) );
    print( "TIME FetchHostLink " + DateTime.now().difference(startUPA).inSeconds.toString() );
@@ -1177,7 +1178,7 @@ Future<void> updatePEQAllocations( context, container ) async {
    List<String> pactIds = [];
    List<String> peqIds = [];
 
-   vPrint( appState, "Building peqPActs" );
+   _vPrint( appState, 4, "Building peqPActs" );
    // Build pact peq pairs for active 'todo' PActions.  First, need to get ids where available
    for( var pact in todoPActions ) {
       print( pact.toString() );
@@ -1237,14 +1238,14 @@ Future<void> updatePEQAllocations( context, container ) async {
    todos.sort((a, b) => a.item1.timeStamp.compareTo(b.item1.timeStamp));
    print( "TIME Sorted " + DateTime.now().difference(startUPA).inSeconds.toString() );
    
-   vPrint( appState, "Will now process " + todoPActions.length.toString() + " pactions for " + foundPeqs.toString() + " non-unique peqs." );
+   _vPrint( appState, 4, "Will now process " + todoPActions.length.toString() + " pactions for " + foundPeqs.toString() + " non-unique peqs." );
    var i = 0;
    for( var tup in todos ) {
       final pa = tup.item1;
       final pp = tup.item2;
       String tmpStr = i.toString() + "   " + pa.timeStamp.toString() + " <pact,peq> " + pa.id + " " + pp.id;
       tmpStr       += " " + enumToStr(pa.verb) + " " + enumToStr(pa.action) + " " + pa.note + " " + pa.subject.toString();
-      vPrint( appState, tmpStr );
+      _vPrint( appState, 1, tmpStr );
       i++;
    }
 
@@ -1253,10 +1254,10 @@ Future<void> updatePEQAllocations( context, container ) async {
    _removeAllocs( context, container, todos );
    print( "Post-Remove Allocs " + todos.length.toString());
    
-   vPrint( appState, "Pre order fix " + todos.length.toString());
+   _vPrint( appState, 4, "Pre order fix " + todos.length.toString());
    await fixOutOfOrder( todos, context, container );
    
-   vPrint( appState, "Complete myLoc update " + todos.length.toString());
+   _vPrint( appState, 4, "Complete myLoc update " + todos.length.toString());
    appState.ceHostLinks[ceProjId] = await myLocs;
    appState.myHostLinks = appState.ceHostLinks[ceProjId];
    if( appState.myHostLinks == null ) { return; }
@@ -1267,13 +1268,13 @@ Future<void> updatePEQAllocations( context, container ) async {
 
    Map<String, PEQ> peqMods = new Map<String, PEQ>();
    await _updateCEUID( appState, todos, context, container, peqMods );
-   vPrint( appState, "... done (ceuid)" );
+   _vPrint( appState, 4, "... done (ceuid)" );
 
    print( "TIME CEUID, hostnames " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    // Create, if need to
    if( appState.myPEQSummary == null && todos.length > 0) {
-      vPrint( appState, "Create new appstate PSum " + todos[0].item2.ceProjectId + "\n" );
+      _vPrint( appState, 4, "Create new appstate PSum " + todos[0].item2.ceProjectId + "\n" );
       appState.myPEQSummary = new PEQSummary( ceProjectId: ceProjId, 
                                               targetType: "repo", targetId: todos[0].item2.hostRepoId, lastMod: getToday(),
                                               accruedTot: 0, taskedTot: 0, allocations: {}, jsonAllocs: [] );
@@ -1284,7 +1285,7 @@ Future<void> updatePEQAllocations( context, container ) async {
       await processPEQAction( tup, context, container, pending, peqMods );
    }
    print( "TIME PPA " + DateTime.now().difference(startUPA).inSeconds.toString() );
-   vPrint( appState, "Finishing updating PPA..." );
+   _vPrint( appState, 4, "Finishing updating PPA..." );
 
    List<Future> dynamo = [];
    // First, make sure locking mechanism for peqMods and headless integration tests have a home
@@ -1301,7 +1302,7 @@ Future<void> updatePEQAllocations( context, container ) async {
       dynamo.add( updateDynamoPeqMods( context, container, postData, "PutPeqMods") );
    }
    
-   vPrint( appState, "... done (dynamo)" );
+   _vPrint( appState, 4, "... done (dynamo)" );
    print( "TIME Finish initial dynamo actions " + DateTime.now().difference(startUPA).inSeconds.toString() );
 
    

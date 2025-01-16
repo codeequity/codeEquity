@@ -4,6 +4,8 @@ import 'package:ceFlutter/screens/login_page.dart';
 import 'package:ceFlutter/screens/signup_page.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';  
+import 'package:ceFlutter/utils/ceUtils.dart';
+
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
@@ -136,15 +138,13 @@ class _CELaunchPageState extends State<CELaunchPage> {
           }));
     
     Widget _loginButton = makeActionButtonFixed( appState, 'Login', 200, (() {
-             Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CELoginPage()));
+             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CELoginPage());
+             Navigator.push( context, newPage );             
           }));
     
     Widget _signupButton = makeActionButtonFixed( appState, 'Create New Account', 200, (() {
-             Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CESignupPage()));
+             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CESignupPage());
+             Navigator.push( context, newPage );             
         }));
 
     if( appState.verbose >= 2 ) { print( "Build launch page" ); }

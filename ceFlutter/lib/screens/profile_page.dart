@@ -54,7 +54,6 @@ class _CEProfileState extends State<CEProfilePage> {
   void initState() {
       super.initState();
       screenOpened = true;
-      print( "Screen Opened" );
    }
 
 
@@ -73,6 +72,55 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
 
+  // if show/alert dialog needs dynamic updates, need to use statefulbuilder or statefulWidget
+  void popMRScroll( BuildContext context, scrollHeader, ceUserId, ceps,  dismissFunc, textWidth ) {
+     showDialog(
+        context: context,
+        builder: (BuildContext context)
+        {
+           return StatefulBuilder( 
+              builder: ( context, setState )
+              {
+                 // setState must be defined within statefulBuilder:builder 
+                 Widget _makeCEPLink( cepId ){
+                    void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cepId+ceUserId ); }
+                    void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+                    
+                    return GestureDetector( 
+                       onTap: () async
+                       {
+                          Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
+                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+                          confirmedNav( context, container, newPage );
+                       },
+                       child: makeActionableText( appState, "   " + cepId, cepId+ceUserId, _set, _unset, textWidth, false, 1 ),
+                       );
+                 }
+                 // ?? dart bug?  should not need to explicitly force .from here
+                 List<Widget> cepLinks = List<Widget>.from( ceps.map( (cepId) => _makeCEPLink( cepId ) ).toList() );
+                 
+                 Widget ceProjDetail = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: cepLinks
+                    );
+                 
+                 return
+                    AlertDialog(
+                       scrollable: true,
+                       title: new Text( scrollHeader ),
+                       content: ceProjDetail,
+                       actions: <Widget>[
+                          new TextButton(
+                             key: Key( 'Dismiss' ),
+                             child: new Text("Dismiss"),
+                             onPressed: dismissFunc )
+                          ]);
+              });
+        });
+  }
+  
+  
   // Need projects for full profile.
   // NOTE: userName is displayed, but selected value is the id.
   void updatePerson( context, container ) async {
@@ -81,9 +129,11 @@ class _CEProfileState extends State<CEProfilePage> {
         String profId = screenArgs["id"]!;
         // Signed in user?  
         if( profId == "" ) { profId = appState.ceUserId; }
-        print( "Getting stuff (maybe) for " + profId );
+        // print( "Getting stuff (maybe) for " + profId );
         String query = '{ "Endpoint": "GetHostA", "CEUserId": "$profId" }';
-
+        String pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$profId" }}';
+        
+        Map<String,dynamic> rawPITable = {};
         late Person? newp;
         var futs = await Future.wait([
                                         (appState.cePersons[profId] == null ? 
@@ -92,6 +142,10 @@ class _CEProfileState extends State<CEProfilePage> {
                                         
                                         (appState.ceHostAccounts[profId] == null ? 
                                          fetchHostAcct( context, container, query ).then( (p) => appState.ceHostAccounts[profId] = p ) :
+                                         new Future<bool>.value(true) ),
+
+                                        (appState.ceImages[profId] == null ? 
+                                         fetchProfileImage( context, container, pdpi ).then(            (p) => rawPITable = p ) :
                                          new Future<bool>.value(true) ),
                                         
                                         ]);
@@ -111,8 +165,16 @@ class _CEProfileState extends State<CEProfilePage> {
         
         assert( appState.cogUser != null );
         if( myself!.userName != appState.cogUser!.preferredUserName ) { print( "NOTE!  Profile is not for " + myself!.userName ); }
-         // need setState to trigger makeBody else blank info
-         setState(() => screenOpened = false );
+        
+        if( rawPITable.keys.length > 0 ) {
+           print( rawPITable["CEProfileId"] + " " + rawPITable["ByteData"].length.toString() );
+           Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
+           appState.ceImages[profId] = Image.memory( bytes, width: lhsFrameMaxWidth );
+           assert( appState.ceImages[profId] != null );
+        }
+        profileImage = appState.ceImages[profId];
+
+        setState(() => screenOpened = false );
      }
   }
 
@@ -172,8 +234,8 @@ class _CEProfileState extends State<CEProfilePage> {
            // final x = assetImageByteData.buffer.asUint8List();
            Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
            appState.ceImages[pid] = Image.memory( bytes, width: lhsFrameMaxWidth );
+           assert( appState.ceImages[pid] != null );
         }
-        assert( appState.ceImages[pid] != null );
         profileImage = appState.ceImages[pid];
         
         // need setState to trigger makeBody else blank info
@@ -182,12 +244,8 @@ class _CEProfileState extends State<CEProfilePage> {
   }
 
   Widget _makeProjCard( context, String cepId, textWidth ) {
-     void _setTitle( PointerEvent event ) {
-        setState(() => appState.hoverChunk = cepId );
-     }
-     void _unsetTitle( PointerEvent event ) {
-        setState(() => appState.hoverChunk = "" );
-     }
+     void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = cepId ); }
+     void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );    }
 
      CEProject cep = appState.ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
@@ -197,7 +255,7 @@ class _CEProfileState extends State<CEProfilePage> {
         {
            Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-           Navigator.push( context, newPage );
+           confirmedNav( context, container, newPage );
         },
         child: makeActionableText( appState, cepId, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
         );
@@ -229,64 +287,88 @@ class _CEProfileState extends State<CEProfilePage> {
      Person cePeep = appState.cePersons[ ceUserId ]!;
 
      String ceName = cePeep.firstName + " " + cePeep.lastName;
-     // Person
-     void _setTitle( PointerEvent event ) {
-        setState(() => appState.hoverChunk = ceUserId );
-     }
-     void _unsetTitle( PointerEvent event ) {
-        setState(() => appState.hoverChunk = "" );
-     }
 
-     Widget collabLink = GestureDetector(
+     Widget makeCollabLink() {
+        // Person
+        void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = ceUserId );  }
+        void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );        }
+
+        return GestureDetector(
         onTap: () async
         {
            Map<String,String> screenArgs = {"id": ceUserId, "profType": "Person" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-           Navigator.push( context, newPage );
+           confirmedNav( context, container, newPage );
         },
         // If just use ceName, all same name collabs are highlighted.
         child: makeActionableText( appState, ceName, ceUserId, _setTitle, _unsetTitle, textWidth, false, 1 ),
         );
+     }
 
-     Widget makeCEPLink( cepId ){
+     Widget _makeProjLink( ceps ){
         // Project
-        void _set( PointerEvent event ) {
-           setState(() => appState.hoverChunk = cepId+ceUserId );
-        }
-        void _unset( PointerEvent event ) {
-           setState(() => appState.hoverChunk = "" );
-        }
+        void _set( PointerEvent event )   { setState(() => appState.hoverChunk = "projects" + ceUserId );  }
+        void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" );   }
         
         return GestureDetector( 
         onTap: () async
         {
-           Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
-           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-           Navigator.push( context, newPage );
+           popMRScroll( context, "CE Projects", ceUserId, ceps, () => Navigator.of( context ).pop(), textWidth );
         },
-        child: makeActionableText( appState, "   " + cepId, cepId+ceUserId, _set, _unset, textWidth, false, 1 ),
+        child: makeActionableText( appState, "projects", "projects"+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
         );
      }
 
-     Widget ceProjs = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: ha.ceProjectIds.map( (cepId) => makeCEPLink( cepId ) ).toList()
-        );
+     List<String> ceProjs = ha.ceProjectIds;
 
+     // XXX seem to need strict copy here to satisfy popMRScroll:alertdialog state requirements?
+     Widget _makeCEPLink( cepId ){
+        void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cepId+ceUserId ); }
+        void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+        
+        return GestureDetector( 
+           onTap: () async
+           {
+              Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
+              MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+              confirmedNav( context, container, newPage );
+           },
+           child: makeActionableText( appState, cepId, cepId+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
+           );
+     }
+     
      Widget card = Card.outlined(
         child: ConstrainedBox(
-           constraints: BoxConstraints( minHeight: 2.5*appState.CELL_HEIGHT, maxHeight: 3.2*appState.CELL_HEIGHT, maxWidth: appState.MIN_PANE_WIDTH - appState.GAP_PAD ),
+           constraints: BoxConstraints( minHeight: 2.2*appState.CELL_HEIGHT, maxHeight: 2.4*appState.CELL_HEIGHT, maxWidth: appState.MIN_PANE_WIDTH - appState.GAP_PAD ),
            child: ListView(
               scrollDirection: Axis.vertical,
               children: [
-                 collabLink,
+                 makeCollabLink(),
                  makeTitleText( appState, cePeep.userName + " (" + ceUserId + ")", textWidth, false, 1 ),
-                 makeTitleText( appState, "CE Project member: " , textWidth, false, 1 ),
-                 ceProjs,
+                 Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,                    
+                    children: [
+                       Padding(
+                          padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+                          child: IntrinsicWidth( child: Text( "Member of: " + ceProjs.length.toString(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
+                          ),
+                       _makeProjLink( ceProjs ),
+                       ]),
+                 Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                       Padding(
+                          padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+                          // child: IntrinsicWidth( child: Text( ceProjs.length == 0 ? "" : "Most active in: " + ceProjs[0], style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
+                          child: IntrinsicWidth( child: Text( ceProjs.length == 0 ? "" : "Most active in: ", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
+                          ),
+                       _makeCEPLink( ceProjs[0] ),
+                       ]),
                  ])
            ));
-
+     
      return card;
   }
   
@@ -339,7 +421,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> repoWid = [spacer];
      Widget collabWid     = spacer;
-     Image? pi            = null;
+     Widget? pi            = null;
      CEProject cep        = new CEProject( ceProjectId: "A", ceProjectComponent: "", description: "", hostPlatform: "", organization: "",
                                            ownerCategory: "", projectMgmtSys: "", repositories: [] );
      String cepName       = cep.ceProjectId;
@@ -377,10 +459,19 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      if( pi == null ) {
-        pi = Image.asset( "images/"+cepName![0].toLowerCase() + "Grad.jpg",
-                          width: lhsFrameMaxWidth,
-                          color: Colors.grey.withOpacity(0.05),
-                          colorBlendMode: BlendMode.darken );
+        if( cepName == "A" ) {
+           double gap = lhsFrameMaxWidth / 3.0;
+           pi = Padding(
+              padding: EdgeInsets.fromLTRB(gap, gap/2.0, gap, gap/2.0),
+              child: Container( width: gap, height: gap, child: CircularProgressIndicator() )
+              );
+        }
+        else {
+           pi = Image.asset( "images/"+cepName![0].toLowerCase() + "Grad.jpg",
+                             width: lhsFrameMaxWidth,
+                             color: Colors.grey.withOpacity(0.05),
+                             colorBlendMode: BlendMode.darken );
+        }
      }
 
      double accr     = ep.totalAllocation > 0 ? ( 1.0 * psum.accruedTot ) / ep.totalAllocation : 0.0;
@@ -396,7 +487,7 @@ class _CEProfileState extends State<CEProfilePage> {
               children: <Widget>[
                  spacer, 
                  pi,
-                 makeTitleText( appState, cep.ceProjectId, textWidth * 1.1, false, 1, fontSize: 24 ),
+                 makeTitleText( appState, cep.ceProjectId == "A" ? "" : cep.ceProjectId, textWidth * 1.1, false, 1, fontSize: 24 ),
                  makeTitleText( appState, cep.ceProjectComponent, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
                  makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
@@ -404,7 +495,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
                                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                         Navigator.push( context, newPage);
+                                         confirmedNav( context, container, newPage );
                                       }),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
@@ -471,11 +562,11 @@ class _CEProfileState extends State<CEProfilePage> {
      final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
      final ceUserName = appState.cogUser!.preferredUserName == null ? "z" : appState.cogUser!.preferredUserName!;
+     Widget? pi        = null;
 
      assert( ceUserName != null && ceUserName!.length > 0 );
-     var profileImage = ceUserName![0] + "Grad.jpg"; 
 
-     Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false, imagePng: null, image: null );
+     Person              cePeep     = new Person( id: "", firstName: "", lastName: "", userName: "", email: "", locked: false );
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
      List<HostAccount>   hostAccs   = [];
      Widget              cepWid     = spacer;
@@ -483,7 +574,8 @@ class _CEProfileState extends State<CEProfilePage> {
      if( !screenOpened ) {
         assert( myself != null );
         cePeep = myself!;
-        profileImage = cePeep.userName[0].toLowerCase() + "Grad.jpg";         
+
+        if( profileImage != null ) { pi   = profileImage!; }        
         hostAccs = screenArgs["id"] == "" ? appState.myHostAccounts : ( appState.ceHostAccounts[ screenArgs["id"] ] ?? [] );
         
         // CE Host User
@@ -497,7 +589,26 @@ class _CEProfileState extends State<CEProfilePage> {
            }
         }
      }
-     
+
+     if( pi == null ) {
+        if( cePeep.userName == "" ) {
+           double gap = lhsFrameMaxWidth / 3.0;
+           pi = Padding(
+              padding: EdgeInsets.fromLTRB(gap, gap/2.0, gap, gap/2.0),
+              child: Container( width: gap, height: gap, child: CircularProgressIndicator() )
+              );
+        }
+        else {
+           String uname = cePeep.userName.length > 0 ? cePeep.userName : ceUserName;
+           pi = Image.asset( "images/"+uname[0].toLowerCase() + "Grad.jpg",
+                             width: lhsFrameMaxWidth,
+                             color: Colors.grey.withOpacity(0.05),
+                             colorBlendMode: BlendMode.darken );
+        }
+     }
+
+     String hname = hostPeep["userName"] == "" ? "" : hostPeep["userName"]! + " (" + hostPeep["id"]! + ")";
+     String cname = cePeep.userName == "" ? "" : cePeep.userName + " (" + cePeep.id + ")";
      return Wrap(
         children: [
            spacer, 
@@ -506,21 +617,21 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                  spacer, 
-                 Image.asset( "images/"+profileImage,
-                              width: lhsFrameMaxWidth,
-                              color: Colors.grey.withOpacity(0.05),
-                              colorBlendMode: BlendMode.darken ),
+                 pi,
                  makeTitleText( appState, cePeep.firstName + " " + cePeep.lastName, textWidth, false, 1, fontSize: 24 ),
-                 makeTitleText( appState, cePeep.userName + " (" + cePeep.id + ")", textWidth, false, 1 ),
+                 makeTitleText( appState, cname, textWidth, false, 1 ),
                  makeTitleText( appState, cePeep.email, textWidth, false, 1 ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
-                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async { notYetImplemented(context); }),
+                                   makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
+                                         MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
+                                         confirmedNav( context, container, newPage );
+                                      }),
                                    makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 2.0, _logout( context, appState) )                                                    
                           ]),
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "GitHub ID", textWidth, false, 1, fontSize: 18 ),
-                 makeTitleText( appState, hostPeep["userName"]! + " (" + hostPeep["id"]! + ")", textWidth, false, 1 ),
+                 makeTitleText( appState, hname, textWidth, false, 1 ),
                  ]),
            spacer,            
            Column( 
@@ -528,7 +639,7 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                  spacer,
-                 makeTitleText( appState, cePeep.firstName + "'s CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, cePeep.firstName + (cePeep.firstName == "" ? " " : "'s ") + "CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
                  spacer,
                  cepWid,
                  spacer,

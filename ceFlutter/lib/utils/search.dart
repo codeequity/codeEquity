@@ -46,12 +46,6 @@ class _CESearchState extends State<CESearch> {
 
    Widget _makeGD( context, appState, obj, objName ) {
       final textWidth = appState.screenWidth * .4;
-      void _setTitle( PointerEvent event ) {
-         setState(() => appState.hoverChunk = objName );
-      }
-      void _unsetTitle( PointerEvent event ) {
-         setState(() => appState.hoverChunk = "" );
-      }
       
       return GestureDetector(
          onTap: () async
@@ -81,11 +75,12 @@ class _CESearchState extends State<CESearch> {
                print( "Error.  Search object is not recognized. " );
                assert( false );
             }
-            Navigator.push( context, newPage! );
+            confirmedNav( context, container, newPage! );
          },
-         child: makeActionableText( appState, objName, objName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+         child: makeTitleText( appState, objName, textWidth, false, 1 ),
          );
    }
+
    
    // Calls search API to search with the given query. Returns null when the call has been made obsolete.
    Future<Iterable<Widget>?> _search(String query, container, context, appState ) async {
@@ -121,6 +116,7 @@ class _CESearchState extends State<CESearch> {
                leading: const Icon(Icons.search),
                );                           
          },
+         dividerColor: Colors.purple[400],
          suggestionsBuilder: (BuildContext context, SearchController controller) async
          {
             final List<Widget>? options = (await _debouncedSearch(controller.text, container, context, appState))?.toList();
@@ -188,9 +184,6 @@ class _DebounceTimer {
 class _CancelException implements Exception {
    const _CancelException();
 }
-
-
-
 
 
 // XXX minor - search only guarantees finding things that were in place before logging in.

@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'package:ceFlutter/utils/awsUtils.dart';
+import 'package:ceFlutter/utils/widgetUtils.dart';
 
 import 'package:ceFlutter/screens/launch_page.dart';
 
@@ -72,6 +73,28 @@ String makePercent(double n) {
    return ret + "%";
 }
 
+Future<void> logout( context, appState ) async {
+
+   try {
+      print( "pre cog signout" );
+      appState.cogUser = await appState.cogUserService.signOut();
+      print( "post cog signout" );
+   } catch(e, stacktrace) {
+      print(e);
+      print(stacktrace);
+      showToast( e.toString() );
+   }           
+   
+   print( "To launch page" );
+   assert( context != null );   
+   Navigator.pushAndRemoveUntil(
+      context, 
+      MaterialPageRoute(builder: (context) => CELaunchPage()),
+      ModalRoute.withName("CESplashPage")
+      );
+}
+
+/*
 void logout( context, appState ) async {
    final wrapper = (() async {
 
@@ -85,7 +108,7 @@ void logout( context, appState ) async {
       });
    wrapper();
 }      
-
+*/
 
 
 // Called each time click different repo on homepage
@@ -122,7 +145,7 @@ Future<void> reloadCEProject( context, container ) async {
    
    if( appState.myEquityPlan == null ) { appState.myEquityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
 
-   if( appState.verbose >= 2 ) {
+   if( appState.verbose >= 3 ) {
       print( "Got Links?" ); 
       appState.myHostLinks == null ? print( "nope - no associated repo" ) : print( appState.myHostLinks.toString() );
    }
@@ -165,10 +188,10 @@ Future<void> initMDState( context, container ) async {
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
    //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.
-   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePersons );
+   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePersons ); // XXX gh
    
-   print( "My CodeEquity Projects:" );
-   print( appState.myHostAccounts );
+   // print( "My CodeEquity Projects:" );
+   // print( appState.myHostAccounts );
 }
 
 
@@ -204,6 +227,21 @@ Future<void> updateUserPeqs( container, context ) async {
       await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
 }
 
+void confirmedNav( context, container, newPage ) {
+   final appState  = container.state;
 
+   if( appState.cogUser!.confirmed ) {
+      Navigator.push( context, newPage );
+   }
+   else {
+      assert( context != null );
+      Navigator.pushAndRemoveUntil(
+         context, 
+         MaterialPageRoute(builder: (context) => CELaunchPage()),
+         ModalRoute.withName("CESplashPage")
+         );
+   }
+
+}
 
 
