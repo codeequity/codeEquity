@@ -7,6 +7,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:ceFlutter/app_state_container.dart';
 import 'package:ceFlutter/utils/search.dart';
 
+import 'package:ceFlutter/utils/ceUtils.dart';
+
 import 'package:ceFlutter/screens/home_page.dart';
 import 'package:ceFlutter/screens/project_page.dart';
 import 'package:ceFlutter/screens/profile_page.dart';
@@ -376,7 +378,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
             {
                if( currentPage == "Home" ) { return; }
                MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEHomePage());
-               Navigator.push( context, newPage );
+               confirmedNav( context, container, newPage );
             },
             iconSize: iconSize,
             padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 2.0)
@@ -393,7 +395,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                   if( currentPage == "Project" ) { return; }
                   // MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
-                  Navigator.push( context, newPage);
+                  confirmedNav( context, container, newPage );
                },
                iconSize: iconSize,
                ),
@@ -404,7 +406,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                {
                   if( currentPage == "Profile" ) { return; }
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: {"id": "", "profType": "Person"} ));
-                  Navigator.push( context, newPage );
+                  confirmedNav( context, container, newPage );
                },
                iconSize: iconSize,
                padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 1.0)
@@ -417,7 +419,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                {
                   if( currentPage == "Settings" ) { return; }
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CESettingsPage());
-                  Navigator.push( context, newPage );
+                  confirmedNav( context, container, newPage );
                },
                iconSize: iconSize,
                padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 1.0)

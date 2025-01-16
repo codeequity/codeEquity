@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ceFlutter/app_state_container.dart';
 
 import 'package:ceFlutter/utils/widgetUtils.dart';
+import 'package:ceFlutter/utils/ceUtils.dart';
 
 import 'package:ceFlutter/ingest.dart';
 
@@ -66,7 +67,8 @@ class _CEProjectState extends State<CEProjectPage> {
    }      
 
    Future<void> _detailCallback( List<String> category ) async {
-      Navigator.push( context, MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: category )));
+      MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: category ));
+      confirmedNav( context, container, newPage );
    }
    
    _allocExpansionCallback( expansionVal, path ) {

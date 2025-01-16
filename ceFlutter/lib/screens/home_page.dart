@@ -70,7 +70,7 @@ class _CEHomeState extends State<CEHomePage> {
          () async
          {
             MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEAddHostPage());
-            Navigator.push( context, newPage );
+            confirmedNav( context, container, newPage );
          });
    }
 
@@ -101,7 +101,7 @@ class _CEHomeState extends State<CEHomePage> {
                ceProjectLoading = false;
                
                MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
-               Navigator.push( context, newPage );
+               confirmedNav( context, container, newPage );
             },
             child: itemTxt
             );

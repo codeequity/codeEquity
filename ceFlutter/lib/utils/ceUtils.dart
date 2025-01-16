@@ -76,13 +76,17 @@ String makePercent(double n) {
 Future<void> logout( context, appState ) async {
 
    try {
+      print( "pre cog signout" );
       appState.cogUser = await appState.cogUserService.signOut();
+      print( "post cog signout" );
    } catch(e, stacktrace) {
       print(e);
       print(stacktrace);
       showToast( e.toString() );
    }           
    
+   print( "To launch page" );
+   assert( context != null );   
    Navigator.pushAndRemoveUntil(
       context, 
       MaterialPageRoute(builder: (context) => CELaunchPage()),
@@ -223,6 +227,21 @@ Future<void> updateUserPeqs( container, context ) async {
       await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
 }
 
+void confirmedNav( context, container, newPage ) {
+   final appState  = container.state;
 
+   if( appState.cogUser!.confirmed ) {
+      Navigator.push( context, newPage );
+   }
+   else {
+      assert( context != null );
+      Navigator.pushAndRemoveUntil(
+         context, 
+         MaterialPageRoute(builder: (context) => CELaunchPage()),
+         ModalRoute.withName("CESplashPage")
+         );
+   }
+
+}
 
 

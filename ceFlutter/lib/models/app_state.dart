@@ -27,6 +27,7 @@ class AppState {
    late String idToken;
    late String refreshToken;
    late int    authRetryCount;
+   late bool   reauthBusy;
    late bool   cogInitDone;      // main: cog init is async.  Timer refires until this is true
    late String cogPoolId;
    late String cogAppClientId;
@@ -171,6 +172,7 @@ class AppState {
       
       // Cognito values
       authRetryCount = 0;
+      reauthBusy = false;
       accessToken = "";
       idToken = "";
       refreshToken = "";

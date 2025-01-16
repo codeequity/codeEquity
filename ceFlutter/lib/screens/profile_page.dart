@@ -91,7 +91,7 @@ class _CEProfileState extends State<CEProfilePage> {
                        {
                           Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
                           MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-                          Navigator.push( context, newPage );
+                          confirmedNav( context, container, newPage );
                        },
                        child: makeActionableText( appState, "   " + cepId, cepId+ceUserId, _set, _unset, textWidth, false, 1 ),
                        );
@@ -129,7 +129,7 @@ class _CEProfileState extends State<CEProfilePage> {
         String profId = screenArgs["id"]!;
         // Signed in user?  
         if( profId == "" ) { profId = appState.ceUserId; }
-        print( "Getting stuff (maybe) for " + profId );
+        // print( "Getting stuff (maybe) for " + profId );
         String query = '{ "Endpoint": "GetHostA", "CEUserId": "$profId" }';
         String pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$profId" }}';
         
@@ -255,7 +255,7 @@ class _CEProfileState extends State<CEProfilePage> {
         {
            Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-           Navigator.push( context, newPage );
+           confirmedNav( context, container, newPage );
         },
         child: makeActionableText( appState, cepId, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
         );
@@ -298,7 +298,7 @@ class _CEProfileState extends State<CEProfilePage> {
         {
            Map<String,String> screenArgs = {"id": ceUserId, "profType": "Person" };
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-           Navigator.push( context, newPage );
+           confirmedNav( context, container, newPage );
         },
         // If just use ceName, all same name collabs are highlighted.
         child: makeActionableText( appState, ceName, ceUserId, _setTitle, _unsetTitle, textWidth, false, 1 ),
@@ -331,7 +331,7 @@ class _CEProfileState extends State<CEProfilePage> {
            {
               Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-              Navigator.push( context, newPage );
+              confirmedNav( context, container, newPage );
            },
            child: makeActionableText( appState, cepId, cepId+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
            );
@@ -495,7 +495,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
                                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                         Navigator.push( context, newPage);
+                                         confirmedNav( context, container, newPage );
                                       }),
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
@@ -625,7 +625,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
                                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
-                                         Navigator.push( context, newPage);
+                                         confirmedNav( context, container, newPage );
                                       }),
                                    makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 2.0, _logout( context, appState) )                                                    
                           ]),
