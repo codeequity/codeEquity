@@ -41,20 +41,25 @@ class _CEProfileState extends State<CEProfilePage> {
    late double lhsFrameMinWidth;
    late double lhsFrameMaxWidth;
    late double rhsFrameMinWidth;
+
    late Widget spacer;
+   late List<Widget> collabPeqTable;
      
    late Person?           myself;
    late EquityPlan?       equityPlan;
    late PEQSummary?       peqSummary;
    late Image?            profileImage;
-      
+   
    late bool screenOpened;
+   late bool updatedPeqTable;
    
   @override
   void initState() {
       super.initState();
-      screenOpened = true;
-   }
+      collabPeqTable   = [];
+      screenOpened     = true;
+      updatedPeqTable  = false;
+  }
 
 
   @override
@@ -392,6 +397,64 @@ class _CEProfileState extends State<CEProfilePage> {
      return frame;
   }
 
+  Widget _makePEQSummary( context, cepId, textWidth ) {
+     double height = appState.CELL_HEIGHT;
+     double width  = textWidth / 4;
+     void _set( PointerEvent event )   { setState(() => appState.hoverChunk = "ppCEP"+cepId); }
+     void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+     return GestureDetector( 
+        onTap: () async
+        {
+           // header
+           if( collabPeqTable.length < 1 ) {
+              collabPeqTable.add(
+                 Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [ makeTitleText( appState, "CE Project", width * 3.0, false, 1 ),
+                                makeTitleText( appState, "Planned", width, false, 1 ),
+                                makeTitleText( appState, "Pending", width, false, 1 ),
+                                makeTitleText( appState, "Accrued", width, false, 1 ),
+                                makeTitleText( appState, "Vested", width,  false, 1 ),
+                       ]
+           ));
+              
+           }
+
+           collabPeqTable.add(
+              Row(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 mainAxisAlignment: MainAxisAlignment.start,
+                 children: [            
+                    makeTableText( appState, cepId, width * 3.0, height, false, 1 ),
+                    makeTableText( appState, "0", width, height, false, 1 ),
+                    makeTableText( appState, "0", width, height, false, 1 ),
+                    makeTableText( appState, "0", width, height, false, 1 ),
+                    makeTableText( appState, "0", width, height, false, 1 ),
+                    ]
+                 ));
+           print( "CollabPeqTable " + collabPeqTable.length.toString() );
+           setState( () => updatedPeqTable = true );
+        },
+        child: makeActionableText( appState, cepId, "ppCEP"+cepId, _set, _unset, textWidth, false, 1 ),
+        );
+  }
+  
+  Widget _makePperCEP( context, ha, textWidth ) {
+     List<Widget> ppCEP = [];
+                   
+     for( int i = 0; i < ha.ceProjectIds.length; i++ ) {
+        ppCEP.add( _makePEQSummary( context, "   " + ha.ceProjectIds[i], textWidth ));
+     }
+     Widget frame = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: ppCEP
+        );
+     
+     return frame;
+  }
+  
   Widget _makeCollabs( context, List<HostAccount> hostAccs, textWidth ) {
      List<Widget> ceps = [];
 
@@ -545,10 +608,10 @@ class _CEProfileState extends State<CEProfilePage> {
                  spacer,
                  makeTitleText( appState, "Collaborators", textWidth, false, 1, fontSize: 18 ),
                  spacer,
-                 collabWid
-                 ]),
-           ]
-        );
+                 collabWid,
+                 ])
+           ]);
+       
   }
      
   Widget _makePersonBody( context ) {
@@ -570,6 +633,8 @@ class _CEProfileState extends State<CEProfilePage> {
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
      List<HostAccount>   hostAccs   = [];
      Widget              cepWid     = spacer;
+     Widget              ppWid      = spacer;
+     Widget              peqTable   = spacer;
      
      if( !screenOpened ) {
         assert( myself != null );
@@ -584,10 +649,29 @@ class _CEProfileState extends State<CEProfilePage> {
               if( ha.ceUserId == cePeep.id ) {
                  hostPeep["userName"] = ha.hostUserName;
                  hostPeep["id"]       = ha.hostUserId;
-                 cepWid               = _makeCEPs( context, ha, textWidth ); 
+                 cepWid               = _makeCEPs( context, ha, textWidth );
+                 ppWid                = _makePperCEP( context, ha, textWidth );
               }
            }
         }
+     }
+
+     if( updatedPeqTable || collabPeqTable.length > 0) {
+        print( "Hoi!  peq table updated " + collabPeqTable.length.toString());
+
+        peqTable = SizedBox(
+           width: 2 * appState.MIN_PANE_WIDTH - appState.GAP_PAD ,
+           child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: collabPeqTable ));
+
+        /*
+        peqTable = SizedBox(
+           width: appState.MIN_PANE_WIDTH - appState.GAP_PAD,
+           child: collabPeqTable[0] );
+        */
+        updatedPeqTable = false;
      }
 
      if( pi == null ) {
@@ -630,6 +714,12 @@ class _CEProfileState extends State<CEProfilePage> {
                                    makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 2.0, _logout( context, appState) )                                                    
                           ]),
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
+                 makeTitleText( appState, "Open tasks:", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, "   Agreements", textWidth, false, 1 ),
+                 makeTitleText( appState, "   Approvals", textWidth, false, 1 ),
+                 makeTitleText( appState, "PEQ summary for:", textWidth, false, 1, fontSize: 18 ),
+                 ppWid,
+                 makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "GitHub ID", textWidth, false, 1, fontSize: 18 ),
                  makeTitleText( appState, hname, textWidth, false, 1 ),
                  ]),
@@ -642,11 +732,11 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, cePeep.firstName + (cePeep.firstName == "" ? " " : "'s ") + "CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
                  spacer,
                  cepWid,
+                 makeHDivider( appState, textWidth * 2.0, appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  spacer,
-                 // makeActionButtonSmall( appState, 'Logout', _logout( context, appState) )                 
-                 ]),
-           ]
-        );
+                 peqTable,
+                 ])
+           ]);
   }
 
 
@@ -662,7 +752,7 @@ class _CEProfileState extends State<CEProfilePage> {
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       spacer           = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
-      
+ 
       updatePerson( context, container );
       updateProjects( context, container );
       
