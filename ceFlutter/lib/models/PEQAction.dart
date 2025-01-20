@@ -38,7 +38,7 @@ Map<String,String> PActNotes = Map.unmodifiable( {
 
 class PEQAction {
    final String  id;
-   final String  ceUID;            // ??? just .. metadata here?
+   final String  ceUID;            // actor.
    final String  hostUserName;     // actor.  i.e. grantor, proposer, confirmer, etc.
    final String  hostUserId;       // actor.  i.e. grantor, proposer, confirmer, etc.
    final String  ceProjectId;

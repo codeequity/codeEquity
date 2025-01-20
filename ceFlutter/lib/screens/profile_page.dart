@@ -18,6 +18,8 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
+import 'package:ceFlutter/models/PEQ.dart';
+import 'package:ceFlutter/models/Allocation.dart';
 
 import 'package:ceFlutter/customLetters.dart';
 
@@ -44,6 +46,7 @@ class _CEProfileState extends State<CEProfilePage> {
 
    late Widget spacer;
    late List<Widget> collabPeqTable;
+   late List<String> displayedPeqTable;
      
    late Person?           myself;
    late EquityPlan?       equityPlan;
@@ -56,9 +59,10 @@ class _CEProfileState extends State<CEProfilePage> {
   @override
   void initState() {
       super.initState();
-      collabPeqTable   = [];
-      screenOpened     = true;
-      updatedPeqTable  = false;
+      collabPeqTable    = [];
+      displayedPeqTable = [];
+      screenOpened      = true;
+      updatedPeqTable   = false;
   }
 
 
@@ -397,6 +401,46 @@ class _CEProfileState extends State<CEProfilePage> {
      return frame;
   }
 
+  Future< Map<String,String>> _getCollabPeqVals( context, container, cepId ) async {
+     Map<String,String> retVal = { "Planned": "0", "Pending": "0", "Accrued": "0", "Vested": "0" };
+     int plan = 0;
+     int pend = 0;
+     int accr = 0;
+     int vest = 0;
+     assert( screenArgs["id"] != null );
+     String me = screenArgs["id"]! == "" ? appState.ceUserId : screenArgs["id"]!;
+
+     // print( "GetCollab psum? " + ( appState.cePEQSummaries[cepId] == null ).toString() );
+     if( appState.cePEQSummaries[cepId] == null ) {
+           var postDataPS = {};
+           postDataPS['PEQSummaryId'] = cepId;
+           final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
+           await fetchPEQSummary( context, container, json.encode( pdps )).then((p) => appState.cePEQSummaries[cepId] = p );
+        }
+
+     // May not exist
+     if( appState.cePEQSummaries[cepId] != null ) {
+        Map<String, Allocation> allocs = appState.cePEQSummaries[cepId]!.allocations;
+        allocs.forEach( (k,v) {
+              // print( "  .. checking " + v.ceUID! + " " + v.hostUserId + " " + v.hostUserName! + " " + v.sourcePeq!.toString());
+              if( v.ceUID == me ) {
+                 // print( v.toString() );
+                 switch( v.allocType ) {
+                 case PeqType.plan:    plan  += ( v.amount ?? 0 ) ; break;
+                 case PeqType.pending: pend  += ( v.amount ?? 0 ) ; break;
+                 case PeqType.grant:   accr  += ( v.amount ?? 0 ) ; break;
+                 default: print( "WARNING. Peq Type " + v.allocType.toString() + " was not processed."  ); assert( false );
+                 }
+              }
+           });
+        retVal["Planned"] = addCommas( plan );
+        retVal["Pending"] = addCommas( pend );
+        retVal["Accrued"] = addCommas( accr );
+     }
+     
+     return retVal;
+  }
+  
   Widget _makePEQSummary( context, cepId, textWidth ) {
      double height = appState.CELL_HEIGHT;
      double width  = textWidth / 4;
@@ -416,25 +460,40 @@ class _CEProfileState extends State<CEProfilePage> {
                                 makeTitleText( appState, "Pending", width, false, 1 ),
                                 makeTitleText( appState, "Accrued", width, false, 1 ),
                                 makeTitleText( appState, "Vested", width,  false, 1 ),
-                       ]
-           ));
-              
+                       ]) );
+              collabPeqTable.add( Wrap( spacing: 0, children: [
+                                           Container( width: appState.GAP_PAD ),
+                                           makeActionButtonFixed( appState, 'Clear', width, ( () {
+                                                    collabPeqTable    = [];
+                                                    displayedPeqTable = [];
+                                                    setState( () => updatedPeqTable = true );                          
+                                                 })
+                                              ),
+                                           ]));       
            }
 
-           collabPeqTable.add(
-              Row(
-                 crossAxisAlignment: CrossAxisAlignment.start,
-                 mainAxisAlignment: MainAxisAlignment.start,
-                 children: [            
-                    makeTableText( appState, cepId, width * 3.0, height, false, 1 ),
-                    makeTableText( appState, "0", width, height, false, 1 ),
-                    makeTableText( appState, "0", width, height, false, 1 ),
-                    makeTableText( appState, "0", width, height, false, 1 ),
-                    makeTableText( appState, "0", width, height, false, 1 ),
-                    ]
-                 ));
-           print( "CollabPeqTable " + collabPeqTable.length.toString() );
-           setState( () => updatedPeqTable = true );
+           if( !displayedPeqTable.contains( cepId ) ) {
+              assert( displayedPeqTable.length == collabPeqTable.length - 2 ); // header, clear button
+
+              Map<String,String> pv = await _getCollabPeqVals( context, container, cepId.trim() );
+              displayedPeqTable.add( cepId );
+              int idx = collabPeqTable.length - 1;
+                 
+              collabPeqTable.insert( idx, 
+                 Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [            
+                       makeTableText( appState, cepId, width * 3.0, height, false, 1 ),
+                       makeTableText( appState, pv["Planned"], width, height, false, 1 ),
+                       makeTableText( appState, pv["Pending"], width, height, false, 1 ),
+                       makeTableText( appState, pv["Accrued"], width, height, false, 1 ),
+                       makeTableText( appState, pv["Vested"],  width, height, false, 1 ),
+                       ]
+                    ));
+              
+              setState( () => updatedPeqTable = true );
+           }
         },
         child: makeActionableText( appState, cepId, "ppCEP"+cepId, _set, _unset, textWidth, false, 1 ),
         );
@@ -657,8 +716,6 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      if( updatedPeqTable || collabPeqTable.length > 0) {
-        print( "Hoi!  peq table updated " + collabPeqTable.length.toString());
-
         peqTable = SizedBox(
            width: 2 * appState.MIN_PANE_WIDTH - appState.GAP_PAD ,
            child: Column(
@@ -666,11 +723,6 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: collabPeqTable ));
 
-        /*
-        peqTable = SizedBox(
-           width: appState.MIN_PANE_WIDTH - appState.GAP_PAD,
-           child: collabPeqTable[0] );
-        */
         updatedPeqTable = false;
      }
 

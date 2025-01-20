@@ -28,6 +28,7 @@ void _vPrint( appState, v, String astring ) {
 // XXX With move from Allocations stored with hostUserId, to ceUserId, uses of this should be reconsidered.
 String _convertNameToId( appState, String aname ) {
    String hostUserId = appState.idMapHost.keys.firstWhere( (k) => appState.idMapHost[k]['hostUserName'] == aname, orElse: () => aname );
+   // print( "aname " + aname + " huid " + hostUserId );
    return hostUserId;
 }
 
@@ -46,7 +47,8 @@ Future _updateCEUID( appState, todos, context, container, peqMods ) async {
       PEQAction pact = tup.item1;
       PEQ       peq  = tup.item2;
       var       origHIDLen = peq.ceHolderId.length; 
-      
+
+      // hostUserId is actor, pact records actor only.
       String hostUID  = pact.hostUserId;
       assert( appState.idMapHost.containsKey( hostUID ) );
       String ceu = appState.idMapHost[ hostUID ]['ceUID'];
@@ -61,8 +63,10 @@ Future _updateCEUID( appState, todos, context, container, peqMods ) async {
          // Don't await here, CEUID not used during processPEQ
          updateDynamo( context, container, '{ "Endpoint": "putPActCEUID", "CEUID": "$ceu", "PEQActionId": "${pact.id}" }', "putPActCEUID" );
       }
-      
+
       // PEQ holder may have been set via earlier PAct.  But here, may be adding or removing CEUIDs
+      // This is a no-op for many PActs.  For example, hostHolderId will not be set in most cases until during or after ingest.
+      // BUT for splits with existing assignees, but no addAssignee pact, this is required.
       peq.ceHolderId = [];
       for( var peqHostUser in peq.hostHolderId ) {
          if( !appState.idMapHost.containsKey( peqHostUser )) {
@@ -83,7 +87,7 @@ Future _updateCEUID( appState, todos, context, container, peqMods ) async {
          peqData['id']          = peq.id;
          peqData['ceHolderId']  = peq.ceHolderId;
          _addMod( context, container, peq, peqData, peqMods );   
-      }      
+      }
    }
 }
 
@@ -107,11 +111,9 @@ void adjustSummaryAlloc( appState, peqId, List<String> cat, String subCat, split
       subCat = source.category.last;
    }
 
-   // XXX review.  we could leave ceUID blank.. any benefit?
-   String ceUID = ( appState.idMapHost[subCat] == null || appState.idMapHost[subCat]["ceUserId"] == null )
+   String ceUID = ( appState.idMapHost[subCat] == null || appState.idMapHost[subCat]["ceUID"] == null )
                   ? appState.UNASSIGN_USER
-                  : appState.idMapHost[subCat]["ceUserId"];
-   
+                  : appState.idMapHost[subCat]["ceUID"];
 
    if( splitAmount > 0 ) { _vPrint( appState, 1, "Adjust up   summary allocation " + suba.toString() ); }
    else                  { _vPrint( appState, 1, "Adjust down summary allocation " + suba.toString() ); }
@@ -429,10 +431,11 @@ Future checkPendingUpdates( appState, dynamo, peqId ) async {
 }
 */
 
+// NOTE: this sets models:PEQ, which is then sent to aws via fromjson.  so.  normal camelCase.
 // Mods will be entire peqs.  Could instead save individual attributes, but very little gain
 void _addMod( context, container, peq, postData, peqMods ) {
    final appState = container.state;
-   print( "AddMod " + postData.toString() );
+   _vPrint( appState, 1, "AddMod " + postData.toString() );
    if( !peqMods.containsKey( peq.id )) {
       peqMods[ peq.id ] = peq;
    }
@@ -531,7 +534,7 @@ Future _accrue( context, container, pact, peq, peqMods, assignees, assigneeShare
 
    print( "Accrue updating with "  + peqData["peqType"] + " " + peq.peqType.toString() );
    _addMod( context, container, peq, peqData, peqMods );
-   print( "MILLI accr " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
+   // print( "MILLI accr " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
    
 }
 
@@ -612,7 +615,7 @@ Future _add( context, container, pact, peq, peqMods, assignees, assigneeShare, s
    if( !listEq( peqData['hostProjectSub'], peq.hostProjectSub )) { _vPrint( appState, 1, "_add changing psub to "        + peqData['hostProjectSub'].toString() ); }
    
    _addMod( context, container, peq, peqData, peqMods );   
-   print( "MILLI add " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
+   // print( "MILLI add " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
 }
 
 
@@ -749,24 +752,23 @@ Future _relo( context, container, pact, peq, peqMods, assignees, assigneeShare, 
          _addMod( context, container, peq, peqData, peqMods );   
       }
    }
-   print( "MILLI Relo " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
+   // print( "MILLI Relo " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
 }   
 
 // Return newShareAmount.  Internally adjust newAssign.
-double _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast, newAssign ) {
+List<dynamic> _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
    
    assert( ka.allocType != PeqType.allocation );
-   _vPrint( appState, 1, "Add assignee: " + pact.subject.last );
+   _vPrint( appState, 1, "Add assignee: " + pact.subject.last + " " + pactLast );
    
-   List<String> curAssign = [ pactLast ];
+   List<String> curAssign = [ pactLast ]; // hostUserId
    
    // Count the current assignees != unassigned.  readjust assigneeShare.  Ignore duplicate adds (blast).
    for( String assign in assignees ) {
       if( assign != appState.UNASSIGN && !curAssign.contains( assign ) ) { curAssign.add( assign ); }
    }
-   newAssign            = curAssign;
    final newShareAmount = (assigneeShare * assignees.length).round() / curAssign.length;
    
    // Remove all old, add all current with new assigneeShares
@@ -779,11 +781,11 @@ double _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
    }
 
-   return newShareAmount;
+   return [newShareAmount, curAssign];
 }
 
 // Return newShareAmount.  Internally adjust newAssign.
-double _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast, newAssign ) {
+List<dynamic> _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
    final sourceType = ka == null ? "" : ka.allocType;
    final baseCat    = ka == null ? "" : ka.category.sublist( 0, ka.category.length-1 );
 
@@ -804,7 +806,6 @@ double _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast
    assignees.remove( pactLast );
    if( assignees.length == 0 ) { assignees.add( appState.UNASSIGN ); }
    
-   newAssign             = assignees;
    final newShareAmount  = (assigneeShare * originalSize).round() / assignees.length;
    
    for( var assign in assignees ) {
@@ -812,7 +813,7 @@ double _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast
       adjustSummaryAlloc( appState, peq.id, baseCat, assign, newShareAmount, sourceType );
    }
 
-   return newShareAmount;
+   return [newShareAmount, assignees];
 }
 
 double _pvUpdate( appState, pact, peq, assignees, assigneeShare, ka, pactLast ) {
@@ -920,10 +921,14 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    String pactLast        = _convertNameToId( appState, pact.subject.last );  // if peqValUpdate, this will be an int, but won't be used.
 
    if( pact.note == PActNotes['addAssignee'] ) {
-      newShareAmount = _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast, newAssign ); 
+      var aa  = _addAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast );
+      newShareAmount = aa[0];
+      newAssign      = aa[1];
    }
    else if( pact.note == PActNotes['remAssignee'] ) {
-      newShareAmount = _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast, newAssign ); 
+      var aa = _remAssignee( appState, pact, peq, assignees, assigneeShare, ka, pactLast ); 
+      newShareAmount = aa[0];
+      newAssign      = aa[1];
    }
    else if( pact.note == PActNotes['pvUpdate'] ) {
       newShareAmount = _pvUpdate( appState, pact, peq, assignees, assigneeShare, ka, pactLast );
@@ -948,6 +953,9 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
             ceHolders.add( appState.idMapHost[ hostHolder ]['ceUID'] ); 
          });
    }
+
+   if( pact.note == PActNotes['addAssignee'] ) { print( "ceHolders " + ceHolders.toString() ); }
+   
    var peqData = {};
    peqData['id']             = peq.id;
    peqData['hostHolderId']   = listEq( newAssign, [appState.UNASSIGN] ) ? [] : newAssign;
@@ -956,11 +964,11 @@ Future _change( context, container, pact, peq, peqMods, assignees, assigneeShare
    peqData['hostIssueTitle'] = newTitle;
 
    if( !listEq( peqData['hostHolderId'], peq.hostHolderId )) { _vPrint( appState, 1, "_change changing assignees to "   + peqData['hostHolderId'].toString() ); }
-   if( peqData['Amount']         != peq.amount )             { _vPrint( appState, 1, "_change changing amount to "      + peqData['amount'].toString() ); }
-   if( peqData['HostIssueTitle'] != peq.hostIssueTitle )     { _vPrint( appState, 1, "_change changing title to "       + peqData['hostIssueTitle'] ); }
+   if( peqData['amount']         != peq.amount )             { _vPrint( appState, 1, "_change changing amount to "      + peqData['amount'].toString() ); }
+   if( peqData['hostIssueTitle'] != peq.hostIssueTitle )     { _vPrint( appState, 1, "_change changing title to "       + peqData['hostIssueTitle'] ); }
    
    _addMod( context, container, peq, peqData, peqMods );      
-   print( "MILLI Change " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
+   // print( "MILLI Change " + DateTime.now().difference(startPPA).inMilliseconds.toString() );   
 }
 
 void _notice( appState ) {
