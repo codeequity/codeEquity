@@ -20,7 +20,8 @@ const Duration debounceDuration = Duration(milliseconds: 200);
 
 
 class CESearch extends StatefulWidget {
-   const CESearch();
+   // const CESearch();
+   CESearch({Key? key}) : super(key: key);
 
    @override
    State<CESearch> createState() => _CESearchState();
@@ -104,11 +105,14 @@ class _CESearchState extends State<CESearch> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
       assert( appState != null );
+
+      final SearchController controller = SearchController();
       
       return SearchAnchor(
          builder: (BuildContext context, SearchController controller)
          {
             return SearchBar(
+               key: Key( 'SearchBar' ),
                controller: controller,
                padding: const MaterialStatePropertyAll<EdgeInsets>( EdgeInsets.symmetric(horizontal: 16.0)),
                onTap: ()      { controller.openView(); },

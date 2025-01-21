@@ -393,7 +393,11 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                onPressed: ()
                {
                   if( currentPage == "Project" ) { return; }
-                  // MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: ["Initializing"] ));
+                  // Can't directly use reloadCEProjects here - may not have selected a project yet.
+                  if( appState.myPEQSummary != null ) { appState.updateAllocTree = true;  } // force alloc tree update
+                  if( appState.myEquityPlan != null ) { appState.updateEquityPlan = true; } // force equity tree update
+                  if( appState.myEquityPlan != null ) { appState.updateEquityView = true; } // force equity view creation on first pass
+                  
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
                   confirmedNav( context, container, newPage );
                },
