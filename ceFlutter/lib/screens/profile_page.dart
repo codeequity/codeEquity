@@ -178,7 +178,7 @@ class _CEProfileState extends State<CEProfilePage> {
         if( rawPITable.keys.length > 0 ) {
            print( rawPITable["CEProfileId"] + " " + rawPITable["ByteData"].length.toString() );
            Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
-           appState.ceImages[profId] = Image.memory( bytes, width: lhsFrameMaxWidth );
+           appState.ceImages[profId] = Image.memory( bytes, key: Key( profId + "Image" ), width: lhsFrameMaxWidth );
            assert( appState.ceImages[profId] != null );
         }
         profileImage = appState.ceImages[profId];
@@ -242,7 +242,7 @@ class _CEProfileState extends State<CEProfilePage> {
            // final ByteData assetImageByteData = await rootBundle.load( rawPITable["ByteData"] );
            // final x = assetImageByteData.buffer.asUint8List();
            Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
-           appState.ceImages[pid] = Image.memory( bytes, width: lhsFrameMaxWidth );
+           appState.ceImages[pid] = Image.memory( bytes, key: Key( pid + "Image" ), width: lhsFrameMaxWidth );
            assert( appState.ceImages[pid] != null );
         }
         profileImage = appState.ceImages[pid];
@@ -589,7 +589,9 @@ class _CEProfileState extends State<CEProfilePage> {
               );
         }
         else {
-           pi = Image.asset( "images/"+cepName![0].toLowerCase() + "Grad.jpg",
+           String iName = "images/"+cepName![0].toLowerCase() + "Grad.jpg";
+           pi = Image.asset( iName,
+                             key: Key( cepName![0].toLowerCase()+"GradImage" ),
                              width: lhsFrameMaxWidth,
                              color: Colors.grey.withOpacity(0.05),
                              colorBlendMode: BlendMode.darken );
@@ -652,7 +654,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ),
                  makeTitleText( appState, "Project management system:" , textWidth, false, 1 ),
-                 makeTitleText( appState, "  " + cep.projectMgmtSys , textWidth, false, 1 ),
+                 makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ),
                  makeTitleText( appState, "Repositories:", textWidth, false, 1 ),
                  Column( 
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -736,7 +738,9 @@ class _CEProfileState extends State<CEProfilePage> {
         }
         else {
            String uname = cePeep.userName.length > 0 ? cePeep.userName : ceUserName;
+           // print( "XXX KEY: *" + uname[0].toLowerCase() + "GradImage*" );
            pi = Image.asset( "images/"+uname[0].toLowerCase() + "Grad.jpg",
+                             key: Key( uname[0].toLowerCase() + "GradImage" ),
                              width: lhsFrameMaxWidth,
                              color: Colors.grey.withOpacity(0.05),
                              colorBlendMode: BlendMode.darken );

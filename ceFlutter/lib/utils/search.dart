@@ -47,7 +47,7 @@ class _CESearchState extends State<CESearch> {
 
    Widget _makeGD( context, appState, obj, objName ) {
       final textWidth = appState.screenWidth * .4;
-      
+      // if( obj is PEQ ) { print( "*" + objName + "*"); }
       return GestureDetector(
          onTap: () async
          {
@@ -106,7 +106,7 @@ class _CESearchState extends State<CESearch> {
       appState    = container.state;
       assert( appState != null );
 
-      final SearchController controller = SearchController();
+      // final SearchController controller = SearchController();
       
       return SearchAnchor(
          builder: (BuildContext context, SearchController controller)
