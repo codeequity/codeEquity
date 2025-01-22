@@ -221,7 +221,7 @@ Future<void> updateUserPeqs( container, context ) async {
    if( uname == appState.UNASSIGN_USER ) { uname = ""; }
    
    String cep   = appState.selectedCEProject;
-   print( "Building detail data for " + uname + ":" + cep );
+   print( "Building peq data for " + uname + ":" + cep );
 
    appState.userPeqs[appState.selectedUser] =
       await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );

@@ -22,22 +22,6 @@ import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/Linkage.dart';
 import 'package:ceFlutter/models/HostLoc.dart';
 
-/*
-Future<void> logoutWait( appState ) async {
-   final wrapper = (() async {
-         try {
-            appState.cogUser = await appState.cogUserService.signOut();
-         } catch(e, stacktrace) {
-            print(e);
-            print(stacktrace);
-            showToast( e.toString() );
-         }           
-
-      });
-   wrapper();
-}      
-*/
-
 Future<bool> checkReauth( context, container ) async {
    final appState  = container.state;
    print (" !!! !!! !!!" );

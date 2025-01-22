@@ -92,7 +92,7 @@ class _CEDetailState extends State<CEDetailPage> {
       final textWidth = appState.screenWidth * .6;
       String apact = enumToStr( pact.verb ) + " " + enumToStr( pact.action ) + " " + pact.subject.toString() + " " + pact.note + " " + pact.entryDate;
       // return makeBodyText( appState, apact, textWidth, false, 1 );
-      if( appState.verbose >= 2 ) { print( ".. GD for " + pact.id ); }
+      if( appState.verbose >= 4 ) { print( ".. GD for " + pact.id ); }
 
       // keyName can't be based on pactCount - pacts arrive in somewhat random order.  Can't check ordering constraint - never had it in the first place.
       // Buut it needs to be unique within the peq group.  So integration-time testing needs to allow for reordering.

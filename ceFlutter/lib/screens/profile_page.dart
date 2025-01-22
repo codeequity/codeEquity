@@ -18,6 +18,8 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
+import 'package:ceFlutter/models/PEQ.dart';
+import 'package:ceFlutter/models/Allocation.dart';
 
 import 'package:ceFlutter/customLetters.dart';
 
@@ -41,20 +43,27 @@ class _CEProfileState extends State<CEProfilePage> {
    late double lhsFrameMinWidth;
    late double lhsFrameMaxWidth;
    late double rhsFrameMinWidth;
+
    late Widget spacer;
+   late List<Widget> collabPeqTable;
+   late List<String> displayedPeqTable;
      
    late Person?           myself;
    late EquityPlan?       equityPlan;
    late PEQSummary?       peqSummary;
    late Image?            profileImage;
-      
+   
    late bool screenOpened;
+   late bool updatedPeqTable;
    
   @override
   void initState() {
       super.initState();
-      screenOpened = true;
-   }
+      collabPeqTable    = [];
+      displayedPeqTable = [];
+      screenOpened      = true;
+      updatedPeqTable   = false;
+  }
 
 
   @override
@@ -169,7 +178,7 @@ class _CEProfileState extends State<CEProfilePage> {
         if( rawPITable.keys.length > 0 ) {
            print( rawPITable["CEProfileId"] + " " + rawPITable["ByteData"].length.toString() );
            Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
-           appState.ceImages[profId] = Image.memory( bytes, width: lhsFrameMaxWidth );
+           appState.ceImages[profId] = Image.memory( bytes, key: Key( profId + "Image" ), width: lhsFrameMaxWidth );
            assert( appState.ceImages[profId] != null );
         }
         profileImage = appState.ceImages[profId];
@@ -233,7 +242,7 @@ class _CEProfileState extends State<CEProfilePage> {
            // final ByteData assetImageByteData = await rootBundle.load( rawPITable["ByteData"] );
            // final x = assetImageByteData.buffer.asUint8List();
            Uint8List bytes = new Uint8List.fromList( List<int>.from( rawPITable["ByteData"] ) );
-           appState.ceImages[pid] = Image.memory( bytes, width: lhsFrameMaxWidth );
+           appState.ceImages[pid] = Image.memory( bytes, key: Key( pid + "Image" ), width: lhsFrameMaxWidth );
            assert( appState.ceImages[pid] != null );
         }
         profileImage = appState.ceImages[pid];
@@ -392,6 +401,119 @@ class _CEProfileState extends State<CEProfilePage> {
      return frame;
   }
 
+  Future< Map<String,String>> _getCollabPeqVals( context, container, cepId ) async {
+     Map<String,String> retVal = { "Planned": "0", "Pending": "0", "Accrued": "0", "Vested": "0" };
+     int plan = 0;
+     int pend = 0;
+     int accr = 0;
+     int vest = 0;
+     assert( screenArgs["id"] != null );
+     String me = screenArgs["id"]! == "" ? appState.ceUserId : screenArgs["id"]!;
+
+     // print( "GetCollab psum? " + ( appState.cePEQSummaries[cepId] == null ).toString() );
+     if( appState.cePEQSummaries[cepId] == null ) {
+           var postDataPS = {};
+           postDataPS['PEQSummaryId'] = cepId;
+           final pdps = { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": postDataPS };
+           await fetchPEQSummary( context, container, json.encode( pdps )).then((p) => appState.cePEQSummaries[cepId] = p );
+        }
+
+     // May not exist
+     if( appState.cePEQSummaries[cepId] != null ) {
+        Map<String, Allocation> allocs = appState.cePEQSummaries[cepId]!.allocations;
+        allocs.forEach( (k,v) {
+              // print( "  .. checking " + v.ceUID! + " " + v.hostUserId + " " + v.hostUserName! + " " + v.sourcePeq!.toString());
+              if( v.ceUID == me ) {
+                 // print( v.toString() );
+                 switch( v.allocType ) {
+                 case PeqType.plan:    plan  += ( v.amount ?? 0 ) ; break;
+                 case PeqType.pending: pend  += ( v.amount ?? 0 ) ; break;
+                 case PeqType.grant:   accr  += ( v.amount ?? 0 ) ; break;
+                 default: print( "WARNING. Peq Type " + v.allocType.toString() + " was not processed."  ); assert( false );
+                 }
+              }
+           });
+        retVal["Planned"] = addCommas( plan );
+        retVal["Pending"] = addCommas( pend );
+        retVal["Accrued"] = addCommas( accr );
+     }
+     
+     return retVal;
+  }
+  
+  Widget _makePEQSummary( context, cepId, textWidth ) {
+     double height = appState.CELL_HEIGHT;
+     double width  = textWidth / 4;
+     void _set( PointerEvent event )   { setState(() => appState.hoverChunk = "ppCEP"+cepId); }
+     void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+     return GestureDetector( 
+        onTap: () async
+        {
+           // header
+           if( collabPeqTable.length < 1 ) {
+              collabPeqTable.add(
+                 Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [ makeTitleText( appState, "CE Project", width * 3.0, false, 1 ),
+                                makeTitleText( appState, "Planned", width, false, 1 ),
+                                makeTitleText( appState, "Pending", width, false, 1 ),
+                                makeTitleText( appState, "Accrued", width, false, 1 ),
+                                makeTitleText( appState, "Vested", width,  false, 1 ),
+                       ]) );
+              collabPeqTable.add( Wrap( spacing: 0, children: [
+                                           Container( width: appState.GAP_PAD ),
+                                           makeActionButtonFixed( appState, 'Clear', width, ( () {
+                                                    collabPeqTable    = [];
+                                                    displayedPeqTable = [];
+                                                    setState( () => updatedPeqTable = true );                          
+                                                 })
+                                              ),
+                                           ]));       
+           }
+
+           if( !displayedPeqTable.contains( cepId ) ) {
+              assert( displayedPeqTable.length == collabPeqTable.length - 2 ); // header, clear button
+
+              Map<String,String> pv = await _getCollabPeqVals( context, container, cepId.trim() );
+              displayedPeqTable.add( cepId );
+              int idx = collabPeqTable.length - 1;
+                 
+              collabPeqTable.insert( idx, 
+                 Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [            
+                       makeTableText( appState, cepId, width * 3.0, height, false, 1 ),
+                       makeTableText( appState, pv["Planned"], width, height, false, 1 ),
+                       makeTableText( appState, pv["Pending"], width, height, false, 1 ),
+                       makeTableText( appState, pv["Accrued"], width, height, false, 1 ),
+                       makeTableText( appState, pv["Vested"],  width, height, false, 1 ),
+                       ]
+                    ));
+              
+              setState( () => updatedPeqTable = true );
+           }
+        },
+        child: makeActionableText( appState, cepId, "ppCEP"+cepId, _set, _unset, textWidth, false, 1 ),
+        );
+  }
+  
+  Widget _makePperCEP( context, ha, textWidth ) {
+     List<Widget> ppCEP = [];
+                   
+     for( int i = 0; i < ha.ceProjectIds.length; i++ ) {
+        ppCEP.add( _makePEQSummary( context, "   " + ha.ceProjectIds[i], textWidth ));
+     }
+     Widget frame = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: ppCEP
+        );
+     
+     return frame;
+  }
+  
   Widget _makeCollabs( context, List<HostAccount> hostAccs, textWidth ) {
      List<Widget> ceps = [];
 
@@ -467,7 +589,9 @@ class _CEProfileState extends State<CEProfilePage> {
               );
         }
         else {
-           pi = Image.asset( "images/"+cepName![0].toLowerCase() + "Grad.jpg",
+           String iName = "images/"+cepName![0].toLowerCase() + "Grad.jpg";
+           pi = Image.asset( iName,
+                             key: Key( cepName![0].toLowerCase()+"GradImage" ),
                              width: lhsFrameMaxWidth,
                              color: Colors.grey.withOpacity(0.05),
                              colorBlendMode: BlendMode.darken );
@@ -530,7 +654,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "Host Platform: " + cep.hostPlatform, textWidth, false, 1, fontSize: 18 ),
                  makeTitleText( appState, "Project management system:" , textWidth, false, 1 ),
-                 makeTitleText( appState, "  " + cep.projectMgmtSys , textWidth, false, 1 ),
+                 makeTitleText( appState, "   " + cep.projectMgmtSys , textWidth, false, 1 ),
                  makeTitleText( appState, "Repositories:", textWidth, false, 1 ),
                  Column( 
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,10 +669,10 @@ class _CEProfileState extends State<CEProfilePage> {
                  spacer,
                  makeTitleText( appState, "Collaborators", textWidth, false, 1, fontSize: 18 ),
                  spacer,
-                 collabWid
-                 ]),
-           ]
-        );
+                 collabWid,
+                 ])
+           ]);
+       
   }
      
   Widget _makePersonBody( context ) {
@@ -570,6 +694,8 @@ class _CEProfileState extends State<CEProfilePage> {
      Map<String, String> hostPeep   = {"userName": "", "id": ""};
      List<HostAccount>   hostAccs   = [];
      Widget              cepWid     = spacer;
+     Widget              ppWid      = spacer;
+     Widget              peqTable   = spacer;
      
      if( !screenOpened ) {
         assert( myself != null );
@@ -584,10 +710,22 @@ class _CEProfileState extends State<CEProfilePage> {
               if( ha.ceUserId == cePeep.id ) {
                  hostPeep["userName"] = ha.hostUserName;
                  hostPeep["id"]       = ha.hostUserId;
-                 cepWid               = _makeCEPs( context, ha, textWidth ); 
+                 cepWid               = _makeCEPs( context, ha, textWidth );
+                 ppWid                = _makePperCEP( context, ha, textWidth );
               }
            }
         }
+     }
+
+     if( updatedPeqTable || collabPeqTable.length > 0) {
+        peqTable = SizedBox(
+           width: 2 * appState.MIN_PANE_WIDTH - appState.GAP_PAD ,
+           child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: collabPeqTable ));
+
+        updatedPeqTable = false;
      }
 
      if( pi == null ) {
@@ -600,7 +738,9 @@ class _CEProfileState extends State<CEProfilePage> {
         }
         else {
            String uname = cePeep.userName.length > 0 ? cePeep.userName : ceUserName;
+           // print( "XXX KEY: *" + uname[0].toLowerCase() + "GradImage*" );
            pi = Image.asset( "images/"+uname[0].toLowerCase() + "Grad.jpg",
+                             key: Key( uname[0].toLowerCase() + "GradImage" ),
                              width: lhsFrameMaxWidth,
                              color: Colors.grey.withOpacity(0.05),
                              colorBlendMode: BlendMode.darken );
@@ -630,6 +770,12 @@ class _CEProfileState extends State<CEProfilePage> {
                                    makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 2.0, _logout( context, appState) )                                                    
                           ]),
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
+                 makeTitleText( appState, "Open tasks:", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, "   Agreements", textWidth, false, 1 ),
+                 makeTitleText( appState, "   Approvals", textWidth, false, 1 ),
+                 makeTitleText( appState, "PEQ summary for:", textWidth, false, 1, fontSize: 18 ),
+                 ppWid,
+                 makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "GitHub ID", textWidth, false, 1, fontSize: 18 ),
                  makeTitleText( appState, hname, textWidth, false, 1 ),
                  ]),
@@ -642,11 +788,11 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, cePeep.firstName + (cePeep.firstName == "" ? " " : "'s ") + "CodeEquity Projects", textWidth, false, 1, fontSize: 18 ),
                  spacer,
                  cepWid,
+                 makeHDivider( appState, textWidth * 2.0, appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  spacer,
-                 // makeActionButtonSmall( appState, 'Logout', _logout( context, appState) )                 
-                 ]),
-           ]
-        );
+                 peqTable,
+                 ])
+           ]);
   }
 
 
@@ -662,7 +808,7 @@ class _CEProfileState extends State<CEProfilePage> {
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       spacer           = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
-      
+ 
       updatePerson( context, container );
       updateProjects( context, container );
       

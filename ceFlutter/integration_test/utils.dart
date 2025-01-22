@@ -446,18 +446,37 @@ Future<bool> login( WidgetTester tester, known, {tester2 = false} ) async {
 
 Future<bool> logout( WidgetTester tester ) async {
 
-   // Go to profile page
-   final Finder profilePage = find.byIcon( customIcons.profile );
-   expect( profilePage,   findsOneWidget );
-   await tester.tap( profilePage );
-   await pumpSettle( tester, 2 );
-   // load/create image takes time now.
-   await pumpSettle( tester, 4 );
+   // Find a logout button
+   bool foundLogout = true;
+   Finder logoutButton = find.byKey( const Key('Logout'));
+   try      { expect( logoutButton, findsOneWidget );  }
+   catch(e) { foundLogout = false; }
 
-   expect( await verifyOnProfilePage( tester ), true );
+   // I could be on project profile page, or not in profile.
+   if( !foundLogout ) {
+      Finder profileHere = find.byIcon( customIcons.profile_here );  
+      try {
+         expect( profileHere,   findsOneWidget );            // in project profile.. go home first
+         print( "In project profile.. go home first" );
 
-   final Finder logoutButton = find.byKey( const Key('Logout'));
-   expect( logoutButton, findsOneWidget );
+         final Finder homeButton = find.byIcon( customIcons.home );         
+         expect( homeButton, findsOneWidget );
+         await tester.tap( homeButton );
+         await pumpSettle( tester, 2 );
+      }
+      catch (e) { print( "profile page available" ); }
+      
+      Finder profilePage = find.byIcon( customIcons.profile );
+      expect( profilePage,   findsOneWidget );
+      await tester.tap( profilePage );
+      await pumpSettle( tester, 2 );
+      // load/create image takes time now.
+      await pumpSettle( tester, 4 );
+
+      Finder logoutButton = find.byKey( const Key('Logout'));
+      expect( logoutButton, findsOneWidget );
+   }
+   
    await tester.tap( logoutButton );
    await tester.pumpAndSettle();
    
