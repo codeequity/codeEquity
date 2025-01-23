@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
 import 'package:fluttertoast/fluttertoast.dart';
 
+import 'package:ceFlutter/customIcons.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -47,8 +49,8 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    print( "Start C" );
    await open( tester );
    await tester.enterText( search, "c" );
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
+   await pumpSettle( tester, 3, verbose: true );    
+   await pumpSettle( tester, 3, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
    
    expect( find.text('ceServer'), findsOneWidget );
@@ -303,6 +305,16 @@ Future<bool> validateCollab( WidgetTester tester ) async {
 Future<bool> validateCEP( WidgetTester tester ) async {
    print( "Validate CEP" );
 
+   // Start from home, otherwise multiple garlic beers
+   Finder home = find.byIcon( customIcons.home );
+   try {
+      expect( home, findsOneWidget );
+      await tester.tap( home );
+      await pumpSettle( tester, 2, verbose: true );
+      await pumpSettle( tester, 2, verbose: true );    
+   }
+   catch( e ) { print( "already home" ); }
+   
    final Finder search = find.byKey( Key( "SearchBar" ) );
    expect( search, findsOneWidget );
 

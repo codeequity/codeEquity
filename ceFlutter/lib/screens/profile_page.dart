@@ -495,7 +495,7 @@ class _CEProfileState extends State<CEProfilePage> {
               setState( () => updatedPeqTable = true );
            }
         },
-        child: makeActionableText( appState, cepId, "ppCEP"+cepId, _set, _unset, textWidth, false, 1 ),
+        child: makeActionableText( appState, cepId, "ppCEP"+cepId, _set, _unset, textWidth, false, 1, keyPreface: "ppCEP" ),
         );
   }
   
@@ -631,7 +631,7 @@ class _CEProfileState extends State<CEProfilePage> {
                     children: <TableRow>[
                        TableRow(
                           children: <Widget>[
-                             makeTitleText( appState, "    Accrued: ", textWidth, false, 1, fontSize: 14 ),
+                             makeTitleText( appState, "    Accrued:", textWidth, false, 1, fontSize: 14 ),
                              makeTitleText( appState, makePercent( accr ), textWidth, false, 1, fontSize: 14 ),
                              ]),
                        TableRow(

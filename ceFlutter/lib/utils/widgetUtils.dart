@@ -249,13 +249,16 @@ Widget makeIndentedText( appState, title, width, wrap, lines ) {
                                        ))));
 }
 
-Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {lgap = -1, tgap=-1, bgap=0} ) {
+Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", lgap = -1, tgap=-1, bgap=0} ) {
 
    String lead = "";
    for( int i = 0; i < title.length; i++ ) {
       if( title[i] == " " ) { lead += " "; }
       else{ break; }
    }
+
+   String theKey = title;
+   if( keyPreface != "" ) { theKey = keyPreface + title.trim();  }
    lgap = lgap == -1 ? appState.GAP_PAD : lgap;
    tgap = tgap == -1 ? appState.MID_PAD : tgap;
    Widget mr = MouseRegion(
@@ -265,7 +268,7 @@ Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines,
       child: Padding(
          padding: EdgeInsets.fromLTRB(lgap, tgap, appState.TINY_PAD, bgap),
          child: IntrinsicWidth(
-            key: Key( title ),
+            key: Key( theKey ),
             child: Text(title.trim(), softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 14,
                                          color: id == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
