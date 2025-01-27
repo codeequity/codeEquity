@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 // Dynamodb serializes primary key before using it... so...
 class Person {
-   final String id;
+   final String id;                // ceUID
    String       firstName;
    String       lastName;
    String       userName;

@@ -52,15 +52,17 @@ class _CESearchState extends State<CESearch> {
          onTap: () async
          {
             MaterialPageRoute? newPage = null;
-            Map<String,String> screenArgs = {};
+            Map<String,dynamic> screenArgs = {};
             
             if( obj is PEQ ) {
                List<String> holders = (obj as PEQ).hostHolderId;
                appState.selectedUser = ( holders.length > 0 ) ? holders[0] : appState.UNASSIGN_USER;
-               List<String> cat = (obj as PEQ).hostProjectSub;
+               List<String> cat = new List<String>.from( (obj as PEQ).hostProjectSub );
                cat.add( appState.selectedUser );
+               screenArgs["cat"] = cat;
+               screenArgs["id"]  = (obj as PEQ).ceProjectId;
                appState.userPActUpdate = true;               
-               newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: cat ));
+               newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: screenArgs ));
             }
             else if( obj is Person )   {
                screenArgs["id"] = (obj as Person).id;
@@ -107,7 +109,7 @@ class _CESearchState extends State<CESearch> {
       assert( appState != null );
 
       // final SearchController controller = SearchController();
-      
+
       return SearchAnchor(
          builder: (BuildContext context, SearchController controller)
          {
@@ -198,30 +200,33 @@ class _getPossibilities {
 
       if (query == '') { return const Iterable<Widget>.empty(); }
 
-      // XXX these expensive fetches should only happen once per login.
-      List<Person>    cePeeps    = [];
       assert( appState.ceProjects != [] );
 
-      // XXX peq issues 
-      // XXX Allow search over all peqs for every user?  Expensive.  Limit to current user?  Limited.  Hmm...
-      //     peqs are not much data, just get every one?  probably.  Should get over all user ceProj's as well.
-      appState.selectedUser      = "U_kgDOBP2eEw";
-      appState.selectedCEProject = "CE_FlutTest_ks8asdlg42";
-
-
+      
       // Collect
+      // Allows search over all peqs in all CEPS the currently logged-in user is connected to.
       var futs = await Future.wait([
-                                      fetchCEPeople( context, container ).then( (p) => cePeeps = p ),
-                                      updateUserPeqs( container, context )
+                                      (appState.cePeople.length == 0 ?
+                                      fetchCEPeople( context, container ).then( (p) => appState.cePeople = p ) :
+                                      new Future<bool>.value(true) ),
+                                      
+                                      (!appState.gotAllPeqs ? 
+                                       updateUserPeqs( container, context, getAll: true ) :
+                                       new Future<bool>.value(true) ),
+                                      
                                       ]);
-      List<PEQ>       ariPeqs    = appState.userPeqs[ appState.selectedUser ];  // XXX get all
 
       // Filter
-      // XXX search should show first line where term shows up
-      List<Person>?    filteredCEPeeps = cePeeps.where( (Person p) => ( p.userName.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
-      List<PEQ>?       filteredPeqs    = ariPeqs.where( (PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      // XXX search should show a little more context per item (minimally, type of link)
+      List<Person>?    filteredCEPeeps = appState.cePeople.where( (Person p) => ( p.userName.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
       List<CEProject>? filteredCEProjs = appState.ceProjects.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
 
+      List<PEQ> filteredPeqs = [];
+      for( final ceUID in appState.cePeople ) {
+         if( appState.userPeqs[ ceUID.id ] != null ) {
+            filteredPeqs.addAll( appState.userPeqs[ ceUID.id ].where( (PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList() );
+         }
+      }                              
 
       // Collate .. GD
       List<Widget> res = [];

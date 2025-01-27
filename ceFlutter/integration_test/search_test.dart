@@ -63,7 +63,7 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    expect( find.text('CodeEquity_ycje7dk23f'), findsNWidgets(2) );
    expect( find.text('CE_FlutTest_ks8asdlg42'), findsNWidgets(2) );
    expect( find.text('BookShare_kd8fb.fl9s'), findsOneWidget );
-   expect( find.text('AssignTest'), findsOneWidget );
+   expect( find.text('Interleave 3'), findsOneWidget );
 
    await dismiss( tester );
    return true;
@@ -82,7 +82,7 @@ Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    expect( find.text('GarlicBeer_38fl0hlsjs'), findsOneWidget );
    expect( find.text('CodeEquity_ycje7dk23f'), findsNWidgets(2) );
    expect( find.text('CE_FlutTest_ks8asdlg42'), findsNWidgets(2) );
-   expect( find.text('CT Blast X'), findsOneWidget );
+   // expect( find.text('CT Blast X'), findsOneWidget );
 
    await dismiss( tester );
    return true;

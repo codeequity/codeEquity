@@ -808,7 +808,7 @@ class _CEProfileState extends State<CEProfilePage> {
       lhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       rhsFrameMinWidth = appState.MIN_PANE_WIDTH - 3*appState.GAP_PAD;
       spacer           = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
- 
+
       updatePerson( context, container );
       updateProjects( context, container );
       
