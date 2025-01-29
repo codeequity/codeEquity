@@ -30,6 +30,9 @@ class CESearch extends StatefulWidget {
 class _CESearchState extends State<CESearch> {
    late var      container;
    late AppState appState;
+
+   late bool saBuilt;
+   late SearchAnchor sa;
    
    // The query currently being searched for. If null, there is no pending request.
    String? _currentQuery;
@@ -43,8 +46,16 @@ class _CESearchState extends State<CESearch> {
    void initState() {
       super.initState();
       _debouncedSearch = _debounce<Iterable<Widget>?, String, dynamic, dynamic, dynamic>(_search);
+      saBuilt = false;
    }
 
+   @override
+   void dispose() {
+      super.dispose();
+      print( "ceSearch Disposessed!" );
+   }
+
+   
    Widget _makeGD( context, appState, obj, objName ) {
       final textWidth = appState.screenWidth * .4;
       // if( obj is PEQ ) { print( "*" + objName + "*"); }
@@ -52,17 +63,18 @@ class _CESearchState extends State<CESearch> {
          onTap: () async
          {
             MaterialPageRoute? newPage = null;
-            Map<String,dynamic> screenArgs = {};
+            Map<String,String> screenArgs        = {};
+            Map<String,dynamic> screenArgsDetail = {};
             
             if( obj is PEQ ) {
                List<String> holders = (obj as PEQ).hostHolderId;
-               appState.selectedUser = ( holders.length > 0 ) ? holders[0] : appState.UNASSIGN_USER;
+               appState.selectedHostUID = ( holders.length > 0 ) ? holders[0] : appState.UNASSIGN_USER;
                List<String> cat = new List<String>.from( (obj as PEQ).hostProjectSub );
-               cat.add( appState.selectedUser );
-               screenArgs["cat"] = cat;
-               screenArgs["id"]  = (obj as PEQ).ceProjectId;
-               appState.userPActUpdate = true;               
-               newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: screenArgs ));
+               cat.add( appState.selectedHostUID );
+               screenArgsDetail["cat"] = cat;
+               screenArgsDetail["id"]  = (obj as PEQ).ceProjectId;
+               appState.userPActUpdate = true;
+               newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: screenArgsDetail ));
             }
             else if( obj is Person )   {
                screenArgs["id"] = (obj as Person).id;
@@ -108,36 +120,42 @@ class _CESearchState extends State<CESearch> {
       appState    = container.state;
       assert( appState != null );
 
-      // final SearchController controller = SearchController();
+      if( !saBuilt ) {
 
-      return SearchAnchor(
-         builder: (BuildContext context, SearchController controller)
-         {
-            return SearchBar(
-               key: Key( 'SearchBar' ),
-               controller: controller,
-               padding: const MaterialStatePropertyAll<EdgeInsets>( EdgeInsets.symmetric(horizontal: 16.0)),
-               onTap: ()      { controller.openView(); },
-               onChanged: (_) { controller.openView(); },
-               leading: const Icon(Icons.search),
-               );                           
-         },
-         dividerColor: Colors.purple[400],
-         suggestionsBuilder: (BuildContext context, SearchController controller) async
-         {
-            final List<Widget>? options = (await _debouncedSearch(controller.text, container, context, appState))?.toList();
-            if (options == null) { return _lastOptions; }
-            _lastOptions = List<ListTile>.generate(options.length, (int index) {
-                  final Widget item = options[index];
-                  return ListTile(
-                     title: item,
-                     onTap: () { debugPrint('You just selected $item'); },
-                     );
-               });
-            
-            return _lastOptions;
-         },
-         );
+         SearchController controller = SearchController();
+
+         sa = SearchAnchor(
+            builder: (BuildContext context, SearchController controller)
+            {
+               print( "search anchor build" );
+               SearchBar sb = SearchBar(
+                  key: Key( 'SearchBar' ),
+                  controller: controller,
+                  padding: const MaterialStatePropertyAll<EdgeInsets>( EdgeInsets.symmetric(horizontal: 16.0)),
+                  onTap:     ()  => controller.openView(),
+                  onChanged: (_) => controller.openView(),
+                  leading: const Icon(Icons.search),
+                  );
+               return sb;
+            },
+            dividerColor: Colors.purple[400],
+            suggestionsBuilder: (BuildContext context, SearchController controller) async
+            {
+               final List<Widget>? options = (await _debouncedSearch(controller.text, container, context, appState))?.toList();
+               if (options == null) { return _lastOptions; }
+               _lastOptions = List<ListTile>.generate(options.length, (int index) {
+                     final Widget item = options[index];
+                     return ListTile(
+                        title: item,
+                        onTap: () { debugPrint('List tile too wide.  Click on center of item.'); },
+                        );
+                  });
+               
+               return _lastOptions;
+            });
+         setState( () => saBuilt = true );
+      }
+      return sa;
    }
 }
 
@@ -200,6 +218,8 @@ class _getPossibilities {
 
       if (query == '') { return const Iterable<Widget>.empty(); }
 
+      print( "Searching" );
+      
       assert( appState.ceProjects != [] );
 
       

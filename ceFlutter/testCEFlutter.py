@@ -246,7 +246,7 @@ def main( cmd ):
     assert( verifyEmulator() )
 
     summary = ""
-    if( cmd == "" ) : summary = runTests( test = "profile" )  # FOCUS AREA
+    if( cmd == "" ) : summary = runTests( test = "search" )  # FOCUS AREA
     elif( cmd == "projectMain" ) : summary = runTests( test = "projectMain" )
     elif( cmd == "projectPact" ) : summary = runTests( test = "projectPact" )
     elif( cmd == "equity" ) : summary = runTests( test = "equity" )

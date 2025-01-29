@@ -24,6 +24,7 @@ dependencies:
   flutter:
     sdk: flutter
   shared_preferences: ^2.0.13
+  # analyzer: ^7.2.0
   localstore: ^1.2.0
   amazon_cognito_identity_dart_2: ^3.6.5
   http: ^1.2.2

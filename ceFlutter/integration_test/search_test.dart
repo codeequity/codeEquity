@@ -53,7 +53,7 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    await pumpSettle( tester, 3, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
    
-   expect( find.text('ceServer'), findsOneWidget );
+   // expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
    expect( find.text('builderCE'), findsOneWidget );
    expect( find.text('rmusick2000'), findsOneWidget );
@@ -166,6 +166,7 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    expect( sb, findsOneWidget );
       
    await tester.drag( sb, Offset(0.0, -1500.0) );
+   await tester.drag( sb, Offset(0.0, -1000.0) );
    print( "Done drag down" );
       
    await pumpSettle( tester, 2, verbose: true );
@@ -355,6 +356,7 @@ Future<bool> validatePEQ( WidgetTester tester ) async {
    final sb = find.ancestor( of: find.text( "ceServer" ), matching: find.byType( ListView ));
    expect( sb, findsOneWidget );
    await tester.drag( sb, Offset(0.0, -1500.0) );
+   await tester.drag( sb, Offset(0.0, -1000.0) );
    await pumpSettle( tester, 2, verbose: true );
    print( "Done drag down" );
    

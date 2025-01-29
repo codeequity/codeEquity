@@ -198,14 +198,14 @@ Future<void> initMDState( context, container ) async {
 
 
 
-// appState.selectedUsers is ceUID + UNASSIGN_USER
+// appState.selectedHostUIDs is ceUID + UNASSIGN_USER
 // the unassigned user tag is useful to grab PEQs that have yet to be ingested.
 String ceUIDFromHost( appState, String hostUID ) {
    if( hostUID == appState.UNASSIGN_USER ) {
       return appState.UNASSIGN_USER;
    }
    else {
-      assert( appState.idMapHost[ appState.selectedUser ] != null);
+      assert( appState.idMapHost[ appState.selectedHostUID ] != null);
       String ceUID = appState.idMapHost[ hostUID ]![ "ceUID" ] ?? "";
       assert( ceUID != "" );
       return ceUID;
@@ -219,10 +219,9 @@ String ceUIDFromHost( appState, String hostUID ) {
 // NOTE this gets pacts for peqs held by selected user, not pacts that selected user was the actor for.
 Future<void> updateUserPActions( peqs, container, context, cepId ) async {
    final appState  = container.state;
-   String uname = appState.selectedUser;
    String pids  = json.encode( peqs );
    
-   String ceUID = ceUIDFromHost( appState, appState.selectedUser );
+   String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );
    appState.userPActs[ceUID] = await fetchPEQActions( context, container, '{ "Endpoint": "GetPActsById", "CEProjectId": "$cepId", "PeqIds": $pids }' );
 }
 
@@ -238,13 +237,13 @@ Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
    // SelectedUser will be adjusted if user clicks on an alloc (summaryFrame) or unassigned
    if( !getAll ) {
       // NOTE this is in terms of host user name, initially
-      String uname = appState.selectedUser;
+      String uname = appState.selectedHostUID;
       if( uname == appState.UNASSIGN_USER ) { uname = ""; }
       
       String cep   = appState.selectedCEProject;
       print( "Building peq data for " + uname + ":" + cep );
 
-      String ceUID = ceUIDFromHost( appState, appState.selectedUser );      
+      String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );      
       appState.userPeqs[ceUID] =
          await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
    }

@@ -116,9 +116,9 @@ class _CEDetailState extends State<CEDetailPage> {
       bool toggled = false;
       
       final textWidth = appState.screenWidth * .4;
-      String ceUID = ceUIDFromHost( appState, appState.selectedUser );      
+      String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );      
       if( userPActUpdated && appState.userPActs != null && appState.userPActs[ ceUID ] != null ) {
-         print( "looking for pacts " + ceUID + " (" +appState.selectedUser +")" );
+         print( "looking for pacts " + ceUID + " (" +appState.selectedHostUID +")" );
          toggled = true;
          pactList.clear();
          var peqCount = 0;
@@ -184,12 +184,12 @@ class _CEDetailState extends State<CEDetailPage> {
 
       print( "Rebuild PActions" + category.toString() );
 
-      // Note: idMapHost does not contain the UNASSIGN_USER.  selectedUser can be unassign, then the userPeqs will be all those with no assignees .. i.e.
+      // Note: idMapHost does not contain the UNASSIGN_USER.  selectedHostUID can be unassign, then the userPeqs will be all those with no assignees .. i.e.
       //       not yet ingested.
-      String ceUID = ceUIDFromHost( appState, appState.selectedUser );
+      String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );
 
       // Get all peqs for user.  Then, pare the list down to match selection
-      // NOTE: Detail page has selectedUser, selectedCEP by now.  Search may not, but seach will already have peqs.
+      // NOTE: Detail page has selectedHostUID, selectedCEP by now.  Search may not, but seach will already have peqs.
       if( appState.userPeqs[ceUID] == null ) {
          await updateUserPeqs( container, context );
       }

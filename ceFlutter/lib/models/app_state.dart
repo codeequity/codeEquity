@@ -51,7 +51,7 @@ class AppState {
    late String ceUserId;                       // set during signup, login, refresh, etc.
 
    late String                          selectedCEProject;
-   late String                          selectedUser;    // Looking at details for this host user, currently
+   late String                          selectedHostUID;    // Looking at details for this host user, currently
 
    late Map< String, Map<String, String >> idMapHost;       //  {hostUid: {ceUID: , ceUserName: , hostUserName: }}
    late List< String>                      hostPlatformsLoaded;  // Which platform's users have already been bulk-loaded
@@ -144,7 +144,7 @@ class AppState {
       gotAllPeqs         = false;
 
       selectedCEProject = "";
-      selectedUser = "";
+      selectedHostUID   = "";
       
       ceProjects   = [];
       cePeople     = [];
