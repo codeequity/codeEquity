@@ -20,7 +20,6 @@ const Duration debounceDuration = Duration(milliseconds: 200);
 
 
 class CESearch extends StatefulWidget {
-   // const CESearch();
    CESearch({Key? key}) : super(key: key);
 
    @override
@@ -40,12 +39,13 @@ class _CESearchState extends State<CESearch> {
    // The most recent suggestions received from the API.
    late Iterable<Widget> _lastOptions = <Widget>[];
    
-   late final _Debounceable<Iterable<Widget>?, String, dynamic, dynamic, dynamic> _debouncedSearch;
+   // late final _Debounceable<Iterable<Widget>?, String, dynamic, dynamic, dynamic> _debouncedSearch;
+   late final _Debounceable<List<dynamic>?, String, dynamic, dynamic, dynamic> _debouncedSearch;
 
    @override
    void initState() {
       super.initState();
-      _debouncedSearch = _debounce<Iterable<Widget>?, String, dynamic, dynamic, dynamic>(_search);
+      _debouncedSearch = _debounce<List<dynamic>?, String, dynamic, dynamic, dynamic>(_search);
       saBuilt = false;
    }
 
@@ -55,16 +55,17 @@ class _CESearchState extends State<CESearch> {
       print( "ceSearch Disposessed!" );
    }
 
-   
-   Widget _makeGD( context, appState, obj, objName ) {
+   /*
+   Widget _makeGD( context, appState, obj, objName, objContext ) {
       final textWidth = appState.screenWidth * .4;
-      // if( obj is PEQ ) { print( "*" + objName + "*"); }
-      return GestureDetector(
+
+      GestureDetector gd = GestureDetector(
          onTap: () async
          {
             MaterialPageRoute? newPage = null;
             Map<String,String> screenArgs        = {};
             Map<String,dynamic> screenArgsDetail = {};
+            print( "GD tap: " + appState.hoverChunk );
             
             if( obj is PEQ ) {
                List<String> holders = (obj as PEQ).hostHolderId;
@@ -93,16 +94,31 @@ class _CESearchState extends State<CESearch> {
             confirmedNav( context, container, newPage! );
          },
          child: makeTitleText( appState, objName, textWidth, false, 1 ),
+         // child: makeActionableText( appState, objName, "search"+objName, _set, _unset, textWidth, false, 1 ),         
          );
-   }
 
+      /*
+      Widget detail = makeTableText( appState, objContext, textWidth, appState.CELL_HEIGHT, false, 1, fontSize: 12 );
+
+      Widget unit = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [ gd, detail ]
+        );
+
+      return SizedBox( width: textWidth, height: appState.CELL_HEIGHT + 7.0, child: unit );
+      */
+      return gd;
+   }
+*/
    
    // Calls search API to search with the given query. Returns null when the call has been made obsolete.
-   Future<Iterable<Widget>?> _search(String query, container, context, appState ) async {
+   // Future<Iterable<Widget>?> _search(String query, container, context, appState ) async {
+   Future<List<dynamic>?> _search(String query, container, context, appState ) async {
       _currentQuery = query;
 
       // XXX error handling?
-      final Iterable<Widget> options = await _getPossibilities.search(_currentQuery!, container, context, appState, _makeGD );
+      final List<dynamic> options = await _getPossibilities.search(_currentQuery!, container, context, appState );
       
       // Hmmm... no detectable difference .... yet?  XXX
       // If another search happened while waiting for above, throw away these options.
@@ -125,6 +141,7 @@ class _CESearchState extends State<CESearch> {
          SearchController controller = SearchController();
 
          sa = SearchAnchor(
+            searchController: controller,            
             builder: (BuildContext context, SearchController controller)
             {
                print( "search anchor build" );
@@ -134,21 +151,86 @@ class _CESearchState extends State<CESearch> {
                   padding: const MaterialStatePropertyAll<EdgeInsets>( EdgeInsets.symmetric(horizontal: 16.0)),
                   onTap:     ()  => controller.openView(),
                   onChanged: (_) => controller.openView(),
+                  // overlayColor: MaterialStateProperty.all<Color>(Colors.red),
                   leading: const Icon(Icons.search),
                   );
                return sb;
             },
             dividerColor: Colors.purple[400],
+              
+            viewBuilder: (Iterable<Widget> suggestions) {
+                              return  Padding(
+                                 padding: EdgeInsets.fromLTRB(appState.TINY_PAD, 0, appState.TINY_PAD, 0),
+                                 child: ListView(
+                                    children: suggestions.toList()
+                                    ));
+                              /*
+                              return MediaQuery.removePadding(
+                                 context: context,
+                                 removeTop: true,
+                                 child: ListView(
+                                    children: suggestions.toList()
+                                    ),
+                                 );
+                              */
+                           },
+
             suggestionsBuilder: (BuildContext context, SearchController controller) async
             {
-               final List<Widget>? options = (await _debouncedSearch(controller.text, container, context, appState))?.toList();
+               final List<dynamic>? options = (await _debouncedSearch(controller.text, container, context, appState))?.toList();
                if (options == null) { return _lastOptions; }
                _lastOptions = List<ListTile>.generate(options.length, (int index) {
-                     final Widget item = options[index];
+                     final textWidth = appState.screenWidth * .4;
+                     
+                     final obj = options[index];
+                     String objName = "";
+                     if( obj is PEQ )            { objName = (obj as PEQ).hostIssueTitle; }
+                     else if( obj is Person )    { objName = (obj as Person).userName; }
+                     else if( obj is CEProject ) { objName = (obj as CEProject).ceProjectId; }
+                     
+                     final Widget sub  = makeTableText( appState, "Marion Marion", textWidth, appState.CELL_HEIGHT, false, 1, fontSize: 12 ); 
+                     final Widget item = makeTitleText( appState, objName, textWidth, false, 1 );
+                     
                      return ListTile(
+                        dense: true,
+                        minVerticalPadding: appState.TINY_PAD / 3.0,
                         title: item,
-                        onTap: () { debugPrint('List tile too wide.  Click on center of item.'); },
-                        );
+                        subtitle: sub,
+                        onTap: ()
+                        {
+                           MaterialPageRoute? newPage = null;
+                           Map<String,String> screenArgs        = {};
+                           Map<String,dynamic> screenArgsDetail = {};
+
+                           setState(() { controller.closeView(objName); });
+                           
+                           if( obj is PEQ ) {
+                              List<String> holders = (obj as PEQ).hostHolderId;
+                              appState.selectedHostUID = ( holders.length > 0 ) ? holders[0] : appState.UNASSIGN_USER;
+                              List<String> cat = new List<String>.from( (obj as PEQ).hostProjectSub );
+                              cat.add( appState.selectedHostUID );
+                              screenArgsDetail["cat"] = cat;
+                              screenArgsDetail["id"]  = (obj as PEQ).ceProjectId;
+                              appState.userPActUpdate = true;
+                              newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: screenArgsDetail ));
+                           }
+                           else if( obj is Person )   {
+                              screenArgs["id"] = (obj as Person).id;
+                              screenArgs["profType"] = "Person" ;
+                              newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+                           }
+                           else if( obj is CEProject) {
+                              screenArgs["id"] = (obj as CEProject).ceProjectId;
+                              screenArgs["profType"] = "CEProject";
+                              newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
+                           }
+                           else {
+                              print( "Error.  Search object is not recognized. " );
+                              assert( false );
+                           }
+                           confirmedNav( context, container, newPage! );
+                        });
+                        
                   });
                
                return _lastOptions;
@@ -213,16 +295,14 @@ class _CancelException implements Exception {
 // XXX minor - search only guarantees finding things that were in place before logging in.
 class _getPossibilities {
 
-   static Future<Iterable<Widget>> search(String query, container, context, appState, makeGD )  async
+   static Future<List<dynamic>> search(String query, container, context, appState )  async
    {
-
-      if (query == '') { return const Iterable<Widget>.empty(); }
-
+      if (query == '') { return List<dynamic>.empty(); }
+      
       print( "Searching" );
       
       assert( appState.ceProjects != [] );
 
-      
       // Collect
       // Allows search over all peqs in all CEPS the currently logged-in user is connected to.
       var futs = await Future.wait([
@@ -248,14 +328,14 @@ class _getPossibilities {
          }
       }                              
 
-      // Collate .. GD
-      List<Widget> res = [];
+      // Collate
+      List<dynamic> res = [];
 
-      res.addAll( (filteredCEPeeps ?? []).map( (p) => makeGD( context, appState, p, p.userName )) );
-      res.addAll( (filteredCEProjs ?? []).map( (p) => makeGD( context, appState, p, p.ceProjectId )) );
-      res.addAll( (filteredPeqs    ?? []).map( (p) => makeGD( context, appState, p, p.hostIssueTitle )) );
-
+      res.addAll( (filteredCEPeeps ?? []) );
+      res.addAll( (filteredCEProjs ?? []) );
+      res.addAll( (filteredPeqs    ?? []) );
       
       return res;
    }
+
 }
