@@ -12,6 +12,8 @@ import 'package:ceFlutter/screens/launch_page.dart';
 
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/HostAccount.dart';
+import 'package:ceFlutter/models/PEQ.dart';
 
 
 // enum accessibility funcs
@@ -196,36 +198,89 @@ Future<void> initMDState( context, container ) async {
 
 
 
+// appState.selectedHostUIDs is ceUID + UNASSIGN_USER
+// the unassigned user tag is useful to grab PEQs that have yet to be ingested.
+String ceUIDFromHost( appState, String hostUID ) {
+   if( hostUID == appState.UNASSIGN_USER ) {
+      return appState.UNASSIGN_USER;
+   }
+   else {
+      assert( appState.idMapHost[ appState.selectedHostUID ] != null);
+      String ceUID = appState.idMapHost[ hostUID ]![ "ceUID" ] ?? "";
+      assert( ceUID != "" );
+      return ceUID;
+   }
+}
+
+
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
 //        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.
 //        small beer.. 
 // NOTE this gets pacts for peqs held by selected user, not pacts that selected user was the actor for.
-Future<void> updateUserPActions( peqs, container, context ) async {
+Future<void> updateUserPActions( peqs, container, context, cepId ) async {
    final appState  = container.state;
-   String uname = appState.selectedUser;
-   String cep   = appState.selectedCEProject;
    String pids  = json.encode( peqs );
-   appState.userPActs[uname] = await fetchPEQActions( context, container, '{ "Endpoint": "GetPActsById", "CEProjectId": "$cep", "PeqIds": $pids }' );
+   
+   String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );
+   appState.userPActs[ceUID] = await fetchPEQActions( context, container, '{ "Endpoint": "GetPActsById", "CEProjectId": "$cepId", "PeqIds": $pids }' );
 }
 
  
 // Note.  this only updates in detail_page when userPActUpdate flag is set by changing to new line.
 //        Could reduce calls by further limiting update to dirty, where dirty is set when empty or after updatePeq.
-//        small beer.. 
+//        small beer..
 // Need both Active and Inactive (for accrued, only)
-Future<void> updateUserPeqs( container, context ) async {
+Future<void> updateUserPeqs( container, context, {getAll = false} ) async {
    final appState  = container.state;
 
+   print( "building peq data..  getall? " + getAll.toString() );
    // SelectedUser will be adjusted if user clicks on an alloc (summaryFrame) or unassigned
-   String uname = appState.selectedUser;
-   if( uname == appState.UNASSIGN_USER ) { uname = ""; }
-   
-   String cep   = appState.selectedCEProject;
-   print( "Building peq data for " + uname + ":" + cep );
+   if( !getAll ) {
+      // NOTE this is in terms of host user name, initially
+      String uname = appState.selectedHostUID;
+      if( uname == appState.UNASSIGN_USER ) { uname = ""; }
+      
+      String cep   = appState.selectedCEProject;
+      print( "Building peq data for " + uname + ":" + cep );
 
-   appState.userPeqs[appState.selectedUser] =
-      await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
+      String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );      
+      appState.userPeqs[ceUID] =
+         await fetchPEQs( context, container, '{ "Endpoint": "GetPEQ", "CEUID": "", "HostUserName": "$uname", "CEProjectId": "$cep", "allAccrued": "true" }' );
+   }
+   else {
+      // Collect CEPs by host
+      List<String> myCEPs = [];
+      List<HostAccount> myHA = appState.ceHostAccounts[ appState.ceUserId ];
+      for( final host in myHA ) { myCEPs.addAll( host.ceProjectIds );  }
+
+      // Collect all peqs by cep
+      String shortName = "GetEntries";
+      List< Future<List<PEQ>> > futs = [];
+      futs = myCEPs.map( (cep) {
+            final postData = '{ "Endpoint": "GetEntries", "tableName": "CEPEQs", "query": { "CEProjectId": "$cep" }}';
+            return fetchPEQs( context, container, postData );
+         }).toList();
+
+      appState.gotAllPeqs = true;
+      List<List<PEQ>> cepPeqs = await Future.wait( futs );   // all peqs for all ceps user is part of
+      
+      // each peq has ceHolderId. accumulate per, put into appState.userPeqs
+      // Note: peqs do not cross CEP boundaries
+      for( final oneProjPeqs in cepPeqs ) {
+         for( final peq in oneProjPeqs ) {
+            for( final ceUID in peq.ceHolderId ) {
+               // print( "got all peqs: " + ceUID + " " + peq.id );
+               appState.userPeqs[ ceUID ] == null ?
+                  appState.userPeqs[ ceUID ] =   [ peq ] :
+                  appState.userPeqs[ ceUID ].add(  peq );
+            }
+         }
+      }
+
+   }
 }
+
+
 
 void confirmedNav( context, container, newPage ) {
    final appState  = container.state;

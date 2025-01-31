@@ -77,7 +77,7 @@ class _CEEditState extends State<CEEditPage> {
                   padding: const EdgeInsets.all(5.0),
                   child: Stack(
                      children: <Widget>[
-                        Container(alignment: Alignment.center, child: Image.asset( pix, width: width ) ),
+                        Container(key: Key( 'thumb'+pix ), alignment: Alignment.center, child: Image.asset( pix, width: width ) ),
                         Align(
                            alignment: Alignment.bottomRight, 
                            child: selectedImage == pix ? Icon( Icons.check ) : Container( width: 1 )

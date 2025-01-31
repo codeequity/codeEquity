@@ -67,7 +67,9 @@ class _CEProjectState extends State<CEProjectPage> {
    }      
 
    Future<void> _detailCallback( List<String> category ) async {
-      MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: category ));
+      Map<String,dynamic> screenArgs = {};
+      screenArgs["cat"] = category;
+      MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: screenArgs ));
       confirmedNav( context, container, newPage );
    }
    

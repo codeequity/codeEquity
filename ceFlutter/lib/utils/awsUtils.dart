@@ -108,7 +108,8 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
       print( "\n" );
       print( e );
       String msg = e.toString();  // can't seem to cast as ClientException, the runtimeType, which has a message property
-      if( msg.contains( "ClientException: XMLHttpRequest error.," ) && msg.contains( "amazonaws.com/prod/find" )) {
+      if( ( msg.contains( "ClientException: XMLHttpRequest error.," ) || msg.contains( "ClientException: Failed to fetch," ))
+          && msg.contains( "amazonaws.com/prod/find" )) {
          // no response.  construct empty.
          http.Response err = new http.Response("blat", 401 );
          return err;
@@ -122,7 +123,8 @@ Future<http.Response> awsPost( String shortName, postData, context, container, {
 
 // If failure is authorization, we can reauthorize to fix it, usually
 Future<bool> checkFailure( response, shortName, context, container ) async {
-   print( "checkFailure.. " + shortName + " " + response.statusCode.toString() );
+   if( response == null || response.statusCode == null ) { print( "checkFailure.. " + shortName ); }
+   else {                                                  print( "checkFailure.. " + shortName + " " + response.statusCode.toString() ); }
    final appState  = container.state;
    bool retval     = false;
 
@@ -318,6 +320,7 @@ Future<List<Person>> fetchCEPeople( context, container ) async {
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEPeople", "query": { "empty": "" }}';
    final response = await awsPost( shortName, postData, context, container );
    
+   print( "fetch CEPeople" );
    if (response.statusCode == 201) {
       Iterable l = json.decode(utf8.decode(response.bodyBytes));
       List<Person> cePeeps = l.map( (sketch)=> sketch == -1 ? Person.empty() : Person.fromJson(sketch) ).toList();

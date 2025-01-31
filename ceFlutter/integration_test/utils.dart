@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 //import 'package:test/test.dart';
 
-
 import 'package:ceFlutter/customIcons.dart';
 
 import 'package:ceFlutter/main.dart';
@@ -472,7 +471,9 @@ Future<bool> logout( WidgetTester tester ) async {
       await pumpSettle( tester, 2 );
       // load/create image takes time now.
       await pumpSettle( tester, 4 );
-
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
+   
       Finder logoutButton = find.byKey( const Key('Logout'));
       expect( logoutButton, findsOneWidget );
    }

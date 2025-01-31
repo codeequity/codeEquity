@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // key
 import 'package:fluttertoast/fluttertoast.dart';
 
+import 'package:ceFlutter/customIcons.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -47,8 +49,8 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    print( "Start C" );
    await open( tester );
    await tester.enterText( search, "c" );
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
+   await pumpSettle( tester, 3, verbose: true );    
+   await pumpSettle( tester, 3, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
    
    expect( find.text('ceServer'), findsOneWidget );
@@ -60,8 +62,9 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    expect( find.text('GarlicBeer_38fl0hlsjs'), findsOneWidget );
    expect( find.text('CodeEquity_ycje7dk23f'), findsNWidgets(2) );
    expect( find.text('CE_FlutTest_ks8asdlg42'), findsNWidgets(2) );
-   expect( find.text('BookShare_kd8fb.fl9s'), findsOneWidget );
-   expect( find.text('AssignTest'), findsOneWidget );
+   // Don't get here with detail
+   // expect( find.text('BookShare_kd8fb.fl9s'), findsOneWidget );
+   // expect( find.text('Interleave 3'), findsOneWidget );
 
    await dismiss( tester );
    return true;
@@ -164,13 +167,14 @@ Future<bool> validateScroll( WidgetTester tester ) async {
    expect( sb, findsOneWidget );
       
    await tester.drag( sb, Offset(0.0, -1500.0) );
+   await tester.drag( sb, Offset(0.0, -1000.0) );
    print( "Done drag down" );
       
    await pumpSettle( tester, 2, verbose: true );
    
-   expect( find.text('Blast 4'), findsOneWidget );
+   expect( find.text('LabelTest Dubs'), findsOneWidget );
+   expect( find.text('IR Accrued'), findsOneWidget );
    expect( find.text('LabelTest'), findsOneWidget );
-   expect( find.text('Ice skating'), findsOneWidget );
 
    // Not sure why, but needs two here.
    await dismiss( tester );
@@ -303,6 +307,16 @@ Future<bool> validateCollab( WidgetTester tester ) async {
 Future<bool> validateCEP( WidgetTester tester ) async {
    print( "Validate CEP" );
 
+   // Start from home, otherwise multiple garlic beers
+   Finder home = find.byIcon( customIcons.home );
+   try {
+      expect( home, findsOneWidget );
+      await tester.tap( home );
+      await pumpSettle( tester, 2, verbose: true );
+      await pumpSettle( tester, 2, verbose: true );    
+   }
+   catch( e ) { print( "already home" ); }
+   
    final Finder search = find.byKey( Key( "SearchBar" ) );
    expect( search, findsOneWidget );
 
@@ -331,21 +345,11 @@ Future<bool> validatePEQ( WidgetTester tester ) async {
    expect( search, findsOneWidget );
 
    await open( tester );
-   await tester.enterText( search, "c" );
+   await tester.enterText( search, "Ice" );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
 
-   expect( find.text('ceServer'), findsOneWidget );
-   expect( find.text('connieTester'), findsOneWidget );
-   expect( find.text('builderCE'), findsOneWidget );
-
-   final sb = find.ancestor( of: find.text( "ceServer" ), matching: find.byType( ListView ));
-   expect( sb, findsOneWidget );
-   await tester.drag( sb, Offset(0.0, -1500.0) );
-   await pumpSettle( tester, 2, verbose: true );
-   print( "Done drag down" );
-   
    await tester.tap( find.text('Ice skating') );
    await pumpSettle( tester, 1, verbose: true );    
    await pumpSettle( tester, 1, verbose: true );

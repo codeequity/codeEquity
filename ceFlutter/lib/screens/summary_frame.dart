@@ -86,8 +86,8 @@ class _CESummaryState extends State<CESummaryFrame> {
          onTap: () async 
          {
             String hostUserLogin = path[ depthM1 ];
-            if( hostUserLogin == appState.UNASSIGN ) { appState.selectedUser = appState.UNASSIGN_USER; }
-            else                                     { appState.selectedUser = hostUserLogin; }
+            if( hostUserLogin == appState.UNASSIGN ) { appState.selectedHostUID = appState.UNASSIGN_USER; }
+            else                                     { appState.selectedHostUID = hostUserLogin; }
             appState.userPActUpdate = true;
             _vPrint( appState, 4, "pactDetail fired for: " + path.toString() );
             widget.detailCallback( path );

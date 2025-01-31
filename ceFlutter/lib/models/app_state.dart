@@ -51,16 +51,16 @@ class AppState {
    late String ceUserId;                       // set during signup, login, refresh, etc.
 
    late String                          selectedCEProject;
-   late String                          selectedUser;    // Looking at details for this user, currently
+   late String                          selectedHostUID;    // Looking at details for this host user, currently
 
-   late Map< String, Map<String, String >> idMapHost;       // host userid to CE user id, ceUserName, hostUserName
+   late Map< String, Map<String, String >> idMapHost;       //  {hostUid: {ceUID: , ceUserName: , hostUserName: }}
    late List< String>                      hostPlatformsLoaded;  // Which platform's users have already been bulk-loaded
 
    // Core data, fetched as needed
    late List<CEProject>                  ceProjects;      // all ceProjects
    late List<Person>                     cePeople;        // all cePeople
-   late Map< String, List<PEQAction> >   userPActs;       // hostUser  : pactions                          
-   late Map< String, List<PEQ> >         userPeqs;        // hostUser  : peqs where user was pact actor
+   late Map< String, List<PEQAction> >   userPActs;       // ceUser    : pactions                          
+   late Map< String, List<PEQ> >         userPeqs;        // ceUser    : peqs where user was pact actor, plus unassign_user for uningested
    late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount (list with 1 HA per platform)
    late Map< String, Person? >           cePersons;       // ceUser    : points at Person in cePeople
    late Map< String, PEQSummary? >       cePEQSummaries;  // ceProject : PEQSummary
@@ -87,6 +87,8 @@ class AppState {
    late bool   updateEquityView;        // updated the viewable list, with dynamo, or newly updated tree
 
    late bool   peqAllocsLoading;        // allows spin while summary frame peq allocations are being constructed
+
+   late bool   gotAllPeqs;              // can search over all peqs in CEPs the user is attached to.  this prevents multiple loads
 
    late bool   userPActUpdate;  // need to upate pact list
    late String hoverChunk;      // For hover highlighting
@@ -125,7 +127,7 @@ class AppState {
       loaded = false;
 
       ceUserId            = "";
-      idMapHost           = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName, hostUserName:}} i.e. idMapHost["sysdkag"].ceUID
+      idMapHost           = new Map<String, Map<String, String>>();  // map: {<hostUserId>: {ceUID:, ceUserName:, hostUserName:}} i.e. idMapHost["sysdkag"]["ceUID"]
       funny               = "";
       hostPlatformsLoaded = [];
 
@@ -139,9 +141,10 @@ class AppState {
       updateEquityPlan   = false;
       updateEquityView   = false;
       peqAllocsLoading   = false;
+      gotAllPeqs         = false;
 
       selectedCEProject = "";
-      selectedUser = "";
+      selectedHostUID   = "";
       
       ceProjects   = [];
       cePeople     = [];

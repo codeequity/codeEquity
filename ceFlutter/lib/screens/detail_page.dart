@@ -47,7 +47,9 @@ class CEDetailPage extends StatefulWidget {
 
 class _CEDetailState extends State<CEDetailPage> {
 
-   late List<String> category;  // pass by navigator in projectpage callback
+   late Map<String,dynamic> screenArgs;   // pass by navigator in projectpage callback
+
+   late List<String> category;  
    late var          container;
    late AppState     appState;
 
@@ -114,8 +116,9 @@ class _CEDetailState extends State<CEDetailPage> {
       bool toggled = false;
       
       final textWidth = appState.screenWidth * .4;
-      if( userPActUpdated && appState.userPActs != null && appState.userPActs[ appState.selectedUser ] != null ) {
-         print( "looking for pacts " + appState.selectedUser );
+      String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );      
+      if( userPActUpdated && appState.userPActs != null && appState.userPActs[ ceUID ] != null ) {
+         print( "looking for pacts " + ceUID + " (" +appState.selectedHostUID +")" );
          toggled = true;
          pactList.clear();
          var peqCount = 0;
@@ -180,29 +183,35 @@ class _CEDetailState extends State<CEDetailPage> {
    void rebuildPActions( container, context ) async {
 
       print( "Rebuild PActions" + category.toString() );
-      //print( "Selected user " + appState.selectedUser );
+
+      // Note: idMapHost does not contain the UNASSIGN_USER.  selectedHostUID can be unassign, then the userPeqs will be all those with no assignees .. i.e.
+      //       not yet ingested.
+      String ceUID = ceUIDFromHost( appState, appState.selectedHostUID );
 
       // Get all peqs for user.  Then, pare the list down to match selection
-      // NOTE: unclaimed are not accessed by user.  appState.selectedUser is bogus in these cases.
-      await updateUserPeqs( container, context );
-
-      // print( "UserPeqs: " + appState.userPeqs[appState.selectedUser].toString() );
+      // NOTE: Detail page has selectedHostUID, selectedCEP by now.  Search may not, but seach will already have peqs.
+      if( appState.userPeqs[ceUID] == null ) {
+         await updateUserPeqs( container, context );
+      }
 
       // If ingest is not up to date, this filter breaks
       // if alloc, alloc name is made part of the category list, and is needed to distinguish allocs
-      if(  appState.selectedUser == appState.UNASSIGN_USER ) { 
-         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub + [appState.UNASSIGN], category )).toList();
+      if( ceUID == appState.UNASSIGN_USER ) { 
+         selectedPeqs = (appState.userPeqs[ ceUID ] ?? []).where( (p) => eq( p.hostProjectSub + [appState.UNASSIGN], category )).toList();
       }
       else {
          List<String> cat = category.sublist(0, category.length - 1 );
-         selectedPeqs = (appState.userPeqs[ appState.selectedUser ] ?? []).where( (p) => eq( p.hostProjectSub, cat )).toList();
+         selectedPeqs = (appState.userPeqs[ ceUID ] ?? []).where( (p) => eq( p.hostProjectSub, cat )).toList();
       }
+
       List<String> peqs = selectedPeqs.map((peq) => peq.id ).toList();
-      
-      await updateUserPActions( peqs, container, context );      
+
+      // Detail page called from project page or search.  Search will set id, project page will set selectedCEP
+      String cepId = screenArgs["id"] == null ? appState.selectedCEProject : screenArgs["id"];
+      await updateUserPActions( peqs, container, context, cepId );      
 
       // populate peqPAct to avoid multiple trips through pacts
-      for( var pact in appState.userPActs[ appState.selectedUser ] ?? [] ) {
+      for( var pact in appState.userPActs[ ceUID ] ?? [] ) {
          assert( pact.subject.length > 0 );
          String peqId = pact.subject[0]; 
          if( peqPAct[peqId] == null ) { peqPAct[peqId] = [ pact ]; }
@@ -225,7 +234,8 @@ class _CEDetailState extends State<CEDetailPage> {
       print( "Detail page" + ModalRoute.of(context)!.settings.arguments.toString() );
       
       assert( ModalRoute.of(context) != null );
-      category    = ModalRoute.of(context)!.settings.arguments as List<String>;
+      screenArgs  = ModalRoute.of(context)!.settings.arguments as Map<String,dynamic>;
+      category    = new List<String>.from( screenArgs["cat"] );
       container   = AppStateContainer.of(context);
       appState    = container.state;
       assert( appState != null );

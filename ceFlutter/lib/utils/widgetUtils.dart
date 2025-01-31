@@ -249,15 +249,19 @@ Widget makeIndentedText( appState, title, width, wrap, lines ) {
                                        ))));
 }
 
-Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {lgap = -1, tgap=-1, bgap=0} ) {
+Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", lgap = -1, tgap=-1, bgap=0} ) {
 
    String lead = "";
    for( int i = 0; i < title.length; i++ ) {
       if( title[i] == " " ) { lead += " "; }
       else{ break; }
    }
+
+   String theKey = title;
+   if( keyPreface != "" ) { theKey = keyPreface + title.trim();  }
    lgap = lgap == -1 ? appState.GAP_PAD : lgap;
    tgap = tgap == -1 ? appState.MID_PAD : tgap;
+   // print( "id " + id );
    Widget mr = MouseRegion(
       onEnter: hov,
       onExit: nohov,
@@ -265,7 +269,7 @@ Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines,
       child: Padding(
          padding: EdgeInsets.fromLTRB(lgap, tgap, appState.TINY_PAD, bgap),
          child: IntrinsicWidth(
-            key: Key( title ),
+            key: Key( theKey ),
             child: Text(title.trim(), softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 14,
                                          color: id == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
@@ -298,7 +302,7 @@ Widget makeToolTip( child, message, {wait=false} ) {
       );
 }
 
-Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, keyTxt = "" } ) {
+Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "" } ) {
    // Add as encountered.
    var mux = 1.0;
    if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
@@ -306,7 +310,8 @@ Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, keyT
    else if( fontSize == 28 ) { mux = 38.0 / appState.BASE_TXT_HEIGHT; }
    else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
 
-   String keyName = keyTxt == "" ? title : keyTxt; 
+   String keyName = keyTxt == "" ? title : keyTxt;
+   Color color = highlight ? appState.BUTTON_COLOR : Colors.black;
    
    return Padding(
       padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
@@ -314,7 +319,7 @@ Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, keyT
                         height: appState.BASE_TXT_HEIGHT * lines * mux,
                         key: Key( keyName ),
                         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold))));
+                                    style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: color))));
 }
 
 Widget makeTableText( appState, title, width, height, wrap, lines, { fontSize = 14, mux = 1.0 } ) {
