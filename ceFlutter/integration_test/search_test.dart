@@ -53,7 +53,7 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    await pumpSettle( tester, 3, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
    
-   // expect( find.text('ceServer'), findsOneWidget );
+   expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
    expect( find.text('builderCE'), findsOneWidget );
    expect( find.text('rmusick2000'), findsOneWidget );
@@ -62,8 +62,9 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    expect( find.text('GarlicBeer_38fl0hlsjs'), findsOneWidget );
    expect( find.text('CodeEquity_ycje7dk23f'), findsNWidgets(2) );
    expect( find.text('CE_FlutTest_ks8asdlg42'), findsNWidgets(2) );
-   expect( find.text('BookShare_kd8fb.fl9s'), findsOneWidget );
-   expect( find.text('Interleave 3'), findsOneWidget );
+   // Don't get here with detail
+   // expect( find.text('BookShare_kd8fb.fl9s'), findsOneWidget );
+   // expect( find.text('Interleave 3'), findsOneWidget );
 
    await dismiss( tester );
    return true;
@@ -82,7 +83,7 @@ Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    expect( find.text('GarlicBeer_38fl0hlsjs'), findsOneWidget );
    expect( find.text('CodeEquity_ycje7dk23f'), findsNWidgets(2) );
    expect( find.text('CE_FlutTest_ks8asdlg42'), findsNWidgets(2) );
-   // expect( find.text('CT Blast X'), findsOneWidget );
+   expect( find.text('CT Blast X'), findsOneWidget );
 
    await dismiss( tester );
    return true;
@@ -171,9 +172,9 @@ Future<bool> validateScroll( WidgetTester tester ) async {
       
    await pumpSettle( tester, 2, verbose: true );
    
-   expect( find.text('Blast 4'), findsOneWidget );
+   expect( find.text('LabelTest Dubs'), findsOneWidget );
+   expect( find.text('IR Accrued'), findsOneWidget );
    expect( find.text('LabelTest'), findsOneWidget );
-   expect( find.text('Ice skating'), findsOneWidget );
 
    // Not sure why, but needs two here.
    await dismiss( tester );
@@ -344,22 +345,11 @@ Future<bool> validatePEQ( WidgetTester tester ) async {
    expect( search, findsOneWidget );
 
    await open( tester );
-   await tester.enterText( search, "c" );
+   await tester.enterText( search, "Ice" );
    await pumpSettle( tester, 2, verbose: true );    
    await pumpSettle( tester, 2, verbose: true );
    await pumpSettle( tester, 2, verbose: true );
 
-   expect( find.text('ceServer'), findsOneWidget );
-   expect( find.text('connieTester'), findsOneWidget );
-   expect( find.text('builderCE'), findsOneWidget );
-
-   final sb = find.ancestor( of: find.text( "ceServer" ), matching: find.byType( ListView ));
-   expect( sb, findsOneWidget );
-   await tester.drag( sb, Offset(0.0, -1500.0) );
-   await tester.drag( sb, Offset(0.0, -1000.0) );
-   await pumpSettle( tester, 2, verbose: true );
-   print( "Done drag down" );
-   
    await tester.tap( find.text('Ice skating') );
    await pumpSettle( tester, 1, verbose: true );    
    await pumpSettle( tester, 1, verbose: true );

@@ -55,17 +55,66 @@ class _CESearchState extends State<CESearch> {
       print( "ceSearch Disposessed!" );
    }
 
-   /*
-   Widget _makeGD( context, appState, obj, objName, objContext ) {
-      final textWidth = appState.screenWidth * .4;
+   
+   // Calls search API to search with the given query. Returns null when the call has been made obsolete.
+   // Future<Iterable<Widget>?> _search(String query, container, context, appState ) async {
+   Future<List<dynamic>?> _search(String query, container, context, appState ) async {
+      _currentQuery = query;
 
-      GestureDetector gd = GestureDetector(
-         onTap: () async
+      // XXX error handling?
+      final List<dynamic> options = await _getPossibilities.search(_currentQuery!, container, context, appState );
+      
+      // Hmmm... no detectable difference .... yet?  XXX
+      // If another search happened while waiting for above, throw away these options.
+      // if (_currentQuery != query) { print( "OI!" ); return null; }
+
+      _currentQuery = null;
+      
+      return options;
+   }
+
+   ListTile _makeLT( context, appState, controller, options, index ) {
+      final textWidth = appState.screenWidth * .4;
+      final obj       = options[index];
+
+      String objName   = "";
+      String objDetail = "";
+      if( obj is PEQ ) {
+         PEQ p     = obj as PEQ;
+         objName   = p.hostIssueTitle;
+         objDetail = p.peqType.toString() + " within " + p.ceProjectId;
+      }
+      else if( obj is Person ) {
+         Person p  = obj as Person;
+         objName   = p.userName;
+         objDetail = p.firstName + " " + p.lastName;
+      }
+      else if( obj is CEProject ) {
+         CEProject p = obj as CEProject;
+         objName     = p.ceProjectId;
+         objDetail   = "a CodeEquity project on " + p.hostPlatform + ": " + p.description;
+      }
+      else {
+         print( "Error.  Search object is not recognized. " );
+         assert( false );
+      }
+
+      final Widget item = makeTitleText( appState, objName, textWidth, false, 1 );
+      final Widget sub  = makeTableText( appState, objDetail, textWidth, appState.CELL_HEIGHT, false, 1, fontSize: 12 ); 
+      
+      return ListTile(
+         dense: true,
+         minVerticalPadding: appState.TINY_PAD / 3.0,
+         title: item,
+         subtitle: sub,
+         onTap: ()
          {
             MaterialPageRoute? newPage = null;
             Map<String,String> screenArgs        = {};
             Map<String,dynamic> screenArgsDetail = {};
-            print( "GD tap: " + appState.hoverChunk );
+
+            // without this, when click into search object, then minimize browser, bad things happen upon re-open browser
+            setState(() { controller.closeView(objName); });
             
             if( obj is PEQ ) {
                List<String> holders = (obj as PEQ).hostHolderId;
@@ -92,43 +141,8 @@ class _CESearchState extends State<CESearch> {
                assert( false );
             }
             confirmedNav( context, container, newPage! );
-         },
-         child: makeTitleText( appState, objName, textWidth, false, 1 ),
-         // child: makeActionableText( appState, objName, "search"+objName, _set, _unset, textWidth, false, 1 ),         
-         );
-
-      /*
-      Widget detail = makeTableText( appState, objContext, textWidth, appState.CELL_HEIGHT, false, 1, fontSize: 12 );
-
-      Widget unit = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [ gd, detail ]
-        );
-
-      return SizedBox( width: textWidth, height: appState.CELL_HEIGHT + 7.0, child: unit );
-      */
-      return gd;
+         });
    }
-*/
-   
-   // Calls search API to search with the given query. Returns null when the call has been made obsolete.
-   // Future<Iterable<Widget>?> _search(String query, container, context, appState ) async {
-   Future<List<dynamic>?> _search(String query, container, context, appState ) async {
-      _currentQuery = query;
-
-      // XXX error handling?
-      final List<dynamic> options = await _getPossibilities.search(_currentQuery!, container, context, appState );
-      
-      // Hmmm... no detectable difference .... yet?  XXX
-      // If another search happened while waiting for above, throw away these options.
-      // if (_currentQuery != query) { print( "OI!" ); return null; }
-
-      _currentQuery = null;
-      
-      return options;
-   }
-
 
    @override
    Widget build(BuildContext context) {
@@ -144,97 +158,43 @@ class _CESearchState extends State<CESearch> {
             searchController: controller,            
             builder: (BuildContext context, SearchController controller)
             {
-               print( "search anchor build" );
+               // print( "search anchor build" );
                SearchBar sb = SearchBar(
                   key: Key( 'SearchBar' ),
                   controller: controller,
                   padding: const MaterialStatePropertyAll<EdgeInsets>( EdgeInsets.symmetric(horizontal: 16.0)),
                   onTap:     ()  => controller.openView(),
                   onChanged: (_) => controller.openView(),
-                  // overlayColor: MaterialStateProperty.all<Color>(Colors.red),
                   leading: const Icon(Icons.search),
                   );
                return sb;
             },
             dividerColor: Colors.purple[400],
               
-            viewBuilder: (Iterable<Widget> suggestions) {
-                              return  Padding(
-                                 padding: EdgeInsets.fromLTRB(appState.TINY_PAD, 0, appState.TINY_PAD, 0),
-                                 child: ListView(
-                                    children: suggestions.toList()
-                                    ));
-                              /*
-                              return MediaQuery.removePadding(
-                                 context: context,
-                                 removeTop: true,
-                                 child: ListView(
-                                    children: suggestions.toList()
-                                    ),
-                                 );
-                              */
-                           },
+            viewBuilder: (Iterable<Widget> suggestions)
+            {
+               return MediaQuery.removePadding(
+                  context: context,
+                  removeTop: true,
+                  child: Padding(
+                     padding: EdgeInsets.fromLTRB(appState.TINY_PAD, 0, appState.TINY_PAD, 0),
+                     child: ListView(
+                        children: suggestions.toList()
+                        ))
+                  );
+            },
 
             suggestionsBuilder: (BuildContext context, SearchController controller) async
             {
                final List<dynamic>? options = (await _debouncedSearch(controller.text, container, context, appState))?.toList();
-               if (options == null) { return _lastOptions; }
-               _lastOptions = List<ListTile>.generate(options.length, (int index) {
-                     final textWidth = appState.screenWidth * .4;
-                     
-                     final obj = options[index];
-                     String objName = "";
-                     if( obj is PEQ )            { objName = (obj as PEQ).hostIssueTitle; }
-                     else if( obj is Person )    { objName = (obj as Person).userName; }
-                     else if( obj is CEProject ) { objName = (obj as CEProject).ceProjectId; }
-                     
-                     final Widget sub  = makeTableText( appState, "Marion Marion", textWidth, appState.CELL_HEIGHT, false, 1, fontSize: 12 ); 
-                     final Widget item = makeTitleText( appState, objName, textWidth, false, 1 );
-                     
-                     return ListTile(
-                        dense: true,
-                        minVerticalPadding: appState.TINY_PAD / 3.0,
-                        title: item,
-                        subtitle: sub,
-                        onTap: ()
-                        {
-                           MaterialPageRoute? newPage = null;
-                           Map<String,String> screenArgs        = {};
-                           Map<String,dynamic> screenArgsDetail = {};
 
-                           setState(() { controller.closeView(objName); });
-                           
-                           if( obj is PEQ ) {
-                              List<String> holders = (obj as PEQ).hostHolderId;
-                              appState.selectedHostUID = ( holders.length > 0 ) ? holders[0] : appState.UNASSIGN_USER;
-                              List<String> cat = new List<String>.from( (obj as PEQ).hostProjectSub );
-                              cat.add( appState.selectedHostUID );
-                              screenArgsDetail["cat"] = cat;
-                              screenArgsDetail["id"]  = (obj as PEQ).ceProjectId;
-                              appState.userPActUpdate = true;
-                              newPage = MaterialPageRoute(builder: (context) => CEDetailPage(), settings: RouteSettings( arguments: screenArgsDetail ));
-                           }
-                           else if( obj is Person )   {
-                              screenArgs["id"] = (obj as Person).id;
-                              screenArgs["profType"] = "Person" ;
-                              newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-                           }
-                           else if( obj is CEProject) {
-                              screenArgs["id"] = (obj as CEProject).ceProjectId;
-                              screenArgs["profType"] = "CEProject";
-                              newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
-                           }
-                           else {
-                              print( "Error.  Search object is not recognized. " );
-                              assert( false );
-                           }
-                           confirmedNav( context, container, newPage! );
-                        });
-                        
-                  });
-               
+               if (options == null) { return _lastOptions; }
+
+               _lastOptions = List<ListTile>.generate(options.length, (int index) { return _makeLT( context, appState, controller, options, index );  });
+
                return _lastOptions;
             });
+
          setState( () => saBuilt = true );
       }
       return sa;
@@ -333,7 +293,11 @@ class _getPossibilities {
 
       res.addAll( (filteredCEPeeps ?? []) );
       res.addAll( (filteredCEProjs ?? []) );
-      res.addAll( (filteredPeqs    ?? []) );
+
+      // XXX there are (much) faster ways to do this
+      // search term may grab same peq from multiple users.. remove repeats.
+      final _set = {...filteredPeqs};
+      res.addAll( _set.toList() );
       
       return res;
    }
