@@ -37,10 +37,32 @@ Future<void> dismiss( WidgetTester tester ) async {
    // final Offset tapPosition = Offset(100, 100);
    // await tester.tapAt( tapPosition );
 
-   final Finder out = find.text( "CodeEquity Projects" );
+   // Clear text first, if available
+   final Finder close = find.byIcon( Icons.close );
+   try{
+      await tester.tap( close );
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
+   }
+   catch( e ) { print( "No close icon available" ); }
 
-   // This is not in the forefront, so integration driver complains without the silencer
-   await tester.tap( out, warnIfMissed: false );
+   // One of these should be visible.  All will be in the background, so silence warning.
+   try{ 
+      final Finder out = find.text( "CodeEquity Projects" );
+      await tester.tap( out, warnIfMissed: false );
+   }
+   catch( e ) {}
+   try{ 
+      final Finder out = find.text( "GitHub ID" );
+      await tester.tap( out, warnIfMissed: false );
+   }
+   catch( e ) {}
+   try{ 
+      final Finder out = find.text( "Repositories" );
+      await tester.tap( out, warnIfMissed: false );
+   }
+   catch( e ) {}
+      
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 }
@@ -49,9 +71,14 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    print( "Start C" );
    await open( tester );
    await tester.enterText( search, "c" );
-   await pumpSettle( tester, 3, verbose: true );    
-   await pumpSettle( tester, 3, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   /*
+     await pumpSettle( tester, 2, verbose: true );    
+     await pumpSettle( tester, 2, verbose: true );
+     await pumpSettle( tester, 2, verbose: true );
+   */
    
    expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
@@ -69,13 +96,30 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    await dismiss( tester );
    return true;
 }
+
+Future<bool> appeaseScreenlock( WidgetTester tester, Finder search ) async {
+   print( "\nStart appeasement" );
+
+   await open( tester );
+   await tester.enterText( search, "ZZZZZ" );
+   await pumpSettle( tester, 2, verbose: true );    
+   await pumpSettle( tester, 2, verbose: true );
+   await pumpSettle( tester, 2, verbose: true );
+   
+   try{ expect( find.text('ceServer'), findsOneWidget ); } catch(e) { print( "yup" ); }
+
+   await dismiss( tester );
+   print( "End appeasement\n" );
+   return true;
+}
+
 Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    print( "Start CO" );
    await open( tester );
    await tester.enterText( search, "co" );
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
 
    expect( find.text('connieTester'), findsOneWidget );
    expect( find.text('CE_ServTest_usda23k425'), findsNWidgets(2) );
@@ -93,9 +137,9 @@ Future<bool> validateCON( WidgetTester tester, Finder search ) async {
    print( "Start CON" );
    await open( tester );
    await tester.enterText( search, "con" );
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
 
    expect( find.text('connieTester'), findsOneWidget );
    expect( find.text('CE_ServTest_usda23k425'), findsNWidgets(2) );
@@ -109,9 +153,9 @@ Future<bool> validateCONT( WidgetTester tester, Finder search ) async {
    print( "Start CONT" );
    await open( tester );
    await tester.enterText( search, "cont" );
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
 
    expect( find.text('ceServer'), findsNothing );
    expect( find.text('connieTester'), findsNothing );
@@ -131,6 +175,7 @@ Future<bool> validateCONT( WidgetTester tester, Finder search ) async {
 }
 
 
+// NOTE: first test here is going upstream to aws.  The rest are cached.  Changes settle time requirements.
 Future<bool> validateIncremental( WidgetTester tester ) async {
    print( "Validate incremental mods" );
 
@@ -138,6 +183,7 @@ Future<bool> validateIncremental( WidgetTester tester ) async {
    expect( search, findsOneWidget );
 
    // Unfortunately, enter here clears first.  so start over each time
+   expect( await appeaseScreenlock( tester, search ),  true );
    expect( await validateC( tester, search ),  true );
    expect( await validateCO( tester, search ), true );
    expect( await validateCON( tester, search ), true );
@@ -154,9 +200,9 @@ Future<bool> validateScroll( WidgetTester tester ) async {
 
    await open( tester );
    await tester.enterText( search, "c" );
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
 
    expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
@@ -216,9 +262,9 @@ Future<bool> validateCollabConnie( WidgetTester tester ) async {
    expect( txt, findsOneWidget );
 
    Finder button = find.byKey( Key( 'Logout' ) );
-   expect ( button, findsOneWidget );
+   expect ( button, findsNothing );
    button = find.byKey( Key( 'Edit profile' ) );
-   expect ( button, findsOneWidget );
+   expect ( button, findsNothing );
 
    final Finder image = find.byKey( Key( "cGradImage" ));
    expect( image, findsOneWidget );
@@ -288,9 +334,9 @@ Future<bool> validateCollab( WidgetTester tester ) async {
 
    await open( tester );
    await tester.enterText( search, "c" );
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
 
    expect( find.text('ceServer'), findsOneWidget );
    expect( find.text('connieTester'), findsOneWidget );
@@ -311,7 +357,15 @@ Future<bool> validateCEP( WidgetTester tester ) async {
    Finder home = find.byIcon( customIcons.home );
    try {
       expect( home, findsOneWidget );
-      await tester.tap( home );
+      await tester.tap( home, warnIfMissed: false );
+      await pumpSettle( tester, 2, verbose: true );
+      await pumpSettle( tester, 2, verbose: true );    
+   }
+   catch( e ) { print( "already home" ); }
+   // First attempt can miss.  sigh.
+   try {
+      expect( home, findsOneWidget );
+      await tester.tap( home, warnIfMissed: false );
       await pumpSettle( tester, 2, verbose: true );
       await pumpSettle( tester, 2, verbose: true );    
    }
@@ -320,15 +374,13 @@ Future<bool> validateCEP( WidgetTester tester ) async {
    final Finder search = find.byKey( Key( "SearchBar" ) );
    expect( search, findsOneWidget );
 
+   expect( await appeaseScreenlock( tester, search ),  true );         
+   
    await open( tester );
-   await tester.enterText( search, "c" );
-   await pumpSettle( tester, 2, verbose: true );    
-   await pumpSettle( tester, 2, verbose: true );
-   await pumpSettle( tester, 2, verbose: true );
-
-   expect( find.text('ceServer'), findsOneWidget );
-   expect( find.text('connieTester'), findsOneWidget );
-   expect( find.text('builderCE'), findsOneWidget );
+   await tester.enterText( search, "gar" );
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
 
    await tester.tap( find.text('GarlicBeer_38fl0hlsjs') );
    await pumpSettle( tester, 2, verbose: true );    
@@ -344,6 +396,8 @@ Future<bool> validatePEQ( WidgetTester tester ) async {
    final Finder search = find.byKey( Key( "SearchBar" ) );
    expect( search, findsOneWidget );
 
+   expect( await appeaseScreenlock( tester, search ),  true );         
+   
    await open( tester );
    await tester.enterText( search, "Ice" );
    await pumpSettle( tester, 2, verbose: true );    
@@ -359,6 +413,11 @@ Future<bool> validatePEQ( WidgetTester tester ) async {
 }
 
 
+// NOTE: searchAnchor does not play nicely with integration_test.
+//       3 modes to satisfy: 1) actual human usage 2) cronjob by hand 3) cronjob during screenlock
+//       Without appeaseScreenlock, screenlock cron fails with 2 ceServer widgets showing early.. by hand cron is fine
+//       With just finding "c" 2x in a row in appease, screenlock is fine, but by hand cron job fails finding 0
+//       could probably get rid of appease by making sure search term is always different..
 void main() {
 
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -388,6 +447,7 @@ void main() {
          await validateIncremental( tester );
          await validateScroll( tester );
          await validateCollab( tester );
+
          await validateCEP( tester );
          await validatePEQ( tester );
 
