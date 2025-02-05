@@ -681,7 +681,7 @@ class _CEProfileState extends State<CEProfilePage> {
      // aggressive, and without locking, failure for integration testing.
      // assert( appState.cogUser!.preferredUserName != null);
 
-     // final textWidth  = min( lhsFrameMaxWidth - 2*appState.GAP_PAD - appState.TINY_PAD, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
+     final itsMe      = screenArgs["id"] == "";   // Is this profile for the logged in user?
      final textWidth  = lhsFrameMaxWidth - 2*appState.GAP_PAD - appState.TINY_PAD;
      final spacer     = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .5 );
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
@@ -702,7 +702,7 @@ class _CEProfileState extends State<CEProfilePage> {
         cePeep = myself!;
 
         if( profileImage != null ) { pi   = profileImage!; }        
-        hostAccs = screenArgs["id"] == "" ? appState.myHostAccounts : ( appState.ceHostAccounts[ screenArgs["id"] ] ?? [] );
+        hostAccs = itsMe ? appState.myHostAccounts : ( appState.ceHostAccounts[ screenArgs["id"] ] ?? [] );
         
         // CE Host User
         for( var ha in hostAccs ) {
@@ -762,13 +762,18 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, cname, textWidth, false, 1 ),
                  makeTitleText( appState, cePeep.email, textWidth, false, 1 ),
                  miniSpacer,
+
+                 itsMe ? 
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
                                          MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEEditPage(), settings: RouteSettings( arguments: screenArgs ));
                                          confirmedNav( context, container, newPage );
                                       }),
                                    makeActionButtonFixed( appState, 'Logout', lhsFrameMaxWidth / 2.0, _logout( context, appState) )                                                    
-                          ]),
+                          ])
+                 :
+                 Container( width: 1.0 ),
+                 
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "Open tasks:", textWidth, false, 1, fontSize: 18 ),
                  makeTitleText( appState, "   Agreements", textWidth, false, 1 ),
