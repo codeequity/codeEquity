@@ -417,7 +417,7 @@ Future<bool> validatePEQ( WidgetTester tester ) async {
 //       3 modes to satisfy: 1) actual human usage 2) cronjob by hand 3) cronjob during screenlock
 //       Without appeaseScreenlock, screenlock cron fails with 2 ceServer widgets showing early.. by hand cron is fine
 //       With just finding "c" 2x in a row in appease, screenlock is fine, but by hand cron job fails finding 0
-//       could probably get rid of appease by making sure search term is always different..
+//       could probably get rid of appease by making sure search term is always different..  hmmm... nope...
 void main() {
 
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();

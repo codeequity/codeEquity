@@ -10,11 +10,12 @@ more.  In return, those companies own all of the output of every one of their em
 companies are similar, but in place of stability, retirement plans, and competitive wages,
 they offer small amounts of equity in order to attract skilled employees.
 
-There are other models for organizing teams to create products.  GitHub provides a space for the
-primary alternative today in the software development world.  Most new ventures in the GitHub space do not
-offer money or equity to compensate skilled contributors.  Nor do they offer office space, insurance,
-retirement plans, or lots of free coffee.  Instead, they offer social recognition and a sense of
-purpose.  These incentives can be powerful, but only up to a point. 
+There are other models for organizing teams to create products.  GitHub is perhaps the best known
+developer platform available currently.  GitHub provides a space for the primary alternative today
+in the software development world.  Most new ventures in the GitHub space do not offer money or
+equity to compensate skilled contributors.  Nor do they offer office space, insurance, retirement
+plans, or lots of free coffee.  Instead, they offer social recognition and a sense of purpose.
+These incentives can be powerful, but only up to a point.
 
 CodeEquity proposes that these new ventures additionally offer up their primary currency - 
 ***ownership*** - as the key incentive to attract skilled contributors.  CodeEquity is both a legal
@@ -45,11 +46,10 @@ of being worth something down the road if you can get good help early on.
 
 For the potential contributor to CodeEquity software itself, well, yes, we are a CodeEquity project,
 so consider joining the team!
-
 ## CodeEquity Key Concepts
 
 Equity in a CodeEquity project is earned by making contributions to that project.  In a typical
-company, equity is granted once a year to a person privately based on the subjective
+company, equity is granted once a year to a person, privately, based on the subjective
 evaluation of that person's boss.  In contrast, equity in a CodeEquity project can be earned at any point during
 the year.  The equity value of any contribution is known to all, up front, and the accrual of equity
 is both objective and public.
@@ -59,11 +59,10 @@ the manual concise and understandable.  These introductions are for common refer
 binding definitions and details, refer to the **CodeEquity Venture Equity Agreement**.
 
 
-### CodeEquity Ventures & Projects
+### CodeEquity Venture
 
 A CodeEquity Venture is analogous to a company.  Equity within a company is separate and distinct
-from equity within a second company.  A CodeEquity Project is analogous to a project, or part of a
-project within a company.  Equity within a company may be earmarked for different projects or
+from equity within a second company.  Equity within a company is usually earmarked for different projects or
 purposes within that company.
 
 For example, Jessie has a great idea for an app that allows people within a community to browse,
@@ -71,7 +70,8 @@ borrow, and loan books with each-other, and has decided to pursue this idea with
 framework.  Jessie is calling the app "BookShare".  To simplify planning, Jessie decides to break the app's
 development tasks into several smaller projects: *BookShare frontend*, *BookShare backend*, and *BookShare
 operations*.  In this example, the CodeEquity Venture is BookShare.  The Venture is made up of three
-CodeEquity Projects: *BookShare frontend*, *BookShare backend*, and *BookShare operations*.
+smaller projects: *BookShare frontend*, *BookShare backend*, and *BookShare operations*, each of which have
+separate equity allocations.
 CodeEquity will track and collate provisional equity across the three projects and report it within
 the umbrella of the Venture: BookShare.  Jessie could have chosen a different way to structure
 BookShare within the CodeEquity framework, but this breakdown is simple and functional.
@@ -96,16 +96,28 @@ For simplicity of reference throughout CodeEquity, one provisional stock option 
 or *one share of provisional equity*.
 
 
-### PEQ Issues
+### PEQ Issue
 
 A CodeEquity Project will normally be planned and tracked with a collection of *issues* managed 
-with project management software, such as GitHub project boards.  Common issues
+with project management software, such as GitHub repositories and project boards.  Common issues
 involve planned features, feature requests, bug reports, and operational tasks.
 
 A PEQ issue is any issue that has a PEQ value attached to it.  For example, the *BookShare frontend*
 project might have an issue: "Add book detail page".  Without an associated PEQ value, this is not a
 PEQ issue.  Once Jessie adds, say, a "1000 PEQ" label to the issue, it becomes a PEQ issue and will
 be subsequently tracked by CodeEquity software.
+
+
+### CodeEquity Project
+
+A CodeEquity Project is a host repository, along with all of it's related content and views (such as issues, labels and projects),
+that has been identified as belonging to a CodeEquity Venture, and is under the active custodianship or care of CodeEquity.  The CodeEquity
+server guarantees that every CodeEquity Project is in a valid state at all times.  For example, CodeEquity Projects will never have
+an issue that has more than 1 PEQ label in it, whereas a host repository that is not a CodeEquity Project will often not place
+or enforce any restrictions on the labels applied to an issue.
+A CodeEquity Project can belong to exactly 1 CodeEquity Venture (which may own multiple CodeEquity Projects).
+Note that at times when it is clear, we refer to a CodeEquity project in the more general sense of a project (or startup, or even an idea)
+that has embraced the CodeEquity approach.  
 
 
 ### CodeEquity Software Framework Mandate
@@ -127,7 +139,6 @@ CodeEquity ensures that once PEQs have accrued (i.e. provisional equity has
 been earned by a contributor), all characteristics of those PEQs are immutable.  For example, if
 Alex earned 1000 PEQs for implementing a new feature for BookShare, they can not be taken away or
 changed down the road.
-
 
 
 # CodeEquity for GitHub
@@ -545,7 +556,6 @@ with a user pool.  Signed requests are sent to AWS Lambda functions via AWS Gate
 Their primary function is saving and retrieving data from a collection of AWS DynamoDB tables.
 
 All communication with the AWS Backend is encoded as JSON REST data.
-
 
 # CodeEquity App for GitHub
 
