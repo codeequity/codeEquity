@@ -113,15 +113,17 @@ def createTestDDBEntries( sam ) :
     # absolute path, or relative from ops.  above relative path is incorrect.
     # splitAndLoad(sam, "../../webServer/tests/testData/baselineData/dynamoCEPEQRaw.json", "CEPEQRaw" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEAgreements_latest.json", "CEAgreements" )
+    splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEEquityPlan_latest.json", "CEEquityPlan" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEHostUser_latest.json", "CEHostUser" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCELinkage_latest.json", "CELinkage" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPeople_latest.json", "CEPeople" )
-    # splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEProfileImage_latest.json", "CEProfileImage" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQActions_latest.json", "CEPEQActions" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQRaw_latest.json", "CEPEQRaw" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQs_latest.json", "CEPEQs" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEPEQSummary_latest.json", "CEPEQSummary" )
+    splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEProfileImage_latest.json", "CEProfileImage" )
     splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEProjects_latest.json", "CEProjects" )
+    splitAndLoad(sam, "../../webServer/tests/testData/dynamoCEVentures_latest.json", "CEVentures" )
 
     
 def createConfigFiles( sam, Xs = False ):
@@ -284,8 +286,8 @@ def help() :
     logging.info( "Remember to save any data you want to keep.  Then.." )
     logging.info( "python createCE.py getStackOutputs >& oldStack.txt" )
     logging.info( "python createCE.py getCFStacks >& oldCFStack.txt" )
-    logging.info( "python createCE.py deleteCEResources" )
-    logging.info( "python createCE.py makeCEResources" )
+    logging.info( "python createCE.py deleteCEResources >& oldDelete.txt" )
+    logging.info( "python createCE.py makeCEResources >& oldCreate.txt" )
     logging.info( "python createCE.py createTestDDBEntries" )
     logging.info( "Then to update asset files (needed for cognito user pool info and etc).." )
     logging.info( "Build flutter web,        e.g. cd ../../ceFlutter; flutter build web" )

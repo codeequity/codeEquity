@@ -279,9 +279,9 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                  cepLink,
-                 makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
+                 makeTitleText( appState, "Venture: " + cep.ceVentureId, textWidth, false, 1, fontSize: 14 ),
                  miniSpacer,
-                 makeTitleText( appState, cep.ceProjectComponent + ", " + cep.description, textWidth, false, 1, fontSize: 12 ),
+                 makeTitleText( appState, cep.description, textWidth, false, 1, fontSize: 12 ),
                  ]
               )
            ),
@@ -544,7 +544,7 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> repoWid = [spacer];
      Widget collabWid     = spacer;
      Widget? pi            = null;
-     CEProject cep        = new CEProject( ceProjectId: "A", ceProjectComponent: "", description: "", hostPlatform: "", organization: "",
+     CEProject cep        = new CEProject( ceProjectId: "A", ceVentureId: "A", description: "", hostPlatform: "", 
                                            ownerCategory: "", projectMgmtSys: "", repositories: [] );
      String cepName       = cep.ceProjectId;
      EquityPlan ep        = new EquityPlan( ceProjectId: screenArgs["id"]!, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" );
@@ -612,9 +612,8 @@ class _CEProfileState extends State<CEProfilePage> {
                  spacer, 
                  pi,
                  makeTitleText( appState, cep.ceProjectId == "A" ? "" : cep.ceProjectId, textWidth * 1.1, false, 1, fontSize: 24 ),
-                 makeTitleText( appState, cep.ceProjectComponent, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
-                 makeTitleText( appState, "Organization: " + cep.organization, textWidth, false, 1, fontSize: 14 ),
+                 makeTitleText( appState, "Venture: " + cep.ceVentureId, textWidth, false, 1, fontSize: 14 ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
