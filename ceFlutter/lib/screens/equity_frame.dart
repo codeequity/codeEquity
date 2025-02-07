@@ -347,8 +347,11 @@ class _CEEquityState extends State<CEEquityFrame> {
       if( appState.verbose >= 2 ) { print( "Getting equity table widgets update tree/view: " + appState.updateEquityPlan.toString() + " " + appState.updateEquityView.toString() ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       final numWidth = width / 2.5;
-         
-      if( appState.myEquityPlan != null && appState.myEquityPlan!.ceProjectId != appState.selectedCEProject ) {
+
+      print( appState.selectedCEVenture );
+      print( appState.myEquityPlan.toString() );
+      
+      if( appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId != appState.selectedCEVenture ) {
          print( "Error.  Equity plan is not for selected project." );
          return [];
       }
@@ -379,7 +382,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             assert( appState.equityTree != null );
             bool changed = appState.myEquityPlan!.updateEquity( appState.equityTree );
             if( appState.myEquityPlan!.categories.length > 0 ) { 
-               if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
+               if( appState.verbose >= 4 ) { print( "_getCategoryWidgets Update equity" ); }
                catList.addAll( _getTiles( context, width ) );
             }
             if( changed ) { writeEqPlan(); }

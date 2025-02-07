@@ -11,6 +11,7 @@ import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
 import 'package:ceFlutter/models/PEQSummary.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/Person.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
@@ -50,6 +51,7 @@ class AppState {
    late bool loaded;                           // control expensive aspects of state initialization
    late String ceUserId;                       // set during signup, login, refresh, etc.
 
+   late String                          selectedCEVenture;
    late String                          selectedCEProject;
    late String                          selectedHostUID;    // Looking at details for this host user, currently
 
@@ -57,6 +59,7 @@ class AppState {
    late List< String>                      hostPlatformsLoaded;  // Which platform's users have already been bulk-loaded
 
    // Core data, fetched as needed
+   late List<CEVenture>                  ceVentures;      // all ceVentures
    late List<CEProject>                  ceProjects;      // all ceProjects
    late List<Person>                     cePeople;        // all cePeople
    late Map< String, List<PEQAction> >   userPActs;       // ceUser    : pactions                          
@@ -143,9 +146,11 @@ class AppState {
       peqAllocsLoading   = false;
       gotAllPeqs         = false;
 
+      selectedCEVenture = "";
       selectedCEProject = "";
       selectedHostUID   = "";
       
+      ceVentures   = [];
       ceProjects   = [];
       cePeople     = [];
 

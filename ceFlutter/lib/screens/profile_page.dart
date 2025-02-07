@@ -195,8 +195,11 @@ class _CEProfileState extends State<CEProfilePage> {
         assert( screenArgs["id"] != null );
         String pid = screenArgs["id"]!;
 
+        CEProject myCEP = appState.ceProjects.firstWhere( (c) => c.ceProjectId == pid );
+        String vid = myCEP.ceVentureId;
+        
         var postDataPS = {};
-        postDataPS['EquityPlanId'] = pid;
+        postDataPS['EquityPlanId'] = vid;
         final pd = { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": postDataPS };
 
         postDataPS = {};
@@ -219,8 +222,8 @@ class _CEProfileState extends State<CEProfilePage> {
                               fetchPEQSummary( context, container, json.encode( pdps )).then((p) => appState.cePEQSummaries[pid] = p ) :
                               new Future<bool>.value(true) ),
 
-                             (appState.ceEquityPlans[pid] == null ? 
-                              fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => appState.ceEquityPlans[pid] = p ) :
+                             (appState.ceEquityPlans[vid] == null ? 
+                              fetchEquityPlan( context, container, json.encode( pd ) ).then( (p) => appState.ceEquityPlans[vid] = p ) :
                               new Future<bool>.value(true) ),
                              
                              (appState.ceImages[pid] == null ? 
@@ -229,7 +232,7 @@ class _CEProfileState extends State<CEProfilePage> {
                              
                              ]);
         peqSummary = appState.cePEQSummaries[pid];
-        equityPlan = appState.ceEquityPlans[pid];
+        equityPlan = appState.ceEquityPlans[vid];
 
         if( !appState.hostPlatformsLoaded.contains( "GitHub" ) ) { appState.hostPlatformsLoaded.add( "GitHub" ); }
         // One ha per platform, list length is 1
@@ -547,7 +550,7 @@ class _CEProfileState extends State<CEProfilePage> {
      CEProject cep        = new CEProject( ceProjectId: "A", ceVentureId: "A", description: "", hostPlatform: "", 
                                            ownerCategory: "", projectMgmtSys: "", repositories: [] );
      String cepName       = cep.ceProjectId;
-     EquityPlan ep        = new EquityPlan( ceProjectId: screenArgs["id"]!, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" );
+     EquityPlan ep        = new EquityPlan( ceVentureId: screenArgs["id"]!, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" );
      PEQSummary psum      = new PEQSummary( ceProjectId: screenArgs["id"]!, targetType: "", targetId: "", lastMod: "",  accruedTot: 0, taskedTot: 0, allocations: {}, jsonAllocs: [] );
         
      if( !screenOpened ) {

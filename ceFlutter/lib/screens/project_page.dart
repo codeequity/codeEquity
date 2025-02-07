@@ -26,6 +26,7 @@ class _CEProjectState extends State<CEProjectPage> {
    late var      container;
    late AppState appState;
 
+   late Map<String,int> screenArgs;
    var pageStamp = "";
 
    // iphone 5
@@ -101,6 +102,8 @@ class _CEProjectState extends State<CEProjectPage> {
       if( appState.loaded ) {
 
          if( appState.verbose >= 2 ) { print( "PP ReBuild." ); }
+         assert( screenArgs["initialPage"] != null );
+         int startPage = screenArgs["initialPage"]!;
 
          // Rebuild summaryFrame upon peqUpdate, else previous pageStorageKeys don't match new allocs 
          Widget summaryFrameWidget = CESummaryFrame(
@@ -119,13 +122,17 @@ class _CEProjectState extends State<CEProjectPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
-               
-               makeTitleText( appState, appState.selectedCEProject, w*6, false, 1, fontSize: 18),
+
+               Wrap( spacing: 0,
+                     children: [ 
+                        makeTitleText( appState, appState.selectedCEVenture + ": ", w*3, false, 1, fontSize: 18),
+                        makeTitleText( appState, appState.selectedCEProject, w*3, false, 1, fontSize: 18)
+                        ]),
                Container( height: appState.MID_PAD ),
                
                Expanded(
                   child: DefaultTabController(
-                     initialIndex: 1,
+                     initialIndex: startPage,
                      length: 5,
                      child: Padding(
                         padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
@@ -184,10 +191,10 @@ class _CEProjectState extends State<CEProjectPage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
       assert( appState != null );
-
+      screenArgs = ModalRoute.of(context)!.settings.arguments as Map<String,int>;
+      
       frameMinWidth  = appState.MIN_PANE_WIDTH;
       frameMinHeight = appState.MIN_PANE_HEIGHT;
-      
       
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;

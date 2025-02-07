@@ -249,7 +249,7 @@ Widget makeIndentedText( appState, title, width, wrap, lines ) {
                                        ))));
 }
 
-Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", lgap = -1, tgap=-1, bgap=0} ) {
+Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", sub = false, lgap = -1, tgap=-1, bgap=0} ) {
 
    String lead = "";
    for( int i = 0; i < title.length; i++ ) {
@@ -273,7 +273,7 @@ Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines,
             child: Text(title.trim(), softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 14,
                                          color: id == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
-                                         fontWeight: FontWeight.bold,
+                                         fontWeight: sub ? FontWeight.normal : FontWeight.bold,
                                          decoration: id == appState.hoverChunk ? TextDecoration.underline : null
                            ))))
       );
@@ -403,7 +403,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                   if( appState.myEquityPlan != null ) { appState.updateEquityPlan = true; } // force equity tree update
                   if( appState.myEquityPlan != null ) { appState.updateEquityView = true; } // force equity view creation on first pass
                   
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: {"initialPage": 0} ));
                   confirmedNav( context, container, newPage );
                },
                iconSize: iconSize,

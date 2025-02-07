@@ -10,6 +10,7 @@ import 'package:collection/collection.dart';  // firstWhereOrNull
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
@@ -350,6 +351,25 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
       if( didReauth ) { return await fetchCEProjects( context, container ); }
+      else { return []; }
+   }
+}
+
+Future<List<CEVenture>> fetchCEVentures( context, container ) async {
+   String shortName = "fetchCEVentures";
+   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEVentures", "query": { "empty": "" }}';
+   final response = await awsPost( shortName, postData, context, container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      List<CEVenture> cevs = l.map( (sketch)=> sketch == -1 ? CEVenture.empty() : CEVenture.fromJson(sketch) ).toList();
+      return cevs;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no CEVentures found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchCEVentures( context, container ); }
       else { return []; }
    }
 }

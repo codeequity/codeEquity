@@ -4,7 +4,7 @@ class CEVenture {
    final String  name;
    final String? web;
 
-   CEVenture({ required this.ceVentureId, required this.ceName, this.web });
+   CEVenture({ required this.ceVentureId, required this.name, this.web });
 
    dynamic toJson() => { 'CEVentureId': ceVentureId, 'Name': name, 'Website': web };
 
@@ -29,7 +29,7 @@ class CEVenture {
 
    
    String toString() {
-      String res = "\n" + name + " (" ceVentureId + ") " + web;
+      String res = "\n" + name + " (" + ceVentureId + ") " + (web ?? "");
       res += "\n";
       return res;
    }
