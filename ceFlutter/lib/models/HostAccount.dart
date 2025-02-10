@@ -60,18 +60,16 @@ class HostAccount {
          );
    }
 
-   // XXX multiple traversals of ceProj, ceVent.  map pls..
    List<CEVenture> getVentures( appState ) {
       assert( vToc != null );
-      print( "GetVent in hostAcc" );
       for( final cepId in ceProjectIds ) {
-         CEProject cep = appState.ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
+         CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
          if( vToc![ cep.ceVentureId ] == null )            { vToc![ cep.ceVentureId ] = []; }
          if( !vToc![ cep.ceVentureId ]!.contains( cepId ) ) { vToc![ cep.ceVentureId ]!.add( cepId ); }
       }
       List<CEVenture> res = [];
       for( String vid in vToc!.keys ) {
-         res.add( appState.ceVentures.firstWhere( (c) => c.ceVentureId == vid )); 
+         res.add( appState.ceVenture[ vid ]); 
       }
       return res;
    }
@@ -81,7 +79,7 @@ class HostAccount {
 
       List<CEProject> res = [];
       for( String cid in ( vToc![cevId] ?? [] ) ) {
-         res.add( appState.ceProjects.firstWhere( (c) => c.ceProjectId == cid )); 
+         res.add( appState.ceProject[ cid ]); 
       }
       return res;
    }

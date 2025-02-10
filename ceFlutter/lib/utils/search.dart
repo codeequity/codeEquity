@@ -261,30 +261,26 @@ class _getPossibilities {
       
       print( "Searching" );
       
-      assert( appState.ceProjects != [] );
+      assert( appState.ceProject != {} );
 
       // Collect
       // Allows search over all peqs in all CEPS the currently logged-in user is connected to.
       var futs = await Future.wait([
-                                      (appState.cePeople.length == 0 ?
-                                      fetchCEPeople( context, container ).then( (p) => appState.cePeople = p ) :
-                                      new Future<bool>.value(true) ),
-                                      
+                                                                            
                                       (!appState.gotAllPeqs ? 
                                        updateUserPeqs( container, context, getAll: true ) :
                                        new Future<bool>.value(true) ),
                                       
                                       ]);
 
-      // Filter
-      // XXX search should show a little more context per item (minimally, type of link)
-      List<Person>?    filteredCEPeeps = appState.cePeople.where( (Person p) => ( p.userName.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
-      List<CEProject>? filteredCEProjs = appState.ceProjects.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      // Filter.. note cePeople is built when app loads
+      List<Person>?    filteredCEPeeps = appState.cePeople.values.where( (Person p) => ( p.userName.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
+      List<CEProject>? filteredCEProjs = appState.ceProject.values.where( (CEProject p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList();
 
       List<PEQ> filteredPeqs = [];
-      for( final ceUID in appState.cePeople ) {
-         if( appState.userPeqs[ ceUID.id ] != null ) {
-            filteredPeqs.addAll( appState.userPeqs[ ceUID.id ].where( (PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList() );
+      for( final ceUID in appState.cePeople.keys ) {
+         if( appState.userPeqs[ ceUID ] != null ) {
+            filteredPeqs.addAll( appState.userPeqs[ ceUID ].where( (PEQ p) => ( p.toString().toLowerCase().contains(query.toLowerCase())) ).toList() );
          }
       }                              
 

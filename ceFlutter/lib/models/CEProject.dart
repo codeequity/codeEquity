@@ -1,17 +1,18 @@
 class CEProject {
    final String ceProjectId;
    final String ceVentureId;
+   final String name;
    final String description;
    final String hostPlatform;
    final String ownerCategory;
    final String projectMgmtSys;
    final List<String> repositories;            //  repoName
 
-   CEProject({ required this.ceProjectId, required this.ceVentureId, required this.description,
+   CEProject({ required this.ceProjectId, required this.ceVentureId, required this.name, required this.description,
             required this.hostPlatform, required this.ownerCategory,  required this.projectMgmtSys,  
                required this.repositories});
 
-   dynamic toJson() => { 'CEProjectId': ceProjectId, 'CEVentureId': ceVentureId, 'Description': description,
+   dynamic toJson() => { 'CEProjectId': ceProjectId, 'CEVentureId': ceVentureId, 'Name': name, 'Description': description,
                             'HostPlatform': hostPlatform, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys,
                                'Repositories': repositories }; 
 
@@ -20,6 +21,7 @@ class CEProject {
       return CEProject(
          ceProjectId:         "-1",
          ceVentureId:         "-1",
+         name:                "",
          description:         "",
          hostPlatform:        "",
          ownerCategory:       "",
@@ -41,6 +43,7 @@ class CEProject {
       return CEProject(
          ceProjectId:        json['CEProjectId'],
          ceVentureId:        json['CEVentureId'],
+         name:               json['Name'],
          description:        json['Description'],
          hostPlatform:       json['HostPlatform'],
          ownerCategory:      json['OwnerCategory'],
@@ -51,7 +54,7 @@ class CEProject {
 
    
    String toString() {
-      String res = "\n" + ceProjectId + " " + description;
+      String res = "\n" + name + " (" + ceProjectId + ") " + description;
       res += "\n   Part of the venture: " + ceVentureId;
       res += "\n   " + hostPlatform + " " + ownerCategory; 
       res += "\n    Repositories: " + repositories.toString();

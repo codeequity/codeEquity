@@ -59,13 +59,12 @@ class AppState {
    late List< String>                      hostPlatformsLoaded;  // Which platform's users have already been bulk-loaded
 
    // Core data, fetched as needed
-   late List<CEVenture>                  ceVentures;      // all ceVentures
-   late List<CEProject>                  ceProjects;      // all ceProjects
-   late List<Person>                     cePeople;        // all cePeople
+   late Map< String, CEVenture >         ceVenture;       // all ceVentures, cev id to venture
+   late Map< String, CEProject >         ceProject;       // all ceProjects, cep id to project
+   late Map< String, Person    >         cePeople;        // all cePeople, ce uid to person
    late Map< String, List<PEQAction> >   userPActs;       // ceUser    : pactions                          
    late Map< String, List<PEQ> >         userPeqs;        // ceUser    : peqs where user was pact actor, plus unassign_user for uningested
    late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount (list with 1 HA per platform)
-   late Map< String, Person? >           cePersons;       // ceUser    : points at Person in cePeople
    late Map< String, PEQSummary? >       cePEQSummaries;  // ceProject : PEQSummary
    late Map< String, Linkage? >          ceHostLinks;     // ceProject : Linkage
    late Map< String, EquityPlan? >       ceEquityPlans;   // ceProject : EquityPlan
@@ -150,14 +149,13 @@ class AppState {
       selectedCEProject = "";
       selectedHostUID   = "";
       
-      ceVentures   = [];
-      ceProjects   = [];
-      cePeople     = [];
+      ceVenture    = new Map<String, CEVenture>();
+      ceProject    = new Map<String, CEProject>();
+      cePeople     = new Map<String, Person>();
 
       userPActs       = new Map<String, List<PEQAction>>();
       userPeqs        = new Map<String, List<PEQ>>();
       ceHostAccounts  = new Map<String, List<HostAccount>>();
-      cePersons       = new Map<String, Person?>();
       cePEQSummaries  = new Map<String, PEQSummary?>();
       ceHostLinks     = new Map<String, Linkage?>();
       ceEquityPlans   = new Map<String, EquityPlan?>();

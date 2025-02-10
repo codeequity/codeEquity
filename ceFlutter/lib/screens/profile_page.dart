@@ -143,10 +143,9 @@ class _CEProfileState extends State<CEProfilePage> {
         String pdpi = '{ "Endpoint": "GetEntry", "tableName": "CEProfileImage", "query": {"CEProfileId": "$profId" }}';
         
         Map<String,dynamic> rawPITable = {};
-        late Person? newp;
         var futs = await Future.wait([
-                                        (appState.cePersons[profId] == null ? 
-                                         fetchAPerson( context, container, profId ).then( (p) => newp = p ) :
+                                        (appState.cePeople[profId] == null ? 
+                                         fetchAPerson( context, container, profId ).then( (p) => p != null ? appState.cePeople[profId] = p : true ) :
                                          new Future<bool>.value(true) ),
                                         
                                         (appState.ceHostAccounts[profId] == null ? 
@@ -159,15 +158,7 @@ class _CEProfileState extends State<CEProfilePage> {
                                         
                                         ]);
 
-        // Keep cePersons index pointing at cePeople, if new person found.  Rare.
-        if( appState.cePersons[profId] == null ) {
-           print( "XXX Found a new addition! " + profId );
-           assert( newp != null );
-           appState.cePeople.add( newp! );
-           appState.cePersons[profId] = appState.cePeople[appState.cePeople.length - 1];
-           assert( profId == appState.cePersons[profId]!.id );
-        }
-        myself = appState.cePersons[profId]!;
+        myself = appState.cePeople[profId]!;
         assert( myself != null );
 
         assert( appState.ceHostAccounts[profId] != null );
@@ -195,7 +186,7 @@ class _CEProfileState extends State<CEProfilePage> {
         assert( screenArgs["id"] != null );
         String pid = screenArgs["id"]!;
 
-        CEProject myCEP = appState.ceProjects.firstWhere( (c) => c.ceProjectId == pid );
+        CEProject myCEP = appState.ceProject[ pid ] ?? CEProject.empty();
         String vid = myCEP.ceVentureId;
         
         var postDataPS = {};
@@ -259,7 +250,7 @@ class _CEProfileState extends State<CEProfilePage> {
      void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = cepId ); }
      void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );    }
 
-     CEProject cep = appState.ceProjects.firstWhere( (c) => c.ceProjectId == cepId );
+     CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
 
      Widget cepLink = GestureDetector(
@@ -295,8 +286,8 @@ class _CEProfileState extends State<CEProfilePage> {
   Widget _makeCollabCard( context, HostAccount ha, textWidth, maxProjCount ) {
      String ceUserId = ha.ceUserId;
      // print( ceUserId + " " + appState.cePeople.toString() );
-     assert( appState.cePersons[ ceUserId ] != null );
-     Person cePeep = appState.cePersons[ ceUserId ]!;
+     assert( appState.cePeople[ ceUserId ] != null );
+     Person cePeep = appState.cePeople[ ceUserId ]!;
 
      String ceName = cePeep.firstName + " " + cePeep.lastName;
 
@@ -331,7 +322,7 @@ class _CEProfileState extends State<CEProfilePage> {
         );
      }
 
-     List<String> ceProjs = ha.ceProjectIds;
+     List<String> ceProjs = ha.ceProjectIds.map( (pid) => (appState.ceProject[pid] ?? CEProject.empty()).name ).toList();
 
      // XXX seem to need strict copy here to satisfy popMRScroll:alertdialog state requirements?
      Widget _makeCEPLink( cepId ){
@@ -546,18 +537,17 @@ class _CEProfileState extends State<CEProfilePage> {
 
      List<Widget> repoWid = [spacer];
      Widget collabWid     = spacer;
-     Widget? pi            = null;
-     CEProject cep        = new CEProject( ceProjectId: "A", ceVentureId: "A", description: "", hostPlatform: "", 
-                                           ownerCategory: "", projectMgmtSys: "", repositories: [] );
-     String cepName       = cep.ceProjectId;
+     Widget? pi           = null;
+     CEProject cep        = CEProject.empty();
+     String cepId       = cep.ceProjectId;
      EquityPlan ep        = new EquityPlan( ceVentureId: screenArgs["id"]!, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" );
      PEQSummary psum      = new PEQSummary( ceProjectId: screenArgs["id"]!, targetType: "", targetId: "", lastMod: "",  accruedTot: 0, taskedTot: 0, allocations: {}, jsonAllocs: [] );
         
      if( !screenOpened ) {
-        assert( appState.ceProjects != [] );
-        cep = appState.ceProjects.firstWhere( (c) => c.ceProjectId == screenArgs["id"] );
+        assert( appState.ceProject != {} );
+        cep = appState.ceProject[ screenArgs["id"] ] ?? CEProject.empty();
         assert( cep != null );
-        cepName   = cep.ceProjectId;
+        cepId   = cep.ceProjectId;
         
         if( profileImage != null ) { pi   = profileImage!; }
         if( equityPlan != null )   { ep   = equityPlan!; }
@@ -575,7 +565,7 @@ class _CEProfileState extends State<CEProfilePage> {
            assert( appState.ceHostAccounts[ceuid] != null );
            List<HostAccount> has = appState.ceHostAccounts[ceuid]!;
            for( HostAccount ha in has ) {
-              if( ha.hostPlatform == cep.hostPlatform && ha.ceProjectIds.contains( cepName ) ) {
+              if( ha.hostPlatform == cep.hostPlatform && ha.ceProjectIds.contains( cepId ) ) {
                  collabs.add( ha );
               }
            }
@@ -584,7 +574,7 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      if( pi == null ) {
-        if( cepName == "A" ) {
+        if( cepId == "-1" ) {
            double gap = lhsFrameMaxWidth / 3.0;
            pi = Padding(
               padding: EdgeInsets.fromLTRB(gap, gap/2.0, gap, gap/2.0),
@@ -592,9 +582,9 @@ class _CEProfileState extends State<CEProfilePage> {
               );
         }
         else {
-           String iName = "images/"+cepName![0].toLowerCase() + "Grad.jpg";
+           String iName = "images/"+cepId![0].toLowerCase() + "Grad.jpg";
            pi = Image.asset( iName,
-                             key: Key( cepName![0].toLowerCase()+"GradImage" ),
+                             key: Key( cepId![0].toLowerCase()+"GradImage" ),
                              width: lhsFrameMaxWidth,
                              color: Colors.grey.withOpacity(0.05),
                              colorBlendMode: BlendMode.darken );
@@ -614,9 +604,10 @@ class _CEProfileState extends State<CEProfilePage> {
               children: <Widget>[
                  spacer, 
                  pi,
-                 makeTitleText( appState, cep.ceProjectId == "A" ? "" : cep.ceProjectId, textWidth * 1.1, false, 1, fontSize: 24 ),
+                 makeTitleText( appState, cep.name, textWidth * 1.1, false, 1, fontSize: 24 ),
+                 makeTitleText( appState, "Id: " + cep.ceProjectId, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
-                 makeTitleText( appState, "Venture: " + cep.ceVentureId, textWidth, false, 1, fontSize: 14 ),
+                 makeTitleText( appState, "Venture: " + cep.name, textWidth, false, 1, fontSize: 14 ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {

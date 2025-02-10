@@ -12,6 +12,8 @@ import 'package:ceFlutter/screens/launch_page.dart';
 
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
+import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 
@@ -191,6 +193,10 @@ Future<void> initMDState( context, container ) async {
 
    var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
 
+   List<CEProject> ceps  = [];
+   List<CEVenture> cevs  = [];
+   List<Person>    peeps = [];
+
    // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
    //      a list of cep-specific names then fetching that is likely to provide minimal gains, if any.  Leave it here.
    var futs = await Future.wait([
@@ -198,25 +204,24 @@ Future<void> initMDState( context, container ) async {
                                     fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
                                     new Future<bool>.value(true) ),
                                    
-                                   fetchCEPeople( context, container ).then(       (p) => appState.cePeople = p ),
+                                   fetchCEPeople( context, container ).then(       (p) => peeps = p ),
                                    
-                                   fetchCEProjects( context, container ).then(     (p) => appState.ceProjects = p ),
+                                   fetchCEProjects( context, container ).then(     (p) => ceps = p ),
 
-                                   fetchCEVentures( context, container ).then(     (p) => appState.ceVentures = p ),
+                                   fetchCEVentures( context, container ).then(     (p) => cevs = p ),
                                    ]);
    appState.myHostAccounts = appState.ceHostAccounts[uid];
 
-   // Load cePersons 'index'
-   // XXX Scales poorly - could do this in the background, force wait when build idMapHost
-   for( Person p in appState.cePeople ) { appState.cePersons[p.id] = p;  }
-
+   // XXX Scales poorly - could do some of this in the background, force wait when build idMapHost
+   for( CEProject cep in ceps ) { appState.ceProject[ cep.ceProjectId ] = cep; }
+   for( CEVenture cev in cevs ) { appState.ceVenture[ cev.ceVentureId ] = cev; }
+   for( Person p in peeps )     { appState.cePeople[ p.id ] = p; }
+   
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
    //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.
-   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePersons ); // XXX gh
+   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePeople ); // XXX gh
    
-   // print( "My CodeEquity Projects:" );
-   // print( appState.myHostAccounts );
 }
 
 
