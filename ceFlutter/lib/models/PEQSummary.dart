@@ -28,7 +28,21 @@ class PEQSummary {
       for( Allocation a in jsonAllocs ) { addAlloc( a, fromJson: true ); }
       jsonAllocs.clear();
    }
-            
+
+   // No PS found.  return empty 
+   factory PEQSummary.empty( id ) {
+      return PEQSummary(
+         ceProjectId: id,
+         targetType: "",
+         targetId: "",
+         lastMod: "",
+         accruedTot: 0,
+         taskedTot: 0,
+         allocations: {},
+         jsonAllocs: [] );
+   }
+
+   
    dynamic toJson() => { 'ceProjectId': ceProjectId, 'targetType': targetType, 'targetId': targetId,
          'lastMod': lastMod, 'allocations': getAllAllocs(), 'accruedTot': accruedTot, 'taskedTot': taskedTot};
    

@@ -199,17 +199,17 @@ Future<void> initMDState( context, container ) async {
 
    // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
    //      a list of cep-specific names then fetching that is likely to provide minimal gains, if any.  Leave it here.
-   var futs = await Future.wait([
-                                   (appState.ceHostAccounts[uid] == null ? 
-                                    fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
-                                    new Future<bool>.value(true) ),
-                                   
-                                   fetchCEPeople( context, container ).then(       (p) => peeps = p ),
-                                   
-                                   fetchCEProjects( context, container ).then(     (p) => ceps = p ),
-
-                                   fetchCEVentures( context, container ).then(     (p) => cevs = p ),
-                                   ]);
+   await Future.wait([
+                        (appState.ceHostAccounts[uid] == null ? 
+                         fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
+                         new Future<bool>.value(true) ),
+                        
+                        fetchCEPeople( context, container ).then(       (p) => peeps = p ),
+                        
+                        fetchCEProjects( context, container ).then(     (p) => ceps = p ),
+                        
+                        fetchCEVentures( context, container ).then(     (p) => cevs = p ),
+                        ]);
    appState.myHostAccounts = appState.ceHostAccounts[uid];
 
    // XXX Scales poorly - could do some of this in the background, force wait when build idMapHost

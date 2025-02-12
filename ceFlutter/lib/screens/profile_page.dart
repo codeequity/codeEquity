@@ -14,6 +14,7 @@ import 'package:ceFlutter/screens/edit_page.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/EquityPlan.dart';
@@ -251,6 +252,7 @@ class _CEProfileState extends State<CEProfilePage> {
      void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );    }
 
      CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
+     CEVenture cev = appState.ceVenture[ cep.ceVentureId ] ?? CEVenture.empty();
      final miniSpacer = Container( width: appState.GAP_PAD, height: appState.CELL_HEIGHT * .15 );
 
      Widget cepLink = GestureDetector(
@@ -260,7 +262,7 @@ class _CEProfileState extends State<CEProfilePage> {
            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
            confirmedNav( context, container, newPage );
         },
-        child: makeActionableText( appState, cepId, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
+        child: makeActionableText( appState, cep.name, cepId, _setTitle, _unsetTitle, textWidth, false, 1 ),
         );
 
      
@@ -273,9 +275,9 @@ class _CEProfileState extends State<CEProfilePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                  cepLink,
-                 makeTitleText( appState, "Venture: " + cep.ceVentureId, textWidth, false, 1, fontSize: 14 ),
                  miniSpacer,
-                 makeTitleText( appState, cep.description, textWidth, false, 1, fontSize: 12 ),
+                 makeTitleText( appState, cep.description, textWidth, false, 1, fontSize: 14 ),
+                 makeTitleText( appState, "Venture: " + cev.name, textWidth, false, 1, fontSize: 14 ),
                  ]
               )
            ),
@@ -440,6 +442,9 @@ class _CEProfileState extends State<CEProfilePage> {
      double width  = textWidth / 4;
      void _set( PointerEvent event )   { setState(() => appState.hoverChunk = "ppCEP"+cepId); }
      void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
+
+     CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
+
      return GestureDetector( 
         onTap: () async
         {
@@ -469,16 +474,16 @@ class _CEProfileState extends State<CEProfilePage> {
            if( !displayedPeqTable.contains( cepId ) ) {
               assert( displayedPeqTable.length == collabPeqTable.length - 2 ); // header, clear button
 
-              Map<String,String> pv = await _getCollabPeqVals( context, container, cepId.trim() );
+              Map<String,String> pv = await _getCollabPeqVals( context, container, cepId );
               displayedPeqTable.add( cepId );
               int idx = collabPeqTable.length - 1;
-                 
+              
               collabPeqTable.insert( idx, 
                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [            
-                       makeTableText( appState, cepId, width * 3.0, height, false, 1 ),
+                       makeTableText( appState, cep.name, width * 3.0, height, false, 1 ),
                        makeTableText( appState, pv["Planned"], width, height, false, 1 ),
                        makeTableText( appState, pv["Pending"], width, height, false, 1 ),
                        makeTableText( appState, pv["Accrued"], width, height, false, 1 ),
@@ -489,7 +494,7 @@ class _CEProfileState extends State<CEProfilePage> {
               setState( () => updatedPeqTable = true );
            }
         },
-        child: makeActionableText( appState, cepId, "ppCEP"+cepId, _set, _unset, textWidth, false, 1, keyPreface: "ppCEP" ),
+        child: makeActionableText( appState, "   "+cep.name, "ppCEP"+cepId, _set, _unset, textWidth, false, 1, keyPreface: "ppCEP" ),
         );
   }
   
@@ -497,7 +502,7 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> ppCEP = [];
                    
      for( int i = 0; i < ha.ceProjectIds.length; i++ ) {
-        ppCEP.add( _makePEQSummary( context, "   " + ha.ceProjectIds[i], textWidth ));
+        ppCEP.add( _makePEQSummary( context, ha.ceProjectIds[i], textWidth ));
      }
      Widget frame = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,16 +543,19 @@ class _CEProfileState extends State<CEProfilePage> {
      List<Widget> repoWid = [spacer];
      Widget collabWid     = spacer;
      Widget? pi           = null;
+     CEVenture cev        = CEVenture.empty();
      CEProject cep        = CEProject.empty();
-     String cepId       = cep.ceProjectId;
-     EquityPlan ep        = new EquityPlan( ceVentureId: screenArgs["id"]!, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" );
-     PEQSummary psum      = new PEQSummary( ceProjectId: screenArgs["id"]!, targetType: "", targetId: "", lastMod: "",  accruedTot: 0, taskedTot: 0, allocations: {}, jsonAllocs: [] );
+     String cepId         = cep.ceProjectId;
+     EquityPlan ep        = EquityPlan.empty( screenArgs["id"]! );
+     PEQSummary psum      = PEQSummary.empty( screenArgs["id"]! );
         
      if( !screenOpened ) {
         assert( appState.ceProject != {} );
         cep = appState.ceProject[ screenArgs["id"] ] ?? CEProject.empty();
-        assert( cep != null );
         cepId   = cep.ceProjectId;
+        assert( cepId != "-1" );
+        cev = appState.ceVenture[ cep.ceVentureId ] ?? CEVenture.empty();
+        assert( cev.ceVentureId != "-1" );
         
         if( profileImage != null ) { pi   = profileImage!; }
         if( equityPlan != null )   { ep   = equityPlan!; }
@@ -607,7 +615,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, cep.name, textWidth * 1.1, false, 1, fontSize: 24 ),
                  makeTitleText( appState, "Id: " + cep.ceProjectId, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
-                 makeTitleText( appState, "Venture: " + cep.name, textWidth, false, 1, fontSize: 14 ),
+                 makeTitleText( appState, "Venture: " + cev.name, textWidth, false, 1, fontSize: 14 ),
                  miniSpacer,
                  Wrap( children: [ Container( width: appState.GAP_PAD ), 
                                    makeActionButtonFixed( appState, "Edit profile", lhsFrameMaxWidth / 2.0, () async {
@@ -617,7 +625,7 @@ class _CEProfileState extends State<CEProfilePage> {
                                    Container( width: lhsFrameMaxWidth / 2.0 ), 
                           ]),
                  makeHDivider( appState, textWidth, 1.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
-                 makeToolTip( makeTitleText( appState, "PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
+                 makeToolTip( makeTitleText( appState, "Venture Equity Plan PEQs:", textWidth, false, 1, fontSize: 14 ),"Provisional EQuity, see https://github.com/codeequity/codeEquity", wait: true ),
                  Table(
                     defaultColumnWidth: FixedColumnWidth( 2.0 * textWidth / 3.0 ),
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -771,7 +779,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  makeTitleText( appState, "Open tasks:", textWidth, false, 1, fontSize: 18 ),
                  makeTitleText( appState, "   Agreements", textWidth, false, 1 ),
                  makeTitleText( appState, "   Approvals", textWidth, false, 1 ),
-                 makeTitleText( appState, "PEQ summary for:", textWidth, false, 1, fontSize: 18 ),
+                 makeTitleText( appState, "PEQ summary per project:", textWidth, false, 1, fontSize: 18 ),
                  ppWid,
                  makeHDivider( appState, textWidth, 2.0*appState.GAP_PAD, appState.GAP_PAD, tgap: appState.MID_PAD ),
                  makeTitleText( appState, "GitHub ID", textWidth, false, 1, fontSize: 18 ),

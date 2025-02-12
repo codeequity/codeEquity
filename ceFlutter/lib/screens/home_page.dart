@@ -89,7 +89,8 @@ class _CEHomeState extends State<CEHomePage> {
                        Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, "vent " + itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
                                                       Container( width: buttonWidth, height: 1 ) ] )
                        : 
-                       Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, itemName, _setTitle, _unsetTitle, textWidth, false, 1, sub: true, lgap: 2.0 * appState.GAP_PAD ),
+                       Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, itemName, _setTitle, _unsetTitle, textWidth, false, 1,
+                                                                          sub: true, lgap: 2.0 * appState.GAP_PAD, tgap: appState.TINY_PAD ),
                                                       Container( width: buttonWidth, height: 1 ) ] );
 
       return GestureDetector(
@@ -231,8 +232,8 @@ class _CEHomeState extends State<CEHomePage> {
          chunks.add( _makeChunk( vent.name, vent.ceVentureId, pname, ceVent:true, ));
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
          for( final cep in projs ) {
-            chunks.add( _makeChunk( cep.ceProjectId, cep.ceProjectId, vent.ceVentureId ));
-            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+            chunks.add( _makeChunk( cep.name, cep.ceProjectId, vent.ceVentureId ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.TINY_PAD;
          }
       }
       chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
@@ -244,46 +245,6 @@ class _CEHomeState extends State<CEHomePage> {
       return chunks;
    }
 
-   /*
-   // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-   List<Widget> _makeCEProjs( hosta ) {
-      // print( "MakeCEProj" );
-      final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
-      final textWidth = min( lhsFrameMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
-      List<Widget> chunks = [];
-      var chunkHeight = 0.0;
-
-      Widget _ceProjBar = Row(
-         crossAxisAlignment: CrossAxisAlignment.center,
-         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( appState, "CodeEquity Projects", textWidth, false, 1 ),
-                             Container( width: 10 ),
-                             _newCEProjButton(),
-                             Container( width: 10 ),
-            ]);
-         
-      chunks.add( _ceProjBar );
-      chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-
-      for( var i = 0; i < hosta.ceProjectIds.length; i++ ) {
-         chunks.add( _makeChunk( hosta.ceProjectIds[i], ceProj:true ));
-         chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         var repos = hosta.ceProjRepos[ hosta.ceProjectIds[i] ] ?? [];
-         for( var j = 0; j < repos.length; j++ ) {
-            chunks.add( _makeChunk( repos[j] ));
-            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         }
-      }
-      chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      chunks.add( makeHDivider( appState, textWidth, appState.GAP_PAD, appState.screenWidth * .15 ));      
-      chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
-      chunkHeight += 2*appState.BASE_TXT_HEIGHT + 2;
-
-      runningLHSHeight += chunkHeight;
-      return chunks;
-   }
-   */
-   
    // Keep LHS panel between 250 and 300px, no matter what.
    Widget _showHostAccts() {
       List<Widget> acctList = [];

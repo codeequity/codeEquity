@@ -8,6 +8,7 @@ import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
 
+import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/Allocation.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 
@@ -234,11 +235,23 @@ class _CESummaryState extends State<CESummaryFrame> {
       final spinSize = 1.8*appState.BASE_TXT_HEIGHT;
       _vPrint( appState, 4, "SF: Remake allocs" );
       final buttonWidth = 100;
+
+      final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
+      //final svWidth  = min( maxPaneWidth, appState.screenWidth );
+      final svWidth  = maxPaneWidth;
       
       List<List<Widget>> allocs = [];
 
       var c = Container( width: 1, height: 1 );
-
+      CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
+      assert( cep != null );
+         
+      // Title
+      // XXX nicer?  avg width fontsize 18 ?
+      Widget spacer = Container( height: 1, width: (svWidth - cep!.name.length * 14.0)/2.0 );
+      allocs.addAll( [[ Container( height: appState.MID_PAD ), c, c, c, c, c ]] );
+      allocs.addAll( [[ spacer, makeIWTitleText( appState, cep!.name, false, 1, fontSize: 18), c, c, c, c ]] );
+                  
       // Spinny
       if( appState.peqAllocsLoading ) {
          Widget cpi = Wrap( spacing: 0, children: [
@@ -274,10 +287,6 @@ class _CESummaryState extends State<CESummaryFrame> {
       // _vPrint( appState, 4, "getAllocs, count: " + allocs.length.toString() );
       var allocCount = min( allocs.length, 30 );
       var allocWidth = allocs[0].length;
-
-      final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
-      //final svWidth  = min( maxPaneWidth, appState.screenWidth );
-      final svWidth  = maxPaneWidth;
 
       if( appState.screenHeight < frameMinHeight ) {
          return makeTitleText( appState, "Really?  Can't we be a little taller?", frameMinHeight, false, 1, fontSize: 18);

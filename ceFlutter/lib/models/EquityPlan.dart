@@ -22,6 +22,17 @@ class EquityPlan {
       assert( categories.length == hostNames.length );
    }
 
+   // No EP found.  return empty 
+   factory EquityPlan.empty( id ) {
+      return EquityPlan(
+         ceVentureId: id,
+         categories: [],
+         amounts: [],
+         hostNames: [],
+         totalAllocation: 0,
+         lastMod: "" );
+   }
+   
    dynamic toJson() => { 'ceVentureId': ceVentureId, 'categories': categories, 'amounts': amounts, 'hostNames': hostNames, 'totalAllocation': totalAllocation, 'lastMod': lastMod };
    
    factory EquityPlan.fromJson(Map<String, dynamic> json) {

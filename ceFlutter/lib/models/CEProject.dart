@@ -38,7 +38,14 @@ class CEProject {
       // Because ceProject does not cross hostPlatforms, both repoName and repoId can be assumed to be unique
       List<String> repos = [];
       for( final r in dynamicRList ) { repos.add( r['repoName'] ); }
-               
+
+      // print( "Working on " + json.toString() );
+      
+      if( json['CEVentureId'] == null ) {
+         print( json.toString() );
+         assert( false );
+      }
+      
       // DynamoDB is not camelCase
       return CEProject(
          ceProjectId:        json['CEProjectId'],

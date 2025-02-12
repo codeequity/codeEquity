@@ -302,6 +302,26 @@ Widget makeToolTip( child, message, {wait=false} ) {
       );
 }
 
+// XXX convert all to IWTitle?
+Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "" } ) {
+   // Add as encountered.
+   var mux = 1.0;
+   if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 28 ) { mux = 38.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
+
+   String keyName = keyTxt == "" ? title : keyTxt;
+   Color color = highlight ? appState.BUTTON_COLOR : Colors.black;
+   
+   return Padding(
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+      child: IntrinsicWidth( 
+         key: Key( keyName ),
+         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: color))));
+}
+
 Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "" } ) {
    // Add as encountered.
    var mux = 1.0;
