@@ -245,13 +245,7 @@ class _CESummaryState extends State<CESummaryFrame> {
       var c = Container( width: 1, height: 1 );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
       assert( cep != null );
-         
-      // Title
-      // XXX nicer?  avg width fontsize 18 ?
-      Widget spacer = Container( height: 1, width: (svWidth - cep!.name.length * 14.0)/2.0 );
-      allocs.addAll( [[ Container( height: appState.MID_PAD ), c, c, c, c, c ]] );
-      allocs.addAll( [[ spacer, makeIWTitleText( appState, cep!.name, false, 1, fontSize: 18), c, c, c, c ]] );
-                  
+                           
       // Spinny
       if( appState.peqAllocsLoading ) {
          Widget cpi = Wrap( spacing: 0, children: [
@@ -265,6 +259,11 @@ class _CESummaryState extends State<CESummaryFrame> {
          allocs.addAll( [[ Container( width: appState.CELL_HEIGHT, height: appState.CELL_HEIGHT ) ]] );
       }
       else {
+         // Title
+         // XXX nicer?  avg width fontsize 18 ?
+         Widget spacer = Container( height: 1, width: (svWidth - cep!.name.length * 14.0)/2.0 );
+         allocs.addAll( [[ Container( height: appState.MID_PAD ), c, c, c, c, c ]] );
+         allocs.addAll( [[ spacer, makeIWTitleText( appState, cep!.name, false, 1, fontSize: 18), c, c, c, c ]] );
          allocs.addAll( _showPAlloc() );
       }
 

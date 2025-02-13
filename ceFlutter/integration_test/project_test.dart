@@ -101,7 +101,7 @@ Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false 
 
 
 Future<bool> approvalsTabFraming( WidgetTester tester ) async {
-   expect( await verifyOnProjectPage( tester ), true );
+   expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
    final Finder tab = find.byKey( const Key('Approvals' ));
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
@@ -112,7 +112,7 @@ Future<bool> approvalsTabFraming( WidgetTester tester ) async {
 }
 
 Future<bool> contributorsTabFraming( WidgetTester tester ) async {
-   expect( await verifyOnProjectPage( tester ), true );
+   expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
    final Finder tab = find.byKey( const Key('Contributors' ));
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
@@ -123,7 +123,7 @@ Future<bool> contributorsTabFraming( WidgetTester tester ) async {
 }
 
 Future<bool> agreementsTabFraming( WidgetTester tester ) async {
-   expect( await verifyOnProjectPage( tester ), true );
+   expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
    final Finder tab = find.byKey( const Key('Agreements' ));
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
@@ -423,6 +423,9 @@ Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey
 // Instead, disambiguate based on fully expanded index.
 Future<bool> checkAllocs( WidgetTester tester, int min, int max, {int offset = 0} ) async {
 
+   // 2 lines added to header (CEP name, and spacing) 
+   offset = offset + 2;
+   
    print( "\n" );
    for( int i = min; i <= max; i++ ) {
 
@@ -973,9 +976,6 @@ Future<bool> _checkHelper( tester ) async {
 
 void main() {
 
-   String repo   = "codeequity/ceFlutterTester";
-   String ceProj = "CE_FlutTest_ks8asdlg42";
-   
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -998,7 +998,7 @@ void main() {
          await restart( tester );
          await login( tester, true );
 
-         final Finder ariLink = find.byKey( Key( ceProj ));
+         final Finder ariLink = find.byKey( Key( CEMD_PROJ_NAME ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 5, verbose: true ); 
          await pumpSettle( tester, 3, verbose: true ); 
@@ -1031,7 +1031,7 @@ void main() {
          // Login checks for homepage, but verify this is Ari before testing contents
          expect( await verifyAriHome( tester ), true );         
 
-         final Finder ariLink = find.byKey( Key( ceProj ));
+         final Finder ariLink = find.byKey( Key( CEMD_PROJ_NAME ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 5, verbose: true ); 
          await pumpSettle( tester, 3, verbose: true ); 
@@ -1068,7 +1068,7 @@ void main() {
          // Login checks for homepage, but verify this is Ari before testing contents
          expect( await verifyAriHome( tester ), true );         
 
-         final Finder ariLink = find.byKey( Key( ceProj ));
+         final Finder ariLink = find.byKey( Key( CEMD_PROJ_NAME ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 5, verbose: true ); 
          await pumpSettle( tester, 3, verbose: true ); 
@@ -1170,7 +1170,7 @@ void main() {
 
          expect( await verifyAriHome( tester ), true );
          
-         final Finder ariLink = find.byKey( Key( ceProj ));
+         final Finder ariLink = find.byKey( Key( CEMD_PROJ_NAME ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 2, verbose: true ); 
          await pumpSettle( tester, 2, verbose: true ); 

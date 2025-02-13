@@ -251,6 +251,7 @@ async function refreshCEProjects( authData, td ) {
 	    let updatedCEP = {};
 	    updatedCEP.CEProjectId        = ceProjId;
 	    updatedCEP.CEVentureId        = ceProj.CEVentureId.S;
+	    updatedCEP.Name               = ceProj.Name.S;
 	    updatedCEP.OwnerCategory      = ceProj.OwnerCategory.S;
 	    updatedCEP.HostPlatform       = ceProj.HostPlatform.S;
 	    updatedCEP.ProjectMgmtSys     = ceProj.ProjectMgmtSys.S;

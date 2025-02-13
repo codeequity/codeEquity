@@ -728,7 +728,7 @@ Future<bool> validateEditCancel( tester ) async {
 void main() {
 
    String repo = "codeequity/ceFlutterTester";
-   String ceProj = "CE_FlutTest_ks8asdlg42";
+   String ceProj = CEMD_PROJ_ID;
    
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();

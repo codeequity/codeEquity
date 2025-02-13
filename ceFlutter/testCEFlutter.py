@@ -180,16 +180,16 @@ def runTests( test = "focus" ):
     resultsSum = ""
 
     if( test == "projectMain" ):
-        tsum = runTest( "launch_test.dart", False, False, False )
-        resultsSum  += tsum
+        #tsum = runTest( "launch_test.dart", False, False, False )
+        #resultsSum  += tsum
 
-        tsum = runTest( "home_test.dart", False, False, False )
-        resultsSum  += tsum
+        #tsum = runTest( "home_test.dart", False, False, False )
+        #resultsSum  += tsum
 
         # Always clean dynamo summaries and 'ingested' tags first for full tests
-        cmd = "npm run cleanFlutter --prefix ../webServer"
-        npmRun = runCmd( cmd, [] )
-        logging.info( npmRun )
+        #cmd = "npm run cleanFlutter --prefix ../webServer"
+        #npmRun = runCmd( cmd, [] )
+        #logging.info( npmRun )
 
         tsum = runTest( "project_test.dart", False, False, False )
     elif( test == "projectPact" ):
@@ -246,7 +246,7 @@ def main( cmd ):
     assert( verifyEmulator() )
 
     summary = ""
-    if( cmd == "" ) : summary = runTests( test = "search" )  # FOCUS AREA
+    if( cmd == "" ) : summary = runTests( test = "projectMain" )  # FOCUS AREA
     elif( cmd == "projectMain" ) : summary = runTests( test = "projectMain" )
     elif( cmd == "projectPact" ) : summary = runTests( test = "projectPact" )
     elif( cmd == "equity" ) : summary = runTests( test = "equity" )

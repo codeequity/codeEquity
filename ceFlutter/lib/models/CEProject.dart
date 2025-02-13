@@ -41,11 +41,6 @@ class CEProject {
 
       // print( "Working on " + json.toString() );
       
-      if( json['CEVentureId'] == null ) {
-         print( json.toString() );
-         assert( false );
-      }
-      
       // DynamoDB is not camelCase
       return CEProject(
          ceProjectId:        json['CEProjectId'],
