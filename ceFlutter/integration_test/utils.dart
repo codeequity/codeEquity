@@ -321,6 +321,7 @@ Future<bool> verifyOnProjectPage( WidgetTester tester, {hasProjTitle = true, has
    return true;
 }
 
+// XXX rename emptyPeqSumPage
 Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
    expect( await verifyOnProjectPage( tester ), true );
 
@@ -343,7 +344,8 @@ Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
 }
 
 Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
-   expect( await verifyOnProjectPage( tester, hasProjTitle: false, hasVentTitle: true ), true );
+   // What shows up here depends on where we came from
+   expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
    final Finder tab = find.byKey( const Key('Equity Plan' ));
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
@@ -352,7 +354,8 @@ Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
    expect( find.text( 'Category' ), findsOneWidget );
    expect( find.text( 'Allocation' ), findsOneWidget );
    expect( find.byKey( const Key( 'add_icon_equity' )), findsOneWidget );   
-
+   expect( find.byKey( const Key( CEMD_VENT_NAME )), findsOneWidget );
+   
    return true;
 }
 
@@ -405,8 +408,6 @@ Future<String> checkNTap( WidgetTester tester, String keyName, {callCount = 0} )
 // XXX If more than, say, 3 of these bandages are needed, go to popScope.
 Future<bool> backToSummary( WidgetTester tester ) async {
 
-   String ceProj = CEMD_PROJ_ID;
-
    final Finder homeButton     = find.byKey( const Key( 'homeIcon' ) );
    if( isPresent( homeButton )) {
       await tester.tap( homeButton );
@@ -415,7 +416,7 @@ Future<bool> backToSummary( WidgetTester tester ) async {
 
    // XXX Does this belong here?
    expect( await verifyAriHome( tester ), true );
-   final Finder ariLink = find.byKey( Key( ceProj ));   
+   final Finder ariLink = find.byKey( Key( CEMD_PROJ_NAME ));   
 
    await tester.tap( ariLink );
    await pumpSettle( tester, 2 );

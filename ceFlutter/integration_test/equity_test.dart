@@ -728,7 +728,6 @@ Future<bool> validateEditCancel( tester ) async {
 void main() {
 
    String repo = "codeequity/ceFlutterTester";
-   String ceProj = CEMD_PROJ_ID;
    
    // final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized() as IntegrationTestWidgetsFlutterBinding;
    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -751,7 +750,7 @@ void main() {
 
          expect( await verifyAriHome( tester ), true );
          
-         final Finder ariLink = find.byKey( Key( ceProj ));
+         final Finder ariLink = find.byKey( Key( CEMD_PROJ_NAME ));
          await tester.tap( ariLink );
          await pumpSettle( tester, 2, verbose: true ); 
          await pumpSettle( tester, 2, verbose: true ); 

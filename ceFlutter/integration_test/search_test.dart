@@ -248,11 +248,11 @@ Future<bool> validateCollabConnie( WidgetTester tester ) async {
 
    txt = find.text( CESE_PROJ_ID );
    expect( txt, findsNWidgets(2) );
-   txt = find.text( CEAL_PROJ_ID' );
+   txt = find.text( CEAL_PROJ_ID );
    expect( txt, findsNWidgets(2) );
    txt = find.text( CE_PROJ_ID );
    expect( txt, findsNWidgets(2) );
-   txt = find.text( GB_PROJ_ID' );
+   txt = find.text( GB_PROJ_ID );
    expect( txt, findsNWidgets(2) );
 
    txt = find.text( 'Organization: Connie\'s Creations' );

@@ -24,6 +24,7 @@ https://github.com/flutter/flutter/wiki/Running-Flutter-Driver-tests-with-Web
 // https://blog.gskinner.com/archives/2021/06/flutter-a-deep-dive-into-integration_test-library.html
 // https://github.com/flutter/flutter/tree/master/packages/flutter/test/material
 
+
 // Gold standard for testing ingest and summary frame for codeequity/ceFlutterTester
 const Map<String,List<String>> ALLOCS_GOLD =
 {
@@ -78,8 +79,21 @@ const Map<String,List<String>> ALLOCS_GOLD =
 };
 
 
-Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false } ) async {
-   expect( await verifyOnProjectPage( tester ), true );
+// Modify all allocs by header length.  Currently title plus spacer
+const HEADER_LEN = 2;
+
+// allocsKey is the key in the generated list on-screen.  The generated list includes headers, so use header_len to modify.
+int getAllocIndex( int idx ) {
+   return idx + HEADER_LEN;
+}
+
+Key getAllocKey( int idx ) {
+   return Key( "allocsTable " + getAllocIndex( idx ).toString() );
+}
+
+
+Future<bool> peqSummaryTabFraming( WidgetTester tester, { ignoreAccrued = false, fromBlank = false } ) async {
+   expect( await verifyOnProjectPage( tester, hasProjTitle: !fromBlank ), true );
    final Finder tab = find.byKey( const Key('PEQ Summary' ));
    await tester.tap( tab );
    await pumpSettle( tester, 1 );
@@ -218,8 +232,8 @@ Finder findArrow( Widget elt ) {
 }
 
 
-Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
-   final Finder generatedAllocRow = find.byKey( Key( keyName ));
+Future<List<String>> getElt( WidgetTester tester, Key key ) async {
+   final Finder generatedAllocRow = find.byKey( key );
    expect( generatedAllocRow, findsOneWidget );
 
    var allocRow = generatedAllocRow.evaluate().single.widget as Row;
@@ -243,7 +257,7 @@ Future<List<String>> getElt( WidgetTester tester, String keyName ) async {
 Future<bool> expandLeaf( WidgetTester tester, int flutterPos, String agKey ) async {
    expect( await checkOffsetAlloc( tester, flutterPos, agKey ), true );
 
-   final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));
+   final Finder generatedAllocRow = find.byKey( getAllocKey( flutterPos ));
    expect( generatedAllocRow, findsOneWidget );
 
    var allocRow = generatedAllocRow.evaluate().single.widget as Row;
@@ -263,7 +277,7 @@ Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
    //       So, for example, rows: a, b, c.  expand #3 c: a b c d, d is #4.  shrink b: a c d, d is #3.
    for( var i = min; i <= max; i++ ) {
 
-      final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + i.toString() ));
+      final Finder generatedAllocRow = find.byKey( getAllocKey( i ));
       // Darg.  Uggggly
       // expect( generatedAllocRow, findsOneWidget );
       if( tester.widgetList<Row>( generatedAllocRow ).length > 0 ) {
@@ -283,7 +297,7 @@ Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
                }
             }
       }
-      else { print( "Could not find allocTable row " + i.toString() ); }
+      else { print( "Could not find allocTable row " + getAllocIndex( i ).toString() ); }
    }
    return true;
 }
@@ -293,8 +307,6 @@ Future<bool> expandAllocs( WidgetTester tester, int min, int max ) async {
 Future<bool> expandAll( WidgetTester tester ) async {
 
    final topFinder    = find.text( "Category" );
-   // this doesn't seem to work..?
-   // final bottomFinder = find.byKey( Key( "UnClaimed 46" ));
    final bottomFinder = find.text( "UnClaimed" );
    final listFinder   = find.byType( ListView );
    
@@ -338,10 +350,10 @@ Future<bool> expandAll( WidgetTester tester ) async {
 Future<bool> showVisible( WidgetTester tester ) async {
    
    for( var i = 0; i < 50; i++ ) {
-      final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + i.toString() ));
+      final Finder generatedAllocRow = find.byKey( getAllocKey( i ));
       if( tester.widgetList<Row>( generatedAllocRow ).length > 0 ) {
-         var row = await getElt( tester, "allocsTable " + i.toString() ); 
-         print( "allocsTable " + i.toString() + " is visible as " + row[0] );
+         var row = await getElt( tester, getAllocKey( i ) ); 
+         print( "allocsTable " + getAllocIndex( i ).toString() + " is visible as " + row[0] );
       }
    }
    return true;
@@ -350,9 +362,9 @@ Future<bool> showVisible( WidgetTester tester ) async {
 
 Future<bool> toggleTableEntry( WidgetTester tester, int flutterPos, String agKey ) async {
 
-   String elt = flutterPos == -1 ? agKey: "allocsTable " + flutterPos.toString();
-   print( "Toggle " + elt );
-   final Finder generatedAllocRow = find.byKey( Key( elt ) );
+   print( "Toggle " );
+   Key key = flutterPos == -1 ? Key( agKey ) : getAllocKey( flutterPos );
+   final Finder generatedAllocRow = find.byKey( key );
    expect( generatedAllocRow, findsOneWidget );
    
    var allocRow = generatedAllocRow.evaluate().single.widget as Row;
@@ -371,12 +383,18 @@ Future<bool> toggleTableEntry( WidgetTester tester, int flutterPos, String agKey
 // All generatedRows are, well, generated.  Just not all are visible.
 Future<bool> closeAll( WidgetTester tester ) async {
 
-   // Magic sequence
+   // XXX Magic sequence  ... by hand.. could make this nicer....
+   /*
    List<String> t = [ "allocsTable 2", "allocsTable 3", "allocsTable 1", "allocsTable 3", "allocsTable 2"];  // pre, cross
    t = t +          [ "allocsTable 5", "allocsTable 6", "allocsTable 7", "allocsTable 4"]; // datsec
    t = t +          [ "allocsTable 6", "allocsTable 7", "allocsTable 8", "allocsTable 9", "allocsTable 10", "allocsTable 5", "allocsTable 3"]; // gho, softcont
    t = t +          [ "allocsTable 5", "allocsTable 4"]; // uncl
-
+   */
+   List<String> t = [ "allocsTable 4", "allocsTable 5", "allocsTable 3", "allocsTable 5", "allocsTable 4"];  // pre, cross
+   t = t +          [ "allocsTable 7", "allocsTable 8", "allocsTable 9", "allocsTable 6"]; // datsec
+   t = t +          [ "allocsTable 8", "allocsTable 9", "allocsTable 10", "allocsTable 11", "allocsTable 12", "allocsTable 7", "allocsTable 5"]; // gho, softcont
+   t = t +          [ "allocsTable 7", "allocsTable 6"]; // uncl
+   
    // Start from the top
    final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
@@ -398,7 +416,7 @@ Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey
    // final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + flutterPos.toString() ));  
    // expect( generatedAllocRow, findsOneWidget );
    
-   List<String> allocs = await getElt( tester, "allocsTable " + flutterPos.toString() );
+   List<String> allocs = await getElt( tester, getAllocKey( flutterPos ));
    
    // First elt in allocs is used as key for allocs_gold
    // allocs is from ceFlutter, has short title, then numbers.
@@ -423,17 +441,14 @@ Future<bool> checkOffsetAlloc( WidgetTester tester, int flutterPos, String agKey
 // Instead, disambiguate based on fully expanded index.
 Future<bool> checkAllocs( WidgetTester tester, int min, int max, {int offset = 0} ) async {
 
-   // 2 lines added to header (CEP name, and spacing) 
-   offset = offset + 2;
-   
-   print( "\n" );
+   // print( "offset " + offset.toString() + "\n" );
    for( int i = min; i <= max; i++ ) {
 
-      print( "checking allocsTable " + i.toString());  
-      final Finder generatedAllocRow = find.byKey( Key( "allocsTable " + i.toString() ));  
+      // print( "checking allocsTable " + getAllocIndex( i ).toString());  
+      final Finder generatedAllocRow = find.byKey( getAllocKey( i ) );
       expect( generatedAllocRow, findsOneWidget );
 
-      List<String> allocs = await getElt( tester, "allocsTable " + i.toString() );
+      List<String> allocs = await getElt( tester, getAllocKey( i ));
 
       // First elt in allocs is used as key for allocs_gold
       // allocs is from the displayed table in ceFlutter, has short title, then numbers.
@@ -468,6 +483,7 @@ Future<bool> checkAll( WidgetTester tester ) async {
    final listFinder   = find.byType( ListView );
    final topFinder    = find.text( "Category" );
 
+   print( "Enter checkall" );
    // Move to top
    await tester.dragUntilVisible( topFinder, listFinder, Offset(0.0, 100.0) );
    await tester.drag( listFinder, Offset(0.0, 50.0) );
@@ -489,7 +505,7 @@ Future<bool> checkAll( WidgetTester tester ) async {
 
    await pumpSettle( tester, 2 );
    
-   
+   print( "exit checkall" );
    return true;
 }
 
@@ -945,12 +961,13 @@ Future<bool> ariSummaryContent( WidgetTester tester ) async {
    // final bottomFinder = find.text( "Cross Proj" );
    final bottomFinder = find.text( "UnClaimed" );
 
-   // await getElt( tester, 'allocsTable 0' );
-
    // First, expand.  Then test drag down.  Then start checking.
+   print( "Start expand" );
    await expandAll( tester );
+   print( "Start check" );
    await checkAll( tester ); 
 
+   print( "Start close" );
    await closeAll( tester );
    await pumpSettle( tester, 2 );
    
@@ -992,7 +1009,7 @@ void main() {
    
    report( 'Project', group:true );
 
-   // testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
+   //testWidgets('Project Basics', skip:true, (WidgetTester tester) async {
    testWidgets('Project Basics', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
@@ -1007,7 +1024,7 @@ void main() {
 
          // ceFlutterTester was just cleared, so there are no category summaries yet.
          // expect( await peqSummaryTabFraming( tester ),   true );
-         
+
          expect( await verifyEmptyProjectPage( tester ), true );         
          expect( await approvalsTabFraming( tester ),    true );
          expect( await contributorsTabFraming( tester ), true );
@@ -1022,7 +1039,7 @@ void main() {
 
    // NOTE: testCEFlutter.py always runs 'npm clean' before this if override is set
    //       it is possible to depend on process_run and run from here, but that clutters deps
-   // testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
+   //testWidgets('Project contents, ingest', skip:true, (WidgetTester tester) async {
    testWidgets('Project contents, ingest', skip:skip, (WidgetTester tester) async {
 
          await restart( tester );
@@ -1152,7 +1169,7 @@ void main() {
 
          // tab out, back in
          await contributorsTabFraming( tester );
-         await peqSummaryTabFraming( tester, ignoreAccrued: true );
+         await peqSummaryTabFraming( tester, ignoreAccrued: true, fromBlank: true );
          await _checkHelper( tester );         
          
          await logout( tester );         
