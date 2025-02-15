@@ -19,6 +19,35 @@ const TESTER_NAME   = "ariTester";
 const TESTER2_NAME  = "connieTester";     // READ ONLY account for these tests
 const TESTER_PASSWD = "passWD123";
 
+const CE_VENT_ID       = "CodeEquity_0123456789";
+const CE_VENT_NAME     = "CodeEquity";
+const CE_PROJ_ID       = "CodeEquity_ycje7dk23f";
+const CE_PROJ_NAME     = "CodeEquity";
+
+const CEMD_VENT_ID     = "CE_TEST_Flut_abcde12345";
+const CEMD_VENT_NAME   = "CE_Flut Test";
+const CEMD_PROJ_ID     = "CE_FlutTest_ks8asdlg42";
+const CEMD_PROJ_NAME   = "CE MD App Testing";
+
+const CESE_VENT_ID     = "CE_TEST_Serv_abcde12345";
+const CESE_VENT_NAME   = "CE_Serv Test";
+const CESE_PROJ_ID     = "CE_ServTest_usda23k425";
+const CESE_PROJ_NAME   = "CE Server Testing";
+
+const CEAL_VENT_ID     = "CE_TEST_Alt_abcde12345";
+const CEAL_VENT_NAME   = "CE_Alt Test";
+const CEAL_PROJ_ID     = "CE_AltTest_hakeld80a2";
+const CEAL_PROJ_NAME   = "CE Alt Server Testing";
+
+const GB_VENT_ID       = "Connie_Create_4kd8gmc2jf";
+const GB_VENT_NAME     = "Connie's Creations";
+const GB_PROJ_ID       = "GarlicBeer_38fl0hlsjs";
+const GB_PROJ_NAME     = "Garlic Beer";
+
+const BS_VENT_ID       = "BookShare_uvsi38fkg9";
+const BS_VENT_NAME     = "BookShare";
+const BS_PROJ_ID       = "BookShare_kd8fb.fl9s";
+const BS_PROJ_NAME     = "BookShare";
 
 // https://medium.com/flutter-community/testing-flutter-ui-with-flutter-driver-c1583681e337
 
@@ -29,9 +58,6 @@ const TESTER_PASSWD = "passWD123";
 //       final Finder loginButton = find.byWidgetPredicate((widget) => widget is MaterialButton && widget.child is Text && ( (widget.child as Text).data?.contains( "Login" ) ?? false ));
 //       ? indicates text could be null (otherwise contains compile-fails).
 //      ?? gives a default value if contains is null (else boolean compile-fails).
-
-
-
 
 
 /*
@@ -83,13 +109,14 @@ Future<http.Response> updateDynamoMN( postData, shortName ) async {
 */
 
 
-Future<bool> restart( WidgetTester tester ) async {
+Future<bool> restart( WidgetTester tester, {count=1} ) async {
 
    await tester.pumpWidget( AppStateContainer( child: new CEApp(), state: new AppState() ));
    await tester.pumpAndSettle();
+   await tester.pumpAndSettle();
    
-   final splash = find.text( 'CodeEquity' );
-   expect(splash, findsOneWidget);
+   // The screen before restart may still be present here.
+   expect( find.text( 'CodeEquity' ), findsNWidgets(count));
    
    await pumpSettle(tester, 5);
    return true;
@@ -177,10 +204,10 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'CodeEquityTitle' )), findsOneWidget );
 
    // framing
-   expect( find.text( 'Activity' ),             findsOneWidget );
-   expect( find.text( 'CodeEquity Projects' ), findsOneWidget );
-   // expect( find.text( 'GitHub Repositories' ),  findsOneWidget );
-   expect( find.byKey(const Key( 'New' )),      findsOneWidget );
+   expect( find.text( 'Activity' ),               findsOneWidget );
+   expect( find.text( 'CodeEquity Ventures' ),    findsOneWidget );
+   // expect( find.text( 'GitHub Repositories' ), findsOneWidget );
+   expect( find.byKey(const Key( 'New' )),        findsOneWidget );
    expect( find.byKey(const Key( 'Refresh Projects' )),      findsOneWidget );
 
    // testing ceproject - no.
@@ -191,19 +218,28 @@ Future<bool> verifyOnHomePage( WidgetTester tester ) async {
 Future<bool> verifyAriHome( WidgetTester tester ) async {
    expect( await verifyOnHomePage( tester ), true );   
 
-   //  Four CE Projects
-   expect( find.byKey( const Key('CE_FlutTest_ks8asdlg42' )), findsOneWidget );
-   expect( find.byKey( const Key('CE_AltTest_hakeld80a2' )),  findsOneWidget );
-   expect( find.byKey( const Key('CE_ServTest_usda23k425' )), findsOneWidget );
-   expect( find.byKey( const Key('CodeEquity_ycje7dk23f' )),  findsOneWidget );   
-   
+   //  Four CE Ventures, CE Projects
+   expect( find.byKey( const Key(CEMD_VENT_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CEAL_VENT_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CESE_VENT_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CE_VENT_NAME )),   findsNWidgets(2) );   
+
+   expect( find.byKey( const Key(CEMD_PROJ_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CEAL_PROJ_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CESE_PROJ_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CE_PROJ_NAME )),   findsNWidgets(2));   // one vent, one proj
+
+   /*
+   // No repositories - host-specific
    //  Five GH Repositories
-   expect( find.byKey( const Key('CE_FlutTest_ks8asdlg42' )), findsOneWidget );
+   expect( find.byKey( const Key( CEMD_PROJ_ID )),                 findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterAri' )),      findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterConnie' )),   findsOneWidget );
    expect( find.byKey( const Key('codeequity/ceTesterAriAlt' )),   findsOneWidget );   
    expect( find.byKey( const Key('codeequity/codeEquity' )),       findsOneWidget );   
+   */
 
+   
    return true;
 }
 
@@ -211,11 +247,21 @@ Future<bool> verifyConnieHome( WidgetTester tester ) async {
 
    expect( await verifyOnHomePage( tester ), true );   
 
-   // check four CE or future CE Projects
+   // check 5 vent/proj
+   expect( find.byKey( const Key(CEMD_VENT_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CEAL_VENT_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CESE_VENT_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CE_VENT_NAME )),   findsNWidgets(2) );   
+   expect( find.byKey( const Key(GB_VENT_NAME )),   findsOneWidget );   
+
+   expect( find.byKey( const Key(CEMD_PROJ_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CEAL_PROJ_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CESE_PROJ_NAME )), findsOneWidget );
+   expect( find.byKey( const Key(CE_PROJ_NAME )),   findsNWidgets(2) );   
+   expect( find.byKey( const Key(GB_PROJ_NAME )),   findsOneWidget );   
+   
+   // check one future CE Projects
    expect( find.byKey( const Key('connieCE/ceTesterConnie' )),    findsOneWidget );
-   expect( find.byKey( const Key('connieCE/GarlicBeer' )),        findsOneWidget );
-   expect( find.byKey( const Key('codeequity/ceTesterAriAlt' )),  findsOneWidget );
-   expect( find.byKey( const Key('codeequity/ceTesterAri' )),     findsOneWidget );
    
    return true;
 }
@@ -253,7 +299,7 @@ Future<bool> verifyOnAddGHPage( WidgetTester tester ) async {
    return true;
 }
 
-Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
+Future<bool> verifyOnProjectPage( WidgetTester tester, {hasProjTitle = true, hasVentTitle = false} ) async {
    // Top bar
    expect( find.byIcon( customIcons.home ),      findsOneWidget );
    expect( find.byIcon( customIcons.project_here ), findsOneWidget );
@@ -262,7 +308,10 @@ Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
    expect( find.byKey( const Key( 'CodeEquityTitle' )), findsOneWidget );
 
    // framing
-   expect( find.text( 'CE_FlutTest_ks8asdlg42' ),          findsOneWidget );  
+   // Some frames don't have project titles
+   if( hasProjTitle ) { expect( find.text( CEMD_PROJ_NAME ), findsOneWidget );  }
+   if( hasVentTitle ) { expect( find.text( CEMD_VENT_NAME ), findsOneWidget );  }
+   
    expect( find.text( 'Approvals' ),                       findsOneWidget );  
    expect( find.text( 'PEQ Summary' ),                     findsOneWidget );  
    expect( find.text( 'Contributors' ),                    findsOneWidget );  
@@ -272,6 +321,7 @@ Future<bool> verifyOnProjectPage( WidgetTester tester ) async {
    return true;
 }
 
+// XXX rename emptyPeqSumPage
 Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
    expect( await verifyOnProjectPage( tester ), true );
 
@@ -294,7 +344,8 @@ Future<bool> verifyEmptyProjectPage( WidgetTester tester ) async {
 }
 
 Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
-   expect( await verifyOnProjectPage( tester ), true );
+   // What shows up here depends on where we came from
+   expect( await verifyOnProjectPage( tester, hasProjTitle: false ), true );
    final Finder tab = find.byKey( const Key('Equity Plan' ));
    await tester.tap( tab );
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
@@ -303,7 +354,8 @@ Future<bool> equityPlanTabFraming( WidgetTester tester ) async {
    expect( find.text( 'Category' ), findsOneWidget );
    expect( find.text( 'Allocation' ), findsOneWidget );
    expect( find.byKey( const Key( 'add_icon_equity' )), findsOneWidget );   
-
+   expect( find.byKey( const Key( CEMD_VENT_NAME )), findsOneWidget );
+   
    return true;
 }
 
@@ -356,8 +408,6 @@ Future<String> checkNTap( WidgetTester tester, String keyName, {callCount = 0} )
 // XXX If more than, say, 3 of these bandages are needed, go to popScope.
 Future<bool> backToSummary( WidgetTester tester ) async {
 
-   String ceProj = "CE_FlutTest_ks8asdlg42";
-
    final Finder homeButton     = find.byKey( const Key( 'homeIcon' ) );
    if( isPresent( homeButton )) {
       await tester.tap( homeButton );
@@ -366,7 +416,7 @@ Future<bool> backToSummary( WidgetTester tester ) async {
 
    // XXX Does this belong here?
    expect( await verifyAriHome( tester ), true );
-   final Finder ariLink = find.byKey( Key( ceProj ));   
+   final Finder ariLink = find.byKey( Key( CEMD_PROJ_NAME ));   
 
    await tester.tap( ariLink );
    await pumpSettle( tester, 2 );

@@ -11,6 +11,8 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
+import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PlaceHolder.dart';
 
 import 'package:ceFlutter/screens/add_host_page.dart';
@@ -75,46 +77,58 @@ class _CEHomeState extends State<CEHomePage> {
    }
 
 
-   // This GD opens and closes peqSummary.
-   Widget _makeChunk( String itemName, { ceProj = false } ) {
+   // If user clicks ceProject, we know ceVenture.
+   // If user clicks ceVenture, we may know ceProject .. depends on if there are multiple.
+   Widget _makeChunk( String itemName, String itemId, String partner, { ceVent = false } ) {
       final textWidth = appState.screenWidth * .4;
-      Widget itemTxt = Container( width: 1, height: 1 );
 
-      void _setTitle( PointerEvent event ) {
-         setState(() => appState.hoverChunk = itemName );
-      }
-      void _unsetTitle( PointerEvent event ) {
-         setState(() => appState.hoverChunk = "" );
-      }
+      void _setTitle( PointerEvent event )   { setState(() => appState.hoverChunk = ceVent ? "vent " + itemName : itemName ); }
+      void _unsetTitle( PointerEvent event ) { setState(() => appState.hoverChunk = "" );       }
 
+      Widget itemTxt = ceVent ?
+                       Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, "vent " + itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
+                                                      Container( width: buttonWidth, height: 1 ) ] )
+                       : 
+                       Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, itemName, _setTitle, _unsetTitle, textWidth, false, 1,
+                                                                          sub: true, lgap: 2.0 * appState.GAP_PAD, tgap: appState.TINY_PAD ),
+                                                      Container( width: buttonWidth, height: 1 ) ] );
 
-      if( ceProj ) {
-         // print( "Chunking ceProj " + itemName );
-         itemTxt = Wrap( spacing: 10, children: [ makeActionableText( appState, itemName, itemName, _setTitle, _unsetTitle, textWidth, false, 1 ),
-                                                  Container( width: buttonWidth, height: 1 ) ] );
-         return GestureDetector(
-            onTap: () async
-            {
-               appState.selectedCEProject = itemName;
+      return GestureDetector(
+         onTap: () async
+         {
+            Map<String,int> screenArgs = {"initialPage": 0 };            
+            if( ceVent ) {
+               appState.selectedCEVenture = itemId;
+               setState(() => ceProjectLoading = true );
+               
+               if( partner != "" ) {
+                  appState.selectedCEProject = partner;
+                  await reloadCEProject( context, container );
+               }
+               else {
+                  await reloadCEVentureOnly( context, container );
+               }
+               ceProjectLoading = false;
+               
+               screenArgs["initialPage"] = 3;
+            }
+            else {
+               appState.selectedCEProject = itemId;
+               assert( partner != "" ); 
+               appState.selectedCEVenture = partner;
+
                setState(() => ceProjectLoading = true );
                await reloadCEProject( context, container );
                ceProjectLoading = false;
-               
-               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
-               confirmedNav( context, container, newPage );
-            },
-            child: itemTxt
-            );
-         
-      }
-      else {
-         // print( "Chunking repo " + itemName );
-         itemTxt = Wrap( spacing: 10, children: [ makeIndentedText( appState, itemName, textWidth, false, 1 ),
-                                                  Container( width: buttonWidth, height: 1 ) ] );
-         return itemTxt;
-      }
-      
+               screenArgs["initialPage"] = 1;
+            }
+            MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: screenArgs ));
+            confirmedNav( context, container, newPage );
+         },
+         child: itemTxt
+         );
    }
+
 
    // XXX host-specific
    // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
@@ -147,7 +161,7 @@ class _CEHomeState extends State<CEHomePage> {
             addedMore = true;
          }
          for( var i = 0; i < hosta.futureCEProjects.length; i++ ) {
-            repoChunks.add( _makeChunk( hosta.futureCEProjects[i] ));
+            repoChunks.add( _makeChunk( hosta.futureCEProjects[i], "", "" ));
             chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
             addedMore = true;
          }
@@ -163,6 +177,7 @@ class _CEHomeState extends State<CEHomePage> {
       return repoChunks;
    }
 
+   
    List<Widget> _makeRefresh() {
       List<Widget> refresh = [];
 
@@ -192,33 +207,33 @@ class _CEHomeState extends State<CEHomePage> {
       return refresh;
    }
    
-   // XXX Need to add visual cue if repos run out of room, can be hard to tell it's scrollable
-   List<Widget> _makeCEProjs( hosta ) {
-      // print( "MakeCEProj" );
+   // XXX Need to add visual cue for scroll when relevant - hard to tell.
+   List<Widget> _makeCEVs( hosta ) {
       final buttonWGaps = buttonWidth + 2*appState.GAP_PAD + appState.TINY_PAD;      
       final textWidth = min( lhsFrameMaxWidth - buttonWGaps, appState.screenWidth * .15 );   // no bigger than fixed LHS pane width
       List<Widget> chunks = [];
       var chunkHeight = 0.0;
 
-      Widget _ceProjBar = Row(
+      Widget _ceVentBar = Row(
          crossAxisAlignment: CrossAxisAlignment.center,
          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-         children: <Widget>[ makeTitleText( appState, "CodeEquity Projects", textWidth, false, 1 ),
+         children: <Widget>[ makeTitleText( appState, "CodeEquity Ventures", textWidth, false, 1 ),
                              Container( width: 10 ),
                              _newCEProjButton(),
                              Container( width: 10 ),
             ]);
          
-      chunks.add( _ceProjBar );
+      chunks.add( _ceVentBar );
       chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
 
-      for( var i = 0; i < hosta.ceProjectIds.length; i++ ) {
-         chunks.add( _makeChunk( hosta.ceProjectIds[i], ceProj:true ));
+      for( final vent in hosta.getVentures( appState) ) {
+         List<CEProject> projs = hosta.getCEPsPerVenture( appState, vent.ceVentureId );
+         String pname = projs.length == 1 ? projs[0].ceProjectId : "";
+         chunks.add( _makeChunk( vent.name, vent.ceVentureId, pname, ceVent:true, ));
          chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
-         var repos = hosta.ceProjRepos[ hosta.ceProjectIds[i] ] ?? [];
-         for( var j = 0; j < repos.length; j++ ) {
-            chunks.add( _makeChunk( repos[j] ));
-            chunkHeight += appState.BASE_TXT_HEIGHT + appState.MID_PAD;
+         for( final cep in projs ) {
+            chunks.add( _makeChunk( cep.name, cep.ceProjectId, vent.ceVentureId ));
+            chunkHeight += appState.BASE_TXT_HEIGHT + appState.TINY_PAD;
          }
       }
       chunks.add( Container( height: appState.BASE_TXT_HEIGHT ));
@@ -246,7 +261,8 @@ class _CEHomeState extends State<CEHomePage> {
          }
          else {
             for( final hosta in appState.myHostAccounts ) {
-               acctList.addAll( _makeCEProjs( hosta ));
+               acctList.addAll( _makeCEVs( hosta ));
+               // acctList.addAll( _makeCEProjs( hosta ));
                acctList.addAll( _makeRepos( hosta ));
                acctList.addAll( _makeRefresh() );
             }

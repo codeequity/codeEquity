@@ -26,6 +26,7 @@ class _CEProjectState extends State<CEProjectPage> {
    late var      container;
    late AppState appState;
 
+   late Map<String,int> screenArgs;
    var pageStamp = "";
 
    // iphone 5
@@ -58,7 +59,7 @@ class _CEProjectState extends State<CEProjectPage> {
       }
 
       // Reset storage key, otherwise horDiv and colors don't match expansion state
-      print( "Resetting PageStorageKey stamps" );
+      // print( "Resetting PageStorageKey stamps" );
       pageStamp = DateTime.now().millisecondsSinceEpoch.toString();
       
       // causes buildAllocTree to fire
@@ -101,31 +102,46 @@ class _CEProjectState extends State<CEProjectPage> {
       if( appState.loaded ) {
 
          if( appState.verbose >= 2 ) { print( "PP ReBuild." ); }
+         assert( screenArgs["initialPage"] != null );
+         int startPage = screenArgs["initialPage"]!;
 
          // Rebuild summaryFrame upon peqUpdate, else previous pageStorageKeys don't match new allocs 
-         Widget summaryFrameWidget = CESummaryFrame(
-            appContainer:           container,
-            pageStamp:              pageStamp,
-            frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
-            updateCallback:         _updateCallback,
-            detailCallback:         _detailCallback,
-            allocExpansionCallback: _allocExpansionCallback );
+         Widget getSummaryFrame() {
+            return CESummaryFrame(
+               appContainer:           container,
+               pageStamp:              pageStamp,
+               frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
+               updateCallback:         _updateCallback,
+               detailCallback:         _detailCallback,
+               allocExpansionCallback: _allocExpansionCallback );
+         }
 
-         Widget equityFrameWidget = CEEquityFrame(
-            appContainer:           container,
-            frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD );
+         Widget getEquityFrame() {
+            return CEEquityFrame(
+               appContainer:           container,
+               frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD );
+         }
+
+         Widget getApprovalFrame() {
+            return makeTitleText( appState, "ZooBaDoo!", w, false, 1 ); 
+         }
+         Widget getContributorsFrame() {
+            return makeTitleText( appState, "ZooBaDoo!", w, false, 1 ); 
+         }
+         Widget getAgreementsFrame() {
+            return makeTitleText( appState, "ZooBaDoo!", w, false, 1 ); 
+         }
 
          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
                
-               makeTitleText( appState, appState.selectedCEProject, w*6, false, 1, fontSize: 18),
                Container( height: appState.MID_PAD ),
                
                Expanded(
                   child: DefaultTabController(
-                     initialIndex: 1,
+                     initialIndex: startPage,
                      length: 5,
                      child: Padding(
                         padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.MID_PAD, appState.TINY_PAD, 0),
@@ -161,11 +177,11 @@ class _CEProjectState extends State<CEProjectPage> {
                                  Expanded(
                                     child: TabBarView(
                                        children: <Widget>[
-                                          _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
-                                          _makeTab( () => summaryFrameWidget ),
-                                          _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
-                                          _makeTab( () => equityFrameWidget ),
-                                          _makeTab( () => makeTitleText( appState, "ZooBaDoo!", w, false, 1 ) ),
+                                          _makeTab( () => getApprovalFrame() ),
+                                          _makeTab( () => getSummaryFrame() ),
+                                          _makeTab( () => getContributorsFrame() ),
+                                          _makeTab( () => getEquityFrame() ),
+                                          _makeTab( () => getAgreementsFrame() ),
                                           ]))
                                  ])))
                      ))
@@ -184,16 +200,16 @@ class _CEProjectState extends State<CEProjectPage> {
       container   = AppStateContainer.of(context);
       appState    = container.state;
       assert( appState != null );
-
+      screenArgs = ModalRoute.of(context)!.settings.arguments as Map<String,int>;
+      
       frameMinWidth  = appState.MIN_PANE_WIDTH;
       frameMinHeight = appState.MIN_PANE_HEIGHT;
-      
       
       appState.screenHeight = MediaQuery.of(context).size.height;
       appState.screenWidth  = MediaQuery.of(context).size.width;
 
       if( appState.verbose >= 2 ) { print( "build project page" ); }
-      
+
       return Scaffold(
          appBar: makeTopAppBar( context, "Project" ),
          body: _makeBody( context )

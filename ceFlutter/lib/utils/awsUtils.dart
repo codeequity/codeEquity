@@ -10,6 +10,7 @@ import 'package:collection/collection.dart';  // firstWhereOrNull
 import 'package:ceFlutter/utils/widgetUtils.dart';
 import 'package:ceFlutter/utils/ceUtils.dart';
 
+import 'package:ceFlutter/models/CEVenture.dart';
 import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/PEQAction.dart';
@@ -354,6 +355,25 @@ Future<List<CEProject>> fetchCEProjects( context, container ) async {
    }
 }
 
+Future<List<CEVenture>> fetchCEVentures( context, container ) async {
+   String shortName = "fetchCEVentures";
+   final postData = '{ "Endpoint": "GetEntries", "tableName": "CEVentures", "query": { "empty": "" }}';
+   final response = await awsPost( shortName, postData, context, container );
+   
+   if (response.statusCode == 201) {
+      Iterable l = json.decode(utf8.decode(response.bodyBytes));
+      List<CEVenture> cevs = l.map( (sketch)=> sketch == -1 ? CEVenture.empty() : CEVenture.fromJson(sketch) ).toList();
+      return cevs;
+   } else if( response.statusCode == 204) {
+      print( "Fetch: no CEVentures found" );
+      return [];
+   } else {
+      bool didReauth = await checkFailure( response, shortName, context, container );
+      if( didReauth ) { return await fetchCEVentures( context, container ); }
+      else { return []; }
+   }
+}
+
 // XXX deprecated
 // ce username comes from cert in idtoken on lambda side.
 Future<Person?> fetchSignedInPerson( context, container ) async {
@@ -412,7 +432,7 @@ Future<Person?> fetchAPerson( context, container, ceUserId ) async {
 
 
 // Populates idHostMap
-Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person?> cePersons ) async {
+Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPlatform, Map<String, Person> cePeople ) async {
    String shortName = "fetchHostMap";
    final postData = '{ "Endpoint": "GetEntries", "tableName": "CEHostUser", "query": { "HostPlatform": "$hostPlatform" }}';
    final response = await awsPost( shortName, postData, context, container );
@@ -425,7 +445,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
          Map<String,String> vals = {};
          vals['ceUID']        = hostUser['CEUserId'];
          vals['hostUserName'] = hostUser['HostUserName'];
-         Person? peep = cePersons[ vals['ceUID'] ];
+         Person? peep = cePeople[ vals['ceUID'] ];
          assert( peep != null );
          vals['ceUserName']   = peep!.userName;
          t[ hostUser['HostUserId'] ] = vals;
@@ -436,7 +456,7 @@ Future<Map<String, Map<String,String>>> fetchHostMap( context, container, hostPl
       return {};
    } else {
       bool didReauth = await checkFailure( response, shortName, context, container );
-      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform, cePersons ); }
+      if( didReauth ) { return await fetchHostMap( context, container, hostPlatform, cePeople ); }
       else { return {}; }
    }
 }

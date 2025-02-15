@@ -62,6 +62,14 @@ Resources:
         Name: CEProjectId
         Type: String
 
+  VenturesTable:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: CEVentures
+      PrimaryKey:
+        Name: CEVentureId
+        Type: String
+
   AgreementTable:
     Type: 'AWS::Serverless::SimpleTable'
     Properties:
@@ -195,6 +203,8 @@ Resources:
           TableName: !Ref PersonTable
        - DynamoDBCrudPolicy:
           TableName: !Ref ImageTable
+       - DynamoDBCrudPolicy:
+          TableName: !Ref VenturesTable
        - DynamoDBCrudPolicy:
           TableName: !Ref ProjectsTable
        - DynamoDBCrudPolicy:

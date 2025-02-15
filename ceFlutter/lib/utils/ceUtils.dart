@@ -12,6 +12,8 @@ import 'package:ceFlutter/screens/launch_page.dart';
 
 import 'package:ceFlutter/models/EquityPlan.dart';
 import 'package:ceFlutter/models/Person.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
+import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/HostAccount.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 
@@ -113,17 +115,43 @@ void logout( context, appState ) async {
 */
 
 
-// Called each time click different repo on homepage
+// Called with any ceProject, and if Venture clicked that has no project yet.
+Future<void> reloadCEVentureOnly( context, container ) async {
+   
+   final appState  = container.state;
+
+   String ceVent   = appState.selectedCEVenture;
+   String uid      = appState.ceUserId;
+   print( "Loading " + uid + "'s " + ceVent + " CodeEquity Venture." );
+
+   var pdEP = json.encode( { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": {"EquityPlanId": "$ceVent"}} );
+
+   // Consider separting fPSummary, since summary is the first thing that pops up.
+   var futs = await Future.wait([
+                                   (appState.ceEquityPlans[ceVent] == null ?
+                                    fetchEquityPlan( context, container,  pdEP ).then( (p) => appState.ceEquityPlans[ceVent] = p ) :
+                                    new Future<bool>.value(true) ),
+                                   
+                                   ]);
+   appState.myEquityPlan = appState.ceEquityPlans[ceVent];
+   
+   if( appState.myEquityPlan == null ) { appState.myEquityPlan = new EquityPlan( ceVentureId: ceVent, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
+
+   if( appState.myEquityPlan != null ) { appState.updateEquityPlan = true; } // force equity tree update
+   if( appState.myEquityPlan != null ) { appState.updateEquityView = true; } // force equity view creation on first pass
+}
+
+// Called each time click different ceProject, or ceVenture with only 1 ceProject on homepage
 Future<void> reloadCEProject( context, container ) async {
    
    final appState  = container.state;
 
+   String ceVent   = appState.selectedCEVenture;
    String ceProj   = appState.selectedCEProject;
    String uid      = appState.ceUserId;
    print( "Loading " + uid + "'s " + ceProj + " CodeEquity project." );
 
    var pdPS = json.encode( { "Endpoint": "GetEntry", "tableName": "CEPEQSummary", "query": {"PEQSummaryId": "$ceProj" }} );
-   var pdEP = json.encode( { "Endpoint": "GetEntry", "tableName": "CEEquityPlan", "query": {"EquityPlanId": "$ceProj"}} );
    var pdHL = json.encode( { "Endpoint": "GetEntry", "tableName": "CELinkage",    "query": {"CEProjectId": "$ceProj" }} );
 
    // Consider separting fPSummary, since summary is the first thing that pops up.
@@ -132,8 +160,8 @@ Future<void> reloadCEProject( context, container ) async {
                                     fetchPEQSummary( context, container,  pdPS ).then( (p) => appState.cePEQSummaries[ceProj] = p ) :
                                     new Future<bool>.value(true) ),
                                    
-                                   (appState.ceEquityPlans[ceProj] == null ?
-                                    fetchEquityPlan( context, container,  pdEP ).then( (p) => appState.ceEquityPlans[ceProj] = p ) :
+                                   (appState.ceEquityPlans[ceVent] == null ?
+                                    reloadCEVentureOnly( context, container ) :
                                     new Future<bool>.value(true) ),
 
                                    (appState.ceHostLinks[ceProj] == null ?
@@ -142,19 +170,14 @@ Future<void> reloadCEProject( context, container ) async {
                                    
                                    ]);
    appState.myPEQSummary = appState.cePEQSummaries[ceProj];
-   appState.myEquityPlan = appState.ceEquityPlans[ceProj];
    appState.myHostLinks  = appState.ceHostLinks[ceProj];
    
-   if( appState.myEquityPlan == null ) { appState.myEquityPlan = new EquityPlan( ceProjectId: ceProj, categories: [], amounts: [], hostNames: [], totalAllocation: 0, lastMod: "" ); }
-
    if( appState.verbose >= 3 ) {
       print( "Got Links?" ); 
       appState.myHostLinks == null ? print( "nope - no associated repo" ) : print( appState.myHostLinks.toString() );
    }
 
    if( appState.myPEQSummary != null ) { appState.updateAllocTree = true;  } // force alloc tree update
-   if( appState.myEquityPlan != null ) { appState.updateEquityPlan = true; } // force equity tree update
-   if( appState.myEquityPlan != null ) { appState.updateEquityView = true; } // force equity view creation on first pass
 }
 
 
@@ -170,30 +193,35 @@ Future<void> initMDState( context, container ) async {
 
    var pdHA   = json.encode( { "Endpoint": "GetHostA", "CEUserId": "$uid"  } );      // FetchHost sets hostAccounts.ceProjs
 
+   List<CEProject> ceps  = [];
+   List<CEVenture> cevs  = [];
+   List<Person>    peeps = [];
+
    // NOTE Could push fetchCEPeople to reloadCEProject.  But, dynamo table does not carry that info, and constructing a
    //      a list of cep-specific names then fetching that is likely to provide minimal gains, if any.  Leave it here.
-   var futs = await Future.wait([
-                                   (appState.ceHostAccounts[uid] == null ? 
-                                    fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
-                                    new Future<bool>.value(true) ),
-                                   
-                                   fetchCEPeople( context, container ).then(       (p) => appState.cePeople = p ),
-                                   
-                                   fetchCEProjects( context, container ).then(     (p) => appState.ceProjects = p ),                                   
-                                   ]);
+   await Future.wait([
+                        (appState.ceHostAccounts[uid] == null ? 
+                         fetchHostAcct( context, container, pdHA ).then( (p) => appState.ceHostAccounts[uid] = p ) :
+                         new Future<bool>.value(true) ),
+                        
+                        fetchCEPeople( context, container ).then(       (p) => peeps = p ),
+                        
+                        fetchCEProjects( context, container ).then(     (p) => ceps = p ),
+                        
+                        fetchCEVentures( context, container ).then(     (p) => cevs = p ),
+                        ]);
    appState.myHostAccounts = appState.ceHostAccounts[uid];
 
-   // Load cePersons 'index'
-   // XXX Scales poorly - could do this in the background, force wait when build idMapHost
-   for( Person p in appState.cePeople ) { appState.cePersons[p.id] = p;  }
-
+   // XXX Scales poorly - could do some of this in the background, force wait when build idMapHost
+   for( CEProject cep in ceps ) { appState.ceProject[ cep.ceProjectId ] = cep; }
+   for( CEVenture cev in cevs ) { appState.ceVenture[ cev.ceVentureId ] = cev; }
+   for( Person p in peeps )     { appState.cePeople[ p.id ] = p; }
+   
    // Set idMap to get from hostUID to hostUserName or ceUID easily.  All users for a given host platform.
    // XXX Scales poorly.  This could move to reloadCEProject, since idMapHost usage is by cep.
    //     Would be work to get cep, then hostRepo, which is stored in hostUser table, no real gains for a long time here.
-   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePersons ); // XXX gh
+   appState.idMapHost = await fetchHostMap( context, container, "GitHub", appState.cePeople ); // XXX gh
    
-   // print( "My CodeEquity Projects:" );
-   // print( appState.myHostAccounts );
 }
 
 

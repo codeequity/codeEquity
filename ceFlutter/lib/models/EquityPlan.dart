@@ -10,19 +10,30 @@ Function deepEq = const DeepCollectionEquality().equals;
 
 class EquityPlan {
 
-   final String        ceProjectId;   // Summaries are per ceProject.. this is the pkey
+   final String        ceVentureId;   // Summaries are per ceVenture.. this is the pkey
    List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]         
    List<int>           amounts;       // e.g. [ 1000000, ... ]                                         
    List<String>        hostNames;     // host project (name) this equity line is associated with
    int                 totalAllocation; // overall allocation for this project
    String              lastMod;
 
-   EquityPlan({ required this.ceProjectId, required this.categories, required this.amounts, required this.hostNames, required this.totalAllocation, required this.lastMod }) {
+   EquityPlan({ required this.ceVentureId, required this.categories, required this.amounts, required this.hostNames, required this.totalAllocation, required this.lastMod }) {
       assert( categories.length == amounts.length );
       assert( categories.length == hostNames.length );
    }
 
-   dynamic toJson() => { 'ceProjectId': ceProjectId, 'categories': categories, 'amounts': amounts, 'hostNames': hostNames, 'totalAllocation': totalAllocation, 'lastMod': lastMod };
+   // No EP found.  return empty 
+   factory EquityPlan.empty( id ) {
+      return EquityPlan(
+         ceVentureId: id,
+         categories: [],
+         amounts: [],
+         hostNames: [],
+         totalAllocation: 0,
+         lastMod: "" );
+   }
+   
+   dynamic toJson() => { 'ceVentureId': ceVentureId, 'categories': categories, 'amounts': amounts, 'hostNames': hostNames, 'totalAllocation': totalAllocation, 'lastMod': lastMod };
    
    factory EquityPlan.fromJson(Map<String, dynamic> json) {
 
@@ -34,7 +45,7 @@ class EquityPlan {
          });
       
       return EquityPlan(
-         ceProjectId:     json['EquityPlanId'],
+         ceVentureId:     json['EquityPlanId'],
          categories:      cats,
          amounts:         new List<int>.from( json['Amounts'] ),
          hostNames:       new List<String>.from( json['HostNames'] ),
@@ -193,7 +204,7 @@ class EquityPlan {
    int getSize() { return categories.length; }
 
    String toString() {
-      String res = "\n" + ceProjectId + " last modified: " + lastMod;
+      String res = "\n" + ceVentureId + " last modified: " + lastMod;
       for( int i = 0; i < categories.length; i++ ) {
          res += "   " + amounts[i].toString() + " " +  categories[i].toString() + " for hostProject: " + hostNames[i] + "\n";
          res += "   " + "total allocation: " + totalAllocation.toString();

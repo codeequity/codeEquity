@@ -249,7 +249,7 @@ Widget makeIndentedText( appState, title, width, wrap, lines ) {
                                        ))));
 }
 
-Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", lgap = -1, tgap=-1, bgap=0} ) {
+Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines, {keyPreface = "", sub = false, lgap = -1, tgap=-1, bgap=0} ) {
 
    String lead = "";
    for( int i = 0; i < title.length; i++ ) {
@@ -273,7 +273,7 @@ Widget makeActionableText(  appState, title, id, hov, nohov, width, wrap, lines,
             child: Text(title.trim(), softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 14,
                                          color: id == appState.hoverChunk ? appState.BUTTON_COLOR : Colors.black,
-                                         fontWeight: FontWeight.bold,
+                                         fontWeight: sub ? FontWeight.normal : FontWeight.bold,
                                          decoration: id == appState.hoverChunk ? TextDecoration.underline : null
                            ))))
       );
@@ -300,6 +300,26 @@ Widget makeToolTip( child, message, {wait=false} ) {
       showDuration: const Duration(seconds: 2),
       waitDuration: Duration(seconds: dengdeng),
       );
+}
+
+// XXX convert all to IWTitle?
+Widget makeIWTitleText( appState, title, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "" } ) {
+   // Add as encountered.
+   var mux = 1.0;
+   if     ( fontSize == 18 ) { mux = 24.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 24 ) { mux = 32.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 28 ) { mux = 38.0 / appState.BASE_TXT_HEIGHT; }
+   else if( fontSize == 36 ) { mux = 48.0 / appState.BASE_TXT_HEIGHT; }
+
+   String keyName = keyTxt == "" ? title : keyTxt;
+   Color color = highlight ? appState.BUTTON_COLOR : Colors.black;
+   
+   return Padding(
+      padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
+      child: IntrinsicWidth( 
+         key: Key( keyName ),
+         child: Text(title, softWrap: wrap, maxLines: lines, overflow: TextOverflow.ellipsis,
+                     style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: color))));
 }
 
 Widget makeTitleText( appState, title, width, wrap, lines, { fontSize = 14, highlight = false, keyTxt = "" } ) {
@@ -403,7 +423,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                   if( appState.myEquityPlan != null ) { appState.updateEquityPlan = true; } // force equity tree update
                   if( appState.myEquityPlan != null ) { appState.updateEquityView = true; } // force equity view creation on first pass
                   
-                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage());
+                  MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProjectPage(), settings: RouteSettings( arguments: {"initialPage": 0} ));
                   confirmedNav( context, container, newPage );
                },
                iconSize: iconSize,

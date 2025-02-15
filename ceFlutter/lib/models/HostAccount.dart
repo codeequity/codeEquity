@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:ceFlutter/models/CEProject.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
+
 // Combines dynamo:CEHostUser with dynamo:CEProjects
 class HostAccount {
    final String   hostPlatform;
@@ -7,11 +10,15 @@ class HostAccount {
    final String   ceUserId;
    final String   hostUserId;
    List<String>   ceProjectIds;
-   final List<String> futureCEProjects;
-   final Map<String, List<String>> ceProjRepos;
+   final List<String> futureCEProjects;           // list of host repos not yet part of CE
+   final Map<String, List<String>> ceProjRepos;   // ceProjectId to list of host repos
+   Map<String, List<String>>? vToc;               // TRANSIENT.  VentureId to ProjId, built during first homepage view
 
    HostAccount({required this.hostPlatform, required this.hostUserName, required this.ceUserId, required this.hostUserId,
-            required this.ceProjectIds, required this.futureCEProjects, required this.ceProjRepos});
+            required this.ceProjectIds, required this.futureCEProjects, required this.ceProjRepos, this.vToc})
+   {
+      if( vToc == null ) { this.vToc = {}; }
+   }
 
    // Will be going up to dynamo
    dynamic toJson() {
@@ -48,8 +55,33 @@ class HostAccount {
          hostUserId:       json['HostUserId'], 
          ceProjectIds:     new List<String>.from( dynamicProjs ),
          futureCEProjects: new List<String>.from( dynamicFuts ),
-         ceProjRepos:      cepRepos
+         ceProjRepos:      cepRepos,
+         vToc:             {}
          );
+   }
+
+   List<CEVenture> getVentures( appState ) {
+      assert( vToc != null );
+      for( final cepId in ceProjectIds ) {
+         CEProject cep = appState.ceProject[ cepId ] ?? CEProject.empty();
+         if( vToc![ cep.ceVentureId ] == null )            { vToc![ cep.ceVentureId ] = []; }
+         if( !vToc![ cep.ceVentureId ]!.contains( cepId ) ) { vToc![ cep.ceVentureId ]!.add( cepId ); }
+      }
+      List<CEVenture> res = [];
+      for( String vid in vToc!.keys ) {
+         res.add( appState.ceVenture[ vid ]); 
+      }
+      return res;
+   }
+   
+   List<CEProject> getCEPsPerVenture( appState, String cevId ) {
+      assert( vToc != null );
+
+      List<CEProject> res = [];
+      for( String cid in ( vToc![cevId] ?? [] ) ) {
+         res.add( appState.ceProject[ cid ]); 
+      }
+      return res;
    }
 
    String toString() {

@@ -320,6 +320,9 @@ async function getEntry( tableName, query ) {
     case "CEPEQRaw":
 	props = [ "PEQRawId" ];
 	break;
+    case "CEVentures":
+	props = [ "CEVentureId" ];
+	break;
     case "CEProjects":
 	props = [ "CEProjectId" ];
 	break;
@@ -374,6 +377,9 @@ async function getEntries( tableName, query ) {
 	break;
     case "CEPeople":
 	props = ["CEUserId", "CEUserName", "Email", "First", "Last", "Locked"];
+	break;
+    case "CEVentures":
+	props = [ "CEVentureId" ];
 	break;
     case "CEProjects":
 	props = [ "CEProjectId" ];
@@ -1250,12 +1256,12 @@ async function addPSumLock( ceProjId ) {
 // Overwrites any existing record by ID.
 async function putEqPlan( eplan ) {
 
-    console.log( "EquityPlan put", eplan.ceProjectId.toString());
+    console.log( "EquityPlan put", eplan.ceVentureId.toString());
 
     const paramsP = {
         TableName: 'CEEquityPlan',
 	Item: {
-	    "EquityPlanId":    eplan.ceProjectId,
+	    "EquityPlanId":    eplan.ceVentureId,
 	    "Categories":      eplan.categories,
 	    "Amounts":         eplan.amounts,
 	    "HostNames":       eplan.hostNames,

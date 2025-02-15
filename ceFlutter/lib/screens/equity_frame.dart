@@ -10,6 +10,7 @@ import 'package:ceFlutter/utils/ceUtils.dart';
 import 'package:ceFlutter/utils/awsUtils.dart';
 
 import 'package:ceFlutter/models/app_state.dart';
+import 'package:ceFlutter/models/CEVenture.dart';
 
 import 'package:ceFlutter/components/equityTree.dart';
 import 'package:ceFlutter/components/equityNode.dart';
@@ -283,10 +284,10 @@ class _CEEquityState extends State<CEEquityFrame> {
    
    // BuildEquityTree creates the linkages between nodes.  EquityNode controls most of the the view for each element.
    _buildEquityTree() {
-      if( appState.verbose >= 1 ) { print( "Build Equity tree" ); }
+      if( appState.verbose >= 4 ) { print( "Build Equity tree" ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;  
 
-      print( "Resetting PageStorageKey stamps" );
+      // print( "Resetting PageStorageKey stamps" );
       String pageStamp = DateTime.now().millisecondsSinceEpoch.toString();
 
       // List<Widget> htile  = _getTile( [], "Category", 0, 0, width, pageStamp );
@@ -308,7 +309,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          
          // when eqLines are created, they are leaves. Down the road, they become nodes
          List<String> cat = new List<String>.from( eqLine["category"] );
-         print( " ... " + cat.toString() );
+         // print( " ... " + cat.toString() );
          
          EquityTree? childNode   = curNode.findNode( cat );
          EquityTree? childParent = curNode.findNode( cat.sublist(0, cat.length - 1 ) );
@@ -325,7 +326,7 @@ class _CEEquityState extends State<CEEquityFrame> {
          }
 
          if( childParent is EquityLeaf  ) {
-            print( "... leaf upgraded to node" );
+            // print( "... leaf upgraded to node" );
             curNode = childParent.convertToNode();
          }
          else if( childParent is EquityNode ) { 
@@ -344,11 +345,14 @@ class _CEEquityState extends State<CEEquityFrame> {
    
    
    List<List<Widget>> _getCategoryWidgets( context ) {
-      if( appState.verbose >= 2 ) { print( "Getting equity table widgets update tree/view: " + appState.updateEquityPlan.toString() + " " + appState.updateEquityView.toString() ); }
+      if( appState.verbose >= 4 ) { print( "Getting equity table widgets update tree/view: " + appState.updateEquityPlan.toString() + " " + appState.updateEquityView.toString() ); }
       final width = frameMinWidth - 2*appState.FAT_PAD;        
       final numWidth = width / 2.5;
-         
-      if( appState.myEquityPlan != null && appState.myEquityPlan!.ceProjectId != appState.selectedCEProject ) {
+
+      // print( appState.selectedCEVenture );
+      // print( appState.myEquityPlan.toString() );
+      
+      if( appState.myEquityPlan != null && appState.myEquityPlan!.ceVentureId != appState.selectedCEVenture ) {
          print( "Error.  Equity plan is not for selected project." );
          return [];
       }
@@ -359,7 +363,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       if( appState.updateEquityView ) {
          // These must be kept up to date, and updated before _getTiles.
-         equityTop = 3;   // spacer + header + hdiv
+         equityTop = 5;   // spacer + title + spacer + header + hdiv
          
          // Header
          Widget spacer    = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
@@ -379,7 +383,7 @@ class _CEEquityState extends State<CEEquityFrame> {
             assert( appState.equityTree != null );
             bool changed = appState.myEquityPlan!.updateEquity( appState.equityTree );
             if( appState.myEquityPlan!.categories.length > 0 ) { 
-               if( appState.verbose >= 2 ) { print( "_getCategoryWidgets Update equity" ); }
+               if( appState.verbose >= 4 ) { print( "_getCategoryWidgets Update equity" ); }
                catList.addAll( _getTiles( context, width ) );
             }
             if( changed ) { writeEqPlan(); }
@@ -451,19 +455,30 @@ class _CEEquityState extends State<CEEquityFrame> {
    }
    
    Widget getEquityPlan( context ) {
-      if( appState.verbose >= 2 ) { print( "EF: Remake equity plan" ); }
+      if( appState.verbose >= 4 ) { print( "EF: Remake equity plan" ); }
       final buttonWidth = 100;
+
+      final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
+      final svWidth  = appState.MAX_PANE_WIDTH; 
       
       List<List<Widget>> categories = [];
 
+      CEVenture? cev = appState.ceVenture[ appState.selectedCEVenture ];
+      assert( cev != null );
+
+      // XXX nicer?  avg width fontsize 18 ?
+      Widget spacer = Container( height: 1, width: (svWidth - cev!.name.length * 14.0)/2.0 );
+
+      // Title
+      categories.addAll( [[ Container( height: appState.MID_PAD ), empty, empty, empty, empty ]] );
+      categories.addAll( [[ spacer, makeIWTitleText( appState, cev!.name, false, 1, fontSize: 18), empty, empty, empty ]] );
+
+      // XXX build too often?  check.
       categories.addAll( _getCategoryWidgets( context ) );
       
       // print( "getCategories, count: " + categories.length.toString() );
       var categoryCount = min( categories.length, appState.MAX_SCROLL_DEPTH );
       var categoryWidth = categories.length == 0 ? appState.MAX_SCROLL_DEPTH : categories[0].length; 
-
-      final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
-      final svWidth  = appState.MAX_PANE_WIDTH; 
 
       if( appState.screenHeight < frameMinHeight ) {
          return makeTitleText( appState, "Really?  Can't we be a little taller?", frameMinHeight, false, 1, fontSize: 18);
@@ -473,6 +488,12 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          final ScrollController controller = ScrollController();
 
+         /*
+         for( int i = 0; i < categories.length; i++ ) {
+            print( i.toString() + ": " + categories[i].toString() + " " + categories[i].length.toString() );
+         }
+         */
+         
          // Keep key in tree land, to stay compatible with equity test, i.e. viewIndex - headers + TOT
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),
@@ -511,9 +532,9 @@ class _CEEquityState extends State<CEEquityFrame> {
       fatPad    = Container( width: appState.FAT_PAD, height: 1 );
       midPad    = Container( width: appState.MID_PAD, height: 1 );
       empty = Container( width: 1, height: 1 );
-      
-      if( appState.verbose >= 2 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
 
+      if( appState.verbose >= 4 ) { print( "EQUITY BUILD. " + (appState == Null).toString()); }
+      
       // Set this here to update view if minimized, then recovered.
       appState.updateEquityView = true;      
       

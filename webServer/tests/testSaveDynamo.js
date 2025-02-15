@@ -51,6 +51,7 @@ async function runTests( flutterTest ) {
     let testStatus = [ 0, 0, []];
     let success = false;
 
+
     // turn this on when not testing in parts
     success = execAWS_CLI( "CEPEQs", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save PEQ Table" );
@@ -80,9 +81,19 @@ async function runTests( flutterTest ) {
     success = execAWS_CLI( "CEHostUser", flutterTest );
     testStatus = tu.checkEq( success, true, testStatus, "save HostUser Table" );
 
+    success = execAWS_CLI( "CEProfileImage", flutterTest );
+    testStatus = tu.checkEq( success, true, testStatus, "save Profile Image Table" );
+
+    success = execAWS_CLI( "CEEquityPlan", flutterTest );
+    testStatus = tu.checkEq( success, true, testStatus, "save Equity Plan Table" );
+
+    success = execAWS_CLI( "CEVentures", flutterTest );
+    testStatus = tu.checkEq( success, true, testStatus, "save Equity Plan Table" );
+
     return testStatus
 }
 
 // Switch to runTests rather than exports if npm run testSave
-//runTests();
+// runTests();
+
 exports.runTests = runTests;

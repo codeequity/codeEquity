@@ -133,7 +133,7 @@ void main() {
 
 
          print("RESTART" );
-         await restart( tester );
+         await restart( tester, count: 3 );
          await tester.pumpAndSettle();         
          await pumpSettle(tester, 1);
 
