@@ -1256,12 +1256,12 @@ async function addPSumLock( ceProjId ) {
 // Overwrites any existing record by ID.
 async function putEqPlan( eplan ) {
 
-    console.log( "EquityPlan put", eplan.ceProjectId.toString());
+    console.log( "EquityPlan put", eplan.ceVentureId.toString());
 
     const paramsP = {
         TableName: 'CEEquityPlan',
 	Item: {
-	    "EquityPlanId":    eplan.ceProjectId,
+	    "EquityPlanId":    eplan.ceVentureId,
 	    "Categories":      eplan.categories,
 	    "Amounts":         eplan.amounts,
 	    "HostNames":       eplan.hostNames,

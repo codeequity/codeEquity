@@ -363,7 +363,7 @@ class _CEEquityState extends State<CEEquityFrame> {
       
       if( appState.updateEquityView ) {
          // These must be kept up to date, and updated before _getTiles.
-         equityTop = 3;   // spacer + header + hdiv
+         equityTop = 5;   // spacer + title + spacer + header + hdiv
          
          // Header
          Widget spacer    = Container( width: 1, height: appState!.CELL_HEIGHT * .5 );
@@ -488,6 +488,12 @@ class _CEEquityState extends State<CEEquityFrame> {
 
          final ScrollController controller = ScrollController();
 
+         /*
+         for( int i = 0; i < categories.length; i++ ) {
+            print( i.toString() + ": " + categories[i].toString() + " " + categories[i].length.toString() );
+         }
+         */
+         
          // Keep key in tree land, to stay compatible with equity test, i.e. viewIndex - headers + TOT
          return ScrollConfiguration(
             behavior: MyCustomScrollBehavior(),

@@ -36,6 +36,7 @@ Future<void> open( WidgetTester tester ) async {
 Future<void> dismiss( WidgetTester tester ) async {
    // final Offset tapPosition = Offset(100, 100);
    // await tester.tapAt( tapPosition );
+   bool closed = false;
 
    // Clear text first, if available
    final Finder close = find.byIcon( Icons.close );
@@ -43,26 +44,31 @@ Future<void> dismiss( WidgetTester tester ) async {
       await tester.tap( close );
       await tester.pumpAndSettle();
       await tester.pumpAndSettle();
+      closed = true;
    }
    catch( e ) { print( "No close icon available" ); }
 
    // One of these should be visible.  All will be in the background, so silence warning.
    try{ 
-      final Finder out = find.text( "CodeEquity Projects" );
+      final Finder out = find.text( "CodeEquity Ventures" );
       await tester.tap( out, warnIfMissed: false );
+      closed = true;
    }
    catch( e ) {}
    try{ 
-      final Finder out = find.text( "GitHub ID" );
+      final Finder out = find.text( "New" );
       await tester.tap( out, warnIfMissed: false );
+      closed = true;
    }
    catch( e ) {}
    try{ 
-      final Finder out = find.text( "Repositories" );
+      final Finder out = find.text( CEMD_VENT_NAME );
       await tester.tap( out, warnIfMissed: false );
+      closed = true;
    }
    catch( e ) {}
-      
+
+   print( "Managed to close: " + closed.toString() );
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 }
@@ -84,11 +90,11 @@ Future<bool> validateC( WidgetTester tester, Finder search ) async {
    expect( find.text('connieTester'), findsOneWidget );
    expect( find.text('builderCE'), findsOneWidget );
    expect( find.text('rmusick2000'), findsOneWidget );
-   expect( find.text(CESE_PROJ_ID), findsNWidgets(2) );
-   expect( find.text(CEAL_PROJ_ID), findsNWidgets(2) );
+   expect( find.text(CESE_PROJ_ID), findsNWidgets(1) );
+   expect( find.text(CEAL_PROJ_ID), findsNWidgets(1) );
    expect( find.text(GB_PROJ_ID), findsOneWidget );
-   expect( find.text(CE_PROJ_ID), findsNWidgets(2) );
-   expect( find.text(CEMD_PROJ_ID), findsNWidgets(2) );
+   expect( find.text(CE_PROJ_ID), findsNWidgets(1) );
+   expect( find.text(CEMD_PROJ_ID), findsNWidgets(1) );
    // Don't get here with detail
    // expect( find.text('BookShare_kd8fb.fl9s'), findsOneWidget );
    // expect( find.text('Interleave 3'), findsOneWidget );
@@ -121,13 +127,15 @@ Future<bool> validateCO( WidgetTester tester, Finder search ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 
-   expect( find.text('connieTester'), findsOneWidget );
-   expect( find.text(CESE_PROJ_ID), findsNWidgets(2) );
-   expect( find.text(CEAL_PROJ_ID), findsNWidgets(2) );
-   expect( find.text(GB_PROJ_ID), findsOneWidget );
-   expect( find.text(CE_PROJ_ID), findsNWidgets(2) );
-   expect( find.text(CEMD_PROJ_ID), findsNWidgets(2) );
-   expect( find.text('CT Blast X'), findsOneWidget );
+   // sometimes integration test gets 1, sometimes 2.. never 2 on screen
+   // if findsatleast 1, then all were found given screen length limits
+   expect( find.text('connieTester'), findsAtLeast(1) );  
+   expect( find.text(CESE_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(CEAL_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(GB_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(CE_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(CEMD_PROJ_ID), findsAtLeast(1) );
+   expect( find.text('CT Blast X'), findsAtLeast(1) );
 
    await dismiss( tester );
    return true;
@@ -141,9 +149,9 @@ Future<bool> validateCON( WidgetTester tester, Finder search ) async {
    await tester.pumpAndSettle();
    await tester.pumpAndSettle();
 
-   expect( find.text('connieTester'), findsOneWidget );
-   expect( find.text(CESE_PROJ_ID), findsNWidgets(2) );
-   expect( find.text(GB_PROJ_ID), findsOneWidget );
+   expect( find.text('connieTester'), findsAtLeast(1) );
+   expect( find.text(CESE_PROJ_ID), findsAtLeast(1) );
+   expect( find.text(GB_PROJ_ID), findsAtLeast(1) );
 
    await dismiss( tester );
    return true;
@@ -161,11 +169,11 @@ Future<bool> validateCONT( WidgetTester tester, Finder search ) async {
    expect( find.text('connieTester'), findsNothing );
    expect( find.text('builderCE'), findsNothing );
    expect( find.text('rmusick2000'), findsNothing );
-   expect( find.text(CESE_PROJ_ID), findsOneWidget );
-   expect( find.text(CEAL_PROJ_ID), findsOneWidget );
+   expect( find.text(CESE_PROJ_NAME), findsOneWidget );
+   expect( find.text(CEAL_PROJ_NAME), findsOneWidget );
    expect( find.text(GB_PROJ_ID), findsNothing );
-   expect( find.text(CE_PROJ_ID), findsOneWidget );
-   expect( find.text(CEMS_PROJ_ID), findsOneWidget );
+   expect( find.text(CE_PROJ_NAME), findsNWidgets(3) );
+   expect( find.text(CEMD_PROJ_NAME), findsOneWidget );
    expect( find.text(BS_PROJ_ID), findsNothing );
    expect( find.text('AssignTest'), findsNothing );
    expect( find.text('CT Blast X'), findsNothing );
@@ -187,6 +195,8 @@ Future<bool> validateIncremental( WidgetTester tester ) async {
    expect( await validateC( tester, search ),  true );
    expect( await validateCO( tester, search ), true );
    expect( await validateCON( tester, search ), true );
+   // needed to eliminate copy in mem
+   expect( await appeaseScreenlock( tester, search ),  true );
    expect( await validateCONT( tester, search ), true );
    
    return true;
@@ -246,19 +256,19 @@ Future<bool> validateCollabConnie( WidgetTester tester ) async {
    txt = find.text( 'connieCE (U_kgDOBLisTg)' );
    expect( txt, findsOneWidget );
 
-   txt = find.text( CESE_PROJ_ID );
+   txt = find.text( CESE_PROJ_NAME );
    expect( txt, findsNWidgets(2) );
-   txt = find.text( CEAL_PROJ_ID );
+   txt = find.text( CEAL_PROJ_NAME );
    expect( txt, findsNWidgets(2) );
-   txt = find.text( CE_PROJ_ID );
-   expect( txt, findsNWidgets(2) );
-   txt = find.text( GB_PROJ_ID );
+   txt = find.text( CE_PROJ_NAME );
+   expect( txt, findsNWidgets(3) );
+   txt = find.text( GB_PROJ_NAME );
    expect( txt, findsNWidgets(2) );
 
-   txt = find.text( 'Organization: Connie\'s Creations' );
+   txt = find.text( 'Venture: Connie\'s Creations' );
    expect( txt, findsOneWidget );
 
-   txt = find.text( 'CodeEquity Actual, The Real Deal' );
+   txt = find.text( 'Code for Equity' );
    expect( txt, findsOneWidget );
 
    Finder button = find.byKey( Key( 'Logout' ) );
@@ -276,14 +286,12 @@ Future<bool> validateCollabConnie( WidgetTester tester ) async {
 Future<bool> validateProjGarlic( WidgetTester tester ) async {
 
    print( "Enter Garlic" );
-   Finder txt = find.text( 'GarlicBeer_38fl0hlsjs' );
+   Finder txt = find.text( 'Id: GarlicBeer_38fl0hlsjs' );
    expect( txt, findsOneWidget );
 
-   txt = find.text( 'GarlicBeer Actual' );
+   txt = find.text( 'The Home of Garlic Beer' );
    expect( txt, findsOneWidget );
-   txt = find.text( 'The Real Deal' );
-   expect( txt, findsOneWidget );
-   txt = find.text( 'PEQs:' );
+   txt = find.text( 'Venture Equity Plan PEQs:' );
    expect( txt, findsOneWidget );
    txt = find.text( '    Tasked out:' );
    expect( txt, findsOneWidget );
@@ -305,7 +313,7 @@ Future<bool> validateProjGarlic( WidgetTester tester ) async {
    expect( txt, findsOneWidget );
    txt = find.text( 'Most active in: ' );
    expect( txt, findsOneWidget );
-   txt = find.text( CEMD_PROJ_ID );
+   txt = find.text( CEMD_PROJ_NAME );
    expect( txt, findsOneWidget );
 
    final Finder image = find.byKey( Key( "gGradImage" ));

@@ -10,7 +10,7 @@ Function deepEq = const DeepCollectionEquality().equals;
 
 class EquityPlan {
 
-   final String        ceVentureId;   // Summaries are per ceProject.. this is the pkey
+   final String        ceVentureId;   // Summaries are per ceVenture.. this is the pkey
    List<List<String>>  categories;    // e.g. [[ Software Contributions, Data Security], ... ]         
    List<int>           amounts;       // e.g. [ 1000000, ... ]                                         
    List<String>        hostNames;     // host project (name) this equity line is associated with
