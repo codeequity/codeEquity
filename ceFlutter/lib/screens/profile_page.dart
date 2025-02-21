@@ -325,20 +325,22 @@ class _CEProfileState extends State<CEProfilePage> {
      }
 
      List<String> ceProjs = ha.ceProjectIds.map( (pid) => (appState.ceProject[pid] ?? CEProject.empty()).name ).toList();
+     // XXX Compute this
+     Map<String,String> mostActive = ceProjs.length > 0 ? {"name": ceProjs[0], "id": ha.ceProjectIds[0] } : {"name": "", "id": "" };
 
      // XXX seem to need strict copy here to satisfy popMRScroll:alertdialog state requirements?
-     Widget _makeCEPLink( cepId ){
-        void _set( PointerEvent event )   { setState(() => appState.hoverChunk = cepId+ceUserId ); }
+     Widget _makeCEPLink( mostActive ){
+        void _set( PointerEvent event )   { setState(() => appState.hoverChunk = mostActive["id"]+ceUserId ); }
         void _unset( PointerEvent event ) { setState(() => appState.hoverChunk = "" ); }
         
         return GestureDetector( 
            onTap: () async
            {
-              Map<String,String> screenArgs = {"id": cepId, "profType": "CEProject" };
+              Map<String,String> screenArgs = {"id": mostActive["id"], "profType": "CEProject" };
               MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: screenArgs ));
               confirmedNav( context, container, newPage );
            },
-           child: makeActionableText( appState, cepId, cepId+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
+           child: makeActionableText( appState, mostActive["name"], mostActive["id"]+ceUserId, _set, _unset, textWidth, false, 1, tgap: appState.TINY_PAD, lgap: 0.0 ),
            );
      }
      
@@ -366,10 +368,9 @@ class _CEProfileState extends State<CEProfilePage> {
                     children: [
                        Padding(
                           padding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.TINY_PAD, appState.TINY_PAD, 0),
-                          // child: IntrinsicWidth( child: Text( ceProjs.length == 0 ? "" : "Most active in: " + ceProjs[0], style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
                           child: IntrinsicWidth( child: Text( ceProjs.length == 0 ? "" : "Most active in: ", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)))
                           ),
-                       _makeCEPLink( ceProjs[0] ),
+                       _makeCEPLink( mostActive ),
                        ]),
                  ])
            ));
@@ -602,6 +603,15 @@ class _CEProfileState extends State<CEProfilePage> {
      double accr     = ep.totalAllocation > 0 ? ( 1.0 * psum.accruedTot ) / ep.totalAllocation : 0.0;
      double tasked   = ep.totalAllocation > 0 ? ( 1.0 * psum.taskedTot  ) / ep.totalAllocation : 0.0;
      double unTasked = ep.totalAllocation > 0 ? ( 1.0 - accr - tasked ) : 0.0;
+
+     /*
+     Widget project = GestureDetector( 
+        onTap: () async
+        {
+        },
+        child: makeActionableText( appState, cep.name, "ppCEP"+cepId, _set, _unset, textWidth, false, 1, keyPreface: "ppCEP" ),
+        );
+     */
      
      return Wrap(
         children: [
@@ -613,6 +623,7 @@ class _CEProfileState extends State<CEProfilePage> {
                  spacer, 
                  pi,
                  makeTitleText( appState, cep.name, textWidth * 1.1, false, 1, fontSize: 24 ),
+                 // project,
                  makeTitleText( appState, "Id: " + cep.ceProjectId, textWidth, false, 1 ),
                  makeTitleText( appState, cep.description, textWidth, false, 1 ),
                  makeTitleText( appState, "Venture: " + cev.name, textWidth, false, 1, fontSize: 14 ),
