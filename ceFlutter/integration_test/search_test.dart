@@ -340,6 +340,8 @@ Future<bool> validateCollab( WidgetTester tester ) async {
    final Finder search = find.byKey( Key( "SearchBar" ) );
    expect( search, findsOneWidget );
 
+   expect( await appeaseScreenlock( tester, search ),  true );
+   
    await open( tester );
    await tester.enterText( search, "c" );
    await tester.pumpAndSettle();

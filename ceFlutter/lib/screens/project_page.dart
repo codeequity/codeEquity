@@ -101,7 +101,7 @@ class _CEProjectState extends State<CEProjectPage> {
       final w = 100;
       if( appState.loaded ) {
 
-         if( appState.verbose >= 2 ) { print( "PP ReBuild." ); }
+         if( appState.verbose >= 4 ) { print( "PP ReBuild." ); }
          assert( screenArgs["initialPage"] != null );
          int startPage = screenArgs["initialPage"]!;
 

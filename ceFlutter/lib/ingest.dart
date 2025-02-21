@@ -25,10 +25,11 @@ void _vPrint( appState, v, String astring ) {
    if( v >= appState.verbose ) { print( astring ); }
 }
 
-// XXX With move from Allocations stored with hostUserId, to ceUserId, uses of this should be reconsidered.
+// XXX With move from Allocations stored with hostUserId, to ceUserId, uses of this go away once GH restrictions done (pact.subject assignees are names, currently)
 String _convertNameToId( appState, String aname ) {
    String hostUserId = appState.idMapHost.keys.firstWhere( (k) => appState.idMapHost[k]['hostUserName'] == aname, orElse: () => aname );
-   // print( "aname " + aname + " huid " + hostUserId );
+   // if( hostUserId == aname ) { print( "XXX Convert is no-op " + aname ); }
+   // else { print( "YYY Convert converted " + aname + " " + hostUserId ); }
    return hostUserId;
 }
 

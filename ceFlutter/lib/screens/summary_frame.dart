@@ -233,7 +233,7 @@ class _CESummaryState extends State<CESummaryFrame> {
    Widget getAllocation( context ) {
       final w1 = 4 * appState.CELL_HEIGHT;
       final spinSize = 1.8*appState.BASE_TXT_HEIGHT;
-      _vPrint( appState, 4, "SF: Remake allocs" );
+      _vPrint( appState, 2, "SF: Remake allocs" );
       final buttonWidth = 100;
 
       final svHeight = ( appState.screenHeight - widget.frameHeightUsed ) * .9;
@@ -244,7 +244,8 @@ class _CESummaryState extends State<CESummaryFrame> {
 
       var c = Container( width: 1, height: 1 );
       CEProject? cep = appState.ceProject[ appState.selectedCEProject ];
-      assert( cep != null );
+      // Was anything set yet?
+      if( cep == null ) { return makeTitleText( appState, "First choose Project from home screen.", 8*appState.CELL_HEIGHT, false, 1, fontSize: 16); }
                            
       // Spinny
       if( appState.peqAllocsLoading ) {
@@ -329,7 +330,7 @@ class _CESummaryState extends State<CESummaryFrame> {
 
       maxPaneWidth = appState.MAX_PANE_WIDTH;
      
-      _vPrint( appState, 4, "SUMMARY BUILD. " + (appState == Null).toString());
+      _vPrint( appState, 2, "SUMMARY BUILD. " + (appState == Null).toString());
 
       return getAllocation( context );
       

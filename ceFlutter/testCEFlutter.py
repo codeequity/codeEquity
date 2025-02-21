@@ -144,9 +144,11 @@ def runTest( testName, withDetail = False, noBuild = True, optimized = False ):
     if( testName == "equity_test.dart" ) : 
         #cmd = "flutter drive -d chrome --browser-dimension=1200,1000 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
         # This works for EQ for by-hand runs
-        #cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
-        # This works for EQ for crons.. ug.
-        cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        # cmd = "flutter drive -d chrome --browser-dimension=1200,1050 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        # This used to work for EQ for crons, until title added.. ug.
+        # cmd = "flutter drive -d chrome --browser-dimension=1200,1075 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
+        # 9 1/8th on screen, crons now work with title.  1075 works by hand.. 1065?
+        cmd = "flutter drive -d chrome --browser-dimension=1200,1065 --no-headless --driver=test_driver/integration_test.dart --target=integration_test/" + testName
 
     if optimized :
         cmd = cmd + " --release"
@@ -246,7 +248,7 @@ def main( cmd ):
     assert( verifyEmulator() )
 
     summary = ""
-    if( cmd == "" ) : summary = runTests( test = "profile" )  # FOCUS AREA
+    if( cmd == "" ) : summary = runTests( test = "search" )  # FOCUS AREA
     elif( cmd == "projectMain" ) : summary = runTests( test = "projectMain" )
     elif( cmd == "projectPact" ) : summary = runTests( test = "projectPact" )
     elif( cmd == "equity" ) : summary = runTests( test = "equity" )

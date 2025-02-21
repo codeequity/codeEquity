@@ -433,7 +433,7 @@ PreferredSizeWidget makeTopAppBar( BuildContext context, currentPage ) {
                key:  currentPage == "Profile" ? Key( "profileHereIcon" ) : Key( "profileIcon" ),
                onPressed: ()
                {
-                  if( currentPage == "Profile" ) { return; }
+                  // if( currentPage == "Profile" ) { return; }
                   MaterialPageRoute newPage = MaterialPageRoute(builder: (context) => CEProfilePage(), settings: RouteSettings( arguments: {"id": "", "profType": "Person"} ));
                   confirmedNav( context, container, newPage );
                },
