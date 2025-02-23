@@ -10,8 +10,9 @@ import 'package:ceFlutter/ingest.dart';
 import 'package:ceFlutter/models/app_state.dart';
 
 import 'package:ceFlutter/screens/summary_frame.dart';
-import 'package:ceFlutter/screens/equity_frame.dart';
 import 'package:ceFlutter/screens/detail_page.dart';
+import 'package:ceFlutter/screens/equity_frame.dart';
+import 'package:ceFlutter/screens/approval_frame.dart';
 
 
 class CEProjectPage extends StatefulWidget {
@@ -105,12 +106,15 @@ class _CEProjectState extends State<CEProjectPage> {
          assert( screenArgs["initialPage"] != null );
          int startPage = screenArgs["initialPage"]!;
 
+         // XXX 24?  18?
+         double fhu = 24+18+7*appState.MID_PAD + 2*appState.TINY_PAD;
+         
          // Rebuild summaryFrame upon peqUpdate, else previous pageStorageKeys don't match new allocs 
          Widget getSummaryFrame() {
             return CESummaryFrame(
                appContainer:           container,
                pageStamp:              pageStamp,
-               frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD,
+               frameHeightUsed:        fhu,
                updateCallback:         _updateCallback,
                detailCallback:         _detailCallback,
                allocExpansionCallback: _allocExpansionCallback );
@@ -119,11 +123,13 @@ class _CEProjectState extends State<CEProjectPage> {
          Widget getEquityFrame() {
             return CEEquityFrame(
                appContainer:           container,
-               frameHeightUsed:        24+18+7*appState.MID_PAD + 2*appState.TINY_PAD );
+               frameHeightUsed:        fhu );
          }
 
          Widget getApprovalFrame() {
-            return makeTitleText( appState, "ZooBaDoo!", w, false, 1 ); 
+            return CEApprovalFrame(
+               appContainer:           container,
+               frameHeightUsed:        fhu );
          }
          Widget getContributorsFrame() {
             return makeTitleText( appState, "ZooBaDoo!", w, false, 1 ); 

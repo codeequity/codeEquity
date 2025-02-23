@@ -147,6 +147,24 @@ Widget paddedLTRB( child, double L, double T, double R, double B ) {
       child: child );
 }
 
+Widget makeGreyButtonFixed( appState, buttonText, minWidth ) {
+   TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 12.0);
+   return Material(
+      elevation: 0.0,
+      borderRadius: BorderRadius.circular(10.0),
+      color: appState.DIV_BAR_COLOR,
+      child: MaterialButton(
+         key: Key( buttonText ),
+         minWidth: minWidth,
+         onPressed: () { },
+         child: Text( buttonText,
+                      textAlign: TextAlign.center,
+                      style: style.copyWith(
+                         color: Colors.white, fontWeight: FontWeight.bold)),
+         )
+      );
+}
+
 Widget makeActionButton( appState, buttonText, fn ) {
    TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 14.0);
    return Material(
