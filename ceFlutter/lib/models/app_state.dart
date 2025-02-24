@@ -63,7 +63,8 @@ class AppState {
    late Map< String, CEProject >         ceProject;       // all ceProjects, cep id to project
    late Map< String, Person    >         cePeople;        // all cePeople, ce uid to person
    late Map< String, List<PEQAction> >   userPActs;       // ceUser    : pactions                          
-   late Map< String, List<PEQ> >         userPeqs;        // ceUser    : peqs where user was pact actor, plus unassign_user for uningested
+   late Map< String, List<PEQ> >         userPeqs;        // ceUser    : some or all peqs for all CEPS that user is part of
+                                                          //             accessed by CEUID for the pact actor, plus unassign_user for uningested
    late Map< String, List<HostAccount> > ceHostAccounts;  // ceUser    : HostAccount (list with 1 HA per platform)
    late Map< String, PEQSummary? >       cePEQSummaries;  // ceProject : PEQSummary
    late Map< String, Linkage? >          ceHostLinks;     // ceProject : Linkage
