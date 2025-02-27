@@ -121,7 +121,7 @@ Future<bool> approvalsTabFraming( WidgetTester tester ) async {
    await tester.pumpAndSettle();  // First pump is the swipe off to right transition step
    await tester.pumpAndSettle();
 
-   expect( find.text( 'ZooBaDoo!' ), findsOneWidget );
+   expect( find.text( 'Issue Title' ), findsOneWidget );
    return true;
 }
 

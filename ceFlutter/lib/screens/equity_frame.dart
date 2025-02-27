@@ -507,7 +507,6 @@ class _CEEquityState extends State<CEEquityFrame> {
                   child: ReorderableListView(
                      buildDefaultDragHandles: false,
                      onReorder: (oldIndex, newIndex) { _initiateDrag(oldIndex, newIndex); ; },
-                     // header: Text( "Oi!" ),
                      children: List.generate(
                         itemCount,
                         (indexX) => Row(

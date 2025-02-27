@@ -113,6 +113,33 @@ Future<void> editList( BuildContext context, appState, scrollHeader,
    // print( "Edit row finished" );
 }
 
+Future<void> editBox( BuildContext context, appState, maxWidth, boxHeader, itemHeader, controller, hint, executeFunc, cancelFunc ) async {
+
+   Widget c = Container( height: 1, width: appState.MID_PAD );
+
+   Widget text = makeInputBox( appState, hint, controller, maxWidth, keyName: "editBox " + hint);
+   Widget w = IntrinsicWidth( child: text );
+   Widget h = IntrinsicWidth( stepWidth: 40, child: Text( itemHeader ));
+   Widget editVal =  Row( 
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [h, c, w, c] );
+   
+   List<Widget> buttons = [];
+   buttons.add( new TextButton( key: Key( 'Confirm' ), child: new Text("Confirm"), onPressed: executeFunc ));
+   buttons.add( new TextButton( key: Key( 'Cancel' ), child: new Text("Cancel"), onPressed: cancelFunc ));
+   
+   await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+                 return AlertDialog(
+                    scrollable: true,
+                    title: new Text( boxHeader ),
+                    content: editVal,
+                    actions: buttons);
+              });
+}
+
 void confirm( BuildContext context, confirmHeader, confirmBody, okFunc, cancelFunc ) {
    showDialog(
       context: context,
@@ -145,6 +172,24 @@ Widget paddedLTRB( child, double L, double T, double R, double B ) {
    return Padding(
       padding: EdgeInsets.fromLTRB(L,T,R,B),
       child: child );
+}
+
+Widget makeGreyButtonFixed( appState, buttonText, minWidth ) {
+   TextStyle style = TextStyle(fontFamily: 'Montserrat', fontSize: 12.0);
+   return Material(
+      elevation: 0.0,
+      borderRadius: BorderRadius.circular(10.0),
+      color: appState.DIV_BAR_COLOR,
+      child: MaterialButton(
+         key: Key( buttonText ),
+         minWidth: minWidth,
+         onPressed: () { },
+         child: Text( buttonText,
+                      textAlign: TextAlign.center,
+                      style: style.copyWith(
+                         color: Colors.white, fontWeight: FontWeight.bold)),
+         )
+      );
 }
 
 Widget makeActionButton( appState, buttonText, fn ) {
@@ -379,8 +424,29 @@ Widget makeInputField( appState, hintText, obscure, controller, {keyName = "", e
          hintText: hintText,
          hintStyle: hintStyle,
          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0))),
-      controller: controller
+      controller: controller,
+      keyboardType: TextInputType.multiline,
       );
+}
+
+Widget makeInputBox( appState, hintText, controller, maxWidth, {keyName = "" } ) {
+   TextStyle style     = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0);
+   TextStyle hintStyle = TextStyle(fontFamily: 'Montserrat', fontSize: 20.0, fontStyle: FontStyle.italic);
+   if( keyName == "" ) { keyName = hintText; }
+   // controller.text = hintText;
+   return Container( width: maxWidth, child: TextField(
+                        key: Key( keyName ),
+                        style: style,
+                        decoration: InputDecoration(
+                           contentPadding: EdgeInsets.fromLTRB(appState.GAP_PAD, appState.FAT_PAD, appState.GAP_PAD, appState.FAT_PAD),
+                           hintText: hintText,
+                           hintStyle: hintStyle,
+                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0))),
+                        controller: controller,
+                        keyboardType: TextInputType.multiline,
+                        minLines: 1,
+                        maxLines: 5,
+                        ));
 }
 
 
