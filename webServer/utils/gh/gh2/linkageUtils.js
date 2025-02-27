@@ -16,20 +16,22 @@ const ingestUtils = require( './ingestUtils' );
 // if repoId is provided, filter to pass only from that repo.  Locs will overwrite in this latter case.
 async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, baseLinks, locData ) {
     
-    let host  = utils.validField( ceProject, "HostPlatform" )       ? ceProject.HostPlatform                    : "";
-    let org   = utils.validField( ceProject, "Organization" )       ? ceProject.Organization                    : "";
-    let pms   = utils.validField( ceProject, "ProjectMgmtSys" )     ? ceProject.ProjectMgmtSys                  : "";
-    let comp  = utils.validField( ceProject, "CEProjectComponent" ) ? ceProject.CEProjectComponent              : "";
-    assert( host != "" && pms != "" && org != "" );
+    let ventId = utils.validField( ceProject, "CEVentureId" )    ? ceProject.CEVentureId     : "";
+    let cepId  = utils.validField( ceProject, "CEProjectId" )    ? ceProject.CEProjectId     : "";
+    let name   = utils.validField( ceProject, "Name" )           ? ceProject.Name            : "";
+    let host   = utils.validField( ceProject, "HostPlatform" )   ? ceProject.HostPlatform    : "";
+    let pms    = utils.validField( ceProject, "ProjectMgmtSys" ) ? ceProject.ProjectMgmtSys  : "";
+    let desc   = utils.validField( ceProject, "Description" )    ? ceProject.Description     : "";
+    assert( host != "" && pms != "" && ventId != "" );
     assert( utils.validField( ceProject, "CEProjectId" ) );
     
-    console.log( authData.who, ceProject.CEProjectId, " is working on the", comp, "portion of", org, "at", host, "which is a", pms, "project." );
+    console.log( authData.who, name, "part of", ventId, "at", host, "using that host\'s", pms, "system." );
 
     assert( pms  == config.PMS_GH2 );
     assert( host == config.HOST_GH );
     
     // mainly to get pat
-    await ceAuth.getAuths( authData, host, pms, org, config.CE_ACTOR );
+    await ceAuth.getAuths( authData, host, pms, ventId, config.CE_ACTOR );
 
     // Get all hostRepoIds that belong to the ceProject
     // Add organization's unclaimed to each hostRepo that holds PEQ, since aws:peq table will not record delete movements to UNCL
@@ -104,7 +106,7 @@ async function buildHostLinks( authData, ghLinks, ceProject, preferredRepoId, ba
     if( hostProjs == -1 ) { hostProjs = []; }
 
     // Add organization's unclaimed to each hostRepo that holds PEQ, since aws:peq table will not record delete movements to UNCL
-    let unclPID = await ghV2.findProjectByName( authData, org, "", config.UNCLAIMED ); 
+    let unclPID = await ghV2.findProjectByName( authData, vent, "", config.UNCLAIMED ); 
     if( unclPID != -1 && !hostProjs.includes( unclPID ) ) { hostProjs.push( unclPID ); }
     
     // console.log( "HOST PROJs POST", ceProject.CEProjectId, hostProjs );

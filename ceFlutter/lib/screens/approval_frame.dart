@@ -13,7 +13,7 @@ import 'package:ceFlutter/models/CEProject.dart';
 import 'package:ceFlutter/models/PEQ.dart';
 import 'package:ceFlutter/models/Person.dart';
 
-// XXX move to WU
+// XXX move to WidgetUtils?
 // Workaround breaking change 5/2021
 // https://flutter.dev/docs/release/breaking-changes/default-scroll-behavior-drag
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
@@ -80,8 +80,6 @@ class _CEApprovalState extends State<CEApprovalFrame> {
    // XXX
    int getPendingCount() { return 0; }
 
-   // XXX change header so buttons are grey if no pending.... sheesh.  remove buttons.  within project scope!!
-   // XXX change header so final button doesn't show if have platforms
    List<List<Widget>> _getHeader ( cepName ) {
       final width = ( frameMinWidth - 2*appState.FAT_PAD ) / 2.0;
       final buttonWidth = 100;
@@ -132,6 +130,16 @@ class _CEApprovalState extends State<CEApprovalFrame> {
       
    }
 
+   void _confirmReject( TextEditingController reason ) {
+      print( "confirm reject" );
+      Navigator.of( context ).pop();
+   }
+   
+   void _cancelReject( TextEditingController reason ) {
+      print( "cancel reject" );
+      Navigator.of( context ).pop();
+   }
+   
    Widget getActions( PEQ p ) {
       Widget lead = makeIWTitleText( appState, "Accept?   ", false, 1 );
 
@@ -141,7 +149,7 @@ class _CEApprovalState extends State<CEApprovalFrame> {
             print( "Accepted " + p.hostIssueTitle );
             // XXX Send GH action
             // XXX ingest,
-            // XXX update view
+            // XXX update view button no longer grey
          },
          key: Key( 'accept ' + p.id ),
          child: makeToolTip( Icon( Icons.check_circle_outline, color: Colors.green ), "Accrue this issue, evenly splitting PEQ between assignees", wait: true )
@@ -151,7 +159,10 @@ class _CEApprovalState extends State<CEApprovalFrame> {
          onTap: () async 
          {
             print( "Rejected " + p.hostIssueTitle );
-            // XXX need popup 
+            TextEditingController reason = new TextEditingController();
+            String popupTitle = "Reject accrual request";
+            String hintText   = "Integration tests are failing";
+            await editBox( context, appState, svWidth / 2.0, popupTitle, "Reason", reason, hintText, () => _confirmReject( reason ), () => _cancelReject( reason ) );
          },
          key: Key( 'reject ' + p.id ),
          child: makeToolTip( Icon( Icons.cancel_outlined, color: Colors.red ), "Reject, with feedback on what is missing", wait: true )
@@ -200,8 +211,8 @@ class _CEApprovalState extends State<CEApprovalFrame> {
             }
          }
 
-         // XXX title should be actionable, same as detail
-         print( "Pending: " + pend.toString() );
+         // XXX title should be actionable, same as more detail
+         // print( "Pending: " + pend.toString() );
          for( final p in pend.values ) {
             List<String> userNames = p.ceHolderId.map( (ceuid) {
                   assert( appState.cePeople[ceuid] != null );

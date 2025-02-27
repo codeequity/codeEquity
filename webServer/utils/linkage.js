@@ -127,6 +127,7 @@ class Linkage {
 	if( ceProjects === -1 ) { return; }
 	let promises = [];
 	for( const entry of ceProjects ) {
+	    // console.log( entry.CEProjectId, entry.CEVentureId, entry.Name, entry.ProjectMgmtSys );
 	    promises.push( this.initOneCEProject( authData, entry )
 			   .catch( e => console.log( authData.who, "Error.  Init Linkage failed.", e )) );
 	}
