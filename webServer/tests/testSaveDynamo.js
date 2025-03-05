@@ -88,7 +88,7 @@ async function runTests( flutterTest ) {
     testStatus = tu.checkEq( success, true, testStatus, "save Equity Plan Table" );
 
     success = execAWS_CLI( "CEVentures", flutterTest );
-    testStatus = tu.checkEq( success, true, testStatus, "save Equity Plan Table" );
+    testStatus = tu.checkEq( success, true, testStatus, "save CEVenture Table" );
 
     return testStatus
 }

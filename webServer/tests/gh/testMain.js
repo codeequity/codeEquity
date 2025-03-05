@@ -70,6 +70,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
 
+    /*
     subTest = await gh2TestSetup.runTests( authData, testLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
@@ -99,7 +100,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-
+*/
     ghUtils.show( true );
     awsUtils.show( true );
     tu.showCallCounts( true );
@@ -261,7 +262,7 @@ async function runTests() {
     // td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.ghFullName );
     // tdX.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.ghFullName );
     // tdM.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.ghFullName );
-    td.ceProjectId  = flutterTest ? config.FLUTTER_TEST_CEPID : config.TEST_CEPID;
+    td.ceProjectId = flutterTest ? config.FLUTTER_TEST_CEPID : config.TEST_CEPID;
     tdX.ceProjectId = config.CROSS_TEST_CEPID;
     tdM.ceProjectId = config.MULTI_TEST_CEPID;
 
@@ -274,19 +275,31 @@ async function runTests() {
     
     // cepDetails, typically set from ceFlutter
     let tdBlank = {};
-    tdBlank.projComponent = "ceServer Testing";   
-    tdBlank.description   = "testing only";       
+
     tdBlank.platform      = config.HOST_GH;
     tdBlank.org           = config.TEST_OWNER;
     tdBlank.ownerCategory = "Organization";       
     tdBlank.pms           = config.PMS_GH2;
 
     let tdXBlank = { ...tdBlank }; 
-    tdXBlank.CEProjectComponent = "ceServer Alt Testing";
+    // tdXBlank.CEProjectComponent = "ceServer Alt Testing";
 
     td.cepDetails  = tdBlank;  // same CEP
     tdM.cepDetails = tdBlank;  // same CEP
     tdX.cepDetails = tdXBlank;
+
+    // XXX very ugly calling convention to linkRepo .. needs updating
+    td.cepDetails.ceVentureId = flutterTest ? config.FLUTTER_TEST_CEVID : config.TEST_CEVID;
+    td.cepDetails.name        = flutterTest ? config.FLUTTER_TEST_NAME : config.TEST_NAME;
+    td.cepDetails.description = flutterTest ? config.FLUTTER_TEST_DESC : config.TEST_DESC;
+
+    tdX.cepDetails.ceVentureId = config.CROSS_TEST_CEVID;
+    tdX.cepDetails.name        = config.CROSS_TEST_NAME;
+    tdX.cepDetails.description = config.CROSS_TEST_DESC;
+
+    tdM.cepDetails.ceVentureId = config.MULTI_TEST_CEVID;
+    tdM.cepDetails.name        = config.MULTI_TEST_NAME;
+    tdM.cepDetails.description = config.MULTI_TEST_DESC;
     
     let testStatus = [ 0, 0, []];
 

@@ -445,6 +445,7 @@ async function updateLinkageSummary( authData, ceProjId, locs ) {
 async function updateCEPHostParts( authData, ceProject ) {
     console.log( authData.who, "Updating hostparts" );
 
+    // assert( typeof ceProject.ceVentureId !== 'undefined' && ceProject.ceVentureId != "" );
     let shortName = "UpdateCEP"; 
 
     let pd = { Endpoint: shortName, ceProject: ceProject }; 
