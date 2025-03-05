@@ -58,7 +58,7 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     let assignee1X  = await gh2tu.getAssignee( authDataX, ASSIGNEE1 );
     let assignee2X  = await gh2tu.getAssignee( authDataX, ASSIGNEE2 );
     
-    const stripeLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+    const stripeLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
     const crossLoc  = await gh2tu.getFlatLoc( authDataX, crossPid, "Cross Proj", "Cross Col" );
 
 
@@ -126,12 +126,12 @@ async function testCrossRepo( flutterTest, authData, authDataX, testLinks, td, t
     issDatX[1] = newGHIssue.number;
 
     // issDatX now has new id, same card, and belongs to td's ceProject and repo.  Peqs have been deleted, and re-added.
-    // issDat still resides in githubOps, but now is part of tdx.ceProjectId.  This CEP does not have MAIN_PROJECT, so projsub will not (should not) pick that up.
+    // issDat still resides in githubOps, but now is part of tdx.ceProjectId.  
     //        i.e. pre-transfer, peq proj sub is SoftCont:githubOps:NS, post transfer it is githubOps:stripes.
     // Both GhOps and crossProj show up in both ari and ariAlt, at least until unlink proj from td and projx from tdx.
     // But, choosing not to unlink in order to create confusion then cure in deeper way.
     stripeLoc.projSub = ["Github Operations", "Stripes" ];
-    if( td.mainTitle == config.MAIN_PROJ_TEST ) { stripeLoc.projSub = ["Github Operations Flut", "Stripes" ]; }
+    if( td.testType == "FrontEnd" ) { stripeLoc.projSub = ["Github Operations Flut", "Stripes" ]; }
 	
     testStatus = await gh2tu.checkSituatedIssue( authDataX, testLinks, tdX, stripeLoc, issDat, card, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: tdX.ceProjectId} );    
     testStatus = await gh2tu.checkSituatedIssue( authData, testLinks, td, crossLoc, issDatX, cardX, testStatus, {assign: 2, label: 704, lblCount: 1, peqCEP: td.ceProjectId} );    

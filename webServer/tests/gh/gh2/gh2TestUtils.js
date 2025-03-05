@@ -43,20 +43,9 @@ async function refreshRec( authData, td ) {
 
     // console.log( "Got hprojs", hostProjs );
     for( const proj of hostProjs ) {
-	if( proj.hostProjectName == td.mainTitle ) {
-	    td.masterPID = proj.hostProjectId;
-
-	    let columns = await getColumns( authData, proj.hostProjectId );
-	    for( const col of columns ) {
-		if( col.name == td.softContTitle ) { td.scColId = col.id; }
-		if( col.name == td.busOpsTitle )   { td.boColId = col.id; }
-		if( col.name == td.unallocTitle )  { td.unColId = col.id; }
-	    }
-	}
 	if( proj.hostProjectName == td.dataSecTitle )   { td.dataSecPID = proj.hostProjectId; }
 	if( proj.hostProjectName == td.githubOpsTitle ) { td.githubOpsPID = proj.hostProjectId; }
     }
-    assert( td.masterPID != -1 );
     assert( td.dataSecPID != -1 );
     assert( td.githubOpsPID != -1 );
 
@@ -539,16 +528,6 @@ async function getFlatLoc( authData, pid, projName, colName ) {
     loc.projSub  = psub;
     loc.peqType  = ptype;
 
-    return loc;
-}
-
-async function getFullLoc( authData, masterColName, pid, projName, colName ) {
-
-    let loc = await getFlatLoc( authData, pid, projName, colName );
-
-    // loc.projSub  = config.PROJ_COLS.includes( colName ) ? [masterColName, projName] : [masterColName, projName, colName];
-    loc.projSub  = [masterColName, projName, colName];
-    
     return loc;
 }
 
@@ -1343,7 +1322,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     let assignees    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assigns" )      ? specials.assigns      : [];
     let soft         = typeof specials !== 'undefined' && specials.hasOwnProperty( "soft" )         ? specials.soft         : false;
     
-    console.log( "Check unclaimed issue", loc.projName, loc.colName, labelVal );
+    console.log( "Check unclaimed issue", loc.projName, loc.colName, labelVal, issDat );
     let subTest = [ 0, 0, []];
     
     // Start promises
@@ -1356,7 +1335,7 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     let issue  = await findIssue( authData, issDat[0] );
     subTest = tu.checkEq( issue.id, issDat[0].toString(),     subTest, "Github issue troubles" );
     subTest = tu.checkEq( issue.number, issDat[1].toString(), subTest, "Github issue troubles" );
-    subTest = tu.checkEq( issue.labels.length, labelCnt,         subTest, "Issue label count" );
+    subTest = tu.checkEq( issue.labels.length, labelCnt,      subTest, "Issue label count" );
     
     const lname = labelVal ? ghV2.makeHumanLabel( labelVal, config.PEQ_LABEL ) : ghV2.makeHumanLabel( 1000, config.PEQ_LABEL );
     const lval  = labelVal ? labelVal                     : 1000;
@@ -1365,9 +1344,12 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
 
     // CHECK github location
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
+    console.log( "XXX", cards.toString() );
     let tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
-    subTest = tu.checkEq( tCard.length, 1,                        subTest, "No unclaimed" );
-    subTest = tu.checkEq( tCard[0].cardId, card.cardId,                   subTest, "Card id" );
+    subTest = tu.checkEq( tCard.length, 1, subTest, "No unclaimed" );
+    if( tCard.length >= 1 ) {
+	subTest = tu.checkEq( tCard[0].cardId, card.cardId,       subTest, "Card id" );
+    }
     
     // CHECK linkage
     let links  = await linksP;
@@ -2082,14 +2064,13 @@ async function checkAssignees( authData, td, assigns, issDat, testStatus ) {
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,            subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 2,            subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostIssueTitle, issDat[3],           subTest, "peq title is wrong" );
     subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,              subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq ceholders wrong" );
     subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
     subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle, subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,  subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.dataSecTitle,  subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostRepoId, td.ghRepoId,             subTest, "peq unclaimed Repo bad" );
     subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
@@ -2130,14 +2111,13 @@ async function checkNoAssignees( authData, td, ass1, ass2, issDat, testStatus ) 
     subTest = tu.checkEq( meltPeqs.length, 1,                          subTest, "Peq count" );
     let meltPeq = meltPeqs[0];
     subTest = tu.checkEq( meltPeq.PeqType, config.PEQTYPE_PLAN,        subTest, "peq type invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 3,              subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub.length, 2,              subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostIssueTitle, issDat[3],          subTest, "peq title is wrong" );
     subTest = tu.checkEq( meltPeq.HostHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEHolderId.length, 0,                subTest, "peq holders wrong" );
     subTest = tu.checkEq( meltPeq.CEGrantorId, config.EMPTY,           subTest, "peq grantor wrong" );
     subTest = tu.checkEq( meltPeq.Amount, 1000,                        subTest, "peq amount" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.softContTitle,   subTest, "peq project sub invalid" );
-    subTest = tu.checkEq( meltPeq.HostProjectSub[1], td.dataSecTitle,    subTest, "peq project sub invalid" );
+    subTest = tu.checkEq( meltPeq.HostProjectSub[0], td.dataSecTitle,    subTest, "peq project sub invalid" );
     subTest = tu.checkEq( meltPeq.HostRepoId, td.ghRepoId,             subTest, "peq unclaimed RID bad" );
     subTest = tu.checkEq( meltPeq.Active, "true",                      subTest, "peq" );
 
@@ -2333,7 +2313,6 @@ exports.findProjectByName = findProjectByName;
 exports.findProjectByRepo = findProjectByRepo;
 exports.findRepo        = findRepo;
 exports.getFlatLoc      = getFlatLoc; 
-exports.getFullLoc      = getFullLoc; 
 
 exports.findCardForIssue = findCardForIssue;
 // exports.ingestPActs      = ingestPActs;      

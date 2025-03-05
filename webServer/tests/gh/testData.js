@@ -12,8 +12,7 @@ class TestData {
 	this.ghFullName   = config.EMPTY;
 
 	// A Recommended CE structure
-	this.mainTitle        = config.MAIN_PROJ; 
-	this.softContTitle    = "Software Contributions";
+	this.testType         = "Server";
 	this.busOpsTitle      = "Business Operations"; 
 	this.dataSecTitle     = "Data Security";
 	this.githubOpsTitle   = "Github Operations";
@@ -68,7 +67,7 @@ class TestData {
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsPlanId;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PLAN];
-	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN]];
+	loc.projSub  = [this.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN]];
 	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
@@ -78,7 +77,7 @@ class TestData {
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsProgId;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PROG];
-	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG]];
+	loc.projSub  = [this.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG]];
 	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
@@ -89,7 +88,7 @@ class TestData {
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsPendId;
 	loc.colName  = config.PROJ_COLS[config.PROJ_PEND];
-	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND]];
+	loc.projSub  = [this.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND]];
 	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }
@@ -100,7 +99,7 @@ class TestData {
 	loc.projName = this.dataSecTitle;
 	loc.colId    = this.dsAccrId;
 	loc.colName  = config.PROJ_COLS[config.PROJ_ACCR];
-	loc.projSub  = [this.softContTitle, this.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR]];
+	loc.projSub  = [this.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR]];
 	loc.peqType  = config.PEQTYPE_PLAN;
 	return loc;
     }

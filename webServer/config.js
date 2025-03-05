@@ -137,8 +137,6 @@ const NOTICE_BUFFER_SIZE = 20;
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 
 const PROJ_COLS = ["Planned", "In Progress", "Pending PEQ Approval", "Accrued" ];    // Project columns used by codeEquity
-const MAIN_PROJ      = 'Modules';                                                         // Parent project for all tracked github projects in repo
-const MAIN_PROJ_TEST = 'Modules Flut';                                                    // Parent project for all tracked github projects in repo *** TESTING ONLY ***
 const UNCLAIMED      = 'UnClaimed';                                                       // Catch-all project for peq issues with no project home
 
 const PEQ_COLOR  = 'ffcc80';   // github color for PEQ labels
@@ -170,8 +168,6 @@ exports.PEQ      = PEQ;
 exports.PDESC    = PDESC;
 exports.ADESC    = ADESC;
 
-exports.MAIN_PROJ = MAIN_PROJ;
-exports.MAIN_PROJ_TEST = MAIN_PROJ_TEST;
 exports.EMPTY     = EMPTY;
 exports.UNCLAIMED = UNCLAIMED;
 

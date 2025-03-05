@@ -175,7 +175,6 @@ async function handler( authData, ceProjects, ghLinks, pd, action, tag, delayCou
 		return;
 	    }
 
-	    // Note, config.MAIN_PROJ should not have PLAN
 	    let rejectLoc = -1;
 	    for( const aloc of locs ) {
 		if( aloc.hostColumnName == config.PROJ_COLS[config.PROJ_PLAN] ) {

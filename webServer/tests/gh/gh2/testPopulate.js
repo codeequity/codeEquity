@@ -56,18 +56,18 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     await gh2tu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, td.githubOpsPID, "Moons" );
 
     // From
-    const moonLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Moons" );
-    const planLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
-    const progLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const pendLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
-    const accrLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const moonLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Moons" );
+    const planLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const progLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const pendLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const accrLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
     
     // To
     const toBacnLoc = await gh2tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
-    const toProgLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const toPendLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
-    const toAccrLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
-    const toRejectLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const toProgLoc = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const toPendLoc = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const toAccrLoc = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const toRejectLoc = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
     
     // Need assignees for pend/accr.
     ASSIGNEE1 = await ASSIGNEE1;
@@ -211,13 +211,13 @@ async function testSplitAlloc( authData, testLinks, td ) {
     const issAllocDat = await gh2tu.makeIssue( authData, td, ISS_ALLOC, [ labelBug, label1m ] );
 
     // From
-    const starLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+    const starLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stars" );
 
     // To
     const toBacnLoc   = await gh2tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
-    const toProgLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const toAccrLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
-    const toRejectLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const toProgLoc   = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const toAccrLoc   = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const toRejectLoc = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
 
     // NOTE: assignee added after makeIssue - will not show up
     ASSIGNEE2 = await ASSIGNEE2;

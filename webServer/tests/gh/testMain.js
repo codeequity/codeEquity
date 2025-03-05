@@ -70,7 +70,6 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nInitial cleanup complete" );
     await utils.sleep( 5000 );
 
-    /*
     subTest = await gh2TestSetup.runTests( authData, testLinks, td );
     console.log( "\n\nSetup test complete." );
     await utils.sleep( 5000 );
@@ -100,7 +99,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-*/
+
     ghUtils.show( true );
     awsUtils.show( true );
     tu.showCallCounts( true );
@@ -124,7 +123,7 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
     }
 
     // Undo assert to inspect active: false in CELinkage.  Need a test for this.
-    let mastCol1  = await ghctu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, wakeyPID, td.softContTitle );
+    // let mastCol1  = await ghctu.makeColumn( authData, testLinks, td.ceProjectId, td.ghFullName, wakeyPID, td.softContTitle );
     ghctu.remProject( authData, wakeyPID );
     assert( false );
 
@@ -169,13 +168,10 @@ async function runClassicTests( testStatus, flutterTest, authData, authDataX, au
 }
 
 function flutterRename ( td ) {
-    td.mainTitle        = config.MAIN_PROJ_TEST;
+    td.testType         = "FrontEnd";
     td.dataSecTitle     = td.dataSecTitle   + " Flut";
     td.githubOpsTitle   = td.githubOpsTitle + " Flut";
     td.flatTitle        = td.flatTitle      + " Flut";
-
-    // td.softContTitle    = td.softContTitle  + " Flut";
-    // td.busOpsTitle      = td.busOpsTitle    + " Flut";
 }
 
 

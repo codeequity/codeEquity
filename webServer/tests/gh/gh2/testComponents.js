@@ -245,7 +245,7 @@ async function testAssignment( authData, testLinks, td ) {
 
     const ISS_ASS   = "AssignTest";
     const VERBOSE = true;
-    const assPlan = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const assPlan = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
 
     const assignee1 = await gh2tu.getAssignee( authData, ASSIGNEE1 );
     const assignee2 = await gh2tu.getAssignee( authData, ASSIGNEE2 );
@@ -261,7 +261,7 @@ async function testAssignment( authData, testLinks, td ) {
     let assCard  = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, td.dataSecPID, td.dsPlanId, assData[0] );
     testStatus = await gh2tu.checkNewlySituatedIssue( authData, testLinks, td, assPlan, assData, assCard, testStatus );
 
-    const pendLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const pendLoc = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PEND] );
 
     if( VERBOSE ) { tu.testReport( testStatus, "A" ); }
 
@@ -471,12 +471,12 @@ async function testCloseReopen( authData, testLinks, td ) {
 	// NOTE!  Same issue name (Close Open Test), different projects.  GH allows it, we test.
 	console.log( "\n\nOpen/close in full++" );
 
-	const stars      = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
-	const stripes    = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+	const stars      = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+	const stripes    = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
 
-	const ghoProg = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
-	const ghoPend = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
-	const ghoAccr = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+	const ghoProg = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+	const ghoPend = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+	const ghoAccr = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
 	// peqs are out of date (need ingesting) by the time these are used.
 	ghoPend.projSub = stars.projSub;
@@ -560,13 +560,13 @@ async function testCreateDelete( authData, testLinks, td ) {
     await gh2tu.refreshFlat( authData, td );
     await gh2tu.refreshUnclaimed( authData, td );
 
-    const ghoPlan = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
-    const ghoProg = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const ghoPend = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
-    const ghoAccr = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const ghoPlan = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const ghoProg = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const ghoPend = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const ghoAccr = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
-    const stars      = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
-    const stripes    = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+    const stars      = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+    const stripes    = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
 
     const kp = "1000 " + config.PEQ_LABEL;    
 
@@ -809,9 +809,9 @@ async function testLabelMods( authData, testLinks, td ) {
     await gh2tu.refreshRec( authData, td );
     await gh2tu.refreshFlat( authData, td );
 
-    const ghoPlan = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
-    const ghoPend = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
-    const ghoAccr = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const ghoPlan = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const ghoPend = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PEND] );
+    const ghoAccr = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
     const assignee1 = await gh2tu.getAssignee( authData, ASSIGNEE1 );
     const assignee2 = await gh2tu.getAssignee( authData, ASSIGNEE2 );
@@ -1066,11 +1066,11 @@ async function testAlloc( authData, testLinks, td ) {
     
     const issAllocDat = await gh2tu.makeAllocIssue( authData, td, ISS_ALLOC, [ label1m ] );
 
-    const starLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stars" );
-    const stripeLoc = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
-    const progLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const planLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
-    const accrLoc   = await gh2tu.getFullLoc( authData, td.softContTitle, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
+    const starLoc   = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stars" );
+    const stripeLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stripes" );
+    const progLoc   = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PROG] );
+    const planLoc   = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_PLAN] );
+    const accrLoc   = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, config.PROJ_COLS[config.PROJ_ACCR] );
 
     // NOTE: assignee added after makeIssue - will not show up
     await gh2tu.addAssignee( authData, issAllocDat, assignee2 );
