@@ -1107,6 +1107,7 @@ void _reformPActs( context, container, List<PEQAction> todoPActs ) {
                       });
    
    print( "removing all pacts with peqId " + mfPEQId.toString() + " " + todoPActs.length.toString() );
+   assert( mfPEQId.length == 0 );
 
    // todoPActs.removeWhere( (p) => p.subject.length > 0 && mfPEQId.contains( p.subject[0] ) );
    // set ingested to true for these pacts, then remove.
@@ -1119,6 +1120,7 @@ void _reformPActs( context, container, List<PEQAction> todoPActs ) {
       }
    }
 
+   assert( markIds.length == 0 );
    // unlock, set ingested
    if( markIds.length > 0 ) {
       String newPIDs = json.encode( markIds );

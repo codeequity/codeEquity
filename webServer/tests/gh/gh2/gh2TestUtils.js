@@ -1167,6 +1167,7 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
     let assignCnt    = typeof specials !== 'undefined' && specials.hasOwnProperty( "assign" )       ? specials.assign       : false;
     let opVal        = typeof specials !== 'undefined' && specials.hasOwnProperty( "opVal" )        ? specials.opVal        : false;
     let peqHolder    = typeof specials !== 'undefined' && specials.hasOwnProperty( "peqHolder" )    ? specials.peqHolder    : false;
+    let rejected     = typeof specials !== 'undefined' && specials.hasOwnProperty( "rejected" )     ? specials.rejected     : false;
     
     console.log( "Check situated issue", loc.projName, loc.colName, muteIngested, labelVal, assignCnt, peqIID, peqCEP );
     let subTest = [ 0, 0, []];
@@ -1288,9 +1289,10 @@ async function checkSituatedIssue( authData, testLinks, td, loc, issDat, card, t
 		    
 		    let pacts    = allPacts.filter((pact) => pact.Subject[0] == peq.PEQId );
 		    subTest   = tu.checkGE( pacts.length, 1,                         subTest, "PAct count" );
-		    
+
+		    // rejected tracks if a split attempted to be created in reserved, then was rejected.  psub not updated until ingest.
 		    // This can get out of date quickly.  Only check this if early on, before lots of moving (which PEQ doesn't keep up with)
-		    if( pacts.length <= 3 && loc.projSub.length > 1 ) {
+		    if( !rejected && pacts.length <= 3 && loc.projSub.length > 1 ) {
 			const pip = [ config.PROJ_COLS[config.PROJ_PEND], config.PROJ_COLS[config.PROJ_ACCR], config.GH_NO_STATUS ];
 			if( !pip.includes( loc.projSub[1] ) && peq.HostProjectSub[1] != config.GH_NO_STATUS ) { 
 			    subTest = tu.checkEq( peq.HostProjectSub[1], loc.projSub[1], subTest, "peq project sub 1 invalid" );
@@ -1342,12 +1344,20 @@ async function checkUnclaimedIssue( authData, testLinks, td, loc, issDat, card, 
     subTest = tu.checkEq( typeof issue.labels.find( l => l.name == lname ) !== "undefined", true, subTest, "Issue label names missing" + lname );        
     subTest = tu.checkEq( issue.state, config.GH_ISSUE_OPEN,                   subTest, "Issue state" ); 
 
-    // CHECK github location
+    // CHECK github location.
+    // If this fails, check notification arrival distance.  if too long, break out and let this be a subtest failure before checking tCard guts
+    // console.log( "XXXX OI?", td.unclaimCID );
     let cards = td.unclaimCID == config.EMPTY ? [] : await cardsU;
-    console.log( "XXX", cards.toString() );
     let tCard = cards.filter((card) => card.hasOwnProperty( "issueNum" ) ? card.issueNum == issDat[1].toString() : false );
-    subTest = tu.checkEq( tCard.length, 1, subTest, "No unclaimed" );
-    if( tCard.length >= 1 ) {
+
+    // console.log( td.unclaimCID, tCard[0] );
+    // for( let i = 0; i < cards.length; i++ ) {
+    // console.log( cards[i].title, cards[i].issueNum, cards[i].cardId );
+    // }
+    
+    subTest = tu.checkEq( typeof tCard === 'undefined', false,       subTest, "No unclaimed" );
+    subTest = tu.checkEq( tCard.length, 1,                           subTest, "No unclaimed" );
+    if( typeof tCard !== 'undefined' && tCard.length >= 1 ) {
 	subTest = tu.checkEq( tCard[0].cardId, card.cardId,       subTest, "Card id" );
     }
     
@@ -1730,6 +1740,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
     let labelCnt   = typeof specials !== 'undefined' && specials.hasOwnProperty( "lblCount" )   ? specials.lblCount   : 1;
     let assignCnt  = typeof specials !== 'undefined' && specials.hasOwnProperty( "assignees" )  ? specials.assignees  : 1;
     let checkPeq   = typeof specials !== 'undefined' && specials.hasOwnProperty( "checkPeq" )   ? specials.checkPeq   : false;
+    let rejected   = typeof specials !== 'undefined' && specials.hasOwnProperty( "rejected" )   ? specials.rejected   : false;
 
     console.log( "Check Split", issDat[3], origLoc.colName, newLoc.colName, situated.toString(), labelCnt.toString(), assignCnt.toString() );
     let subTest = [ 0, 0, []];
@@ -1779,7 +1790,7 @@ async function checkSplit( authData, testLinks, td, issDat, origLoc, newLoc, ori
 	    if( situated ) {
 		let lval = origVal / 2;
 		subTest = await checkSituatedIssue( authData, testLinks, td, origLoc, issDat,   card,      subTest, {opVal: opVal, label: lval, lblCount: labelCnt} );
-		let splitSpecials = checkPeq ? {label: lval, lblCount: labelCnt, assign: assignCnt } : {label: lval, lblCount: labelCnt }; 
+		let splitSpecials = checkPeq ? {label: lval, lblCount: labelCnt, assign: assignCnt, rejected: rejected } : {label: lval, lblCount: labelCnt, rejected: rejected }; 
 		subTest = await checkSituatedIssue( authData, testLinks, td, newLoc,  splitDat, splitCard, subTest, splitSpecials );
 	    }
 	    else {

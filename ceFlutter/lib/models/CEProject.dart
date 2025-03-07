@@ -4,16 +4,17 @@ class CEProject {
    final String name;
    final String description;
    final String hostPlatform;
+   final String hostOrganization;
    final String ownerCategory;
    final String projectMgmtSys;
    final List<String> repositories;            //  repoName
 
    CEProject({ required this.ceProjectId, required this.ceVentureId, required this.name, required this.description,
-            required this.hostPlatform, required this.ownerCategory,  required this.projectMgmtSys,  
+            required this.hostPlatform, required this.hostOrganization, required this.ownerCategory,  required this.projectMgmtSys,  
                required this.repositories});
 
    dynamic toJson() => { 'CEProjectId': ceProjectId, 'CEVentureId': ceVentureId, 'Name': name, 'Description': description,
-                            'HostPlatform': hostPlatform, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys,
+         'HostPlatform': hostPlatform, 'HostOrganization': hostOrganization, 'OwnerCategory': ownerCategory, 'ProjectMgmtSys': projectMgmtSys,
                                'Repositories': repositories }; 
 
    // No CEProject found.  return empty 
@@ -24,6 +25,7 @@ class CEProject {
          name:                "",
          description:         "",
          hostPlatform:        "",
+         hostOrganization:    "",
          ownerCategory:       "",
          projectMgmtSys:      "",
          repositories:        []
@@ -39,7 +41,7 @@ class CEProject {
       List<String> repos = [];
       for( final r in dynamicRList ) { repos.add( r['repoName'] ); }
 
-      // print( "Working on " + json.toString() );
+      print( "Working on " + json.toString() );
       
       // DynamoDB is not camelCase
       return CEProject(
@@ -48,6 +50,7 @@ class CEProject {
          name:               json['Name'],
          description:        json['Description'],
          hostPlatform:       json['HostPlatform'],
+         hostOrganization:   json['HostOrganization'] ?? "",  // Some host setups (like GH classic) don't have this
          ownerCategory:      json['OwnerCategory'],
          projectMgmtSys:     json['ProjectMgmtSys'],
          repositories:       repos
@@ -58,7 +61,7 @@ class CEProject {
    String toString() {
       String res = "\n" + name + " (" + ceProjectId + ") " + description;
       res += "\n   Part of the venture: " + ceVentureId;
-      res += "\n   " + hostPlatform + " " + ownerCategory; 
+      res += "\n   " + hostOrganization + " " + hostPlatform + " " + ownerCategory; 
       res += "\n    Repositories: " + repositories.toString();
       res += "\n";
 
