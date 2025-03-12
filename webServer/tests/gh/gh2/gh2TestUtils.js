@@ -698,41 +698,6 @@ async function createDraftIssue( authData, pid, title, body ) {
     return pvId;
 }
 
-// This both creates an issue and a card
-// Act like a user.  User will create labeled issue in project, then move issue.
-//      This generates the following notifications:  issue:open, issue:label, item:create, maybe (?) item:edit (label), item:edit (move)
-//      The notifications are identical whether select project in issue create interface or not, with possible exception of item:edit(label), and ordering
-// Historical note: GH projects have changed - you can no longer create a card without a companion draft issue.  
-//      In classic, this function would create a card with peq info in it, then ceServer would create the relevant issue and rebuild the card.
-async function makeAlloc( authData, testLinks, ceProjId, rNodeId, pid, colId, title, amount ) {
-    console.log( "MAC", ceProjId, rNodeId, pid, colId, title, amount );
-    const locs = testLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );
-    assert( locs !== -1 );
-    let statusId = locs[0].hostUtility;
-
-    // First, wait for colId, can lag
-    await tu.settleWithVal( "make alloc card", tu.confirmColumn, authData, testLinks, ceProjId, pid, colId );
-
-    let label = await findOrCreateLabel( authData, rNodeId, true, "", amount );
-
-    let allocIssue = {};
-    allocIssue.title = title;
-    allocIssue.labels = [label];
-    allocIssue.allocation = true;
-
-    // Create labeled issue, create PV2 item in correct project.  This will now be in nostatus.
-    // issue:open, issue:label, item:create, maybe (?) item:edit
-    let issDat = await ghV2.createIssue( authData, rNodeId, pid, allocIssue );
-    issDat.push( title );
-    assert( issDat.length == 4 && issDat[0] != -1 && issDat[2] != -1 );
-
-    await ghV2.moveCard( authData, pid, issDat[2], statusId, colId );
-
-    console.log( "Made AllocCard and issue:", issDat );
-    await utils.sleep( tu.MIN_DELAY );
-    return issDat;
-}
-
 
 async function makeNewbornCard( authData, testLinks, ceProjId, pid, colId, title ) {
     const locs = testLinks.getLocs( authData, { "ceProjId": ceProjId, "pid": pid, "colId": colId } );    
@@ -785,14 +750,6 @@ async function makeIssue( authData, td, title, labels ) {
     return issue;
 }
 
-// [contentId, num, cardId, title]
-// NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
-async function makeAllocIssue( authData, td, title, labels ) {
-    let issue = await ghV2.createIssue( authData, td.ghRepoId, -1, {title: title, labels: labels, allocation: true} );
-    issue.push( title );
-    await utils.sleep( tu.MIN_DELAY );
-    return issue;
-}
 
 // NOTE this creates an uncarded issue.  Call 'createProjectCard' to situate it.
 async function blastIssue( authData, td, title, labels, assignees, specials ) {
@@ -863,8 +820,9 @@ async function delLabel( authData, label ) {
 }
 
 async function findOrCreateLabel( authData, repoNode, allocation, lname, peqValue ) {
+    assert( !allocation ); // XXX
+    
     let name = lname;
-
     if( typeof peqValue == "string" ) { peqValue = parseInt( peqValue.replace(/,/g, "" )); }
     
     if( peqValue > 0 ) { name = ghV2.makeHumanLabel( peqValue, ( allocation ? config.ALLOC_LABEL : config.PEQ_LABEL )); }
@@ -1716,7 +1674,7 @@ async function checkNewbornIssue( authData, testLinks, td, issDat, testStatus, s
     
     // CHECK linkage
     let links  = await tu.getLinks( authData, testLinks, { "ceProjId": td.ceProjectId, "repo": td.ghFullName } );
-    let link   = links.find( l => l.hostIssueId == issDat[0].toString() );
+    let link   = links != -1 ? links.find( l => l.hostIssueId == issDat[0].toString() ) : [].find( l => true );
     subTest = tu.checkEq( typeof link, "undefined",                    subTest, "Newbie link exists" );
 
     // CHECK dynamo Peq.  inactive, if it exists
@@ -2285,11 +2243,9 @@ exports.makeColumn      = makeColumn;
 exports.createColumnTest    = createColumnTest;
 exports.updateProject   = updateProject;
 exports.make4xCols      = make4xCols;
-exports.makeAlloc       = makeAlloc;
 exports.makeNewbornCard = makeNewbornCard;
 exports.makeProjectCard = makeProjectCard;
 exports.makeIssue       = makeIssue;
-exports.makeAllocIssue  = makeAllocIssue;
 exports.blastIssue      = blastIssue;
 exports.transferIssue   = transferIssue;
 

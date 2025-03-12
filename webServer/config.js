@@ -35,6 +35,7 @@ const MULTI_PAT_PATH    = "../ops/github/auth/ghConniePAT";
 
 const TEST_OWNER        = "codeequity";
 const TEST_ACTOR        = "ariCETester";
+
 const TEST_REPO         = "ceTesterAri";
 const TEST_CEPID        = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
 const TEST_CEVID        = "CE_TEST_Serv_abcde12345";   // XXX Remove once ceFlutter is back up
@@ -56,11 +57,17 @@ const CROSS_TEST_DESC   = "Internal testing: server";  // XXX Remove once ceFlut
 
 const MULTI_TEST_OWNER  = "codeequity";
 const MULTI_TEST_ACTOR  = "connieCE";
+
 const MULTI_TEST_REPO   = "ceTesterConnie";
 const MULTI_TEST_CEPID  = "CE_ServTest_usda23k425";    // XXX Remove once ceFlutter is back up
 const MULTI_TEST_CEVID  = "CE_TEST_Serv_abcde12345";   // XXX Remove once ceFlutter is back up
 const MULTI_TEST_NAME   = "CE Server Testing";         // XXX Remove once ceFlutter is back up
 const MULTI_TEST_DESC   = "Internal testing: server";  // XXX Remove once ceFlutter is back up
+const FLUTTER_MULTI_TEST_REPO   = "ceFlutterConnie";
+const FLUTTER_MULTI_TEST_CEPID  = "CE_FlutTest_ks8asdlg42";    // XXX Remove once ceFlutter is back up
+const FLUTTER_MULTI_TEST_CEVID  = "CE_TEST_Flut_abcde12345";   // XXX Remove once ceFlutter is back up
+const FLUTTER_MULTI_TEST_NAME   = "CE MD App Testing";         // XXX Remove once ceFlutter is back up
+const FLUTTER_MULTI_TEST_DESC   = "Internal testing: Front end";  // XXX Remove once ceFlutter is back up
 
 
 // Required project columns.  Can rename, not reorder, and retain CE functionality
@@ -215,6 +222,11 @@ exports.MULTI_TEST_CEPID = MULTI_TEST_CEPID;
 exports.MULTI_TEST_CEVID = MULTI_TEST_CEVID;
 exports.MULTI_TEST_NAME  = MULTI_TEST_NAME;
 exports.MULTI_TEST_DESC  = MULTI_TEST_DESC;
+exports.FLUTTER_MULTI_TEST_REPO  = FLUTTER_MULTI_TEST_REPO;
+exports.FLUTTER_MULTI_TEST_CEPID = FLUTTER_MULTI_TEST_CEPID;
+exports.FLUTTER_MULTI_TEST_CEVID = FLUTTER_MULTI_TEST_CEVID;
+exports.FLUTTER_MULTI_TEST_NAME  = FLUTTER_MULTI_TEST_NAME;
+exports.FLUTTER_MULTI_TEST_DESC  = FLUTTER_MULTI_TEST_DESC;
 
 exports.PEQ_LABEL   = PEQ_LABEL;
 exports.ALLOC_LABEL = ALLOC_LABEL;

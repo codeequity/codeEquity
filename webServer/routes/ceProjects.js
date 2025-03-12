@@ -53,9 +53,13 @@ class CEProjects {
     findById( ceProjId ) {
 	return this.cep.find( cep => cep.CEProjectId == ceProjId ); 
     }
-    
+
+    // XXX Need better error message here if find that 1 repo is shared between 2 CEPs.
     findByRepo( host, org, repo ) {
 	let retVal = config.EMPTY;
+
+	// if( repo == "codeequity/ceFlutterTester" ) { this.showX(); }
+	
 	let proj = this.cep.find( cep => cep.HostPlatform == host &&
 				  cep.HostOrganization == org &&
 				  utils.validField( cep.HostParts, "hostRepositories" ) &&
@@ -129,10 +133,14 @@ class CEProjects {
 	return hRepos;
     }
 
-    showX( count ) {
+    showX() {
 	console.log( "CEProjects contents" );
 	for( const cep of this.cep ) {
 	    console.log( cep.CEProjectId, cep.CEVentureId, cep.Name, cep.HostOrganization );
+	    console.log( "... repos:" );
+	    for( const repo of cep.HostParts.hostRepositories ) {
+		console.log( repo.repoName, repo.repoId );
+	    }
 	}
     }
     

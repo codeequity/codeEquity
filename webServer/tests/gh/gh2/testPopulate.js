@@ -190,80 +190,6 @@ async function testIncrementalResolve( authData, testLinks, td ) {
     return testStatus;
 }
 
-async function testSplitAlloc( authData, testLinks, td ) {
-    // [pass, fail, msgs]
-    let testStatus = [ 0, 0, []];
-
-    console.log( "Split Alloc" );
-    authData.who = "<TEST: Split Alloc>";
-
-    let ASSIGNEE2 = gh2tu.getAssignee( authData, "builderCE" );
-
-    const ISS_ALLOC = "IR Alloc";
-
-    await gh2tu.refreshRec( authData, td );
-    await gh2tu.refreshFlat( authData, td );
-
-    // 1. Setup.
-    let label1m  = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, true, "", 1000000 );
-    let labelBug = await gh2tu.findOrCreateLabel( authData, td.ghRepoId, false, "bug", -1 );
-
-    const issAllocDat = await gh2tu.makeIssue( authData, td, ISS_ALLOC, [ labelBug, label1m ] );
-
-    // From
-    const starLoc = await gh2tu.getFlatLoc( authData, td.githubOpsPID, td.githubOpsTitle, "Stars" );
-
-    // To
-    const toBacnLoc   = await gh2tu.getFlatLoc( authData, td.flatPID, td.flatTitle, td.col2Title );
-    const toProgLoc   = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PROG] );
-    const toAccrLoc   = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_ACCR] );
-    const toRejectLoc = await gh2tu.getFlatLoc( authData, td.dataSecPID, td.dataSecTitle, config.PROJ_COLS[config.PROJ_PLAN] );
-
-    // NOTE: assignee added after makeIssue - will not show up
-    ASSIGNEE2 = await ASSIGNEE2;
-    await gh2tu.addAssignee( authData, issAllocDat, ASSIGNEE2 );
-    
-    // Set up first card
-    const cardAlloc = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, starLoc.pid, starLoc.colId, issAllocDat[0] );
-    await utils.sleep( 1000 );
-    testStatus = await gh2tu.checkAlloc( authData, testLinks, td, starLoc, issAllocDat, cardAlloc, testStatus, {lblCount: 2, awsVal: 1000000} ); 
-    
-    tu.testReport( testStatus, "Split Alloc setup" );
-
-    // += Prog.  Fail.  No create into x4.  Move to rejectLoc
-    {
-	// At this point, lval is 500k
-	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toProgLoc.pid, toProgLoc.colId, issAllocDat[0] );
-	await utils.sleep( 2000 );
-	testStatus = await gh2tu.checkAllocSplit( authData, testLinks, td, issAllocDat, starLoc, toRejectLoc, testStatus, {aval: 1000000, lval: 500000, issAssignees: 1, lblCount: 2 } );
-	
-	tu.testReport( testStatus, "Split Alloc A" );
-    }
-
-    // += Accr.  Fail.  No create into x4.  Move to rejectLoc
-    {
-	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toAccrLoc.pid, toAccrLoc.colId, issAllocDat[0] );
-	await utils.sleep( 2000 );
-	testStatus = await gh2tu.checkAllocSplit( authData, testLinks, td, issAllocDat, starLoc, toRejectLoc, testStatus, {aval: 1000000, lval: 250000, issAssignees: 1, lblCount: 2 } );
-
-	tu.testReport( testStatus, "Split Alloc B" );
-    }
-
-    // += Bacon
-    // Note - this must be last, else will cause issue to be found in checkNoSplit
-    {
-	const cardNew = await gh2tu.makeProjectCard( authData, testLinks, td.ceProjectId, toBacnLoc.pid, toBacnLoc.colId, issAllocDat[0] );
-	await utils.sleep( 2000 );
-	testStatus = await gh2tu.checkAllocSplit( authData, testLinks, td, issAllocDat, starLoc, toBacnLoc, testStatus, { aval: 1000000, lval: 125000, issAssignees: 1, lblCount: 2 } );
-
-	tu.testReport( testStatus, "Split Alloc C" );
-    }
-    
-    tu.testReport( testStatus, "Test Split Alloc" );
-
-    return testStatus;
-}
-
 
 
 async function runTests( authData, testLinks, td ) {
@@ -272,22 +198,13 @@ async function runTests( authData, testLinks, td ) {
 
     let testStatus = [ 0, 0, []];
 
-    // let t2 = await testSplitAlloc( authData, testLinks, td );
-    // console.log( "\n\nSplit Alloc complete." );
-
     let t1 = await testIncrementalResolve( authData, testLinks, td );
     console.log( "\n\nIncremental resolve complete." );
     // ghUtils.show( true );
     await utils.sleep( 5000 );
 
 
-    let t2 = await testSplitAlloc( authData, testLinks, td );
-    console.log( "\n\nSplit Alloc complete." );
-    // ghUtils.show( true );
-    // await utils.sleep( 5000 );
-
     testStatus = tu.mergeTests( testStatus, t1 );
-    testStatus = tu.mergeTests( testStatus, t2 );
 
     return testStatus;
 

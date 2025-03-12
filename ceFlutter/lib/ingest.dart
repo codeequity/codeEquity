@@ -1143,6 +1143,8 @@ void _removeAllocs( context, container, List<Tuple2<PEQAction, PEQ>> todos ) {
       }
    }
 
+   assert( markIds.length == 0 );
+   
    // unlock, set ingested
    if( markIds.length > 0 ) {
       String newPIDs = json.encode( markIds );

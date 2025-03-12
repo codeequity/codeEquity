@@ -164,7 +164,9 @@ async function clearRepo( authData, testLinks, pd ) {
 
     // Delete all issues, cards, projects, columns, labels.
     // Eeek.  This works a little too well.  Make sure the repo is expected.
-    assert( pd.ghRepo == config.TEST_REPO || pd.ghRepo == config.FLUTTER_TEST_REPO || pd.ghRepo == config.CROSS_TEST_REPO || pd.ghRepo == config.MULTI_TEST_REPO );
+    assert( pd.ghRepo == config.TEST_REPO || pd.ghRepo == config.FLUTTER_TEST_REPO ||
+	    pd.ghRepo == config.CROSS_TEST_REPO ||
+	    pd.ghRepo == config.MULTI_TEST_REPO || pd.ghRepo == config.FLUTTER_MULTI_TEST_REPO );
 
     // Start promises
     let jobsP  = tu.purgeJobs( pd.ghRepo );

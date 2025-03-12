@@ -99,7 +99,7 @@ async function runV2Tests( testStatus, flutterTest, authData, authDataX, authDat
     console.log( "\n\nCross Repo test complete." );
     //await utils.sleep( 5000 );
     testStatus = tu.mergeTests( testStatus, subTest );
-
+    
     ghUtils.show( true );
     awsUtils.show( true );
     tu.showCallCounts( true );
@@ -233,7 +233,7 @@ async function runTests() {
     let tdM        = new testData.TestData();
     tdM.ghOwner    = config.MULTI_TEST_OWNER;
     tdM.actor      = config.MULTI_TEST_ACTOR;
-    tdM.ghRepo     = config.MULTI_TEST_REPO;
+    tdM.ghRepo     = flutterTest ? config.FLUTTER_MULTI_TEST_REPO : config.MULTI_TEST_REPO;
     tdM.ghFullName = tdM.ghOwner + "/" + tdM.ghRepo;
     
     let authDataM     = new authDataC.AuthData();
@@ -258,9 +258,9 @@ async function runTests() {
     // td.ceProjectId  = ceProjects.findByRepo( config.HOST_GH, "codeequity", td.ghFullName );
     // tdX.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdX.ghFullName );
     // tdM.ceProjectId = ceProjects.findByRepo( config.HOST_GH, "codeequity", tdM.ghFullName );
-    td.ceProjectId = flutterTest ? config.FLUTTER_TEST_CEPID : config.TEST_CEPID;
+    td.ceProjectId  = flutterTest ? config.FLUTTER_TEST_CEPID : config.TEST_CEPID;
+    tdM.ceProjectId = flutterTest ? config.FLUTTER_MULTI_TEST_CEPID : config.MULTI_TEST_CEPID;
     tdX.ceProjectId = config.CROSS_TEST_CEPID;
-    tdM.ceProjectId = config.MULTI_TEST_CEPID;
 
     // Convert project names to flutter as needed to avoid crossover infection between server tests and flutter tests (the CEPIDs otherwise share projects)
     if( flutterTest ) {
@@ -289,14 +289,14 @@ async function runTests() {
     td.cepDetails.name        = flutterTest ? config.FLUTTER_TEST_NAME : config.TEST_NAME;
     td.cepDetails.description = flutterTest ? config.FLUTTER_TEST_DESC : config.TEST_DESC;
 
+    tdM.cepDetails.ceVentureId = flutterTest ? config.FLUTTER_MULTI_TEST_CEVID : config.MULTI_TEST_CEVID;
+    tdM.cepDetails.name        = flutterTest ? config.FLUTTER_MULTI_TEST_NAME  : config.MULTI_TEST_NAME;
+    tdM.cepDetails.description = flutterTest ? config.FLUTTER_MULTI_TEST_DESC  : config.MULTI_TEST_DESC;
+    
     tdX.cepDetails.ceVentureId = config.CROSS_TEST_CEVID;
     tdX.cepDetails.name        = config.CROSS_TEST_NAME;
     tdX.cepDetails.description = config.CROSS_TEST_DESC;
 
-    tdM.cepDetails.ceVentureId = config.MULTI_TEST_CEVID;
-    tdM.cepDetails.name        = config.MULTI_TEST_NAME;
-    tdM.cepDetails.description = config.MULTI_TEST_DESC;
-    
     let testStatus = [ 0, 0, []];
 
     // XXX Add an arg if these are ever useful again

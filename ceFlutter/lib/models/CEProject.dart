@@ -35,7 +35,7 @@ class CEProject {
    factory CEProject.fromJson(Map<String, dynamic> json) {
 
       var dynamicRepos  = json['HostParts'] ?? {};
-      var dynamicRList  = new List<Map<dynamic, dynamic>>.from( dynamicRepos['hostRepositories'] );
+      var dynamicRList  = dynamicRepos['hostRepositories'] != null ? new List<Map<dynamic, dynamic>>.from( dynamicRepos['hostRepositories'] ) : [];
 
       // Because ceProject does not cross hostPlatforms, both repoName and repoId can be assumed to be unique
       List<String> repos = [];
